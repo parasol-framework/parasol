@@ -190,10 +190,10 @@ static ERROR sslConnect(extNetSocket *Self)
 
          case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR_Disconnected; break;
 
-         case SSL_ERROR_WANT_READ:        Self->set(FID_State, NTC_CONNECTING_SSL);
+         case SSL_ERROR_WANT_READ:        Self->setState(NTC_CONNECTING_SSL);
                                           return ERR_Okay;
 
-         case SSL_ERROR_WANT_WRITE:       Self->set(FID_State, NTC_CONNECTING_SSL);
+         case SSL_ERROR_WANT_WRITE:       Self->setState(NTC_CONNECTING_SSL);
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR_WouldBlock; break;
@@ -209,12 +209,12 @@ static ERROR sslConnect(extNetSocket *Self)
       }
 
       log.warning("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
-      Self->set(FID_State, NTC_DISCONNECTED);
+      Self->setState(NTC_DISCONNECTED);
       return Self->Error;
    }
    else {
       log.trace("sslConnect:","SSL server connection successful.");
-      Self->set(FID_State, NTC_CONNECTED);
+      Self->setState(NTC_CONNECTED);
       return ERR_Okay;
    }
 }

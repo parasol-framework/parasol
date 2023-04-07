@@ -81,7 +81,7 @@ static const ActionArray clActions[] = {
 static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
    { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
@@ -146,7 +146,7 @@ void process_error(objScript *Self, CSTRING Procedure)
    pf::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
-   Self->set(FID_ErrorString, str);
+   Self->setErrorString(str);
 
    CSTRING file = Self->Path;
    if (file) {
@@ -431,7 +431,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                   }
                   if (!(str = next_line(str))) break;
                }
-               Self->set(FID_ErrorString, buffer);
+               Self->setErrorString(buffer);
 
                log.warning("Parser Failed: %s", Self->ErrorString);
             }
@@ -454,7 +454,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
          if (cachefile.ok()) {
             save_binary(Self, *cachefile);
-            cachefile->set(FID_Date, &prv->CacheDate);
+            cachefile->setDate(&prv->CacheDate);
          }
       }
    }
@@ -516,10 +516,10 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    if (!Args) return ERR_NullArgs;
 
    if (Args->Datatype IS DATA_TEXT) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+      Self->setStatement((CSTRING)Args->Buffer);
    }
    else if (Args->Datatype IS DATA_XML) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+      Self->setStatement((CSTRING)Args->Buffer);
    }
    else if (Args->Datatype IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
@@ -1034,7 +1034,7 @@ static ERROR run_script(objScript *Self)
          std::ostringstream ss;
          ss << "Procedure '" << Self->Procedure << "' / #" << Self->ProcedureID << " does not exist in the script.";
          auto str = ss.str().c_str();
-         Self->set(FID_ErrorString, str);
+         Self->setErrorString(str);
          log.warning("%s", str);
 
          #ifdef DEBUG

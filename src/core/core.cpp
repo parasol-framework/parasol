@@ -553,7 +553,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Print task information
 
-   log.msg("Version: %.1f : Process: %d, MemPool Address: %p", VER_CORE, glProcessID, glSharedControl);
+   log.msg("Version: %.1f : Process: %d, Shared Pool: %p", VER_CORE, glProcessID, glSharedControl);
    log.msg("Sync: %s, Root: %s", (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
@@ -651,9 +651,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       glScanClasses = true;
    }
 
-   if (glScanClasses) {
-      scan_classes();
-   }
+   if (glScanClasses) scan_classes();
 
    #ifdef DEBUG
       print_class_list();
@@ -757,7 +755,7 @@ static ERROR open_shared_control(void)
       char ashname[32];
       snprintf(ashname, sizeof(ashname), "rkl_%d", memkey); // Use the memkey as the system-wide name.  This means that APK based installs are secluded, but a system installation of the core would be discoverable by everyone.
 
-      LONG ret = ioctl(glMemoryFD, ASHMEM_SET_NAME, ashname);
+      auto ret = ioctl(glMemoryFD, ASHMEM_SET_NAME, ashname);
       if (ret < 0) {
          LOGE("Failed to set name of the ashmem region that we want.");
          close(glMemoryFD);
@@ -827,8 +825,6 @@ static ERROR open_shared_control(void)
       }
 
    #else
-      struct stat info;
-
       KMSG("Using mmap() sharing functionality.\n");
 
       // Open the memory file, creating it if it does not exist.  If it does exist, the file is simply opened.
@@ -840,6 +836,7 @@ static ERROR open_shared_control(void)
 
       // Expand the size of the page file if it is too small
 
+      struct stat info;
       if (!fstat(glMemoryFD, &info)) {
          if (info.st_size < glMemorySize) {
             if (ftruncate(glMemoryFD, glMemorySize) IS -1) {
@@ -1090,7 +1087,7 @@ void print_diagnosis(LONG Signal)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1101,7 +1098,7 @@ static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1158,7 +1155,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1167,7 +1164,7 @@ static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1207,7 +1204,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 // 2014-01-01: The crash handler is having major problems on Windows, it seems to be killed early on in the cleanup
 // process and never in the same place.  Log output doesn't flush properly either.
 
@@ -1280,7 +1277,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 ERROR convert_errno(LONG Error, ERROR Default)
 {
@@ -1307,7 +1304,7 @@ ERROR convert_errno(LONG Error, ERROR Default)
    }
 }
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 static void BreakHandler(void)

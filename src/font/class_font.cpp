@@ -540,7 +540,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
       // Extract the point size
 
       i++;
-      Variable var = { .Type = FD_DOUBLE, .Double = StrToFloat(Value+i) };
+      Variable var(StrToFloat(Value+i));
       while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
       if (Value[i] IS '.') {
          Value++;
@@ -752,7 +752,7 @@ static ERROR SET_Opacity(extFont *Self, DOUBLE Value)
 {
    if (Value >= 100) Self->Colour.Alpha = 255;
    else if (Value <= 0) Self->Colour.Alpha = 0;
-   else Self->Colour.Alpha = F2T(Value * 255.0 / 100.0);
+   else Self->Colour.Alpha = F2T(Value * (255.0 / 100.0));
    return ERR_Okay;
 }
 
@@ -1075,8 +1075,8 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
 static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
 {
    RGB8 rgb;
-   UBYTE  *data;
-   WORD   dx, dy, ex, ey, sx, sy, xinc;
+   UBYTE *data;
+   WORD  dx, dy, ex, ey, sx, sy, xinc;
 
    if (((data = src->Outline)) and (Colour->Alpha > 0)) {
       sx = dxcoord + src->OutlineLeft;

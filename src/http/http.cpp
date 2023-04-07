@@ -265,7 +265,7 @@ static ERROR socket_outgoing(objNetSocket *);
       }
       else {
          log.msg("No username and password provided, deactivating...");
-         Self->set(FID_CurrentState, HGS_TERMINATED);
+         Self->setCurrentState(HGS_TERMINATED);
       }
    }
 */
@@ -478,7 +478,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->CurrentState IS HGS_AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
             set_http_method(Self, "HEAD", cmd);
-            Self->set(FID_CurrentState, HGS_AUTHENTICATING);
+            Self->setCurrentState(HGS_AUTHENTICATING);
          }
          else {
             // You can post data from a file source or an object.  In the case of an object it is possible to preset
@@ -648,14 +648,14 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    else {
       log.trace("Re-using existing socket/server connection.");
 
-      Self->Socket->set(FID_Incoming, (APTR)&socket_incoming);
-      Self->Socket->set(FID_Feedback, (APTR)&socket_feedback);
+      Self->Socket->setIncoming(make_function_stdc(socket_incoming));
+      Self->Socket->setFeedback(make_function_stdc(socket_feedback));
    }
 
    if (!Self->Tunneling) {
       if (Self->CurrentState != HGS_AUTHENTICATING) {
          if ((Self->Method IS HTM_PUT) or (Self->Method IS HTM_POST)) {
-            Self->Socket->set(FID_Outgoing, (APTR)&socket_outgoing);
+            Self->Socket->setOutgoing(make_function_stdc(socket_outgoing));
          }
          else Self->Socket->set(FID_Outgoing, (APTR)NULL);
       }
@@ -716,7 +716,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 
    log.branch("Closing connection to server & signalling children.");
 
-   if (Self->CurrentState < HGS_COMPLETED) Self->set(FID_CurrentState, HGS_TERMINATED);
+   if (Self->CurrentState < HGS_COMPLETED) Self->setCurrentState(HGS_TERMINATED);
 
    // Closing files is important for dropping the file locks
 

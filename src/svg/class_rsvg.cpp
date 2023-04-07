@@ -119,11 +119,11 @@ static ERROR RSVG_Query(extPicture *Self, APTR Void)
 
       if ((Self->DisplayWidth > 0) and (Self->DisplayHeight > 0)) { // Client specified the display size?
          // Give the vector scene a target width and height.
-         if (!view_width) scene->set(FID_PageWidth, Self->DisplayWidth);
-         else scene->set(FID_PageWidth, view_width);
+         if (!view_width) scene->setPageWidth(Self->DisplayWidth);
+         else scene->setPageWidth(view_width);
 
-         if (!view_height) scene->set(FID_PageHeight, Self->DisplayHeight);
-         else scene->set(FID_PageHeight, view_height);
+         if (!view_height) scene->setPageHeight(Self->DisplayHeight);
+         else scene->setPageHeight(view_height);
       }
 
       if (!bmp->Width) {
@@ -168,8 +168,8 @@ static ERROR RSVG_Resize(extPicture *Self, struct acResize *Args)
       if (!Action(AC_Resize, Self->Bitmap, Args)) {
          objVectorScene *scene;
          if ((!prv->SVG->getPtr(FID_Scene, &scene)) and (scene)) {
-            scene->set(FID_PageWidth, Self->Bitmap->Width);
-            scene->set(FID_PageHeight, Self->Bitmap->Height);
+            scene->setPageWidth(Self->Bitmap->Width);
+            scene->setPageHeight(Self->Bitmap->Height);
 
             gfxDrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, TRUE);
             acDraw(prv->SVG);

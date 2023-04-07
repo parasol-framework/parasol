@@ -588,6 +588,149 @@ class objBitmap : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setPalette(struct RGBPalette * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[31];
+      return field->WriteValue(target, field, 0x08000300, Value, 1);
+   }
+
+   inline ERROR setData(UBYTE * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Width = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Height = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClip(struct ClipRectangle * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   inline ERROR setDataFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->DataFlags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAmtColours(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->AmtColours = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTransIndex(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[30];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBytesPerPixel(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BytesPerPixel = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitsPerPixel(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BitsPerPixel = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setXOffset(const LONG Value) {
+      this->XOffset = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setYOffset(const LONG Value) {
+      this->YOffset = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOpacity(const LONG Value) {
+      this->Opacity = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTransRGB(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setBkgdIndex(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setColourSpace(const LONG Value) {
+      this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClipLeft(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipRight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipBottom(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipTop(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBkgd(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08010300, Value, 1);
+   }
+
 };
 
 // Display class definition
@@ -740,6 +883,108 @@ class objDisplay : public BaseClass {
    }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setRefreshRate(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[43];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setX(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setY(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBmpX(const LONG Value) {
+      this->BmpX = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBmpY(const LONG Value) {
+      this->BmpY = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDPMS(const LONG Value) {
+      this->DPMS = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPopOver(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setGamma(const DOUBLE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x80001508, Value, Elements);
+   }
+
+   inline ERROR setHDensity(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setVDensity(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setResizeFeedback(const FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setWindowHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08000308, Value, 1);
+   }
+
+   template <class T> inline ERROR setTitle(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
 };
 
 // Clipboard class definition
@@ -811,6 +1056,21 @@ class objClipboard : public BaseClass {
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRequestHandler(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // Pointer class definition
@@ -848,6 +1108,85 @@ class objPointer : public BaseClass {
    LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
+
+   // Customised field setting
+
+   inline ERROR setSpeed(const DOUBLE Value) {
+      this->Speed = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAcceleration(const DOUBLE Value) {
+      this->Acceleration = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDoubleClick(const DOUBLE Value) {
+      this->DoubleClick = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setWheelSpeed(const DOUBLE Value) {
+      this->WheelSpeed = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setMaxSpeed(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInput(const OBJECTID Value) {
+      this->InputID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSurface(const OBJECTID Value) {
+      this->SurfaceID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursor(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->CursorID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursorOwner(const OBJECTID Value) {
+      this->CursorOwnerID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClickSlop(const LONG Value) {
+      this->ClickSlop = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setButtonOrder(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
 // Surface class definition
@@ -1007,6 +1346,251 @@ class objSurface : public BaseClass {
       return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setDrag(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[29];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setParent(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPopOver(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[40];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTopMargin(const LONG Value) {
+      this->TopMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBottomMargin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[43];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftMargin(const LONG Value) {
+      this->LeftMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRightMargin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMinWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[37];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMinHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMaxWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMaxHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRightLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTopLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[52];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBottomLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[50];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setX(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setY(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setAlign(const LONG Value) {
+      this->Align = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDimensions(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[35];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setCursor(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[53];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setColour(const struct RGB8 Value) {
+      this->Colour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setModal(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRootLayer(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[39];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAbsX(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAbsY(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBitsPerPixel(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[41];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInsideHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[47];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInsideWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[36];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMovement(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setRevertFocus(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setVisible(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[26];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWindowType(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWindowHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, 0x08000308, Value, 1);
+   }
+
+   inline ERROR setXOffset(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setYOffset(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
 };
 
 extern struct DisplayBase *DisplayBase;

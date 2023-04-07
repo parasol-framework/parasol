@@ -30,7 +30,7 @@
       <input>
         <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function module="Core">StrHash</function> function.</param>
         <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
-        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field, or NULL if the field was not found.</param>
+        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.</param>
       </input>
       <description>
 <p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
@@ -119,6 +119,16 @@
     </field>
 
     <field>
+      <name>Dictionary</name>
+      <comment>Returns a field lookup table sorted by field IDs.</comment>
+      <access read="G">Get</access>
+      <type>struct Field *</type>
+      <description>
+<p>Following initialisation of the MetaClass, the Dictionary can be read to retrieve the internal field lookup table. For base-classes, the client can use the binary search technique to find fields by their ID.  For sub-classes, use linear scanning.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Fields</name>
       <comment>Points to a field array that describes the class' object structure.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -190,7 +200,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRUCT []</type>
       <description>
-<p>If a class design will include support for methods, create a MethodArray and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
+<p>If a class design will include support for methods, create a MethodEntry and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
 <p>The Class Development Guide has a section devoted to method configuration.  Please read the guide for further information.</p>
       </description>
     </field>

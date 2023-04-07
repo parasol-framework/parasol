@@ -242,6 +242,75 @@ class objAudio : public BaseClass {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setOutputRate(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInputRate(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->InputRate = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setQuality(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitDepth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPeriods(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPeriodSize(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setDevice(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
+   inline ERROR setMasterVolume(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setMute(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setStereo(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // Sound class definition
@@ -318,6 +387,117 @@ class objSound : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setVolume(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setPan(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setPosition(const LARGE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+   }
+
+   inline ERROR setPriority(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLength(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOctave(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const SDF Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFrequency(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Frequency = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPlayback(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setCompression(const LONG Value) {
+      this->Compression = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBytesPerSecond(const LONG Value) {
+      this->BytesPerSecond = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitsPerSample(const LONG Value) {
+      this->BitsPerSample = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAudio(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->AudioID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLoopStart(const LONG Value) {
+      this->LoopStart = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLoopEnd(const LONG Value) {
+      this->LoopEnd = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setStream(const STREAM Value) {
+      this->Stream = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOnStop(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setPath(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, 0x08800500, Value, 1);
+   }
+
+   inline ERROR setNote(STRING Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, Value, 1);
+   }
+
 };
 
 extern struct AudioBase *AudioBase;

@@ -252,7 +252,7 @@ constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Valu
 constexpr FieldValue Category(LONG Value) { return FieldValue(FID_Category, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
-constexpr FieldValue Methods(const MethodArray *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
+constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
 constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMethod, Value); }

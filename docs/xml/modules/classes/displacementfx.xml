@@ -40,7 +40,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The amount is expressed in the coordinate system established by #Filter.PrimitiveUnits on the parent @Filter. When the value of this field is 0, this operation has no effect on the source image.</p>
+<p>The amount is expressed in the coordinate system established by #Filter.PrimitiveUnits on the parent <class name="VectorFilter">VectorFilter</class>. When the value of this field is 0, this operation has no effect on the source image.</p>
       </description>
     </field>
 

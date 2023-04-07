@@ -439,14 +439,14 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    objXML *xml;
    ERROR error = ERR_Okay;
    if (!NewObject(ID_XML, NF::INTEGRAL, &xml)) {
-      OBJECTPTR task = CurrentTask();
+      objTask *task = CurrentTask();
       STRING working_path = NULL;
 
       if (Path) {
          if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
             if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL_READ))) {
                if (auto stream = objCompressedStream::create::global(fl::Owner(file->UID), fl::Input(file))) {
-                  xml->set(FID_Source, stream);
+                  xml->setSource(stream);
                }
                else {
                   FreeResource(xml);
@@ -461,7 +461,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
                goto end;
             }
          }
-         else xml->set(FID_Path, Path);
+         else xml->setPath(Path);
 
          if (!task->get(FID_Path, &working_path)) working_path = StrClone(working_path);
 
@@ -474,9 +474,9 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
          folder[last] = 0;
-         if (last) task->set(FID_Path, folder);
+         if (last) task->setPath(folder);
       }
-      else if (Buffer) xml->set(FID_Statement, Buffer);
+      else if (Buffer) xml->setStatement(Buffer);
 
       if (!InitObject(xml)) {
          Self->SVGVersion = 1.0;
@@ -513,7 +513,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       else error = ERR_Init;
 
       if (working_path) {
-         task->set(FID_Path, working_path);
+         task->setPath(working_path);
          FreeResource(working_path);
       }
 

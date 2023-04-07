@@ -98,6 +98,7 @@ class objFile;
 class objStorageDevice;
 class objConfig;
 class objMetaClass;
+class objTask;
 struct ActionTable;
 struct FileFeedback;
 struct ResourceManager;
@@ -327,21 +328,22 @@ class extMetaClass : public objMetaClass {
    public:
    using create = pf::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
-   std::vector<Field> prvFields;        // Internal field structure
-   std::vector<MethodArray> Methods;     // Original method array supplied by the module.
+   std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
+   std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
    struct RootModule *Root;             // Root module that owns this class, if any.
    UBYTE Integral[8];                   // Integral object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;
+   UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
 
 class extFile : public objFile {
    public:
    using create = pf::Create<extFile>;
-   struct DateTime prvModified;  // [28 byte structure]
-   struct DateTime prvCreated;  // [28 byte structure]
+   struct DateTime prvModified;
+   struct DateTime prvCreated;
    LARGE Size;
    #ifdef _WIN32
       LONG  Stream;
@@ -366,7 +368,7 @@ class extFile : public objFile {
 class extConfig : public objConfig {
    public:
    using create = pf::Create<extConfig>;
-   ULONG    CRC;   // CRC32, for determining if config data has been altered
+   ULONG CRC;   // CRC32, for determining if config data has been altered
 };
 
 class extStorageDevice : public objStorageDevice {
@@ -937,7 +939,7 @@ LONG   get_thread_id(void);
 void   init_metaclass(void);
 ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
 void   local_free_args(APTR, const struct FunctionField *);
-struct Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
+Field * lookup_id(OBJECTPTR, FIELD, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);

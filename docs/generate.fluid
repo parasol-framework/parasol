@@ -1,4 +1,5 @@
--- Generate HTML documentation by running xsltproc against every XML document file.
+-- This script will generate HTML documentation by running xsltproc against every XML document file found in the xml/
+-- folder.  It will fail if xsltproc is not installed on the system.
 
    require 'filesearch'
 
@@ -24,7 +25,7 @@ function resolveSDKPath(Path)
    end
 
    if (err == ERR_Okay) then
-      sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
+      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
    else
       local msg = ''
       for _, path in ipairs(search_list) do
@@ -40,7 +41,6 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    resolveSDKPath(arg('sdk'))
-
 
    file.search('sdk:docs/xml/', {
       nameFilter = '*.xml',

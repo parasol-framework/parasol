@@ -100,6 +100,206 @@ class objFont : public BaseClass {
       return Action(AC_Draw, this, &args);
    }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setAngle(const DOUBLE Value) {
+      this->Angle = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPoint(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setStrokeSize(const DOUBLE Value) {
+      this->StrokeSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitmap(objBitmap * Value) {
+      this->Bitmap = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setString(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[30];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setStyle(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setFace(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setEscapeCallback(APTR Value) {
+      this->EscapeCallback = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setUserData(APTR Value) {
+      this->UserData = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOutline(const struct RGB8 Value) {
+      this->Outline = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setUnderline(const struct RGB8 Value) {
+      this->Underline = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setColour(const struct RGB8 Value) {
+      this->Colour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setGutter(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Gutter = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setGlyphSpacing(const LONG Value) {
+      this->GlyphSpacing = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLineSpacing(const LONG Value) {
+      this->LineSpacing = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setX(const LONG Value) {
+      this->X = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setY(const LONG Value) {
+      this->Y = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTabSize(const LONG Value) {
+      this->TabSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setWrapEdge(const LONG Value) {
+      this->WrapEdge = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFixedWidth(const LONG Value) {
+      this->FixedWidth = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Height = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMaxHeight(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->MaxHeight = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAlign(const LONG Value) {
+      this->Align = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAlignWidth(const LONG Value) {
+      this->AlignWidth = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAlignHeight(const LONG Value) {
+      this->AlignHeight = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setEndX(const LONG Value) {
+      this->EndX = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setEndY(const LONG Value) {
+      this->EndY = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setVDPI(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->VDPI = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHDPI(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->HDPI = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBold(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setEscapeChar(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
+   inline ERROR setItalic(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setTabs(const WORD * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[31];
+      return field->WriteValue(target, field, 0x00401308, Value, Elements);
+   }
+
 };
 
 extern struct FontBase *FontBase;

@@ -46,7 +46,7 @@ FDEF maSetGammaLinear[] = { { "Red", FD_DOUBLE }, { "Green", FD_DOUBLE }, { "Blu
 FDEF maSetMonitor[] = { { "Name", FD_STR }, { "MinH", FD_LONG }, { "MaxH", FD_LONG }, { "MinV", FD_LONG }, { "MaxV", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maUpdateDisplay[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 
-static const struct MethodArray clDisplayMethods[] = {
+static const struct MethodEntry clDisplayMethods[] = {
    { -1, (APTR)DISPLAY_WaitVBL, "WaitVBL", 0, 0 },
    { -2, (APTR)DISPLAY_UpdatePalette, "UpdatePalette", maUpdatePalette, sizeof(struct gfxUpdatePalette) },
    { -3, (APTR)DISPLAY_SetDisplay, "SetDisplay", maSetDisplay, sizeof(struct gfxSetDisplay) },

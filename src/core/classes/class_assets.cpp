@@ -69,7 +69,7 @@ struct prvFileAsset {
    AAssetManager *Mgr;
 };
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_FileDelete, ASSET_Delete, "Delete", NULL, 0 },
    { MT_FileMove,   ASSET_Move, "Move", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }

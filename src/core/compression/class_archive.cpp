@@ -676,7 +676,7 @@ static const ActionArray clArchiveActions[] = {
    { 0, NULL }
 };
 
-static const MethodArray clArchiveMethods[] = {
+static const MethodEntry clArchiveMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 

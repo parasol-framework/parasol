@@ -94,11 +94,11 @@ If there is a legitimate circumstance where there is no current task (e.g. if th
 Core initialisation) then the "system task" may be returned, which has ownership of Core resources.
 
 -RESULT-
-obj: Returns a pointer to the current Task object or NULL if failure.
+obj(Task): Returns a pointer to the current Task object or NULL if failure.
 
 *********************************************************************************************************************/
 
-OBJECTPTR CurrentTask(void)
+objTask * CurrentTask(void)
 {
    return glCurrentTask;
 }

@@ -955,6 +955,13 @@ struct FieldValue {
     large  Large    # The value as a 64-bit integer.
     double Double   # The value as a 64-bit float-point number.
     ptr    Pointer  # The value as an address pointer.
+  ]],
+  [[
+   Variable(LONG Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(LARGE Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
+   Variable(APTR Value) : Type(FD_POINTER), Pointer(Value) { }
+   Variable() { }
   ]])
 
   -- Structures for defining method and action invocations.
@@ -967,7 +974,7 @@ struct FieldValue {
   template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
   ]])
 
-  struct("MethodArray", { restrict="c" }, [[
+  struct("MethodEntry", { restrict="c" }, [[
     int  MethodID   # Unique method identifier
     ptr  Routine    # The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
     cstr Name       # Name of the method
@@ -975,8 +982,8 @@ struct FieldValue {
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
   ]],
   [[
-   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
-   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
   ]])
 
@@ -2095,6 +2102,7 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
   class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
     double ClassVersion    # Version of the class
     cstruct(*FieldArray) Fields  # Original field array supplied by the module.
+    array(struct(Field)) Dictionary # Field lookup by ID
     cstr ClassName         # Name of the class
     cstr FileExtension     # File extension that is supported by this class.
     cstr FileDescription   # File description

@@ -1043,7 +1043,7 @@ static void set_pointer_defaults(extPointer *Self)
 {
    DOUBLE speed        = glDefaultSpeed;
    DOUBLE acceleration = glDefaultAcceleration;
-   DOUBLE maxspeed     = 100;
+   LONG maxspeed     = 100;
    DOUBLE wheelspeed   = DEFAULT_WHEELSPEED;
    DOUBLE doubleclick  = 0.36;
    CSTRING buttonorder = "123456789ABCDEF";
@@ -1279,7 +1279,7 @@ static const FieldDef clPointerFlags[] = {
 static const FunctionField mthSetCursor[]     = { { "Surface", FD_LONG }, { "Flags", FD_LONG }, { "Cursor", FD_LONG }, { "Name", FD_STRING }, { "Owner", FD_LONG }, { "PreviousCursor", FD_LONG|FD_RESULT }, { NULL, 0 } };
 static const FunctionField mthRestoreCursor[] = { { "Cursor", FD_LONG }, { "Owner", FD_LONG }, { NULL, 0 } };
 
-static const MethodArray clPointerMethods[] = {
+static const MethodEntry clPointerMethods[] = {
    // Private methods
 #ifdef _WIN32
    { MT_PtrSetWinCursor,     (APTR)PTR_SetWinCursor,   "SetWinCursor",   mthSetWinCursor,  sizeof(struct ptrSetWinCursor) },

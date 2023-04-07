@@ -309,15 +309,14 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 
       // If the offset flags are used, adjust the vertical position
 
-      Variable var;
       if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
+         Variable var;
          var.Type   = FD_DOUBLE|FD_PERCENTAGE;
          var.Double = Self->YOffsetPercent;
          SET_YOffset(Self, &var);
       }
       else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) {
-         var.Type   = FD_DOUBLE;
-         var.Double = Self->YOffset;
+         Variable var(Self->YOffset);
          SET_YOffset(Self, &var);
       }
    }
@@ -348,7 +347,7 @@ static ERROR SET_InsideHeight(extSurface *Self, LONG Value)
 {
    LONG height = Value + Self->TopMargin + Self->BottomMargin;
    if (height < Self->MinHeight) height = Self->MinHeight;
-   Self->set(FID_Height, height);
+   Self->setHeight(height);
    return ERR_Okay;
 }
 
@@ -374,7 +373,7 @@ static ERROR SET_InsideWidth(extSurface *Self, LONG Value)
 {
    LONG width = Value + Self->LeftMargin + Self->RightMargin;
    if (width < Self->MinWidth) width = Self->MinWidth;
-   Self->set(FID_Width, width);
+   Self->setWidth(width);
    return ERR_Okay;
 }
 

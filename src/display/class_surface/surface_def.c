@@ -137,7 +137,7 @@ FDEF maAddCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maResetDimensions[] = { { "X", FD_DOUBLE }, { "Y", FD_DOUBLE }, { "XOffset", FD_DOUBLE }, { "YOffset", FD_DOUBLE }, { "Width", FD_DOUBLE }, { "Height", FD_DOUBLE }, { "Dimensions", FD_LONG }, { 0, 0 } };
 FDEF maRemoveCallback[] = { { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 
-static const struct MethodArray clSurfaceMethods[] = {
+static const struct MethodEntry clSurfaceMethods[] = {
    { -1, (APTR)SURFACE_InheritedFocus, "InheritedFocus", maInheritedFocus, sizeof(struct drwInheritedFocus) },
    { -2, (APTR)SURFACE_Expose, "Expose", maExpose, sizeof(struct drwExpose) },
    { -3, (APTR)SURFACE_InvalidateRegion, "InvalidateRegion", maInvalidateRegion, sizeof(struct drwInvalidateRegion) },

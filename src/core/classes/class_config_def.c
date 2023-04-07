@@ -18,7 +18,7 @@ FDEF maSortByKey[] = { { "Key", FD_STR }, { "Descending", FD_LONG }, { 0, 0 } };
 FDEF maMergeFile[] = { { "Path", FD_STR }, { 0, 0 } };
 FDEF maMerge[] = { { "Source", FD_OBJECTPTR }, { 0, 0 } };
 
-static const struct MethodArray clConfigMethods[] = {
+static const struct MethodEntry clConfigMethods[] = {
    { -1, (APTR)CONFIG_ReadValue, "ReadValue", maReadValue, sizeof(struct cfgReadValue) },
    { -2, (APTR)CONFIG_Set, "Set", maSet, sizeof(struct cfgSet) },
    { -3, (APTR)CONFIG_WriteValue, "WriteValue", maWriteValue, sizeof(struct cfgWriteValue) },

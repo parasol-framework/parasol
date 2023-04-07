@@ -285,7 +285,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    LARGE len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
    len -= LARGE(prv->PaddingEnd * prv->info.channels) * sizeof(WORD);
-   Self->set(FID_Length, len);
+   Self->setLength(len);
 
    log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, len, prv->PaddingStart, prv->PaddingEnd);
 
@@ -531,7 +531,7 @@ static ERROR MP3_Read(objSound *Self, struct acRead *Args)
 
       if (Self->Length != prv->WriteOffset) {
          log.extmsg("Decode complete, changing sample length from %d to %" PF64 " bytes.  Decoded %d frames.", Self->Length, prv->WriteOffset, prv->FramesProcessed);
-         Self->set(FID_Length, prv->WriteOffset);
+         Self->setLength(prv->WriteOffset);
       }
       else log.extmsg("Decoding of %d MP3 frames complete, output %" PF64 " bytes.", prv->FramesProcessed, prv->WriteOffset);
    }

@@ -60,7 +60,7 @@ static SimpleVector * new_simplevector(void)
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
-   Module->set(FID_FunctionList, glFunctions);
+   ((objModule *)Module)->setFunctionList(glFunctions);
    return ERR_Okay;
 }
 

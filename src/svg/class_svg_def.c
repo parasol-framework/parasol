@@ -8,7 +8,7 @@ static const struct FieldDef clSVGFlags[] = {
 
 FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
 
-static const struct MethodArray clSVGMethods[] = {
+static const struct MethodEntry clSVGMethods[] = {
    { -1, (APTR)SVG_Render, "Render", maRender, sizeof(struct svgRender) },
    { 0, 0, 0, 0, 0 }
 };

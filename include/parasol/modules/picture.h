@@ -104,5 +104,77 @@ class objPicture : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDisplayHeight(const LONG Value) {
+      this->DisplayHeight = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDisplayWidth(const LONG Value) {
+      this->DisplayWidth = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setQuality(const LONG Value) {
+      this->Quality = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setAuthor(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setCopyright(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setDescription(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setDisclaimer(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setHeader(APTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setSoftware(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setTitle(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 

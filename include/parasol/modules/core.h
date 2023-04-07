@@ -1695,6 +1695,11 @@ struct Variable {
    LARGE  Large;     // The value as a 64-bit integer.
    DOUBLE Double;    // The value as a 64-bit float-point number.
    APTR   Pointer;   // The value as an address pointer.
+   Variable(LONG Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(LARGE Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
+   Variable(APTR Value) : Type(FD_POINTER), Pointer(Value) { }
+   Variable() { }
 };
 
 struct ActionArray {
@@ -1703,14 +1708,14 @@ struct ActionArray {
   template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
 };
 
-struct MethodArray {
+struct MethodEntry {
    LONG    MethodID;                     // Unique method identifier
    APTR    Routine;                      // The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
-   MethodArray() : MethodID(0), Routine(NULL), Name(NULL) { }
-   MethodArray(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
       MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
@@ -1971,7 +1976,7 @@ struct CoreBase {
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
    ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
-   OBJECTPTR (*_CurrentTask)(void);
+   objTask * (*_CurrentTask)(void);
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
@@ -2094,7 +2099,7 @@ inline void VLogF(int Flags, const char *Header, const char *Message, va_list Ar
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
-inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
+inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
@@ -2968,6 +2973,7 @@ class objMetaClass : public BaseClass {
 
    DOUBLE  ClassVersion;                // The version number of the class.
    const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   struct Field * Dictionary;           // Returns a field lookup table sorted by field IDs.
    CSTRING ClassName;                   // The name of the represented class.
    CSTRING FileExtension;               // Describes the file extension represented by the class.
    CSTRING FileDescription;             // Describes the file type represented by the class.
@@ -2979,6 +2985,100 @@ class objMetaClass : public BaseClass {
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    LONG    Category;                    // The system category that a class belongs to.
+
+   // Customised field setting
+
+   inline ERROR setClassVersion(const DOUBLE Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassVersion = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
+   }
+
+   template <class T> inline ERROR setClassName(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassName = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setFileExtension(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileExtension = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setFileDescription(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileDescription = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setFileHeader(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileHeader = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Path = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSize(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Size = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSubClass(const CLASSID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->SubClassID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBaseClass(const CLASSID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BaseClassID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCategory(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Category = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMethods(const APTR Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
+   }
+
+   inline ERROR setActions(APTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08000400, Value, 1);
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
+   }
+
 };
 
 // StorageDevice class definition
@@ -2996,6 +3096,15 @@ class objStorageDevice : public BaseClass {
    LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
    LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
    LARGE BytesUsed;      // Total amount of storage space in use.
+
+   // Customised field setting
+
+   template <class T> inline ERROR setVolume(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, 0x08800504, to_cstring(Value), 1);
+   }
+
 };
 
 // File class definition
@@ -3139,6 +3248,80 @@ class objFile : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setPosition(const LARGE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setStatic(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Static = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTarget(const OBJECTID Value) {
+      this->TargetID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDate(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   inline ERROR setCreated(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPermissions(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setSize(const LARGE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+   }
+
+   template <class T> inline ERROR setLink(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setUser(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setGroup(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // Config class definition
@@ -3311,6 +3494,32 @@ class objConfig : public BaseClass {
       return Action(AC_SaveToObject, this, &args);
    }
    inline ERROR sort() { return Action(AC_Sort, this, NULL); }
+
+   // Customised field setting
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setKeyFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setGroupFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
 };
 
 inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
@@ -3426,6 +3635,79 @@ class objScript : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setTarget(const OBJECTID Value) {
+      this->TargetID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLineOffset(const LONG Value) {
+      this->LineOffset = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setCacheFile(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setErrorString(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setWorkingPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setProcedure(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setOwner(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setResults(STRING * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, 0x08801300, Value, Elements);
+   }
+
+   template <class T> inline ERROR setStatement(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
 // Task class definition
@@ -3515,6 +3797,98 @@ class objTask : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setTimeOut(const DOUBLE Value) {
+      this->TimeOut = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setReturnCode(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setProcess(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ProcessID = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setArgs(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
+   inline ERROR setParameters(pf::vector<std::string> *Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, 0x08805300, Value, Value->size());
+   }
+
+   inline ERROR setErrorCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setExitCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setInputCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setLaunchPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setLocation(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setOutputCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPriority(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // Thread class definition
@@ -3558,6 +3932,32 @@ class objThread : public BaseClass {
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setStackSize(const LONG Value) {
+      this->StackSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setRoutine(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // Module class definition
@@ -3608,6 +4008,38 @@ class objModule : public BaseClass {
    // Action stubs
 
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setVersion(const DOUBLE Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Version = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFunctionList(const struct Function * Value) {
+      this->FunctionList = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHeader(struct ModHeader * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
 };
 
 // Time class definition
@@ -3644,6 +4076,64 @@ class objTime : public BaseClass {
 
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setSystemTime(const LARGE Value) {
+      this->SystemTime = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setYear(const LONG Value) {
+      this->Year = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMonth(const LONG Value) {
+      this->Month = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDay(const LONG Value) {
+      this->Day = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHour(const LONG Value) {
+      this->Hour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMinute(const LONG Value) {
+      this->Minute = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSecond(const LONG Value) {
+      this->Second = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTimeZone(const LONG Value) {
+      this->TimeZone = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDayOfWeek(const LONG Value) {
+      this->DayOfWeek = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMilliSecond(const LONG Value) {
+      this->MilliSecond = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMicroSecond(const LONG Value) {
+      this->MicroSecond = Value;
+      return ERR_Okay;
+   }
+
 };
 
 // Compression class definition
@@ -3771,6 +4261,66 @@ class objCompression : public BaseClass {
 
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setOutput(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->OutputID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCompressionLevel(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSegmentSize(const LONG Value) {
+      this->SegmentSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPermissions(const LONG Value) {
+      this->Permissions = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setWindowBits(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setArchiveName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setFeedback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPassword(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
 // CompressedStream class definition
@@ -3788,6 +4338,27 @@ class objCompressedStream : public BaseClass {
    OBJECTPTR Input;      // An input object that will supply data for decompression.
    OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
    LONG      Format;     // The format of the compressed stream.  The default is GZIP.
+
+   // Customised field setting
+
+   inline ERROR setInput(OBJECTPTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Input = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOutput(OBJECTPTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Output = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFormat(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Format = Value;
+      return ERR_Okay;
+   }
+
 };
 
 #ifndef PRV_CORE

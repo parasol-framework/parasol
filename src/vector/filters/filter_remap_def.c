@@ -8,7 +8,7 @@ FDEF maSelectDiscrete[] = { { "Component", FD_LONG }, { "Values", FD_ARRAY|FD_DO
 FDEF maSelectInvert[] = { { "Component", FD_LONG }, { 0, 0 } };
 FDEF maSelectMask[] = { { "Component", FD_LONG }, { "Mask", FD_LONG }, { 0, 0 } };
 
-static const struct MethodArray clRemapFXMethods[] = {
+static const struct MethodEntry clRemapFXMethods[] = {
    { -20, (APTR)REMAPFX_SelectGamma, "SelectGamma", maSelectGamma, sizeof(struct rfSelectGamma) },
    { -21, (APTR)REMAPFX_SelectTable, "SelectTable", maSelectTable, sizeof(struct rfSelectTable) },
    { -22, (APTR)REMAPFX_SelectLinear, "SelectLinear", maSelectLinear, sizeof(struct rfSelectLinear) },

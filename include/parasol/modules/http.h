@@ -190,5 +190,191 @@ class objHTTP : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setDataTimeout(const DOUBLE Value) {
+      this->DataTimeout = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setConnectTimeout(const DOUBLE Value) {
+      this->ConnectTimeout = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setIndex(const LARGE Value) {
+      this->Index = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setContentLength(const LARGE Value) {
+      this->ContentLength = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSize(const LARGE Value) {
+      this->Size = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setHost(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setRealm(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setOutputFile(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setInputFile(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setUserAgent(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[31];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setUserData(APTR Value) {
+      this->UserData = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setInputObject(const OBJECTID Value) {
+      this->InputObjectID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOutputObject(const OBJECTID Value) {
+      this->OutputObjectID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMethod(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPort(const LONG Value) {
+      this->Port = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setObjectMode(const LONG Value) {
+      this->ObjectMode = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setStatus(const LONG Value) {
+      this->Status = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setError(const ERROR Value) {
+      this->Error = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDatatype(const LONG Value) {
+      this->Datatype = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCurrentState(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setProxyServer(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setProxyPort(const LONG Value) {
+      this->ProxyPort = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBufferSize(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAuthCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[26];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setContentType(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setIncoming(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setLocation(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setOutgoing(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setStateChanged(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setUsername(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPassword(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
 };
 

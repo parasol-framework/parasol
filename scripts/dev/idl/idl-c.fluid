@@ -15,7 +15,7 @@
 
    loadFile(glPath .. 'idl-doc.fluid')
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 glActionStubs = {
    -- Hidden actions
@@ -218,7 +218,7 @@ glActionStubs = {
    }]],
 }
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 glHeader = { }
 glOutput = { }
@@ -244,7 +244,7 @@ function priority(String)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function checkOptions(Options)
    if (type(Options) != 'table') then
@@ -257,7 +257,7 @@ function checkOptions(Options)
    return Options
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function c_include(...)
@@ -271,7 +271,7 @@ function c_include(...)
    priority()
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function cpp_include(...)
@@ -298,7 +298,7 @@ function cpp_include(...)
    priority()
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 -- Restricts the output of anything declared within the referenced function.
 
@@ -309,7 +309,7 @@ function restrict(Function)
    glRestrict = status
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function module(Options, Function)
@@ -341,7 +341,7 @@ function module(Options, Function)
    Function()
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function header(Options, Function)
@@ -369,7 +369,7 @@ function header(Options, Function)
    Function()
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 --
 --  flags('KQ', { comment='Special qualifier flags' },
@@ -493,7 +493,7 @@ function flags(Prefix, Options, ...)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function privateNames(List)
@@ -502,7 +502,7 @@ function privateNames(List)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function hash(Prefix, Format, ...)
@@ -515,7 +515,7 @@ function hash(Prefix, Format, ...)
    output()
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function const(Prefix, Options, ...)
@@ -579,7 +579,7 @@ function const(Prefix, Options, ...)
    }
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function enum(Prefix, Options, ...)
@@ -642,7 +642,7 @@ function enum(Prefix, Options, ...)
    }
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function platform(Platform, Function)
@@ -691,7 +691,7 @@ function platform(Platform, Function)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL function
 
 function struct(Name, Options, Def, Append)
@@ -786,7 +786,7 @@ function struct(Name, Options, Def, Append)
    glCurrentStructure = prevStruct
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Create a C/C++ field name from the definitions in a Field object.
 
 function cName(Field, CStruct)
@@ -812,7 +812,7 @@ function cName(Field, CStruct)
    return name
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 -- Refer to outputClassHeader() for output of the class structure.
 
@@ -1064,7 +1064,7 @@ function class(Name, Options, Blueprint, Private, Custom)
          end
          mdef = mdef .. '\n'
 
-         mdef = mdef .. 'static const struct MethodArray cl' .. Name .. 'Methods[] = {\n'
+         mdef = mdef .. 'static const struct MethodEntry cl' .. Name .. 'Methods[] = {\n'
          for k, m in ipairs(class.methods) do
             local structSize
             if not nz(m.params) then
@@ -1092,7 +1092,7 @@ function class(Name, Options, Blueprint, Private, Custom)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function processClassEntry(Class, Type, Extract)
    if (Type == '-CLASS-') then
@@ -1156,6 +1156,8 @@ function processAction(class, extract)
    end
 end
 
+----------------------------------------------------------------------------------------------------------------------
+
 function processField(class, extract)
    extract = '-FIELD-\n' .. extract:trim() .. '\n-END-\n'
    local lookup  = extract:match('\n[Ll]ookup:%s+(.-)\n')
@@ -1193,6 +1195,8 @@ function processField(class, extract)
       print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class blueprint.")
    end
 end
+
+----------------------------------------------------------------------------------------------------------------------
 
 function processMethod(class, extract)
    extract = '-METHOD-\n' .. extract:trim() .. '\n-END-\n'
@@ -1271,7 +1275,7 @@ function processMethod(class, extract)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Scan class.fields for a specific field name.
 
 function findClassField(class, fieldName)
@@ -1284,7 +1288,7 @@ function findClassField(class, fieldName)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Process the formal field definitions in a class blueprint.
 
 function processClassFields(class, Blueprint)
@@ -1313,6 +1317,7 @@ function processClassFields(class, Blueprint)
             if (f != nil) then
                f.write  = def.write
                f.read   = def.read
+               f.flags  = def.flags
                f.access = nz(def.access, def.access)
                f.private = nz(f.private, def.private)
                if (f.type == nil) then f.type = nz(def.type,'NIL') end
@@ -1395,7 +1400,7 @@ function processClassFields(class, Blueprint)
    return cdef
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Output the CPP compatible class definition
 
 function outputClassHeader(class, Private, Custom)
@@ -1469,125 +1474,133 @@ function outputClassHeader(class, Private, Custom)
                output(glActionStubs['Init'])
             end
          end
+
+         -- Insert customised set-field functions.  These are intended to be as fast as possible, so
+         -- features such as error logging and parameter checking are not included.
+
+         output('')
+         output('   // Customised field setting\n')
+         local indent = '      '
+
+         for _, f in ipairs(class.fields) do
+            local field_name = cName(f, true)
+            if nz(field_name) and (f.write != nil) then
+               local fid_name = field_name
+               local id = fid_name:sub(-3)
+               if id:find('^%lID$') then
+                  fid_name = fid_name:sub(1, -3)
+               end
+
+               local field_type = f.type
+
+               if field_type:find('^STRUCT *') then -- Unnamed structs must be converted to PTR
+                  field_type = 'APTR'
+               end
+
+               if not field_type:find('^const ') then
+                  if (bit.band(f.flags, FD_STRING) != 0) and (bit.band(f.flags, FD_ARRAY) == 0) then
+                     if field_type:find('^STRING') or field_type:find('^CSTRING') then
+                        field_type = 'T &&'
+                     else
+                        field_type = 'const ' .. field_type
+                     end
+                  elseif bit.band(f.flags, FD_POINTER) != 0 then
+                     -- Applying const to pointers can cause type conversion issues.
+                  else
+                     field_type = 'const ' .. field_type
+                  end
+               end
+
+               if (f.write == 'Set') or nz(f.setField) or f.virtual then
+                  if f.struct then
+                     if field_type:sub(-1) != '*' then
+                        field_type = field_type .. ' *'
+                     end
+                  end
+
+                  if (field_type:sub(-2) == '[]') then
+                     field_type = field_type:sub(1,-3) .. '*'
+                     output(string.format('   inline ERROR set%s(%s Value, LONG Elements) {', fid_name, field_type))
+                  elseif (bit.band(f.flags, FD_ARRAY) != 0) then
+                     if bit.band(f.flags, FD_CPP) != 0 then
+                        output(string.format('   inline ERROR set%s(%s *Value) {', fid_name, field_type))
+                     else
+                        output(string.format('   inline ERROR set%s(%s Value, LONG Elements) {', fid_name, field_type))
+                     end
+                  elseif (field_type == 'T &&') then
+                     output(string.format('   template <class T> inline ERROR set%s(%s Value) {', fid_name, field_type))
+                  else
+                     output(string.format('   inline ERROR set%s(%s Value) {', fid_name, field_type))
+                  end
+
+                  if (f.write == 'Init') then
+                     output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
+                  end
+
+                  local err, fl, target = class.meta.mtFindField(mSys.StrHash(f.name, false))
+                  if (err == ERR_Okay) and (target.id == class.meta.id) then
+                     output(indent .. 'auto target = this;')
+                     output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))
+                  else
+                     output(indent .. 'OBJECTPTR target;')
+                     output(indent .. string.format('auto field = FindField(this, FID_%s, &target);', fid_name))
+                  end
+
+                  if bit.band(f.flags, FD_VARIABLE) != 0 then
+                     if bit.band(f.flags, bit.bor(FD_LONG,FD_LARGE,FD_DOUBLE,FD_FLOAT)) != 0 then
+                        output(indent .. 'Variable var(Value);')
+                        output(indent .. 'return field->WriteValue(target, field, FD_VARIABLE, &var, 1);')
+                     else
+                        -- Pass through as pointer; requires further analysis to determine viability
+                        output(indent .. 'return field->WriteValue(target, field, FD_POINTER, Value, 1);')
+                     end
+                  elseif bit.band(f.flags, FD_ARRAY) != 0 then
+                     if bit.band(f.flags, FD_CPP) != 0 then
+                        local flags = string.format('%08x', f.flags):sub(-8)
+                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Value->size());')
+                     else
+                        local flags = string.format('%08x', f.flags):sub(-8)
+                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
+                     end
+                  elseif bit.band(f.flags, FD_FUNCTION) != 0 then
+                     output(indent .. 'return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);')
+                  elseif bit.band(f.flags, bit.bor(FD_STRING)) != 0 then
+                     local flags = string.format('%08x', f.flags):sub(-8)
+                     output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', to_cstring(Value), 1);')
+                  elseif bit.band(f.flags, bit.bor(FD_POINTER)) != 0 then
+                     local flags = string.format('%08x', f.flags):sub(-8)
+                     output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, 1);')
+                  elseif bit.band(f.flags, bit.bor(FD_DOUBLE,FD_FLOAT)) != 0 then
+                     output(indent .. 'return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);')
+                  elseif bit.band(f.flags, FD_LARGE) != 0 then
+                     output(indent .. 'return field->WriteValue(target, field, FD_LARGE, &Value, 1);')
+                  else
+                     output(indent .. 'return field->WriteValue(target, field, FD_LONG, &Value, 1);')
+                  end
+               else
+                  if (field_type == 'T &&') then
+                     output(string.format('   template <class T> inline ERROR set%s(%s Value) {', fid_name, field_type))
+                  else
+                     output(string.format('   inline ERROR set%s(%s Value) {', fid_name, field_type))
+                  end
+                  if (f.write == 'Init') then
+                     output(indent .. 'if (this->initialised()) return ERR_NoFieldAccess;')
+                  end
+                  output(indent .. string.format('this->%s = Value;', field_name))
+                  output(indent .. 'return ERR_Okay;')
+               end
+
+               output('   }\n')
+            end
+         end
+
       end
       output('};')
       output()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
--- Convert FD flags into a printable C type.
-
-function getFieldType(Type, CustomName, Option)
-   local result
-
-   if bit.band(Type, FD_CUSTOM) != 0 then
-      if nz(CustomName) then
-         return CustomName
-      else
-         return 'APTR'
-      end
-   elseif bit.band(Type, FD_ARRAY) != 0 then
-      -- All arrays are pointers, with additional information indicating the type of values in the array.
-
-      if bit.band(Type, FD_CPP) != 0 then
-         if bit.band(Type, FD_BYTE) != 0 then
-            return 'pf::vector<BYTE>'
-         elseif bit.band(Type, FD_WORD) != 0 then
-            return 'pf::vector<WORD>'
-         elseif bit.band(Type, FD_LONG) != 0 then
-            return 'pf::vector<LONG>'
-         elseif bit.band(Type, FD_DOUBLE) != 0 then
-            return 'pf::vector<DOUBLE>'
-         elseif bit.band(Type, FD_STRING) != 0 then
-            return 'pf::vector<std::string>'
-         elseif bit.band(Type, FD_POINTER) != 0 then
-            return 'pf::vector<APTR>'
-         elseif bit.band(Type, FD_STRUCT) != 0 then
-            return 'pf::vector<STRUCT>'
-         else
-            return 'pf::vector<>'
-         end
-      else
-         if bit.band(Type, FD_BYTE) != 0 then
-            return 'BYTE []'
-         elseif bit.band(Type, FD_WORD) != 0 then
-            return 'WORD []'
-         elseif bit.band(Type, FD_LONG) != 0 then
-            return 'LONG []'
-         elseif bit.band(Type, FD_DOUBLE) != 0 then
-            return 'DOUBLE []'
-         elseif bit.band(Type, FD_STRING) != 0 then
-            return 'STRING []'
-         elseif bit.band(Type, FD_POINTER) != 0 then
-            return 'APTR []'
-         elseif bit.band(Type, FD_STRUCT) != 0 then
-            return 'STRUCT []'
-         else
-            return 'ARRAY'
-         end
-      end
-   elseif bit.band(Type, FD_STRING) != 0 then
-      return 'STRING'
-   elseif bit.band(Type, FD_FUNCTION) != 0 then
-      return 'FUNCTION'
-   elseif bit.band(Type, FD_POINTER) != 0 then
-      local ptr = 0
-      if bit.band(Type, FD_LONG) != 0 then
-         result = 'LONG'
-         ptr = ptr + 1
-      elseif bit.band(Type, FD_LARGE) != 0 then
-         result = 'LARGE'
-         ptr = ptr + 1
-      elseif bit.band(Type, FD_DOUBLE) != 0 then
-         result = 'DOUBLE'
-         ptr = ptr + 1
-      elseif bit.band(Type, bit.bor(FD_OBJECT, FD_INTEGRAL)) != 0 then
-         return 'OBJECTPTR'
-      elseif bit.band(Type, FD_STRING) != 0 then
-         return 'STRING'
-      elseif bit.band(Type, FD_RGB) != 0 then
-         result = 'RGB'
-         ptr = ptr + 1
-      elseif bit.band(Type, FD_FUNCTION) != 0 then
-         result = 'FUNCTION'
-         ptr = ptr + 1
-      elseif bit.band(Type, FD_STRUCT) != 0 then
-         if nz(Option) then -- We need a way to convert the Option number to a string address...
-            result = 'APTR'
-         else
-            result = 'APTR'
-         end
-      else
-         return 'APTR'
-      end
-
-      if (ptr > 0) then
-         return result .. ' ' .. string.rep('*', ptr)
-      else
-         return result
-      end
-   elseif bit.band(Type, FD_RGB) != 0 then
-      return 'RGB8'
-   elseif bit.band(Type, FD_LONG) != 0 then
-      if bit.band(Type, FD_OBJECT) != 0 then
-         return 'OBJECTID'
-      else
-         return 'LONG'
-      end
-   elseif bit.band(Type, FD_LARGE) != 0 then
-      return 'LARGE'
-   elseif bit.band(Type, FD_DOUBLE) != 0 then
-      return 'DOUBLE'
-   elseif bit.band(Type, FD_FLOAT) != 0 then
-      return 'FLOAT'
-   else
-      print(string.format('Failed to identify field type $%.8x for field "%s"', Type, CustomName))
-      return 'void'
-   end
-end
-
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Useful for ensuring strict XML compliance, like
 --
 -- From: <something>content</>
@@ -1616,13 +1629,14 @@ function cleanXMLString(str, caller)
    return str
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Extract information from a compiled class' field definition.
 
 function getMetaFieldDefinition(Field)
    local fl = {
       name  = Field.name,
-      type  = getFieldType(Field.flags, Field.name, Field.arg)
+      type  = getFieldType(Field.flags, Field.name, Field.arg),
+      flags = Field.flags
    }
 
    if (bit.band(Field.flags, FD_SYNONYM) != 0) then
@@ -1663,7 +1677,7 @@ function getMetaFieldDefinition(Field)
    return fl
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 -- This is a shortened version of functions(), where only the names of the functions need to be specified as a list.
 -- Further elaboration on the functions is normally done by embedding -FUNCTION- sections in the module code.
@@ -1688,7 +1702,7 @@ function functionNames(Prefix, ...)
    output('__FUNCTION_TABLE__')
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
@@ -1706,486 +1720,18 @@ function methods(ClassName, Prefix, Methods)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FDL Function
 
 function c_insert(Raw)
    output(Raw)
 end
 
------------------------------------------------------------------------------------------------------------------------
--- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
--- Use cType() to perform conversion and don't access glTypes directly.
+----------------------------------------------------------------------------------------------------------------------
 
-glTypes = {
-   arraysize  = { fd='FD_LONG|FD_ARRAYSIZE',  c_type='LONG' },
-   bufsize    = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG' },
-   char       = { fd='FD_BYTE',               c_type='BYTE' },
-   cid        = { fd='FD_LONG|FD_UNSIGNED',   c_type='CLASSID' },
-   cptr       = { fd='FD_PTR',                c_type='const void *' },
-   cstr       = { fd='FD_STR',                c_type='CSTRING' },
-   double     = { fd='FD_DOUBLE',             c_type='DOUBLE' },
-   eid        = { fd='FD_LONG',               c_type='EVENTID' },
-   error      = { fd='FD_LONG|FD_ERROR',      c_type='ERROR' },
-   ext        = { fd='FD_OBJECTPTR',          c_type='OBJECTPTR' },
-   fid        = { fd='FD_LARGE',              c_type='FIELD' },
-   flags      = { fd='FD_LONG',               c_type='LONG' },
-   float      = { fd='FD_FLOAT',              c_type='FLOAT' },
-   func       = { fd='FD_FUNCTION',           c_type='FUNCTION' },
-   hhandle    = { fd='FD_PTR',                c_type='HOSTHANDLE' },
-   int        = { fd='FD_LONG',               c_type='LONG' },
-   large      = { fd='FD_LARGE',              c_type='LARGE' },
-   maxint     = { fd='FD_LARGE',              c_type='MAXINT' },
-   mem        = { fd='FD_LONG',               c_type='MEMORYID' },
-   obj        = { fd='FD_OBJECTPTR',          c_type='OBJECTPTR' },
-   oid        = { fd='FD_OBJECTID',           c_type='OBJECTID' },
-   printf     = { fd='FD_TAGS',               c_type='...' },
-   ptr        = { fd='FD_PTR',                c_type='APTR' },
-   resource   = { fd='FD_STRUCT|FD_RESOURCE', c_type='APTR' },
-   short      = { fd='FD_WORD',               c_type='WORD' },
-   str        = { fd='FD_STR',                c_type='STRING', cpp_type='std::string' },
-   struct     = { fd='FD_STRUCT',             c_type='APTR' },
-   structsize = { fd='FD_LONG|FD_BUFSIZE',    c_type='LONG' },
-   tags       = { fd='FD_TAGS',               c_type='...' },
-   uchar      = { fd='FD_BYTE',               c_type='UBYTE' },
-   uint       = { fd='FD_LONG|FD_UNSIGNED',   c_type='ULONG' },
-   ushort     = { fd='FD_WORD',               c_type='UWORD' },
-   va_list    = { fd='FD_PTR',                c_type='va_list' },
-   void       = { fd='FD_VOID',               c_type='void' },
-   vtags      = { fd='FD_VARTAGS',            c_type='...' }
-}
+   loadFile(glPath .. 'idl-types.fluid')
 
-function cType(Field, Origin)
-   if (Field.type == nil) then
-      error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
-   end
-
-   Field.defType = Field.type -- Save the original type name
-
-   -- A ! symbol indicates that the field is a result that is allocated and can be removed with FreeResource()
-   -- A & symbol indicates that the field is a pointer to a reserved area that will store a result value, e.g. LONG *
-
-   local resultValue
-   local special, result_type = Field.type:match("^([!&]+)(.+)")
-   if (special != nil) and (result_type != nil) then
-      if (special:find("!")) then Field.allocated = true end
-      resultValue = true
-      Field.type = result_type
-   end
-
-   if (Field.type:match("^structsize") != nil) then
-      Field.sizeof = true
-   end
-
-   -- The use of cpp() converts the encapsulated type to its C++ variant.  E.g. 'str' becomes a std::string
-
-   do
-      local cpp_type = Field.type:match("^cpp%((.+)%)$")
-      if (cpp_type != nil) then
-         Field.cpp  = true
-         Field.type = cpp_type
-         Field = cType(Field, Origin)
-         Field.fullType = { fd="FD_CPP|" .. Field.fullType.fd, c_type=Field.fullType.c_type }
-         goto finalise
-      end
-   end
-
-   do
-      local const, struct = Field.type:match("^(c-)struct%((.+)%)$")
-      if (struct != nil) then
-         local ptr_struct = struct:match("%*(.+)")
-         if (ptr_struct != nil) then struct = ptr_struct end
-
-         Field.struct = struct
-         Field.type = 'struct ' .. struct
-
-         if (glStructures[struct] != nil) then
-            glActiveRefs['STRUCT:' .. struct] = 1
-
-            if (glStructures[struct].version != nil) then
-               Field.type = Field.type .. 'V' .. glStructures[struct].version
-            end
-         elseif (glCurrentStructure != struct) then
-            if not glPrivateNames[struct] then
-               print('WARN: Unknown struct reference "' .. struct .. '"')
-            end
-         end
-
-         if (ptr_struct != nil) then
-            Field.type = Field.type .. " *"
-            Field.fullType = { fd="FD_PTR|FD_STRUCT", c_type="APTR" }
-         elseif (Field.isFunction) then
-            if (Field.isArray) then
-               Field.fullType = { fd="FD_STRUCT", c_type="APTR" }
-            else
-               Field.type = Field.type .. " *"
-               Field.fullType = { fd="FD_PTR|FD_STRUCT", c_type="APTR" }
-            end
-         else
-            Field.fullType = { fd="FD_PTR|FD_STRUCT", c_type="APTR" }
-         end
-
-         if (nz(const)) then
-            Field.type =  "const " .. Field.type
-         end
-
-         goto finalise
-      end
-   end
-
-   do -- Resources are structs, but with an FD_RESOURCE marker.
-      local const, struct = Field.type:match("^(c-)resource%((.+)%)$")
-      if (struct != nil) then
-         local ptr_struct = struct:match("%*(.+)")
-         if (ptr_struct != nil) then struct = ptr_struct end
-
-         Field.struct = struct
-         Field.type = "struct " .. struct
-
-         if (glStructures[struct] != nil) then
-            glActiveRefs['STRUCT:' .. struct] = 1
-
-            if (glStructures[struct].version != nil) then
-               Field.type = Field.type .. "V" .. glStructures[struct].version
-            end
-         end
-
-         if (ptr_struct != nil) then
-            Field.type = Field.type .. " *"
-            Field.fullType = { fd="FD_PTR|FD_STRUCT|FD_RESOURCE", c_type="APTR" }
-         elseif (Field.isFunction) then
-            if (Field.isArray) then
-               Field.fullType = { fd="FD_STRUCT|FD_RESOURCE", c_type="APTR" }
-            else
-               Field.type = Field.type .. " *"
-               Field.fullType = { fd="FD_PTR|FD_STRUCT|FD_RESOURCE", c_type="APTR" }
-            end
-         else
-            Field.fullType = { fd="FD_PTR|FD_STRUCT|FD_RESOURCE", c_type="APTR" }
-         end
-
-         if (nz(const)) then
-            Field.type =  "const " .. Field.type
-         end
-
-         goto finalise
-      end
-   end
-
-   do
-      local ref_obj = Field.type:match("^ext%((.+)%)$")
-      local extended = false
-      if (ref_obj != nil) then -- 'ext' indicates an object class extended with private fields.
-         extended = true
-      else
-         ref_obj = Field.type:match("^obj%((.+)%)$")
-      end
-
-      if (ref_obj != nil) then
-         local ptr_object = ref_obj:match("%*(.+)")
-         if (ptr_object != nil) then
-            Field.type = "obj" .. ptr_object .. " **"
-            if extended then Field.extType = "ext" .. ptr_object .. " **" end
-            Field.className = ptr_object
-         else
-            Field.type = "obj" .. ref_obj .. " *"
-            if extended then Field.extType = "ext" .. ref_obj .. " *" end
-            Field.className = ref_obj
-         end
-         Field.fullType = glTypes.obj
-         goto finalise
-      end
-   end
-
-   do -- Example: bit(int)
-      local bitType = Field.type:match("^bit%((.+)%)$")
-      if (bitType != nil) then
-         Field.type     = cType({ type=bitType, name='' }, Origin).type
-         Field.name     = Field.name
-         Field.fullType = glTypes[bitType]
-         Field.bits     = 1
-         goto finalise
-      end
-   end
-
-   do -- Char type reference
-      local prefix = Field.type:match("^char%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = "BYTE"
-         Field.fullType = glTypes.char
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix]) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
-               Field.type = prefix
-            end
-         else
-            print('Unknown custom type "' .. prefix .. '"')
-         end
-         goto finalise
-      end
-   end
-
-   do -- Short type reference
-      local prefix = Field.type:match("^short%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = "WORD"
-         Field.fullType = glTypes.int
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix]) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
-               Field.type = prefix
-            end
-         else
-            print('Unknown custom type "' .. prefix .. '"')
-         end
-         goto finalise
-      end
-   end
-
-   do -- Integer flags type reference, can be used for strongly typed enum flags
-      local prefix = Field.type:match("^flags%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = prefix
-         Field.fullType = glTypes.int
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix] != nil) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-         else
-            print('Unknown custom type "' .. prefix .. '"')
-         end
-         goto finalise
-      end
-   end
-
-   do -- Integer type reference
-      local prefix = Field.type:match("^int%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = "LONG"
-         Field.fullType = glTypes.int
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         if (glCustomTypes[prefix] != nil) then
-            glActiveRefs['TYPE:' .. prefix] = 1
-            if (glCustomTypes[prefix].type) then -- Strongly typed
-               Field.type = prefix
-            end
-         else
-            print('Unknown custom type "' .. prefix .. '"')
-         end
-         goto finalise
-      end
-   end
-
-   do -- Large type reference
-      local prefix = Field.type:match("^large%((%a+)%)")
-      if (prefix != nil) then
-         Field.type     = "LARGE"
-         Field.fullType = glTypes.large
-         Field.ref      = glCustomTypes[prefix]
-         Field.lookup   = prefix
-
-         glActiveRefs['TYPE:' .. prefix] = 1
-         goto finalise
-      end
-   end
-
-   do -- Char arrays
-      local unsigned, count = Field.type:match("^(u-)char%((.+)%)$")
-      if (count != nil) then
-         Field.type = "char"
-         if nz(unsigned) then Field.type = "unsigned " .. Field.type end
-         Field.arraySize = tonumber(count)
-         Field.fullType = glTypes.char
-         goto finalise
-      end
-   end
-
-   do -- Integer arrays
-      local unsigned, count = Field.type:match("^(u-)int%((%d+)%)")
-      if (count != nil) then
-         if nz(unsigned) then
-            Field.type = "ULONG"
-         else
-            Field.type = "LONG"
-         end
-         Field.arraySize = tonumber(count)
-         Field.fullType = glTypes.int
-         goto finalise
-      end
-   end
-
-   do -- Double arrays
-      local count = Field.type:match("^double%((.+)%)")
-      if (count != nil) then
-         Field.type = "DOUBLE"
-         Field.arraySize = tonumber(count)
-         Field.fullType = glTypes.double
-         goto finalise
-      end
-   end
-
-   do -- Float arrays
-      local count = Field.type:match("^float%((.+)%)")
-      if (count != nil) then
-         Field.type = "FLOAT"
-         Field.arraySize = tonumber(count)
-         Field.fullType = glTypes.float
-         goto finalise
-      end
-   end
-
-   do
-      local const, ptr_type = Field.type:match("^(c-)ptr%((.+)%)")
-      if (ptr_type != nil) then
-         Field.type = cType({ type=ptr_type }, Origin).type .. " *"
-         if (nz(const)) then
-            Field.type =  "const " .. Field.type
-         end
-         if (ptr_type == "func") then
-            Field.fullType = { fd="FD_FUNCTIONPTR", c_type="FUNCTION *" }
-         else
-            Field.fullType = glTypes.ptr
-         end
-         goto finalise
-      end
-   end
-
-   do
-      local buf_type = Field.type:match("^buf%((.+)%)")
-      if (buf_type != nil) then
-         Field.type = buf_type
-         Field = cType(Field, Origin)
-         Field.fullType = { fd="FD_BUFFER|" .. Field.fullType.fd, c_type="APTR" }
-         goto finalise
-      end
-   end
-
-   -- ARRAY CLIENT NOTES
-   -- For primitive embedded array types, use 'type(n)' such as 'int(4)'.  See above patterns for details.
-   -- To describe a pointer to an array of any type, use 'array(type)' such as 'array(cstr)'
-   -- To describe a pointer to a null-terminated array, use 'array(type,0)'
-   -- To describe complex embedded types of fixed size, use 'array(type,n)' such as 'array(struct(RGB8),256)'
-
-   do
-      local array_type, array_size = Field.type:match("^array%((.+),(%d+)%)$")
-      if (array_type != nil) then
-         array_size = tonumber(array_size)
-         if (array_size == 0) then
-            Field.isArray = true
-            Field.type = array_type
-            Field.arraySize = 0
-            Field = cType(Field, Origin)
-            if (Field.cpp) then
-               if Field.struct then
-                  Field.type = 'pf::vector<' .. Field.struct .. '>'
-               else
-                  Field.type = 'pf::vector<' .. Field.type .. '>'
-               end
-            else
-               Field.type = Field.type .. " *"
-            end
-            Field.fullType = { fd="FD_ARRAY|" .. Field.fullType.fd, c_type=Field.fullType.c_type  }
-         else
-            Field.type = array_type
-            Field = cType(Field, Origin)
-            Field.arraySize = array_size
-            Field.fullType = glTypes.ptr
-         end
-         goto finalise
-      end
-   end
-
-   do
-      local array_type = Field.type:match("^array%((.+)%)$")
-      if (array_type != nil) then
-         Field.isArray = true
-         Field.type = array_type
-         Field = cType(Field, Origin)
-         if (Field.cpp) then
-            if Field.struct then
-               Field.type = 'pf::vector<' .. Field.struct .. '>'
-            else
-               Field.type = 'pf::vector<' .. Field.type .. '>'
-            end
-         else
-            Field.type = Field.type .. " *"
-         end
-         Field.fullType = { fd="FD_ARRAY|" .. Field.fullType.fd, c_type=Field.fullType.c_type }
-         goto finalise
-      end
-   end
-
-   do
-      local args = Field.type:match("^fptr%((.+)%)$")
-      if (args != nil) then
-         local arglist = args:split(" ")
-
-         -- Process function result type
-
-         if (#arglist < 1) then
-            Field.type = "void"
-         else
-            Field.type = nz(glTypes[arglist[1]].c_type, arglist[1])
-         end
-
-         Field.type = Field.type .. " (*" .. Field.name .. ")"
-
-         -- Process function parameters
-
-         if (#arglist < 2) then
-            Field.type = Field.type .. "(void)"
-         else
-            local params = ""
-            for i=2, #arglist do
-               if nz(params) then params = params .. ", " end
-               params = params .. cType({ type=arglist[i], name='' }, Origin).type
-            end
-            Field.type = Field.type .. "(" .. params .. ")"
-         end
-
-         Field.isFunctionPtr = true
-         Field.fullType = glTypes.ptr
-         goto finalise
-      end
-   end
-
-   if (glTypes[Field.type] == nil) then
-      error("No handling for field type '" .. Field.type .. "' from " .. Origin)
-   end
-
-   Field.fullType = glTypes[Field.type]
-   if (Field.cpp) then
-      Field.type = nz(glTypes[Field.type].cpp_type, Field.type)
-   else
-      Field.type = nz(glTypes[Field.type].c_type, Field.type)
-   end
-
-::finalise::
-   Field.basicType = Field.type
-   if (resultValue) then -- If the type is a result value, append a '*'
-      Field.resultValue = true
-
-      if (Field.isResponse) then
-         -- Do nothing
-      elseif Field.type:find("%*$") then
-         Field.type = Field.type .. "*"
-      else
-         Field.type = Field.type .. " *"
-      end
-   end
-   return Field -- type, fullType, basicType, allocated, resultValue
-end
-
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Returns fields as a list returned by cType, featuring { type, name, comment }
 
 function extractFields(Def, Origin)
@@ -2220,7 +1766,7 @@ function extractFields(Def, Origin)
    return fields
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Convert a string such as 'SHOW_IMAGES' to 'ShowImages'
 
 function shortName(Name)
@@ -2242,7 +1788,7 @@ function shortName(Name)
    return result
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function registerClass(Name)
    if not nz(Name) then error('No Name provided to registerClass()') end
@@ -2253,7 +1799,7 @@ function registerClass(Name)
    return glClasses[Name:lower()]
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function processFDLFile(Source)
    local err, full_path = mSys.ResolvePath(Source)
@@ -2269,7 +1815,7 @@ function processFDLFile(Source)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Load and process an FDL file source, then process raw source files containing -FUNCTION- definitions.
 
 function processSourceFiles()
@@ -2346,7 +1892,7 @@ function processSourceFiles()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function processCategory(extract)
    extract = '-CATEGORY-\n' .. extract:trim() .. '\n-END-\n'
@@ -2354,7 +1900,7 @@ function processCategory(extract)
    glCategories[glCategory] = { name=glCategory }
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Used by processSourceFiles() to process -FUNCTION- descriptions in self-documenting source code.
 
 function processFunction(extract)
@@ -2436,7 +1982,7 @@ function processFunction(extract)
    idlFunction(name, nz(category, glCategory), comment, status, description, def)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Function definitions can be embedded into source code with the idlFunction() routine.
 
 function idlFunction(Name, Category, Comment, Status, Description, Def)
@@ -2564,7 +2110,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
    if (#glOutput < 3) then
@@ -2636,7 +2182,7 @@ function saveOutput()
    mSys.MoveFile(tempPath, outPath)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Generate private C function prototypes for the module.
 
 function buildPrototypes()
@@ -2680,7 +2226,7 @@ function buildPrototypes()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Generate private C definitions that describe the public functions of a module.
 
 function buildDefs()
@@ -2729,7 +2275,7 @@ function buildDefs()
    return "#ifndef FDEF\n#define FDEF static const struct FunctionField\n#endif\n\n" .. plist .. flist
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Build C parameter definitions for a function or method
 
 function buildInputParameters(List)
@@ -2749,7 +2295,7 @@ function buildInputParameters(List)
    return plist .. "{ 0, 0 }"
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Build a list of all available action names and their parameters.
 
 function loadActions()
@@ -2762,7 +2308,7 @@ function loadActions()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
 function resolveSDKPath(Path)
@@ -2797,7 +2343,7 @@ function resolveSDKPath(Path)
    mSys.SetVolume('sdk', sdk_path)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    glProgram     = 'idl-c' // FDL's can read this
    glSource      = arg('src')

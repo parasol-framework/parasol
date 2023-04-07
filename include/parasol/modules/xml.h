@@ -261,6 +261,43 @@ class objXML : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
+
+   // Customised field setting
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setSource(OBJECTPTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Source = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setStart(const LONG Value) {
+      this->Start = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setReadOnly(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setStatement(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
+   }
+
 };
 
 //********************************************************************************************************************

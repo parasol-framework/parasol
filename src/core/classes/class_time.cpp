@@ -255,7 +255,7 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_TmSetTime, (APTR)TIME_SetTime, "SetTime", 0, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };

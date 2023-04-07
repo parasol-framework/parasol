@@ -1905,7 +1905,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
       if (!NewObject(ID_POINTER, NF::UNTRACKED, &pointer)) {
          SetName(pointer, "SystemPointer");
          OBJECTID owner = Self->ownerID();
-         if (GetClassID(owner) IS ID_SURFACE) pointer->set(FID_Surface, owner);
+         if (GetClassID(owner) IS ID_SURFACE) pointer->setSurface(owner);
 
          #ifdef __ANDROID__
             AConfiguration *config;

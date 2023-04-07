@@ -73,7 +73,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
 
    *Args = NULL;
    if (auto mc = FindClass(ClassID)) {
-      MethodArray *table;
+      MethodEntry *table;
       LONG total_methods;
       ACTIONID action_id;
       if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
@@ -906,7 +906,7 @@ static int object_index(lua_State *Lua)
                return 0;
             }
 
-            MethodArray *table;
+            MethodEntry *table;
             LONG total_methods;
             if ((!GetFieldArray(cl, FID_Methods, &table, &total_methods)) and (table)) {
                for (LONG i=1; i < total_methods; i++) { // TODO: Sorted hash IDs and a binary search would be best

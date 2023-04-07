@@ -181,7 +181,7 @@ static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 
    if (!Self->Source) return log.warning(ERR_UndefinedField);
 
-   Self->Scene->Viewport->set(FID_ColourSpace, Self->Filter->ColourSpace);
+   Self->Scene->Viewport->setColourSpace(Self->Filter->ColourSpace);
 
    return ERR_Okay;
 }

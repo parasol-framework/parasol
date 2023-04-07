@@ -211,11 +211,11 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
       else {
          log.warning("Connect() failed: %s", strerror(errno));
          Socket->Error = ERR_Failed;
-         Socket->set(FID_State, NTC_DISCONNECTED);
+         Socket->setState(NTC_DISCONNECTED);
          return;
       }
 
-      Socket->set(FID_State,  NTC_CONNECTING);
+      Socket->setState( NTC_CONNECTING);
       RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
 
       // The write queue will be signalled once the connection process is completed.
@@ -225,7 +225,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
    else {
       log.trace("connect() successful.");
 
-      Socket->set(FID_State, NTC_CONNECTED);
+      Socket->setState(NTC_CONNECTED);
       RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
    }
 
@@ -235,7 +235,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
       return;
    }
 
-   Socket->set(FID_State, NTC_CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
+   Socket->setState(NTC_CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
 #endif
 }
 
@@ -1266,7 +1266,7 @@ static void free_socket(extNetSocket *Self)
    if (!Self->terminating()) {
       if (Self->State != NTC_DISCONNECTED) {
          log.traceBranch("Changing state to disconnected.");
-         Self->set(FID_State, NTC_DISCONNECTED);
+         Self->setState(NTC_DISCONNECTED);
       }
    }
 
@@ -1407,7 +1407,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
    }
    else if (Message IS NTE_CLOSE) {
       log.msg("Socket closed by server, error %d.", Error);
-      if (Socket->State != NTC_DISCONNECTED) Socket->set(FID_State, NTC_DISCONNECTED);
+      if (Socket->State != NTC_DISCONNECTED) Socket->setState(NTC_DISCONNECTED);
       free_socket(Socket);
    }
    else if (Message IS NTE_ACCEPT) {
@@ -1427,15 +1427,15 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
                   //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, &client_server_incoming, Socket);
                }
             }
-            else Socket->set(FID_State, NTC_CONNECTED);
+            else Socket->setState(NTC_CONNECTED);
          #else
-            Socket->set(FID_State, NTC_CONNECTED);
+            Socket->setState(NTC_CONNECTED);
          #endif
       }
       else {
          log.msg("Connection state changed, error: %s", GetErrorMsg(Error));
          Socket->Error = Error;
-         Socket->set(FID_State, NTC_DISCONNECTED);
+         Socket->setState(NTC_DISCONNECTED);
       }
    }
 

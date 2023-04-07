@@ -184,6 +184,9 @@ class objClientSocket : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
 };
 
 // Proxy class definition
@@ -233,6 +236,69 @@ class objProxy : public BaseClass {
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
    inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+
+   // Customised field setting
+
+   template <class T> inline ERROR setNetworkFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setGatewayFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setUsername(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPassword(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setProxyName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setServer(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPort(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setServerPort(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setEnabled(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRecord(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // NetLookup class definition
@@ -285,6 +351,25 @@ class objNetLookup : public BaseClass {
    // Action stubs
 
    inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setUserData(const LARGE Value) {
+      this->UserData = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // NetSocket class definition
@@ -409,6 +494,78 @@ class objNetSocket : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setUserData(APTR Value) {
+      this->UserData = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setAddress(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setState(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPort(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Port = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const LONG Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBacklog(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Backlog = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClientLimit(const LONG Value) {
+      this->ClientLimit = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMsgLimit(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->MsgLimit = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSocketHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setFeedback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setIncoming(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setOutgoing(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
