@@ -807,7 +807,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    objSurface *surface;
    if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
-      surface->set(FID_Flags, surface->Flags|RNF_GRAB_FOCUS);
+      surface->setFlags(surface->Flags|RNF_GRAB_FOCUS);
 
       Self->Surface.X = surface->X;
       Self->Surface.Y = surface->Y;
@@ -1020,7 +1020,7 @@ static ERROR SCINTILLA_InsertText(extScintilla *Self, struct sciInsertText *Args
 static ERROR SCINTILLA_NewObject(extScintilla *Self, APTR)
 {
    if (!NewObject(ID_FONT, NF::INTEGRAL, &Self->Font)) {
-      Self->Font->set(FID_Face, "courier:10");
+      Self->Font->setFace("courier:10");
       Self->LeftMargin  = 4;
       Self->RightMargin = 30;
       Self->AutoIndent  = TRUE;

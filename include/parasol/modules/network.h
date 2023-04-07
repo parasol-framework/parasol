@@ -239,40 +239,40 @@ class objProxy : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setNetworkFilter(STRING Value) {
+   template <class T> inline ERROR setNetworkFilter(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setGatewayFilter(STRING Value) {
+   template <class T> inline ERROR setGatewayFilter(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[12];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setUsername(STRING Value) {
+   template <class T> inline ERROR setUsername(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setPassword(STRING Value) {
+   template <class T> inline ERROR setPassword(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setProxyName(STRING Value) {
+   template <class T> inline ERROR setProxyName(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setServer(STRING Value) {
+   template <class T> inline ERROR setServer(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setPort(const LONG Value) {
@@ -502,10 +502,10 @@ class objNetSocket : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setAddress(STRING Value) {
+   template <class T> inline ERROR setAddress(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERROR setState(const LONG Value) {

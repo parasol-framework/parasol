@@ -215,10 +215,10 @@ class objScintilla : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setPath(CSTRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setSurface(const OBJECTID Value) {
@@ -345,10 +345,10 @@ class objScintilla : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setOrigin(STRING Value) {
+   template <class T> inline ERROR setOrigin(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setShowWhitespace(const LONG Value) {
@@ -363,10 +363,10 @@ class objScintilla : public BaseClass {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setString(STRING Value) {
+   template <class T> inline ERROR setString(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setSymbols(const LONG Value) {
@@ -446,10 +446,10 @@ class objScintillaSearch : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setText(CSTRING Value) {
+   template <class T> inline ERROR setText(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setFlags(const LONG Value) {

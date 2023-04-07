@@ -7,9 +7,9 @@ that is distributed with this package.  Please refer to it for further informati
 Name: Fields
 -END-
 
-NOTE: The GetField range of functions do not provide any context management. This means that field routines that
-allocate memory will have their memory tracked back to the object that made the GetField() call.  They can overcome
-this by calling SetContext() themselves.
+NOTE: The GetField range of functions do not provide any context management (which is intentional). This means that
+field routines that allocate memory will have their memory tracked back to the object that made the GetField() call.
+They can overcome this by calling SetContext() themselves.
 
 *********************************************************************************************************************/
 
@@ -21,7 +21,7 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 //********************************************************************************************************************
 // This internal function provides a fast binary search of field names via ID.
 
-Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
+Field * lookup_id(OBJECTPTR Object, FIELD FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
    auto &field = mc->FieldLookup;
@@ -33,10 +33,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
       auto i = (floor + ceiling)>>1;
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
-      else {
-         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
-         return &field[i];
-      }
+      else return &field[i];
    }
 
    // Sub-class fields (located in the upper register of FieldLookup)
@@ -48,10 +45,7 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
          auto i = (floor + ceiling)>>1;
          if (field[i].FieldID < FieldID) floor = i + 1;
          else if (field[i].FieldID > FieldID) ceiling = i;
-         else {
-            while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
-            return &field[i];
-         }
+         else return &field[i];
       }
    }
 
@@ -59,20 +53,17 @@ Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
    // directly retrieving a pointer to the integral object and then reading the field value from that.
 
    for (unsigned i=0; mc->Integral[i] != 0xff; i++) {
-      OBJECTPTR child;
-      if ((!copy_field_to_buffer(Object, &mc->FieldLookup[mc->Integral[i]], FT_POINTER, &child, NULL, NULL)) and (child)) {
-         auto &field = child->ExtClass->FieldLookup;
-         unsigned floor = 0;
-         auto ceiling = child->ExtClass->BaseCeiling;
-         while (floor < ceiling) {
-            auto j = (floor + ceiling)>>1;
-            if (field[j].FieldID < FieldID) floor = j + 1;
-            else if (field[j].FieldID > FieldID) ceiling = j;
-            else {
-               while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
-               *Target = child;
-               return &field[j];
-            }
+      OBJECTPTR child = *((OBJECTPTR *)(((BYTE *)Object) + mc->FieldLookup[mc->Integral[i]].Offset));
+      auto &field = child->ExtClass->FieldLookup;
+      unsigned floor = 0;
+      auto ceiling = child->ExtClass->BaseCeiling;
+      while (floor < ceiling) {
+         auto j = (floor + ceiling)>>1;
+         if (field[j].FieldID < FieldID) floor = j + 1;
+         else if (field[j].FieldID > FieldID) ceiling = j;
+         else {
+            *Target = child;
+            return &field[j];
          }
       }
    }

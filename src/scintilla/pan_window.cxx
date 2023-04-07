@@ -200,7 +200,7 @@ void Scintilla::Window::SetCursor(Cursor curs)
 
    if (wid) {
       if (!AccessObject(getSurfaceID(this), 500, &surface)) {
-         surface->set(FID_Cursor, cursorid);
+         surface->setCursor(cursorid);
          cursorLast = curs;
          ReleaseObject(surface);
       }

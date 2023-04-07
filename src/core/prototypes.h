@@ -104,7 +104,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
 LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 ERROR SetResourcePath(LONG PathType, CSTRING Path);
-OBJECTPTR CurrentTask();
+objTask * CurrentTask();
 CSTRING ResolveGroupID(LONG Group);
 CSTRING ResolveUserID(LONG User);
 ERROR CreateLink(CSTRING From, CSTRING To);

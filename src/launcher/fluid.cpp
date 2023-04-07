@@ -285,8 +285,7 @@ int main(int argc, CSTRING *argv)
          auto call = make_function_stdc(msg_script_received);
          AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
 
-         call = make_function_stdc(read_stdin);
-         CurrentTask()->set(FID_InputCallback, &call);
+         CurrentTask()->setInputCallback(make_function_stdc(read_stdin));
 
          ProcessMessages(0, -1);
 
@@ -294,8 +293,8 @@ int main(int argc, CSTRING *argv)
          if (str.length() > 0) {
             objScript *script;
             if (!NewObject(ID_FLUID, &script)) {
-               script->set(FID_Statement, str);
-               if (glProcedure) script->set(FID_Procedure, glProcedure);
+               script->setStatement(str);
+               if (glProcedure) script->setProcedure(glProcedure);
                if (glArgs) set_script_args(script, glArgs);
                result = run_script(script);
                FreeResource(script);

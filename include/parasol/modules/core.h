@@ -1976,7 +1976,7 @@ struct CoreBase {
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
    ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
-   OBJECTPTR (*_CurrentTask)(void);
+   objTask * (*_CurrentTask)(void);
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
@@ -2099,7 +2099,7 @@ inline void VLogF(int Flags, const char *Header, const char *Message, va_list Ar
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
-inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
+inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }

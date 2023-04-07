@@ -39,7 +39,7 @@ static void sort_class_fields(extMetaClass *, std::vector<Field> &);
 
 static void add_field(extMetaClass *, std::vector<Field> &, const FieldArray &, UWORD &);
 static void register_fields(std::vector<Field> &);
-static Field * lookup_id_byclass(extMetaClass *, ULONG, extMetaClass **);
+static Field * lookup_id_byclass(extMetaClass *, FIELD, extMetaClass **);
 
 //********************************************************************************************************************
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
@@ -1151,7 +1151,7 @@ void scan_classes(void)
 //********************************************************************************************************************
 // Lookup the fields declared by a MetaClass, as opposed to the fields of the MetaClass itself.
 
-static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClass **Result)
+static Field * lookup_id_byclass(extMetaClass *Class, FIELD FieldID, extMetaClass **Result)
 {
    auto &field = Class->FieldLookup;
 
@@ -1162,7 +1162,6 @@ static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClas
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
       else {
-         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
          *Result = Class;
          return &field[i];
       }
@@ -1178,23 +1177,19 @@ static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClas
          if (field[i].FieldID < FieldID) floor = i + 1;
          else if (field[i].FieldID > FieldID) ceiling = i;
          else {
-            while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
             *Result = Class;
             return &field[i];
          }
       }
-
    }
 
-   if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
-      for (LONG i=0; Class->Integral[i] != 0xff; i++) {
-         auto &field = Class->FieldLookup[Class->Integral[i]];
-         if (field.Arg) {
-            if (auto child_class = (extMetaClass *)FindClass(field.Arg)) {
-               *Result = child_class;
-               if (auto child_field = lookup_id_byclass(child_class, FieldID, Result)) return child_field;
-               *Result = NULL;
-            }
+   for (unsigned i=0; Class->Integral[i] != 0xff; i++) {
+      auto &field = Class->FieldLookup[Class->Integral[i]];
+      if (field.Arg) {
+         if (auto child_class = (extMetaClass *)FindClass(field.Arg)) {
+            *Result = child_class;
+            if (auto child_field = lookup_id_byclass(child_class, FieldID, Result)) return child_field;
+            *Result = NULL;
          }
       }
    }

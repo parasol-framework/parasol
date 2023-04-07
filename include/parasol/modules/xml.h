@@ -264,10 +264,10 @@ class objXML : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setSource(OBJECTPTR Value) {
@@ -292,10 +292,10 @@ class objXML : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setStatement(STRING Value) {
+   template <class T> inline ERROR setStatement(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
-      return field->WriteValue(target, field, 0x08800320, Value, 1);
+      return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 
 };

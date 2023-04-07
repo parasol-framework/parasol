@@ -71,16 +71,16 @@ class objSVG : public BaseClass {
       return field->WriteValue(target, field, 0x08000501, Value, 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setTitle(STRING Value) {
+   template <class T> inline ERROR setTitle(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setFrame(const LONG Value) {

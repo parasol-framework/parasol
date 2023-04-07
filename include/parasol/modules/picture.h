@@ -127,28 +127,28 @@ class objPicture : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setAuthor(STRING Value) {
+   template <class T> inline ERROR setAuthor(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setCopyright(STRING Value) {
+   template <class T> inline ERROR setCopyright(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setDescription(STRING Value) {
+   template <class T> inline ERROR setDescription(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setDisclaimer(STRING Value) {
+   template <class T> inline ERROR setDisclaimer(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setHeader(APTR Value) {
@@ -158,22 +158,22 @@ class objPicture : public BaseClass {
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERROR setPath(STRING Value) {
+   template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800500, Value, 1);
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setSoftware(STRING Value) {
+   template <class T> inline ERROR setSoftware(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[20];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setTitle(STRING Value) {
+   template <class T> inline ERROR setTitle(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, 0x08800300, Value, 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
 };

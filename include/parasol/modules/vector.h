@@ -668,28 +668,28 @@ class objVectorPattern : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setY(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setWidth(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setHeight(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setOpacity(const DOUBLE Value) {
@@ -725,10 +725,10 @@ class objVectorPattern : public BaseClass {
       return field->WriteValue(target, field, 0x08000318, Value, 1);
    }
 
-   inline ERROR setTransform(CSTRING Value) {
+   template <class T> inline ERROR setTransform(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800208, Value, 1);
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
 };
@@ -771,63 +771,63 @@ class objVectorGradient : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[3];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setY1(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setX2(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setY2(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setCenterX(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[21];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setCenterY(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setFX(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setFY(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setRadius(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setInherit(objVectorGradient * Value) {
@@ -876,10 +876,10 @@ class objVectorGradient : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setID(CSTRING Value) {
+   template <class T> inline ERROR setID(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERROR setStops(const APTR Value, LONG Elements) {
@@ -888,10 +888,10 @@ class objVectorGradient : public BaseClass {
       return field->WriteValue(target, field, 0x00001318, Value, Elements);
    }
 
-   inline ERROR setTransform(CSTRING Value) {
+   template <class T> inline ERROR setTransform(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800208, Value, 1);
+      return field->WriteValue(target, field, 0x08800208, to_cstring(Value), 1);
    }
 
 };
@@ -959,28 +959,28 @@ class objFilterEffect : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setY(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setWidth(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[7];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setHeight(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setSourceType(const LONG Value) {
@@ -1284,28 +1284,28 @@ class objVectorFilter : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setY(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[1];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setWidth(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setHeight(const DOUBLE Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[2];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setOpacity(const DOUBLE Value) {
@@ -1583,10 +1583,10 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setID(CSTRING Value) {
+   template <class T> inline ERROR setID(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERROR setResizeEvent(const FUNCTION Value) {
@@ -1595,10 +1595,10 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
-   inline ERROR setStroke(CSTRING Value) {
+   template <class T> inline ERROR setStroke(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERROR setStrokeColour(const FLOAT * Value, LONG Elements) {
@@ -1611,7 +1611,7 @@ class objVector : public BaseClass {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       Variable var(Value);
-      return field->WriteValue(target, field, FD_DOUBLE, &var, 1);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setTransition(OBJECTPTR Value) {
@@ -1626,10 +1626,10 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFill(CSTRING Value) {
+   template <class T> inline ERROR setFill(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[23];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERROR setFillColour(const FLOAT * Value, LONG Elements) {
@@ -1644,10 +1644,10 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFilter(CSTRING Value) {
+   template <class T> inline ERROR setFilter(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[42];
-      return field->WriteValue(target, field, 0x08800308, Value, 1);
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
    }
 
    inline ERROR setLineJoin(const LONG Value) {
