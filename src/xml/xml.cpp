@@ -688,7 +688,7 @@ static ERROR XML_Init(extXML *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->SubID) return ERR_Okay; // Break here for sub-classes to perform initialisation
+   if (Self->isSubClass()) return ERR_Okay; // Break here for sub-classes to perform initialisation
 
    if (Self->Statement) {
       Self->LineNo = 1;

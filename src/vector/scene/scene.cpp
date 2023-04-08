@@ -147,7 +147,7 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
        (def->ClassID IS ID_VECTORPATTERN) or
        (def->ClassID IS ID_VECTORFILTER) or
        (def->ClassID IS ID_VECTORTRANSITION) or
-       (def->SubID IS ID_VECTORCLIP)) {
+       (def->Class->ClassID IS ID_VECTORCLIP)) {
       // The use of this object as a definition is valid.
    }
    else return log.warning(ERR_InvalidObject);
@@ -740,7 +740,7 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVecto
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
    for (auto scan=Vector; scan; scan=(extVector *)scan->Next) {
-      if (scan->SubID IS ID_VECTORVIEWPORT) {
+      if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
          auto vp = (extVectorViewport *)scan;
 
          if (vp->Dirty) gen_vector_path(vp);

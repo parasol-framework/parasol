@@ -149,7 +149,7 @@ ERROR add_asset_class(void)
 
    if (!(glAssetClass = extMetaClass::create::global(
       fl::BaseClassID(ID_FILE),
-      fl::SubClassID(ID_FILEASSETS),
+      fl::ClassID(ID_FILEASSETS),
       fl::Name("FileAssets"),
       fl::Actions(clActions),
       fl::Methods(clMethods),

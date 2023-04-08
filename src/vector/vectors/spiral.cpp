@@ -362,7 +362,7 @@ static ERROR init_spiral(void)
 {
    clVectorSpiral = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORSPIRAL),
+      fl::ClassID(ID_VECTORSPIRAL),
       fl::Name("VectorSpiral"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorSpiralActions),

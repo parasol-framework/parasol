@@ -507,7 +507,7 @@ static ERROR init_path(void)
 {
    clVectorPath = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORPATH),
+      fl::ClassID(ID_VECTORPATH),
       fl::Name("VectorPath"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorPathActions),

@@ -88,7 +88,7 @@ NullArgs
 ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->SubID != ID_VECTORPATH) return ERR_Args;
+   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 

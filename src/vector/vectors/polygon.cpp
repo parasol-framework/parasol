@@ -545,7 +545,7 @@ static ERROR init_polygon(void)
 {
    clVectorPolygon = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORPOLYGON),
+      fl::ClassID(ID_VECTORPOLYGON),
       fl::Name("VectorPolygon"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clPolygonActions),

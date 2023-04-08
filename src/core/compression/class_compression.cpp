@@ -891,7 +891,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
 
    if (Self->Flags & CMF_READ_ONLY) return log.warning(ERR_NoPermission);
 
-   if (Self->SubID) return log.warning(ERR_NoSupport);
+   if (Self->isSubClass()) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
       std::ostringstream out;
@@ -1123,7 +1123,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    // If the object belongs to a Compression sub-class, return ERR_NoSupport
 
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    // Tell the user what we are doing
 
@@ -1479,7 +1479,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR_NullArgs);
    if (!Args->Object) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
-   if (Self->SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
+   if (Self->isSubClass()) return ERR_NoSupport; // Object belongs to a Compression sub-class
 
    log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
 
@@ -1685,7 +1685,7 @@ static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
    for (auto &item : Self->Files) {
@@ -1707,7 +1707,7 @@ Flush: Flushes all pending actions.
 
 static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 {
-   if (Self->SubID) return ERR_Okay;
+   if (Self->isSubClass()) return ERR_Okay;
 
    Self->Zip.avail_in = 0;
 
@@ -1926,7 +1926,7 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
@@ -1986,7 +1986,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 

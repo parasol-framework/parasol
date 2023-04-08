@@ -317,7 +317,7 @@ ERROR init_morphfx(void)
 {
    clMorphologyFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_MORPHOLOGYFX),
+      fl::ClassID(ID_MORPHOLOGYFX),
       fl::Name("MorphologyFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clMorphologyFXActions),

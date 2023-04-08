@@ -412,7 +412,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       Args->Height = bounds[3] - bounds[1];
       return ERR_Okay;
    }
-   else if (Self->SubID IS ID_VECTORVIEWPORT) {
+   else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
       if (Self->Dirty) gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
@@ -443,7 +443,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((!Self->SubID) or (Self->SubID IS ID_VECTOR)) {
+   if ((!Self->Class->ClassID) or (Self->Class->ClassID IS ID_VECTOR)) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR_Failed;
    }
@@ -469,7 +469,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
          if (Self->ParentView) {
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = glResizeSubscriptions[Self];
          }
-         else if (Self->SubID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
+         else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) { // The top-level viewport responds to its own sizing.
             ((extVectorScene *)Self->Scene)->ResizeSubscriptions[(extVectorViewport *)Self][Self] = glResizeSubscriptions[Self];
          }
          glResizeSubscriptions.erase(Self);
@@ -532,7 +532,7 @@ static ERROR VECTOR_NewOwner(extVector *Self, struct acNewOwner *Args)
 {
    pf::Log log;
 
-   if (!Self->SubID) return ERR_Okay;
+   if (!Self->Class->ClassID) return ERR_Okay;
 
    // Modifying the owner after the root vector has been established is not permitted.
    // The client should instead create a new object under the target and transfer the field values.
@@ -625,7 +625,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
-   if (Self->SubID IS ID_VECTORVIEWPORT) {
+   if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
       agg::vertex_d w, x, y, z;
 
       auto &vertices = Self->BasePath.vertices(); // Note: Viewport BasePath is fully transformed.
@@ -642,7 +642,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
       if (inside) return ERR_Okay;
    }
-   else if (Self->SubID IS ID_VECTORRECTANGLE) {
+   else if (Self->Class->ClassID IS ID_VECTORRECTANGLE) {
       agg::vertex_d w, x, y, z;
       agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
 
@@ -1548,7 +1548,7 @@ static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
       }
       return ERR_Okay;
    }
-   else if (Value->SubID IS ID_VECTORCLIP) {
+   else if (Value->Class->ClassID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
          auto callback = make_function_stdc(notify_free);

@@ -148,7 +148,7 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
       return ERR_OutOfRange;
    }
 
-   if ((!Self->Parent) or ((Self->Parent->ClassID != ID_VECTORSCENE) and (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
+   if ((!Self->Parent) or ((Self->Parent->ClassID != ID_VECTORSCENE) and (Self->Parent->Class->ClassID != ID_VECTORVIEWPORT))) {
       log.warning("This VectorClip object must be a child of a Scene or Viewport object.");
       return ERR_Failed;
    }
@@ -239,7 +239,7 @@ static ERROR init_clip(void)
 {
    clVectorClip = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORCLIP),
+      fl::ClassID(ID_VECTORCLIP),
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),

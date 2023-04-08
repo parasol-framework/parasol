@@ -2424,7 +2424,7 @@ static ERROR init_text(void)
 
    clVectorText = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORTEXT),
+      fl::ClassID(ID_VECTORTEXT),
       fl::Name("VectorText"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorTextActions),

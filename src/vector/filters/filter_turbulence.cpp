@@ -489,7 +489,7 @@ ERROR init_turbulencefx(void)
 {
    clTurbulenceFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_TURBULENCEFX),
+      fl::ClassID(ID_TURBULENCEFX),
       fl::Name("TurbulenceFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clTurbulenceFXActions),

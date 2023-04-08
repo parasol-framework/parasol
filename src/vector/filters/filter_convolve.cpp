@@ -651,7 +651,7 @@ ERROR init_convolvefx(void)
 {
    clConvolveFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_CONVOLVEFX),
+      fl::ClassID(ID_CONVOLVEFX),
       fl::Name("ConvolveFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clConvolveFXActions),

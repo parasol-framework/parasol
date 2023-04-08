@@ -2468,7 +2468,6 @@ struct BaseClass { // Must be 64-bit aligned
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
    CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -2483,7 +2482,7 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
+   inline bool isSubClass();
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 
@@ -2981,7 +2980,7 @@ class objMetaClass : public BaseClass {
    CSTRING Path;                        // The path to the module binary that represents the class.
    LONG    Size;                        // The total size of the object structure represented by the MetaClass.
    LONG    Flags;                       // Optional flag settings.
-   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
+   CLASSID ClassID;                     // Specifies the ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    LONG    Category;                    // The system category that a class belongs to.
@@ -2995,8 +2994,8 @@ class objMetaClass : public BaseClass {
    }
 
    inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Fields, &target);
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3042,9 +3041,9 @@ class objMetaClass : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setSubClass(const CLASSID Value) {
+   inline ERROR setClass(const CLASSID Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
-      this->SubClassID = Value;
+      this->ClassID = Value;
       return ERR_Okay;
    }
 
@@ -3061,8 +3060,8 @@ class objMetaClass : public BaseClass {
    }
 
    inline ERROR setMethods(const APTR Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Methods, &target);
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3075,11 +3074,13 @@ class objMetaClass : public BaseClass {
 
    template <class T> inline ERROR setName(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 
 };
+
+inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassID; }
 
 // StorageDevice class definition
 
@@ -3281,8 +3282,8 @@ class objFile : public BaseClass {
    }
 
    inline ERROR setCreated(APTR Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Created, &target);
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -3293,8 +3294,8 @@ class objFile : public BaseClass {
    }
 
    inline ERROR setPermissions(const LONG Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Permissions, &target);
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3667,8 +3668,8 @@ class objScript : public BaseClass {
    }
 
    template <class T> inline ERROR setWorkingPath(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_WorkingPath, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3703,8 +3704,8 @@ class objScript : public BaseClass {
    }
 
    template <class T> inline ERROR setStatement(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Statement, &target);
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3830,8 +3831,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setParameters(pf::vector<std::string> *Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Parameters, &target);
       return field->WriteValue(target, field, 0x08805300, Value, Value->size());
    }
 
@@ -3848,8 +3849,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setInputCallback(FUNCTION Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_InputCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -3872,8 +3873,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setOutputCallback(FUNCTION Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_OutputCallback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -4298,8 +4299,8 @@ class objCompression : public BaseClass {
    }
 
    template <class T> inline ERROR setArchiveName(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_ArchiveName, &target);
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
@@ -4310,8 +4311,8 @@ class objCompression : public BaseClass {
    }
 
    inline ERROR setFeedback(FUNCTION Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      OBJECTPTR target;
+      auto field = FindField(this, FID_Feedback, &target);
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

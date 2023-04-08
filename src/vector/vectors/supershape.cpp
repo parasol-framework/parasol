@@ -619,7 +619,7 @@ static ERROR init_supershape(void)
 {
    clVectorShape = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORSHAPE),
+      fl::ClassID(ID_VECTORSHAPE),
       fl::Name("VectorShape"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorShapeActions),

@@ -897,7 +897,7 @@ ERROR init_lightingfx(void)
 {
    clLightingFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_LIGHTINGFX),
+      fl::ClassID(ID_LIGHTINGFX),
       fl::Name("LightingFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clLightingFXActions),

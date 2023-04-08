@@ -1189,7 +1189,7 @@ private:
             }
          }
 
-         if (shape->SubID IS ID_VECTORVIEWPORT) {
+         if (shape->Class->ClassID IS ID_VECTORVIEWPORT) {
             if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
                auto view = (extVectorViewport *)shape;
 

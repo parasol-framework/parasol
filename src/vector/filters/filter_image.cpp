@@ -318,7 +318,7 @@ ERROR init_imagefx(void)
 {
    clImageFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_IMAGEFX),
+      fl::ClassID(ID_IMAGEFX),
       fl::Name("ImageFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clImageFXActions),

@@ -593,7 +593,7 @@ static ERROR init_wave(void)
 {
    clVectorWave = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORWAVE),
+      fl::ClassID(ID_VECTORWAVE),
       fl::Name("VectorWave"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clWaveActions),

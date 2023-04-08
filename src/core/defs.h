@@ -479,8 +479,8 @@ struct ClassRecord {
    ClassRecord() { }
 
    inline ClassRecord(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
-      ClassID  = pClass->SubClassID;
-      ParentID = (pClass->BaseClassID IS pClass->SubClassID) ? 0 : pClass->BaseClassID;
+      ClassID  = pClass->ClassID;
+      ParentID = (pClass->BaseClassID IS pClass->ClassID) ? 0 : pClass->BaseClassID;
       Category = pClass->Category;
 
       Name.assign(pClass->ClassName);

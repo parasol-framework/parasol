@@ -43,7 +43,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             if ((error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<defs/>", &def_index))) return error;
          }
 
-         log.msg("Processing definition %s (%x %x)", def->Class->ClassName, def->ClassID, def->SubID);
+         log.msg("Processing definition %s (%x %x)", def->Class->ClassName, def->ClassID, def->Class->ClassID);
 
          if (def->ClassID IS ID_VECTORGRADIENT) {
             auto gradient = (objVectorGradient *)def;
@@ -132,7 +132,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
          else if (def->ClassID IS ID_VECTORIMAGE) {
             log.warning("VectorImage not supported.");
          }
-         else if (def->SubID IS ID_VECTORPATH) {
+         else if (def->Class->ClassID IS ID_VECTORPATH) {
             error = save_vectorpath(Self, XML, (objVector *)def, def_index);
          }
          else if (def->ClassID IS ID_VECTORPATTERN) {
@@ -186,7 +186,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
          else if (def->ClassID IS ID_VECTORTRANSITION) {
             log.warning("VectorTransition not supported.");
          }
-         else if (def->SubID IS ID_VECTORCLIP) {
+         else if (def->Class->ClassID IS ID_VECTORCLIP) {
             log.warning("VectorClip not supported.");
          }
          else if (def->ClassID IS ID_VECTOR) {
@@ -397,7 +397,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
    log.branch("%s", Vector->Class->ClassName);
 
    ERROR error = ERR_Okay;
-   if (Vector->SubID IS ID_VECTORRECTANGLE) {
+   if (Vector->Class->ClassID IS ID_VECTORRECTANGLE) {
       XMLTag *tag;
       DOUBLE rx, ry, x, y, width, height;
       LONG dim;
@@ -417,7 +417,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          save_svg_scan_std(Self, XML, Vector, new_index);
       }
    }
-   else if (Vector->SubID IS ID_VECTORELLIPSE) {
+   else if (Vector->Class->ClassID IS ID_VECTORELLIPSE) {
       XMLTag *tag;
       DOUBLE rx, ry, cx, cy;
       LONG dim;
@@ -438,10 +438,10 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->SubID IS ID_VECTORPATH) {
+   else if (Vector->Class->ClassID IS ID_VECTORPATH) {
       error = save_vectorpath(Self, XML, Vector, Parent);
    }
-   else if (Vector->SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
+   else if (Vector->Class->ClassID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
       XMLTag *tag;
       VectorPoint *points;
       LONG total_points, i;
@@ -488,7 +488,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
-   else if (Vector->SubID IS ID_VECTORTEXT) {
+   else if (Vector->Class->ClassID IS ID_VECTORTEXT) {
       XMLTag *tag;
       DOUBLE x, y, *dx, *dy, *rotate, text_length;
       LONG total, i, weight;
@@ -552,12 +552,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
-   else if (Vector->SubID IS ID_VECTORGROUP) {
+   else if (Vector->Class->ClassID IS ID_VECTORGROUP) {
       XMLTag *tag;
       error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<g/>", &tag);
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
-   else if (Vector->SubID IS ID_VECTORCLIP) {
+   else if (Vector->Class->ClassID IS ID_VECTORCLIP) {
       XMLTag *tag;
       STRING str;
       if ((!(error = Vector->get(FID_ID, &str))) and (str)) { // The id is an essential requirement
@@ -575,7 +575,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORWAVE) {
+   else if (Vector->Class->ClassID IS ID_VECTORWAVE) {
       XMLTag *tag;
       DOUBLE dbl;
       LONG dim;
@@ -601,7 +601,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORSPIRAL) {
+   else if (Vector->Class->ClassID IS ID_VECTORSPIRAL) {
       XMLTag *tag;
       DOUBLE dbl;
       LONG dim, length;
@@ -625,7 +625,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORSHAPE) {
+   else if (Vector->Class->ClassID IS ID_VECTORSHAPE) {
       XMLTag *tag;
       DOUBLE dbl;
       LONG num, dim;
@@ -655,7 +655,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORVIEWPORT) {
+   else if (Vector->Class->ClassID IS ID_VECTORVIEWPORT) {
       XMLTag *tag;
       DOUBLE x, y, width, height;
       LONG dim;

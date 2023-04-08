@@ -189,7 +189,7 @@ static int object_new(lua_State *Lua)
 
       object->prvObject = obj;
       object->ObjectID = obj->UID;
-      object->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
+      object->ClassID  = obj->Class->ClassID;
       object->Class    = FindClass(object->ClassID); //obj->Class;
 
       // In theory, objects created with obj.new() can be permanently locked because they belong to the
@@ -346,7 +346,7 @@ static int object_newchild(lua_State *Lua)
       def->Locked   = FALSE;
       def->Detached = TRUE;
       def->ObjectID = obj->UID;
-      def->ClassID  = obj->SubID ? obj->SubID : obj->ClassID;
+      def->ClassID  = obj->Class->ClassID;
       def->Class    = FindClass(def->ClassID); //obj->Class;
       return 1;
    }
@@ -370,7 +370,7 @@ struct object * push_object(lua_State *Lua, OBJECTPTR Object)
 
       newobject->prvObject   = NULL;
       newobject->ObjectID    = Object->UID;
-      newobject->ClassID     = Object->SubID ? Object->SubID : Object->ClassID;
+      newobject->ClassID     = Object->Class->ClassID;
       newobject->Class       = FindClass(newobject->ClassID); //object->Class;
       newobject->Detached    = TRUE; // The object is not linked to this Lua value (i.e. do not free or garbage collect it).
       newobject->Locked      = FALSE;
@@ -432,7 +432,7 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 
    object->prvObject   = NULL;
    object->ObjectID    = obj->UID;
-   object->ClassID     = obj->SubID ? obj->SubID : obj->ClassID;
+   object->ClassID     = obj->Class->ClassID;
    object->Class       = FindClass(object->ClassID); //obj->Class;
    object->Detached    = TRUE;
    object->Locked      = FALSE;
@@ -511,7 +511,7 @@ static int object_class(lua_State *Lua)
 
    def->prvObject   = cl;
    def->ObjectID    = cl->UID;
-   def->ClassID     = cl->SubID ? cl->SubID : cl->ClassID;
+   def->ClassID     = cl->Class->ClassID;
    def->Class       = cl;
    def->Detached    = TRUE;
    def->Locked      = FALSE;

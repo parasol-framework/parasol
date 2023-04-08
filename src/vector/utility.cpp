@@ -57,7 +57,7 @@ CSTRING get_name(OBJECTPTR Vector)
 {
    if (!Vector) return "NULL";
 
-   switch(Vector->SubID) {
+   switch(Vector->Class->ClassID) {
       case ID_VECTORCLIP:      return "Clip";
       case ID_VECTORRECTANGLE: return "Rectangle";
       case ID_VECTORELLIPSE:   return "Ellipse";
@@ -281,7 +281,7 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
    for (; Vector; Vector=(extVector *)Vector->Next) {
       if (Vector->Dirty) gen_vector_path(Vector);
 
-      if (Vector->SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+      if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;
 
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {

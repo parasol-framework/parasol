@@ -691,7 +691,7 @@ extern "C" ERROR add_archive_class(void)
 {
    glArchiveClass = extMetaClass::create::global(
       fl::BaseClassID(ID_FILE),
-      fl::SubClassID(ID_FILEARCHIVE),
+      fl::ClassID(ID_FILEARCHIVE),
       fl::Name("FileArchive"),
       fl::Actions(clArchiveActions),
       fl::Methods(clArchiveMethods),

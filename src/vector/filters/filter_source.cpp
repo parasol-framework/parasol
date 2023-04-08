@@ -322,7 +322,7 @@ ERROR init_sourcefx(void)
 {
    clSourceFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_SOURCEFX),
+      fl::ClassID(ID_SOURCEFX),
       fl::Name("SourceFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clSourceFXActions),

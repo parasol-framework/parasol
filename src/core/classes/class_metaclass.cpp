@@ -94,7 +94,7 @@ static const std::vector<Field> glMetaFieldsPreset = {
    { 0, NULL, NULL,                writeval_default, "Path",            FID_Path,            sizeof(BaseClass)+8+(sizeof(APTR)*6),  7,  FDF_STRING|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "Size",            FID_Size,            sizeof(BaseClass)+8+(sizeof(APTR)*7),  8,  FDF_LONG|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "Flags",           FID_Flags,           sizeof(BaseClass)+12+(sizeof(APTR)*7), 9, FDF_LONG|FDF_RI },
-   { 0, NULL, NULL,                writeval_default, "SubClassID",      FID_SubClassID,      sizeof(BaseClass)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { 0, NULL, NULL,                writeval_default, "ClassID",         FID_ClassID,         sizeof(BaseClass)+16+(sizeof(APTR)*7), 10, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "BaseClassID",     FID_BaseClassID,     sizeof(BaseClass)+20+(sizeof(APTR)*7), 11, FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { 0, NULL, NULL,                writeval_default, "OpenCount",       FID_OpenCount,       sizeof(BaseClass)+24+(sizeof(APTR)*7), 12, FDF_LONG|FDF_R },
    { (MAXINT)&CategoryTable, NULL, NULL, writeval_default, "Category",  FID_Category,        sizeof(BaseClass)+28+(sizeof(APTR)*7), 13, FDF_LONG|FDF_LOOKUP|FDF_RI },
@@ -122,7 +122,7 @@ static const FieldArray glMetaFields[] = {
    { "Path",            FDF_STRING|FDF_RI },
    { "Size",            FDF_LONG|FDF_RI },
    { "Flags",           FDF_LONG|FDF_RI },
-   { "SubClassID",      FDF_LONG|FDF_UNSIGNED|FDF_RI },
+   { "ClassID",         FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { "BaseClassID",     FDF_LONG|FDF_UNSIGNED|FDF_RI },
    { "OpenCount",       FDF_LONG|FDF_R },
    { "Category",        FDF_LONG|FDF_LOOKUP|FDF_RI, NULL, NULL, &CategoryTable },
@@ -163,7 +163,6 @@ void init_metaclass(void)
 {
    glMetaClass.BaseClass::Class   = &glMetaClass;
    glMetaClass.BaseClass::ClassID = ID_METACLASS;
-   glMetaClass.BaseClass::SubID   = ID_METACLASS;
    glMetaClass.BaseClass::UID     = 123;
    glMetaClass.BaseClass::Flags   = NF::INITIALISED;
 
@@ -171,7 +170,7 @@ void init_metaclass(void)
    glMetaClass.Fields             = glMetaFields;
    glMetaClass.ClassName          = "MetaClass";
    glMetaClass.Size               = sizeof(extMetaClass);
-   glMetaClass.SubClassID         = ID_METACLASS;
+   glMetaClass.ClassID            = ID_METACLASS;
    glMetaClass.BaseClassID        = ID_METACLASS;
    glMetaClass.Category           = CCF_SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
@@ -232,7 +231,7 @@ ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
 
 ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 {
-   if (Self->SubClassID) glClassMap.erase(Self->SubClassID);
+   if (Self->ClassID) glClassMap.erase(Self->ClassID);
    if (Self->Location) { FreeResource(Self->Location); Self->Location = NULL; }
    Self->~extMetaClass();
    return ERR_Okay;
@@ -243,37 +242,32 @@ ERROR CLASS_Free(extMetaClass *Self, APTR Void)
 ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 {
    pf::Log log;
-   extMetaClass *base;
 
    if (!Self->ClassName) return log.warning(ERR_MissingClassName);
 
-   // Base-class: SubClassID == BaseClassID
-   // Sub-class:  SubClassID != BaseClassID
-   //
-   // If neither ID is specified, the hash is derived from the name and then applied to both SubClassID and BaseClassID.
+   auto class_hash = StrHash(Self->ClassName, false);
 
-   if ((Self->BaseClassID) and (!Self->SubClassID)) {
-      Self->SubClassID = StrHash(Self->ClassName, false);
+   if (Self->BaseClassID) {
+      if (class_hash != Self->BaseClassID) Self->ClassID = class_hash;
+      else if (!Self->ClassID) Self->ClassID = Self->BaseClassID;
    }
    else if (!Self->BaseClassID) {
-      if (!Self->SubClassID) Self->SubClassID = StrHash(Self->ClassName, false);
-      Self->BaseClassID = Self->SubClassID;
+      Self->ClassID = Self->BaseClassID = class_hash;
    }
 
-   if (Self->BaseClassID IS Self->SubClassID) {
+   if (Self->BaseClassID IS Self->ClassID) { // Base class
       if (!Self->Size) Self->Size = sizeof(BaseClass);
       else if (Self->Size < (LONG)sizeof(BaseClass)) { // Object size not specified
          log.warning("Size of %d is not valid.", Self->Size);
          return ERR_FieldNotSet;
       }
    }
+   else {
+      // If this is a sub-class, find the base class.  Note that FindClass() will automatically initialise the base if
+      // there is a reference for it, so if it returns NULL then it is obvious that the base class is not installed on the
+      // user's system.
 
-   // If this is a subclass, find the base class.  Note that FindClass() will automatically initialise the base if
-   // there is a reference for it, so if it returns NULL then it is obvious that the base class is not installed on the
-   // user's system.
-
-   if ((Self->BaseClassID) and (Self->SubClassID != Self->BaseClassID)) {
-      if ((base = (extMetaClass *)FindClass(Self->BaseClassID))) {
+      if (auto base = (extMetaClass *)FindClass(Self->BaseClassID)) {
          log.trace("Using baseclass $%.8x (%s) for %s", Self->BaseClassID, base->ClassName, Self->ClassName);
          if (!Self->FileDescription) Self->FileDescription = base->FileDescription;
          if (!Self->FileExtension)   Self->FileExtension   = base->FileExtension;
@@ -281,13 +275,11 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
          // If over-riding field definitions have been specified by the sub-class, move them to the SubFields pointer.
 
-         // NB: Sub-classes may not enlarge object structures, therefore they inherit directly from the base.
-
          if (Self->Fields) Self->SubFields = Self->Fields;
          Self->Fields = base->Fields;
          Self->OriginalFieldTotal = base->OriginalFieldTotal;
 
-         Self->Flags |= base->Flags; // Allow flag inheritance, e.g. PROMOTE_CHILDREN
+         Self->Flags |= base->Flags;
 
          // In tightly controlled configurations, a sub-class can define a structure that is larger than the base
          // class.  Vector filter effects are one example.
@@ -295,8 +287,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
          if (!Self->Size) Self->Size = base->Size;
          Self->Base = base;
 
-         // Note: Sub-classes can define their own custom methods independent of the base class, but care must be taken
-         // to use a large enough cushion to prevent an overlap of method ID's.
+         // Note: Sub-classes can override methods and also define custom methods independent of the base class.
 
          if (Self->Methods.size() < base->Methods.size()) Self->Methods.resize(base->Methods.size());
 
@@ -311,15 +302,14 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
          }
       }
       else {
-         log.warning("A base for class $%.8x is not present!  Install it.", Self->BaseClassID);
+         log.warning("A base for class $%.8x is not present!", Self->BaseClassID);
          return ERR_Failed;
       }
    }
-   else; // Base class
 
    field_setup(Self);
 
-   glClassMap[Self->SubClassID] = Self;
+   glClassMap[Self->ClassID] = Self;
 
    // Record the name of the module that owns this class.
 
@@ -333,10 +323,10 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
    }
 
    bool save = false;
-   if (!glClassDB.contains(Self->SubClassID)) {
+   if (!glClassDB.contains(Self->ClassID)) {
       save = fs_initialised ? true : false;
 
-      glClassDB[Self->SubClassID] = [Self]() {
+      glClassDB[Self->ClassID] = [Self]() {
          #ifdef __ANDROID__
             // On Android, all libraries are stored in the libs/ folder with no sub-folder hierarchy.  Because of this,
             // we rewrite the path to fit the Android system.
@@ -377,7 +367,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
          if (glClassFile) {
             glClassFile->seekEnd(0);
-            glClassDB[Self->SubClassID].write(glClassFile);
+            glClassDB[Self->ClassID].write(glClassFile);
          }
       }
       else return log.warning(ERR_TimeOut);
@@ -470,8 +460,14 @@ static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elem
 BaseClassID: Specifies the base class ID of a class object.
 
 Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class
-will represent.  Class ID's are generated as a hash from the class #Name, so if you do not set this field
-then the correct ID will be generated for the class automatically.
+will represent.  Class ID's are generated as a hash from the class #Name, so if this field is undefined then it
+is generated from the Name automatically.
+
+-FIELD-
+ClassID: Specifies the ID of a class object.
+
+The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined
+to be a sub-class.  The ClassID must be a value that is hashed from the class #Name using ~StrHash().
 
 -FIELD-
 Category: The system category that a class belongs to.
@@ -607,9 +603,9 @@ static ERROR GET_Location(extMetaClass *Self, CSTRING *Value)
    if (Self->Path) { *Value = Self->Path; return ERR_Okay; }
    if (Self->Location) { *Value = Self->Location; return ERR_Okay; }
 
-   if (Self->SubClassID) {
-      if (glClassDB.contains(Self->SubClassID)) {
-         Self->Location = StrClone(glClassDB[Self->SubClassID].Path.c_str());
+   if (Self->ClassID) {
+      if (glClassDB.contains(Self->ClassID)) {
+         Self->Location = StrClone(glClassDB[Self->ClassID].Path.c_str());
       }
    }
    else if (glClassDB.contains(Self->BaseClassID)) {
@@ -717,7 +713,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
       for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
          if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
-            if (Self->SubClassID IS object->ClassID) {
+            if (Self->ClassID IS object->ClassID) {
                objlist.push_back(object->UID);
             }
          }
@@ -782,17 +778,6 @@ This field value must indicate the byte size of the objects that will be created
 
 If the size is not explicitly defined, the initialisation process will determine the structure size by
 evaluating the field definitions that have been provided.
-
--FIELD-
-SubClassID: Specifies the sub-class ID of a class object.
-
-The SubClassID field is used to indicate that a class is derived from a base class.  If you are creating a sub-class
-then set the SubClassID field to the hash value of the class' name (use the ~StrHash() function).
-
-This field must not be defined when creating a base class.
-
-To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If
-they are identical then it is a base class, otherwise it is a sub-class.
 -END-
 
 *********************************************************************************************************************/

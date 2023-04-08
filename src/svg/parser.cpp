@@ -57,7 +57,7 @@ static void apply_state(svgState &State, OBJECTPTR Vector)
    if (!State.Fill.empty())   Vector->set(FID_Fill, State.Fill);
    if (!State.Stroke.empty()) Vector->set(FID_Stroke, State.Stroke);
    if (State.StrokeWidth)     Vector->set(FID_StrokeWidth, State.StrokeWidth);
-   if (Vector->SubID IS ID_VECTORTEXT) {
+   if (Vector->Class->ClassID IS ID_VECTORTEXT) {
       if (!State.FontFamily.empty()) Vector->set(FID_Face, State.FontFamily);
       if (!State.FontSize.empty())   Vector->set(FID_FontSize, State.FontSize);
       if (State.FontWeight) Vector->set(FID_Weight, State.FontWeight);
@@ -65,7 +65,7 @@ static void apply_state(svgState &State, OBJECTPTR Vector)
    if (State.FillOpacity >= 0.0) Vector->set(FID_FillOpacity, State.FillOpacity);
    if (State.Opacity >= 0.0) Vector->set(FID_Opacity, State.Opacity);
 
-   if (Vector->SubID != ID_VECTORTEXT) {
+   if (Vector->Class->ClassID != ID_VECTORTEXT) {
       if (State.PathQuality != RQ_AUTO) Vector->set(FID_PathQuality, State.PathQuality);
    }
 }
@@ -1965,7 +1965,7 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR P
    }
 
    if (!(flags & (VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
-      if (Parent->SubID IS ID_VECTORTEXT) flags |= VMF_Y_MIN;
+      if (Parent->Class->ClassID IS ID_VECTORTEXT) flags |= VMF_Y_MIN;
       else flags |= VMF_Y_MID;
    }
 
@@ -2454,7 +2454,7 @@ static void process_attrib(extSVG *Self, objXML *XML, const XMLTag &Tag, objVect
       log.trace("%s = %.40s", Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str());
 
       if (auto error = set_property(Self, Vector, StrHash(Tag.Attribs[t].Name), XML, Tag, Tag.Attribs[t].Value)) {
-         if (Vector->SubID != ID_VECTORGROUP) {
+         if (Vector->Class->ClassID != ID_VECTORGROUP) {
             log.warning("Failed to set field '%s' with '%s' in %s; Error %s",
                Tag.Attribs[t].Name.c_str(), Tag.Attribs[t].Value.c_str(), Vector->Class->ClassName, GetErrorMsg(error));
          }
@@ -2650,7 +2650,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
    // Ignore stylesheet attributes
    if (Hash IS SVF_CLASS) return ERR_Okay;
 
-   switch(Vector->SubID) {
+   switch(Vector->Class->ClassID) {
       case ID_VECTORVIEWPORT: {
          FIELD field_id = 0;
          switch (Hash) {
