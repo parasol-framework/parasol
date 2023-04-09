@@ -373,7 +373,7 @@ static ERROR init_rectangle(void)
 {
    clVectorRectangle = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORRECTANGLE),
+      fl::ClassID(ID_VECTORRECTANGLE),
       fl::Name("VectorRectangle"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clRectangleActions),

@@ -1133,7 +1133,7 @@ ERROR create_fluid(void)
 {
    clFluid = objMetaClass::create::global(
       fl::BaseClassID(ID_SCRIPT),
-      fl::SubClassID(ID_FLUID),
+      fl::ClassID(ID_FLUID),
       fl::ClassVersion(VER_FLUID),
       fl::Name("Fluid"),
       fl::Category(CCF_DATA),

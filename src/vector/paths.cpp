@@ -9,11 +9,11 @@ extVectorViewport * get_parent_view(extVector *Vector)
    else {
       auto scan = get_parent(Vector);
       while (scan) {
-         if (scan->SubID IS ID_VECTORVIEWPORT) {
+         if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
             Vector->ParentView = (extVectorViewport *)scan;
             return Vector->ParentView;
          }
-         else if (scan->Parent->ClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
+         else if (scan->Parent->Class->BaseClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
          else return NULL;
       }
    }
@@ -31,7 +31,7 @@ void gen_vector_tree(extVector *Vector)
    if (Vector->Dirty) {
       std::vector<objVector *> list;
       for (auto scan=(objVector *)Vector->Parent; scan; scan=(objVector *)scan->Parent) {
-         if (scan->ClassID != ID_VECTOR) break;
+         if (scan->Class->BaseClassID != ID_VECTOR) break;
          list.push_back(scan);
       }
 
@@ -55,7 +55,7 @@ void gen_vector_path(extVector *Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Vector->GeneratePath) and (Vector->SubID != ID_VECTORVIEWPORT) and (Vector->SubID != ID_VECTORGROUP)) return;
+   if ((!Vector->GeneratePath) and (Vector->Class->ClassID != ID_VECTORVIEWPORT) and (Vector->Class->ClassID != ID_VECTORGROUP)) return;
 
    pf::SwitchContext context(Vector);
 
@@ -63,12 +63,12 @@ void gen_vector_path(extVector *Vector)
 
    auto parent_view = get_parent_view(Vector);
 
-   if (Vector->SubID IS ID_VECTORGROUP) {
+   if (Vector->Class->ClassID IS ID_VECTORGROUP) {
       Vector->Transform.reset();
       apply_parent_transforms(Vector, Vector->Transform);
       return;
    }
-   else if (Vector->SubID IS ID_VECTORVIEWPORT) {
+   else if (Vector->Class->ClassID IS ID_VECTORVIEWPORT) {
       auto view = (extVectorViewport *)Vector;
 
       DOUBLE parent_width, parent_height;
@@ -248,10 +248,10 @@ void gen_vector_path(extVector *Vector)
          ((extVectorScene *)Vector->Scene)->PendingResizeMsgs.insert(view);
       }
    }
-   else if (Vector->ClassID IS ID_VECTOR) {
+   else if (Vector->Class->BaseClassID IS ID_VECTOR) {
       Vector->FinalX = 0;
       Vector->FinalY = 0;
-      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->SubID != ID_VECTORTEXT)) {
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Class->ClassID != ID_VECTORTEXT)) {
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
@@ -267,8 +267,8 @@ void gen_vector_path(extVector *Vector)
 
          Vector->GeneratePath(Vector);
 
-         if ((Vector->Morph) and (Vector->Morph->ClassID IS ID_VECTOR)) {
-            if ((Vector->SubID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
+         if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS ID_VECTOR)) {
+            if ((Vector->Class->ClassID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
             else {
@@ -284,13 +284,13 @@ void gen_vector_path(extVector *Vector)
                      Vector->BasePath.translate(0, -by1 - ((by2 - by1) * 0.5));
                   }
                   else if (Vector->MorphFlags & VMF_Y_MIN) {
-                     if (Vector->SubID != ID_VECTORTEXT) {
+                     if (Vector->Class->ClassID != ID_VECTORTEXT) {
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1 -(by2 - by1));
                      }
                   }
                   else { // VMF_Y_MAX
-                     if (Vector->SubID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
+                     if (Vector->Class->ClassID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1);
                      }
@@ -299,7 +299,7 @@ void gen_vector_path(extVector *Vector)
                   agg::trans_single_path trans_path;
                   trans_path.add_path(morph->BasePath);
                   trans_path.preserve_x_scale(true); // The default is true.  Switching to false produces a lot of scrunching and extending
-                  if (morph->SubID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
+                  if (morph->Class->ClassID IS ID_VECTORPATH) { // Enforcing a fixed length along the path effectively causes a resize.
                      if (((extVectorPath *)morph)->PathLength > 0) trans_path.base_length(((extVectorPath *)morph)->PathLength);
                   }
 
@@ -314,7 +314,7 @@ void gen_vector_path(extVector *Vector)
       // VectorText transform support is handled after base-path generation.  This is because vector text can be
       // aligned, for which the width and height of the base-path must be known.
 
-      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->SubID IS ID_VECTORTEXT)) {
+      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Class->ClassID IS ID_VECTORTEXT)) {
          get_text_xy((extVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
@@ -394,9 +394,9 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
    pf::Log log(__FUNCTION__);
 
    for (auto scan=Start; scan; scan=(extVector *)get_parent(scan)) {
-      if (scan->ClassID != ID_VECTOR) continue;
+      if (scan->Class->BaseClassID != ID_VECTOR) continue;
 
-      if (scan->SubID IS ID_VECTORVIEWPORT) {
+      if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
          // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both
          // position and scaling of all children.  Alignment is another factor that is taken care of here.
 

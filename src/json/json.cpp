@@ -83,7 +83,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if ((clJSON = objMetaClass::create::global(
       fl::BaseClassID(ID_XML),
-      fl::SubClassID(ID_JSON),
+      fl::ClassID(ID_JSON),
       fl::Name("JSON"),
       fl::Category(CCF_DATA),
       fl::FileExtension("*.json"),

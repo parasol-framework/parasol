@@ -100,7 +100,7 @@ static ERROR RSVG_Query(extPicture *Self, APTR Void)
       // Look for the viewport, represented by the <svg/> tag.
 
       objVector *view = scene->Viewport;
-      while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = view->Next;
+      while ((view) and (view->Class->ClassID != ID_VECTORVIEWPORT)) view = view->Next;
       if (!view) {
          log.warning("SVG source file does not define a valid <svg/> tag.");
          return ERR_Failed;
@@ -200,7 +200,7 @@ static ERROR init_rsvg(void)
 {
    clRSVG = objMetaClass::create::global(
       fl::BaseClassID(ID_PICTURE),
-      fl::SubClassID(ID_RSVG),
+      fl::ClassID(ID_RSVG),
       fl::Name("RSVG"),
       fl::Category(CCF_GRAPHICS),
       fl::FileExtension("*.svg|*.svgz"),

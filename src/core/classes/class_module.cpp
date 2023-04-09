@@ -780,7 +780,6 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
          kminit = true;
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
-         glCoreRoot.ClassID     = ID_ROOTMODULE;
          glCoreRoot.Name        = "Core";
          glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;

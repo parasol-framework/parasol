@@ -917,7 +917,7 @@ ERROR init_compositefx(void)
 {
    clCompositeFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_COMPOSITEFX),
+      fl::ClassID(ID_COMPOSITEFX),
       fl::Name("CompositeFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clCompositeFXActions),

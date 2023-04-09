@@ -393,7 +393,7 @@ static void display_resized(OBJECTID DisplayID, LONG X, LONG Y, LONG Width, LONG
    OBJECTID surface_id = GetOwnerID(DisplayID);
    extSurface *surface;
    if (!AccessObject(surface_id, 4000, &surface)) {
-      if (surface->ClassID IS ID_SURFACE) {
+      if (surface->Class->ClassID IS ID_SURFACE) {
          if ((X != surface->X) or (Y != surface->Y)) {
             surface->X = X;
             surface->Y = Y;

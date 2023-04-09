@@ -234,6 +234,7 @@ constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(std::string Value) { return FieldValue(FID_Point, Value.c_str()); }
 
+constexpr FieldValue ClassID(LONG Value) { return FieldValue(FID_ClassID, Value); }
 constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
@@ -245,7 +246,6 @@ constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Valu
 constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
-constexpr FieldValue SubClassID(LONG Value) { return FieldValue(FID_SubClassID, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
 constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
 constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }

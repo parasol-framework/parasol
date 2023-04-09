@@ -580,7 +580,7 @@ ERROR init_colourfx(void)
 {
    clColourFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_COLOURFX),
+      fl::ClassID(ID_COLOURFX),
       fl::Name("ColourFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clColourFXActions),

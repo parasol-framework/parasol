@@ -390,7 +390,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
                else return log.warning(ERR_Init);
             }
 
-            if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+            if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
             return ERR_Okay;
          }
@@ -399,7 +399,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
       else return log.warning(ERR_InvalidDimension);
    }
    else {
-      if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+      if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
       // Test the given path to see if it matches our supported file format.
 

@@ -1016,7 +1016,7 @@ void print_diagnosis(LONG Signal)
          CLASSID class_id = 0;
          CSTRING class_name;
          if (ctx != &glTopContext) {
-            if ((class_id = ctx->object()->ClassID)) class_name = ResolveClassID(class_id);
+            if ((class_id = ctx->object()->Class->ClassID)) class_name = ResolveClassID(class_id);
             else class_name = "None";
          }
          else class_name = "None";

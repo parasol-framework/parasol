@@ -309,7 +309,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
    UBYTE *data, *srcdata;
 
    if (!dest) return ERR_NullArgs;
-   if (dest->ClassID != ID_BITMAP) {
+   if (dest->Class->ClassID != ID_BITMAP) {
       log.warning("Destination #%d is not a Bitmap.", dest->UID);
       return ERR_InvalidObject;
    }

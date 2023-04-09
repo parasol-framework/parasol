@@ -12,7 +12,6 @@
 #define FID_Fields 0xfd727cdcLL
 #define FID_Methods 0xbe528a79LL
 #define FID_FileHeader 0x9d60e6ceLL
-#define FID_SubClassID 0x7c4f26d2LL
 #define FID_OpenCount 0x376e7220LL
 #define FID_Usage 0x1084ecfaLL
 #define FID_ActionTable 0x1c85e14bLL
@@ -977,4 +976,7 @@
 #define FID_LaunchPath 0x096e116dLL
 #define FID_OutputCallback 0xb7c8ace3LL
 #define FID_Created 0xd9cc0a3dLL
+#define FID_Numeric 0x301f0df8LL
+#define FID_ResizeEvent 0xc404ebf9LL
+#define FID_TabOrder 0xa10b2cb8LL
 

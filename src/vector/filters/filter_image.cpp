@@ -161,7 +161,7 @@ static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 {
    pf::Log log;
 
-   if (Args->Object->ClassID IS ID_BITMAP) {
+   if (Args->Object->Class->ClassID IS ID_BITMAP) {
       if (!Self->Bitmap) {
          if (Self->Bitmap->BytesPerPixel IS 4) Self->Bitmap = (objBitmap *)Args->Object;
          else log.warning("Attached bitmap ignored; BPP of %d != 4", Self->Bitmap->BytesPerPixel);
@@ -318,7 +318,7 @@ ERROR init_imagefx(void)
 {
    clImageFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_IMAGEFX),
+      fl::ClassID(ID_IMAGEFX),
       fl::Name("ImageFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clImageFXActions),

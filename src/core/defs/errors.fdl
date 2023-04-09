@@ -45,8 +45,8 @@ function declareErrors()
     "OwnerNeedsBitmap",
     "CoreVersion",
     "NeedWidthHeight",
-    "NegativeSubClassID",
-    "NegativeClassID",
+    "NegativeSubClassID", -- DEPRECATED
+    "NegativeClassID", -- DEPRECATED
     "MissingClassName",
     "OutOfRange",
     "ObtainMethod",

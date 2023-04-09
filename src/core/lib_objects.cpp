@@ -98,8 +98,8 @@ static ERROR object_free(BaseClass *Object)
       return ERR_InUse;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
+   if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
+   else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
    else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
@@ -192,9 +192,8 @@ static ERROR object_free(BaseClass *Object)
    // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
    // after it has been destroyed.
 
-   Object->Class   = NULL;
-   Object->ClassID = 0;
-   Object->UID     = 0;
+   Object->Class = NULL;
+   Object->UID   = 0;
    return ERR_Okay;
 }
 
@@ -293,7 +292,7 @@ static void free_children(OBJECTPTR Object)
 
             if (!mem.Object->defined(NF::UNLOCK_FREE)) {
                if (mem.Object->defined(NF::INTEGRAL)) {
-                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->className(), Object->UID);
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
                }
                FreeResource(mem.Object);
             }
@@ -697,7 +696,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
    pf::Log log(__FUNCTION__);
 
    if (Object) {
-      if (Object->ClassID IS ID_METACLASS) {
+      if (Object->Class->ClassID IS ID_METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
@@ -823,7 +822,7 @@ objMetaClass * FindClass(CLASSID ClassID)
       }
       else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
    }
-   else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
+   else log.warning("Could not find class $%.8x in memory or dictionary.", ClassID);
 
    return NULL;
 }
@@ -921,7 +920,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Res
 
          for (auto it=list.rbegin(); it != list.rend(); it++) {
             auto obj = *it;
-            if (obj->ClassID IS ClassID) {
+            if ((obj->Class->ClassID IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
                *Result = obj->UID;
                return ERR_Okay;
             }
@@ -974,13 +973,13 @@ field in the object header.
 oid Object: The object to be examined.
 
 -RESULT-
-cid: Returns the base class ID of the object or NULL if failure.
+cid: Returns the base class ID of the object or zero if failure.
 
 *********************************************************************************************************************/
 
 CLASSID GetClassID(OBJECTID ObjectID)
 {
-   if (auto object = GetObjectPtr(ObjectID)) return object->ClassID;
+   if (auto object = GetObjectPtr(ObjectID)) return object->Class->BaseClassID;
    else return 0;
 }
 
@@ -1090,8 +1089,8 @@ ERROR InitObject(OBJECTPTR Object)
 
    bool use_subclass = false;
    ERROR error = ERR_Okay;
-   if (Object->SubID) {
-      // For sub-classes, the base-class gets called first.  It should check the SubID in the header to determine that
+   if (Object->isSubClass()) {
+      // For sub-classes, the base-class gets called first.  It should verify that
       // the object is sub-classed so as to prevent it from doing 'too much' initialisation.
 
       if (cl->Base->ActionTable[AC_Init].PerformAction) {
@@ -1137,7 +1136,6 @@ ERROR InitObject(OBJECTPTR Object)
                log.msg("Object class switched to sub-class \"%s\".", Object->className());
 
                Object->ExtClass->OpenCount++;
-               Object->SubID = Object->ExtClass->SubClassID;
                Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
 
@@ -1157,7 +1155,7 @@ ERROR InitObject(OBJECTPTR Object)
             LONG i = 0;
             for (auto & [ id, class_ptr ] : glClassMap) {
                if (i >= LONG(sublist.size())-1) break;
-               if ((Object->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->SubClassID)) {
+               if ((Object->Class->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->Class->ClassID)) {
                   sublist[i++] = class_ptr;
                }
             }
@@ -1169,13 +1167,11 @@ ERROR InitObject(OBJECTPTR Object)
 
          if ((Object->Class = sublist[sli++])) {
             log.trace("Attempting initialisation with sub-class '%s'", Object->className());
-            Object->SubID = Object->Class->SubClassID;
          }
       }
    }
 
    Object->Class = cl;  // Put back the original to retain integrity
-   Object->SubID = Object->Class->SubClassID;
 
    // If the base class and its loaded sub-classes failed, check the object for a Path field and check the data
    // against sub-classes that are not currently in memory.
@@ -1188,11 +1184,11 @@ ERROR InitObject(OBJECTPTR Object)
       log.warning("ERR_UseSubClass was used but no suitable sub-class was registered.");
    }
    else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
-      CLASSID class_id;
-      if (!IdentifyFile(path, &class_id, &Object->SubID)) {
-         if ((class_id IS Object->ClassID) and (Object->SubID)) {
-            log.msg("Searching for subclass $%.8x", Object->SubID);
-            if ((Object->ExtClass = (extMetaClass *)FindClass(Object->SubID))) {
+      CLASSID class_id, subclass_id;
+      if (!IdentifyFile(path, &class_id, &subclass_id)) {
+         if ((class_id IS Object->Class->ClassID) and (subclass_id)) {
+            log.msg("Searching for subclass $%.8x", subclass_id);
+            if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
                   if (!(error = Object->ExtClass->ActionTable[AC_Init].PerformAction(Object, NULL))) {
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
@@ -1207,13 +1203,12 @@ ERROR InitObject(OBJECTPTR Object)
                   return ERR_Okay;
                }
             }
-            else log.warning("Failed to load module for class #%d.", Object->SubID);
+            else log.warning("Failed to load module for class #%d.", subclass_id);
          }
       }
       else log.warning("File '%s' does not belong to class '%s', got $%.8x.", path, Object->className(), class_id);
 
       Object->Class = cl;  // Put back the original to retain object integrity
-      Object->SubID = cl->SubClassID;
    }
 
    Object->threadRelease();
@@ -1258,7 +1253,7 @@ ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 
          if (auto child = mem->second.Object) {
             if (!child->defined(NF::INTEGRAL)) {
-               List->emplace_back(child->UID, child->ClassID);
+               List->emplace_back(child->UID, child->Class->ClassID);
             }
          }
       }
@@ -1339,12 +1334,8 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       set_memory_manager(head, &glResourceObject);
 
       head->UID     = head_id;
-      head->ClassID = mc->BaseClassID;
       head->Class   = (extMetaClass *)mc;
       head->Flags   = Flags;
-
-      if (mc->BaseClassID IS mc->SubClassID) head->SubID = 0; // Object derived from a base class
-      else head->SubID = mc->SubClassID; // Object derived from a sub-class
 
       // Tracking for our new object is configured here.
 

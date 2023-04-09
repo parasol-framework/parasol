@@ -462,7 +462,7 @@ static void free_private_memory(void)
       if (mem.Address) {
          if (!glCrashStatus) {
             if (mem.Flags & MEM_OBJECT) {
-               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->ClassID, mem.OwnerID);
+               log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->Class->ClassID, mem.OwnerID);
             }
             else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);
          }

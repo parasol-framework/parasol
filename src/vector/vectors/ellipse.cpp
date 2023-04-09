@@ -427,7 +427,7 @@ static ERROR init_ellipse(void)
 {
    clVectorEllipse = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORELLIPSE),
+      fl::ClassID(ID_VECTORELLIPSE),
       fl::Name("VectorEllipse"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clEllipseActions),

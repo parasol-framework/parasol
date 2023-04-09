@@ -815,10 +815,10 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
 
 inline static extVector * get_parent(const extVector *Vector)
 {
-   if (Vector->ClassID != ID_VECTOR) return NULL;
+   if (Vector->Class->BaseClassID != ID_VECTOR) return NULL;
    while (Vector) {
       if (!Vector->Parent) Vector = (extVector *)Vector->Prev; // Scan back to the first sibling to find the parent
-      else if (Vector->Parent->ClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
+      else if (Vector->Parent->Class->BaseClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
       else return NULL;
    }
 
@@ -877,7 +877,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
    //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
 
    if (Vector.LineJoin) {
-      if (Vector.SubID IS ID_VECTORPOLYGON) {
+      if (Vector.Class->ClassID IS ID_VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
                case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;

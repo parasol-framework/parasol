@@ -108,7 +108,7 @@ ERROR init_offsetfx(void)
 {
    clOffsetFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_OFFSETFX),
+      fl::ClassID(ID_OFFSETFX),
       fl::Name("OffsetFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clOffsetFXActions),

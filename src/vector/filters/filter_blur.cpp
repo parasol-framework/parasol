@@ -424,7 +424,7 @@ ERROR init_blurfx(void)
 {
    clBlurFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_BLURFX),
+      fl::ClassID(ID_BLURFX),
       fl::Name("BlurFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clBlurFXActions),

@@ -876,7 +876,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    clMP3 = objMetaClass::create::global(
       fl::BaseClassID(ID_SOUND),
-      fl::SubClassID(ID_MP3),
+      fl::ClassID(ID_MP3),
       fl::ClassVersion(VER_MP3),
       fl::FileExtension("*.mp3"),
       fl::FileDescription("MP3 Audio Stream"),

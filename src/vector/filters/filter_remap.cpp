@@ -510,7 +510,7 @@ ERROR init_remapfx(void)
 {
    clRemapFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_REMAPFX),
+      fl::ClassID(ID_REMAPFX),
       fl::Name("RemapFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clRemapFXActions),

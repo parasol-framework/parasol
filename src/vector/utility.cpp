@@ -57,7 +57,7 @@ CSTRING get_name(OBJECTPTR Vector)
 {
    if (!Vector) return "NULL";
 
-   switch(Vector->SubID) {
+   switch(Vector->Class->ClassID) {
       case ID_VECTORCLIP:      return "Clip";
       case ID_VECTORRECTANGLE: return "Rectangle";
       case ID_VECTORELLIPSE:   return "Ellipse";
@@ -70,7 +70,7 @@ CSTRING get_name(OBJECTPTR Vector)
       case ID_VECTORWAVE:      return "Wave";
    }
 
-   switch(Vector->ClassID) {
+   switch(Vector->Class->BaseClassID) {
       case ID_VECTORCOLOUR:    return "Colour";
       case ID_VECTORFILTER:    return "Filter";
       case ID_VECTORGRADIENT:  return "Gradient";
@@ -281,7 +281,7 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
    for (; Vector; Vector=(extVector *)Vector->Next) {
       if (Vector->Dirty) gen_vector_path(Vector);
 
-      if (Vector->SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+      if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;
 
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
@@ -349,12 +349,12 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    spacing[i] = 0;
 
    while (Vector) {
-      if (Vector->ClassID IS ID_VECTORSCENE) {
+      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
          break;
       }
-      else if (Vector->ClassID IS ID_VECTOR) {
+      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          auto shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
          if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);

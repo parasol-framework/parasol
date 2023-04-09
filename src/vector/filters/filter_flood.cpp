@@ -173,7 +173,7 @@ ERROR init_floodfx(void)
 {
    clFloodFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_FLOODFX),
+      fl::ClassID(ID_FLOODFX),
       fl::Name("FloodFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clFloodFXActions),

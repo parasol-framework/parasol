@@ -967,7 +967,7 @@ static ERROR init_viewport(void)
 {
    clVectorViewport = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORVIEWPORT),
+      fl::ClassID(ID_VECTORVIEWPORT),
       fl::Name("VectorViewport"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clVectorViewportActions),

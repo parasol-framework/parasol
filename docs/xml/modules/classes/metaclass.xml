@@ -34,7 +34,7 @@
       </input>
       <description>
 <p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
-<p>If the field is present in an inherited class only, a reference to the inherited class will be returned in the Source parameter.</p>
+<p>If the field is present in an integral class, a reference to that class will be returned in the Source parameter.</p>
       </description>
     </method>
 
@@ -82,7 +82,7 @@
       <access read="R" write="I">Read/Init</access>
       <type>CLASSID</type>
       <description>
-<p>Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class will represent.  Class ID's are generated as a hash from the class <field>Name</field>, so if you do not set this field then the correct ID will be generated for the class automatically.</p>
+<p>Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class will represent.  Class ID's are generated as a hash from the class <field>Name</field>, so if this field is undefined then it is generated from the Name automatically.</p>
       </description>
     </field>
 
@@ -94,6 +94,16 @@
       <description>
 <p>When designing a new class it is recommended that a suitable category is chosen and declared in this field. It is acceptable for a class to be a member of multiple categories by combining category flags together.</p>
 <types lookup="CCF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>ClassID</name>
+      <comment>Specifies the ID of a class object.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CLASSID</type>
+      <description>
+<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <field>Name</field> using <function module="Core">StrHash</function>.</p>
       </description>
     </field>
 
@@ -258,18 +268,6 @@
       <description>
 <p>This field value must indicate the byte size of the objects that will be created from the MetaClass.  For example, the <class name="Picture">Picture</class> class defines this value as <code>sizeof(objPicture)</code>.</p>
 <p>If the size is not explicitly defined, the initialisation process will determine the structure size by evaluating the field definitions that have been provided.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>SubClassID</name>
-      <comment>Specifies the sub-class ID of a class object.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>CLASSID</type>
-      <description>
-<p>The SubClassID field is used to indicate that a class is derived from a base class.  If you are creating a sub-class then set the SubClassID field to the hash value of the class' name (use the <function module="Core">StrHash</function> function).</p>
-<p>This field must not be defined when creating a base class.</p>
-<p>To determine whether or not a class is a sub-class or a base class, compare the BaseClassID and SubClassID fields.  If they are identical then it is a base class, otherwise it is a sub-class.</p>
       </description>
     </field>
 

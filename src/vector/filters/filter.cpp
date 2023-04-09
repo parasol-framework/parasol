@@ -543,7 +543,7 @@ static ERROR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Arg
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Object->ClassID IS ID_FILTEREFFECT) {
+   if (Args->Object->Class->BaseClassID IS ID_FILTEREFFECT) {
       auto effect = (extFilterEffect *)Args->Object;
 
       if (!Self->Effects) Self->Effects = effect;
@@ -578,7 +578,7 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 
 static ERROR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 {
-   if (Args->NewOwner->ClassID IS ID_VECTORSCENE) {
+   if (Args->NewOwner->Class->ClassID IS ID_VECTORSCENE) {
       Self->Scene = (extVectorScene *)Args->NewOwner;
    }
    return ERR_Okay;
@@ -689,7 +689,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERROR VECTORFILTER_SET_Inherit(extVectorFilter *Self, extVectorFilter *Value)
 {
    if (Value) {
-      if (Value->ClassID IS ID_VECTORFILTER) Self->Inherit = Value;
+      if (Value->Class->BaseClassID IS ID_VECTORFILTER) Self->Inherit = Value;
       else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;

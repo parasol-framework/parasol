@@ -125,7 +125,7 @@ ERROR init_mergefx(void)
 {
    clMergeFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_MERGEFX),
+      fl::ClassID(ID_MERGEFX),
       fl::Name("MergeFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clMergeFXActions),

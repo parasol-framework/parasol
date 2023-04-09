@@ -245,7 +245,7 @@ static ERROR SOURCEFX_SET_Source(extSourceFX *Self, objVector *Value)
 {
    pf::Log log;
    if (!Value) return log.warning(ERR_InvalidValue);
-   if (Value->ClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
+   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
 
    if (Self->Source) UnsubscribeAction(Self->Source, AC_Free);
    Self->Source = Value;
@@ -280,7 +280,7 @@ static ERROR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 
    objVector *src;
    if (!scFindDef(Self->Filter->Scene, Value, (OBJECTPTR *)&src)) {
-      if (src->ClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
+      if (src->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_WrongClass);
       Self->Source = src;
       auto callback = make_function_stdc(notify_free_source);
       SubscribeAction(src, AC_Free, &callback);
@@ -322,7 +322,7 @@ ERROR init_sourcefx(void)
 {
    clSourceFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_SOURCEFX),
+      fl::ClassID(ID_SOURCEFX),
       fl::Name("SourceFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clSourceFXActions),

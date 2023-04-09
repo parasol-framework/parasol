@@ -1912,7 +1912,7 @@ inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_
 //********************************************************************************************************************
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->ClassID = ID_VECTORCOLOUR;
+   Colour->Class->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

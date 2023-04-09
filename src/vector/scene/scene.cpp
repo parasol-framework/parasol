@@ -139,15 +139,15 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 
    OBJECTPTR def = Args->Def;
 
-   if ((def->ClassID IS ID_VECTORSCENE) or
-       (def->ClassID IS ID_VECTOR) or
-       (def->ClassID IS ID_VECTORGRADIENT) or
-       (def->ClassID IS ID_VECTORIMAGE) or
-       (def->ClassID IS ID_VECTORPATH) or
-       (def->ClassID IS ID_VECTORPATTERN) or
-       (def->ClassID IS ID_VECTORFILTER) or
-       (def->ClassID IS ID_VECTORTRANSITION) or
-       (def->SubID IS ID_VECTORCLIP)) {
+   if ((def->Class->ClassID IS ID_VECTORSCENE) or
+       (def->Class->BaseClassID IS ID_VECTOR) or
+       (def->Class->ClassID IS ID_VECTORGRADIENT) or
+       (def->Class->ClassID IS ID_VECTORIMAGE) or
+       (def->Class->ClassID IS ID_VECTORPATH) or
+       (def->Class->ClassID IS ID_VECTORPATTERN) or
+       (def->Class->BaseClassID IS ID_VECTORFILTER) or
+       (def->Class->ClassID IS ID_VECTORTRANSITION) or
+       (def->Class->ClassID IS ID_VECTORCLIP)) {
       // The use of this object as a definition is valid.
    }
    else return log.warning(ERR_InvalidObject);
@@ -491,7 +491,7 @@ cont:
       else if (vector->Next) vector = (extVector *)vector->Next;
       else {
          while ((vector = get_parent(vector))) { // Unwind back up the stack, looking for the first Parent with a Next field.
-            if (vector->ClassID != ID_VECTOR) return ERR_Search;
+            if (vector->Class->BaseClassID != ID_VECTOR) return ERR_Search;
             if (vector->Next) {
                vector = (extVector *)vector->Next;
                goto cont;
@@ -677,7 +677,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    std::vector<extVector *> focus_gained; // The first reference is the most foreground object
 
    for (auto scan=Vector; scan; scan=(extVector *)scan->Parent) {
-      if (scan->ClassID IS ID_VECTOR) {
+      if (scan->Class->BaseClassID IS ID_VECTOR) {
          focus_gained.emplace_back(scan);
       }
       else break;
@@ -740,7 +740,7 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVecto
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
    for (auto scan=Vector; scan; scan=(extVector *)scan->Next) {
-      if (scan->SubID IS ID_VECTORVIEWPORT) {
+      if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
          auto vp = (extVectorViewport *)scan;
 
          if (vp->Dirty) gen_vector_path(vp);

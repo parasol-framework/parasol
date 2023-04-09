@@ -587,7 +587,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 //********************************************************************************************************************
 
 INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
-   Colour->ClassID = ID_VECTORCOLOUR;
+   Colour->Class->ClassID = ID_VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;
    Colour->Blue  = Blue;

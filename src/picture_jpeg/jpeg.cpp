@@ -333,7 +333,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    clJPEG = objMetaClass::create::global(
       fl::BaseClassID(ID_PICTURE),
-      fl::SubClassID(ID_JPEG),
+      fl::ClassID(ID_JPEG),
       fl::Name("JPEG"),
       fl::Category(CCF_GRAPHICS),
       fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),

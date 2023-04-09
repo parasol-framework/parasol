@@ -379,7 +379,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERROR VECTORGRADIENT_SET_Inherit(extVectorGradient *Self, extVectorGradient *Value)
 {
    if (Value) {
-      if (Value->ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
+      if (Value->Class->ClassID IS ID_VECTORGRADIENT) Self->Inherit = Value;
       else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;

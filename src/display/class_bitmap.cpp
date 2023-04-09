@@ -631,7 +631,7 @@ static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
-   if ((Args->Dest->ClassID != ID_BITMAP)) return log.warning(ERR_Args);
+   if ((Args->Dest->Class->ClassID != ID_BITMAP)) return log.warning(ERR_Args);
 
    auto target = (extBitmap *)Args->Dest;
 

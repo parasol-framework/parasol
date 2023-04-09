@@ -2467,8 +2467,6 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -2483,7 +2481,7 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
+   inline bool isSubClass();
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 
@@ -2981,7 +2979,7 @@ class objMetaClass : public BaseClass {
    CSTRING Path;                        // The path to the module binary that represents the class.
    LONG    Size;                        // The total size of the object structure represented by the MetaClass.
    LONG    Flags;                       // Optional flag settings.
-   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
+   CLASSID ClassID;                     // Specifies the ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
    LONG    Category;                    // The system category that a class belongs to.
@@ -3042,9 +3040,9 @@ class objMetaClass : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setSubClass(const CLASSID Value) {
+   inline ERROR setClass(const CLASSID Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
-      this->SubClassID = Value;
+      this->ClassID = Value;
       return ERR_Okay;
    }
 
@@ -3062,7 +3060,7 @@ class objMetaClass : public BaseClass {
 
    inline ERROR setMethods(const APTR Value, LONG Elements) {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3075,11 +3073,13 @@ class objMetaClass : public BaseClass {
 
    template <class T> inline ERROR setName(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
    }
 
 };
+
+inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassID; }
 
 // StorageDevice class definition
 

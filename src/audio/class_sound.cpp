@@ -169,7 +169,7 @@ static ERROR set_playback_trigger(extSound *Self)
 #ifdef _WIN32
 void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 {
-   if (Object->ClassID IS ID_SOUND) {
+   if (Object->Class->BaseClassID IS ID_SOUND) {
       auto Self = (extSound *)Object;
       if (Self->OnStop.Type) {
          pf::Log log(__FUNCTION__);

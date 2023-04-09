@@ -88,7 +88,7 @@ NullArgs
 ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->SubID != ID_VECTORPATH) return ERR_Args;
+   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 
@@ -781,8 +781,8 @@ next:
          return ERR_Failed;
       }
 
-      if (Scene->ClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->ClassID != ID_VECTORSCENE) {
+      if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
+      else if (Scene->Class->ClassID != ID_VECTORSCENE) {
          log.warning("The Scene is invalid.");
          return ERR_Failed;
       }
@@ -798,16 +798,16 @@ next:
 
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
-            if (def->ClassID IS ID_VECTORGRADIENT) {
+            if (def->Class->ClassID IS ID_VECTORGRADIENT) {
                if (Gradient) *Gradient = (objVectorGradient *)def;
             }
-            else if (def->ClassID IS ID_VECTORIMAGE) {
+            else if (def->Class->ClassID IS ID_VECTORIMAGE) {
                if (Image) *Image = (objVectorImage *)def;
             }
-            else if (def->ClassID IS ID_VECTORPATTERN) {
+            else if (def->Class->ClassID IS ID_VECTORPATTERN) {
                if (Pattern) *Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->ClassID);
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->Class->ClassID);
 
             // Check for combinations
             if (IRI[i++] IS ')') {

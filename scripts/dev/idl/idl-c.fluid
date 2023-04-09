@@ -1538,6 +1538,11 @@ function outputClassHeader(class, Private, Custom)
                   end
 
                   local err, fl, target = class.meta.mtFindField(mSys.StrHash(f.name, false))
+
+                  if (err != ERR_Okay) then
+                     print('Failed to field ' .. f.name .. ' in class ' .. class.name)
+                  end
+
                   if (err == ERR_Okay) and (target.id == class.meta.id) then
                      output(indent .. 'auto target = this;')
                      output(indent .. string.format('auto field = &this->Class->Dictionary[%d];', fl.index))

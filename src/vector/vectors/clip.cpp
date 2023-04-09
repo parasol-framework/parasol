@@ -24,7 +24,7 @@ static void draw_clips(extVectorClip *Self, extVector *Branch,
 {
    agg::scanline_p8 sl;
    for (auto scan=Branch; scan; scan=(extVector *)scan->Next) {
-      if (scan->ClassID IS ID_VECTOR) {
+      if (scan->Class->BaseClassID IS ID_VECTOR) {
          agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(scan->BasePath, scan->Transform);
          Rasterizer.reset();
          Rasterizer.add_path(final_path);
@@ -148,7 +148,7 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
       return ERR_OutOfRange;
    }
 
-   if ((!Self->Parent) or ((Self->Parent->ClassID != ID_VECTORSCENE) and (Self->Parent->SubID != ID_VECTORVIEWPORT))) {
+   if ((!Self->Parent) or ((Self->Parent->Class->ClassID != ID_VECTORSCENE) and (Self->Parent->Class->ClassID != ID_VECTORVIEWPORT))) {
       log.warning("This VectorClip object must be a child of a Scene or Viewport object.");
       return ERR_Failed;
    }
@@ -239,7 +239,7 @@ static ERROR init_clip(void)
 {
    clVectorClip = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORCLIP),
+      fl::ClassID(ID_VECTORCLIP),
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),

@@ -259,7 +259,7 @@ ERROR init_displacementfx(void)
 {
    clDisplacementFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_DISPLACEMENTFX),
+      fl::ClassID(ID_DISPLACEMENTFX),
       fl::Name("DisplacementFX"),
       fl::Category(CCF_GRAPHICS),
       fl::Actions(clDisplacementFXActions),
