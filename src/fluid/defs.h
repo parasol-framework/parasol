@@ -243,14 +243,13 @@ struct module {
 };
 
 struct object {
-   OBJECTPTR prvObject;       // If the object is private we can have the address
-   objMetaClass *Class;       // Direct pointer to the module's class
-   OBJECTID  ObjectID;        // If the object is referenced externally, access is managed by ID
-   CLASSID   ClassID;         // Class identifier
-   UBYTE     Detached:1;      // TRUE if the object is an external reference or is not to be garbage collected
-   UBYTE     Locked:1;        // Can be TRUE only if a lock has been acquired from AccessObject()
-   UBYTE     DelayCall:1;     // If TRUE, the next action/method call is to be delayed.
-   ULONG     AccessCount;     // Controlled by access_object() and release_object()
+   OBJECTPTR ObjectPtr;       // If the object is local then we can have the address
+   objMetaClass *Class;       // Direct pointer to the object's class
+   OBJECTID  UID;             // If the object is referenced externally, access is managed by ID
+   UWORD     AccessCount;     // Controlled by access_object() and release_object()
+   bool      Detached;        // True if the object is an external reference or is not to be garbage collected
+   bool      Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
+   bool      DelayCall;       // If true, the next action/method call is to be delayed.
 };
 
 struct lua_ref {

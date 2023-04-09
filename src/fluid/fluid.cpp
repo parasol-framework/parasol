@@ -205,50 +205,42 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 
 OBJECTPTR access_object(struct object *Object)
 {
-   pf::Log log(__FUNCTION__);
-
    if (Object->AccessCount) {
       Object->AccessCount++;
-      return Object->prvObject;
+      return Object->ObjectPtr;
    }
-
-   if (!Object->ObjectID) return NULL; // Object reference is dead
-
-   if (!Object->prvObject) {
-      ERROR error;
-      log.trace("Locking object #%d.", Object->ObjectID);
-      if (!(error = AccessObject(Object->ObjectID, 5000, &Object->prvObject))) {
-         Object->Locked = TRUE;
+   else if (!Object->UID) return NULL; // Object reference is dead
+   else if (!Object->ObjectPtr) {
+      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); !error) {
+         Object->Locked = true;
       }
       else if (error IS ERR_DoesNotExist) {
-         log.trace("Object #%d has been terminated.", Object->ObjectID);
-         Object->prvObject = NULL;
-         Object->ObjectID = 0;
+         pf::Log log(__FUNCTION__);
+         log.trace("Object #%d has been terminated.", Object->UID);
+         Object->ObjectPtr = NULL;
+         Object->UID = 0;
       }
    }
-   else if (CheckObjectExists(Object->ObjectID) != ERR_True) {
-      log.trace("Object #%d has been terminated.", Object->ObjectID);
-      Object->prvObject = NULL;
-      Object->ObjectID = 0;
+   else if (CheckObjectExists(Object->UID) != ERR_True) {
+      pf::Log log(__FUNCTION__);
+      log.trace("Object #%d has been terminated.", Object->UID);
+      Object->ObjectPtr = NULL;
+      Object->UID = 0;
    }
 
-   if (Object->prvObject) Object->AccessCount++;
-   return Object->prvObject;
+   if (Object->ObjectPtr) Object->AccessCount++;
+   return Object->ObjectPtr;
 }
 
 void release_object(struct object *Object)
 {
-   pf::Log log(__FUNCTION__);
-
-   log.trace("#%d Current Locked: %d, Accesses: %d", Object->ObjectID, Object->Locked, Object->AccessCount);
-
    if (Object->AccessCount > 0) {
       Object->AccessCount--;
       if (!Object->AccessCount) {
          if (Object->Locked) {
-            ReleaseObject(Object->prvObject);
-            Object->Locked = FALSE;
-            Object->prvObject = NULL;
+            ReleaseObject(Object->ObjectPtr);
+            Object->Locked = false;
+            Object->ObjectPtr = NULL;
          }
       }
    }

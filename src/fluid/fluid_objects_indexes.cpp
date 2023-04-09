@@ -186,7 +186,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
 {
    pf::Log log("obj.get");
 
-   log.traceBranch("#%d, Field: %s", object->ObjectID, FName);
+   log.traceBranch("#%d, Field: %s", object->UID, FName);
 
    OBJECTPTR obj;
    if (!(obj = access_object(object))) return log.warning(ERR_AccessObject);
@@ -413,11 +413,11 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
          if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
             if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
                OBJECTPTR ptr_obj;
-               if (object->prvObject) {
-                  return target->set(field->FieldID, object->prvObject);
+               if (object->ObjectPtr) {
+                  return target->set(field->FieldID, object->ObjectPtr);
                }
                else if ((ptr_obj = (OBJECTPTR)access_object(object))) {
-                  ERROR error = target->set(field->FieldID, object->prvObject);
+                  ERROR error = target->set(field->FieldID, object->ObjectPtr);
                   release_object(object);
                   return error;
                }
@@ -483,7 +483,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
             case LUA_TUSERDATA: {
                if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
-                  return target->set(field->FieldID, object->ObjectID);
+                  return target->set(field->FieldID, object->UID);
                }
                return ERR_SetValueNotObject;
             }

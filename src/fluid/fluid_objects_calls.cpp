@@ -14,7 +14,7 @@ static int object_call(lua_State *Lua)
 
    LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
 
-   log.traceBranch("#%d/%p, Action: %d", object->ObjectID, object->prvObject, action_id);
+   log.traceBranch("#%d/%p, Action: %d", object->UID, object->ObjectPtr, action_id);
 
    ERROR error = ERR_Okay;
    LONG results = 0;
@@ -26,29 +26,16 @@ static int object_call(lua_State *Lua)
          BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
 
          LONG resultcount;
-         if (!(error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, &resultcount))) {
-            if (object->DelayCall) {
-               error = QueueAction(action_id, object->ObjectID, argbuffer);
-            }
-            else if (object->prvObject) {
-               error = Action(action_id, object->prvObject, argbuffer);
-            }
-            else {
-               // If the action returns results, we need to execute locally to pick up any results (e.g. string
-               // pointers).  Otherwise, we can execute via messaging.
-
-               if (resultcount > 0) {
-                  if (auto obj = access_object(object)) {
-                     error = Action(action_id, obj, argbuffer);
-                     release = true;
-                  }
-               }
-               else error = ActionMsg(action_id, object->ObjectID, argbuffer);
-            }
-         }
-         else {
+         if ((error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, &resultcount))) {
             luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
             return 0;
+         }
+
+         if (object->DelayCall) error = QueueAction(action_id, object->UID, argbuffer);
+         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer);
+         else if (auto obj = access_object(object)) {
+            error = Action(action_id, obj, argbuffer);
+            release = true;
          }
 
          lua_pushinteger(Lua, error);
@@ -60,16 +47,17 @@ static int object_call(lua_State *Lua)
 
          if (!object->DelayCall) results += get_results(Lua, glActions[action_id].Args, argbuffer);
          else object->DelayCall = false;
-
-         if (release) release_object(object);
       }
       else {
          if (object->DelayCall) {
             object->DelayCall = false;
-            error = QueueAction(action_id, object->ObjectID);
+            error = QueueAction(action_id, object->UID);
          }
-         else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
-         else error = ActionMsg(action_id, object->ObjectID, NULL);
+         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
+         else if (auto obj = access_object(object)) {
+            error = Action(action_id, obj, NULL);
+            release = true;
+         }
 
          lua_pushinteger(Lua, error);
          results = 1;
@@ -83,27 +71,16 @@ static int object_call(lua_State *Lua)
          BYTE argbuffer[methods->Size+8]; // +8 for overflow protection in build_args()
 
          LONG resultcount;
-         if (!(error = build_args(Lua, methods->Args, methods->Size, argbuffer, &resultcount))) {
-            if (object->DelayCall) {
-               error = QueueAction(action_id, object->ObjectID, (APTR)&argbuffer);
-            }
-            else if (object->prvObject) error = Action(action_id, object->prvObject, &argbuffer);
-            else {
-               // If the method returns results, we need to execute locally to pick up any results (e.g. string
-               // pointers).  Otherwise, we can execute via messaging.
-
-               if (resultcount > 0) {
-                  if (auto obj = access_object(object)) {
-                     error = Action(action_id, obj, argbuffer);
-                     release = true;
-                  }
-               }
-               else error = ActionMsg(action_id, object->ObjectID, argbuffer);
-            }
-         }
-         else {
+         if ((error = build_args(Lua, methods->Args, methods->Size, argbuffer, &resultcount))) {
             luaL_error(Lua, "Argument build failure for method %s.", methods->Name);
             return 0;
+         }
+
+         if (object->DelayCall) error = QueueAction(action_id, object->UID, (APTR)&argbuffer);
+         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, &argbuffer);
+         else if (auto obj = access_object(object)) {
+            error = Action(action_id, obj, argbuffer);
+            release = true;
          }
 
          lua_pushinteger(Lua, error);
@@ -111,21 +88,21 @@ static int object_call(lua_State *Lua)
 
          if (!object->DelayCall) results += get_results(Lua, methods->Args, (const BYTE *)argbuffer);
          else object->DelayCall = false;
-
-         if (release) release_object(object);
       }
       else {
          if (object->DelayCall) {
             object->DelayCall = false;
-            error = QueueAction(action_id, object->ObjectID);
+            error = QueueAction(action_id, object->UID);
          }
-         else if (object->prvObject) error = Action(action_id, object->prvObject, NULL);
-         else error = ActionMsg(action_id, object->ObjectID, NULL);
+         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
+         else error = ActionMsg(action_id, object->UID, NULL);
 
          lua_pushinteger(Lua, error);
          results = 1;
       }
    }
+
+   if (release) release_object(object);
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if ((error >= ERR_ExceptionThreshold) and (prv->Catch)) {
@@ -270,15 +247,15 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
             struct object *object;
             if ((object = (struct object *)get_meta(Lua, n, "Fluid.obj"))) {
                OBJECTPTR ptr_obj;
-               if (object->prvObject) {
-                  ((OBJECTPTR *)(argbuffer + j))[0] = object->prvObject;
+               if (object->ObjectPtr) {
+                  ((OBJECTPTR *)(argbuffer + j))[0] = object->ObjectPtr;
                }
                else if ((ptr_obj = access_object(object))) {
                   ((OBJECTPTR *)(argbuffer + j))[0] = ptr_obj;
                   release_object(object);
                }
                else {
-                  log.warning("Unable to resolve object pointer for #%d.", object->ObjectID);
+                  log.warning("Unable to resolve object pointer for #%d.", object->UID);
                   ((OBJECTPTR *)(argbuffer + j))[0] = NULL;
                }
             }
@@ -334,7 +311,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
          if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             struct object *obj;
             if ((obj = (struct object *)get_meta(Lua, n, "Fluid.obj"))) {
-               ((LONG *)(argbuffer + j))[0] = obj->ObjectID;
+               ((LONG *)(argbuffer + j))[0] = obj->UID;
             }
             else luaL_argerror(Lua, n, "Unable to convert usertype to an integer.");
          }

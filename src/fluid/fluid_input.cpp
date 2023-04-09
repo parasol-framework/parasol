@@ -127,7 +127,7 @@ static int input_keyboard(lua_State *Lua)
 
    OBJECTID object_id;
    struct object *obj;
-   if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->ObjectID;
+   if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->UID;
    else object_id = lua_tointeger(Lua, 1);
 
    if ((object_id) and (GetClassID(object_id) != ID_SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
@@ -218,7 +218,7 @@ static int input_request_item(lua_State *Lua)
       ERROR error;
 
       if ((obj = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
-         source_id = obj->ObjectID;
+         source_id = obj->UID;
       }
       else if (!(source_id = lua_tonumber(Lua, 1))) {
          luaL_argerror(Lua, 1, "Invalid object reference");
@@ -307,7 +307,7 @@ static int input_subscribe(lua_State *Lua)
 
    OBJECTID object_id;
    struct object *object;
-   if ((object = (struct object *)get_meta(Lua, 2, "Fluid.obj"))) object_id = object->ObjectID;
+   if ((object = (struct object *)get_meta(Lua, 2, "Fluid.obj"))) object_id = object->UID;
    else object_id = lua_tointeger(Lua, 2);
 
    LONG device_id = lua_tointeger(Lua, 3); // Optional
