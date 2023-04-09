@@ -39,7 +39,7 @@ static void sort_class_fields(extMetaClass *, std::vector<Field> &);
 
 static void add_field(extMetaClass *, std::vector<Field> &, const FieldArray &, UWORD &);
 static void register_fields(std::vector<Field> &);
-static Field * lookup_id_byclass(extMetaClass *, FIELD, extMetaClass **);
+static Field * lookup_id_byclass(extMetaClass *, ULONG, extMetaClass **);
 
 //********************************************************************************************************************
 // The MetaClass is the focal point of the OO design model.  Because classes are treated like objects, they must point
@@ -162,7 +162,6 @@ static ERROR DEFAULT_Signal(OBJECTPTR Object, APTR Void)
 void init_metaclass(void)
 {
    glMetaClass.BaseClass::Class   = &glMetaClass;
-   glMetaClass.BaseClass::ClassID = ID_METACLASS;
    glMetaClass.BaseClass::UID     = 123;
    glMetaClass.BaseClass::Flags   = NF::INITIALISED;
 
@@ -199,8 +198,7 @@ FindField: Search a class definition for a specific field.
 
 This method checks if a class has defined a given field by scanning its blueprint for a matching ID.
 
-If the field is present in an inherited class only, a reference to the inherited class will be returned in the Source
-parameter.
+If the field is present in an integral class, a reference to that class will be returned in the Source parameter.
 
 -INPUT-
 int ID: The field ID to search for.  Field names can be converted to ID's by using the ~StrHash() function.
@@ -216,12 +214,12 @@ Search
 
 *********************************************************************************************************************/
 
-ERROR CLASS_FindField(extMetaClass *Class, struct mcFindField *Args)
+ERROR CLASS_FindField(extMetaClass *Self, struct mcFindField *Args)
 {
    if ((!Args) or (!Args->ID)) return ERR_NullArgs;
 
    extMetaClass *src = NULL;
-   Args->Field = lookup_id_byclass(Class, Args->ID, &src);
+   Args->Field = lookup_id_byclass(Self, Args->ID, &src);
    Args->Source = src;
    if (Args->Field) return ERR_Okay;
    else return ERR_Search;
@@ -315,7 +313,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    auto ctx = tlContext;
    while (ctx != &glTopContext) {
-      if (ctx->object()->ClassID IS ID_ROOTMODULE) {
+      if (ctx->object()->Class->ClassID IS ID_ROOTMODULE) {
          Self->Root = (RootModule *)ctx->object();
          break;
       }
@@ -713,7 +711,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
       for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
          if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
-            if (Self->ClassID IS object->ClassID) {
+            if (Self->Class->ClassID IS object->Class->ClassID) {
                objlist.push_back(object->UID);
             }
          }
@@ -922,7 +920,7 @@ static void field_setup(extMetaClass *Class)
 
       // Build a list of integral objects before we do the sort
 
-      FIELD integral[ARRAYSIZE(Class->Integral)];
+      ULONG integral[ARRAYSIZE(Class->Integral)];
 
       UBYTE int_count = 0;
       if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
@@ -1042,7 +1040,7 @@ static ERROR OBJECT_GetClass(OBJECTPTR Self, extMetaClass **Value)
 
 static ERROR OBJECT_GetClassID(OBJECTPTR Self, CLASSID *Value)
 {
-   *Value = Self->ClassID;
+   *Value = Self->Class->ClassID;
    return ERR_Okay;
 }
 
@@ -1136,7 +1134,7 @@ void scan_classes(void)
 //********************************************************************************************************************
 // Lookup the fields declared by a MetaClass, as opposed to the fields of the MetaClass itself.
 
-static Field * lookup_id_byclass(extMetaClass *Class, FIELD FieldID, extMetaClass **Result)
+static Field * lookup_id_byclass(extMetaClass *Class, ULONG FieldID, extMetaClass **Result)
 {
    auto &field = Class->FieldLookup;
 

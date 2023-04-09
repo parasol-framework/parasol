@@ -34,7 +34,7 @@
       </input>
       <description>
 <p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
-<p>If the field is present in an inherited class only, a reference to the inherited class will be returned in the Source parameter.</p>
+<p>If the field is present in an integral class, a reference to that class will be returned in the Source parameter.</p>
       </description>
     </method>
 

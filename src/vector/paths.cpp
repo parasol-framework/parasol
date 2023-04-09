@@ -13,7 +13,7 @@ extVectorViewport * get_parent_view(extVector *Vector)
             Vector->ParentView = (extVectorViewport *)scan;
             return Vector->ParentView;
          }
-         else if (scan->Parent->ClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
+         else if (scan->Parent->Class->BaseClassID IS ID_VECTOR) scan = (extVector *)(scan->Parent);
          else return NULL;
       }
    }
@@ -31,7 +31,7 @@ void gen_vector_tree(extVector *Vector)
    if (Vector->Dirty) {
       std::vector<objVector *> list;
       for (auto scan=(objVector *)Vector->Parent; scan; scan=(objVector *)scan->Parent) {
-         if (scan->ClassID != ID_VECTOR) break;
+         if (scan->Class->BaseClassID != ID_VECTOR) break;
          list.push_back(scan);
       }
 
@@ -248,7 +248,7 @@ void gen_vector_path(extVector *Vector)
          ((extVectorScene *)Vector->Scene)->PendingResizeMsgs.insert(view);
       }
    }
-   else if (Vector->ClassID IS ID_VECTOR) {
+   else if (Vector->Class->BaseClassID IS ID_VECTOR) {
       Vector->FinalX = 0;
       Vector->FinalY = 0;
       if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Class->ClassID != ID_VECTORTEXT)) {
@@ -267,7 +267,7 @@ void gen_vector_path(extVector *Vector)
 
          Vector->GeneratePath(Vector);
 
-         if ((Vector->Morph) and (Vector->Morph->ClassID IS ID_VECTOR)) {
+         if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS ID_VECTOR)) {
             if ((Vector->Class->ClassID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
@@ -394,7 +394,7 @@ void apply_parent_transforms(extVector *Start, agg::trans_affine &AGGTransform)
    pf::Log log(__FUNCTION__);
 
    for (auto scan=Start; scan; scan=(extVector *)get_parent(scan)) {
-      if (scan->ClassID != ID_VECTOR) continue;
+      if (scan->Class->BaseClassID != ID_VECTOR) continue;
 
       if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
          // When a viewport is encountered we need to make special considerations as to its viewbox, which affects both

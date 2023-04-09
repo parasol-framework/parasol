@@ -21,7 +21,7 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 //********************************************************************************************************************
 // This internal function provides a fast binary search of field names via ID.
 
-Field * lookup_id(OBJECTPTR Object, FIELD FieldID, OBJECTPTR *Target)
+Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
    auto &field = mc->FieldLookup;
@@ -129,10 +129,9 @@ uint FieldID: The 'FID' number to lookup.
 struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not found.
 -END-
 
-Please note that FieldID is explicitly defined as 32-bit because using the FIELD type would make it 64-bit.
-
 *********************************************************************************************************************/
 
+// Please note that FieldID is explicitly defined as 32-bit because using the FIELD type would make it 64-bit.
 Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-only, thread safe function.
 {
    OBJECTPTR dummy;

@@ -1616,7 +1616,6 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags

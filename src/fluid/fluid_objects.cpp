@@ -145,7 +145,7 @@ static int object_new(lua_State *Lua)
 
       auto_load_include(Lua, obj->Class);
 
-      struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
+      auto object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
       ClearMemory(object, sizeof(struct object));
 
       luaL_getmetatable(Lua, "Fluid.obj");

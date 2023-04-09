@@ -14,11 +14,11 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    spacing[i] = 0;
 
    while (Vector) {
-      if (Vector->ClassID IS ID_VECTORSCENE) {
+      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, ((objVectorScene *)Vector)->Viewport, Level);
       }
-      else if (Vector->ClassID IS ID_VECTOR) {
+      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->className());
          if (shape->Child) debug_branch(Header, shape->Child, Level);
@@ -35,7 +35,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
    LONG level = 0;
    while (Vector) {
       debug_branch(Header, Vector, &level);
-      if (Vector->ClassID IS ID_VECTOR) {
+      if (Vector->Class->BaseClassID IS ID_VECTOR) {
          Vector = (((objVector *)Vector)->Next);
       }
       else break;
@@ -49,11 +49,11 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 static ERROR current_colour(extSVG *Self, objVector *Vector, FRGB &RGB)
 {
-   if (Vector->ClassID != ID_VECTOR) return ERR_Failed;
+   if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
 
    Vector = (objVector *)Vector->Parent;
    while (Vector) {
-      if (Vector->ClassID != ID_VECTOR) return ERR_Failed;
+      if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
 
       if (!GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL)) {
          if (RGB.Alpha != 0) return ERR_Okay;

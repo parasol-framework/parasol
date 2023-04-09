@@ -976,4 +976,7 @@
 #define FID_LaunchPath 0x096e116dLL
 #define FID_OutputCallback 0xb7c8ace3LL
 #define FID_Created 0xd9cc0a3dLL
+#define FID_Numeric 0x301f0df8LL
+#define FID_ResizeEvent 0xc404ebf9LL
+#define FID_TabOrder 0xa10b2cb8LL
 

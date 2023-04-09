@@ -448,7 +448,7 @@ referenced by the Target field.
 
 static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
 {
-   if (Value->ClassID IS ID_VECTORSCENE) {
+   if (Value->Class->ClassID IS ID_VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;

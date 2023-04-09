@@ -939,7 +939,7 @@ LONG   get_thread_id(void);
 void   init_metaclass(void);
 ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
 void   local_free_args(APTR, const struct FunctionField *);
-Field * lookup_id(OBJECTPTR, FIELD, OBJECTPTR *);
+Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);

@@ -1887,7 +1887,7 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR P
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Parent) or (Parent->ClassID != ID_VECTOR)) {
+   if ((!Parent) or (Parent->Class->BaseClassID != ID_VECTOR)) {
       log.traceWarning("Unable to apply morph to non-vector parent object.");
       return;
    }
@@ -3059,7 +3059,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
          break;
 
       case SVF_TRANSFORM: {
-         if (Vector->ClassID IS ID_VECTOR) {
+         if (Vector->Class->BaseClassID IS ID_VECTOR) {
             VectorMatrix *matrix;
             if (!vecNewMatrix((objVector *)Vector, &matrix)) {
                vecParseTransform(matrix, StrValue.c_str());

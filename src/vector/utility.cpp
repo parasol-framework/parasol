@@ -70,7 +70,7 @@ CSTRING get_name(OBJECTPTR Vector)
       case ID_VECTORWAVE:      return "Wave";
    }
 
-   switch(Vector->ClassID) {
+   switch(Vector->Class->BaseClassID) {
       case ID_VECTORCOLOUR:    return "Colour";
       case ID_VECTORFILTER:    return "Filter";
       case ID_VECTORGRADIENT:  return "Gradient";
@@ -349,12 +349,12 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    spacing[i] = 0;
 
    while (Vector) {
-      if (Vector->ClassID IS ID_VECTORSCENE) {
+      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
          break;
       }
-      else if (Vector->ClassID IS ID_VECTOR) {
+      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          auto shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
          if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);

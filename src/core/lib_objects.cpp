@@ -98,8 +98,8 @@ static ERROR object_free(BaseClass *Object)
       return ERR_InUse;
    }
 
-   if (Object->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
-   else if (Object->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
+   if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
+   else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
    else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
@@ -292,7 +292,7 @@ static void free_children(OBJECTPTR Object)
 
             if (!mem.Object->defined(NF::UNLOCK_FREE)) {
                if (mem.Object->defined(NF::INTEGRAL)) {
-                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->ClassID), Object->className(), Object->UID);
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
                }
                FreeResource(mem.Object);
             }
@@ -696,7 +696,7 @@ ERROR CheckAction(OBJECTPTR Object, LONG ActionID)
    pf::Log log(__FUNCTION__);
 
    if (Object) {
-      if (Object->ClassID IS ID_METACLASS) {
+      if (Object->Class->ClassID IS ID_METACLASS) {
          if (((extMetaClass *)Object)->ActionTable[ActionID].PerformAction) return ERR_Okay;
          else return ERR_False;
       }
@@ -920,7 +920,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Res
 
          for (auto it=list.rbegin(); it != list.rend(); it++) {
             auto obj = *it;
-            if (obj->ClassID IS ClassID) {
+            if ((obj->Class->ClassID IS ClassID) or (obj->Class->BaseClassID IS ClassID)) {
                *Result = obj->UID;
                return ERR_Okay;
             }
@@ -973,13 +973,13 @@ field in the object header.
 oid Object: The object to be examined.
 
 -RESULT-
-cid: Returns the base class ID of the object or NULL if failure.
+cid: Returns the base class ID of the object or zero if failure.
 
 *********************************************************************************************************************/
 
 CLASSID GetClassID(OBJECTID ObjectID)
 {
-   if (auto object = GetObjectPtr(ObjectID)) return object->ClassID;
+   if (auto object = GetObjectPtr(ObjectID)) return object->Class->BaseClassID;
    else return 0;
 }
 
@@ -1155,7 +1155,7 @@ ERROR InitObject(OBJECTPTR Object)
             LONG i = 0;
             for (auto & [ id, class_ptr ] : glClassMap) {
                if (i >= LONG(sublist.size())-1) break;
-               if ((Object->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->ClassID)) {
+               if ((Object->Class->ClassID IS class_ptr->BaseClassID) and (class_ptr->BaseClassID != class_ptr->Class->ClassID)) {
                   sublist[i++] = class_ptr;
                }
             }
@@ -1186,7 +1186,7 @@ ERROR InitObject(OBJECTPTR Object)
    else if ((error IS ERR_NoSupport) and (!GetField(Object, FID_Path|TSTR, &path)) and (path)) {
       CLASSID class_id, subclass_id;
       if (!IdentifyFile(path, &class_id, &subclass_id)) {
-         if ((class_id IS Object->ClassID) and (subclass_id)) {
+         if ((class_id IS Object->Class->ClassID) and (subclass_id)) {
             log.msg("Searching for subclass $%.8x", subclass_id);
             if ((Object->ExtClass = (extMetaClass *)FindClass(subclass_id))) {
                if (Object->ExtClass->ActionTable[AC_Init].PerformAction) {
@@ -1253,7 +1253,7 @@ ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 
          if (auto child = mem->second.Object) {
             if (!child->defined(NF::INTEGRAL)) {
-               List->emplace_back(child->UID, child->ClassID);
+               List->emplace_back(child->UID, child->Class->ClassID);
             }
          }
       }
@@ -1334,7 +1334,6 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
       set_memory_manager(head, &glResourceObject);
 
       head->UID     = head_id;
-      head->ClassID = mc->BaseClassID;
       head->Class   = (extMetaClass *)mc;
       head->Flags   = Flags;
 

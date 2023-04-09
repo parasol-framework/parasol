@@ -2467,7 +2467,6 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -2994,8 +2993,8 @@ class objMetaClass : public BaseClass {
    }
 
    inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Fields, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3060,8 +3059,8 @@ class objMetaClass : public BaseClass {
    }
 
    inline ERROR setMethods(const APTR Value, LONG Elements) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Methods, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x00001510, Value, Elements);
    }
 
@@ -3282,8 +3281,8 @@ class objFile : public BaseClass {
    }
 
    inline ERROR setCreated(APTR Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Created, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
@@ -3294,8 +3293,8 @@ class objFile : public BaseClass {
    }
 
    inline ERROR setPermissions(const LONG Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Permissions, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -3668,8 +3667,8 @@ class objScript : public BaseClass {
    }
 
    template <class T> inline ERROR setWorkingPath(T && Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_WorkingPath, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3704,8 +3703,8 @@ class objScript : public BaseClass {
    }
 
    template <class T> inline ERROR setStatement(T && Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Statement, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -3831,8 +3830,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setParameters(pf::vector<std::string> *Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Parameters, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08805300, Value, Value->size());
    }
 
@@ -3849,8 +3848,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setInputCallback(FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_InputCallback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -3873,8 +3872,8 @@ class objTask : public BaseClass {
    }
 
    inline ERROR setOutputCallback(FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_OutputCallback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -4299,8 +4298,8 @@ class objCompression : public BaseClass {
    }
 
    template <class T> inline ERROR setArchiveName(T && Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_ArchiveName, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
@@ -4311,8 +4310,8 @@ class objCompression : public BaseClass {
    }
 
    inline ERROR setFeedback(FUNCTION Value) {
-      OBJECTPTR target;
-      auto field = FindField(this, FID_Feedback, &target);
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

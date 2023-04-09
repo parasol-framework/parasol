@@ -51,7 +51,7 @@ void debug_tree(extVector *Vector, LONG &Level)
          GetFieldVariable(v, "$Dimensions", buffer, sizeof(buffer));
       }
 
-      if ((v->ClassID IS ID_VECTOR) and (v->Child)) {
+      if ((v->Class->BaseClassID IS ID_VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
          blog.branch("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, v->Name, buffer);
          debug_tree((extVector *)v->Child, Level);
@@ -78,7 +78,7 @@ static void validate_tree(extVector *Vector)
          log.warning("Invalid coupling between %d (%p) <- %d; Parent: %d", v->Prev->UID, v->Prev->Next, v->UID, v->Parent->UID);
       }
 
-      if ((v->ClassID IS ID_VECTOR) and (v->Child)) {
+      if ((v->Class->BaseClassID IS ID_VECTOR) and (v->Child)) {
          validate_tree((extVector *)v->Child);
       }
    }
@@ -89,17 +89,20 @@ static void validate_tree(extVector *Vector)
 
 static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
 {
-   CLASSID class_id = GetClassID(OwnerID);
-   if ((class_id != ID_VECTORSCENE) and (class_id != ID_VECTOR)) return ERR_UnsupportedOwner;
+   auto parent = GetObjectPtr(OwnerID);
 
-   Self->Parent = GetObjectPtr(OwnerID);
+   if ((parent->Class->ClassID != ID_VECTORSCENE) and (parent->Class->BaseClassID != ID_VECTOR)) {
+      return ERR_UnsupportedOwner;
+   }
+
+   Self->Parent = parent;
 
    // Ensure that the sibling fields are valid, if not then clear them.
 
    if ((Self->Prev) and (Self->Prev->Parent != Self->Parent)) Self->Prev = NULL;
    if ((Self->Next) and (Self->Next->Parent != Self->Parent)) Self->Next = NULL;
 
-   if (Self->Parent->ClassID IS ID_VECTOR) {
+   if (Self->Parent->Class->BaseClassID IS ID_VECTOR) {
       if ((!Self->Prev) and (!Self->Next)) {
          if (((extVector *)Self->Parent)->Child) { // Insert at the end
             auto end = ((extVector *)Self->Parent)->Child;
@@ -112,7 +115,7 @@ static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
 
       Self->Scene = ((extVector *)Self->Parent)->Scene;
    }
-   else if (Self->Parent->ClassID IS ID_VECTORSCENE) {
+   else if (Self->Parent->Class->BaseClassID IS ID_VECTORSCENE) {
       if ((!Self->Prev) and (!Self->Next)) {
          if (((objVectorScene *)Self->Parent)->Viewport) { // Insert at the end
             auto end = ((objVectorScene *)Self->Parent)->Viewport;
@@ -259,7 +262,7 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    if (Self->Next) Self->Next->Prev = Self->Prev;
    if (Self->Prev) Self->Prev->Next = Self->Next;
    if ((Self->Parent) and (!Self->Prev)) {
-      if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
+      if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       else ((extVector *)Self->Parent)->Child = Self->Next;
    }
    if (Self->Child) Self->Child->Parent = NULL;
@@ -443,7 +446,7 @@ static ERROR VECTOR_Init(extVector *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((!Self->Class->ClassID) or (Self->Class->ClassID IS ID_VECTOR)) {
+   if (Self->Class->ClassID IS ID_VECTOR) {
       log.warning("Vector cannot be instantiated directly (use a sub-class).");
       return ERR_Failed;
    }
@@ -724,8 +727,8 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       scan->Prev = Self;
 
       if (!Self->Prev) { // Reconfigure the parent's child relationship
-         if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
-         else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
+         if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
+         else if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
       }
       else Self->Prev->Next = Self;
    }
@@ -737,8 +740,8 @@ static ERROR VECTOR_Push(extVector *Self, struct vecPush *Args)
       if (Self->Next) Self->Next->Prev = Self->Prev;
 
       if (!Self->Prev) {
-         if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
-         else if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
+         if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self->Next;
+         else if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       }
 
       Self->Prev = scan; // Vector is ahead of scan
@@ -1345,7 +1348,7 @@ static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
 
    if (!def) return log.warning(ERR_Search);
 
-   if (def->ClassID IS ID_VECTORFILTER) {
+   if (def->Class->BaseClassID IS ID_VECTORFILTER) {
       if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
       Self->FilterString = StrClone(Value);
       Self->Filter = (extVectorFilter *)def;
@@ -1630,7 +1633,7 @@ static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
       }
       return ERR_Okay;
    }
-   else if (Value->ClassID IS ID_VECTOR) {
+   else if (Value->Class->BaseClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          auto callback = make_function_stdc(notify_free);
@@ -1685,7 +1688,7 @@ static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
+   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if ((!Value) or (Value IS Self)) return log.warning(ERR_InvalidValue);
    if (Self->OwnerID != Value->OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
@@ -1699,8 +1702,8 @@ static ERROR VECTOR_SET_Next(extVector *Self, extVector *Value)
 
    if (Value->Parent) { // Patch into the parent if we are at the start of the branch
       Self->Parent = Value->Parent;
-      if (Self->Parent->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
-      else if (Self->Parent->ClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
+      if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self;
+      else if (Self->Parent->Class->BaseClassID IS ID_VECTOR) ((extVector *)Self->Parent)->Child = Self;
    }
 
    return ERR_Okay;
@@ -1788,7 +1791,7 @@ static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
 {
    pf::Log log;
 
-   if (Value->ClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
+   if (Value->Class->BaseClassID != ID_VECTOR) return log.warning(ERR_InvalidObject);
    if (!Value) return log.warning(ERR_InvalidValue);
    if (Self->OwnerID != Value->OwnerID) return log.warning(ERR_UnsupportedOwner); // Owners must match
 
@@ -1796,11 +1799,11 @@ static ERROR VECTOR_SET_Prev(extVector *Self, extVector *Value)
    if (Self->Prev) Self->Prev->Next = NULL; // Detach from the current Prev object.
 
    if (Self->Parent) { // Detach from the parent
-      if (Self->Parent->ClassID IS ID_VECTORSCENE) {
+      if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) {
          ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
          Self->Next->Parent = Self->Parent;
       }
-      else if (Self->Parent->ClassID IS ID_VECTOR) {
+      else if (Self->Parent->Class->BaseClassID IS ID_VECTOR) {
          ((extVector *)Self->Parent)->Child = Self->Next;
          Self->Next->Parent = Self->Parent;
       }
@@ -2148,7 +2151,7 @@ static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
       }
       return ERR_Okay;
    }
-   else if (Value->ClassID IS ID_VECTORTRANSITION) {
+   else if (Value->Class->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
          auto callback = make_function_stdc(notify_free);

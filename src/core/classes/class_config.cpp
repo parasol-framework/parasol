@@ -400,7 +400,7 @@ AccessObject: The source configuration object could not be accessed.
 static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
    if ((!Args) or (!Args->Source)) return ERR_NullArgs;
-   if (Args->Source->ClassID != ID_CONFIG) return ERR_Args;
+   if (Args->Source->Class->ClassID != ID_CONFIG) return ERR_Args;
 
    auto src = (extConfig *)Args->Source;
    merge_groups(Self->Groups[0], src->Groups[0]);

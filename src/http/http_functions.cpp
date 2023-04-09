@@ -8,7 +8,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
 
    auto Self = (extHTTP *)Socket->UserData; //(extHTTP *)CurrentContext();
-   if (Self->ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
+   if (Self->Class->ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
 
    if (State IS NTC_CONNECTING) {
       log.msg("Waiting for connection...");
@@ -161,7 +161,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
    #define CHUNK_TAIL 2 // CRLF
 
    auto Self = (extHTTP *)Socket->UserData;
-   if (Self->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
+   if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, Self->CurrentState);
 
@@ -376,7 +376,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
    log.msg("Context: %d", CurrentContext()->UID);
 
-   if (Self->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
+   if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
    if (Self->CurrentState >= HGS_COMPLETED) {
       // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message

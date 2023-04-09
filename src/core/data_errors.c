@@ -82,7 +82,7 @@ const CSTRING glMessages[ERR_END+1] = {
  "The tested statement was not satisfied.",
  "The object structure is corrupt or has not been initialised.",
  "Container pass through notification.",
- "The given container is not supported by this object.",
+ "The owner is not supported by this object.",
  "An attempt to gain exclusive access to a shared object failed.",
  "A call to AllocMemory() failed to create a new memory block.",
  "A call to NewObject() failed to produce a new object.",

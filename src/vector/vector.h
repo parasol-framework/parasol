@@ -815,10 +815,10 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
 
 inline static extVector * get_parent(const extVector *Vector)
 {
-   if (Vector->ClassID != ID_VECTOR) return NULL;
+   if (Vector->Class->BaseClassID != ID_VECTOR) return NULL;
    while (Vector) {
       if (!Vector->Parent) Vector = (extVector *)Vector->Prev; // Scan back to the first sibling to find the parent
-      else if (Vector->Parent->ClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
+      else if (Vector->Parent->Class->BaseClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
       else return NULL;
    }
 

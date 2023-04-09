@@ -43,9 +43,9 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             if ((error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<defs/>", &def_index))) return error;
          }
 
-         log.msg("Processing definition %s (%x %x)", def->Class->ClassName, def->ClassID, def->Class->ClassID);
+         log.msg("Processing definition %s (%x)", def->Class->ClassName, def->Class->ClassID);
 
-         if (def->ClassID IS ID_VECTORGRADIENT) {
+         if (def->Class->ClassID IS ID_VECTORGRADIENT) {
             auto gradient = (objVectorGradient *)def;
             std::string gradient_type;
             switch(gradient->Type) {
@@ -129,16 +129,16 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
          }
-         else if (def->ClassID IS ID_VECTORIMAGE) {
+         else if (def->Class->ClassID IS ID_VECTORIMAGE) {
             log.warning("VectorImage not supported.");
          }
          else if (def->Class->ClassID IS ID_VECTORPATH) {
             error = save_vectorpath(Self, XML, (objVector *)def, def_index);
          }
-         else if (def->ClassID IS ID_VECTORPATTERN) {
+         else if (def->Class->ClassID IS ID_VECTORPATTERN) {
             log.warning("VectorPattern not supported.");
          }
-         else if (def->ClassID IS ID_VECTORFILTER) {
+         else if (def->Class->ClassID IS ID_VECTORFILTER) {
             objVectorFilter *filter = (objVectorFilter *)def;
 
             XMLTag *tag;
@@ -183,16 +183,16 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                FreeResource(effect_xml);
             }
          }
-         else if (def->ClassID IS ID_VECTORTRANSITION) {
+         else if (def->Class->ClassID IS ID_VECTORTRANSITION) {
             log.warning("VectorTransition not supported.");
          }
          else if (def->Class->ClassID IS ID_VECTORCLIP) {
             log.warning("VectorClip not supported.");
          }
-         else if (def->ClassID IS ID_VECTOR) {
+         else if (def->Class->BaseClassID IS ID_VECTOR) {
             log.warning("%s not supported.", def->Class->ClassName);
          }
-         else log.warning("Unrecognised definition class %x", def->ClassID);
+         else log.warning("Unrecognised definition class %x", def->Class->ClassID);
       }
 
       return ERR_Okay;
