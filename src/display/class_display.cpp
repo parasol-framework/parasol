@@ -2745,7 +2745,7 @@ static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
          XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)0);
       }
       else if (!AccessObject(Value, 2000, &popover)) {
-         if (popover->ClassID IS ID_DISPLAY) {
+         if (popover->Class->BaseClassID IS ID_DISPLAY) {
             Self->PopOverID = Value;
             XSetTransientForHint(XDisplay, Self->XWindowHandle, (Window)popover->WindowHandle);
          }
