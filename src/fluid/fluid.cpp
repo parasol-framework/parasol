@@ -221,12 +221,6 @@ OBJECTPTR access_object(struct object *Object)
          Object->UID = 0;
       }
    }
-   else if (CheckObjectExists(Object->UID) != ERR_True) {
-      pf::Log log(__FUNCTION__);
-      log.trace("Object #%d has been terminated.", Object->UID);
-      Object->ObjectPtr = NULL;
-      Object->UID = 0;
-   }
 
    if (Object->ObjectPtr) Object->AccessCount++;
    return Object->ObjectPtr;

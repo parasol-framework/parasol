@@ -123,9 +123,6 @@ static int object_call(lua_State *Lua)
 ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE *argbuffer, LONG *ResultCount)
 {
    pf::Log log(__FUNCTION__);
-   struct memory *memory;
-   struct array *farray;
-   struct fstruct *fstruct;
 
    LONG top = lua_gettop(Lua);
 
@@ -147,7 +144,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
          #ifdef _LP64
             j = ALIGN64(j);
          #endif
-         if ((memory = (struct memory *)get_meta(Lua, n, "Fluid.mem"))) {
+         if (auto memory = (struct memory *)get_meta(Lua, n, "Fluid.mem")) {
             //log.trace("Arg: %s, Value: Buffer (Source is Memory)", args[i].Name);
 
             ((APTR *)(argbuffer + j))[0] = memory->Memory;
@@ -165,7 +162,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
 
             //n--; // Adjustment required due to successful get_meta()
          }
-         else if ((fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct"))) {
+         else if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
             //log.trace("Arg: %s, Value: Buffer (Source is a struct)", args[i].Name);
 
             ((APTR *)(argbuffer + j))[0] = fstruct->Data;
@@ -180,7 +177,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
             }
             n--; // Adjustment required due to successful get_meta()
          }
-         else if ((farray = (struct array *)get_meta(Lua, n, "Fluid.array"))) {
+         else if (auto farray = (struct array *)get_meta(Lua, n, "Fluid.array")) {
             //log.trace("Arg: %s, Value: Buffer (Source is a array)", args[i].Name);
 
             ((APTR *)(argbuffer + j))[0] = farray->ptrPointer;
@@ -294,11 +291,11 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
          else {
             //log.trace("Arg: %s, Value: Pointer, SrcType: %s", args[i].Name, lua_typename(Lua, type));
 
-            if ((memory = (struct memory *)get_meta(Lua, n, "Fluid.mem"))) {
+            if (auto memory = (struct memory *)get_meta(Lua, n, "Fluid.mem")) {
                ((APTR *)(argbuffer + j))[0] = memory->Memory;
                //n--; // Adjustment required due to successful get_meta()
             }
-            else if ((fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct"))) {
+            else if (auto fstruct = (struct fstruct *)get_meta(Lua, n, "Fluid.struct")) {
                ((APTR *)(argbuffer + j))[0] = fstruct->Data;
                //n--; // Adjustment required due to successful get_meta()
             }
@@ -309,8 +306,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
       }
       else if (args[i].Type & FD_LONG) {
          if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
-            struct object *obj;
-            if ((obj = (struct object *)get_meta(Lua, n, "Fluid.obj"))) {
+            if (auto obj = (struct object *)get_meta(Lua, n, "Fluid.obj")) {
                ((LONG *)(argbuffer + j))[0] = obj->UID;
             }
             else luaL_argerror(Lua, n, "Unable to convert usertype to an integer.");
