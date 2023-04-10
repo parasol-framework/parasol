@@ -1,105 +1,53 @@
 
 //********************************************************************************************************************
-// Lua C closure executed via calls to obj.acName() or obj.mtName()
+// Lua C closure executed via calls to obj.acName()
 
-static int object_call(lua_State *Lua)
+static int object_action_call(lua_State *Lua)
 {
-   pf::Log log(__FUNCTION__);
-
-   struct object *object;
-   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
-      luaL_error(Lua, "object_call() expected object in upvalue.");
-      return 0;
-   }
-
+   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
-
-   log.traceBranch("#%d/%p, Action: %d", object->UID, object->ObjectPtr, action_id);
-
    ERROR error = ERR_Okay;
    LONG results = 0;
    bool release = false;
-   CSTRING action_name = NULL;
-   if (action_id >= 0) {
-      action_name = glActions[action_id].Name;
-      if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
-         BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
+   if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
+      BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
 
-         LONG resultcount;
-         if ((error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, &resultcount))) {
-            luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
-            return 0;
-         }
-
-         if (object->DelayCall) error = QueueAction(action_id, object->UID, argbuffer);
-         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer);
-         else if (auto obj = access_object(object)) {
-            error = Action(action_id, obj, argbuffer);
-            release = true;
-         }
-
-         lua_pushinteger(Lua, error);
-         results = 1;
-
-         // NB: Even if an error is returned, always get the results (any results parameters are nullified prior to
-         // function entry and the action can return results legitimately even if an error code is returned - e.g.
-         // quite common when returning ERR_Terminate).
-
-         if (!object->DelayCall) results += get_results(Lua, glActions[action_id].Args, argbuffer);
-         else object->DelayCall = false;
+      LONG resultcount;
+      if ((error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, &resultcount))) {
+         luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+         return 0;
       }
-      else {
-         if (object->DelayCall) {
-            object->DelayCall = false;
-            error = QueueAction(action_id, object->UID);
-         }
-         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
-         else if (auto obj = access_object(object)) {
-            error = Action(action_id, obj, NULL);
-            release = true;
-         }
 
-         lua_pushinteger(Lua, error);
-         results = 1;
+      if (object->DelayCall) error = QueueAction(action_id, object->UID, argbuffer);
+      else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer);
+      else if (auto obj = access_object(object)) {
+         error = Action(action_id, obj, argbuffer);
+         release = true;
       }
+
+      lua_pushinteger(Lua, error);
+      results = 1;
+
+      // NB: Even if an error is returned, always get the results (any results parameters are nullified prior to
+      // function entry and the action can return results legitimately even if an error code is returned - e.g.
+      // quite common when returning ERR_Terminate).
+
+      if (!object->DelayCall) results += get_results(Lua, glActions[action_id].Args, argbuffer);
+      else object->DelayCall = false;
    }
-   else { // Method
-      auto methods = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(3));
-      action_name = methods->Name;
-
-      if ((methods->Args) and (methods->Size)) {
-         BYTE argbuffer[methods->Size+8]; // +8 for overflow protection in build_args()
-
-         LONG resultcount;
-         if ((error = build_args(Lua, methods->Args, methods->Size, argbuffer, &resultcount))) {
-            luaL_error(Lua, "Argument build failure for method %s.", methods->Name);
-            return 0;
-         }
-
-         if (object->DelayCall) error = QueueAction(action_id, object->UID, (APTR)&argbuffer);
-         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, &argbuffer);
-         else if (auto obj = access_object(object)) {
-            error = Action(action_id, obj, argbuffer);
-            release = true;
-         }
-
-         lua_pushinteger(Lua, error);
-         results = 1;
-
-         if (!object->DelayCall) results += get_results(Lua, methods->Args, (const BYTE *)argbuffer);
-         else object->DelayCall = false;
+   else {
+      if (object->DelayCall) {
+         object->DelayCall = false;
+         error = QueueAction(action_id, object->UID);
       }
-      else {
-         if (object->DelayCall) {
-            object->DelayCall = false;
-            error = QueueAction(action_id, object->UID);
-         }
-         else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
-         else error = ActionMsg(action_id, object->UID, NULL);
-
-         lua_pushinteger(Lua, error);
-         results = 1;
+      else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
+      else if (auto obj = access_object(object)) {
+         error = Action(action_id, obj, NULL);
+         release = true;
       }
+
+      lua_pushinteger(Lua, error);
+      results = 1;
    }
 
    if (release) release_object(object);
@@ -109,8 +57,67 @@ static int object_call(lua_State *Lua)
       char msg[180];
       CSTRING error_msg = GetErrorMsg(error);
       prv->CaughtError = error;
-      if (!action_name) action_name = "Unnamed";
-      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, action_name, error_msg);
+      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, glActions[action_id].Name, error_msg);
+      luaL_error(prv->Lua, msg);
+   }
+
+   return results;
+}
+
+//********************************************************************************************************************
+// Lua C closure executed via calls to obj.mtName()
+
+static int object_method_call(lua_State *Lua)
+{
+   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
+   ERROR error = ERR_Okay;
+   LONG results = 0;
+   bool release = false;
+   auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(3));
+
+   if ((method->Args) and (method->Size)) {
+      BYTE argbuffer[method->Size+8]; // +8 for overflow protection in build_args()
+
+      LONG resultcount;
+      if ((error = build_args(Lua, method->Args, method->Size, argbuffer, &resultcount))) {
+         luaL_error(Lua, "Argument build failure for method %s.", method->Name);
+         return 0;
+      }
+
+      if (object->DelayCall) error = QueueAction(action_id, object->UID, (APTR)&argbuffer);
+      else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, &argbuffer);
+      else if (auto obj = access_object(object)) {
+         error = Action(action_id, obj, argbuffer);
+         release = true;
+      }
+
+      lua_pushinteger(Lua, error);
+      results = 1;
+
+      if (!object->DelayCall) results += get_results(Lua, method->Args, (const BYTE *)argbuffer);
+      else object->DelayCall = false;
+   }
+   else {
+      if (object->DelayCall) {
+         object->DelayCall = false;
+         error = QueueAction(action_id, object->UID);
+      }
+      else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
+      else error = ActionMsg(action_id, object->UID, NULL);
+
+      lua_pushinteger(Lua, error);
+      results = 1;
+   }
+
+   if (release) release_object(object);
+
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   if ((error >= ERR_ExceptionThreshold) and (prv->Catch)) {
+      char msg[180];
+      CSTRING error_msg = GetErrorMsg(error);
+      prv->CaughtError = error;
+      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", object->Class->ClassName, method->Name, error_msg);
       luaL_error(prv->Lua, msg);
    }
 

@@ -448,7 +448,7 @@ a call, as documented in the Action Support Guide.
 static ERROR GET_ActionTable(extMetaClass *Self, ActionEntry **Value, LONG *Elements)
 {
    *Value = Self->ActionTable;
-   *Elements = AC_END - 1;
+   *Elements = AC_END;
    return ERR_Okay;
 }
 

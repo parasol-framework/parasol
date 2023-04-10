@@ -6,12 +6,9 @@
 
 static int object_newindex(lua_State *Lua)
 {
-   struct object *object;
-   if ((object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
-      CSTRING fieldname;
-      if ((fieldname = luaL_checkstring(Lua, 2))) {
-         OBJECTPTR obj;
-         if ((obj = access_object(object))) {
+   if (auto object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+      if (auto fieldname = luaL_checkstring(Lua, 2)) {
+         if (auto obj = access_object(object)) {
             ERROR error = set_object_field(Lua, obj, fieldname, 3);
             release_object(object);
             if (error >= ERR_ExceptionThreshold) {
@@ -41,8 +38,7 @@ static int object_get(lua_State *Lua)
       return 0;
    }
 
-   CSTRING fieldname;
-   if ((fieldname = luaL_checkstring(Lua, 1))) {
+   if (auto fieldname = luaL_checkstring(Lua, 1)) {
       log.trace("obj.get('%s')", fieldname);
       ERROR error = getfield(Lua, object, fieldname);
       if (!error) return 1;
@@ -69,13 +65,11 @@ static int object_getvar(lua_State *Lua)
       return 0;
    }
 
-   CSTRING fieldname;
-   if ((fieldname = luaL_checkstring(Lua, 1))) {
+   if (auto fieldname = luaL_checkstring(Lua, 1)) {
       log.trace("obj.getVar('%s')", fieldname);
 
-      OBJECTPTR obj;
       ERROR error;
-      if ((obj = access_object(object))) {
+      if (auto obj = access_object(object)) {
          char buffer[8192];
          if (!(error = GetVar(obj, fieldname, buffer, sizeof(buffer)))) {
             lua_pushstring(Lua, buffer);
@@ -143,18 +137,13 @@ static int object_set(lua_State *Lua)
 
 static int object_setvar(lua_State *Lua)
 {
-   pf::Log log;
-
-   log.msg("obj.setVar()");
-
    struct object *object;
    if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
-   CSTRING fieldname;
-   if ((fieldname = luaL_checkstring(Lua, 1))) {
+   if (auto fieldname = luaL_checkstring(Lua, 1)) {
       CSTRING value = luaL_optstring(Lua, 2, NULL);
 
       OBJECTPTR obj;
@@ -182,7 +171,7 @@ static int object_setvar(lua_State *Lua)
 // If successful, a value is pushed on the stack and ERR_Okay is returned.  If any other error code is returned,
 // the stack is unmodified.
 
-static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
+static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName, ULONG Hash)
 {
    pf::Log log("obj.get");
 
@@ -203,7 +192,7 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName)
       // by using an uppercase 'ID'.
       lua_pushnumber(Lua, obj->UID);
    }
-   else if ((field = FindField(obj, StrHash(FName, FALSE), &target))) {
+   else if ((field = FindField(obj, Hash ? Hash : StrHash(FName), &target))) {
       if (field->Flags & FD_ARRAY) {
          if (field->Flags & FD_RGB) {
             STRING rgb;

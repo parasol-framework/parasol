@@ -210,7 +210,7 @@ OBJECTPTR access_object(struct object *Object)
       return Object->ObjectPtr;
    }
    else if (!Object->UID) return NULL; // Object reference is dead
-   else if (!Object->ObjectPtr) {
+   else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
       if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); !error) {
          Object->Locked = true;
       }
@@ -230,12 +230,10 @@ void release_object(struct object *Object)
 {
    if (Object->AccessCount > 0) {
       Object->AccessCount--;
-      if (!Object->AccessCount) {
-         if (Object->Locked) {
-            ReleaseObject(Object->ObjectPtr);
-            Object->Locked = false;
-            Object->ObjectPtr = NULL;
-         }
+      if ((!Object->AccessCount) and (Object->Locked)) {
+         ReleaseObject(Object->ObjectPtr);
+         Object->Locked = false;
+         Object->ObjectPtr = NULL;
       }
    }
 }

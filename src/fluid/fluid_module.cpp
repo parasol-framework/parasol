@@ -534,7 +534,7 @@ static int module_call(lua_State *Lua)
          ffi_call(&cif, (void (*)())function, &rc, arg_values);
          if ((OBJECTPTR)rc) {
             object *obj = push_object(Lua, (OBJECTPTR)rc);
-            if (restype & FD_ALLOC) obj->Detached = FALSE;
+            if (restype & FD_ALLOC) obj->Detached = false;
          }
          else lua_pushnil(Lua);
       }
@@ -688,7 +688,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   RMSG("Result-Arg: %s, Value: %p (Object)", argname, ((OBJECTPTR *)var)[0]);
                   if (((APTR *)var)[0]) {
                      object *obj = push_object(prv->Lua, ((OBJECTPTR *)var)[0]);
-                     if (argtype & FD_ALLOC) obj->Detached = FALSE;
+                     if (argtype & FD_ALLOC) obj->Detached = false;
                   }
                   else lua_pushnil(prv->Lua);
                }

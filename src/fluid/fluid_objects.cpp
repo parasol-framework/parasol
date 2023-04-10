@@ -6,8 +6,8 @@ The core's technical design means that any object that is *not directly owned by
 external to that script.  External objects must be locked appropriately whenever they are used.  Locking
 ensures that threads can interact with the object safely and that the object cannot be prematurely terminated.
 
-Only objects created through the standard obj.new() interface are permanently locked.  Those referenced through
-obj.find(), push_object(), or children created with some_object.new() are marked as detached.
+Only objects created through the standard obj.new() interface are directly accessible without a lock.  Those referenced
+through obj.find(), push_object(), or children created with some_object.new() are marked as detached.
 
 */
 
@@ -30,28 +30,121 @@ extern "C" {
 
 #define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
 
-static int object_call(lua_State *);
+static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_var, OJH_getVar;
+static ULONG OJH_set, OJH_setVar, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
+
+static int object_action_call(lua_State *);
+static int object_method_call(lua_State *);
 static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
-static int getfield(lua_State *, struct object *, CSTRING);
+static int getfield(lua_State *, struct object *, CSTRING, ULONG = 0);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
-static int object_setvar(lua_State *Lua);
-static int object_set(lua_State *Lua);
-static int object_get(lua_State *Lua);
-static int object_getvar(lua_State *Lua);
-static int object_newindex(lua_State *Lua);
+static int object_children(lua_State *);
+static int object_delaycall(lua_State *);
+static int object_detach(lua_State *);
+static int object_exists(lua_State *);
+static int object_free(lua_State *);
+static int object_get(lua_State *);
+static int object_getvar(lua_State *);
+static int object_init(lua_State *);
+static int object_lock(lua_State *);
+static int object_newchild(lua_State *);
+static int object_newindex(lua_State *);
+static int object_set(lua_State *);
+static int object_setvar(lua_State *);
+static int object_state(lua_State *);
+static int object_subscribe(lua_State *);
+static int object_unsubscribe(lua_State *);
 
-/*********************************************************************************************************************
-** This macro is used to convert Lua calls.
-**
-** From: xml.acDataFeed(1,2,3)
-** To:   object_call(xml,1,2,3)
-*/
+//********************************************************************************************************************
 
-INLINE void SET_CONTEXT(lua_State *Lua, APTR Function)
-{
+#include "fluid_object_actions.cpp"
+
+static std::unordered_map<objMetaClass *, std::set<object_jump, decltype(object_hash)>> glJump;
+
+inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
    lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
+}
+
+static int stack_object_children(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
+static int stack_object_delayCall(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
+static int stack_object_detach(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
+static int stack_object_exists(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
+static int stack_object_free(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
+static int stack_object_get(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
+static int stack_object_getVar(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_getvar); return 1; }
+static int stack_object_init(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
+static int stack_object_lock(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
+static int stack_object_newchild(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
+static int stack_object_set(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
+static int stack_object_setVar(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_setvar); return 1; }
+static int stack_object_state(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
+static int stack_object_subscribe(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
+static int stack_object_unsubscribe(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
+
+//********************************************************************************************************************
+
+static int obj_jump_method(lua_State *Lua, const object_jump &Handle)
+{
+   lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
+   lua_pushinteger(Lua, ((MethodEntry *)Handle.Data)->MethodID); // Arg2: Method ID
+   lua_pushlightuserdata(Lua, Handle.Data); // Arg3: Method lookup table
+   lua_pushcclosure(Lua, object_method_call, 3); // Push a c closure with 3 input values on the stack
+   return 1;
+}
+
+//********************************************************************************************************************
+
+inline JUMP_TABLE * get_jump_table(object *Def)
+{
+   if (!Def->Jump) {
+      if (auto it = glJump.find(Def->Class); it != glJump.end()) {
+         Def->Jump = &it->second;
+      }
+      else {
+         JUMP_TABLE jmp;
+
+         // Every possible action is hashed because both sub-class and base-class actions require support.
+
+         for (LONG code=1; code < AC_END; code++) {
+            auto hash = object_jump::hash(glActions[code].Name, object_jump::hash("ac"));
+            jmp.insert(object_jump(hash, glJumpActions[code]));
+         }
+
+         MethodEntry *methods;
+         LONG total_methods;
+         if (!GetFieldArray(Def->Class, FID_Methods, &methods, &total_methods)) {
+            for (LONG i=1; i < total_methods; i++) {
+               if (methods[i].MethodID) {
+                  auto hash = object_jump::hash(methods[i].Name, object_jump::hash("mt"));
+                  jmp.insert(object_jump(hash, obj_jump_method, &methods[i]));
+               }
+            }
+         }
+
+         jmp.emplace(OJH_init, stack_object_init);
+         jmp.emplace(OJH_free, stack_object_free);
+         jmp.emplace(OJH_lock, stack_object_lock);
+         jmp.emplace(OJH_children, stack_object_children);
+         jmp.emplace(OJH_detach, stack_object_detach);
+         jmp.emplace(OJH_get, stack_object_get);
+         jmp.emplace(OJH_new, stack_object_newchild);
+         jmp.emplace(OJH_state, stack_object_state);
+         jmp.emplace(OJH_var, stack_object_getVar);
+         jmp.emplace(OJH_getVar, stack_object_getVar);
+         jmp.emplace(OJH_set, stack_object_set);
+         jmp.emplace(OJH_setVar, stack_object_setVar);
+         jmp.emplace(OJH_delayCall, stack_object_delayCall);
+         jmp.emplace(OJH_exists, stack_object_exists);
+         jmp.emplace(OJH_subscribe, stack_object_subscribe);
+         jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
+
+         glJump[Def->Class] = std::move(jmp);
+         Def->Jump = &glJump[Def->Class];
+      }
+   }
+   return Def->Jump;
 }
 
 //********************************************************************************************************************
@@ -187,18 +280,9 @@ static int object_new(lua_State *Lua)
          }
       }
 
-      object->ObjectPtr = obj;
+      object->ObjectPtr = obj; // Defining ObjectPtr ensures maximum efficiency in access_object()
       object->UID       = obj->UID;
       object->Class     = obj->Class;
-
-      // In theory, objects created with obj.new() can be permanently locked because they belong to the
-      // script.  This prevents them from being deleted prior to garbage collection and use of FreeResource() will not
-      // subvert Fluid's reference based locks.  If necessary, a permanent release of the lock can be achieved with
-      // a call to detach() at any time by the client program.
-
-      object->AccessCount = 0;
-      object->Locked      = false;
-
       return 1;
    }
    else {
@@ -338,14 +422,10 @@ static int object_newchild(lua_State *Lua)
          }
       }
 
-      // Objects created as children are treated as detached.
-
-      def->ObjectPtr   = NULL;
-      def->AccessCount = 0;
-      def->Locked      = false;
-      def->Detached    = true;
-      def->UID    = obj->UID;
-      def->Class       = obj->Class;
+      def->ObjectPtr = NULL; // Objects created as children are treated as detached.
+      def->Detached  = true;
+      def->UID       = obj->UID;
+      def->Class     = obj->Class;
       return 1;
    }
    else {
@@ -360,18 +440,15 @@ static int object_newchild(lua_State *Lua)
 
 struct object * push_object(lua_State *Lua, OBJECTPTR Object)
 {
-   struct object *newobject;
-   if ((newobject = (struct object *)lua_newuserdata(Lua, sizeof(struct object)))) {
+   if (auto newobject = (struct object *)lua_newuserdata(Lua, sizeof(struct object))) {
       ClearMemory(newobject, sizeof(struct object));
 
       auto_load_include(Lua, Object->Class);
 
-      newobject->ObjectPtr   = NULL;
-      newobject->UID    = Object->UID;
-      newobject->Class       = Object->Class;
-      newobject->Detached    = true; // The object is not linked to this Lua value (i.e. do not free or garbage collect it).
-      newobject->Locked      = false;
-      newobject->AccessCount = 0;
+      newobject->ObjectPtr = NULL;
+      newobject->UID       = Object->UID;
+      newobject->Class     = Object->Class;
+      newobject->Detached  = true; // Object is not linked to this Lua value.
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -426,11 +503,9 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
    lua_setmetatable(Lua, -2); // -1 stack
 
    object->ObjectPtr   = NULL;
-   object->UID    = obj->UID;
+   object->UID         = obj->UID;
    object->Class       = obj->Class;
    object->Detached    = true;
-   object->Locked      = false;
-   object->AccessCount = 0;
    return 1;
 }
 
@@ -503,12 +578,10 @@ static int object_class(lua_State *Lua)
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
-   def->ObjectPtr   = cl;
-   def->UID    = cl->UID;
-   def->Class       = cl;
-   def->Detached    = true;
-   def->Locked      = false;
-   def->AccessCount = 0;
+   def->ObjectPtr = cl;
+   def->UID       = cl->UID;
+   def->Class     = cl;
+   def->Detached  = true;
    return 1;
 }
 
@@ -873,70 +946,18 @@ static int object_tostring(lua_State *Lua)
 static int object_index(lua_State *Lua)
 {
    if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
-      if (auto code = luaL_checkstring(Lua, 2)) {
-         pf::Log log;
-         log.trace("obj.index(#%d, %s)", def->UID, code);
+      auto code = luaL_checkstring(Lua, 2);
+      auto key  = object_jump(StrHash(code, true)); // Case sensitive for speed & reduced chance of collisions
+      auto jt   = get_jump_table(def);
 
-         if ((code[0] IS 'a') and (code[1] IS 'c') and (code[2] >= 'A') and (code[2] <= 'Z')) {
-            if (auto it = glActionLookup.find(code + 2); it != glActionLookup.end()) {
-               lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
-               lua_pushinteger(Lua, it->second); // Arg2: Action ID
-               lua_pushcclosure(Lua, object_call, 2);
-               return 1;
-            }
-
-            luaL_error(Lua, "Action '%s' not recognised.", code+2);
-            return 0;
-         }
-         else if ((code[0] IS 'm') and (code[1] IS 't') and (code[2] >= 'A') and (code[2] <= 'Z')) {
-            // Method
-
-            MethodEntry *table;
-            LONG total_methods;
-            if ((!GetFieldArray(def->Class, FID_Methods, &table, &total_methods)) and (table)) {
-               for (LONG i=1; i < total_methods; i++) { // TODO: Sorted hash IDs and a binary search would be best
-                  if (!StrMatch(table[i].Name, code+2)) {
-                     lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
-                     lua_pushinteger(Lua, table[i].MethodID); // Arg2: Method ID
-                     lua_pushlightuserdata(Lua, table + i); // Arg3: Method lookup table
-                     lua_pushcclosure(Lua, object_call, 3); // Push a c closure with 3 input values on the stack
-                     return 1;
-                  }
-               }
-               luaL_error(Lua, "Class %s does not support requested method %s()", def->Class->ClassName, code+2);
-            }
-            else luaL_error(Lua, "No methods defined by class %s, cannot call %s()", def->Class->ClassName, code+2);
-         }
-         else {
-            switch (StrHash(code, 0)) {
-               case HASH_INIT:        SET_CONTEXT(Lua, (APTR)object_init); return 1;
-               case HASH_FREE:        SET_CONTEXT(Lua, (APTR)object_free); return 1;
-               case HASH_LOCK:        SET_CONTEXT(Lua, (APTR)object_lock); return 1;
-               case HASH_CHILDREN:    SET_CONTEXT(Lua, (APTR)object_children); return 1;
-               case HASH_DETACH:      SET_CONTEXT(Lua, (APTR)object_detach); return 1;
-               case HASH_GET:         SET_CONTEXT(Lua, (APTR)object_get); return 1;
-               case HASH_NEW:         SET_CONTEXT(Lua, (APTR)object_newchild); return 1;
-               case HASH_STATE:       SET_CONTEXT(Lua, (APTR)object_state); return 1;
-               case HASH_VAR:
-               case HASH_GETVAR:      SET_CONTEXT(Lua, (APTR)object_getvar); return 1;
-               case HASH_SET:         SET_CONTEXT(Lua, (APTR)object_set); return 1;
-               case HASH_SETVAR:      SET_CONTEXT(Lua, (APTR)object_setvar); return 1;
-               case HASH_DELAYCALL:   SET_CONTEXT(Lua, (APTR)object_delaycall); return 1;
-               case HASH_EXISTS:      SET_CONTEXT(Lua, (APTR)object_exists); return 1;
-               case HASH_SUBSCRIBE:   SET_CONTEXT(Lua, (APTR)object_subscribe); return 1;
-               case HASH_UNSUBSCRIBE: SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1;
-               default: {
-                  // Default to retrieving the field name.  It's a good solution given the aforementioned string checks,
-                  // so long as there are no fields named 'access' or 'release' and the user doesn't write field names
-                  // with odd caps.
-
-                  auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-                  prv->CaughtError = getfield(Lua, def, code);
-                  if (!prv->CaughtError) return 1;
-                  //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
-               }
-            }
-         }
+      if (auto func = jt->find(key); func != jt->end()) {
+         return func->Call(Lua, *func);
+      }
+      else { // Default to retrieving the field name.
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         prv->CaughtError = getfield(Lua, def, code);
+         if (!prv->CaughtError) return 1;
+         //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
       }
    }
 
@@ -1055,4 +1076,21 @@ void register_object_class(lua_State *Lua)
 
    luaL_openlib(Lua, NULL, objectlib_methods, 0);
    luaL_openlib(Lua, "obj", objectlib_functions, 0);
+
+   OJH_init        = object_jump::hash("init");
+   OJH_free        = object_jump::hash("free");
+   OJH_lock        = object_jump::hash("lock");
+   OJH_children    = object_jump::hash("children");
+   OJH_detach      = object_jump::hash("detach");
+   OJH_get         = object_jump::hash("get");
+   OJH_new         = object_jump::hash("new");
+   OJH_state       = object_jump::hash("state");
+   OJH_var         = object_jump::hash("var");
+   OJH_getVar      = object_jump::hash("getVar");
+   OJH_set         = object_jump::hash("set");
+   OJH_setVar      = object_jump::hash("setVar");
+   OJH_delayCall   = object_jump::hash("delayCall");
+   OJH_exists      = object_jump::hash("exists");
+   OJH_subscribe   = object_jump::hash("subscribe");
+   OJH_unsubscribe = object_jump::hash("unsubscribe");
 }
