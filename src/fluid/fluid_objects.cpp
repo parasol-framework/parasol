@@ -33,6 +33,8 @@ extern "C" {
 static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_var, OJH_getVar;
 static ULONG OJH_set, OJH_setVar, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
 
+static int object_action_call_args(lua_State *);
+static int object_method_call_args(lua_State *);
 static int object_action_call(lua_State *);
 static int object_method_call(lua_State *);
 static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
@@ -89,7 +91,10 @@ static int obj_jump_method(lua_State *Lua, const object_jump &Handle)
 {
    lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
    lua_pushlightuserdata(Lua, Handle.Data); // Arg2: Method lookup table
-   lua_pushcclosure(Lua, object_method_call, 2); // Push a c closure with 2 input values on the stack
+   if ((((MethodEntry *)Handle.Data)->Args) and (((MethodEntry *)Handle.Data)->Size)) {
+      lua_pushcclosure(Lua, object_method_call_args, 2); // Push a c closure with 2 input values on the stack
+   }
+   else lua_pushcclosure(Lua, object_method_call, 2);
    return 1;
 }
 

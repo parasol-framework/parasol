@@ -2,51 +2,39 @@
 //********************************************************************************************************************
 // Lua C closure executed via calls to obj.acName()
 
-static int object_action_call(lua_State *Lua)
+static int object_action_call_args(lua_State *Lua)
 {
    auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
-   ERROR error = ERR_Okay;
-   LONG results = 1;
    bool release = false;
-   if ((glActions[action_id].Args) and (glActions[action_id].Size)) {
-      BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
 
-      LONG resultcount;
-      if ((error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, &resultcount))) {
-         luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
-         return 0;
-      }
+   BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
+   ERROR error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, NULL);
+   if (error) {
+      luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
+      return 0;
+   }
 
-      if (object->DelayCall) error = QueueAction(action_id, object->UID, argbuffer);
-      else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer);
+   LONG results = 1;
+   if (object->DelayCall) {
+      object->DelayCall = false;
+      error = QueueAction(action_id, object->UID, argbuffer);
+      lua_pushinteger(Lua, error);
+   }
+   else {
+      if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer);
       else if (auto obj = access_object(object)) {
          error = Action(action_id, obj, argbuffer);
          release = true;
       }
       else error = ERR_AccessObject;
 
-      lua_pushinteger(Lua, error);
-
       // NB: Even if an error is returned, always get the results (any results parameters are nullified prior to
       // function entry and the action can return results legitimately even if an error code is returned - e.g.
       // quite common when returning ERR_Terminate).
 
-      if (!object->DelayCall) results += get_results(Lua, glActions[action_id].Args, argbuffer);
-      else object->DelayCall = false;
-   }
-   else {
-      if (object->DelayCall) {
-         object->DelayCall = false;
-         error = QueueAction(action_id, object->UID);
-      }
-      else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
-      else if (auto obj = access_object(object)) {
-         error = Action(action_id, obj, NULL);
-         release = true;
-      }
-
       lua_pushinteger(Lua, error);
+      results += get_results(Lua, glActions[action_id].Args, argbuffer);
    }
 
    if (release) release_object(object);
@@ -54,28 +42,57 @@ static int object_action_call(lua_State *Lua)
    return results;
 }
 
+// This variant is for actions that take no parameters.
+
+static int object_action_call(lua_State *Lua)
+{
+   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
+   ERROR error;
+   bool release = false;
+
+   if (object->DelayCall) {
+      object->DelayCall = false;
+      error = QueueAction(action_id, object->UID);
+   }
+   else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
+   else if (auto obj = access_object(object)) {
+      error = Action(action_id, obj, NULL);
+      release = true;
+   }
+
+   lua_pushinteger(Lua, error);
+
+   if (release) release_object(object);
+   report_action_error(Lua, object, glActions[action_id].Name, error);
+   return 1;
+}
+
 //********************************************************************************************************************
 // Lua C closure executed via calls to obj.mtName()
 
-static int object_method_call(lua_State *Lua)
+static int object_method_call_args(lua_State *Lua)
 {
    auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
-   ERROR error = ERR_Okay;
-   LONG results = 1;
-   bool release = false;
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   if ((method->Args) and (method->Size)) {
-      BYTE argbuffer[method->Size+8]; // +8 for overflow protection in build_args()
+   BYTE argbuffer[method->Size+8]; // +8 for overflow protection in build_args()
+   LONG resultcount;
+   ERROR error = build_args(Lua, method->Args, method->Size, argbuffer, &resultcount);
+   if (error) {
+      luaL_error(Lua, "Argument build failure for method %s.", method->Name);
+      return 0;
+   }
 
-      LONG resultcount;
-      if ((error = build_args(Lua, method->Args, method->Size, argbuffer, &resultcount))) {
-         luaL_error(Lua, "Argument build failure for method %s.", method->Name);
-         return 0;
-      }
-
-      if (object->DelayCall) error = QueueAction(method->MethodID, object->UID, (APTR)&argbuffer);
-      else if (object->ObjectPtr) error = Action(method->MethodID, object->ObjectPtr, &argbuffer);
+   LONG results = 1;
+   bool release = false;
+   if (object->DelayCall) {
+      object->DelayCall = false;
+      error = QueueAction(method->MethodID, object->UID, (APTR)&argbuffer);
+      lua_pushinteger(Lua, error);
+   }
+   else {
+      if (object->ObjectPtr) error = Action(method->MethodID, object->ObjectPtr, &argbuffer);
       else if (auto obj = access_object(object)) {
          error = Action(method->MethodID, obj, argbuffer);
          release = true;
@@ -85,22 +102,38 @@ static int object_method_call(lua_State *Lua)
       lua_pushinteger(Lua, error);
 
       if (!object->DelayCall) results += get_results(Lua, method->Args, (const BYTE *)argbuffer);
-      else object->DelayCall = false;
-   }
-   else {
-      if (object->DelayCall) {
-         object->DelayCall = false;
-         error = QueueAction(method->MethodID, object->UID);
-      }
-      else if (object->ObjectPtr) error = Action(method->MethodID, object->ObjectPtr, NULL);
-      else error = ActionMsg(method->MethodID, object->UID, NULL);
-
-      lua_pushinteger(Lua, error);
    }
 
    if (release) release_object(object);
    report_action_error(Lua, object, method->Name, error);
    return results;
+}
+
+// This variant is for methods that take no parameters.
+
+static int object_method_call(lua_State *Lua)
+{
+   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   ERROR error;
+   bool release = false;
+   auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
+
+   if (object->DelayCall) {
+      object->DelayCall = false;
+      error = QueueAction(method->MethodID, object->UID);
+   }
+   else if (object->ObjectPtr) error = Action(method->MethodID, object->ObjectPtr, NULL);
+   else if (auto obj = access_object(object)) {
+      error = Action(method->MethodID, obj, NULL);
+      release = true;
+   }
+   else error = ERR_AccessObject;
+
+   lua_pushinteger(Lua, error);
+
+   if (release) release_object(object);
+   report_action_error(Lua, object, method->Name, error);
+   return 1;
 }
 
 //********************************************************************************************************************
