@@ -60,6 +60,7 @@ static int object_action_call(lua_State *Lua)
       error = Action(action_id, obj, NULL);
       release = true;
    }
+   else error = ERR_AccessObject;
 
    lua_pushinteger(Lua, error);
 

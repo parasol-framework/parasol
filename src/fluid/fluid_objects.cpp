@@ -38,7 +38,7 @@ static int object_method_call_args(lua_State *);
 static int object_action_call(lua_State *);
 static int object_method_call(lua_State *);
 static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
-static int getfield(lua_State *, struct object *, CSTRING, ULONG = 0);
+static int getfield(lua_State *, object *, CSTRING, ULONG = 0);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
 static int object_children(lua_State *);
@@ -242,8 +242,8 @@ static int object_new(lua_State *Lua)
 
       auto_load_include(Lua, obj->Class);
 
-      auto object = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-      ClearMemory(object, sizeof(struct object));
+      auto def = (object *)lua_newuserdata(Lua, sizeof(object));
+      ClearMemory(def, sizeof(object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -284,9 +284,9 @@ static int object_new(lua_State *Lua)
          }
       }
 
-      object->ObjectPtr = obj; // Defining ObjectPtr ensures maximum efficiency in access_object()
-      object->UID       = obj->UID;
-      object->Class     = obj->Class;
+      def->ObjectPtr = obj; // Defining ObjectPtr ensures maximum efficiency in access_object()
+      def->UID       = obj->UID;
+      def->Class     = obj->Class;
       return 1;
    }
    else {
@@ -304,8 +304,8 @@ static int object_new(lua_State *Lua)
 
 static int object_state(lua_State *Lua)
 {
-   struct object *object;
-   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   object *def;
+   if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -316,7 +316,7 @@ static int object_state(lua_State *Lua)
    // collection cycles.
 
    pf::Log log(__FUNCTION__);
-   auto it = prv->StateMap.find(object->UID);
+   auto it = prv->StateMap.find(def->UID);
    if (it != prv->StateMap.end()) {
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, it->second);
       return 1;
@@ -324,7 +324,7 @@ static int object_state(lua_State *Lua)
    else {
       lua_createtable(Lua, 0, 0); // Create a new table on the stack.
       auto state_ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      prv->StateMap[object->UID] = state_ref;
+      prv->StateMap[def->UID] = state_ref;
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, state_ref);
       return 1;
    }
@@ -337,9 +337,9 @@ static int object_state(lua_State *Lua)
 static int object_newchild(lua_State *Lua)
 {
    pf::Log log("obj.child");
-   struct object *parent;
+   object *parent;
 
-   if (!(parent = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(parent = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -379,8 +379,8 @@ static int object_newchild(lua_State *Lua)
 
       auto_load_include(Lua, obj->Class);
 
-      auto def = (struct object *)lua_newuserdata(Lua, sizeof(struct object));
-      ClearMemory(def, sizeof(struct object));
+      auto def = (object *)lua_newuserdata(Lua, sizeof(object));
+      ClearMemory(def, sizeof(object));
 
       luaL_getmetatable(Lua, "Fluid.obj");
       lua_setmetatable(Lua, -2);
@@ -442,10 +442,10 @@ static int object_newchild(lua_State *Lua)
 //********************************************************************************************************************
 // Throws exceptions.  Used for returning objects to the user.
 
-struct object * push_object(lua_State *Lua, OBJECTPTR Object)
+object * push_object(lua_State *Lua, OBJECTPTR Object)
 {
-   if (auto newobject = (struct object *)lua_newuserdata(Lua, sizeof(struct object))) {
-      ClearMemory(newobject, sizeof(struct object));
+   if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
+      ClearMemory(newobject, sizeof(object));
 
       auto_load_include(Lua, Object->Class);
 
@@ -469,8 +469,8 @@ ERROR push_object_id(lua_State *Lua, OBJECTID ObjectID)
 {
    if (!ObjectID) { lua_pushnil(Lua); return ERR_Okay; }
 
-   if (auto newobject = (struct object *)lua_newuserdata(Lua, sizeof(struct object))) {
-      ClearMemory(newobject, sizeof(struct object));
+   if (auto newobject = (object *)lua_newuserdata(Lua, sizeof(object))) {
+      ClearMemory(newobject, sizeof(object));
 
       if (auto object = GetObjectPtr(ObjectID)) {
          newobject->UID = ObjectID;
@@ -501,15 +501,15 @@ static int object_find_ptr(lua_State *Lua, OBJECTPTR obj)
 
    auto_load_include(Lua, obj->Class);
 
-   struct object *object = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
-   ClearMemory(object, sizeof(struct object));
+   auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
+   ClearMemory(def, sizeof(object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
-   object->ObjectPtr   = NULL;
-   object->UID         = obj->UID;
-   object->Class       = obj->Class;
-   object->Detached    = true;
+   def->ObjectPtr   = NULL;
+   def->UID         = obj->UID;
+   def->Class       = obj->Class;
+   def->Detached    = true;
    return 1;
 }
 
@@ -570,15 +570,15 @@ static int object_find(lua_State *Lua)
 
 static int object_class(lua_State *Lua)
 {
-   struct object *query;
-   if (!(query = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
+   object *query;
+   if (!(query = (object *)get_meta(Lua, 1, "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
 
    objMetaClass *cl = query->Class;
-   auto def = (struct object *)lua_newuserdata(Lua, sizeof(struct object)); // +1 stack
-   ClearMemory(def, sizeof(struct object));
+   auto def = (object *)lua_newuserdata(Lua, sizeof(object)); // +1 stack
+   ClearMemory(def, sizeof(object));
    luaL_getmetatable(Lua, "Fluid.obj"); // +1 stack
    lua_setmetatable(Lua, -2); // -1 stack
 
@@ -601,8 +601,8 @@ static int object_children(lua_State *Lua)
 
    log.trace("");
 
-   struct object *object;
-   if (!(object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   object *def;
+   if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -615,7 +615,7 @@ static int object_children(lua_State *Lua)
    else class_id = 0;
 
    pf::vector<ChildEntry> list;
-   if (!ListChildren(object->UID, &list)) {
+   if (!ListChildren(def->UID, &list)) {
       LONG index = 0;
       LONG id[list.size()];
       for (auto &rec : list) {
@@ -642,9 +642,9 @@ static int object_children(lua_State *Lua)
 
 static int object_lock(lua_State *Lua)
 {
-   struct object *def;
+   object *def;
 
-   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -671,9 +671,9 @@ static int object_lock(lua_State *Lua)
 
 static int object_detach(lua_State *Lua)
 {
-   struct object *def;
+   object *def;
 
-   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_argerror(Lua, 1, "Expected object.");
       return 0;
    }
@@ -694,7 +694,7 @@ static int object_detach(lua_State *Lua)
 
 static int object_exists(lua_State *Lua)
 {
-   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
+   if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       if (access_object(def)) {
          release_object(def);
          lua_pushboolean(Lua, true);
@@ -715,9 +715,9 @@ static int object_exists(lua_State *Lua)
 
 static int object_subscribe(lua_State *Lua)
 {
-   struct object *def;
+   object *def;
 
-   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_error(Lua, "Expected object.");
       return 0;
    }
@@ -802,8 +802,8 @@ static int object_unsubscribe(lua_State *Lua)
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   struct object *def;
-   if (!(def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
+   object *def;
+   if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
       luaL_error(Lua, "Expected object.");
       return 0;
    }
@@ -862,7 +862,7 @@ static int object_unsubscribe(lua_State *Lua)
 
 static int object_delaycall(lua_State *Lua)
 {
-   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) def->DelayCall = true;
+   if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) def->DelayCall = true;
    else luaL_argerror(Lua, 1, "Expected object.");
    return 0;
 }
@@ -876,7 +876,7 @@ static int object_delaycall(lua_State *Lua)
 
 static int object_destruct(lua_State *Lua)
 {
-   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       while (def->AccessCount > 0) release_object(def);
 
       if (!def->Detached) {
@@ -901,9 +901,9 @@ static int object_destruct(lua_State *Lua)
 
 static int object_free(lua_State *Lua)
 {
-   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
+   if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       FreeResource(def->UID);
-      ClearMemory(def, sizeof(struct object)); // Mark the object as unusable
+      ClearMemory(def, sizeof(object)); // Mark the object as unusable
    }
 
    return 0;
@@ -913,7 +913,7 @@ static int object_free(lua_State *Lua)
 
 static int object_init(lua_State *Lua)
 {
-   if (auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
+   if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       if (auto obj = access_object(def)) {
          lua_pushinteger(Lua, InitObject(obj));
          release_object(def);
@@ -935,7 +935,7 @@ static int object_init(lua_State *Lua)
 
 static int object_tostring(lua_State *Lua)
 {
-   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       pf::Log log("obj.tostring");
       log.trace("#%d", def->UID);
       lua_pushfstring(Lua, "#%d", def->UID);
@@ -949,7 +949,7 @@ static int object_tostring(lua_State *Lua)
 
 static int object_index(lua_State *Lua)
 {
-   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       auto code = luaL_checkstring(Lua, 2);
       auto key  = object_jump(StrHash(code, true)); // Case sensitive for speed & reduced chance of collisions
       auto jt   = get_jump_table(def);
@@ -991,7 +991,7 @@ static int object_next_pair(lua_State *Lua)
 
 static int object_pairs(lua_State *Lua)
 {
-   if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       FieldArray *fields;
       LONG total;
       if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {
@@ -1026,8 +1026,7 @@ static int object_next_ipair(lua_State *Lua)
 
 static int object_ipairs(lua_State *Lua)
 {
-   struct object *def;
-   if ((def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) {
+   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       FieldArray *fields;
       LONG total;
       if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {
@@ -1050,14 +1049,14 @@ static int object_ipairs(lua_State *Lua)
 //********************************************************************************************************************
 // Register the object interface.
 
-static const struct luaL_Reg objectlib_functions[] = {
+static const luaL_Reg objectlib_functions[] = {
    { "new",  object_new },
    { "find", object_find },
    { "class", object_class },
    { NULL, NULL}
 };
 
-static const struct luaL_Reg objectlib_methods[] = {
+static const luaL_Reg objectlib_methods[] = {
    { "__index",    object_index },
    { "__newindex", object_newindex },
    { "__tostring", object_tostring },
