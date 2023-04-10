@@ -88,9 +88,8 @@ static int stack_object_unsubscribe(lua_State *Lua, const object_jump &Handle) {
 static int obj_jump_method(lua_State *Lua, const object_jump &Handle)
 {
    lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
-   lua_pushinteger(Lua, ((MethodEntry *)Handle.Data)->MethodID); // Arg2: Method ID
-   lua_pushlightuserdata(Lua, Handle.Data); // Arg3: Method lookup table
-   lua_pushcclosure(Lua, object_method_call, 3); // Push a c closure with 3 input values on the stack
+   lua_pushlightuserdata(Lua, Handle.Data); // Arg2: Method lookup table
+   lua_pushcclosure(Lua, object_method_call, 2); // Push a c closure with 2 input values on the stack
    return 1;
 }
 
