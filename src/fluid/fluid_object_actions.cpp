@@ -1,13 +1,13 @@
 // Action jump table implementation.  Actions will call the generic object_action_call() unless they have a direct
 // implementation written for them.
 
-inline void report_action_error(lua_State *Lua, struct object *Object, ERROR Error)
+inline void report_action_error(lua_State *Lua, struct object *Object, CSTRING Action, ERROR Error)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if ((Error >= ERR_ExceptionThreshold) and (prv->Catch)) {
       char msg[180];
       prv->CaughtError = Error;
-      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, "Activate", GetErrorMsg(Error));
+      snprintf(msg, sizeof(msg), "%s.%s() failed: %s", Object->Class->ClassName, Action, GetErrorMsg(Error));
       luaL_error(prv->Lua, msg);
    }
 }
@@ -32,7 +32,7 @@ static int action_activate(lua_State *Lua)
 
    lua_pushinteger(Lua, error);
    if (release) release_object(object);
-   report_action_error(Lua, object, error);
+   report_action_error(Lua, object, "Activate", error);
    return 1;
 }
 
@@ -61,7 +61,7 @@ static int action_draw(lua_State *Lua)
 
    lua_pushinteger(Lua, error);
    if (release) release_object(object);
-   report_action_error(Lua, object, error);
+   report_action_error(Lua, object, "Draw", error);
    return 1;
 }
 

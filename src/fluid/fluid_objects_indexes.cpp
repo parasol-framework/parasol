@@ -16,7 +16,6 @@ static int object_newindex(lua_State *Lua)
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }
-            return 0;
          }
       }
    }
@@ -146,8 +145,7 @@ static int object_setvar(lua_State *Lua)
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
       CSTRING value = luaL_optstring(Lua, 2, NULL);
 
-      OBJECTPTR obj;
-      if ((obj = access_object(object))) {
+      if (auto obj = access_object(object)) {
          ERROR error = acSetVar(obj, fieldname, value);
          release_object(object);
          lua_pushinteger(Lua, error);
