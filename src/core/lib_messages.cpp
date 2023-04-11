@@ -521,7 +521,12 @@ timer_cycle:
 
          tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES_CURRENTMSG)
 
-         if ((msg->Type IS MSGID_BREAK) and (tlMsgRecursion > 1)) breaking = true; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
+         if (msg->Type IS MSGID_BREAK) {
+            // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
+            // call made by the client application.
+            if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
+            else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
+         }
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
