@@ -1,22 +1,19 @@
-#ifndef MODULES_FLUID
-#define MODULES_FLUID 1
+#pragma once
 
 // Name:      fluid.h
-// Copyright: Paul Manias © 2006-2022
+// Copyright: Paul Manias © 2006-2023
 // Generator: idl-c
 
-#ifndef MAIN_H
 #include <parasol/main.h>
-#endif
 
 #define MODVERSION_FLUID (1)
 
+extern struct FluidBase *FluidBase;
 struct FluidBase {
-   ERROR (*_SetVariable)(APTR, CSTRING, LONG, ...);
+   ERROR (*_SetVariable)(OBJECTPTR Script, CSTRING Name, LONG Type, ...);
 };
 
 #ifndef PRV_FLUID_MODULE
-#define flSetVariable(...) (FluidBase->_SetVariable)(__VA_ARGS__)
+template<class... Args> ERROR flSetVariable(OBJECTPTR Script, CSTRING Name, LONG Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
 #endif
 
-#endif

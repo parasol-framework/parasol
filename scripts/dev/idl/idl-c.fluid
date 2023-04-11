@@ -2118,7 +2118,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
-   if (#glOutput < 3) then
+   if (#glOutput < 1) then
       print("No output was generated for the destination file.")
       return
    end
