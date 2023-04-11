@@ -173,8 +173,6 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName, ULON
 {
    pf::Log log("obj.get");
 
-   log.traceBranch("#%d, Field: %s", object->UID, FName);
-
    OBJECTPTR obj;
    if (!(obj = access_object(object))) return log.warning(ERR_AccessObject);
 
@@ -242,9 +240,9 @@ static ERROR getfield(lua_State *Lua, struct object *object, CSTRING FName, ULON
       }
       else if (field->Flags & FD_POINTER) {
          if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) {
-            OBJECTPTR obj;
-            if (!(error = target->getPtr(field->FieldID, &obj))) {
-               if (obj) push_object(Lua, obj);
+            OBJECTPTR objval;
+            if (!(error = target->getPtr(field->FieldID, &objval))) {
+               if (objval) push_object(Lua, objval);
                else lua_pushnil(Lua);
             }
          }
@@ -305,9 +303,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
    if (FName[0] IS '_') return acSetVar(obj, FName+1, lua_tostring(Lua, ValueIndex));
 
    OBJECTPTR target;
-   if (auto field = FindField(obj, StrHash(FName, FALSE), &target)) {
-      log.traceBranch("Field: %s, Flags: $%.8x, (set value: %s)", FName, field->Flags, lua_typename(Lua, type));
-
+   if (auto field = FindField(obj, StrHash(FName), &target)) {
       if (field->Flags & FD_ARRAY) {
          struct array *farray;
 
@@ -511,4 +507,114 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       else return ERR_UnsupportedField;
    }
    else return ERR_UnsupportedField;
+}
+
+//********************************************************************************************************************
+// Support for direct field indexing.  This is utilised if a field reference is easily resolved to a hash; if this is
+// not possible then object_index() will revert to using getfield().
+
+static int object_field_call(lua_State *Lua, const object_jump &Handle)
+{
+   auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj");
+   auto field = (Field *)(Handle.Data);
+
+   OBJECTPTR obj = access_object(def);
+   if (!obj) return 0;
+
+   ERROR error;
+   if (field->Flags & FD_ARRAY) {
+      if (field->Flags & FD_RGB) {
+         STRING rgb;
+         if ((!(error = obj->get(field->FieldID, &rgb))) and (rgb)) {
+            lua_pushstring(Lua, rgb);
+         }
+      }
+      else {
+         LONG total;
+         APTR list;
+         if (!(error = GetFieldArray(obj, field->FieldID, &list, &total))) {
+            if (total <= 0) {
+               lua_pushnil(Lua);
+            }
+            else if (field->Flags & FD_STRING) {
+               make_table(Lua, FD_STRING, total, list);
+            }
+            else if (field->Flags & (FD_LONG|FD_LARGE|FD_FLOAT|FD_DOUBLE|FD_POINTER|FD_BYTE|FD_WORD|FD_STRUCT)) {
+               make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, list);
+            }
+            else {
+               pf::Log log(__FUNCTION__);
+               log.warning("Invalid array type for '%s', flags: $%.8x", field->Name, field->Flags);
+               error = ERR_FieldTypeMismatch;
+            }
+         }
+      }
+   }
+   else if (field->Flags & FD_STRUCT) { // Structs are copied into standard Lua tables.
+      APTR result;
+      if (field->Arg) {
+         if (!(error = obj->getPtr(field->FieldID, &result))) {
+            if (result) {
+               if (field->Flags & FD_RESOURCE) {
+                   push_struct(Lua->Script, result, (CSTRING)field->Arg, (field->Flags & FD_ALLOC) ? TRUE : FALSE, TRUE);
+               }
+               else named_struct_to_table(Lua, (CSTRING)field->Arg, result);
+            }
+            else lua_pushnil(Lua);
+         }
+      }
+      else {
+         pf::Log log(__FUNCTION__);
+         log.warning("No struct name reference for field %s in class %s.", field->Name, obj->Class->ClassName);
+         error = ERR_Failed;
+      }
+   }
+   else if (field->Flags & FD_STRING) {
+      STRING result;
+      if (!(error = obj->get(field->FieldID, &result))) lua_pushstring(Lua, result);
+   }
+   else if (field->Flags & FD_POINTER) {
+      if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) {
+         OBJECTPTR objval;
+         if (!(error = obj->getPtr(field->FieldID, &objval))) {
+            if (objval) push_object(Lua, objval);
+            else lua_pushnil(Lua);
+         }
+      }
+      else {
+         APTR result;
+         if (!(error = obj->getPtr(field->FieldID, &result))) lua_pushlightuserdata(Lua, result);
+      }
+   }
+   else if (field->Flags & FD_DOUBLE) {
+      DOUBLE result;
+      if (!(error = obj->get(field->FieldID, &result))) lua_pushnumber(Lua, result);
+   }
+   else if (field->Flags & FD_LARGE) {
+      LARGE result;
+      if (!(error = obj->get(field->FieldID, &result))) lua_pushnumber(Lua, result);
+   }
+   else if (field->Flags & FD_LONG) {
+      if (field->Flags & FD_UNSIGNED) {
+         ULONG result;
+         if (!(error = obj->get(field->FieldID, (LONG *)&result))) {
+            lua_pushnumber(Lua, result);
+         }
+      }
+      else {
+         LONG result;
+         if (!(error = obj->get(field->FieldID, &result))) {
+            if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
+            else lua_pushinteger(Lua, result);
+         }
+      }
+   }
+   else error = ERR_NoSupport;
+
+   release_object(def);
+
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   prv->CaughtError = error;
+   if (!error) return 1;
+   else return 0;
 }

@@ -46,17 +46,17 @@ static int object_action_call_args(lua_State *Lua)
 
 static int object_action_call(lua_State *Lua)
 {
-   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
    ERROR error;
    bool release = false;
 
-   if (object->DelayCall) {
-      object->DelayCall = false;
-      error = QueueAction(action_id, object->UID);
+   if (def->DelayCall) {
+      def->DelayCall = false;
+      error = QueueAction(action_id, def->UID);
    }
-   else if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, NULL);
-   else if (auto obj = access_object(object)) {
+   else if (def->ObjectPtr) error = Action(action_id, def->ObjectPtr, NULL);
+   else if (auto obj = access_object(def)) {
       error = Action(action_id, obj, NULL);
       release = true;
    }
@@ -64,8 +64,8 @@ static int object_action_call(lua_State *Lua)
 
    lua_pushinteger(Lua, error);
 
-   if (release) release_object(object);
-   report_action_error(Lua, object, glActions[action_id].Name, error);
+   if (release) release_object(def);
+   report_action_error(Lua, def, glActions[action_id].Name, error);
    return 1;
 }
 
@@ -74,7 +74,7 @@ static int object_action_call(lua_State *Lua)
 
 static int object_method_call_args(lua_State *Lua)
 {
-   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
    BYTE argbuffer[method->Size+8]; // +8 for overflow protection in build_args()
@@ -87,14 +87,14 @@ static int object_method_call_args(lua_State *Lua)
 
    LONG results = 1;
    bool release = false;
-   if (object->DelayCall) {
-      object->DelayCall = false;
-      error = QueueAction(method->MethodID, object->UID, (APTR)&argbuffer);
+   if (def->DelayCall) {
+      def->DelayCall = false;
+      error = QueueAction(method->MethodID, def->UID, (APTR)&argbuffer);
       lua_pushinteger(Lua, error);
    }
    else {
-      if (object->ObjectPtr) error = Action(method->MethodID, object->ObjectPtr, &argbuffer);
-      else if (auto obj = access_object(object)) {
+      if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, &argbuffer);
+      else if (auto obj = access_object(def)) {
          error = Action(method->MethodID, obj, argbuffer);
          release = true;
       }
@@ -102,11 +102,11 @@ static int object_method_call_args(lua_State *Lua)
 
       lua_pushinteger(Lua, error);
 
-      if (!object->DelayCall) results += get_results(Lua, method->Args, (const BYTE *)argbuffer);
+      if (!def->DelayCall) results += get_results(Lua, method->Args, (const BYTE *)argbuffer);
    }
 
-   if (release) release_object(object);
-   report_action_error(Lua, object, method->Name, error);
+   if (release) release_object(def);
+   report_action_error(Lua, def, method->Name, error);
    return results;
 }
 
@@ -114,17 +114,17 @@ static int object_method_call_args(lua_State *Lua)
 
 static int object_method_call(lua_State *Lua)
 {
-   auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+   auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    ERROR error;
    bool release = false;
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   if (object->DelayCall) {
-      object->DelayCall = false;
-      error = QueueAction(method->MethodID, object->UID);
+   if (def->DelayCall) {
+      def->DelayCall = false;
+      error = QueueAction(method->MethodID, def->UID);
    }
-   else if (object->ObjectPtr) error = Action(method->MethodID, object->ObjectPtr, NULL);
-   else if (auto obj = access_object(object)) {
+   else if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, NULL);
+   else if (auto obj = access_object(def)) {
       error = Action(method->MethodID, obj, NULL);
       release = true;
    }
@@ -132,8 +132,8 @@ static int object_method_call(lua_State *Lua)
 
    lua_pushinteger(Lua, error);
 
-   if (release) release_object(object);
-   report_action_error(Lua, object, method->Name, error);
+   if (release) release_object(def);
+   report_action_error(Lua, def, method->Name, error);
    return 1;
 }
 

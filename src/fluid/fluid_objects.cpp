@@ -40,6 +40,7 @@ static int object_method_call(lua_State *);
 static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
 static int getfield(lua_State *, object *, CSTRING, ULONG = 0);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
+static int object_field_call(lua_State *, const object_jump &);
 
 static int object_children(lua_State *);
 static int object_delaycall(lua_State *);
@@ -124,6 +125,17 @@ inline JUMP_TABLE * get_jump_table(object *Def)
                   auto hash = object_jump::hash(methods[i].Name, object_jump::hash("mt"));
                   jmp.insert(object_jump(hash, obj_jump_method, &methods[i]));
                }
+            }
+         }
+
+         Field *dict;
+         LONG total_dict;
+         if (!GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict)) {
+            for (LONG i=0; i < total_dict; i++) {
+               char ch[2] = { dict[i].Name[0], 0 };
+               if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
+               hash = object_jump::hash(dict[i].Name+1, object_jump::hash(ch));
+               jmp.insert(object_jump(hash, object_field_call, &dict[i]));
             }
          }
 
