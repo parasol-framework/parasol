@@ -845,7 +845,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
          glProcessBreak = MSGID_BREAK;
 
-         ProcessMessages(0, -1);
+         ProcessMessages(0, Self->TimeOut * 1000.0);
 
          winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
          if (Self->ReturnCode != 259) Self->ReturnCodeSet = true;
