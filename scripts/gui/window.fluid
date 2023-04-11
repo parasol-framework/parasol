@@ -484,11 +484,11 @@ gui.window = function(Options)
       end
    end
 
-   if self.surface.popover != 0 then
+   if self.surface.popOver != 0 then
       -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
 
       local info = struct.new('SurfaceInfo')
-      if (mGfx.GetSurfaceInfo(self.surface.popover, info) == ERR_Okay) then
+      if (mGfx.GetSurfaceInfo(self.surface.popOver, info) == ERR_Okay) then
          if (bit.band(info.flags, RNF_STICK_TO_FRONT) != 0) then
             self.surface.flags = bit.bor(self.surface.flags, RNF_STICK_TO_FRONT)
          end
@@ -497,8 +497,8 @@ gui.window = function(Options)
 
    if Options.center then
       local x, y = (function()
-         if (self.surface.popover) then
-            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popover)
+         if (self.surface.popOver) then
+            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
             if (err == ERR_Okay) then
                x = x + ((powidth - self.surface.width) / 2)
                y = y + ((poheight - self.surface.height) / 2)

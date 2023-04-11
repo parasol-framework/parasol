@@ -246,11 +246,11 @@ struct module {
 //********************************************************************************************************************
 // object_jump is used to build efficient customised jump tables for object calls.
 
-typedef int JUMP(lua_State *, const struct object_jump &);
+typedef int JUMP(lua_State *, const struct object_jump &, struct object *);
 
 struct object_jump {
    ULONG Hash;
-   int (*Call)(lua_State *, const object_jump &);
+   int (*Call)(lua_State *, const object_jump &, struct object *);
    APTR Data;
 
    static ULONG hash(CSTRING String, ULONG Hash = 5381) {

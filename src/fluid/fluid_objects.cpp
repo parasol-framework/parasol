@@ -38,9 +38,7 @@ static int object_method_call_args(lua_State *);
 static int object_action_call(lua_State *);
 static int object_method_call(lua_State *);
 static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
-static int getfield(lua_State *, object *, CSTRING, ULONG = 0);
 static ERROR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
-static int object_field_call(lua_State *, const object_jump &);
 
 static int object_children(lua_State *);
 static int object_delaycall(lua_State *);
@@ -59,6 +57,18 @@ static int object_state(lua_State *);
 static int object_subscribe(lua_State *);
 static int object_unsubscribe(lua_State *);
 
+static int object_get_id(lua_State *, const object_jump &, object *);
+static int object_get_rgb(lua_State *, const object_jump &, object *);
+static int object_get_array(lua_State *, const object_jump &, object *);
+static int object_get_struct(lua_State *, const object_jump &, object *);
+static int object_get_string(lua_State *, const object_jump &, object *);
+static int object_get_object(lua_State *, const object_jump &, object *);
+static int object_get_ptr(lua_State *, const object_jump &, object *);
+static int object_get_double(lua_State *, const object_jump &, object *);
+static int object_get_large(lua_State *, const object_jump &, object *);
+static int object_get_ulong(lua_State *, const object_jump &, object *);
+static int object_get_long(lua_State *, const object_jump &, object *);
+
 //********************************************************************************************************************
 
 #include "fluid_object_actions.cpp"
@@ -70,25 +80,25 @@ inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
 }
 
-static int stack_object_children(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
-static int stack_object_delayCall(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
-static int stack_object_detach(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
-static int stack_object_exists(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
-static int stack_object_free(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
-static int stack_object_get(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
-static int stack_object_getVar(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_getvar); return 1; }
-static int stack_object_init(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
-static int stack_object_lock(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
-static int stack_object_newchild(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
-static int stack_object_set(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
-static int stack_object_setVar(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_setvar); return 1; }
-static int stack_object_state(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
-static int stack_object_subscribe(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
-static int stack_object_unsubscribe(lua_State *Lua, const object_jump &Handle) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
+static int stack_object_children(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
+static int stack_object_delayCall(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
+static int stack_object_detach(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
+static int stack_object_exists(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
+static int stack_object_free(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
+static int stack_object_get(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
+static int stack_object_getVar(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getvar); return 1; }
+static int stack_object_init(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
+static int stack_object_lock(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
+static int stack_object_newchild(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
+static int stack_object_set(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
+static int stack_object_setVar(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setvar); return 1; }
+static int stack_object_state(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
+static int stack_object_subscribe(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
+static int stack_object_unsubscribe(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
 
 //********************************************************************************************************************
 
-static int obj_jump_method(lua_State *Lua, const object_jump &Handle)
+static int obj_jump_method(lua_State *Lua, const object_jump &Handle, object *def)
 {
    lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
    lua_pushlightuserdata(Lua, Handle.Data); // Arg2: Method lookup table
@@ -131,11 +141,43 @@ inline JUMP_TABLE * get_jump_table(object *Def)
          Field *dict;
          LONG total_dict;
          if (!GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict)) {
+            jmp.insert(object_jump(object_jump::hash("id"), object_get_id));
+
             for (LONG i=0; i < total_dict; i++) {
                char ch[2] = { dict[i].Name[0], 0 };
                if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
-               hash = object_jump::hash(dict[i].Name+1, object_jump::hash(ch));
-               jmp.insert(object_jump(hash, object_field_call, &dict[i]));
+               auto hash = object_jump::hash(dict[i].Name+1, object_jump::hash(ch));
+
+               if (dict[i].Flags & FD_ARRAY) {
+                  if (dict[i].Flags & FD_RGB) {
+                     jmp.insert(object_jump(hash, object_get_rgb, &dict[i]));
+                  }
+                  else jmp.insert(object_jump(hash, object_get_array, &dict[i]));
+               }
+               else if (dict[i].Flags & FD_STRUCT) {
+                  jmp.insert(object_jump(hash, object_get_struct, &dict[i]));
+               }
+               else if (dict[i].Flags & FD_STRING) {
+                  jmp.insert(object_jump(hash, object_get_string, &dict[i]));
+               }
+               else if (dict[i].Flags & FD_POINTER) {
+                  if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) {
+                     jmp.insert(object_jump(hash, object_get_object, &dict[i]));
+                  }
+                  else jmp.insert(object_jump(hash, object_get_ptr, &dict[i]));
+               }
+               else if (dict[i].Flags & FD_DOUBLE) {
+                  jmp.insert(object_jump(hash, object_get_double, &dict[i]));
+               }
+               else if (dict[i].Flags & FD_LARGE) {
+                  jmp.insert(object_jump(hash, object_get_large, &dict[i]));
+               }
+               else if (dict[i].Flags & FD_LONG) {
+                  if (dict[i].Flags & FD_UNSIGNED) {
+                     jmp.insert(object_jump(hash, object_get_ulong, &dict[i]));
+                  }
+                  else jmp.insert(object_jump(hash, object_get_long, &dict[i]));
+               }
             }
          }
 
@@ -161,6 +203,31 @@ inline JUMP_TABLE * get_jump_table(object *Def)
       }
    }
    return Def->Jump;
+}
+
+//********************************************************************************************************************
+// Any Read accesses to the object will pass through here.  The requested key must exist in the hashed jump-table for
+// the targeted class, or an error will be returned.
+
+static int object_index(lua_State *Lua)
+{
+   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
+      auto keyname = luaL_checkstring(Lua, 2);
+      auto jt  = get_jump_table(def);
+
+      if (auto func = jt->find(object_jump(object_jump::hash(keyname))); func != jt->end()) {
+         return func->Call(Lua, *func, def);
+      }
+      else {
+         pf::Log log(__FUNCTION__);
+         log.warning("Unable to read %s.%s", def->Class->ClassName, keyname);
+         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+         prv->CaughtError = ERR_NoSupport;
+         //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
+      }
+   }
+
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -954,30 +1021,6 @@ static int object_tostring(lua_State *Lua)
    }
    else lua_pushstring(Lua, "?");
    return 1;
-}
-
-//********************************************************************************************************************
-// Any Read accesses to the object will pass through here.
-
-static int object_index(lua_State *Lua)
-{
-   if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
-      auto code = luaL_checkstring(Lua, 2);
-      auto key  = object_jump(StrHash(code, true)); // Case sensitive for speed & reduced chance of collisions
-      auto jt   = get_jump_table(def);
-
-      if (auto func = jt->find(key); func != jt->end()) {
-         return func->Call(Lua, *func);
-      }
-      else { // Default to retrieving the field name.
-         auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-         prv->CaughtError = getfield(Lua, def, code);
-         if (!prv->CaughtError) return 1;
-         //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);
-      }
-   }
-
-   return 0;
 }
 
 //********************************************************************************************************************
