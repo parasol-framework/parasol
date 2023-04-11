@@ -456,15 +456,15 @@ static int module_call(lua_State *Lua)
             }
          }
          else if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-            if (obj->prvObject) {
-               ((OBJECTPTR *)(buffer + j))[0] = obj->prvObject;
+            if (obj->ObjectPtr) {
+               ((OBJECTPTR *)(buffer + j))[0] = obj->ObjectPtr;
             }
             else if (auto ptr_obj = (OBJECTPTR)access_object(obj)) {
                ((OBJECTPTR *)(buffer + j))[0] = ptr_obj;
                release_object(obj);
             }
             else {
-               log.warning("Unable to resolve object pointer for #%d.", obj->ObjectID);
+               log.warning("Unable to resolve object pointer for #%d.", obj->UID);
                ((OBJECTPTR *)(buffer + j))[0] = NULL;
             }
 
@@ -482,7 +482,7 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_LONG) {
          if (argtype & FD_OBJECT) {
             if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-               ((LONG *)(buffer + j))[0] = obj->ObjectID;
+               ((LONG *)(buffer + j))[0] = obj->UID;
             }
             else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
          }
@@ -534,7 +534,7 @@ static int module_call(lua_State *Lua)
          ffi_call(&cif, (void (*)())function, &rc, arg_values);
          if ((OBJECTPTR)rc) {
             object *obj = push_object(Lua, (OBJECTPTR)rc);
-            if (restype & FD_ALLOC) obj->Detached = FALSE;
+            if (restype & FD_ALLOC) obj->Detached = false;
          }
          else lua_pushnil(Lua);
       }
@@ -688,7 +688,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   RMSG("Result-Arg: %s, Value: %p (Object)", argname, ((OBJECTPTR *)var)[0]);
                   if (((APTR *)var)[0]) {
                      object *obj = push_object(prv->Lua, ((OBJECTPTR *)var)[0]);
-                     if (argtype & FD_ALLOC) obj->Detached = FALSE;
+                     if (argtype & FD_ALLOC) obj->Detached = false;
                   }
                   else lua_pushnil(prv->Lua);
                }

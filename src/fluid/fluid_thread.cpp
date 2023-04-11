@@ -160,15 +160,15 @@ static int thread_action(lua_State *Lua)
       args = glActions[action_id].Args;
    }
 
-   log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->ObjectID, object->prvObject, action, action_id, key, argsize);
+   log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->UID, object->ObjectPtr, action, action_id, key, argsize);
 
    if (argsize > 0) {
       BYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
       LONG resultcount;
 
       if (!(error = build_args(Lua, args, argsize, argbuffer, &resultcount))) {
-         if (object->prvObject) {
-            error = ActionThread(action_id, object->prvObject, argbuffer, &callback, key);
+         if (object->ObjectPtr) {
+            error = ActionThread(action_id, object->ObjectPtr, argbuffer, &callback, key);
          }
          else {
             if (!resultcount) {
@@ -188,8 +188,8 @@ static int thread_action(lua_State *Lua)
    }
    else {
       // No parameters.
-      if (object->prvObject) {
-         error = ActionThread(action_id, object->prvObject, NULL, &callback, key);
+      if (object->ObjectPtr) {
+         error = ActionThread(action_id, object->ObjectPtr, NULL, &callback, key);
       }
       else if (auto obj = access_object(object)) {
          error = ActionThread(action_id, obj, NULL, &callback, key);
@@ -214,15 +214,10 @@ static int thread_method(lua_State *Lua)
 
    if (auto object = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       if (auto method = luaL_checkstring(Lua, 2)) {
-         objMetaClass *mc;
          MethodEntry *table;
          LONG total_methods, i;
 
-         if (!(mc = FindClass(object->ClassID))) {
-            luaL_error(Lua, "Failed to resolve class %d", object->ClassID);
-         }
-
-         if ((!GetFieldArray(mc, FID_Methods, &table, &total_methods)) and (table)) {
+         if ((!GetFieldArray(object->Class, FID_Methods, &table, &total_methods)) and (table)) {
             bool found = false;
             for (i=1; i < total_methods; i++) {
                if ((table[i].Name) and (!StrMatch(table[i].Name, method))) { found = true; break; }
@@ -232,7 +227,7 @@ static int thread_method(lua_State *Lua)
                // If an obj.new() lock is still present, detach it first because ActionThread() is going to attempt to
                // lock the object with LockObject() and a timeout error will occur otherwise.
 
-               const FunctionField *args = table[i].Args;
+               auto args = table[i].Args;
                LONG argsize = table[i].Size;
                LONG action_id = table[i].MethodID;
                ERROR error;
@@ -260,8 +255,8 @@ static int thread_method(lua_State *Lua)
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
                   if (!(error = build_args(Lua, args, argsize, argbuffer, &resultcount))) {
-                     if (object->prvObject) {
-                        error = ActionThread(action_id, object->prvObject, argbuffer, &callback, key);
+                     if (object->ObjectPtr) {
+                        error = ActionThread(action_id, object->ObjectPtr, argbuffer, &callback, key);
                      }
                      else {
                         if (!resultcount) {
@@ -281,8 +276,8 @@ static int thread_method(lua_State *Lua)
                }
                else {
                   // No parameters.
-                  if (object->prvObject) {
-                     error = ActionThread(action_id, object->prvObject, NULL, &callback, key);
+                  if (object->ObjectPtr) {
+                     error = ActionThread(action_id, object->ObjectPtr, NULL, &callback, key);
                   }
                   else if ((obj = access_object(object))) {
                      error = ActionThread(action_id, obj, NULL, &callback, key);
@@ -297,7 +292,7 @@ static int thread_method(lua_State *Lua)
             }
          }
 
-         luaL_error(Lua, "No '%s' method for class %s.", method, mc->ClassName);
+         luaL_error(Lua, "No '%s' method for class %s.", method, object->Class->ClassName);
          return 0;
       }
       else luaL_argerror(Lua, 2, "Action name required.");

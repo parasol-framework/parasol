@@ -59,7 +59,7 @@ function testFolderScan()
       else
          names = names .. ', "' .. nz(name,'NIL') .. '"'
       end
-      logOutput(nz(name,'NIL') .. ', Size: ' .. file.Size .. ', Date: ' .. date.year .. '/' .. date.month .. '/' .. date.day)
+      logOutput(nz(name,'NIL') .. ', Size: ' .. file.size .. ', Date: ' .. date.year .. '/' .. date.month .. '/' .. date.day)
       err, file = folder.mtNext()
    end
 

@@ -58,7 +58,7 @@ static int processing_new(lua_State *Lua)
                         while (lua_next(Lua, -2)) {
                            struct object *obj;
                            if ((obj = (struct object *)get_meta(Lua, -1, "Fluid.obj"))) {
-                              ObjectSignal sig = { .Object = obj->prvObject };
+                              ObjectSignal sig = { .Object = obj->ObjectPtr };
                               fp->Signals->push_back(sig);
                            }
                            else {
