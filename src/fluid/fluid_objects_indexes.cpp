@@ -2,7 +2,7 @@
 //********************************************************************************************************************
 // Usage: object.field = newvalue
 //
-// Custom fields can be referenced by using _ as the field name prefix.
+// Custom fields can be referenced by using _ as a prefix.
 
 static int object_newindex(lua_State *Lua)
 {
@@ -32,7 +32,7 @@ static int object_get(lua_State *Lua)
    pf::Log log("obj.get");
 
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
-      auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
+      auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
 
       auto obj = access_object(def);
       if (!obj) {
@@ -52,32 +52,32 @@ static int object_get(lua_State *Lua)
       else if (auto field = FindField(obj, StrHash(fieldname), &target)) {
          LONG result = 0;
          if (field->Flags & FD_ARRAY) {
-            if (field->Flags & FD_RGB) result = object_get_rgb(Lua, object_jump(0, NULL, field), def);
-            else result = object_get_array(Lua, object_jump(0, NULL, field), def);
+            if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, NULL, field), def);
+            else result = object_get_array(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_STRUCT) {
-            result = object_get_struct(Lua, object_jump(0, NULL, field), def);
+            result = object_get_struct(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_STRING) {
-            result = object_get_string(Lua, object_jump(0, NULL, field), def);
+            result = object_get_string(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_POINTER) {
             if (field->Flags & (FD_OBJECT|FD_INTEGRAL)) {
-               result = object_get_object(Lua, object_jump(0, NULL, field), def);
+               result = object_get_object(Lua, obj_read(0, NULL, field), def);
             }
-            else result = object_get_ptr(Lua, object_jump(0, NULL, field), def);
+            else result = object_get_ptr(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_DOUBLE) {
-            result = object_get_double(Lua, object_jump(0, NULL, field), def);
+            result = object_get_double(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_LARGE) {
-            result = object_get_large(Lua, object_jump(0, NULL, field), def);
+            result = object_get_large(Lua, obj_read(0, NULL, field), def);
          }
          else if (field->Flags & FD_LONG) {
             if (field->Flags & FD_UNSIGNED) {
-               result = object_get_ulong(Lua, object_jump(0, NULL, field), def);
+               result = object_get_ulong(Lua, obj_read(0, NULL, field), def);
             }
-            else result = object_get_long(Lua, object_jump(0, NULL, field), def);
+            else result = object_get_long(Lua, obj_read(0, NULL, field), def);
          }
 
          release_object(def);
@@ -394,13 +394,13 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 //********************************************************************************************************************
 // Support for direct field indexing.  These functions are utilised if a field reference is easily resolved to a hash.
 
-static int object_get_id(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_id(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    lua_pushnumber(Lua, Def->UID);
    return 1;
 }
 
-static int object_get_array(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -431,7 +431,7 @@ static int object_get_array(lua_State *Lua, const object_jump &Handle, object *D
    return error ? 0 : 1;
 }
 
-static int object_get_rgb(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_rgb(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -447,7 +447,7 @@ static int object_get_rgb(lua_State *Lua, const object_jump &Handle, object *Def
    return error ? 0 : 1;
 }
 
-static int object_get_struct(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_struct(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -478,7 +478,7 @@ static int object_get_struct(lua_State *Lua, const object_jump &Handle, object *
    return error ? 0 : 1;
 }
 
-static int object_get_string(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_string(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -494,7 +494,7 @@ static int object_get_string(lua_State *Lua, const object_jump &Handle, object *
    return error ? 0 : 1;
 }
 
-static int object_get_ptr(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_ptr(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -510,7 +510,7 @@ static int object_get_ptr(lua_State *Lua, const object_jump &Handle, object *Def
    return error ? 0 : 1;
 }
 
-static int object_get_object(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_object(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -529,7 +529,7 @@ static int object_get_object(lua_State *Lua, const object_jump &Handle, object *
    return error ? 0 : 1;
 }
 
-static int object_get_double(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -545,7 +545,7 @@ static int object_get_double(lua_State *Lua, const object_jump &Handle, object *
    return error ? 0 : 1;
 }
 
-static int object_get_large(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_large(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -561,7 +561,7 @@ static int object_get_large(lua_State *Lua, const object_jump &Handle, object *D
    return error ? 0 : 1;
 }
 
-static int object_get_long(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {
@@ -580,7 +580,7 @@ static int object_get_long(lua_State *Lua, const object_jump &Handle, object *De
    return error ? 0 : 1;
 }
 
-static int object_get_ulong(lua_State *Lua, const object_jump &Handle, object *Def)
+static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
 {
    ERROR error;
    if (auto obj = access_object(Def)) {

@@ -244,41 +244,42 @@ struct module {
 };
 
 //********************************************************************************************************************
-// object_jump is used to build efficient customised jump tables for object calls.
+// obj_read is used to build efficient customised jump tables for object calls.
 
-typedef int JUMP(lua_State *, const struct object_jump &, struct object *);
 
-struct object_jump {
+inline ULONG simple_hash(CSTRING String, ULONG Hash = 5381) {
+   while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
+   return Hash;
+}
+
+struct obj_read {
+   typedef int JUMP(lua_State *, const struct obj_read &, struct object *);
+
    ULONG Hash;
-   int (*Call)(lua_State *, const object_jump &, struct object *);
+   int (*Call)(lua_State *, const obj_read &, struct object *);
    APTR Data;
 
-   static ULONG hash(CSTRING String, ULONG Hash = 5381) {
-      while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
-      return Hash;
-   }
-
-   auto operator<=>(const object_jump &Other) const {
+   auto operator<=>(const obj_read &Other) const {
        if (Hash < Other.Hash) return -1;
        if (Hash > Other.Hash) return 1;
        return 0;
    }
 
-   object_jump(ULONG pHash, const JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
-   object_jump(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
-   object_jump(ULONG pHash) : Hash(pHash) { }
+   obj_read(ULONG pHash, const JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(ULONG pHash) : Hash(pHash) { }
 };
 
-inline auto object_hash = [](const object_jump &a, const object_jump &b) { return a.Hash < b.Hash; };
+inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
 
-typedef std::set<object_jump, decltype(object_hash)> JUMP_TABLE;
+typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 
 //********************************************************************************************************************
 
 struct object {
    OBJECTPTR ObjectPtr;   // If the object is local then we can have the address
    objMetaClass *Class;   // Direct pointer to the object's class
-   JUMP_TABLE *Jump;
+   READ_TABLE *ReadTable;
    OBJECTID UID;          // If the object is referenced externally, access is managed by ID
    UWORD AccessCount;     // Controlled by access_object() and release_object()
    bool  Detached;        // True if the object is an external reference or is not to be garbage collected

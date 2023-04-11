@@ -57,48 +57,48 @@ static int object_state(lua_State *);
 static int object_subscribe(lua_State *);
 static int object_unsubscribe(lua_State *);
 
-static int object_get_id(lua_State *, const object_jump &, object *);
-static int object_get_rgb(lua_State *, const object_jump &, object *);
-static int object_get_array(lua_State *, const object_jump &, object *);
-static int object_get_struct(lua_State *, const object_jump &, object *);
-static int object_get_string(lua_State *, const object_jump &, object *);
-static int object_get_object(lua_State *, const object_jump &, object *);
-static int object_get_ptr(lua_State *, const object_jump &, object *);
-static int object_get_double(lua_State *, const object_jump &, object *);
-static int object_get_large(lua_State *, const object_jump &, object *);
-static int object_get_ulong(lua_State *, const object_jump &, object *);
-static int object_get_long(lua_State *, const object_jump &, object *);
+static int object_get_id(lua_State *, const obj_read &, object *);
+static int object_get_rgb(lua_State *, const obj_read &, object *);
+static int object_get_array(lua_State *, const obj_read &, object *);
+static int object_get_struct(lua_State *, const obj_read &, object *);
+static int object_get_string(lua_State *, const obj_read &, object *);
+static int object_get_object(lua_State *, const obj_read &, object *);
+static int object_get_ptr(lua_State *, const obj_read &, object *);
+static int object_get_double(lua_State *, const obj_read &, object *);
+static int object_get_large(lua_State *, const obj_read &, object *);
+static int object_get_ulong(lua_State *, const obj_read &, object *);
+static int object_get_long(lua_State *, const obj_read &, object *);
 
 //********************************************************************************************************************
 
 #include "fluid_object_actions.cpp"
 
-static std::unordered_map<objMetaClass *, std::set<object_jump, decltype(object_hash)>> glJump;
+static std::unordered_map<objMetaClass *, std::set<obj_read, decltype(read_hash)>> glClassReadTable;
 
 inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
    lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call, +1 value for the object reference
 }
 
-static int stack_object_children(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
-static int stack_object_delayCall(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
-static int stack_object_detach(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
-static int stack_object_exists(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
-static int stack_object_free(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
-static int stack_object_get(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
-static int stack_object_getVar(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getvar); return 1; }
-static int stack_object_init(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
-static int stack_object_lock(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
-static int stack_object_newchild(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
-static int stack_object_set(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
-static int stack_object_setVar(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setvar); return 1; }
-static int stack_object_state(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
-static int stack_object_subscribe(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
-static int stack_object_unsubscribe(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
+static int stack_object_children(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
+static int stack_object_delayCall(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_delaycall); return 1; }
+static int stack_object_detach(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_detach); return 1; }
+static int stack_object_exists(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_exists); return 1; }
+static int stack_object_free(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_free); return 1; }
+static int stack_object_get(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_get); return 1; }
+static int stack_object_getVar(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_getvar); return 1; }
+static int stack_object_init(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_init); return 1; }
+static int stack_object_lock(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_lock); return 1; }
+static int stack_object_newchild(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_newchild); return 1; }
+static int stack_object_set(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
+static int stack_object_setVar(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setvar); return 1; }
+static int stack_object_state(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
+static int stack_object_subscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
+static int stack_object_unsubscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
 
 //********************************************************************************************************************
 
-static int obj_jump_method(lua_State *Lua, const object_jump &Handle, object *def)
+static int obj_jump_method(lua_State *Lua, const obj_read &Handle, object *def)
 {
    lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
    lua_pushlightuserdata(Lua, Handle.Data); // Arg2: Method lookup table
@@ -111,20 +111,20 @@ static int obj_jump_method(lua_State *Lua, const object_jump &Handle, object *de
 
 //********************************************************************************************************************
 
-inline JUMP_TABLE * get_jump_table(object *Def)
+inline READ_TABLE * get_read_table(object *Def)
 {
-   if (!Def->Jump) {
-      if (auto it = glJump.find(Def->Class); it != glJump.end()) {
-         Def->Jump = &it->second;
+   if (!Def->ReadTable) {
+      if (auto it = glClassReadTable.find(Def->Class); it != glClassReadTable.end()) {
+         Def->ReadTable = &it->second;
       }
       else {
-         JUMP_TABLE jmp;
+         READ_TABLE jmp;
 
          // Every possible action is hashed because both sub-class and base-class actions require support.
 
          for (LONG code=1; code < AC_END; code++) {
-            auto hash = object_jump::hash(glActions[code].Name, object_jump::hash("ac"));
-            jmp.insert(object_jump(hash, glJumpActions[code]));
+            auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
+            jmp.insert(obj_read(hash, glJumpActions[code]));
          }
 
          MethodEntry *methods;
@@ -132,8 +132,8 @@ inline JUMP_TABLE * get_jump_table(object *Def)
          if (!GetFieldArray(Def->Class, FID_Methods, &methods, &total_methods)) {
             for (LONG i=1; i < total_methods; i++) {
                if (methods[i].MethodID) {
-                  auto hash = object_jump::hash(methods[i].Name, object_jump::hash("mt"));
-                  jmp.insert(object_jump(hash, obj_jump_method, &methods[i]));
+                  auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
+                  jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
                }
             }
          }
@@ -141,42 +141,44 @@ inline JUMP_TABLE * get_jump_table(object *Def)
          Field *dict;
          LONG total_dict;
          if (!GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict)) {
-            jmp.insert(object_jump(object_jump::hash("id"), object_get_id));
+            jmp.insert(obj_read(simple_hash("id"), object_get_id));
 
             for (LONG i=0; i < total_dict; i++) {
-               char ch[2] = { dict[i].Name[0], 0 };
-               if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
-               auto hash = object_jump::hash(dict[i].Name+1, object_jump::hash(ch));
+               if (dict[i].Flags & FDF_R) {
+                  char ch[2] = { dict[i].Name[0], 0 };
+                  if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
+                  auto hash = simple_hash(dict[i].Name+1, simple_hash(ch));
 
-               if (dict[i].Flags & FD_ARRAY) {
-                  if (dict[i].Flags & FD_RGB) {
-                     jmp.insert(object_jump(hash, object_get_rgb, &dict[i]));
+                  if (dict[i].Flags & FD_ARRAY) {
+                     if (dict[i].Flags & FD_RGB) {
+                        jmp.insert(obj_read(hash, object_get_rgb, &dict[i]));
+                     }
+                     else jmp.insert(obj_read(hash, object_get_array, &dict[i]));
                   }
-                  else jmp.insert(object_jump(hash, object_get_array, &dict[i]));
-               }
-               else if (dict[i].Flags & FD_STRUCT) {
-                  jmp.insert(object_jump(hash, object_get_struct, &dict[i]));
-               }
-               else if (dict[i].Flags & FD_STRING) {
-                  jmp.insert(object_jump(hash, object_get_string, &dict[i]));
-               }
-               else if (dict[i].Flags & FD_POINTER) {
-                  if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) {
-                     jmp.insert(object_jump(hash, object_get_object, &dict[i]));
+                  else if (dict[i].Flags & FD_STRUCT) {
+                     jmp.insert(obj_read(hash, object_get_struct, &dict[i]));
                   }
-                  else jmp.insert(object_jump(hash, object_get_ptr, &dict[i]));
-               }
-               else if (dict[i].Flags & FD_DOUBLE) {
-                  jmp.insert(object_jump(hash, object_get_double, &dict[i]));
-               }
-               else if (dict[i].Flags & FD_LARGE) {
-                  jmp.insert(object_jump(hash, object_get_large, &dict[i]));
-               }
-               else if (dict[i].Flags & FD_LONG) {
-                  if (dict[i].Flags & FD_UNSIGNED) {
-                     jmp.insert(object_jump(hash, object_get_ulong, &dict[i]));
+                  else if (dict[i].Flags & FD_STRING) {
+                     jmp.insert(obj_read(hash, object_get_string, &dict[i]));
                   }
-                  else jmp.insert(object_jump(hash, object_get_long, &dict[i]));
+                  else if (dict[i].Flags & FD_POINTER) {
+                     if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) { // Writing to an integral is permitted if marked as writeable.
+                        jmp.insert(obj_read(hash, object_get_object, &dict[i]));
+                     }
+                     else jmp.insert(obj_read(hash, object_get_ptr, &dict[i]));
+                  }
+                  else if (dict[i].Flags & FD_DOUBLE) {
+                     jmp.insert(obj_read(hash, object_get_double, &dict[i]));
+                  }
+                  else if (dict[i].Flags & FD_LARGE) {
+                     jmp.insert(obj_read(hash, object_get_large, &dict[i]));
+                  }
+                  else if (dict[i].Flags & FD_LONG) {
+                     if (dict[i].Flags & FD_UNSIGNED) {
+                        jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
+                     }
+                     else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
+                  }
                }
             }
          }
@@ -198,11 +200,11 @@ inline JUMP_TABLE * get_jump_table(object *Def)
          jmp.emplace(OJH_subscribe, stack_object_subscribe);
          jmp.emplace(OJH_unsubscribe, stack_object_unsubscribe);
 
-         glJump[Def->Class] = std::move(jmp);
-         Def->Jump = &glJump[Def->Class];
+         glClassReadTable[Def->Class] = std::move(jmp);
+         Def->ReadTable = &glClassReadTable[Def->Class];
       }
    }
-   return Def->Jump;
+   return Def->ReadTable;
 }
 
 //********************************************************************************************************************
@@ -213,9 +215,9 @@ static int object_index(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       auto keyname = luaL_checkstring(Lua, 2);
-      auto jt  = get_jump_table(def);
+      auto jt  = get_read_table(def);
 
-      if (auto func = jt->find(object_jump(object_jump::hash(keyname))); func != jt->end()) {
+      if (auto func = jt->find(obj_read(simple_hash(keyname))); func != jt->end()) {
          return func->Call(Lua, *func, def);
       }
       else {
@@ -1135,20 +1137,20 @@ void register_object_class(lua_State *Lua)
    luaL_openlib(Lua, NULL, objectlib_methods, 0);
    luaL_openlib(Lua, "obj", objectlib_functions, 0);
 
-   OJH_init        = object_jump::hash("init");
-   OJH_free        = object_jump::hash("free");
-   OJH_lock        = object_jump::hash("lock");
-   OJH_children    = object_jump::hash("children");
-   OJH_detach      = object_jump::hash("detach");
-   OJH_get         = object_jump::hash("get");
-   OJH_new         = object_jump::hash("new");
-   OJH_state       = object_jump::hash("state");
-   OJH_var         = object_jump::hash("var");
-   OJH_getVar      = object_jump::hash("getVar");
-   OJH_set         = object_jump::hash("set");
-   OJH_setVar      = object_jump::hash("setVar");
-   OJH_delayCall   = object_jump::hash("delayCall");
-   OJH_exists      = object_jump::hash("exists");
-   OJH_subscribe   = object_jump::hash("subscribe");
-   OJH_unsubscribe = object_jump::hash("unsubscribe");
+   OJH_init        = simple_hash("init");
+   OJH_free        = simple_hash("free");
+   OJH_lock        = simple_hash("lock");
+   OJH_children    = simple_hash("children");
+   OJH_detach      = simple_hash("detach");
+   OJH_get         = simple_hash("get");
+   OJH_new         = simple_hash("new");
+   OJH_state       = simple_hash("state");
+   OJH_var         = simple_hash("var");
+   OJH_getVar      = simple_hash("getVar");
+   OJH_set         = simple_hash("set");
+   OJH_setVar      = simple_hash("setVar");
+   OJH_delayCall   = simple_hash("delayCall");
+   OJH_exists      = simple_hash("exists");
+   OJH_subscribe   = simple_hash("subscribe");
+   OJH_unsubscribe = simple_hash("unsubscribe");
 }
