@@ -1510,12 +1510,20 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          // early on in the list and is being frequently signalled - it will mean that the other handles aren't
          // going to get signalled until the earlier one stops being signalled.
 
+         glFDProtected++;
          for (auto it = glFDTable.begin(); it != glFDTable.end(); it++) {
             if (it->FD != handles[i]) continue;
-
             if (it->Routine) it->Routine(it->FD, it->Data);
-            glFDTable.splice(glFDTable.end(), glFDTable, it);
+            glFDTable.splice(glFDTable.end(), glFDTable, it); // Move this record to the end of glFDTable
             break;
+         }
+         glFDProtected--;
+
+         if ((!glRegisterFD.empty()) and (!glFDProtected)) {
+            for (auto &record : glRegisterFD) {
+               RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+            }
+            glRegisterFD.clear();
          }
 
          break;
