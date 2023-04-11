@@ -77,7 +77,7 @@ static std::unordered_map<objMetaClass *, std::set<object_jump, decltype(object_
 
 inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
-   lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call - the number indicates the number of values pushed onto the stack that are to be associated as private values relevant to the C function being called
+   lua_pushcclosure(Lua, (lua_CFunction)Function, 1); // C function to call, +1 value for the object reference
 }
 
 static int stack_object_children(lua_State *Lua, const object_jump &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_children); return 1; }
@@ -1029,7 +1029,7 @@ static int object_tostring(lua_State *Lua)
 
 static int object_next_pair(lua_State *Lua)
 {
-   auto fields = (FieldArray *)lua_touserdata(Lua, lua_upvalueindex(1));
+   auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
    LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG field_index = lua_tointeger(Lua, lua_upvalueindex(3));
 
@@ -1047,9 +1047,9 @@ static int object_next_pair(lua_State *Lua)
 static int object_pairs(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
-      FieldArray *fields;
+      Field *fields;
       LONG total;
-      if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {
+      if (!GetFieldArray(def->Class, FID_Dictionary, &fields, &total)) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushinteger(Lua, 0);
@@ -1067,7 +1067,7 @@ static int object_pairs(lua_State *Lua)
 
 static int object_next_ipair(lua_State *Lua)
 {
-   auto fields = (FieldArray *)lua_touserdata(Lua, lua_upvalueindex(1));
+   auto fields = (Field *)lua_touserdata(Lua, lua_upvalueindex(1));
    LONG field_total = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG field_index = lua_tointeger(Lua, 2); // Arg 2 is the previous index.  It's nil if this is the first iteration.
 
@@ -1082,9 +1082,9 @@ static int object_next_ipair(lua_State *Lua)
 static int object_ipairs(lua_State *Lua)
 {
    if (auto def = (object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
-      FieldArray *fields;
+      Field *fields;
       LONG total;
-      if (!GetFieldArray(def->Class, FID_Fields, &fields, &total)) {
+      if (!GetFieldArray(def->Class, FID_Dictionary, &fields, &total)) {
          lua_pushlightuserdata(Lua, fields);
          lua_pushinteger(Lua, total);
          lua_pushcclosure(Lua, object_next_ipair, 2);
