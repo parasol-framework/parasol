@@ -69,11 +69,21 @@ static int object_get_large(lua_State *, const obj_read &, object *);
 static int object_get_ulong(lua_State *, const obj_read &, object *);
 static int object_get_long(lua_State *, const obj_read &, object *);
 
+static ERROR object_set_array(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_function(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_object(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_ptr(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_double(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_lookup(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_oid(lua_State *, OBJECTPTR, Field *, LONG);
+static ERROR object_set_number(lua_State *, OBJECTPTR, Field *, LONG);
+
 //********************************************************************************************************************
 
 #include "fluid_object_actions.cpp"
 
 static std::unordered_map<objMetaClass *, std::set<obj_read, decltype(read_hash)>> glClassReadTable;
+static std::unordered_map<objMetaClass *, std::set<obj_write, decltype(write_hash)>> glClassWriteTable;
 
 inline void SET_CONTEXT(lua_State *Lua, APTR Function) {
    lua_pushvalue(Lua, 1); // Duplicate the object reference
@@ -205,6 +215,60 @@ inline READ_TABLE * get_read_table(object *Def)
       }
    }
    return Def->ReadTable;
+}
+
+//********************************************************************************************************************
+
+inline WRITE_TABLE * get_write_table(object *Def)
+{
+   if (!Def->WriteTable) {
+      if (auto it = glClassWriteTable.find(Def->Class); it != glClassWriteTable.end()) {
+         Def->WriteTable = &it->second;
+      }
+      else {
+         WRITE_TABLE jmp;
+         Field *dict;
+         LONG total_dict;
+         if (!GetFieldArray(Def->Class, FID_Dictionary, &dict, &total_dict)) {
+            for (LONG i=0; i < total_dict; i++) {
+               if (dict[i].Flags & (FD_W|FD_I)) {
+                  char ch[2] = { dict[i].Name[0], 0 };
+                  if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
+                  auto hash = simple_hash(dict[i].Name+1, simple_hash(ch));
+
+                  if (dict[i].Flags & FD_ARRAY) {
+                     jmp.insert(obj_write(hash, object_set_array, &dict[i]));
+                  }
+                  else if (dict[i].Flags & FD_FUNCTION) {
+                     jmp.insert(obj_write(hash, object_set_function, &dict[i]));
+                  }
+                  else if (dict[i].Flags & FD_POINTER) {
+                     if (dict[i].Flags & (FD_OBJECT|FD_INTEGRAL)) {
+                        jmp.insert(obj_write(hash, object_set_object, &dict[i]));
+                     }
+                     else jmp.insert(obj_write(hash, object_set_ptr, &dict[i]));
+                  }
+                  else if (dict[i].Flags & (FD_DOUBLE|FD_FLOAT)) {
+                     jmp.insert(obj_write(hash, object_set_double, &dict[i]));
+                  }
+                  else if (dict[i].Flags & (FD_FLAGS|FD_LOOKUP)) {
+                     jmp.insert(obj_write(hash, object_set_lookup, &dict[i]));
+                  }
+                  else if (dict[i].Flags & FD_OBJECT) { // Object ID
+                     jmp.insert(obj_write(hash, object_set_oid, &dict[i]));
+                  }
+                  else if (dict[i].Flags & (FD_LONG|FD_LARGE)) {
+                     jmp.insert(obj_write(hash, object_set_number, &dict[i]));
+                  }
+               }
+            }
+         }
+
+         glClassWriteTable[Def->Class] = std::move(jmp);
+         Def->WriteTable = &glClassWriteTable[Def->Class];
+      }
+   }
+   return Def->WriteTable;
 }
 
 //********************************************************************************************************************

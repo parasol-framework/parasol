@@ -243,20 +243,19 @@ struct module {
    OBJECTPTR Module;
 };
 
-//********************************************************************************************************************
-// obj_read is used to build efficient customised jump tables for object calls.
-
-
 inline ULONG simple_hash(CSTRING String, ULONG Hash = 5381) {
    while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
    return Hash;
 }
 
+//********************************************************************************************************************
+// obj_read is used to build efficient customised jump tables for object calls.
+
 struct obj_read {
    typedef int JUMP(lua_State *, const struct obj_read &, struct object *);
 
    ULONG Hash;
-   int (*Call)(lua_State *, const obj_read &, struct object *);
+   JUMP *Call;
    APTR Data;
 
    auto operator<=>(const obj_read &Other) const {
@@ -276,10 +275,35 @@ typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 
 //********************************************************************************************************************
 
+struct obj_write {
+   typedef ERROR JUMP(lua_State *, OBJECTPTR, struct Field *, LONG);
+
+   ULONG Hash;
+   JUMP *Call;
+   struct Field *Field;
+
+   auto operator<=>(const obj_write &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_write(ULONG pHash, const JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(ULONG pHash) : Hash(pHash) { }
+};
+
+inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
+
+typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
+
+//********************************************************************************************************************
+
 struct object {
    OBJECTPTR ObjectPtr;   // If the object is local then we can have the address
    objMetaClass *Class;   // Direct pointer to the object's class
    READ_TABLE *ReadTable;
+   WRITE_TABLE *WriteTable;
    OBJECTID UID;          // If the object is referenced externally, access is managed by ID
    UWORD AccessCount;     // Controlled by access_object() and release_object()
    bool  Detached;        // True if the object is an external reference or is not to be garbage collected
