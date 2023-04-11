@@ -521,7 +521,12 @@ timer_cycle:
 
          tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES_CURRENTMSG)
 
-         if ((msg->Type IS MSGID_BREAK) and (tlMsgRecursion > 1)) breaking = true; // MSGID_BREAK will break out of recursive calls to ProcessMessages() only
+         if (msg->Type IS MSGID_BREAK) {
+            // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
+            // call made by the client application.
+            if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
+            else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
+         }
 
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
@@ -1510,12 +1515,20 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
          // early on in the list and is being frequently signalled - it will mean that the other handles aren't
          // going to get signalled until the earlier one stops being signalled.
 
+         glFDProtected++;
          for (auto it = glFDTable.begin(); it != glFDTable.end(); it++) {
             if (it->FD != handles[i]) continue;
-
             if (it->Routine) it->Routine(it->FD, it->Data);
-            glFDTable.splice(glFDTable.end(), glFDTable, it);
+            glFDTable.splice(glFDTable.end(), glFDTable, it); // Move this record to the end of glFDTable
             break;
+         }
+         glFDProtected--;
+
+         if ((!glRegisterFD.empty()) and (!glFDProtected)) {
+            for (auto &record : glRegisterFD) {
+               RegisterFD(record.FD, record.Flags, record.Routine, record.Data);
+            }
+            glRegisterFD.clear();
          }
 
          break;
