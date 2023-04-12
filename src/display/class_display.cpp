@@ -850,14 +850,14 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       }
 
       if (!Self->WindowHandle) {
-         bool desktop = FALSE;
+         bool desktop = false;
          if (Self->Flags & SCR_COMPOSITE) {
             // Not a desktop
          }
          else {
             OBJECTID surface_id;
             if (!FindObject("SystemSurface", ID_SURFACE, 0, &surface_id)) {
-               if (surface_id IS Self->ownerID()) desktop = TRUE;
+               if (surface_id IS Self->ownerID()) desktop = true;
             }
          }
 

@@ -181,8 +181,9 @@ end
       events = {
          activate = function(Widget)
             gui.dialog.colour({
-               modal  = true,
-               colour = '255,0,0',
+               modal   = true,
+               popOver = win.surface,
+               colour  = '255,0,0',
                feedback = function(Colour)
                   if (not Colour) then
                      print('Dialog was cancelled.')
@@ -209,6 +210,7 @@ end
                okText     = 'Select Font',
                cancelText = 'Exit',
                modal      = true,
+               popOver    = win.surface,
                feedback = function(Dialog, Accepted)
                   if (not Accepted) then
                      print('Dialog was cancelled.')
@@ -236,6 +238,7 @@ end
                okText      = 'Select File',
                cancelText  = 'Exit',
                modal       = true,
+               popOver     = win.surface,
                warnExists  = true,
                multiSelect = true,
                feedback = function(Dialog, Path, Files)

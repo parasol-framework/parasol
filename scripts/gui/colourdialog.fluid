@@ -22,7 +22,7 @@ responded.  Retaining dialog boxes consumes resources with no descernible speed 
 
 Valid options to use when creating the dialog are as follows:
 
-   popover:    Place the dialog window over the referenced surface.
+   popOver:    Place the dialog window over the referenced surface.
    target:     Open the dialog window within the referenced surface.
    modal:      Set to true if the dialog box needs to be modal (prevents interaction with other windows).
    okText:     Text to display in the OK button.
@@ -290,7 +290,7 @@ local function buildLayout(self, Options)
                         type    = 'error',
                         buttons = 'okay',
                         title   = 'Out of Palette Space',
-                        popover = self._window.surface,
+                        popOver = self._window.surface,
                         string  = 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.',
                      })
                   end
@@ -580,7 +580,7 @@ gui.dialog.colour = function(Options)
       center       = true,
       stickToFront = true,
       aspectRatio  = true,
-      popover      = Options.popover,
+      popOver      = Options.popOver,
       parent       = Options.target,
       icon         = 'tools/palette',
       title        = nz(Options.title, 'Select a colour'),
@@ -636,7 +636,7 @@ end
       local state = getExecutionState()
       if (state.inRequire != true) then
          local dlg = colour.dialog({
-            popover    = arg('popover'),
+            popOver    = arg('popOver'),
             target     = arg('target'),
             modal      = arg('modal'),
             okText     = arg('okText'),
