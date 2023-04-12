@@ -176,12 +176,6 @@
     </field>
 
     <field>
-      <name>LetterSpacing</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>DOUBLE</type>
-    </field>
-
-    <field>
       <name>LineLimit</name>
       <comment>Restricts the total number of lines allowed in a text object.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -250,18 +244,6 @@
     </field>
 
     <field>
-      <name>Spacing</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>DOUBLE</type>
-    </field>
-
-    <field>
-      <name>StartOffset</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>DOUBLE</type>
-    </field>
-
-    <field>
       <name>String</name>
       <comment>The string to use for drawing the glyphs is defined here.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -270,12 +252,6 @@
 <p>The string for drawing the glyphs is defined here in UTF-8 format.</p>
 <p>When retrieving a string that contains return codes, only the first line of text is returned.</p>
       </description>
-    </field>
-
-    <field>
-      <name>TextFlags</name>
-      <access read="G" write="S">Get/Set</access>
-      <type>INT</type>
     </field>
 
     <field>

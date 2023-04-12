@@ -213,7 +213,9 @@
                         <td class="col-md-1"><span class="text-nowrap">
                           <xsl:choose>
                             <xsl:when test="type/@class">
-                              <a><xsl:attribute name="href"><xsl:value-of select="type/@class"/>.html</xsl:attribute><xsl:value-of select="type"/></a>
+                              <xsl:variable name="class_name"><xsl:value-of select="type/@class"/></xsl:variable>
+                              <xsl:variable name="lower" select="translate($class_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+                              <a><xsl:attribute name="href"><xsl:value-of select="$lower"/>.html</xsl:attribute><xsl:value-of select="type"/></a>
                             </xsl:when>
                             <xsl:otherwise>
                               <xsl:value-of select="type"/>
