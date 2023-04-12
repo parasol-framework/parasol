@@ -188,7 +188,7 @@ static ERROR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, L
 static ERROR object_set_lookup(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
-      case LUA_TNUMBER: return Object->set(Field->FieldID, lua_tointeger(Lua, ValueIndex));
+      case LUA_TNUMBER: return Object->set(Field->FieldID, (LONG)lua_tointeger(Lua, ValueIndex));
       case LUA_TSTRING: return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
       default: return ERR_SetValueNotLookup;
    }
@@ -198,7 +198,7 @@ static ERROR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
 {
    switch(lua_type(Lua, ValueIndex)) {
       default:          return ERR_SetValueNotObject;
-      case LUA_TNUMBER: return Object->set(Field->FieldID, lua_tointeger(Lua, ValueIndex));
+      case LUA_TNUMBER: return Object->set(Field->FieldID, (OBJECTID)lua_tointeger(Lua, ValueIndex));
       case LUA_TNIL:    return Object->set(Field->FieldID, 0);
 
       case LUA_TUSERDATA: {
@@ -231,7 +231,7 @@ static ERROR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, L
          return Object->set(Field->FieldID, lua_toboolean(Lua, ValueIndex));
 
       case LUA_TNUMBER:
-         return Object->set(Field->FieldID, lua_tointeger(Lua, ValueIndex));
+         return Object->set(Field->FieldID, (LARGE)lua_tointeger(Lua, ValueIndex));
 
       case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
          return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -554,7 +554,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       else if (field->Flags & (FD_FLAGS|FD_LOOKUP)) {
          switch(type) {
             case LUA_TNUMBER:
-               return target->set(field->FieldID, lua_tointeger(Lua, ValueIndex));
+               return target->set(field->FieldID, (LONG)lua_tointeger(Lua, ValueIndex));
 
             case LUA_TSTRING:
                return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -566,7 +566,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       else if (field->Flags & FD_OBJECT) { // Object ID
          switch(type) {
             case LUA_TNUMBER:
-               return target->set(field->FieldID, lua_tointeger(Lua, ValueIndex));
+               return target->set(field->FieldID, (OBJECTID)lua_tointeger(Lua, ValueIndex));
 
             case LUA_TUSERDATA: {
                if (auto object = (struct object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
@@ -599,7 +599,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                return target->set(field->FieldID, lua_toboolean(Lua, ValueIndex));
 
             case LUA_TNUMBER:
-               return target->set(field->FieldID, lua_tointeger(Lua, ValueIndex));
+               return target->set(field->FieldID, (LARGE)lua_tointeger(Lua, ValueIndex));
 
             case LUA_TSTRING: // Allow internal string parsing to do its thing - important if the field is variable
                return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
