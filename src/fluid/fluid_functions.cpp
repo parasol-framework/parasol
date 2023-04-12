@@ -18,53 +18,6 @@ extern "C" {
 #include "defs.h"
 
 //********************************************************************************************************************
-
-void clear_subscriptions(objScript *Self)
-{
-   auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return;
-
-   // Free action subscriptions
-
-   auto action = prv->ActionList;
-   while (action) {
-      auto nextaction = action->Next;
-
-      if (action->ObjectID) {
-         OBJECTPTR object;
-         if (!AccessObject(action->ObjectID, 3000, &object)) {
-            UnsubscribeAction(object, action->ActionID);
-            ReleaseObject(object);
-         }
-      }
-      FreeResource(action);
-      action = nextaction;
-   }
-   prv->ActionList = NULL;
-
-   // Free event subscriptions
-
-   auto event = prv->EventList;
-   while (event) {
-      auto nextevent = event->Next;
-      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
-      FreeResource(event);
-      event = nextevent;
-   }
-   prv->EventList = NULL;
-
-   // Free data requests
-
-   auto dr = prv->Requests;
-   while (dr) {
-      auto next = dr->Next;
-      FreeResource(dr);
-      dr = next;
-   }
-   prv->Requests = NULL;
-}
-
-//********************************************************************************************************************
 // check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
 // the catch() function, which will apply the line number of the exception to the result.  The error code will

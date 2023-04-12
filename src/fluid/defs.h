@@ -42,14 +42,26 @@ struct code_reader_handle {
 };
 
 struct actionmonitor {
-   struct actionmonitor *Prev;
-   struct actionmonitor *Next;
    struct object *Object;      // Fluid.obj original passed in for the subscription.
-   const struct FunctionField *Args; // The args of the action/method are stored here so that we can build the arg value table later.
-   LONG Function;              // Index of function to call back.
-   LONG ActionID;              // Action being monitored.
-   LONG Reference;             // A custom reference to pass to the callback (optional)
+   const FunctionField *Args;  // The args of the action/method are stored here so that we can build the arg value table later.
+   LONG     Function;          // Index of function to call back.
+   LONG     Reference;         // A custom reference to pass to the callback (optional)
+   ACTIONID ActionID;          // Action being monitored.
    OBJECTID ObjectID;          // Object being monitored
+
+   actionmonitor() {}
+
+   ~actionmonitor() {
+      if (ObjectID) {
+         pf::Log log(__FUNCTION__);
+         log.branch("Unsubscribe action %d from object #%d", ActionID, ObjectID);
+         OBJECTPTR obj;
+         if (!AccessObject(ObjectID, 3000, &obj)) {
+            UnsubscribeAction(obj, ActionID);
+            ReleaseObject(obj);
+         }
+      }
+   }
 };
 
 struct eventsub {
@@ -121,8 +133,8 @@ struct struct_hash {
 
 struct prvFluid {
    lua_State *Lua;                   // Lua instance
-   struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
    struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
+   std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
    struct finput *InputList;         // Managed by the input interface
    struct datarequest *Requests;     // For drag and drop requests
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;
@@ -328,7 +340,6 @@ OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
 ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
-void clear_subscriptions(objScript *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));

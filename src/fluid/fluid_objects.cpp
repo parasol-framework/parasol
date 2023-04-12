@@ -897,46 +897,30 @@ static int object_subscribe(lua_State *Lua)
    pf::Log log("obj.subscribe");
    log.trace("Object: %d, Action: %s (ID %d)", def->UID, action, action_id);
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-
-   ERROR error;
    auto callback = make_function_stdc(notify_action, Lua->Script);
-   if (!(error = SubscribeAction(obj, action_id, &callback))) {
-      actionmonitor *acsub;
-      if (!AllocMemory(sizeof(actionmonitor), MEM_DATA, &acsub)) {
-         if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.
-            lua_settop(prv->Lua, 3);
-            acsub->Reference = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.
-         }
+   if (auto error = SubscribeAction(obj, action_id, &callback); !error) {
+      auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+      auto &acsub = prv->ActionList.emplace_back();
 
-         lua_settop(prv->Lua, 2);
-         acsub->Function = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.
-         acsub->Object   = def;
-         acsub->Args     = arglist;
-         acsub->ObjectID = def->UID;
-         acsub->ActionID = action_id;
-
-         if (prv->ActionList) prv->ActionList->Prev = acsub;
-         acsub->Next = prv->ActionList;
-         prv->ActionList = acsub;
-
-         release_object(def);
-         return 0;
+      if (!lua_isnil(Lua, 3)) { // A custom reference for the callback can be specified in arg 3.
+         lua_settop(prv->Lua, 3);
+         acsub.Reference = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.
       }
-      else {
-         UnsubscribeAction(obj, action_id);
-         release_object(def);
-         luaL_error(Lua, GetErrorMsg(ERR_AllocMemory));
-         return 0;
-      }
+      else acsub.Reference = 0;
+
+      lua_settop(prv->Lua, 2);
+      acsub.Function = luaL_ref(prv->Lua, LUA_REGISTRYINDEX); // Pops value from stack and returns it as a reference that can be used later.
+      acsub.Object   = def;
+      acsub.Args     = arglist;
+      acsub.ObjectID = def->UID;
+      acsub.ActionID = action_id;
+
+      release_object(def);
    }
    else {
       release_object(def);
       luaL_error(Lua, GetErrorMsg(error));
-      return 0;
    }
-
-   release_object(def);
    return 0;
 }
 
@@ -946,8 +930,6 @@ static int object_subscribe(lua_State *Lua)
 static int object_unsubscribe(lua_State *Lua)
 {
    pf::Log log("unsubscribe");
-
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    object *def;
    if (!(def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj"))) {
@@ -971,35 +953,19 @@ static int object_unsubscribe(lua_State *Lua)
 
    log.trace("Object: %d, Action: %s", def->UID, action);
 
-   OBJECTPTR obj;
-   if (!(obj = access_object(def))) {
-      luaL_error(Lua, GetErrorMsg(ERR_AccessObject));
-      return 0;
-   }
-
-   for (auto acsub=prv->ActionList, next=acsub; acsub; acsub = next) {
-      next = acsub->Next;
-      if (acsub->ObjectID IS def->UID) {
-         if ((!action_id) or (acsub->ActionID IS action_id)) {
-            luaL_unref(Lua, LUA_REGISTRYINDEX, acsub->Function);
-            if (acsub->Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, acsub->Reference);
-
-            UnsubscribeAction(obj, action_id);
-
-            if (acsub->Prev) acsub->Prev->Next = acsub->Next;
-            if (acsub->Next) acsub->Next->Prev = acsub->Prev;
-            if (acsub IS prv->ActionList) prv->ActionList = acsub->Next;
-
-            FreeResource(acsub);
-            // Do not break (in case of multiple subscriptions)
-         }
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+   for (auto it=prv->ActionList.begin(); it != prv->ActionList.end(); ) {
+      if ((it->ObjectID IS def->UID) and
+          ((!action_id) or (it->ActionID IS action_id))) {
+         luaL_unref(Lua, LUA_REGISTRYINDEX, it->Function);
+         if (it->Reference) luaL_unref(Lua, LUA_REGISTRYINDEX, it->Reference);
+         it = prv->ActionList.erase(it);
+         continue;
       }
+      it++;
    }
 
-   release_object(def);
-
-   lua_pushinteger(Lua, ERR_Okay);
-   return 1;
+   return 0;
 }
 
 //********************************************************************************************************************
