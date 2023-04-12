@@ -35,8 +35,8 @@
           <tbody>
             <xsl:for-each select="type">
               <xsl:choose>
-                <xsl:when test="../@prefix">
-                  <tr><th class="col-md-1"><xsl:value-of select="../@prefix"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
+                <xsl:when test="../@lookup">
+                  <tr><th class="col-md-1"><xsl:value-of select="../@lookup"/>_<xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
                 </xsl:when>
                 <xsl:otherwise>
                   <tr><th class="col-md-1"><xsl:value-of select="@name"/></th><td><xsl:value-of select="."/></td></tr>
@@ -47,7 +47,7 @@
         </table>
       </xsl:when>
       <xsl:otherwise>
-        <xsl:variable name="prefix"><xsl:value-of select="@prefix"/></xsl:variable>
+        <xsl:variable name="prefix"><xsl:value-of select="@lookup"/></xsl:variable>
         <table class="table">
           <thead><tr><th>Name</th><th>Description</th></tr></thead>
           <tbody>
