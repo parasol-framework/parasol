@@ -293,9 +293,13 @@ ERROR FreeResource(MEMORYID MemoryID)
             freemem(start_mem);
 
             if (mem.Flags & MEM_OBJECT) {
-               if (glObjectChildren.contains(mem.OwnerID)) glObjectChildren[mem.OwnerID].erase(MemoryID);
+               if (auto it = glObjectChildren.find(mem.OwnerID); it != glObjectChildren.end()) {
+                  it->second.erase(MemoryID);
+               }
             }
-            else if (glObjectMemory.contains(mem.OwnerID)) glObjectMemory[mem.OwnerID].erase(MemoryID);
+            else if (auto it = glObjectMemory.find(mem.OwnerID); it != glObjectMemory.end()) {
+               it->second.erase(MemoryID);
+            }
 
             mem.clear();
             if (glProgramStage != STAGE_SHUTDOWN) glPrivateMemory.erase(MemoryID);
