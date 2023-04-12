@@ -220,12 +220,12 @@ static int input_request_item(lua_State *Lua)
       if ((obj = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
          source_id = obj->UID;
       }
-      else if (!(source_id = lua_tonumber(Lua, 1))) {
+      else if (!(source_id = lua_tointeger(Lua, 1))) {
          luaL_argerror(Lua, 1, "Invalid object reference");
          return 0;
       }
 
-      LONG item = lua_tonumber(Lua, 2);
+      LONG item = lua_tointeger(Lua, 2);
 
       LONG datatype;
       if (lua_isstring(Lua, 3)) {
@@ -246,7 +246,7 @@ static int input_request_item(lua_State *Lua)
             return 0;
          }
       }
-      else if ((datatype = lua_tonumber(Lua, 3)) <= 0) {
+      else if ((datatype = lua_tointeger(Lua, 3)) <= 0) {
          luaL_argerror(Lua, 3, "Datatype invalid");
          return 0;
       }

@@ -567,8 +567,8 @@ static ERROR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 }
 
 /*********************************************************************************************************************
--PRIVATE-
-TextFlags: Optional flags.
+-FIELD-
+TextFlags: Private.  Optional flags.
 
 -END-
 *********************************************************************************************************************/
@@ -629,8 +629,8 @@ static ERROR TEXT_GET_Font(extVectorText *Self, OBJECTPTR *Value)
 }
 
 /*********************************************************************************************************************
--PRIVATE-
-LetterSpacing: Currently unsupported.
+-FIELD-
+LetterSpacing: Private.  Currently unsupported.
 -END-
 *********************************************************************************************************************/
 
@@ -789,8 +789,8 @@ static ERROR TEXT_GET_SelectRow(extVectorText *Self, LONG *Value)
 
 /*********************************************************************************************************************
 
--PRIVATE-
-Spacing: Not currently implemented.
+-FIELD-
+Spacing: Private.  Not currently implemented.
 
 *********************************************************************************************************************/
 
@@ -808,8 +808,8 @@ static ERROR TEXT_SET_Spacing(extVectorText *Self, DOUBLE Value)
 }
 
 /*********************************************************************************************************************
--PRIVATE-
-StartOffset: Not currently implemented.
+-FIELD-
+StartOffset: Private.  Not currently implemented.
 
 *********************************************************************************************************************/
 

@@ -76,7 +76,7 @@ void clear_subscriptions(objScript *Self)
 int fcmd_check(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERROR error = lua_tonumber(Lua, 1);
+      ERROR error = lua_tointeger(Lua, 1);
       if (error >= ERR_ExceptionThreshold) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
@@ -93,7 +93,7 @@ int fcmd_check(lua_State *Lua)
 int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERROR error = lua_tonumber(Lua, 1);
+      ERROR error = lua_tointeger(Lua, 1);
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       prv->CaughtError = error;
       luaL_error(prv->Lua, GetErrorMsg(error));

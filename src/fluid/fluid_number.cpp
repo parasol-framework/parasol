@@ -55,10 +55,8 @@ static int number_index(lua_State *Lua)
 
 static int number_f64(lua_State *Lua)
 {
-   struct fnumber *num;
-
-   DOUBLE f64 = lua_tonumber(Lua, 1);
-   if ((num = (struct fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber)))) {
+   auto f64 = lua_tonumber(Lua, 1);
+   if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->f64 = f64;
@@ -71,10 +69,8 @@ static int number_f64(lua_State *Lua)
 
 static int number_f32(lua_State *Lua)
 {
-   struct fnumber *num;
-
-   FLOAT f32 = lua_tonumber(Lua, 1);
-   if ((num = (struct fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber)))) {
+   auto f32 = lua_tonumber(Lua, 1);
+   if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->f32 = f32;
@@ -87,10 +83,8 @@ static int number_f32(lua_State *Lua)
 
 static int number_i32(lua_State *Lua)
 {
-   struct fnumber *num;
-
-   LONG i32 = lua_tonumber(Lua, 1);
-   if ((num = (struct fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber)))) {
+   auto i32 = lua_tointeger(Lua, 1);
+   if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i32 = i32;
@@ -103,10 +97,8 @@ static int number_i32(lua_State *Lua)
 
 static int number_i64(lua_State *Lua)
 {
-   struct fnumber *num;
-
-   LONG i64 = lua_tonumber(Lua, 1);
-   if ((num = (struct fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber)))) {
+   auto i64 = lua_tointeger(Lua, 1);
+   if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i64 = i64;
@@ -119,10 +111,8 @@ static int number_i64(lua_State *Lua)
 
 static int number_i16(lua_State *Lua)
 {
-   struct fnumber *num;
-
    LONG i16 = lua_tointeger(Lua, 1);
-   if ((num = (struct fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber)))) {
+   if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i16 = i16;
@@ -135,10 +125,8 @@ static int number_i16(lua_State *Lua)
 
 static int number_i8(lua_State *Lua)
 {
-   struct fnumber *num;
-
    LONG i8 = lua_tointeger(Lua, 1);
-   if ((num = (struct fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber)))) {
+   if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i8 = i8;
@@ -155,9 +143,7 @@ static int number_i8(lua_State *Lua)
 
 static int number_tostring(lua_State *Lua)
 {
-   struct fnumber *num;
-
-   if ((num = (struct fnumber *)lua_touserdata(Lua, 1))) {
+   if (auto num = (fnumber *)lua_touserdata(Lua, 1)) {
       switch (num->Type) {
          case NUM_DOUBLE: lua_pushfstring(Lua, std::to_string(num->f64).c_str()); return 1;
          case NUM_FLOAT:  lua_pushfstring(Lua, std::to_string(num->f32).c_str()); return 1;

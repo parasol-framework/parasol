@@ -346,7 +346,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
       }
       else if (args[i].Type & FD_LARGE) {
          j = ALIGN64(j);
-         ((LARGE *)(argbuffer + j))[0] = lua_tonumber(Lua, n);
+         ((LARGE *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
          //log.trace("Arg: %s, Value: %" PF64, args[i].Name, ((LARGE *)(argbuffer + j))[0]);
          j += sizeof(LARGE);
       }

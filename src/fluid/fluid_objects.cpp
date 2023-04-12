@@ -359,7 +359,7 @@ static int object_new(lua_State *Lua)
    NF objflags = NF::NIL;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
-      class_id = lua_tonumber(Lua, 1);
+      class_id = lua_tointeger(Lua, 1);
       class_name = NULL;
       log.trace("$%.8x", class_id);
    }
@@ -498,7 +498,7 @@ static int object_newchild(lua_State *Lua)
    NF objflags = NF::NIL;
    LONG type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
-      class_id = lua_tonumber(Lua, 1);
+      class_id = lua_tointeger(Lua, 1);
       class_name = NULL;
       log.trace("$%.8x", class_id);
    }
