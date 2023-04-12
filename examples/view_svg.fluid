@@ -36,7 +36,7 @@ Example: parasol view_svg.fluid --file [Path]
    -- Check if this is a fixed size SVG (default is scaled)
 
    local scaled = true
-   if (glViewport.width == glScene.width) and (glViewport.height == glScene.height) then
+   if (glViewport.width == glScene.viewport.width) and (glViewport.height == glScene.viewport.height) then
       scaled = true
    else
       scaled = false
