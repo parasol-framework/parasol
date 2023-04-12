@@ -217,12 +217,12 @@ enum { WS_NO_WORD=0, WS_NEW_WORD, WS_IN_WORD };
 
 //********************************************************************************************************************
 
-INLINE DOUBLE int26p6_to_dbl(LONG p)
+inline DOUBLE int26p6_to_dbl(LONG p)
 {
-  return double(p) / 64.0;
+  return DOUBLE(p) * (1.0 / 64.0);
 }
 
-INLINE LONG dbl_to_int26p6(DOUBLE p)
+inline LONG dbl_to_int26p6(DOUBLE p)
 {
    return LONG(p * 64.0);
 }
@@ -230,7 +230,7 @@ INLINE LONG dbl_to_int26p6(DOUBLE p)
 //********************************************************************************************************************
 // Only call this function if the font includes kerning support
 
-INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, DOUBLE *Y)
+inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, DOUBLE *Y)
 {
    FT_Vector delta;
    EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);

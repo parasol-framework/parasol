@@ -225,9 +225,6 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *Y = delta.y>>FT_DOWNSIZE;
 }
 
-//********************************************************************************************************************
-// Only call this function if the font includes kerning support (test via FTF_KERNING).
-
 INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
    if ((!Glyph) or (!PrevGlyph)) return 0;
