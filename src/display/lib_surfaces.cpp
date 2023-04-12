@@ -1033,6 +1033,8 @@ OBJECTID gfxGetModalSurface(void)
 {
    // Safety check: Confirm that the object still exists
    if ((glModalID) and (CheckObjectExists(glModalID) != ERR_True)) {
+      pf::Log log(__FUNCTION__);
+      log.msg("Modal surface #%d no longer exists.", glModalID);
       glModalID = 0;
    }
 
@@ -1211,8 +1213,11 @@ oid: Returns the ID of the surface object that has the user focus, or zero on fa
 OBJECTID gfxGetUserFocus(void)
 {
    const std::lock_guard<std::mutex> lock(glFocusLock);
-   auto objectid = glFocusList[0];
-   return objectid;
+   if (!glFocusList.empty()) {
+      auto objectid = glFocusList[0];
+      return objectid;
+   }
+   else return 0;
 }
 
 /*********************************************************************************************************************
@@ -1676,8 +1681,6 @@ oid: The object ID of the previous modal surface is returned (zero if there was 
 OBJECTID gfxSetModalSurface(OBJECTID SurfaceID)
 {
    pf::Log log(__FUNCTION__);
-
-   if (GetClassID(SurfaceID) != ID_SURFACE) return 0;
 
    log.branch("#%d, CurrentFocus: %d", SurfaceID, gfxGetUserFocus());
 

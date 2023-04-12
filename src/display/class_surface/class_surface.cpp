@@ -364,10 +364,10 @@ static void invalidate_overlap(extSurface *Self, const SURFACELIST &list, LONG O
          // Intersecting surface discovered.  What we do now is keep scanning for other overlapping siblings to restrict our
          // exposure space (so that we don't repeat expose drawing for overlapping areas).  Then we call RedrawSurface() to draw the exposed area.
 
-         LONG listx      = list[i].Left;
-         LONG listy      = list[i].Top;
-         LONG listright  = list[i].Right;
-         LONG listbottom = list[i].Bottom;
+         auto listx      = list[i].Left;
+         auto listy      = list[i].Top;
+         auto listright  = list[i].Right;
+         auto listbottom = list[i].Bottom;
 
          if (Area.Left > listx)        listx      = Area.Left;
          if (Area.Top > listy)         listy      = Area.Top;
@@ -1914,8 +1914,8 @@ static ERROR SURFACE_NewObject(extSurface *Self, APTR Void)
    Self->MaxHeight   = 16777216;
    Self->MinWidth    = 1;
    Self->MinHeight   = 1;
-   Self->Opacity  = 255;
-   Self->RootID   = Self->UID;
+   Self->Opacity     = 255;
+   Self->RootID      = Self->UID;
    Self->WindowType  = glpWindowType;
    return ERR_Okay;
 }
@@ -2166,7 +2166,7 @@ the user's preferred default file format is used.
 static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 {
    pf::Log log;
-   LONG i, j, level;
+   LONG j, level;
 
    if (!Args) return log.warning(ERR_NullArgs);
 
@@ -2174,9 +2174,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
    // Create a Bitmap that is the same size as the rendered area
 
-   CLASSID class_id;
-   if (!Args->ClassID) class_id = ID_PICTURE;
-   else class_id = Args->ClassID;
+   CLASSID class_id = (!Args->ClassID) ? ID_PICTURE: Args->ClassID;
 
    OBJECTPTR picture;
    if (!NewObject(class_id, &picture)) {
@@ -2199,7 +2197,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
          const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
          auto &list = glSurfaces;
 
-         if ((i = find_surface_list(Self)) != -1) {
+         if (auto i = find_surface_list(Self); i != -1) {
             OBJECTID bitmapid = 0;
             for (j=i; (j < LONG(list.size())) and ((j IS i) or (list[j].Level > list[i].Level)); j++) {
                if ((!(list[j].Flags & RNF_VISIBLE)) or (list[j].Flags & RNF_CURSOR)) {
@@ -2261,10 +2259,9 @@ static ERROR SURFACE_Scroll(extSurface *Self, struct acScroll *Args)
       if ((Args->DeltaX >= 1) or (Args->DeltaX <= -1) or (Args->DeltaY >= 1) or (Args->DeltaY <= -1)) {
          const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
          std::vector<OBJECTID> surfaces;
-         LONG i;
-         if ((i = find_surface_list(Self)) != -1) {
+         if (auto i = find_surface_list(Self); i != -1) {
             // Send a move command to each child surface
-            LONG level = glSurfaces[i].Level + 1;
+            auto level = glSurfaces[i].Level + 1;
             for (++i; glSurfaces[i].Level >= level; i++) {
                if (glSurfaces[i].Level IS level) surfaces.push_back(glSurfaces[i].SurfaceID);
             }
@@ -2291,8 +2288,7 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
    if (Self->Flags & RNF_SCROLL_CONTENT) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
       std::vector<OBJECTID> surfaces;
-      LONG i;
-      if ((i = find_surface_list(Self)) != -1) {
+      if (auto i = find_surface_list(Self); i != -1) {
          LONG level = glSurfaces[i].Level + 1;
          for (++i; glSurfaces[i].Level >= level; i++) {
             if (glSurfaces[i].Level IS level) surfaces.push_back(glSurfaces[i].SurfaceID);
