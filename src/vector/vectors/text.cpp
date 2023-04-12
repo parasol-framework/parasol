@@ -233,9 +233,14 @@ inline LONG dbl_to_int26p6(DOUBLE p)
 inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE *X, DOUBLE *Y)
 {
    FT_Vector delta;
-   EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta);
-   *X = int26p6_to_dbl(delta.x);
-   *Y = int26p6_to_dbl(delta.y);
+   if (!EFT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta)) {
+      *X = int26p6_to_dbl(delta.x);
+      *Y = int26p6_to_dbl(delta.y);
+   }
+   else {
+      *X = 0;
+      *Y = 0;
+   }
 }
 
 /*********************************************************************************************************************
@@ -1185,7 +1190,7 @@ static void generate_text(extVectorText *Vector)
    // important if the characters are being transformed.  There is a limit to the upscale value.  100 seems to be
    // reasonable; anything 1000+ results in issues.
 
-   DOUBLE upscale = 1;
+   DOUBLE upscale = 1.0;
    if ((Vector->Transition) or (morph)) upscale = 100;
 
    // The scale_char transform is applied to each character to ensure that it is scaled to the path correctly.
@@ -1199,7 +1204,8 @@ static void generate_text(extVectorText *Vector)
       scale_char.scale(path_scale);
       scale_char.translate(0, -point_size * path_scale);
    }
-   scale_char.scale(1.0 / upscale); // Downscale the generated character to the correct size.
+   const auto downscale = (1.0 / upscale);
+   scale_char.scale(downscale);
 
    if (!Vector->FreetypeSize) EFT_New_Size(ftface, &Vector->FreetypeSize);
    if (Vector->FreetypeSize != ftface->size) EFT_Activate_Size(Vector->FreetypeSize);
@@ -1223,16 +1229,19 @@ static void generate_text(extVectorText *Vector)
          LONG current_col = 0;
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
-         for (auto str=line.c_str(); *str; ) {
-            LONG char_len;
-            LONG unicode = UTF8ReadValue(str, &char_len);
+
+         LONG char_len;
+         auto str = line.c_str();
+         LONG current_char = UTF8ReadValue(str, &char_len);
+         LONG current_glyph = EFT_Get_Char_Index(ftface, current_char);
+         str += char_len;
+         while (current_char) {
+            LONG next_char = UTF8ReadValue(str, &char_len);
             str += char_len;
 
-            if (unicode <= 0x20) wrap_state = WS_NO_WORD;
+            if (current_char <= 0x20) wrap_state = WS_NO_WORD;
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
             else wrap_state = WS_NEW_WORD;
-
-            if (!unicode) break;
 
             char_index++; // Character index only increases if a glyph is being drawn
 
@@ -1242,15 +1251,16 @@ static void generate_text(extVectorText *Vector)
                apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
             }
 
-            LONG glyph = EFT_Get_Char_Index(ftface, unicode);
+            LONG next_glyph = EFT_Get_Char_Index(ftface, next_char);
 
-            if (!EFT_Load_Glyph(ftface, glyph, FT_LOAD_LINEAR_DESIGN)) {
+            if (!EFT_Load_Glyph(ftface, current_glyph, FT_LOAD_LINEAR_DESIGN)) {
                char_path.free_all();
                if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
                   DOUBLE kx, ky;
-                  get_kerning_xy(ftface, glyph, prev_glyph, &kx, &ky);
+                  get_kerning_xy(ftface, next_glyph, current_glyph, &kx, &ky);
+                  start_x += kx * downscale;
 
-                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
+                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
 
                   char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
@@ -1265,7 +1275,7 @@ static void generate_text(extVectorText *Vector)
                            const DOUBLE vertex_dist = sqrt((x * x) + (y * y));
                            dist += vertex_dist;
 
-                           //log.trace("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", unicode, char_width, start_x, start_y, end_vx, end_vy, dist);
+                           //log.trace("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", current_char, char_width, start_x, start_y, end_vx, end_vy, dist);
 
                            end_vx = current_x;
                            end_vy = current_y;
@@ -1295,9 +1305,9 @@ static void generate_text(extVectorText *Vector)
                      start_y += (char_width) * sin(angle);
                   }
 
-                  //log.trace("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", unicode, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
+                  //log.trace("Char '%c' is at (%.2f %.2f) to (%.2f %.2f), angle: %.2f, remaining dist: %.2f", current_char, tx, ty, start_x, start_y, angle / DEG2RAD, dist);
 
-                  if (unicode > 0x20) {
+                  if (current_char > 0x20) {
                      transform.rotate(angle); // Rotate the character in accordance with its position on the path angle.
                      transform.translate(tx, ty); // Move the character to its correct position on the path.
                      agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(char_path, transform);
@@ -1309,8 +1319,9 @@ static void generate_text(extVectorText *Vector)
                }
                else log.trace("Failed to get outline of character.");
             }
-            prev_glyph = glyph;
             current_col++;
+            current_char = next_char;
+            current_glyph = next_glyph;
          }
 
          current_row++;
@@ -1372,8 +1383,9 @@ static void generate_text(extVectorText *Vector)
                if (!decompose_ft_outline(ftface->glyph->outline, true, char_path)) {
                   DOUBLE kx, ky;
                   get_kerning_xy(ftface, glyph, prev_glyph, &kx, &ky);
+                  if (kx) dx += kx * downscale;
 
-                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x) + kx;
+                  DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
 
                   char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
@@ -1392,7 +1404,7 @@ static void generate_text(extVectorText *Vector)
                   }
 
                   dx += char_width;
-                  dy += int26p6_to_dbl(ftface->glyph->advance.y) + ky;
+                  dy += int26p6_to_dbl(ftface->glyph->advance.y) + (ky * downscale);
                }
                else log.trace("Failed to get outline of character.");
             }
