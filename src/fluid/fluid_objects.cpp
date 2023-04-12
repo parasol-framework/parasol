@@ -396,8 +396,9 @@ static int object_new(lua_State *Lua)
          // Set fields against the object and initialise the object.  NOTE: Lua's table management code *does not*
          // preserve the order in which the fields were originally passed to the table.
 
-         ERROR field_error = ERR_Okay;
+         ERROR field_error  = ERR_Okay;
          CSTRING field_name = NULL;
+         LONG failed_type   = LUA_TNONE;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
@@ -407,6 +408,7 @@ static int object_new(lua_State *Lua)
             else field_error = ERR_UnsupportedField;
 
             if (field_error) { // Break the loop early on error.
+               failed_type = lua_type(Lua, -1);
                lua_pop(Lua, 2);
                break;
             }
@@ -418,7 +420,7 @@ static int object_new(lua_State *Lua)
 
             if (field_error) {
                prv->CaughtError = field_error;
-               luaL_error(Lua, "Failed to set field '%s', error: %s", field_name, GetErrorMsg(field_error));
+               luaL_error(Lua, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
             else {
                log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));

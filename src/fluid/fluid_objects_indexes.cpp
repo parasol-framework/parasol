@@ -227,6 +227,7 @@ static ERROR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
 static ERROR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
+      case LUA_TBOOLEAN:
       case LUA_TNUMBER:
          return Object->set(Field->FieldID, lua_tonumber(Lua, ValueIndex));
 
@@ -592,6 +593,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
       }
       else if (field->Flags & (FD_LONG|FD_LARGE)) {
          switch(type) {
+            case LUA_TBOOLEAN:
             case LUA_TNUMBER:
                return target->set(field->FieldID, lua_tonumber(Lua, ValueIndex));
 
