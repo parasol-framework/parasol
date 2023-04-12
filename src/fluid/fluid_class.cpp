@@ -88,13 +88,51 @@ static const MethodEntry clMethods[] = {
 };
 
 //********************************************************************************************************************
+// NOTE: Be aware that this function can be called by Activate() to perform a complete state reset.
 
 static void free_all(objScript *Self)
 {
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return; // Not a problem - indicates the object did not pass initialisation
 
-   clear_subscriptions(Self);
+   // Free action subscriptions
+
+   auto action = prv->ActionList;
+   while (action) {
+      auto nextaction = action->Next;
+
+      if (action->ObjectID) {
+         OBJECTPTR object;
+         if (!AccessObject(action->ObjectID, 3000, &object)) {
+            UnsubscribeAction(object, action->ActionID);
+            ReleaseObject(object);
+         }
+      }
+      FreeResource(action);
+      action = nextaction;
+   }
+   prv->ActionList = NULL;
+
+   // Free event subscriptions
+
+   auto event = prv->EventList;
+   while (event) {
+      auto nextevent = event->Next;
+      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
+      FreeResource(event);
+      event = nextevent;
+   }
+   prv->EventList = NULL;
+
+   // Free data requests
+
+   auto dr = prv->Requests;
+   while (dr) {
+      auto next = dr->Next;
+      FreeResource(dr);
+      dr = next;
+   }
+   prv->Requests = NULL;
 
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
@@ -318,7 +356,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
-      FLUID_Free(Self, NULL);
+      free_all(Self);
+      new (prv) prvFluid;
 
       if (!(prv->Lua = luaL_newstate())) {
          log.warning("Failed to open a Lua instance.");
