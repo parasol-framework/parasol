@@ -107,7 +107,7 @@ to events.  Events are described in three parts - Group, SubGroup and the Event 
 
 The Group is strictly limited to one of the following definitions:
 
-<types prefix="EVG"/>
+<types lookup="EVG"/>
 
 The SubGroup and Event parameters are string-based and there are no restrictions on naming.  If a SubGroup or Event
 name is NULL, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network

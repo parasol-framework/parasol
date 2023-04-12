@@ -487,7 +487,7 @@ struct FunctionField argsResize[] = {
 
 The argument types that can be used by actions are limited to those listed in the following table:
 
-<types prefix="FD">
+<types lookup="FD">
 <type name="LONG">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</>
 <type name="LARGE">A 64-bit integer value.</>
 <type name="PTR">A standard address space pointer.</>

@@ -157,7 +157,7 @@ struct FunctionField argsResize[] = {
 };
 </pre>
 <p>The argument types that can be used by actions are limited to those listed in the following table:</p>
-<types prefix="FD">
+<types lookup="FD">
 <type name="LONG">A 32-bit integer value ranging from -2,147,483,647 to 2,147,483,648.</type>
 <type name="LARGE">A 64-bit integer value.</type>
 <type name="PTR">A standard address space pointer.</type>
@@ -889,7 +889,7 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <description>
 <p>Use GetEventID() to generate a 64-bit event identifier.  This identifier can be used for broadcasting and subscribing to events.  Events are described in three parts - Group, SubGroup and the Event name, or in string format <code>group.subgroup.event</code>.</p>
 <p>The Group is strictly limited to one of the following definitions:</p>
-<types prefix="EVG"/>
+<types lookup="EVG"/>
 <p>The SubGroup and Event parameters are string-based and there are no restrictions on naming.  If a SubGroup or Event name is NULL, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network group with SubGroup and Event set to NULL will allow for a subscription to all network events that are broadcast.  A Group setting of zero is not allowed.</p>
     </description>
     <result type="LARGE">The EventID is returned as a 64-bit integer.</result>
@@ -1903,7 +1903,7 @@ SetField(Object, FID_Statement|TSTR, "string");
     </input>
     <description>
 <p>The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources are supported:</p>
-<types prefix="RES" type="Resource">
+<types lookup="RES" type="Resource">
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</type>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</type>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</type>
