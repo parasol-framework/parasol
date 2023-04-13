@@ -241,7 +241,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    OBJECTID id;
-   if (!FindObject("glStyle", ID_XML, 0, &id)) {
+   if (!FindObject("glStyle", ID_XML, FOF::NIL, &id)) {
       char buffer[40];
       if (!acGetVar(GetObjectPtr(id), "/colours/@texthighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);

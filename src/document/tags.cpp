@@ -314,7 +314,7 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          if (function[i] IS '.') {
             OBJECTID id;
             function[i] = 0;
-            if (!FindObject(function, 0, 0, &id)) script = GetObjectPtr(id);
+            if (!FindObject(function, 0, FOF::NIL, &id)) script = GetObjectPtr(id);
             function[i] = '.';
             function = function + i;
          }
@@ -1104,7 +1104,7 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("object", Tag->Attrib[1].Name)) {
          OBJECTID objectid;
-         if (!FindObject(Tag->Attrib[1].Value, 0, FOF_SMART_NAMES, &objectid)) {
+         if (!FindObject(Tag->Attrib[1].Value, 0, FOF::SMART_NAMES, &objectid)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
                OBJECTPTR object;
                if (!AccessObject(objectid, 3000, &object)) {
@@ -1191,7 +1191,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    if ((str = XMLATTRIB(Tag, "object"))) {
       OBJECTID id;
-      if (!FindObject(str, 0, 0, &id)) {
+      if (!FindObject(str, 0, FOF::NIL, &id)) {
          target = GetObjectPtr(id);
          if (valid_object(Self, target) IS FALSE) return;
       }
@@ -1434,7 +1434,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             }
             else if ((src = XMLATTRIB(scan, "object"))) {
                OBJECTID objectid;
-               if (!FindObject(src, 0, FOF_SMART_NAMES, &objectid)) {
+               if (!FindObject(src, 0, FOF::SMART_NAMES, &objectid)) {
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
@@ -1676,7 +1676,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          // Reference an external script as the default for function calls
          if (Self->Flags & DCF_UNRESTRICTED) {
             OBJECTID id;
-            if (!FindObject(Tag->Attrib[i].Value, 0, 0, &id)) {
+            if (!FindObject(Tag->Attrib[i].Value, 0, FOF::NIL, &id)) {
                Self->DefaultScript = GetObjectPtr(id);
                return;
             }

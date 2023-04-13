@@ -210,7 +210,7 @@ static ERROR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
 
       case LUA_TSTRING: {
          OBJECTID id;
-         if (!FindObject(lua_tostring(Lua, ValueIndex), 0, 0, &id)) {
+         if (!FindObject(lua_tostring(Lua, ValueIndex), 0, FOF::NIL, &id)) {
             Object->set(Field->FieldID, id);
          }
          else {
@@ -577,7 +577,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
 
             case LUA_TSTRING: {
                OBJECTID id;
-               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, 0, &id)) {
+               if (!FindObject(lua_tostring(Lua, ValueIndex), 0, FOF::NIL, &id)) {
                   target->set(field->FieldID, id);
                }
                else {

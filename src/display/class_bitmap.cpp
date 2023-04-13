@@ -1523,7 +1523,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
          Self->BitsPerPixel  = 32;
          Self->BytesPerPixel = 4;
 #if 1
-         if (!FindObject("SystemDisplay", ID_DISPLAY, 0, &display_id)) {
+         if (!FindObject("SystemDisplay", ID_DISPLAY, FOF::NIL, &display_id)) {
             if (!AccessObject(display_id, 3000, &display)) {
                Self->AmtColours    = display->Bitmap->AmtColours;
                Self->BytesPerPixel = display->Bitmap->BytesPerPixel;

@@ -1052,7 +1052,12 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
 // Flags that can be passed to FindObject()
 
-#define FOF_SMART_NAMES 0x00000001
+enum class FOF : ULONG {
+   NIL = 0,
+   SMART_NAMES = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FOF)
 
 // Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
 
@@ -1170,14 +1175,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define CNF_AUTO_SAVE 0x00000002
 #define CNF_OPTIONAL_FILES 0x00000004
 #define CNF_NEW 0x00000008
-
-// Flags for VarNew()
-
-#define KSF_CASE 0x00000001
-#define KSF_THREAD_SAFE 0x00000002
-#define KSF_UNTRACKED 0x00000004
-#define KSF_AUTO_REMOVE 0x00000008
-#define KSF_INTERNAL 0x00000010
 
 // Raw key codes
 
@@ -1893,7 +1890,7 @@ struct CoreBase {
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
    void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
-   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
+   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
@@ -2016,7 +2013,7 @@ inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
 template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
-inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
+inline ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }

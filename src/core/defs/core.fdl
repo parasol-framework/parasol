@@ -301,7 +301,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ZLIB: The 'zlib' format",
     "DEFLATE: The 'deflate' format")
 
-  flags("FOF", { comment="Flags that can be passed to FindObject()" },
+  flags("FOF", { strict=true, comment="Flags that can be passed to FindObject()" },
     "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.")
 
   flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
@@ -415,13 +415,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "AUTO_SAVE: When the configuration object is freed, automatically save the configuration data back to the original file source.",
     "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
     "NEW: On initialisation, do not load any data from the referenced configuration file.")
-
-  flags("KSF", { comment="Flags for VarNew()" },
-    "CASE: Enable case-sensitive keys.",
-    "THREAD_SAFE: Enable thread safety for a small performance penalty.",
-    "UNTRACKED: Do not track the key-store to the object with the current context.",
-    "AUTO_REMOVE: Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.",
-    "INTERNAL: Private.")
 
 -- Please note that when the user is using an international keyboard, the name of the key will not
 -- actually match what the symbol represents for some key types.

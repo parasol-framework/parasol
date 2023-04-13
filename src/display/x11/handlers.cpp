@@ -217,7 +217,7 @@ void handle_button_release(XEvent *xevent)
    log.traceBranch("Button: %d", xevent->xbutton.button);
 
    if (!glPointerID) {
-      if (FindObject("SystemPointer", 0, 0, &glPointerID) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR_Okay) return;
    }
 
    struct dcDeviceInput input;

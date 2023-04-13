@@ -853,7 +853,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    FID_LayoutSurface = StrHash("LayoutSurface", 0);
 
    OBJECTID style_id;
-   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
+   if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
       char buffer[32];
       if (!acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);

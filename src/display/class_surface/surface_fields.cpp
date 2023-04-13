@@ -69,7 +69,7 @@ static ERROR SET_Cursor(extSurface *Self, LONG Value)
    if (Self->initialised()) {
       UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
       OBJECTID pointer_id;
-      if (!FindObject("SystemPointer", ID_POINTER, 0, &pointer_id)) {
+      if (!FindObject("SystemPointer", ID_POINTER, FOF::NIL, &pointer_id)) {
          acRefresh(pointer_id);
       }
    }

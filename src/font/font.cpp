@@ -173,7 +173,7 @@ static DOUBLE global_point_size(void)
    if (!glPointSet) {
       pf::Log log(__FUNCTION__);
       OBJECTID style_id;
-      if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
+      if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
          pf::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char fontsize[20];
@@ -1114,7 +1114,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
          static char default_font[60] = "";
          if (!default_font[0]) { // Static value only needs to be calculated once
             OBJECTID style_id;
-            if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
+            if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
                pf::ScopedObjectLock<objXML> style(style_id, 3000);
                if (style.granted()) {
                   if (acGetVar(style.obj, "/fonts/font(@name='scalable')/@face", default_font, sizeof(default_font))) {

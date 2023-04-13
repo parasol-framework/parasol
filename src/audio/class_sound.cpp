@@ -214,7 +214,7 @@ static ERROR snd_init_audio(extSound *Self)
 {
    pf::Log log;
 
-   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID)) return ERR_Okay;
+   if (!FindObject("SystemAudio", ID_AUDIO, FOF::NIL, &Self->AudioID)) return ERR_Okay;
 
    extAudio *audio;
    ERROR error;

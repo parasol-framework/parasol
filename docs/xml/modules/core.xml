@@ -747,11 +747,11 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>FindObject</name>
     <category>Objects</category>
     <comment>Searches for objects by name.</comment>
-    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID)</prototype>
+    <prototype>ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of an object to search for.</param>
       <param type="CLASSID" name="ClassID">Optional.  Set to a class ID to filter the results down to a specific class type.</param>
-      <param type="LONG" name="Flags" lookup="FOF">Optional flags.</param>
+      <param type="FOF" name="Flags" lookup="FOF">Optional flags.</param>
       <param type="OBJECTID *" name="ObjectID">An object id variable for storing the result.</param>
     </input>
     <description>
@@ -3077,13 +3077,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="R_SHIFT">Right Shift is held</const>
       <const name="SCR_LOCK">Scroll Lock is on</const>
       <const name="SHIFT">Synonym for L_SHIFT | R_SHIFT</const>
-    </constants>
-
-    <constants lookup="KSF" comment="Flags for VarNew()">
-      <const name="AUTO_REMOVE">Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.</const>
-      <const name="CASE">Enable case-sensitive keys.</const>
-      <const name="THREAD_SAFE">Enable thread safety for a small performance penalty.</const>
-      <const name="UNTRACKED">Do not track the key-store to the object with the current context.</const>
     </constants>
 
     <constants lookup="LAYOUT" comment="Universal values for alignment of graphic layouts in documents.">

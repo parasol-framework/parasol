@@ -129,7 +129,7 @@ extern "C" void program(void)
          }
          else if (!StrMatch(Args[i], "--target")) {
             if (Args[i+1]) {
-               if (FindObject(Args[i+1], 0, FOF_SMART_NAMES, &TargetID) != ERR_Okay) {
+               if (FindObject(Args[i+1], 0, FOF::SMART_NAMES, &TargetID) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", Args[i+1]);
                }
                else log.msg("Using target %d", TargetID);

@@ -861,14 +861,14 @@ DoesNotExist:
 
 *********************************************************************************************************************/
 
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Result)
+ERROR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!Result) or (!InitialName)) return ERR_NullArgs;
    if (!InitialName[0]) return log.warning(ERR_EmptyString);
 
-   if (Flags & FOF_SMART_NAMES) {
+   if ((Flags & FOF::SMART_NAMES) != FOF::NIL) {
       // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
       // an object of name "#1234".
 

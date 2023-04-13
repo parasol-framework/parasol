@@ -21,7 +21,7 @@ OBJECTPTR CurrentContext();
 ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR * Result, LONG * Elements);
 LONG AdjustLogLevel(LONG Adjust);
 void LogF(CSTRING Header, CSTRING Message, ...);
-ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
+ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
 objMetaClass * FindClass(CLASSID ClassID);
 ERROR AnalysePath(CSTRING Path, LONG * Type);
 LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
