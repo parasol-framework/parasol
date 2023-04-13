@@ -150,6 +150,8 @@ enum class RES    : LONG;
 enum class RP     : LONG;
 enum class IDTYPE : LONG;
 enum class TSTATE : BYTE;
+enum class LOC    : LONG;
+enum class STT    : LONG;
 enum class NF     : ULONG;
 enum class FOF    : ULONG;
 enum class RFD    : ULONG;
@@ -216,7 +218,7 @@ struct virtual_drive {
    ERROR (*OpenDir)(DirInfo *);
    ERROR (*CloseDir)(DirInfo *);
    ERROR (*Obsolete)(CSTRING, DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, RSF, LONG *);
+   ERROR (*TestPath)(CSTRING, RSF, LOC *);
    ERROR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
    ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
@@ -907,7 +909,7 @@ ERROR fs_readlink(STRING, STRING *);
 ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
 ERROR fs_scandir(struct DirInfo *);
-ERROR fs_testpath(CSTRING, RSF, LONG *);
+ERROR fs_testpath(CSTRING, RSF, LOC *);
 ERROR fs_watch_path(class extFile *);
 
 const struct virtual_drive * get_fs(CSTRING Path);

@@ -212,69 +212,69 @@ ERROR VirtualVolume(CSTRING Name, ...)
    LONG arg = 0;
    LONG tagid;
    while ((tagid = va_arg(list, LONG))) {
-      switch (tagid) {
-         case VAS_DRIVER_SIZE:
+      switch (VAS(tagid)) {
+         case VAS::DRIVER_SIZE:
             glVirtual[id].DriverSize = va_arg(list, LONG);
             break;
 
-         case VAS_DEREGISTER:
+         case VAS::DEREGISTER:
             glVirtual.erase(id);
             va_end(list);
             return ERR_Okay; // The volume has been removed, so any further tags are redundant.
 
-         case VAS_CASE_SENSITIVE:
+         case VAS::CASE_SENSITIVE:
             glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false;
             break;
 
-         case VAS_CLOSE_DIR:
+         case VAS::CLOSE_DIR:
             glVirtual[id].CloseDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
-         case VAS_DELETE:
+         case VAS::DELETE:
             glVirtual[id].Delete = va_arg(list, ERROR (*)(STRING, FUNCTION*));
             break;
 
-         case VAS_GET_INFO:
+         case VAS::GET_INFO:
             glVirtual[id].GetInfo =  va_arg(list, ERROR (*)(CSTRING, FileInfo*, LONG));
             break;
 
-         case VAS_GET_DEVICE_INFO:
+         case VAS::GET_DEVICE_INFO:
             glVirtual[id].GetDeviceInfo = va_arg(list, ERROR (*)(CSTRING, objStorageDevice*));
             break;
 
-         case VAS_IDENTIFY_FILE:
+         case VAS::IDENTIFY_FILE:
             glVirtual[id].IdentifyFile = va_arg(list, ERROR (*)(STRING, CLASSID*, CLASSID*));
             break;
 
-         case VAS_IGNORE_FILE:
+         case VAS::IGNORE_FILE:
             glVirtual[id].IgnoreFile = va_arg(list, void (*)(extFile*));
             break;
 
-         case VAS_MAKE_DIR:
+         case VAS::MAKE_DIR:
             glVirtual[id].CreateFolder = va_arg(list, ERROR (*)(CSTRING, LONG));
             break;
 
-         case VAS_OPEN_DIR:
+         case VAS::OPEN_DIR:
             glVirtual[id].OpenDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
-         case VAS_RENAME:
+         case VAS::RENAME:
             glVirtual[id].Rename = va_arg(list, ERROR (*)(STRING, STRING));
             break;
 
-         case VAS_SAME_FILE:
+         case VAS::SAME_FILE:
             glVirtual[id].SameFile = va_arg(list, ERROR (*)(CSTRING, CSTRING));
             break;
 
-         case VAS_SCAN_DIR:
+         case VAS::SCAN_DIR:
             glVirtual[id].ScanDir = va_arg(list, ERROR (*)(DirInfo*));
             break;
 
-         case VAS_TEST_PATH:
-            glVirtual[id].TestPath = va_arg(list, ERROR (*)(CSTRING, RSF, LONG*));
+         case VAS::TEST_PATH:
+            glVirtual[id].TestPath = va_arg(list, ERROR (*)(CSTRING, RSF, LOC *));
             break;
 
-         case VAS_WATCH_PATH:
+         case VAS::WATCH_PATH:
             glVirtual[id].WatchPath = va_arg(list, ERROR (*)(extFile*));
             break;
 

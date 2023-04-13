@@ -57,7 +57,7 @@ static ERROR close_folder(DirInfo *);
 static ERROR open_folder(DirInfo *);
 static ERROR get_info(CSTRING, FileInfo *, LONG);
 static ERROR scan_folder(DirInfo *);
-static ERROR test_path(STRING, RSF, LONG *);
+static ERROR test_path(STRING, RSF, LOC *);
 
 //********************************************************************************************************************
 
@@ -622,7 +622,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an archive: location.
 
-static ERROR test_path(STRING Path, RSF Flags, LONG *Type)
+static ERROR test_path(STRING Path, RSF Flags, LOC *Type)
 {
    Log log(__FUNCTION__);
 
@@ -633,7 +633,7 @@ static ERROR test_path(STRING Path, RSF Flags, LONG *Type)
    if (!(cmp = find_archive(Path, file_path))) return ERR_DoesNotExist;
 
    if (file_path.empty()) {
-      *Type = LOC_VOLUME;
+      *Type = LOC::VOLUME;
       return ERR_Okay;
    }
 
@@ -657,8 +657,8 @@ static ERROR test_path(STRING Path, RSF Flags, LONG *Type)
       else return error;
    }
 
-   if (item->Flags & FL_FOLDER) *Type = LOC_FOLDER;
-   else *Type = LOC_FILE;
+   if (item->Flags & FL_FOLDER) *Type = LOC::FOLDER;
+   else *Type = LOC::FILE;
 
    return ERR_Okay;
 }
@@ -706,11 +706,11 @@ extern "C" ERROR add_archive_class(void)
 extern "C" ERROR create_archive_volume(void)
 {
    return VirtualVolume("archive",
-      VAS_DRIVER_SIZE, sizeof(ArchiveDriver),
-      VAS_OPEN_DIR,    &open_folder,
-      VAS_SCAN_DIR,    &scan_folder,
-      VAS_CLOSE_DIR,   &close_folder,
-      VAS_TEST_PATH,   &test_path,
-      VAS_GET_INFO,    &get_info,
+      VAS::DRIVER_SIZE, sizeof(ArchiveDriver),
+      VAS::OPEN_DIR,    &open_folder,
+      VAS::SCAN_DIR,    &scan_folder,
+      VAS::CLOSE_DIR,   &close_folder,
+      VAS::TEST_PATH,   &test_path,
+      VAS::GET_INFO,    &get_info,
       0);
 }

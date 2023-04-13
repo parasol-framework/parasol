@@ -103,12 +103,12 @@ ERROR add_asset_class(void)
    if ((openinfo->Flags & OPF_OPTIONS) and (openinfo->Options)) {
       for (i=0; openinfo->Options[i].Tag != TAGEND; i++) {
          switch (openinfo->Options[i].Tag) {
-            case TOI_ANDROID_CLASS: {
+            case TOI::ANDROID_CLASS: {
                classname = openinfo->Options[i].Value.String;
                break;
             }
 
-            case TOI_ANDROID_ASSETMGR: {
+            case TOI::ANDROID_ASSETMGR: {
                glAssetManager = openinfo->Options[i].Value.Pointer;
                break;
             }
@@ -528,7 +528,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an assets: location.
 
-static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
+static ERROR test_path(CSTRING Path, LONG Flags, LOC *Type)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
@@ -544,7 +544,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    if (Path[len-1] != '/') {
       if ((asset = AAssetManager_open(mgr, Path+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
          log.trace("Path identified as a file.");
-         *Type = LOC_FILE;
+         *Type = LOC::FILE;
          AAsset_close(asset);
          return ERR_Okay;
       }
@@ -567,7 +567,7 @@ static ERROR test_path(CSTRING Path, LONG Flags, LONG *Type)
    if (dir) {
       if (AAssetDir_getNextFileName(dir)) {
          log.trace("Path identified as a folder.");
-         *Type = LOC_DIRECTORY;
+         *Type = LOC::DIRECTORY;
          AAssetDir_close(dir);
          return ERR_Okay;
       }

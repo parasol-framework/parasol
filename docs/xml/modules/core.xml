@@ -376,10 +376,10 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>AnalysePath</name>
     <category>Files</category>
     <comment>Analyses paths to determine their type (file, folder or volume).</comment>
-    <prototype>ERROR AnalysePath(CSTRING Path, LONG * Type)</prototype>
+    <prototype>ERROR AnalysePath(CSTRING Path, LOC * Type)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path to analyse.</param>
-      <param type="LONG *" name="Type" lookup="LOC">The result will be stored in the LONG variable referred to by this argument.  The return types are LOC_DIRECTORY, LOC_FILE and LOC_VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.</param>
+      <param type="LOC *" name="Type" lookup="LOC">The result will be stored in the LONG variable referred to by this argument.  The return types are DIRECTORY, FILE and VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.</param>
     </input>
     <description>
 <p>This function will analyse a path and determine the type of file that the path is referring to.  For instance, a path of <code>user:documents/</code> would indicate a folder reference.  A path of <code>system:</code> would be recognised as a volume. A path of <code>user:documents/copyright.txt</code> would be recognised as a file.</p>
@@ -564,7 +564,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR_Okay</code> (copy the file), <code>FFR_Skip</code> (do not copy the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the copy operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -661,7 +661,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR_Okay</code> (delete the file), <code>FFR_Skip</code> (do not delete the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>Prior to the deletion of any file, a <struct>FileFeedback</struct> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1295,7 +1295,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
 <code>LONG Callback(struct FileFeedback *)</code></p>
-<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR_Okay</code> (move the file), <code>FFR_Skip</code> (do not move the file) and <code>FFR_Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
+<p>For each file that is processed during the move operation, a <struct>FileFeedback</struct> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR_Cancelled</code> as an error code).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -2005,15 +2005,15 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrDatatype</name>
     <category>Strings</category>
     <comment>Determines the data type of a string.</comment>
-    <prototype>LONG StrDatatype(CSTRING String)</prototype>
+    <prototype>STT StrDatatype(CSTRING String)</prototype>
     <input>
       <param type="CSTRING" name="String">The string that you want to analyse.</param>
     </input>
     <description>
-<p>This function analyses a string and returns its data type.  Valid return values are <code>STT_FLOAT</code> for floating point numbers, <code>STT_NUMBER</code> for whole numbers, <code>STT_HEX</code> for hexadecimal (e.g. 0x1) and <code>STT_STRING</code> for any other string type. In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
+<p>This function analyses a string and returns its data type.  Valid return values are <code>STT::FLOAT</code> for floating point numbers, <code>STT::NUMBER</code> for whole numbers, <code>STT::HEX</code> for hexadecimal (e.g. 0x1) and <code>STT::STRING</code> for any other string type. In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification characters, such as a decimal point or negative sign.</p>
 <p>Any white-space at the start of the string will be skipped.</p>
     </description>
-    <result type="LONG" lookup="STT">Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.</result>
+    <result type="STT" lookup="STT">Returns FLOAT, NUMBER, HEX or STRING.</result>
   </function>
 
   <function>
@@ -3434,15 +3434,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="STRING">The string represents plain-text.</const>
     </constants>
 
-    <constants lookup="STYLE" comment="Internal style notifications">
-      <const name="CONTENT"/>
-      <const name="DISABLED"/>
-      <const name="ENABLED"/>
-      <const name="FOCUS"/>
-      <const name="LOST_FOCUS"/>
-      <const name="RESIZE"/>
-    </constants>
-
     <constants lookup="THF" comment="Thread flags">
       <const name="AUTO_FREE">Automatically destroy the Thread object when the user routine has completed.</const>
     </constants>
@@ -3646,7 +3637,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="Position" type="LARGE">Current seek position within the file if moving or copying</field>
       <field name="Path" type="STRING">Path to the file</field>
       <field name="Dest" type="STRING">Destination file/path if moving or copying</field>
-      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB integers</field>
+      <field name="FeedbackID" type="FBK" lookup="FBK">Set to one of the FBK values</field>
       <field name="Reserved" type="char" size="32">Reserved in case of future expansion</field>
     </struct>
 

@@ -40,9 +40,9 @@
       <comment>Initialises a file.</comment>
       <description>
 <p>This action will prepare a file or folder at the given <field>Path</field> for use.</p>
-<p>To create a new file from scratch, specify the NEW flag.  This will overwrite any file that exists at the target path.</p>
-<p>To read and write data to the file, specify the READ and/or WRITE modes in the <field>Flags</field> field prior to initialisation. If a file is read-only and the WRITE and READ flags are set in combination, the WRITE flag will be dropped and initialisation will continue as normal.</p>
-<p>If neither of the NEW, READ or WRITE flags are specified, the file object is prepared and queried from disk (if it exists), but will not be opened.  It will be necessary to <action>Activate</action> the file in order to open it.</p>
+<p>To create a new file from scratch, specify the <code>NEW</code> flag.  This will overwrite any file that exists at the target path.</p>
+<p>To read and write data to the file, specify the <code>READ</code> and/or <code>WRITE</code> modes in the <field>Flags</field> field prior to initialisation. If a file is read-only and the <code>WRITE</code> and <code>READ</code> flags are set in combination, the <code>WRITE</code> flag will be dropped and initialisation will continue as normal.</p>
+<p>If neither of the <code>NEW</code>, <code>READ</code> or <code>WRITE</code> flags are specified, the file object is prepared and queried from disk (if it exists), but will not be opened.  It will be necessary to <action>Activate</action> the file in order to open it.</p>
 <p>The File class supports RAM based file buffering - this is activated by using the BUFFER flag and setting the Size field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.</p>
 <p>Strings can also be loaded into file buffers for read/write access.  This is achieved by specifying the <field>Path</field> <code>string:Data\0</code>, where Data is a sequence of characters to be loaded into a virtual memory space.</p>
       </description>
@@ -248,7 +248,7 @@
     <method>
       <name>SetDate</name>
       <comment>Sets the date on a file.</comment>
-      <prototype>ERROR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, LONG Type)</prototype>
+      <prototype>ERROR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
       <input>
         <param type="LONG" name="Year">Year (-ve for BC, +ve for AD).</param>
         <param type="LONG" name="Month">Month (1 - 12)</param>
@@ -256,7 +256,7 @@
         <param type="LONG" name="Hour">Hour (0 - 23</param>
         <param type="LONG" name="Minute">Minute (0 - 59)</param>
         <param type="LONG" name="Second">Second (0 - 59)</param>
-        <param type="LONG" name="Type" lookup="FDT">The type of date to set (filesystem dependent).</param>
+        <param type="FDT" name="Type" lookup="FDT">The type of date to set (filesystem dependent).</param>
       </input>
       <description>
 <p>The SetDate method provides a convenient way to set the date and time information for a file object.  Date information is set in a human readable year, month, day, hour, minute and second format for your convenience.</p>

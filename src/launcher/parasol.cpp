@@ -146,8 +146,8 @@ int main(int argc, CSTRING *argv)
          if (!glTask->get(FID_Path, &path)) log.msg("Path: %s", path);
          else log.error("No working path.");
 
-         LONG type;
-         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
+         LOC type;
+         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC::FILE)) {
             print("File '%s' does not exist.", glTargetFile);
          }
          else result = exec_source(glTargetFile, glTime, glProcedure);

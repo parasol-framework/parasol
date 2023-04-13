@@ -1170,8 +1170,8 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          // If the destination is a folder that already exists, skip this compression entry
 
          if ((destpath.back() IS '/') or (destpath.back() IS '\\')) {
-            LONG result;
-            if ((!AnalysePath(destpath.c_str(), &result)) and (result IS LOC_DIRECTORY)) {
+            LOC result;
+            if ((!AnalysePath(destpath.c_str(), &result)) and (result IS LOC::DIRECTORY)) {
                Self->FileIndex++;
                continue;
             }
@@ -1420,7 +1420,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
             // Give the file a date that matches the original
 
-            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, 0);
+            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, FDT::NIL);
          }
 
          if (feedback.Progress < feedback.OriginalSize) {
@@ -1805,8 +1805,8 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
    }
    else {
       ERROR error = ERR_Okay;
-      LONG type;
-      bool exists = ((!AnalysePath(path, &type)) and (type IS LOC_FILE));
+      LOC type;
+      bool exists = ((!AnalysePath(path, &type)) and (type IS LOC::FILE));
 
       if (exists) {
          pf::Create<objFile> file({

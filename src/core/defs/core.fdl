@@ -101,16 +101,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",    "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
     "UNDO")
 
-  enum("STYLE", { start=1, comment="Internal style notifications" },
-     "ENABLED", "DISABLED", "FOCUS", "LOST_FOCUS", "RESIZE", "CONTENT")
-
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "NULL",
     "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)",
     "STATIC: Keep the module code in memory")
-
-  enum("CPU", { start=1, comment="Registered CPU ID's", restrict="c" },
-    "M68K", "I486", "I586", "I686", "X64", "ARMEABI")
 
   flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
@@ -126,7 +120,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("THF", { comment="Thread flags" },
     "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.")
 
-  enum("FDT", { start=0, comment="Flags for the SetDate() file method." },
+  enum("FDT", { type="int", start=0, comment="Flags for the SetDate() file method." },
     "MODIFIED: The date on which the file was last modified.",
     "CREATED: The date on which the file was created.  On some host platforms this datestamp may be read-only.",
     "ACCESSED: The date on which the file was last accessed by a user or application.",
@@ -174,7 +168,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SELF: Event applies to the monitored folder and not a contained item",
     "DEEP: Receive notifications from sub-folders (Windows only).")
 
-  enum("STT", { start=1, comment="Types for StrDatatype()." },
+  enum("STT", { type="int", start=1, comment="Types for StrDatatype()." },
     "NUMBER: The string represents a whole number.",
     "FLOAT: The string represents a floating point number.",
     "HEX: The string represents a hexadecimal number.",
@@ -198,7 +192,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ROOT_PATH",
     "SCAN_MODULES")
 
-  enum("TOI", { },
+  enum("TOI", { type="int" },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:
     "LOCAL_STORAGE",      -- For Android.  Defines the path of the local storage for assignment to localstorage:
     "ANDROID_ENV",        -- For Android.
@@ -239,7 +233,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "EXCLUDE_FILES: Exclude files when scanning this folder.",
     "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.")
 
-  enum("LOC", { start=1, comment="AnalysePath() values" },
+  enum("LOC", { type="int", start=1, comment="AnalysePath() values" },
     "DIRECTORY|FOLDER: The path refers to a folder.",
     "VOLUME: The path refers to a volume name.",
     "FILE: The path refers to a file.")
@@ -247,17 +241,17 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("LDF", { strict=true, comment="Flags for LoadFile()" },
     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
 
-  enum("FBK", { start=1, comment="Flags for file feedback." },
+  enum("FBK", { type="int", start=1, comment="Flags for file feedback." },
     "MOVE_FILE: A file is to be, or has been moved.",
     "COPY_FILE: A file is to be, or has been copied.",
     "DELETE_FILE: A file is to be, or has been deleted.")
 
-  enum("FFR", { start=0, comment="Return codes available to the feedback routine" },
+  enum("FFR", { type="int", start=0, comment="Return codes available to the feedback routine" },
     "OKAY|CONTINUE: Continue processing uninterrupted.",
     "SKIP: Skip processing of this entity.",
     "ABORT: Abort the entire operation.")
 
-  enum("VAS", { start=1, comment="For use by VirtualVolume()" },
+  enum("VAS", { type="int", start=1, comment="For use by VirtualVolume()" },
     "DEREGISTER: Remove the virtual volume from the system.",
     "SCAN_DIR",
     "DELETE",
@@ -675,7 +669,7 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
 // Structures to pass to OpenCore()
 
 struct OpenTag {
-   LONG Tag;
+   TOI Tag;
    union {
       LONG Long;
       LARGE Large;
@@ -1098,7 +1092,7 @@ struct FieldValue {
     large Position      # Current seek position within the file if moving or copying
     str Path            # Path to the file
     str Dest            # Destination file/path if moving or copying
-    int(FDB) FeedbackID # Set to one of the FDB integers
+    int(FBK) FeedbackID # Set to one of the FBK values
     char(32) Reserved   # Reserved in case of future expansion
   ]])
 

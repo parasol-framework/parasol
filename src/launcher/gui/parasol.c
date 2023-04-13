@@ -71,7 +71,7 @@ extern "C" void program(void)
    LONG i, j;
 
    glTask = CurrentTask();
-   BYTE time       = FALSE;
+   bool time       = false;
    LONG winhandle  = 0;
    STRING procedure  = NULL;
    STRING scriptfile = NULL;
@@ -91,7 +91,7 @@ extern "C" void program(void)
             goto exit;
          }
          else if (!StrMatch(Args[i], "--time")) {
-            time = TRUE;
+            time = true;
          }
          else if (!StrMatch(Args[i], "--info")) {
             print("Instance: %d", GetResource(RES::INSTANCE));
@@ -170,7 +170,8 @@ extern "C" void program(void)
       }
    }
 
-   if ((AnalysePath(scriptfile, &i) != ERR_Okay) or (i != LOC_FILE)) {
+   LOC path_type;
+   if ((AnalysePath(scriptfile, &path_type) != ERR_Okay) or (path_type != LOC::FILE)) {
       print("File '%s' does not exist.", scriptfile);
       goto exit;
    }

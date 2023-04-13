@@ -804,30 +804,12 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 #define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
 
-// Internal style notifications
-
-#define STYLE_ENABLED 1
-#define STYLE_DISABLED 2
-#define STYLE_FOCUS 3
-#define STYLE_LOST_FOCUS 4
-#define STYLE_RESIZE 5
-#define STYLE_CONTENT 6
-
 // Internal options for requesting function tables from modules.
 
 #define MHF_NULL 0x00000001
 #define MHF_DEFAULT 0x00000002
 #define MHF_STRUCTURE 0x00000002
 #define MHF_STATIC 0x00000004
-
-// Registered CPU ID's
-
-#define CPU_M68K 1
-#define CPU_I486 2
-#define CPU_I586 3
-#define CPU_I686 4
-#define CPU_X64 5
-#define CPU_ARMEABI 6
 
 // ScrollToPoint flags
 
@@ -869,10 +851,13 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
 // Flags for the SetDate() file method.
 
-#define FDT_MODIFIED 0
-#define FDT_CREATED 1
-#define FDT_ACCESSED 2
-#define FDT_ARCHIVED 3
+enum class FDT : LONG {
+   NIL = 0,
+   MODIFIED = 0,
+   CREATED = 1,
+   ACCESSED = 2,
+   ARCHIVED = 3,
+};
 
 // Options for SetVolume()
 
@@ -933,10 +918,13 @@ DEFINE_ENUM_FLAG_OPERATORS(RSF)
 
 // Types for StrDatatype().
 
-#define STT_NUMBER 1
-#define STT_FLOAT 2
-#define STT_HEX 3
-#define STT_STRING 4
+enum class STT : LONG {
+   NIL = 0,
+   NUMBER = 1,
+   FLOAT = 2,
+   HEX = 3,
+   STRING = 4,
+};
 
 #define OPF_DEPRECATED 0x00000001
 #define OPF_CORE_VERSION 0x00000002
@@ -955,11 +943,14 @@ DEFINE_ENUM_FLAG_OPERATORS(RSF)
 #define OPF_ROOT_PATH 0x00004000
 #define OPF_SCAN_MODULES 0x00008000
 
-#define TOI_LOCAL_CACHE 0
-#define TOI_LOCAL_STORAGE 1
-#define TOI_ANDROID_ENV 2
-#define TOI_ANDROID_CLASS 3
-#define TOI_ANDROID_ASSETMGR 4
+enum class TOI : LONG {
+   NIL = 0,
+   LOCAL_CACHE = 0,
+   LOCAL_STORAGE = 1,
+   ANDROID_ENV = 2,
+   ANDROID_CLASS = 3,
+   ANDROID_ASSETMGR = 4,
+};
 
 // Flags for the OpenDir() function.
 
@@ -1009,10 +1000,13 @@ DEFINE_ENUM_FLAG_OPERATORS(RDF)
 
 // AnalysePath() values
 
-#define LOC_DIRECTORY 1
-#define LOC_FOLDER 1
-#define LOC_VOLUME 2
-#define LOC_FILE 3
+enum class LOC : LONG {
+   NIL = 0,
+   DIRECTORY = 1,
+   FOLDER = 1,
+   VOLUME = 2,
+   FILE = 3,
+};
 
 // Flags for LoadFile()
 
@@ -1025,37 +1019,46 @@ DEFINE_ENUM_FLAG_OPERATORS(LDF)
 
 // Flags for file feedback.
 
-#define FBK_MOVE_FILE 1
-#define FBK_COPY_FILE 2
-#define FBK_DELETE_FILE 3
+enum class FBK : LONG {
+   NIL = 0,
+   MOVE_FILE = 1,
+   COPY_FILE = 2,
+   DELETE_FILE = 3,
+};
 
 // Return codes available to the feedback routine
 
-#define FFR_OKAY 0
-#define FFR_CONTINUE 0
-#define FFR_SKIP 1
-#define FFR_ABORT 2
+enum class FFR : LONG {
+   NIL = 0,
+   OKAY = 0,
+   CONTINUE = 0,
+   SKIP = 1,
+   ABORT = 2,
+};
 
 // For use by VirtualVolume()
 
-#define VAS_DEREGISTER 1
-#define VAS_SCAN_DIR 2
-#define VAS_DELETE 3
-#define VAS_RENAME 4
-#define VAS_OPEN_DIR 5
-#define VAS_CLOSE_DIR 6
-#define VAS_TEST_PATH 7
-#define VAS_WATCH_PATH 8
-#define VAS_IGNORE_FILE 9
-#define VAS_GET_INFO 10
-#define VAS_GET_DEVICE_INFO 11
-#define VAS_IDENTIFY_FILE 12
-#define VAS_MAKE_DIR 13
-#define VAS_SAME_FILE 14
-#define VAS_CASE_SENSITIVE 15
-#define VAS_READ_LINK 16
-#define VAS_CREATE_LINK 17
-#define VAS_DRIVER_SIZE 18
+enum class VAS : LONG {
+   NIL = 0,
+   DEREGISTER = 1,
+   SCAN_DIR = 2,
+   DELETE = 3,
+   RENAME = 4,
+   OPEN_DIR = 5,
+   CLOSE_DIR = 6,
+   TEST_PATH = 7,
+   WATCH_PATH = 8,
+   IGNORE_FILE = 9,
+   GET_INFO = 10,
+   GET_DEVICE_INFO = 11,
+   IDENTIFY_FILE = 12,
+   MAKE_DIR = 13,
+   SAME_FILE = 14,
+   CASE_SENSITIVE = 15,
+   READ_LINK = 16,
+   CREATE_LINK = 17,
+   DRIVER_SIZE = 18,
+};
 
 // Feedback event indicators.
 
@@ -1476,7 +1479,7 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
 // Structures to pass to OpenCore()
 
 struct OpenTag {
-   LONG Tag;
+   TOI Tag;
    union {
       LONG Long;
       LARGE Large;
@@ -1879,7 +1882,7 @@ struct FileFeedback {
    LARGE  Position;      // Current seek position within the file if moving or copying
    STRING Path;          // Path to the file
    STRING Dest;          // Destination file/path if moving or copying
-   LONG   FeedbackID;    // Set to one of the FDB integers
+   FBK    FeedbackID;    // Set to one of the FBK values
    char   Reserved[32];  // Reserved in case of future expansion
 };
 
@@ -1927,7 +1930,7 @@ struct CoreBase {
    void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
    ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
-   ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
+   ERROR (*_AnalysePath)(CSTRING Path, LOC * Type);
    LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
    ERROR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
@@ -2023,7 +2026,7 @@ struct CoreBase {
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-   LONG (*_StrDatatype)(CSTRING String);
+   STT (*_StrDatatype)(CSTRING String);
    void (*_UnloadFile)(struct CacheFile * Cache);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
@@ -2050,7 +2053,7 @@ inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjus
 template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
 inline ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
-inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
+inline ERROR AnalysePath(CSTRING Path, LOC * Type) { return CoreBase->_AnalysePath(Path,Type); }
 inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 inline ERROR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
@@ -2146,7 +2149,7 @@ inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBa
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
-inline LONG StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
+inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
@@ -3163,7 +3166,7 @@ struct flStartStream { OBJECTID SubscriberID; LONG Flags; LONG Length;  };
 struct flDelete { FUNCTION * Callback;  };
 struct flMove { CSTRING Dest; FUNCTION * Callback;  };
 struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
-struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; LONG Type;  };
+struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type;  };
 struct flReadLine { STRING Result;  };
 struct flNext { objFile * File;  };
 struct flWatch { FUNCTION * Callback; LARGE Custom; LONG Flags;  };
@@ -3190,7 +3193,7 @@ INLINE ERROR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
    return(Action(MT_FlCopy, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, LONG Type) {
+INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) {
    struct flSetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
    return(Action(MT_FlSetDate, (OBJECTPTR)Ob, &args));
 }

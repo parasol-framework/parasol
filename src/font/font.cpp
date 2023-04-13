@@ -269,8 +269,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return ERR_Failed;
    }
 
-   LONG type;
-   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE);
+   LOC type;
+   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC::FILE);
 
    if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
       if (refresh) fntRefreshFonts();

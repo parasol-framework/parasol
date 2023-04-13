@@ -976,10 +976,11 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
    Self->setIndex((LARGE)Self->Index + (LARGE)Length); // Use Set() so that field subscribers can track progress with field monitoring
 
    if ((!Self->flOutput) and (Self->OutputFile)) {
-      LONG flags, type;
+      LONG flags;
+      LOC type;
 
       if (Self->Flags & HTF_RESUME) {
-         if ((!AnalysePath(Self->OutputFile, &type)) and (type IS LOC_FILE)) {
+         if ((!AnalysePath(Self->OutputFile, &type)) and (type IS LOC::FILE)) {
             flags = 0;
          }
          else flags = FL_NEW;

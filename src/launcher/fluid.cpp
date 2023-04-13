@@ -270,7 +270,7 @@ int main(int argc, CSTRING *argv)
    int result = 0;
    if (!process_args()) {
       if (glTargetFile) {
-         LONG type;
+         LOC type;
          if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
             result = -1;

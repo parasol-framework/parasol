@@ -449,7 +449,7 @@ static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
          FileFeedback fb;
          ClearMemory(&fb, sizeof(fb));
          if ((Args->Callback) and (Args->Callback->Type)) {
-            fb.FeedbackID = FBK_DELETE_FILE;
+            fb.FeedbackID = FBK::DELETE_FILE;
             fb.Path       = buffer;
          }
 
@@ -543,13 +543,13 @@ Init: Initialises a file.
 
 This action will prepare a file or folder at the given #Path for use.
 
-To create a new file from scratch, specify the NEW flag.  This will overwrite any file that exists at the target path.
+To create a new file from scratch, specify the `NEW` flag.  This will overwrite any file that exists at the target path.
 
-To read and write data to the file, specify the READ and/or WRITE modes in the #Flags field prior to initialisation.
-If a file is read-only and the WRITE and READ flags are set in combination, the WRITE flag will be dropped and
+To read and write data to the file, specify the `READ` and/or `WRITE` modes in the #Flags field prior to initialisation.
+If a file is read-only and the `WRITE` and `READ` flags are set in combination, the `WRITE` flag will be dropped and
 initialisation will continue as normal.
 
-If neither of the NEW, READ or WRITE flags are specified, the file object is prepared and queried from disk (if it
+If neither of the `NEW`, `READ` or `WRITE` flags are specified, the file object is prepared and queried from disk (if it
 exists), but will not be opened.  It will be necessary to #Activate() the file in order to open it.
 
 The File class supports RAM based file buffering - this is activated by using the BUFFER flag and setting the Size

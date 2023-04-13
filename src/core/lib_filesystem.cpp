@@ -165,12 +165,12 @@ void free_file_cache(void)
 
 //********************************************************************************************************************
 
-extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
+extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
 {
-   if ((!Callback) or (!Feedback)) return FFR_OKAY;
+   if ((!Callback) or (!Feedback)) return FFR::OKAY;
 
    if (Callback->Type IS CALL_STDC) {
-      auto routine = (LONG (*)(FileFeedback *))Callback->StdC.Routine;
+      auto routine = (FFR (*)(FileFeedback *))Callback->StdC.Routine;
       return routine(Feedback);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
@@ -180,7 +180,7 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
             { "Position", FD_LARGE,   { .Large   = Feedback->Position } },
             { "Path",     FD_STRING,  { .Address = Feedback->Path } },
             { "Dest",     FD_STRING,  { .Address = Feedback->Dest } },
-            { "FeedbackID", FD_LONG,  { .Long    = Feedback->FeedbackID } }
+            { "FeedbackID", FD_LONG,  { .Long    = LONG(Feedback->FeedbackID) } }
          };
 
          ERROR error;
@@ -190,15 +190,15 @@ extern "C" LONG CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
             CSTRING *results;
             LONG size;
             if ((!GetFieldArray(script, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
-               return StrToInt(results[0]);
+               return FFR(StrToInt(results[0]));
             }
-            else return FFR_OKAY;
+            else return FFR::OKAY;
          }
-         else return FFR_OKAY;
+         else return FFR::OKAY;
       }
-      else return FFR_OKAY;
+      else return FFR::OKAY;
    }
-   else return FFR_OKAY;
+   else return FFR::OKAY;
 }
 
 /*********************************************************************************************************************
@@ -337,7 +337,7 @@ candidate for testing the validity of a path string.
 
 -INPUT-
 cstr Path: The path to analyse.
-&int(LOC) Type: The result will be stored in the LONG variable referred to by this argument.  The return types are LOC_DIRECTORY, LOC_FILE and LOC_VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.
+&int(LOC) Type: The result will be stored in the LONG variable referred to by this argument.  The return types are DIRECTORY, FILE and VOLUME.  You can set this argument to NULL if you are only interested in checking if the file exists.
 
 -ERRORS-
 Okay: The path was analysed and the result is stored in the Type variable.
@@ -346,17 +346,17 @@ DoesNotExist:
 
 *********************************************************************************************************************/
 
-ERROR AnalysePath(CSTRING Path, LONG *PathType)
+ERROR AnalysePath(CSTRING Path, LOC *PathType)
 {
    pf::Log log(__FUNCTION__);
 
-   if (PathType) *PathType = 0;
+   if (PathType) *PathType = LOC::NIL;
    if (!Path) return ERR_NullArgs;
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 
    if (!StrCompare("string:", Path, 7, 0)) {
-      if (PathType) *PathType = LOC_FILE;
+      if (PathType) *PathType = LOC::FILE;
       return ERR_Okay;
    }
 
@@ -374,7 +374,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       if (lock.granted()) {
          std::string path_vol(Path, len-1);
          if (glVolumes.contains(path_vol)) {
-            if (PathType) *PathType = LOC_VOLUME;
+            if (PathType) *PathType = LOC::VOLUME;
             return ERR_Okay;
          }
       }
@@ -388,7 +388,8 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       ERROR error;
       auto vd = get_fs(test_path);
       if (vd->TestPath) {
-         if (!PathType) PathType = &len; // Dummy variable, helps to avoid bugs
+         LOC dummy;
+         if (!PathType) PathType = &dummy; // Dummy variable, helps to avoid bugs
          error = vd->TestPath(test_path, RSF::NIL, PathType);
       }
       else error = ERR_NoSupport;
@@ -597,7 +598,7 @@ The Callback parameter can be set with a function that matches this prototype:
 
 For each file that is processed during the copy operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
-Valid values are `FFR_Okay` (copy the file), `FFR_Skip` (do not copy the file) and `FFR_Abort` (abort the process
+Valid values are `FFR::Okay` (copy the file), `FFR::Skip` (do not copy the file) and `FFR::Abort` (abort the process
 completely and return `ERR_Cancelled` as an error code).
 
 -INPUT-
@@ -705,8 +706,8 @@ The Callback parameter can be set with a function that matches this prototype:
 `LONG Callback(struct FileFeedback *)`
 
 Prior to the deletion of any file, a &FileFeedback structure is passed that describes the file's location.  The
-callback must return a constant value that can potentially affect file processing.  Valid values are `FFR_Okay` (delete
-the file), `FFR_Skip` (do not delete the file) and `FFR_Abort` (abort the process completely and return `ERR_Cancelled`
+callback must return a constant value that can potentially affect file processing.  Valid values are `FFR::Okay` (delete
+the file), `FFR::Skip` (do not delete the file) and `FFR::Abort` (abort the process completely and return `ERR_Cancelled`
 as an error code).
 
 -INPUT-
@@ -1040,7 +1041,7 @@ The Callback parameter can be set with a function that matches this prototype:
 
 For each file that is processed during the move operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
-Valid values are `FFR_Okay` (move the file), `FFR_Skip` (do not move the file) and `FFR_Abort` (abort the process
+Valid values are `FFR::Okay` (move the file), `FFR::Skip` (do not move the file) and `FFR::Abort` (abort the process
 completely and return `ERR_Cancelled` as an error code).
 
 -INPUT-
@@ -1220,7 +1221,7 @@ ERROR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
 ERROR test_path(STRING Path, RSF Flags)
 {
    pf::Log log(__FUNCTION__);
-   LONG len, type;
+   LONG len;
 #ifdef _WIN32
    LONG j;
 #elif __unix__
@@ -1233,6 +1234,7 @@ ERROR test_path(STRING Path, RSF Flags)
 
    if (auto vd = get_virtual(Path)) {
       if (vd->TestPath) {
+         LOC type;
          if (!vd->TestPath(Path, Flags, &type)) {
             return ERR_Okay;
          }
@@ -1576,7 +1578,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 #endif
    STRING src, tmp;
    LONG permissions, dhandle, len;
-   LONG srclen, result;
+   LONG srclen;
    char dest[2000];
    bool srcdir;
    ERROR error;
@@ -1632,8 +1634,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
    FileFeedback feedback;
    ClearMemory(&feedback, sizeof(feedback));
-   if (Move) feedback.FeedbackID = FBK_MOVE_FILE;
-   else feedback.FeedbackID = FBK_COPY_FILE;
+   if (Move) feedback.FeedbackID = FBK::MOVE_FILE;
+   else feedback.FeedbackID = FBK::COPY_FILE;
 
    feedback.Path = src;
    feedback.Dest = dest;
@@ -1777,10 +1779,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             if ((Callback) and (Callback->Type)) {
                if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
 
-               result = CALL_FEEDBACK(Callback, &feedback);
+               FFR result = CALL_FEEDBACK(Callback, &feedback);
 
-               if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
-               else if (result IS FFR_SKIP) break;
+               if (result IS FFR::ABORT) { error = ERR_Cancelled; break; }
+               else if (result IS FFR::SKIP) break;
             }
 
             ProcessMessages(PMF::NIL, 0);
@@ -1816,9 +1818,9 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          linkto[i] = 0;
 
          if ((Callback) and (Callback->Type)) {
-            result = CALL_FEEDBACK(Callback, &feedback);
-            if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
-            else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
+            FFR result = CALL_FEEDBACK(Callback, &feedback);
+            if (result IS FFR::ABORT) { error = ERR_Cancelled; goto exit; }
+            else if (result IS FFR::SKIP) { error = ERR_Okay; goto exit; }
          }
 
          unlink(dest); // Remove any existing file first
@@ -1859,9 +1861,9 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       error = ERR_Okay;
 
       if ((Callback) and (Callback->Type)) {
-         result = CALL_FEEDBACK(Callback, &feedback);
-         if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
-         else if (result IS FFR_SKIP) goto exit;
+         FFR result = CALL_FEEDBACK(Callback, &feedback);
+         if (result IS FFR::ABORT) { error = ERR_Cancelled; goto exit; }
+         else if (result IS FFR::SKIP) goto exit;
       }
 
 #ifdef _WIN32
@@ -1959,9 +1961,9 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
    if (!Move) { // (If Move is enabled, we would have already sent feedback during the earlier rename() attempt
       if ((Callback) and (Callback->Type)) {
-         result = CALL_FEEDBACK(Callback, &feedback);
-         if (result IS FFR_ABORT) { error = ERR_Cancelled; goto exit; }
-         else if (result IS FFR_SKIP) { error = ERR_Okay; goto exit; }
+         FFR result = CALL_FEEDBACK(Callback, &feedback);
+         if (result IS FFR::ABORT) { error = ERR_Cancelled; goto exit; }
+         else if (result IS FFR::SKIP) { error = ERR_Okay; goto exit; }
       }
    }
 
@@ -2069,13 +2071,12 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                   break;
                }
 
-
                if ((Callback) and (Callback->Type)) {
                   feedback.Position += len;
                   if (feedback.Size < feedback.Position) feedback.Size = feedback.Position;
-                  result = CALL_FEEDBACK(Callback, &feedback);
-                  if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
-                  else if (result IS FFR_SKIP) break;
+                  FFR result = CALL_FEEDBACK(Callback, &feedback);
+                  if (result IS FFR::ABORT) { error = ERR_Cancelled; break; }
+                  else if (result IS FFR::SKIP) break;
                }
             }
 
@@ -2153,9 +2154,9 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
                if ((Callback) and (Callback->Type)) {
                   Feedback->Path = Source;
                   Feedback->Dest = Dest;
-                  LONG result = CALL_FEEDBACK(Callback, Feedback);
-                  if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
-                  else if (result IS FFR_SKIP) continue;
+                  FFR result = CALL_FEEDBACK(Callback, Feedback);
+                  if (result IS FFR::ABORT) { error = ERR_Cancelled; break; }
+                  else if (result IS FFR::SKIP) continue;
                }
 
                STRING link;
@@ -2183,9 +2184,9 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
             if ((Callback) and (Callback->Type)) {
                Feedback->Path = Source;
                Feedback->Dest = Dest;
-               LONG result = CALL_FEEDBACK(Callback, Feedback);
-               if (result IS FFR_ABORT) { error = ERR_Cancelled; break; }
-               else if (result IS FFR_SKIP) continue;
+               FFR result = CALL_FEEDBACK(Callback, Feedback);
+               if (result IS FFR::ABORT) { error = ERR_Cancelled; break; }
+               else if (result IS FFR::SKIP) continue;
             }
 
             AdjustLogLevel(1);
@@ -2325,7 +2326,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
 
       if ((Callback) and (Callback->Type)) {
          ClearMemory(&feedback, sizeof(feedback));
-         feedback.FeedbackID = FBK_DELETE_FILE;
+         feedback.FeedbackID = FBK::DELETE_FILE;
          feedback.Path = buffer;
       }
 
@@ -2342,7 +2343,7 @@ ERROR fs_delete(STRING Path, FUNCTION *Callback)
 
          if ((Callback) and (Callback->Type)) {
             ClearMemory(&feedback, sizeof(feedback));
-            feedback.FeedbackID = FBK_DELETE_FILE;
+            feedback.FeedbackID = FBK::DELETE_FILE;
             feedback.Path = buffer;
          }
 
@@ -2560,16 +2561,16 @@ ERROR fs_rename(STRING CurrentPath, STRING NewPath)
 
 //********************************************************************************************************************
 
-ERROR fs_testpath(CSTRING Path, RSF Flags, LONG *Type)
+ERROR fs_testpath(CSTRING Path, RSF Flags, LOC *Type)
 {
-   LONG type;
+   LOC type;
 
    auto len = StrLength(Path);
 
    if (Path[len-1] IS ':') {
       STRING str;
       if (!ResolvePath(Path, RSF::NIL, &str)) {
-         if (*Type) *Type = LOC_VOLUME;
+         if (Type) *Type = LOC::VOLUME;
          FreeResource(str);
          return ERR_Okay;
       }
@@ -2579,20 +2580,20 @@ ERROR fs_testpath(CSTRING Path, RSF Flags, LONG *Type)
    #ifdef __unix__
 
       struct stat64 info;
-      type = 0;
+      type = LOC::NIL;
       if (!stat64(Path, &info)) {
-         if (S_ISDIR(info.st_mode)) type = LOC_DIRECTORY;
-         else type = LOC_FILE;
+         if (S_ISDIR(info.st_mode)) type = LOC::DIRECTORY;
+         else type = LOC::FILE;
       }
-      else if (!lstat64(Path, &info)) type = LOC_FILE; // The file is a broken symbolic link
+      else if (!lstat64(Path, &info)) type = LOC::FILE; // The file is a broken symbolic link
 
    #elif _WIN32
 
-      type = winTestLocation(Path, ((Flags & RSF::CASE_SENSITIVE) != RSF::NIL) ? true : false);
+      type = LOC(winTestLocation(Path, ((Flags & RSF::CASE_SENSITIVE) != RSF::NIL) ? true : false));
 
    #endif
 
-   if (type) {
+   if (type != LOC::NIL) {
       if (Type) *Type = type;
       return ERR_Okay;
    }
@@ -2619,7 +2620,7 @@ ERROR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
    struct stat64 info;
    if (lstat64(path_ref, &info) IS -1) return ERR_FileNotFound;
 
-   Info->Flags = 0;
+   Info->Flags = RDF::NIL;
 
    if (S_ISLNK(info.st_mode)) {
       Info->Flags |= RDF::LINK;
@@ -3056,19 +3057,18 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
    LONG len;
    DIR *dummydir, *stream;
    struct stat64 info;
-   LONG result;
    ERROR error;
 
    log.trace("Path: %s", Path);
 
    if ((Callback) and (Callback->Type)) {
       Feedback->Path = Path;
-      result = CALL_FEEDBACK(Callback, Feedback);
-      if (result IS FFR_ABORT) {
+      FFR result = CALL_FEEDBACK(Callback, Feedback);
+      if (result IS FFR::ABORT) {
          log.trace("Feedback requested abort at file '%s'", Path);
          return ERR_Cancelled;
       }
-      else if (result IS FFR_SKIP) {
+      else if (result IS FFR::SKIP) {
          log.trace("Feedback requested skip at file '%s'", Path);
          return ERR_Okay;
       }

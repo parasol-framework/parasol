@@ -639,8 +639,8 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 -FUNCTION-
 StrDatatype: Determines the data type of a string.
 
-This function analyses a string and returns its data type.  Valid return values are `STT_FLOAT` for floating point
-numbers, `STT_NUMBER` for whole numbers, `STT_HEX` for hexadecimal (e.g. 0x1) and `STT_STRING` for any other string type.
+This function analyses a string and returns its data type.  Valid return values are `STT::FLOAT` for floating point
+numbers, `STT::NUMBER` for whole numbers, `STT::HEX` for hexadecimal (e.g. 0x1) and `STT::STRING` for any other string type.
 In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification
 characters, such as a decimal point or negative sign.
 
@@ -650,13 +650,13 @@ Any white-space at the start of the string will be skipped.
 cstr String: The string that you want to analyse.
 
 -RESULT-
-int(STT): Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.
+int(STT): Returns FLOAT, NUMBER, HEX or STRING.
 
 *********************************************************************************************************************/
 
-LONG StrDatatype(CSTRING String)
+STT StrDatatype(CSTRING String)
 {
-   if (!String) return 0;
+   if (!String) return STT::NIL;
 
    while ((*String) and (*String <= 0x20)) String++; // Skip white-space
 
@@ -666,9 +666,9 @@ LONG StrDatatype(CSTRING String)
          if (((String[i] >= '0') and (String[i] <= '9')) or
              ((String[i] >= 'A') and (String[i] <= 'F')) or
              ((String[i] >= 'a') and (String[i] <= 'f')));
-         else return STT_STRING;
+         else return STT::STRING;
       }
-      return STT_HEX;
+      return STT::HEX;
    }
 
    bool is_number = true;
@@ -679,9 +679,9 @@ LONG StrDatatype(CSTRING String)
       if (String[i] IS '.') is_float = true;
    }
 
-   if ((is_float) and (is_number)) return STT_FLOAT;
-   else if (is_number) return STT_NUMBER;
-   else return STT_STRING;
+   if ((is_float) and (is_number)) return STT::FLOAT;
+   else if (is_number) return STT::NUMBER;
+   else return STT::STRING;
 }
 
 /*********************************************************************************************************************

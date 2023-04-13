@@ -340,12 +340,14 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Android sets an important JNI pointer on initialisation.
 
    if ((Info->Flags & OPF_OPTIONS) and (Info->Options)) {
-      for (LONG i=0; Info->Options[i].Tag != TAGEND; i++) {
+      for (LONG i=0; LONG(Info->Options[i].Tag) != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
-            case TOI_ANDROID_ENV: {
+            case TOI::ANDROID_ENV: {
                glJNIEnv = Info->Options[i].Value.Pointer;
                break;
             }
+            default:
+               break;
          }
       }
    }
@@ -1407,16 +1409,18 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // the Core.
 
    if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
-      for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
+      for (LONG i=0; LONG(glOpenInfo->Options[i].Tag) != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
-            case TOI_LOCAL_CACHE: {
+            case TOI::LOCAL_CACHE: {
                SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
-            case TOI_LOCAL_STORAGE: {
+            case TOI::LOCAL_STORAGE: {
                SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
+            default:
+               break;
          }
       }
    }
@@ -1458,8 +1462,8 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // folder if it does not already exist.
 
    if (buffer != "config:users/default/") {
-      LONG location_type = 0;
-      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
+      LOC location_type = LOC::NIL;
+      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC::DIRECTORY)) {
          buffer.pop_back();
          SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
             CopyFile("config:users/default/", buffer.c_str(), NULL);

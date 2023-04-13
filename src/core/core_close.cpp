@@ -181,7 +181,7 @@ EXPORT void CloseCore(void)
 
       Expunge(true); // Third and final expunge.  Forcibly unloads modules.
 
-      VirtualVolume("archive", VAS_DEREGISTER, TAGEND);
+      VirtualVolume("archive", VAS::DEREGISTER, TAGEND);
 
       while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
