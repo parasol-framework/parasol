@@ -1802,6 +1802,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 #ifdef __unix__
    // This code manages symbolic links
 
+   LONG result;
    if (srcdir) {
       src[srclen-1] = 0;
       result = lstat64(src, &stinfo);
