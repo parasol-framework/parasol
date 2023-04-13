@@ -88,6 +88,61 @@ static const MethodEntry clMethods[] = {
 };
 
 //********************************************************************************************************************
+// NOTE: Be aware that this function can be called by Activate() to perform a complete state reset.
+
+static void free_all(objScript *Self)
+{
+   auto prv = (prvFluid *)Self->ChildPrivate;
+   if (!prv) return; // Not a problem - indicates the object did not pass initialisation
+
+   // Free action subscriptions
+
+   auto action = prv->ActionList;
+   while (action) {
+      auto nextaction = action->Next;
+
+      if (action->ObjectID) {
+         OBJECTPTR object;
+         if (!AccessObject(action->ObjectID, 3000, &object)) {
+            UnsubscribeAction(object, action->ActionID);
+            ReleaseObject(object);
+         }
+      }
+      FreeResource(action);
+      action = nextaction;
+   }
+   prv->ActionList = NULL;
+
+   // Free event subscriptions
+
+   auto event = prv->EventList;
+   while (event) {
+      auto nextevent = event->Next;
+      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
+      FreeResource(event);
+      event = nextevent;
+   }
+   prv->EventList = NULL;
+
+   // Free data requests
+
+   auto dr = prv->Requests;
+   while (dr) {
+      auto next = dr->Next;
+      FreeResource(dr);
+      dr = next;
+   }
+   prv->Requests = NULL;
+
+   if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
+
+   prv->~prvFluid();
+
+   lua_close(prv->Lua);
+   prv->Lua = NULL;
+}
+
+//********************************************************************************************************************
 // Proxy functions for controlling access to global variables.
 
 static int global_index(lua_State *Lua) // Read global via proxy
@@ -219,8 +274,8 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return;
 
-   for (auto &scan : prv->ActionList) {
-      if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
+   for (auto scan=prv->ActionList; scan; scan=scan->Next) {
+      if ((Object->UID IS scan->ObjectID) and (ActionID IS scan->ActionID)) {
          LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
@@ -228,13 +283,13 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 
             log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
-            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
+            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (!stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args)) {
+            if (!stack_args(prv->Lua, Object->UID, scan->Args, (STRING)Args)) {
                LONG total_args;
-               if (scan.Reference) { // +1: Custom reference (optional)
-                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
+               if (scan->Reference) { // +1: Custom reference (optional)
+                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Reference);
                   total_args = 3; // ObjectID, ArgTable, Reference
                }
                else total_args = 2; // ObjectID, ArgTable
@@ -301,7 +356,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
-      FLUID_Free(Self, NULL);
+      free_all(Self);
+      new (prv) prvFluid;
 
       if (!(prv->Lua = luaL_newstate())) {
          log.warning("Failed to open a Lua instance.");
@@ -605,36 +661,7 @@ static ERROR FLUID_DerefProcedure(objScript *Self, struct scDerefProcedure *Args
 
 static ERROR FLUID_Free(objScript *Self, APTR Void)
 {
-   auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return(ERR_Okay); // Not a problem - indicates the object did not pass initialisation
-
-   prv->ActionList.clear();
-
-   // Free event subscriptions
-
-   auto event = prv->EventList;
-   while (event) {
-      auto nextevent = event->Next;
-      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
-      FreeResource(event);
-      event = nextevent;
-   }
-   prv->EventList = NULL;
-
-   // Free data requests
-
-   auto dr = prv->Requests;
-   while (dr) {
-      auto next = dr->Next;
-      FreeResource(dr);
-      dr = next;
-   }
-   prv->Requests = NULL;
-
-   if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
-
-   prv->~prvFluid();
-   lua_close(prv->Lua);
+   free_all(Self);
    return ERR_Okay;
 }
 

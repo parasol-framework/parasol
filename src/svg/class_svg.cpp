@@ -81,6 +81,11 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
+   if (Self->FrameCallback.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      Self->FrameCallback.Type = CALL_NONE;
+   }
+
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
       FreeResource(Self->Target);
       Self->Target = NULL;
