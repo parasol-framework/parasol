@@ -76,27 +76,29 @@ struct actionmonitor {
       move.ObjectID = 0;
    }
 
-   actionmonitor& operator=(actionmonitor &&move) noexcept {
-      move.swap(*this);
-      return *this;
-   }
-
-   void swap(actionmonitor &other) noexcept {
-      std::swap(Object, other.Object);
-      std::swap(Args, other.Args);
-      std::swap(Function, other.Function);
-      std::swap(Reference, other.Reference);
-      std::swap(ActionID, other.ActionID);
-      std::swap(ObjectID, other.ObjectID);
-   }
+   actionmonitor& operator=(actionmonitor &&move) = default;
 };
 
+//********************************************************************************************************************
+
 struct eventsub {
-   struct eventsub *Prev;
-   struct eventsub *Next;
-   LONG Function;     // Lua function index
-   EVENTID EventID;   // Event message ID
-   APTR EventHandle;
+   LONG    Function;     // Lua function index
+   EVENTID EventID;      // Event message ID
+   APTR    EventHandle;
+
+   eventsub(LONG pFunction, EVENTID pEventID, APTR pEventHandle) :
+      Function(pFunction), EventID(pEventID), EventHandle(pEventHandle) { }
+
+   ~eventsub() {
+      if (EventHandle) UnsubscribeEvent(EventHandle);
+   }
+
+   eventsub(eventsub &&move) noexcept :
+      Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
+      move.EventHandle = NULL;
+   }
+
+   eventsub& operator=(eventsub &&move) = default;
 };
 
 //********************************************************************************************************************
@@ -160,8 +162,8 @@ struct struct_hash {
 
 struct prvFluid {
    lua_State *Lua;                   // Lua instance
-   struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
+   std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    struct finput *InputList;         // Managed by the input interface
    struct datarequest *Requests;     // For drag and drop requests
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;

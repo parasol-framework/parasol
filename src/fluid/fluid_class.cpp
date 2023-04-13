@@ -95,19 +95,6 @@ static void free_all(objScript *Self)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return; // Not a problem - indicates the object did not pass initialisation
 
-   prv->ActionList.clear();
-
-   // Free event subscriptions
-
-   auto event = prv->EventList;
-   while (event) {
-      auto nextevent = event->Next;
-      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
-      FreeResource(event);
-      event = nextevent;
-   }
-   prv->EventList = NULL;
-
    // Free data requests
 
    auto dr = prv->Requests;
