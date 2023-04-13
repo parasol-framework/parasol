@@ -512,7 +512,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
 static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   glTaskState = TSTATE_STOPPING;
+   glTaskState = TSTATE::STOPPING;
    return ERR_Okay;
 }
 

@@ -292,8 +292,8 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_proxy()) return ERR_AddClass;
    if (init_netlookup()) return ERR_AddClass;
 
-   glResolveNameMsgID = AllocateID(IDTYPE_MESSAGE);
-   glResolveAddrMsgID = AllocateID(IDTYPE_MESSAGE);
+   glResolveNameMsgID = AllocateID(IDTYPE::MESSAGE);
+   glResolveAddrMsgID = AllocateID(IDTYPE::MESSAGE);
 
 #ifdef _WIN32
    // Configure Winsock

@@ -365,7 +365,7 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
 
       glTimerCycle++;
 timer_cycle:
-      if ((glTaskState IS TSTATE_STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL));
+      if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL));
       else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
          for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
@@ -593,7 +593,7 @@ timer_cycle:
       #endif
 
       LARGE wait = 0;
-      if ((repass) or (breaking) or ((glTaskState IS TSTATE_STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)));
+      if ((repass) or (breaking) or ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -634,7 +634,7 @@ timer_cycle:
       // Continue the loop?
 
       if (repass) continue; // There are messages left unprocessed
-      else if (((glTaskState IS TSTATE_STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) or (breaking)) {
+      else if (((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
       }
@@ -648,7 +648,7 @@ timer_cycle:
 
    } while (1);
 
-   if ((glTaskState IS TSTATE_STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) returncode = ERR_Terminate;
+   if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) returncode = ERR_Terminate;
 
    if (msg) FreeResource(msg);
 

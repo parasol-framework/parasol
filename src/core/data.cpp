@@ -135,7 +135,7 @@ bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 BYTE glProgramStage = STAGE_STARTUP;
-UBYTE glTaskState   = TSTATE_RUNNING;
+TSTATE glTaskState  = TSTATE::RUNNING;
 LONG glInotify = -1;
 
 const struct virtual_drive glFSDefault = {

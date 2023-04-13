@@ -62,20 +62,20 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 *********************************************************************************************************************/
 
-LONG AllocateID(LONG Type)
+LONG AllocateID(IDTYPE Type)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Type IS IDTYPE_MESSAGE) {
+   if (Type IS IDTYPE::MESSAGE) {
       LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
       log.function("MessageID: %d", id);
       return id;
    }
-   else if (Type IS IDTYPE_GLOBAL) {
+   else if (Type IS IDTYPE::GLOBAL) {
       LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
       return id;
    }
-   else if (Type IS IDTYPE_FUNCTION) {
+   else if (Type IS IDTYPE::FUNCTION) {
       UWORD id = __sync_add_and_fetch(&glFunctionID, 1);
       return id;
    }
@@ -412,7 +412,7 @@ LARGE GetResource(RES Resource)
       case RES::SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES::PRIVILEGED:      return glPrivileged;
       case RES::LOG_LEVEL:       return glLogLevel;
-      case RES::PROCESS_STATE:   return (MAXINT)glTaskState;
+      case RES::PROCESS_STATE:   return MAXINT(glTaskState);
       case RES::MAX_PROCESSES:   return MAX_TASKS;
       case RES::LOG_DEPTH:       return tlDepth;
       case RES::CURRENT_MSG:     return (MAXINT)tlCurrentMsg;

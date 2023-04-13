@@ -361,9 +361,9 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>AllocateID</name>
     <category>System</category>
     <comment>Generates unique ID's for general purposes.</comment>
-    <prototype>LONG AllocateID(LONG Type)</prototype>
+    <prototype>LONG AllocateID(IDTYPE Type)</prototype>
     <input>
-      <param type="LONG" name="Type" lookup="IDTYPE">The type of ID that is required.</param>
+      <param type="IDTYPE" name="Type" lookup="IDTYPE">The type of ID that is required.</param>
     </input>
     <description>
 <p>This function generates unique ID's that can be used in other Core functions.  A type ID is required and the resulting number will be unique to that type only.</p>

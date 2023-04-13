@@ -37,7 +37,7 @@ ERROR plAllocPrivateSemaphore(APTR Semaphore, LONG InitialValue)
    num++;
    IntToStr(num, name+7, sizeof(name)-7);
    sem_t *sem = sem_open(name, O_CREAT|O_EXCL, InitialValue);
-   if (sem IS SEM_FAILED) return ERR_SystemCall;
+   if (sem IS SEM::FAILED) return ERR_SystemCall;
    ((sem_t **)Semaphore)[0] = sem;
    return ERR_Okay;
 }
@@ -684,28 +684,28 @@ This function provides a generic means for controlling the details of a semaphor
 the following table, against the handle referenced in the Semaphore parameter.
 
 <types type="Command">
-<type name="SEM_GET_VAL">Get the maximum value for the counter, as originally set in ~AllocSemaphore().  Associated tag must be a pointer to a 32-bit integer.</>
-<type name="SEM_GET_COUNTER">Get the current counter value (affected by ~AccessSemaphore() and ~ReleaseSemaphore()).  Associated tag must be a pointer to a 32-bit integer.</>
-<type name="SEM_GET_DATA_LARGE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.</>
-<type name="SEM_GET_DATA_LONG">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.</>
-<type name="SEM_GET_DATA_PTR">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.</>
-<type name="SEM_SET_DATA_LARGE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.</>
-<type name="SEM_SET_DATA_LONG">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.</>
-<type name="SEM_SET_DATA_PTR">Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.</>
+<type name="SEM::GET_VAL">Get the maximum value for the counter, as originally set in ~AllocSemaphore().  Associated tag must be a pointer to a 32-bit integer.</>
+<type name="SEM::GET_COUNTER">Get the current counter value (affected by ~AccessSemaphore() and ~ReleaseSemaphore()).  Associated tag must be a pointer to a 32-bit integer.</>
+<type name="SEM::GET_DATA_LARGE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.</>
+<type name="SEM::GET_DATA_LONG">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.</>
+<type name="SEM::GET_DATA_PTR">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.</>
+<type name="SEM::SET_DATA_LARGE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.</>
+<type name="SEM::SET_DATA_LONG">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.</>
+<type name="SEM::SET_DATA_PTR">Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.</>
 </>
 
 It is not necessary to have locked the semaphore in order to execute any of the available commands.
 
 -INPUT-
 int Semaphore: The handle of the semaphore to be queried.
-int Command: A command type to execute.
+int(SEM) Command: A command type to execute.
 tags Tag: A tag value that is relevant to the Command.
 
 -END-
 
 *********************************************************************************************************************/
 
-ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
+ERROR SemaphoreCtrl(LONG SemaphoreID, SEM Command, ...)
 {
    pf::Log log(__FUNCTION__);
    va_list list;
@@ -719,14 +719,14 @@ ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
       va_start(list, Command);
 
       switch(Command) {
-         case SEM_GET_VAL: {
+         case SEM::GET_VAL: {
             LONG *tag;
             tag = va_arg(list, LONG *);
             tag[0] = semaphore->MaxValue;
             break;
          }
 
-         case SEM_GET_COUNTER: {
+         case SEM::GET_COUNTER: {
             LONG *tag;
             tag = va_arg(list, LONG *);
             tag[0] = semaphore->Counter;
@@ -735,22 +735,22 @@ ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
 
          // Get Data
 
-         case SEM_GET_DATA_DOUBLE:
-         case SEM_GET_DATA_LARGE: {
+         case SEM::GET_DATA_DOUBLE:
+         case SEM::GET_DATA_LARGE: {
             LARGE *tag;
             tag = va_arg(list, LARGE *);
             tag[0] = semaphore->Data;
             break;
          }
 
-         case SEM_GET_DATA_PTR: {
+         case SEM::GET_DATA_PTR: {
             APTR *tag;
             tag = va_arg(list, APTR *);
             tag[0] = (APTR)(MAXINT)(semaphore->Data);
             break;
          }
 
-         case SEM_GET_DATA_LONG: {
+         case SEM::GET_DATA_LONG: {
             LONG *tag;
             tag = va_arg(list, LONG *);
             tag[0] = semaphore->Data;
@@ -759,18 +759,18 @@ ERROR SemaphoreCtrl(LONG SemaphoreID, LONG Command, ...)
 
          // Set Data
 
-         case SEM_SET_DATA_DOUBLE:
-         case SEM_SET_DATA_LARGE: {
+         case SEM::SET_DATA_DOUBLE:
+         case SEM::SET_DATA_LARGE: {
             semaphore->Data = va_arg(list, LARGE);
             break;
          }
 
-         case SEM_SET_DATA_PTR: {
+         case SEM::SET_DATA_PTR: {
             semaphore->Data = (MAXINT)va_arg(list, APTR);
             break;
          }
 
-         case SEM_SET_DATA_LONG: {
+         case SEM::SET_DATA_LONG: {
             semaphore->Data = va_arg(list, LONG);
             break;
          }

@@ -146,16 +146,18 @@ struct rkWatchPath {
 
 #define STAT_FOLDER 0x0001
 
-enum class NF : ULONG;
-enum class FOF : ULONG;
-enum class RES : LONG;
-enum class RP : LONG;
-enum class RFD : ULONG;
-enum class PMF : ULONG;
-enum class MSF : ULONG;
-enum class RDF : ULONG;
-enum class RSF : ULONG;
-enum class LDF : ULONG;
+enum class RES    : LONG;
+enum class RP     : LONG;
+enum class IDTYPE : LONG;
+enum class TSTATE : BYTE;
+enum class NF     : ULONG;
+enum class FOF    : ULONG;
+enum class RFD    : ULONG;
+enum class PMF    : ULONG;
+enum class MSF    : ULONG;
+enum class RDF    : ULONG;
+enum class RSF    : ULONG;
+enum class LDF    : ULONG;
 enum class VOLUME : ULONG;
 
 #include <parasol/vector.hpp>
@@ -625,7 +627,7 @@ extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate;
 extern bool glJanitorActive;
 extern WORD glLogLevel, glMaxDepth;
-extern UBYTE glTaskState;
+extern TSTATE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID

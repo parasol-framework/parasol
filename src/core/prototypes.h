@@ -9,7 +9,7 @@ ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 void ActionList(struct ActionTable ** Actions, LONG * Size);
 ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
 CSTRING ResolveClassID(CLASSID ID);
-LONG AllocateID(LONG Type);
+LONG AllocateID(IDTYPE Type);
 ERROR AllocMemory(LONG Size, LONG Flags, APTR * Address, MEMORYID * ID);
 ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, OBJECTPTR * Result);
 ERROR CheckAction(OBJECTPTR Object, LONG Action);

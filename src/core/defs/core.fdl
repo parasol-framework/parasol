@@ -335,13 +335,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      WAIT_FOR_OBJECTS = 90
   })
 
-  enum("IDTYPE", { start=1, comment="Types for AllocateID()" },
+  enum("IDTYPE", { type="int", start=1, comment="Types for AllocateID()" },
     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
     "GLOBAL: Global ID's have no specific association with anything.",
     "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
   )
 
-  enum("SEM", { start=1 },
+  enum("SEM", { type="int", start=1 },
     "GET_VAL: Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.",
     "GET_COUNTER: Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.",
     "GET_DATA_PTR: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.",
@@ -353,7 +353,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SET_DATA_LARGE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.",
     "SET_DATA_DOUBLE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.")
 
-  enum("TSTATE", { comment="Indicates the state of a process." },
+  enum("TSTATE", { type="char", comment="Indicates the state of a process." },
     "RUNNING: The process is currently executing code.",
     "PAUSED: The process is asleep.",
     "STOPPING: The process is in its termination phase.",

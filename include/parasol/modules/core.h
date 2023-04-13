@@ -1129,27 +1129,36 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 // Types for AllocateID()
 
-#define IDTYPE_MESSAGE 1
-#define IDTYPE_GLOBAL 2
-#define IDTYPE_FUNCTION 3
+enum class IDTYPE : LONG {
+   NIL = 0,
+   MESSAGE = 1,
+   GLOBAL = 2,
+   FUNCTION = 3,
+};
 
-#define SEM_GET_VAL 1
-#define SEM_GET_COUNTER 2
-#define SEM_GET_DATA_PTR 3
-#define SEM_GET_DATA_LONG 4
-#define SEM_GET_DATA_LARGE 5
-#define SEM_GET_DATA_DOUBLE 6
-#define SEM_SET_DATA_PTR 7
-#define SEM_SET_DATA_LONG 8
-#define SEM_SET_DATA_LARGE 9
-#define SEM_SET_DATA_DOUBLE 10
+enum class SEM : LONG {
+   NIL = 0,
+   GET_VAL = 1,
+   GET_COUNTER = 2,
+   GET_DATA_PTR = 3,
+   GET_DATA_LONG = 4,
+   GET_DATA_LARGE = 5,
+   GET_DATA_DOUBLE = 6,
+   SET_DATA_PTR = 7,
+   SET_DATA_LONG = 8,
+   SET_DATA_LARGE = 9,
+   SET_DATA_DOUBLE = 10,
+};
 
 // Indicates the state of a process.
 
-#define TSTATE_RUNNING 0
-#define TSTATE_PAUSED 1
-#define TSTATE_STOPPING 2
-#define TSTATE_TERMINATED 3
+enum class TSTATE : BYTE {
+   NIL = 0,
+   RUNNING = 0,
+   PAUSED = 1,
+   STOPPING = 2,
+   TERMINATED = 3,
+};
 
 enum class RES : LONG {
    NIL = 0,
@@ -1904,7 +1913,7 @@ struct CoreBase {
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    CSTRING (*_ResolveClassID)(CLASSID ID);
-   LONG (*_AllocateID)(LONG Type);
+   LONG (*_AllocateID)(IDTYPE Type);
    ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
    ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
@@ -2027,7 +2036,7 @@ inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return Cor
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
-inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
+inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
 inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
