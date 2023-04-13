@@ -582,7 +582,7 @@ if (!error) {
     </struct>
 
     <struct name="CompressionFeedback">
-      <field name="FeedbackID" type="LONG" lookup="FDB">Set to one of the FDB event indicators</field>
+      <field name="FeedbackID" type="FDB" lookup="FDB">Set to one of the FDB event indicators</field>
       <field name="Index" type="LONG">Index of the current file</field>
       <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
       <field name="Dest" type="CSTRING">Destination file/path during decompression</field>

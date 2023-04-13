@@ -68,7 +68,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
    // Send feedback if requested to do so
 
    CompressionFeedback feedback = {
-      .FeedbackID     = FDB_COMPRESS_FILE,
+      .FeedbackID     = FDB::COMPRESS_FILE,
       .Index          = Self->FileIndex,
       .Path           = Location.c_str(),
       .Dest           = Path.c_str(),
@@ -231,7 +231,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    // Send feedback
 
    CompressionFeedback fb;
-   fb.FeedbackID     = FDB_COMPRESS_FILE;
+   fb.FeedbackID     = FDB::COMPRESS_FILE;
    fb.Index          = Self->FileIndex;
    fb.Path           = Location.c_str();
    fb.Dest           = filename.c_str();

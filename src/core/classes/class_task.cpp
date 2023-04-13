@@ -1057,7 +1057,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          LONG status = 0;
          LARGE ticks = PreciseTime() + LARGE(Self->TimeOut * 1000000.0);
          while (!waitpid(pid, &status, WNOHANG)) {
-            ProcessMessages(0, 100);
+            ProcessMessages(PMF::NIL, 100);
 
             auto remaining = ticks - PreciseTime();
             if (remaining <= 0) {

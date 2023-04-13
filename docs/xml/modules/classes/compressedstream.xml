@@ -28,7 +28,7 @@
       <name>Format</name>
       <comment>The format of the compressed stream.  The default is GZIP.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="CF">INT</type>
+      <type lookup="CF">CF</type>
       <description>
 <types lookup="CF"/>
       </description>

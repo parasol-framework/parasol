@@ -271,13 +271,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "CREATE_LINK",
     "DRIVER_SIZE")
 
-  enum("FDB", { start=1, comment="Feedback event indicators." },
+  enum("FDB", { type="int", start=1, comment="Feedback event indicators." },
     "DECOMPRESS_FILE",
     "COMPRESS_FILE",
     "REMOVE_FILE",
     "DECOMPRESS_OBJECT")
 
-  enum("CF", { start=1, comment="Compression stream formats" },
+  enum("CF", { type="int", start=1, comment="Compression stream formats" },
     "GZIP: The 'gzip' format",
     "ZLIB: The 'zlib' format",
     "DEFLATE: The 'deflate' format")

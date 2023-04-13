@@ -1185,7 +1185,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          feedback.Hour   = (zf.TimeStamp>>11) & 0x1f;
          feedback.Minute = (zf.TimeStamp>>5)  & 0x3f;
          feedback.Second = (zf.TimeStamp>>1)  & 0x0f;
-         feedback.FeedbackID     = FDB_DECOMPRESS_FILE;
+         feedback.FeedbackID     = FDB::DECOMPRESS_FILE;
          feedback.Index          = Self->FileIndex;
          feedback.Path           = zf.Name.c_str();
          feedback.Dest           = destpath.c_str();
@@ -1505,7 +1505,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
       fb.Hour   = (list.TimeStamp>>11) & 0x1f;
       fb.Minute = (list.TimeStamp>>5)  & 0x3f;
       fb.Second = (list.TimeStamp>>1)  & 0x0f;
-      fb.FeedbackID     = FDB_DECOMPRESS_OBJECT;
+      fb.FeedbackID     = FDB::DECOMPRESS_OBJECT;
       fb.Index          = Self->FileIndex;
       fb.Path           = list.Name.c_str();
       fb.Dest           = NULL;

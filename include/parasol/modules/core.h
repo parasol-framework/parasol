@@ -1062,16 +1062,22 @@ enum class VAS : LONG {
 
 // Feedback event indicators.
 
-#define FDB_DECOMPRESS_FILE 1
-#define FDB_COMPRESS_FILE 2
-#define FDB_REMOVE_FILE 3
-#define FDB_DECOMPRESS_OBJECT 4
+enum class FDB : LONG {
+   NIL = 0,
+   DECOMPRESS_FILE = 1,
+   COMPRESS_FILE = 2,
+   REMOVE_FILE = 3,
+   DECOMPRESS_OBJECT = 4,
+};
 
 // Compression stream formats
 
-#define CF_GZIP 1
-#define CF_ZLIB 2
-#define CF_DEFLATE 3
+enum class CF : LONG {
+   NIL = 0,
+   GZIP = 1,
+   ZLIB = 2,
+   DEFLATE = 3,
+};
 
 // Flags that can be passed to FindObject()
 
@@ -1815,7 +1821,7 @@ struct CacheFile {
 };
 
 struct CompressionFeedback {
-   LONG    FeedbackID;    // Set to one of the FDB event indicators
+   FDB     FeedbackID;    // Set to one of the FDB event indicators
    LONG    Index;         // Index of the current file
    CSTRING Path;          // Name of the current file/path in the archive
    CSTRING Dest;          // Destination file/path during decompression
@@ -4375,7 +4381,7 @@ class objCompressedStream : public BaseClass {
    LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;      // An input object that will supply data for decompression.
    OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
-   LONG      Format;     // The format of the compressed stream.  The default is GZIP.
+   CF        Format;     // The format of the compressed stream.  The default is GZIP.
 
    // Customised field setting
 
@@ -4391,7 +4397,7 @@ class objCompressedStream : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFormat(const LONG Value) {
+   inline ERROR setFormat(const CF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Format = Value;
       return ERR_Okay;
