@@ -95,16 +95,6 @@ static void free_all(objScript *Self)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return; // Not a problem - indicates the object did not pass initialisation
 
-   // Free data requests
-
-   auto dr = prv->Requests;
-   while (dr) {
-      auto next = dr->Next;
-      FreeResource(dr);
-      dr = next;
-   }
-   prv->Requests = NULL;
-
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
    prv->~prvFluid();
@@ -533,19 +523,16 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    }
    else if (Args->Datatype IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
-      struct datarequest *prev;
 
       log.branch("Incoming data receipt from #%d", Args->Object ? Args->Object->UID : 0);
 
-restart:
-      prev = NULL;
-      for (auto list=prv->Requests; list; list=list->Next) {
-         if ((Args->Object) and (list->SourceID IS Args->Object->UID)) {
+      for (auto it = prv->Requests.begin(); it != prv->Requests.end(); ) {
+         if ((Args->Object) and (it->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
             LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
 
-               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
+               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
                if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
@@ -583,13 +570,10 @@ restart:
 
             SetResource(RES_LOG_DEPTH, step);
 
-            if (!prev) prv->Requests = list->Next;
-            else prev->Next = list->Next;
-            FreeResource(list);
-            goto restart;
+            it = prv->Requests.erase(it);
+            continue;
          }
-
-         prev = list;
+         it++;
       }
 
       {

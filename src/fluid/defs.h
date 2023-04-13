@@ -103,6 +103,18 @@ struct eventsub {
 
 //********************************************************************************************************************
 
+struct datarequest {
+   OBJECTID SourceID;
+   LONG Callback;
+   LARGE TimeCreated;
+
+   datarequest(OBJECTID pSourceID, LONG pCallback) : SourceID(pSourceID), Callback(pCallback) {
+      TimeCreated = PreciseTime();
+   }
+};
+
+//********************************************************************************************************************
+
 struct struct_field {
    std::string Name;       // Field name
    std::string StructRef;  // Named reference to other structure
@@ -161,15 +173,15 @@ struct struct_hash {
 //********************************************************************************************************************
 
 struct prvFluid {
-   lua_State *Lua;                   // Lua instance
+   lua_State *Lua;                        // Lua instance
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
-   struct finput *InputList;         // Managed by the input interface
-   struct datarequest *Requests;     // For drag and drop requests
+   std::vector<datarequest> Requests;     // For drag and drop requests
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;
+   std::unordered_map<OBJECTID, LONG> StateMap;
    std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    APTR   FocusEventHandle;
-   std::unordered_map<OBJECTID, LONG> StateMap;
+   struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;
    ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
    LONG   CachePermissions;
@@ -256,13 +268,6 @@ struct finput {
    LONG InputValue;
    LONG Mask;
    BYTE Mode;
-};
-
-struct datarequest {
-   struct datarequest *Next;
-   OBJECTID SourceID;
-   LONG Callback;
-   LARGE TimeCreated;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
