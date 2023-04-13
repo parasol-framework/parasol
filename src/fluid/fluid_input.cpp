@@ -211,84 +211,70 @@ static int input_request_item(lua_State *Lua)
       return 0;
    }
 
-   struct datarequest *request;
-   if (!AllocMemory(sizeof(struct datarequest), MEM_NO_CLEAR|MEM_DATA, &request)) {
-      struct object *obj;
-      OBJECTID source_id;
-      ERROR error;
+   auto obj = (struct object *)get_meta(Lua, 1, "Fluid.obj");
+   OBJECTID source_id;
 
-      if ((obj = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
-         source_id = obj->UID;
-      }
-      else if (!(source_id = lua_tointeger(Lua, 1))) {
-         luaL_argerror(Lua, 1, "Invalid object reference");
+   if (obj) source_id = obj->UID;
+   else if (!(source_id = lua_tointeger(Lua, 1))) {
+      luaL_argerror(Lua, 1, "Invalid object reference");
+      return 0;
+   }
+
+   LONG item = lua_tointeger(Lua, 2);
+
+   LONG datatype;
+   if (lua_isstring(Lua, 3)) {
+      CSTRING dt = lua_tostring(Lua, 3);
+      if (!StrMatch("text", dt))              datatype = DATA_TEXT;
+      else if (!StrMatch("raw", dt))          datatype = DATA_RAW;
+      else if (!StrMatch("device_input", dt)) datatype = DATA_DEVICE_INPUT;
+      else if (!StrMatch("xml", dt))          datatype = DATA_XML;
+      else if (!StrMatch("audio", dt))        datatype = DATA_AUDIO;
+      else if (!StrMatch("record", dt))       datatype = DATA_RECORD;
+      else if (!StrMatch("image", dt))        datatype = DATA_IMAGE;
+      else if (!StrMatch("request", dt))      datatype = DATA_REQUEST;
+      else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
+      else if (!StrMatch("file", dt))         datatype = DATA_FILE;
+      else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
+      else {
+         luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
       }
+   }
+   else if ((datatype = lua_tointeger(Lua, 3)) <= 0) {
+      luaL_argerror(Lua, 3, "Datatype invalid");
+      return 0;
+   }
 
-      LONG item = lua_tointeger(Lua, 2);
+   auto function_type = lua_type(Lua, 4);
+   if (function_type IS LUA_TFUNCTION) {
+      lua_pushvalue(Lua, 4);
+      prv->Requests.emplace_back(source_id, luaL_ref(Lua, LUA_REGISTRYINDEX));
+   }
+   else if (function_type IS LUA_TSTRING) {
+      lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
+      prv->Requests.emplace_back(source_id, luaL_ref(Lua, LUA_REGISTRYINDEX));
+   }
 
-      LONG datatype;
-      if (lua_isstring(Lua, 3)) {
-         CSTRING dt = lua_tostring(Lua, 3);
-         if (!StrMatch("text", dt))              datatype = DATA_TEXT;
-         else if (!StrMatch("raw", dt))          datatype = DATA_RAW;
-         else if (!StrMatch("device_input", dt)) datatype = DATA_DEVICE_INPUT;
-         else if (!StrMatch("xml", dt))          datatype = DATA_XML;
-         else if (!StrMatch("audio", dt))        datatype = DATA_AUDIO;
-         else if (!StrMatch("record", dt))       datatype = DATA_RECORD;
-         else if (!StrMatch("image", dt))        datatype = DATA_IMAGE;
-         else if (!StrMatch("request", dt))      datatype = DATA_REQUEST;
-         else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
-         else if (!StrMatch("file", dt))         datatype = DATA_FILE;
-         else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
-         else {
-            luaL_argerror(Lua, 3, "Unrecognised datatype");
-            return 0;
-         }
-      }
-      else if ((datatype = lua_tointeger(Lua, 3)) <= 0) {
-         luaL_argerror(Lua, 3, "Datatype invalid");
-         return 0;
-      }
+   struct dcRequest dcr;
+   dcr.Item          = item;
+   dcr.Preference[0] = datatype;
+   dcr.Preference[1] = 0;
 
-      request->SourceID = source_id;
+   struct acDataFeed dc = {
+      .Object   = Lua->Script,
+      .Datatype = DATA_REQUEST,
+      .Buffer   = &dcr,
+      .Size     = sizeof(dcr)
+   };
 
-      LONG function_type = lua_type(Lua, 4);
-      if (function_type IS LUA_TFUNCTION) {
-         lua_pushvalue(Lua, 4);
-         request->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      }
-      else if (function_type IS LUA_TSTRING) {
-         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
-         request->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      }
-
-      request->TimeCreated = PreciseTime();
-      request->Next = prv->Requests;
-      prv->Requests = request;
-
-      struct dcRequest dcr;
-      dcr.Item          = item;
-      dcr.Preference[0] = datatype;
-      dcr.Preference[1] = 0;
-
-      struct acDataFeed dc = {
-         .Object   = Lua->Script,
-         .Datatype = DATA_REQUEST,
-         .Buffer   = &dcr,
-         .Size     = sizeof(dcr)
-      };
-
-      {
-         // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
-         pf::Log log("input.request_item");
-         log.branch();
-         error = ActionMsg(AC_DataFeed, source_id, &dc);
-      }
-
+   {
+      // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+      pf::Log log("input.request_item");
+      log.branch();
+      auto error = ActionMsg(AC_DataFeed, source_id, &dc);
       if (error) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
    }
-   else luaL_error(Lua, "Failed to create table.");
 
    return 0;
 }

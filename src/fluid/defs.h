@@ -9,6 +9,22 @@
 #include <array>
 
 //********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
+extern struct ActionTable *glActions;
+extern OBJECTPTR modDisplay; // Required by fluid_input.c
+extern OBJECTPTR modFluid;
+extern struct DisplayBase *DisplayBase;
+extern OBJECTPTR clFluid;
+extern std::unordered_map<std::string, ULONG> glStructSizes;
+
+//********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
 // Note that struct name hashes are case sensitive.
 
@@ -28,36 +44,73 @@ inline ULONG STRUCTHASH(CSTRING String)
 
 //********************************************************************************************************************
 
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
-//********************************************************************************************************************
-
 struct code_reader_handle {
    objFile *File;
    APTR Buffer;
 };
 
 struct actionmonitor {
-   struct actionmonitor *Prev;
-   struct actionmonitor *Next;
    struct object *Object;      // Fluid.obj original passed in for the subscription.
-   const struct FunctionField *Args; // The args of the action/method are stored here so that we can build the arg value table later.
-   LONG Function;              // Index of function to call back.
-   LONG ActionID;              // Action being monitored.
-   LONG Reference;             // A custom reference to pass to the callback (optional)
+   const FunctionField *Args;  // The args of the action/method are stored here so that we can build the arg value table later.
+   LONG     Function;          // Index of function to call back.
+   LONG     Reference;         // A custom reference to pass to the callback (optional)
+   ACTIONID ActionID;          // Action being monitored.
    OBJECTID ObjectID;          // Object being monitored
+
+   actionmonitor() {}
+
+   ~actionmonitor() {
+      if (ObjectID) {
+         pf::Log log(__FUNCTION__);
+         log.trace("Unsubscribe action %s from object #%d", glActions[ActionID].Name, ObjectID);
+         OBJECTPTR obj;
+         if (!AccessObject(ObjectID, 3000, &obj)) {
+            UnsubscribeAction(obj, ActionID);
+            ReleaseObject(obj);
+         }
+      }
+   }
+
+   actionmonitor(actionmonitor &&move) noexcept :
+      Object(move.Object), Args(move.Args), Function(move.Function), Reference(move.Reference), ActionID(move.ActionID), ObjectID(move.ObjectID) {
+      move.ObjectID = 0;
+   }
+
+   actionmonitor& operator=(actionmonitor &&move) = default;
 };
 
+//********************************************************************************************************************
+
 struct eventsub {
-   struct eventsub *Prev;
-   struct eventsub *Next;
-   LONG Function;     // Lua function index
-   EVENTID EventID;   // Event message ID
-   APTR EventHandle;
+   LONG    Function;     // Lua function index
+   EVENTID EventID;      // Event message ID
+   APTR    EventHandle;
+
+   eventsub(LONG pFunction, EVENTID pEventID, APTR pEventHandle) :
+      Function(pFunction), EventID(pEventID), EventHandle(pEventHandle) { }
+
+   ~eventsub() {
+      if (EventHandle) UnsubscribeEvent(EventHandle);
+   }
+
+   eventsub(eventsub &&move) noexcept :
+      Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
+      move.EventHandle = NULL;
+   }
+
+   eventsub& operator=(eventsub &&move) = default;
+};
+
+//********************************************************************************************************************
+
+struct datarequest {
+   OBJECTID SourceID;
+   LONG Callback;
+   LARGE TimeCreated;
+
+   datarequest(OBJECTID pSourceID, LONG pCallback) : SourceID(pSourceID), Callback(pCallback) {
+      TimeCreated = PreciseTime();
+   }
 };
 
 //********************************************************************************************************************
@@ -120,15 +173,15 @@ struct struct_hash {
 //********************************************************************************************************************
 
 struct prvFluid {
-   lua_State *Lua;                   // Lua instance
-   struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
-   struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
-   struct finput *InputList;         // Managed by the input interface
-   struct datarequest *Requests;     // For drag and drop requests
+   lua_State *Lua;                        // Lua instance
+   std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
+   std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
+   std::vector<datarequest> Requests;     // For drag and drop requests
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;
+   std::unordered_map<OBJECTID, LONG> StateMap;
    std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    APTR   FocusEventHandle;
-   std::unordered_map<OBJECTID, LONG> StateMap;
+   struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;
    ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
    LONG   CachePermissions;
@@ -215,13 +268,6 @@ struct finput {
    LONG InputValue;
    LONG Mask;
    BYTE Mode;
-};
-
-struct datarequest {
-   struct datarequest *Next;
-   OBJECTID SourceID;
-   LONG Callback;
-   LARGE TimeCreated;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
@@ -316,19 +362,10 @@ struct lua_ref {
    LONG Ref;
 };
 
-extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
-extern struct ActionTable *glActions;
-extern OBJECTPTR modDisplay; // Required by fluid_input.c
-extern OBJECTPTR modFluid;
-extern struct DisplayBase *DisplayBase;
-extern OBJECTPTR clFluid;
-extern std::unordered_map<std::string, ULONG> glStructSizes;
-
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
 ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
-void clear_subscriptions(objScript *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));

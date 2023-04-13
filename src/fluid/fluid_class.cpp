@@ -95,45 +95,6 @@ static void free_all(objScript *Self)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return; // Not a problem - indicates the object did not pass initialisation
 
-   // Free action subscriptions
-
-   auto action = prv->ActionList;
-   while (action) {
-      auto nextaction = action->Next;
-
-      if (action->ObjectID) {
-         OBJECTPTR object;
-         if (!AccessObject(action->ObjectID, 3000, &object)) {
-            UnsubscribeAction(object, action->ActionID);
-            ReleaseObject(object);
-         }
-      }
-      FreeResource(action);
-      action = nextaction;
-   }
-   prv->ActionList = NULL;
-
-   // Free event subscriptions
-
-   auto event = prv->EventList;
-   while (event) {
-      auto nextevent = event->Next;
-      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
-      FreeResource(event);
-      event = nextevent;
-   }
-   prv->EventList = NULL;
-
-   // Free data requests
-
-   auto dr = prv->Requests;
-   while (dr) {
-      auto next = dr->Next;
-      FreeResource(dr);
-      dr = next;
-   }
-   prv->Requests = NULL;
-
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
    prv->~prvFluid();
@@ -274,8 +235,8 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return;
 
-   for (auto scan=prv->ActionList; scan; scan=scan->Next) {
-      if ((Object->UID IS scan->ObjectID) and (ActionID IS scan->ActionID)) {
+   for (auto &scan : prv->ActionList) {
+      if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
          LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
@@ -283,13 +244,13 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 
             log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
-            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Function); // +1 stack: Get the function reference
+            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (!stack_args(prv->Lua, Object->UID, scan->Args, (STRING)Args)) {
+            if (!stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args)) {
                LONG total_args;
-               if (scan->Reference) { // +1: Custom reference (optional)
-                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Reference);
+               if (scan.Reference) { // +1: Custom reference (optional)
+                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
                   total_args = 3; // ObjectID, ArgTable, Reference
                }
                else total_args = 2; // ObjectID, ArgTable
@@ -562,19 +523,16 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
    }
    else if (Args->Datatype IS DATA_RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
-      struct datarequest *prev;
 
       log.branch("Incoming data receipt from #%d", Args->Object ? Args->Object->UID : 0);
 
-restart:
-      prev = NULL;
-      for (auto list=prv->Requests; list; list=list->Next) {
-         if ((Args->Object) and (list->SourceID IS Args->Object->UID)) {
+      for (auto it = prv->Requests.begin(); it != prv->Requests.end(); ) {
+         if ((Args->Object) and (it->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
             LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
 
-               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
+               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
                if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
@@ -612,13 +570,10 @@ restart:
 
             SetResource(RES_LOG_DEPTH, step);
 
-            if (!prev) prv->Requests = list->Next;
-            else prev->Next = list->Next;
-            FreeResource(list);
-            goto restart;
+            it = prv->Requests.erase(it);
+            continue;
          }
-
-         prev = list;
+         it++;
       }
 
       {

@@ -288,21 +288,14 @@ int fcmd_unsubscribe_event(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if (!prv) return 0;
 
-   APTR handle;
-   if ((handle = lua_touserdata(Lua, 1))) {
+   if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
       if (Lua->Script->Flags & SCF_DEBUG) log.msg("Handle: %p", handle);
 
-      for (auto event=prv->EventList; event; event=event->Next) {
-         if (event->EventHandle IS handle) {
-            UnsubscribeEvent(event->EventHandle);
-            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, event->Function);
-
-            if (event->Prev) event->Prev->Next = event->Next;
-            if (event->Next) event->Next->Prev = event->Prev;
-            if (event IS prv->EventList) prv->EventList = event->Next;
-
-            FreeResource(event);
+      for (auto it=prv->EventList.begin(); it != prv->EventList.end(); it++) {
+         if (it->EventHandle IS handle) {
+            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, it->Function);
+            prv->EventList.erase(it);
             return 0;
          }
       }
@@ -385,34 +378,27 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    EVENTID event_id = GetEventID(group_id, group, event);
 
-   struct eventsub *es;
-   ERROR error;
    if (!event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
       lua_pushinteger(Lua, ERR_Failed);
       return 1;
    }
-   else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es))) {
+   else {
       auto call = make_function_stdc(receive_event);
-      if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
+      APTR handle;
+      if (auto error = SubscribeEvent(event_id, &call, NULL, &handle); !error) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
-         es->Function = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         es->EventID  = event_id;
-         es->Next     = prv->EventList;
-         if (prv->EventList) prv->EventList->Prev = es;
-         prv->EventList = es;
-
-         lua_pushlightuserdata(Lua, es->EventHandle); // 1: Handle
+         prv->EventList.emplace_back(luaL_ref(Lua, LUA_REGISTRYINDEX), event_id, handle);
+         lua_pushlightuserdata(Lua, handle); // 1: Handle
          lua_pushinteger(Lua, error); // 2: Error code
-         return 2;
       }
-      else FreeResource(es);
+      else {
+         lua_pushnil(Lua); // Handle
+         lua_pushinteger(Lua, error); // Error code
+      }
+      return 2;
    }
-
-   lua_pushnil(Lua); // Handle
-   lua_pushinteger(Lua, error); // Error code
-   return 2;
 }
 
 //********************************************************************************************************************

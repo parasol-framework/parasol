@@ -301,7 +301,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
          }
       }
 
-      FreeResource(SurfaceID);
+      if (!CheckMemoryExists(SurfaceID)) FreeResource(SurfaceID);
    }
 }
 
