@@ -738,7 +738,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
 
-   RegisterFD((HOSTHANDLE)-2, RFD_ALWAYS_CALL, input_event_loop, NULL);
+   RegisterFD((HOSTHANDLE)-2, RFD::ALWAYS_CALL, input_event_loop, NULL);
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;
@@ -814,7 +814,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       glXFD = XConnectionNumber(XDisplay);
       fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-      RegisterFD(glXFD, RFD_READ|RFD_ALWAYS_CALL, X11ManagerLoop, NULL);
+      RegisterFD(glXFD, RFD::READ|RFD::ALWAYS_CALL, X11ManagerLoop, NULL);
 
       // This function checks for DGA and also maps the video memory for us
 

@@ -548,7 +548,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          return NULL;
       }
 
-      RegisterFD(glSocket, RFD_READ, NULL, NULL);
+      RegisterFD(glSocket, RFD::READ, NULL, NULL);
    #endif
 
    // Print task information
@@ -1121,7 +1121,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(0, MSGID_QUIT, 0, NULL, 0);
+         SendMessage(0, MSGID_QUIT, MSF::NIL, NULL, 0);
          glCrashStatus = 1;
          return;
       }

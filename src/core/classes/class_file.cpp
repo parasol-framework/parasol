@@ -1539,7 +1539,7 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
       ERROR error;
       if ((glInotify = inotify_init()) != -1) {
          fcntl(glInotify, F_SETFL, fcntl(glInotify, F_GETFL)|O_NONBLOCK);
-         error = RegisterFD(glInotify, RFD_READ, (void (*)(HOSTHANDLE, APTR))path_monitor, NULL);
+         error = RegisterFD(glInotify, RFD::READ, (void (*)(HOSTHANDLE, APTR))path_monitor, NULL);
       }
       else error = log.warning(ERR_SystemCall);
 

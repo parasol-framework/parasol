@@ -201,7 +201,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
    }
    else if (result IS -2) {
       error = ERR_Finished;
-      RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
    }
    else {
       error = ERR_Failed;
@@ -404,21 +404,21 @@ extern "C" void task_register_stdout(extTask *Task, WINHANDLE Handle)
 {
    pf::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
-   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
+   RegisterFD(Handle, RFD::READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
 extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
 {
    pf::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
-   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
+   RegisterFD(Handle, RFD::READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
 
 //********************************************************************************************************************
 
 extern "C" void task_deregister_incoming(WINHANDLE Handle)
 {
-   RegisterFD(Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+   RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
 }
 #endif
 
@@ -591,7 +591,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    // Send a break if we're waiting for this process to end
 
-   if ((Task->Flags & TSF_WAIT) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, 0, NULL, 0);
+   if ((Task->Flags & TSF_WAIT) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, MSF::NIL, NULL, 0);
 }
 #endif
 
@@ -602,14 +602,14 @@ extern "C" void register_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
-   RegisterFD(ProcessHandle, RFD_READ, (void (*)(void *, void *))&task_process_end, Self);
+   RegisterFD(ProcessHandle, RFD::READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
 extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
-   if (ProcessHandle) RegisterFD(ProcessHandle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+   if (ProcessHandle) RegisterFD(ProcessHandle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
 }
 #endif
 
@@ -845,7 +845,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
          glProcessBreak = MSGID_BREAK;
 
-         ProcessMessages(0, Self->TimeOut * 1000.0);
+         ProcessMessages(PMF::NIL, Self->TimeOut * 1000.0);
 
          winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
          if (Self->ReturnCode != 259) Self->ReturnCodeSet = true;
@@ -1029,13 +1029,13 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       glTasks.emplace_back(Self);
 
       if (in_fd != -1) {
-         RegisterFD(in_fd, RFD_READ, &task_stdout, Self);
+         RegisterFD(in_fd, RFD::READ, &task_stdout, Self);
          Self->InFD = in_fd;
          close(out_fd);
       }
 
       if (in_errfd != -1) {
-         RegisterFD(in_errfd, RFD_READ, &task_stderr, Self);
+         RegisterFD(in_errfd, RFD::READ, &task_stderr, Self);
          Self->ErrFD = in_errfd;
          close(out_errfd);
       }
@@ -1199,24 +1199,24 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    check_incoming(Self);
 
    if (Self->InFD != -1) {
-      RegisterFD(Self->InFD, RFD_REMOVE, NULL, NULL);
+      RegisterFD(Self->InFD, RFD::REMOVE, NULL, NULL);
       close(Self->InFD);
       Self->InFD = -1;
    }
 
    if (Self->ErrFD != -1) {
-      RegisterFD(Self->ErrFD, RFD_REMOVE, NULL, NULL);
+      RegisterFD(Self->ErrFD, RFD::REMOVE, NULL, NULL);
       close(Self->ErrFD);
       Self->ErrFD = -1;
    }
 
-   if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
 #ifdef _WIN32
    if (Self->Env) { FreeResource(Self->Env); Self->Env = NULL; }
    if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = NULL; }
-   if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
    // Free allocations
@@ -1571,7 +1571,7 @@ static ERROR TASK_Quit(extTask *Self, APTR Void)
    }
    else {
       log.branch("Sending QUIT message to self.");
-      SendMessage(Self->UID, MSGID_QUIT, 0, NULL, 0);
+      SendMessage(Self->UID, MSGID_QUIT, MSF::NIL, NULL, 0);
    }
 
    return ERR_Okay;
@@ -1911,9 +1911,9 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
       ERROR error;
       #ifdef __unix__
       fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
-      if (!(error = RegisterFD(fileno(stdin), RFD_READ, &task_stdinput_callback, Self))) {
+      if (!(error = RegisterFD(fileno(stdin), RFD::READ, &task_stdinput_callback, Self))) {
       #elif _WIN32
-      if (!(error = RegisterFD(winGetStdInput(), RFD_READ, &task_stdinput_callback, Self))) {
+      if (!(error = RegisterFD(winGetStdInput(), RFD::READ, &task_stdinput_callback, Self))) {
       #endif
          Self->InputCallback = *Value;
       }
@@ -1921,9 +1921,9 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
    }
    else {
       #ifdef _WIN32
-      if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #else
-      if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #endif
       Self->InputCallback.Type = CALL_NONE;
    }

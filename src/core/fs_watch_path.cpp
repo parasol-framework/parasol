@@ -12,7 +12,7 @@ void fs_ignore_file(extFile *File)
 
 void fs_ignore_file(extFile *File)
 {
-   RegisterFD(File->prvWatch->Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, 0, 0); // remove operation
+   RegisterFD(File->prvWatch->Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, 0, 0); // remove operation
    winCloseHandle(File->prvWatch->Handle);
 }
 
@@ -83,7 +83,7 @@ ERROR fs_watch_path(extFile *File)
    if (!(error = winWatchFile(File->prvWatch->Flags, File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags))) {
       File->prvWatch->Handle   = handle;
       File->prvWatch->WinFlags = winflags;
-      if (!(error = RegisterFD(handle, RFD_READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File))) {
+      if (!(error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File))) {
       }
       else log.warning("Failed to register folder handle.");
    }

@@ -144,7 +144,7 @@ static int processing_sleep(lua_State *Lua)
          signal_list_c[i].Object = NULL;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(0, timeout, signal_list_c);
+         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
          ObjectSignal signal_list_c[2];
@@ -152,7 +152,7 @@ static int processing_sleep(lua_State *Lua)
          signal_list_c[1].Object   = NULL;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(0, timeout, signal_list_c);
+         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
       }
    }
    else {

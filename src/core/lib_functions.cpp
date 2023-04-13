@@ -591,10 +591,10 @@ The file descriptor should be configured as non-blocking before registration.  B
 program to hang if not handled carefully.
 
 File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
-Set the `RFD_READ` flag to apply the Routine to the read callback and `RFD_WRITE` for the write callback.  If neither
-flag is specified, `RFD_READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
+Set the `RFD::READ` flag to apply the Routine to the read callback and `RFD::WRITE` for the write callback.  If neither
+flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
-combining the read/write flags with `RFD_REMOVE`.
+combining the read/write flags with `RFD::REMOVE`.
 
 The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
@@ -604,7 +604,7 @@ Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor
 
 -INPUT-
 hhandle FD: The file descriptor that is to be watched.
-int(RFD) Flags: Set to one or more of the flags RFD_READ, RFD_WRITE, RFD_EXCEPT, RFD_REMOVE.
+int(RFD) Flags: Set to at least one of READ, WRITE, EXCEPT, REMOVE.
 fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".
 ptr Data: User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.
 
@@ -617,18 +617,18 @@ NoSupport: The host platform does not support file descriptors.
 *********************************************************************************************************************/
 
 #ifdef _WIN32
-ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #else
-ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
    pf::Log log(__FUNCTION__);
 
-   // Note that FD's < -1 are permitted for the registering of functions marked with RFD_ALWAYS_CALL
+   // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
-   if (Flags & RFD_SOCKET) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
+   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
 #else
    if (FD IS -1) return log.warning(ERR_Args);
 #endif
@@ -638,11 +638,11 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       return ERR_Okay;
    }
 
-   if (Flags & RFD_REMOVE) {
-      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
+   if ((Flags & RFD::REMOVE) != RFD::NIL) {
+      if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL;
 
       for (auto it = glFDTable.begin(); it != glFDTable.end();) {
-         if ((it->FD IS FD) and ((it->Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
+         if ((it->FD IS FD) and (((it->Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL)) & Flags) != RFD::NIL)) {
             if ((Routine) and (it->Routine != Routine)) it++;
             else it = glFDTable.erase(it);
          }
@@ -651,10 +651,10 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       return ERR_Okay;
    }
 
-   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
+   if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
 
    for (auto &fd : glFDTable) {
-      if ((fd.FD IS FD) and (Flags & (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) {
+      if ((fd.FD IS FD) and ((Flags & (fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL))) != RFD::NIL)) {
          fd.Routine = Routine;
          fd.Flags   = Flags;
          fd.Data    = Data;
@@ -662,7 +662,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       }
    }
 
-   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
+   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, LONG(Flags));
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -1045,7 +1045,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
-         if (ProcessMessages(0, end - current) IS ERR_Terminate) break;
+         if (ProcessMessages(PMF::NIL, end - current) IS ERR_Terminate) break;
          current = (PreciseTime() / 1000LL);
       } while (current < end);
    }

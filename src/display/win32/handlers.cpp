@@ -265,7 +265,7 @@ extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LO
 
 void MsgTimer(void)
 {
-   ProcessMessages(0, 0);
+   ProcessMessages(PMF::NIL, 0);
 }
 
 //********************************************************************************************************************

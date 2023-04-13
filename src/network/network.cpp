@@ -613,7 +613,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((un
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 {
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
+   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD::REMOVE|RFD::READ|RFD::SOCKET, NULL, NULL);
    #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
    client_server_incoming(FD, (extNetSocket *)Self);
 }
@@ -664,7 +664,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                    log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
                    #ifdef __linux__
-                      RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_SOCKET, &ssl_handshake_write, Self);
+                      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, &ssl_handshake_write, Self);
                    #else
                       win_socketstate(Socket, -1, TRUE);
                    #endif
@@ -697,12 +697,12 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          // data pending.
 
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+            RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
          #elif _WIN32
             // In Windows we don't want to listen to FD's on a permanent basis,
             // so this is a temporary setting that will be reset by client_server_pending()
 
-            RegisterFD((HOSTHANDLE)(MAXINT)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_pending), (APTR)Self);
+            RegisterFD((HOSTHANDLE)(MAXINT)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_pending), (APTR)Self);
          #endif
       }
 
@@ -775,7 +775,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
                log.trace("Handshake requested by server.");
                Self->SSLBusy = SSL_HANDSHAKE_READ;
                #ifdef __linux__
-                  RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_SOCKET, &ssl_handshake_read, Self);
+                  RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
                #elif _WIN32
                   win_socketstate(Socket, TRUE, -1);
                #endif

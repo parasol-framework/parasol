@@ -1769,7 +1769,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                   break;
                }
 
-               if (len > 0) ProcessMessages(0, 0);
+               if (len > 0) ProcessMessages(PMF::NIL, 0);
             }
 
             if (error) break;
@@ -1783,7 +1783,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                else if (result IS FFR_SKIP) break;
             }
 
-            ProcessMessages(0, 0);
+            ProcessMessages(PMF::NIL, 0);
          }
 
          FreeResource(data);

@@ -233,7 +233,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    pf::Log log(__FUNCTION__);
 
    if (Status IS ERR_Finished) {
-      SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
+      SendMessage(0, glScriptReceivedMsg, MSF::WAIT, NULL, 0);
       log.msg("Input pipe closed.");
       return;
    }
@@ -241,7 +241,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    glScriptBuffer.write(Buffer, Size);
 
    if (Buffer[Size-1] IS 0x1a) { // Ctrl-Z
-      SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
+      SendMessage(0, glScriptReceivedMsg, MSF::WAIT, NULL, 0);
       log.msg("EOF received.");
       return;
    }

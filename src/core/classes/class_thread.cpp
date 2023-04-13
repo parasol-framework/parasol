@@ -263,7 +263,7 @@ static void * thread_entry(extThread *Self)
 
             ThreadMessage msg;
             msg.ThreadID = Self->UID;
-            SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD|MSF_WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
+            SendMessage(0, MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
 
             //Self->Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
          }
@@ -525,7 +525,7 @@ static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    ObjectSignal sig[2] = { { .Object = Self }, { 0 } };
-   return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
+   return WaitForObjects(PMF::SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
 /*********************************************************************************************************************

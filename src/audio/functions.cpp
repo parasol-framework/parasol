@@ -271,7 +271,7 @@ static ERROR audio_timer(extAudio *Self, LARGE Elapsed, LARGE CurrentTime)
 
          if (Self->activate() != ERR_Okay) {
             log.warning("Audio error is terminal, self-destructing...");
-            SendMessage(0, MSGID_FREE, 0, &Self->UID, sizeof(OBJECTID));
+            SendMessage(0, MSGID_FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
             return ERR_Failed;
          }
       }

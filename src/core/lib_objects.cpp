@@ -92,7 +92,7 @@ static ERROR object_free(BaseClass *Object)
       log.trace("Free() attempt while object is in use.");
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
-         SendMessage(0, MSGID_FREE, 0, &Object->UID, sizeof(OBJECTID));
+         SendMessage(0, MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
       Object->threadRelease();
       return ERR_InUse;
@@ -260,7 +260,7 @@ static ERROR thread_action(extThread *Thread)
          .Error    = error,
          .Callback = data->Callback
       };
-      SendMessage(0, MSGID_THREAD_ACTION, MSF_ADD, &msg, sizeof(msg));
+      SendMessage(0, MSGID_THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
    }
 
    threadpool_release(Thread);
@@ -1545,7 +1545,7 @@ ERROR QueueAction(LONG ActionID, OBJECTID ObjectID, APTR Args)
       else return log.warning(ERR_MissingClass);
    }
 
-   ERROR error = SendMessage(0, MSGID_ACTION, 0, &msg.Action, msgsize + sizeof(ActionMessage));
+   ERROR error = SendMessage(0, MSGID_ACTION, MSF::NIL, &msg.Action, msgsize + sizeof(ActionMessage));
 
    if (error) {
       if (ActionID > 0) {

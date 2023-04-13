@@ -90,7 +90,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
       log.trace("Broadcasting event $%.8x%.8x",
          (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
          (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff));
-      SendMessage(0, MSGID_EVENT, 0, Event, EventSize);
+      SendMessage(0, MSGID_EVENT, MSF::NIL, Event, EventSize);
    }
 
    return ERR_Okay;

@@ -987,11 +987,11 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetMessage</name>
     <category>Messages</category>
     <comment>Reads messages from message queues.</comment>
-    <prototype>ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
     <input>
       <param type="MEMORYID" name="Queue">The memory ID of the message queue is specified here.  If zero, the message queue of the local task will be used.</param>
-      <param type="LONG" name="Type">The message type that you would like to receive, or zero if you would like to receive the next message on the queue.</param>
-      <param type="LONG" name="Flags">This argument is reserved for future use.  Set it to zero.</param>
+      <param type="LONG" name="Type">Filter down to this message type or set to zero to receive the next message on the queue.</param>
+      <param type="MSF" name="Flags" lookup="MSF">This argument is reserved for future use.  Set it to zero.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the incoming message information.  If set to NULL then all accompanying message data will be destroyed.</param>
       <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
     </input>
@@ -1384,9 +1384,9 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ProcessMessages</name>
     <category>Messages</category>
     <comment>Processes system messages that are queued in the task's message buffer.</comment>
-    <prototype>ERROR ProcessMessages(LONG Flags, LONG TimeOut)</prototype>
+    <prototype>ERROR ProcessMessages(PMF Flags, LONG TimeOut)</prototype>
     <input>
-      <param type="LONG" name="Flags" lookup="PMF">Optional flags are specified here (currently no flags are provided).</param>
+      <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here (clients should set a value of zero).</param>
       <param type="LONG" name="TimeOut">A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.</param>
     </input>
     <description>
@@ -1501,17 +1501,17 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>RegisterFD</name>
     <category>System</category>
     <comment>Registers a file descriptor for monitoring when the task is asleep.</comment>
-    <prototype>ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data)</prototype>
+    <prototype>ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data)</prototype>
     <input>
       <param type="HOSTHANDLE" name="FD">The file descriptor that is to be watched.</param>
-      <param type="LONG" name="Flags" lookup="RFD">Set to one or more of the flags RFD_READ, RFD_WRITE, RFD_EXCEPT, RFD_REMOVE.</param>
+      <param type="RFD" name="Flags" lookup="RFD">Set to at least one of READ, WRITE, EXCEPT, REMOVE.</param>
       <param type="void (*Routine)(HOSTHANDLE, APTR)" name="Routine">The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".</param>
       <param type="APTR" name="Data">User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.</param>
     </input>
     <description>
 <p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  If activity occurs on the descriptor then the function specified in the Routine parameter will be called.  The routine must read all of information from the descriptor, as the running process will not be able to sleep until all the data is cleared.</p>
 <p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the program to hang if not handled carefully.</p>
-<p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the <code>RFD_READ</code> flag to apply the Routine to the read callback and <code>RFD_WRITE</code> for the write callback.  If neither flag is specified, <code>RFD_READ</code> is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD_REMOVE</code>.</p>
+<p>File descriptors support read and write states simultaneously and a callback routine can be applied to either state. Set the <code>RFD::READ</code> flag to apply the Routine to the read callback and <code>RFD::WRITE</code> for the write callback.  If neither flag is specified, <code>RFD::READ</code> is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD::REMOVE</code>.</p>
 <p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
 <p>Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
@@ -1707,11 +1707,11 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     <name>SendMessage</name>
     <category>Messages</category>
     <comment>Send messages to message queues.</comment>
-    <prototype>ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size)</prototype>
+    <prototype>ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
     <input>
       <param type="OBJECTID" name="Task">ID of a task to target.  If zero, the local message queue is targeted.</param>
       <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
-      <param type="LONG" name="Flags" lookup="MSF">Optional flags.</param>
+      <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.</param>
       <param type="LONG" name="Size">The byte-size of the data being written to the message queue.</param>
     </input>
@@ -2434,9 +2434,9 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>WaitForObjects</name>
     <category>Messages</category>
     <comment>Process incoming messages while waiting on objects to complete their activities.</comment>
-    <prototype>ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
+    <prototype>ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals)</prototype>
     <input>
-      <param type="LONG" name="Flags">Optional flags are specified here (currently no flags are provided).</param>
+      <param type="PMF" name="Flags" lookup="PMF">Optional flags are specified here (clients should set a value of zero).</param>
       <param type="LONG" name="TimeOut">A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.</param>
       <param type="struct ObjectSignal *" name="ObjectSignals">A null-terminated array of objects to monitor for signals.</param>
     </input>

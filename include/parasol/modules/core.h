@@ -680,16 +680,26 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
 // Message flags.
 
-#define MSF_WAIT 0x00000001
-#define MSF_UPDATE 0x00000002
-#define MSF_NO_DUPLICATE 0x00000004
-#define MSF_ADD 0x00000008
-#define MSF_ADDRESS 0x00000010
-#define MSF_MESSAGE_ID 0x00000020
+enum class MSF : ULONG {
+   NIL = 0,
+   WAIT = 0x00000001,
+   UPDATE = 0x00000002,
+   NO_DUPLICATE = 0x00000004,
+   ADD = 0x00000008,
+   ADDRESS = 0x00000010,
+   MESSAGE_ID = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MSF)
 
 // Flags for ProcessMessages
 
-#define PMF_SYSTEM_NO_BREAK 0x00000001
+enum class PMF : ULONG {
+   NIL = 0,
+   SYSTEM_NO_BREAK = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PMF)
 
 #define ALF_SHARED 0x0001
 #define ALF_RECURSIVE 0x0002
@@ -702,15 +712,20 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
 // Flags for RegisterFD()
 
-#define RFD_WRITE 0x0001
-#define RFD_EXCEPT 0x0002
-#define RFD_READ 0x0004
-#define RFD_REMOVE 0x0008
-#define RFD_STOP_RECURSE 0x0010
-#define RFD_ALLOW_RECURSION 0x0020
-#define RFD_SOCKET 0x0040
-#define RFD_RECALL 0x0080
-#define RFD_ALWAYS_CALL 0x0100
+enum class RFD : ULONG {
+   NIL = 0,
+   WRITE = 0x0001,
+   EXCEPT = 0x0002,
+   READ = 0x0004,
+   REMOVE = 0x0008,
+   STOP_RECURSE = 0x0010,
+   ALLOW_RECURSION = 0x0020,
+   SOCKET = 0x0040,
+   RECALL = 0x0080,
+   ALWAYS_CALL = 0x0100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
 // Flags for StrBuildArray()
 
@@ -1909,7 +1924,7 @@ struct CoreBase {
    const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
    ERROR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
-   ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
+   ERROR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
    ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
@@ -1917,13 +1932,13 @@ struct CoreBase {
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
-   ERROR (*_ProcessMessages)(LONG Flags, LONG TimeOut);
+   ERROR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
    ERROR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
-   ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
+   ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERROR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERROR (*_SendMessage)(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size);
+   ERROR (*_SendMessage)(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERROR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
@@ -1992,7 +2007,7 @@ struct CoreBase {
    ULONG (*_UTF8ReadValue)(CSTRING String, LONG * Length);
    LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   ERROR (*_WaitForObjects)(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
+   ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
    LONG (*_StrDatatype)(CSTRING String);
    void (*_UnloadFile)(struct CacheFile * Cache);
@@ -2032,7 +2047,7 @@ inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_
 inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
 inline ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
-inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
+inline ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
 inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
@@ -2040,13 +2055,13 @@ inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
-inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
+inline ERROR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
-inline ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
+inline ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
 inline ERROR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
+inline ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
@@ -2115,7 +2130,7 @@ inline LONG UTF8CharLength(CSTRING String) { return CoreBase->_UTF8CharLength(St
 inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UTF8ReadValue(String,Length); }
 inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
-inline ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
+inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline LONG StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
@@ -2135,7 +2150,10 @@ template <class T> inline MEMORYID GetMemoryID(T &&A) {
    return ((MEMORYID *)A)[-2];
 }
 
-#define DeregisterFD(a) RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
+inline ERROR DeregisterFD(HOSTHANDLE Handle) {
+   return RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL, 0, 0);
+}
+
 #define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
 
 inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
