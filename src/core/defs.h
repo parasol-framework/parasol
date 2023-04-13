@@ -153,6 +153,10 @@ enum class RP : LONG;
 enum class RFD : ULONG;
 enum class PMF : ULONG;
 enum class MSF : ULONG;
+enum class RDF : ULONG;
+enum class RSF : ULONG;
+enum class LDF : ULONG;
+enum class VOLUME : ULONG;
 
 #include <parasol/vector.hpp>
 #include "prototypes.h"
@@ -210,7 +214,7 @@ struct virtual_drive {
    ERROR (*OpenDir)(DirInfo *);
    ERROR (*CloseDir)(DirInfo *);
    ERROR (*Obsolete)(CSTRING, DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, LONG, LONG *);
+   ERROR (*TestPath)(CSTRING, RSF, LONG *);
    ERROR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
    ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
@@ -901,7 +905,7 @@ ERROR fs_readlink(STRING, STRING *);
 ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
 ERROR fs_scandir(struct DirInfo *);
-ERROR fs_testpath(CSTRING, LONG, LONG *);
+ERROR fs_testpath(CSTRING, RSF, LONG *);
 ERROR fs_watch_path(class extFile *);
 
 const struct virtual_drive * get_fs(CSTRING Path);

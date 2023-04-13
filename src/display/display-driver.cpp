@@ -948,7 +948,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 #endif
 
    STRING icon_path;
-   if (ResolvePath("iconsource:", 0, &icon_path) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
+   if (ResolvePath("iconsource:", RSF::NIL, &icon_path) != ERR_Okay) { // The client can set iconsource: to redefine the icon origins
       icon_path = StrClone("styles:icons/");
    }
 
@@ -963,7 +963,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // The icons: special volume is a simple reference to the archive path.
 
-   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN)) return ERR_SetVolume;
+   if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN)) return ERR_SetVolume;
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
 

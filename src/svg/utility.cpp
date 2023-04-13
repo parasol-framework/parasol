@@ -170,7 +170,7 @@ static CSTRING folder(extSVG *Self)
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
    STRING folder;
-   if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &folder)) {
+   if (!ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &folder)) {
       WORD last = 0;
       for (WORD i=0; folder[i]; i++) {
          if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;

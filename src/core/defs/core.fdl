@@ -132,7 +132,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ACCESSED: The date on which the file was last accessed by a user or application.",
     "ARCHIVED: The date on which the file was most recently archived.  Not supported by most filesystems.")
 
-  flags("VOLUME", { comment="Options for SetVolume()" },
+  flags("VOLUME", { strict=true, comment="Options for SetVolume()" },
     "REPLACE: If the volume already exists, all paths that are attached to it will be replaced with the new path setting.",
     "PRIORITY: If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.",
     "HIDDEN: Hides the volume so that it will not show up when reading the root folder.",
@@ -149,7 +149,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "NO_LINKS: Treat symbolic links as normal files/folders.",
     "APPLY_SECURITY: When decompressing, apply individual file permissions if they are available in the compression file.")
 
-  flags("RSF", { comment="Flags for ResolvePath()"},
+  flags("RSF", { strict=true, comment="Flags for ResolvePath()"},
     "NO_FILE_CHECK: Do not test for the existence of the targeted file or folder during the resolution process.",
     "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
     "APPROXIMATE: Ignores file extensions for the purpose of file name matching.",
@@ -205,15 +205,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ANDROID_CLASS",      -- For Android.
     "ANDROID_ASSETMGR")   -- For Android.  Permanent pointer to the AssetManager
 
-  flags("STF", { comment="Universal flag values used for searching text" },
-    "CASE: Case sensitive search",
-    "MOVE_CURSOR: The cursor is moved to the text.  If not set, the text is auto-selected",
-    "SCAN_SELECTION: Limit search to within the user's current selection",
-    "BACKWARDS: Search backwards",
-    "EXPRESSION: Search text is a regular expression",
-    "WRAP: Wrap search at the end of the document")
-
-  flags("RDF", { comment="Flags for the OpenDir() function." },
+  flags("RDF", { strict=true, comment="Flags for the OpenDir() function." },
     "SIZE: Retrieve the byte size of each file.",
     "DATE|TIME: Retrieve the date stamp of each file.",
     "PERMISSIONS: Get permission/security information.",
@@ -252,12 +244,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "VOLUME: The path refers to a volume name.",
     "FILE: The path refers to a file.")
 
-  flags("IDF", { comment="IdentifyFile() values" },
-    "SECTION: Return the name of the Config group that supports the file association, rather than an executable command.",
-    "HOST: Query the host platform's file associations only.",
-    "IGNORE_HOST: Ignore the host platform's file assocations.")
-
-  flags("LDF", { comment="Flags for LoadFile()" },
+  flags("LDF", { strict=true, comment="Flags for LoadFile()" },
     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
 
   enum("FBK", { start=1, comment="Flags for file feedback." },
@@ -1074,7 +1061,7 @@ struct FieldValue {
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or NULL.
     str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
-    int(FL) Flags              # Additional flags to describe the file.
+    int(RDF) Flags             # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
     int GroupID                # Group ID (Unix systems only).
@@ -1094,7 +1081,7 @@ struct FieldValue {
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
-   LONG   prvFlags;         // OpenFolder() RDF flags
+   RDF    prvFlags;         // OpenFolder() RDF flags
    LONG   prvTotal;         // Total number of items in the folder
    ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {

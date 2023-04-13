@@ -144,7 +144,7 @@ extern "C" void program(void)
          }
          else {
             // If argument not recognised, assume this arg is the script file.
-            if (ResolvePath(Args[i], RSF_APPROXIMATE, &scriptfile)) {
+            if (ResolvePath(Args[i], RSF::APPROXIMATE, &scriptfile)) {
                print("Unable to find file '%s'", Args[i]);
                goto exit;
             }

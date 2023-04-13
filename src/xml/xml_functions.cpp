@@ -520,7 +520,7 @@ static ERROR parse_source(extXML *Self)
       }
       else Self->ParseError = ERR_AllocMemory;
    }
-   else if (!LoadFile(Self->Path, 0, &filecache)) {
+   else if (!LoadFile(Self->Path, LDF::NIL, &filecache)) {
       Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);
       UnloadFile(filecache);
    }

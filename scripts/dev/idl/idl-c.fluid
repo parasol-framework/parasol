@@ -742,10 +742,10 @@ function struct(Name, Options, Def, Append)
       for i, f in ipairs(fields) do
          local field_name = cName(f, true)
          local left
-         if nz(field_name) then
-            left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
+         if nz(field_name) then -- field_name can be nil if the field describes a function pointer
+            left = string.format('   %-' .. type_len .. 's %s;', nz(f.extType, f.type), field_name)
          else
-            left = string.format('   %-' .. type_len .. 's;', f.type)
+            left = string.format('   %-' .. type_len .. 's;', nz(f.extType, f.type))
          end
 
          if nz(f.comment) then

@@ -629,7 +629,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #ifdef _WIN32
    {
       STRING libpath;
-      if (!ResolvePath("modules:lib", RSF_NO_FILE_CHECK, &libpath)) {
+      if (!ResolvePath("modules:lib", RSF::NO_FILE_CHECK, &libpath)) {
          winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
@@ -1332,7 +1332,7 @@ static void BreakHandler(void)
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
 {
-   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME_REPLACE | (Hidden ? VOLUME_HIDDEN : 0));
+   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME::REPLACE | (Hidden ? VOLUME::HIDDEN : VOLUME::NIL));
 }
 #endif
 
@@ -1356,52 +1356,52 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else {
-         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
    #elif __unix__
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else {
          std::string path = glRootPath + "lib/parasol/";
-         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
 
-      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME_REPLACE|VOLUME_SYSTEM);
-      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
-      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
    #endif
 
    // Configure some standard volumes.
 
    #ifdef __ANDROID__
-      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    #else
-      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
-         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
-      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    #endif
 
-   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME_HIDDEN);
-   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM); // Refer to widget module for actual configuration
+   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
+   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
@@ -1410,11 +1410,11 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
             case TOI_LOCAL_CACHE: {
-               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
             case TOI_LOCAL_STORAGE: {
-               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
          }
@@ -1433,7 +1433,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
-         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE);
+         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE);
 
          buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
       }
@@ -1470,7 +1470,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       buffer += "|config:users/default/";
    }
 
-   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
    // Make sure that certain default directories exist
 
@@ -1478,11 +1478,11 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
    // Look for the following drive types:
@@ -1514,19 +1514,19 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
             label[1] = 0;
 
             if (type IS DRIVETYPE_REMOVABLE) {
-               SetVolume(disk, buffer+i, "devices/storage", label, "disk", 0);
+               SetVolume(disk, buffer+i, "devices/storage", label, "disk", VOLUME::NIL);
                disk[4]++;
             }
             else if (type IS DRIVETYPE_CDROM) {
-               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", 0);
+               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", VOLUME::NIL);
                cd[2]++;
             }
             else if (type IS DRIVETYPE_FIXED) {
-               SetVolume(hd, buffer+i, "devices/storage", label, "hd", 0);
+               SetVolume(hd, buffer+i, "devices/storage", label, "hd", VOLUME::NIL);
                hd[5]++;
             }
             else if (type IS DRIVETYPE_NETWORK) {
-               SetVolume(net, buffer+i, "devices/network", label, "network", 0);
+               SetVolume(net, buffer+i, "devices/network", label, "network", VOLUME::NIL);
                net[3]++;
             }
             else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
@@ -1583,7 +1583,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
                if ((mount[0] IS '/') and (!mount[1]));
                else {
                   IntToStr(driveno++, drivename+5, 3);
-                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", 0);
+                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", VOLUME::NIL);
                }
             }
 
@@ -1607,7 +1607,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
       if (!access(cdroms[i], F_OK)) {
-         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", 0);
+         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", VOLUME::NIL);
          cdname[2] = cdname[2] + 1;
       }
    }
@@ -1624,16 +1624,16 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string name(vol, 0, v);
          std::string path(vol, v + 1, vol.size() - (v + 1));
 
-         LONG flags = glVolumes.contains(name) ? 0 : VOLUME_HIDDEN;
+         VOLUME flags = glVolumes.contains(name) ? VOLUME::NIL : VOLUME::HIDDEN;
 
-         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME_PRIORITY|flags);
+         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME::PRIORITY|flags);
       }
    }
 
    // Change glModulePath to an absolute path to optimise the loading of modules.
 
    STRING mpath;
-   if (!ResolvePath("modules:", RSF_NO_FILE_CHECK, &mpath)) {
+   if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
       glModulePath = mpath;
       FreeResource(mpath);
    }

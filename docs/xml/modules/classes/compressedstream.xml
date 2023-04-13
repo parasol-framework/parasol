@@ -429,7 +429,7 @@
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
+      <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
       <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>

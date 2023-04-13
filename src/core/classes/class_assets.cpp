@@ -412,11 +412,11 @@ static ERROR scan_dir(DirInfo *Dir)
    }
 
    while ((filename = AAssetDir_getNextFileName(Dir->prvHandle))) {
-      if (Dir->prvFlags & RDF_FILE) {
+      if ((Dir->prvFlags & RDF::FILE) != RDF::NIL) {
          AAsset *asset;
          if ((asset = AAssetManager_open(mgr, Dir->prvResolvedPath+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
-            Dir->Info->Flags |= RDF_FILE;
-            if (Dir->prvFlags & RDF_SIZE) Dir->Info->Size = AAsset_getLength(asset);
+            Dir->Info->Flags |= RDF::FILE;
+            if ((Dir->prvFlags & RDF::SIZE) != RDF::NIL) Dir->Info->Size = AAsset_getLength(asset);
             AAsset_close(asset);
             StrCopy(filename, Dir->Info->Name, MAX_FILENAME);
 
@@ -426,10 +426,10 @@ static ERROR scan_dir(DirInfo *Dir)
          }
       }
 
-      if (Dir->prvFlags & RDF_FOLDER) {
+      if ((Dir->prvFlags & RDF::FOLDER) != RDF::NIL) {
          AAssetDir *dir;
          if ((dir = AAssetManager_openDir(mgr, Dir->prvResolvedPath+LEN_ASSETS))) {
-            Dir->Info->Flags |= RDF_FOLDER;
+            Dir->Info->Flags |= RDF::FOLDER;
             AAssetDir_close(dir);
 
             StrCopy(filename, Dir->Info->Name, MAX_FILENAME);
@@ -499,9 +499,9 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    for (len=0; Path[len]; len++);
 
-   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER;
-   else if (dir) Info->Flags |= RDF_FOLDER;
-   else Info->Flags |= RDF_FILE|RDF_SIZE;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF::FOLDER;
+   else if (dir) Info->Flags |= RDF::FOLDER;
+   else Info->Flags |= RDF::FILE|RDF::SIZE;
 
    // Extract the file name
 
@@ -510,7 +510,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
-   if (Info->Flags & RDF_FOLDER) {
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
       else if (Info->Name[i-1] != '/') {
          Info->Name[i++] = '/';
@@ -639,22 +639,22 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
       AAsset *asset;
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
-         if (Flags & RDF_FILE) {
+         if ((Flags & RDF::FILE) != RDF::NIL) {
             LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
             if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
-               entry->Flags = RDF_FILE;
+               entry->Flags = RDF::FILE;
 
-               if (Flags & RDF_PERMISSIONS) {
-                  entry->Flags |= RDF_PERMISSIONS;
+               if (Flags & RDF::PERMISSIONS) {
+                  entry->Flags |= RDF::PERMISSIONS;
                   entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
                }
 
-               if (Flags & RDF_SIZE) {
-                  entry->Flags |= RDF_SIZE;
+               if ((Flags & RDF::SIZE) != RDF::NIL) {
+                  entry->Flags |= RDF::SIZE;
                   entry->Size = AAsset_getLength(asset);
                }
 
-               if (Flags & RDF_DATE) {
+               if ((Flags & RDF::DATE) != RDF::NIL) {
                   entry->Time.Year = 2013;
                   entry->Time.Month = 1;
                   entry->Time.Day = 1;
@@ -669,25 +669,23 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
          }
          AAsset_close(asset);
       }
-      else {
-         if (Flags & RDF_FOLDER) {
-            LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
-            if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
-               entry->Flags = RDF_FOLDER;
+      else if ((Flags & RDF::FOLDER) != RDF::NIL) {
+         LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
+         if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
+            entry->Flags = RDF::FOLDER;
 
-               if (Flags & RDF_PERMISSIONS) {
-                  entry->Flags |= RDF_PERMISSIONS;
-                  entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
-               }
-
-               entry->Name = (STRING)(entry + 1);
-               i = StrCopy(filename, entry->Name);
-               if (Flags & RDF_QUALIFY) { entry->Name[i++] = '/'; entry->Name[i++] = 0; }
-
-               dirinfo->Total++;
+            if ((Flags & RDF::PERMISSIONS) != RDF::NIL) {
+               entry->Flags |= RDF::PERMISSIONS;
+               entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
             }
-            else error = ERR_AllocMemory;
+
+            entry->Name = (STRING)(entry + 1);
+            i = StrCopy(filename, entry->Name);
+            if ((Flags & RDF::QUALIFY) != RDF::NIL) { entry->Name[i++] = '/'; entry->Name[i++] = 0; }
+
+            dirinfo->Total++;
          }
+         else error = ERR_AllocMemory;
       }
 
       // Insert entry into the linked list

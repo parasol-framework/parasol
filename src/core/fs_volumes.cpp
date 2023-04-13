@@ -120,7 +120,7 @@ LockFailed:
 
 *********************************************************************************************************************/
 
-ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags)
+ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -141,10 +141,10 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
    // If we are not in replace mode, check if the volume already exists with configured path.  If so, add the path as a complement
    // to the existing volume.  In this mode nothing else besides the path is changed, even if other tags are specified.
 
-   if (!(Flags & VOLUME_REPLACE)) {
+   if ((Flags & VOLUME::REPLACE) IS VOLUME::NIL) {
       if (glVolumes.contains(name)) {
          auto &keys = glVolumes[name];
-         if (Flags & VOLUME_PRIORITY) keys["Path"] = std::string(Path) + "|" + keys["Path"];
+         if ((Flags & VOLUME::PRIORITY) != VOLUME::NIL) keys["Path"] = std::string(Path) + "|" + keys["Path"];
          else keys["Path"] = keys["Path"] + "|" + Path;
          return ERR_Okay;
       }
@@ -158,8 +158,8 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
    if (Label)  keys["Label"]  = Label;
    if (Device) keys["Device"] = Device;
 
-   if (Flags & VOLUME_HIDDEN) keys["Hidden"] = "Yes";
-   if (Flags & VOLUME_SYSTEM) keys["System"] = "Yes";
+   if ((Flags & VOLUME::HIDDEN) != VOLUME::NIL) keys["Hidden"] = "Yes";
+   if ((Flags & VOLUME::SYSTEM) != VOLUME::NIL) keys["System"] = "Yes";
 
    UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
    ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "created");
@@ -271,7 +271,7 @@ ERROR VirtualVolume(CSTRING Name, ...)
             break;
 
          case VAS_TEST_PATH:
-            glVirtual[id].TestPath = va_arg(list, ERROR (*)(CSTRING, LONG, LONG*));
+            glVirtual[id].TestPath = va_arg(list, ERROR (*)(CSTRING, RSF, LONG*));
             break;
 
          case VAS_WATCH_PATH:

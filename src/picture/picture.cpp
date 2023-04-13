@@ -404,7 +404,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
       // Test the given path to see if it matches our supported file format.
 
       STRING res_path;
-      if (!ResolvePath(Self->prvPath, RSF_APPROXIMATE, &res_path)) {
+      if (!ResolvePath(Self->prvPath, RSF::APPROXIMATE, &res_path)) {
          LONG result;
 
          FreeResource(Self->prvPath); // Switch to the resolved path in case it was approximated

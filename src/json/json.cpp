@@ -144,7 +144,7 @@ static ERROR load_file(objXML *Self, CSTRING Path)
 {
    CacheFile *filecache;
 
-   if (!(Self->ParseError = LoadFile(Self->Path, 0, &filecache))) {
+   if (!(Self->ParseError = LoadFile(Self->Path, LDF::NIL, &filecache))) {
       Self->ParseError = txt_to_json(Self, (CSTRING)filecache->Data);
       UnloadFile(filecache);
       return Self->ParseError;

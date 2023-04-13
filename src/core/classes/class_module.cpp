@@ -234,7 +234,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             path = Self->Name;
 
             STRING volume;
-            if (!ResolvePath(path.c_str(), RSF_APPROXIMATE, &volume)) {
+            if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
                path = volume;
                FreeResource(volume);
             }

@@ -693,7 +693,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    launchdir[0] = 0;
    if ((!GET_LaunchPath(Self, &path)) and (path)) {
-      if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
+      if (!ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
          FreeResource(path);
@@ -704,7 +704,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
    }
    else if (Self->Flags & TSF_RESET_PATH) {
-      if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
+      if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          FreeResource(path);
       }
@@ -718,7 +718,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    i = 0;
    buffer[i++] = '"';
-   if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
+   if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
       for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (path[j] IS '/') buffer[i] = '\\';
          else buffer[i] = path[j];
@@ -743,7 +743,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       if (param[0] IS '>') {
          // Redirection argument detected
 
-         if (!ResolvePath(param.c_str() + 1, RSF_NO_FILE_CHECK, &redirect_stdout)) {
+         if (!ResolvePath(param.c_str() + 1, RSF::NO_FILE_CHECK, &redirect_stdout)) {
             redirect_stderr = redirect_stdout;
          }
 
@@ -754,13 +754,13 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
       else if ((param[0] IS '2') and (param[1] IS '>')) {
          log.msg("StdErr redirected to %s", param.c_str() + 2);
-         ResolvePath(param.c_str() + 2, RSF_NO_FILE_CHECK, &redirect_stderr);
+         ResolvePath(param.c_str() + 2, RSF::NO_FILE_CHECK, &redirect_stderr);
          hide_output = true;
          continue;
       }
       else if ((param[0] IS '1') and (param[1] IS '>')) {
          log.msg("StdOut redirected to %s", param.c_str() + 2);
-         ResolvePath(param.c_str() + 2, RSF_NO_FILE_CHECK, &redirect_stdout);
+         ResolvePath(param.c_str() + 2, RSF::NO_FILE_CHECK, &redirect_stdout);
          hide_output = true;
          continue;
       }
@@ -880,7 +880,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       buffer[i++] = ' ';
 
       if (!path) path = Self->Location;
-      if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
+      if (!ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
          FreeResource(path);
       }
@@ -897,7 +897,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
-   if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
+   if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
       for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       buffer[i] = 0;
       FreeResource(path);
@@ -2162,7 +2162,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
 
 #ifdef __unix__
          STRING path;
-         if (!ResolvePath(new_path, RSF_NO_FILE_CHECK, &path)) {
+         if (!ResolvePath(new_path, RSF::NO_FILE_CHECK, &path)) {
             if (chdir(path)) {
                error = ERR_InvalidPath;
                log.msg("Failed to switch current path to: %s", path);
@@ -2172,7 +2172,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
          else error = log.warning(ERR_ResolvePath);
 #elif _WIN32
          STRING path;
-         if (!ResolvePath(new_path, RSF_NO_FILE_CHECK|RSF_PATH, &path)) {
+         if (!ResolvePath(new_path, RSF::NO_FILE_CHECK|RSF::PATH, &path)) {
             if (chdir(path)) {
                error = ERR_InvalidPath;
                log.msg("Failed to switch current path to: %s", path);

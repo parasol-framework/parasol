@@ -497,7 +497,7 @@ static ERROR FILE_Free(extFile *Self, APTR Void)
    if (Self->Flags & FL_RESET_DATE) {
       // If we have to reset the date, get the file path
       log.trace("Resetting the file date.");
-      ResolvePath(Self->Path, 0, &path);
+      ResolvePath(Self->Path, RSF::NIL, &path);
    }
 #endif
 
@@ -667,14 +667,14 @@ retrydir:
       return ERR_Okay;
    }
 
-   // Use RSF_CHECK_VIRTUAL to cause failure if the volume name is reserved by a support class.  By doing this we can
+   // Use RSF::CHECK_VIRTUAL to cause failure if the volume name is reserved by a support class.  By doing this we can
    // return ERR_UseSubClass and a support class can then initialise the file instead.
 
-   LONG resolveflags = 0;
-   if (Self->Flags & FL_NEW) resolveflags |= RSF_NO_FILE_CHECK;
-   if (Self->Flags & FL_APPROXIMATE) resolveflags |= RSF_APPROXIMATE;
+   auto resolveflags = RSF::NIL;
+   if (Self->Flags & FL_NEW) resolveflags |= RSF::NO_FILE_CHECK;
+   if (Self->Flags & FL_APPROXIMATE) resolveflags |= RSF::APPROXIMATE;
 
-   if ((error = ResolvePath(Self->Path, resolveflags|RSF_CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR_Okay) {
+   if ((error = ResolvePath(Self->Path, resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR_Okay) {
       if (error IS ERR_VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR_UseSubClass to have support delegated to the correct File sub-class.
@@ -917,11 +917,11 @@ static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
    if (!(Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFolder);
 
    if (!Self->prvList) {
-      LONG flags = RDF_QUALIFY;
+      auto flags = RDF::QUALIFY;
 
-      if (Self->Flags & FL_EXCLUDE_FOLDERS) flags |= RDF_FILE;
-      else if (Self->Flags & FL_EXCLUDE_FILES) flags |= RDF_FOLDER;
-      else flags |= RDF_FILE|RDF_FOLDER;
+      if (Self->Flags & FL_EXCLUDE_FOLDERS) flags |= RDF::FILE;
+      else if (Self->Flags & FL_EXCLUDE_FILES) flags |= RDF::FOLDER;
+      else flags |= RDF::FILE|RDF::FOLDER;
 
       if (auto error = OpenDir(Self->Path, flags, &Self->prvList)) return error;
    }
@@ -2019,14 +2019,14 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    FileInfo info;
    bool link = false;
    if (!get_file_info(Self->Path, &info, sizeof(info))) {
-      if (info.Flags & RDF_LINK) link = true;
+      if ((info.Flags & RDF::LINK) != RDF::NIL) link = true;
 
-      if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
+      if ((info.Flags & RDF::VIRTUAL) != RDF::NIL) { // Virtual drives can specify custom icons, even for folders
          *Value = Self->prvIcon = info.Tags[0]["Icon"].c_str();
          if (*Value) return ERR_Okay;
       }
 
-      if (info.Flags & RDF_FOLDER) {
+      if ((info.Flags & RDF::FOLDER) != RDF::NIL) {
          if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder_shortcut");
          else *Value = Self->prvIcon = StrClone("icons:folders/folder");
          return ERR_Okay;
@@ -2146,7 +2146,7 @@ static ERROR GET_Link(extFile *Self, STRING *Value)
 
    *Value = NULL;
    if (Self->Flags & FL_LINK) {
-      if (!ResolvePath(Self->Path, 0, &path)) {
+      if (!ResolvePath(Self->Path, RSF::NIL, &path)) {
          LONG i = StrLength(path);
          if (path[i-1] IS '/') path[i-1] = 0;
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
@@ -2485,9 +2485,7 @@ static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
    if (!Self->Path) return ERR_FieldNotSet;
 
    if (!Self->prvResolvedPath) {
-      LONG flags = 0;
-      if (Self->Flags & FL_APPROXIMATE) flags |= RSF_APPROXIMATE;
-      else flags |= RSF_NO_FILE_CHECK;
+      auto flags = (Self->Flags & FL_APPROXIMATE) ? RSF::APPROXIMATE : RSF::NO_FILE_CHECK;
 
       ERROR error;
       pf::SwitchContext ctx(Self);

@@ -102,7 +102,7 @@ static ERROR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &I
    std::stringstream list;
    for (auto &item : Items) {
       STRING path;
-      if (!ResolvePath(item.Path.c_str(), 0, &path)) {
+      if (!ResolvePath(item.Path.c_str(), RSF::NIL, &path)) {
          list << path << '\0';
          FreeResource(path);
       }
@@ -319,7 +319,7 @@ Clear: Destroys all cached data that is stored in the clipboard.
 static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 {
    STRING path;
-   if (!ResolvePath("clipboard:", RSF_NO_FILE_CHECK, &path)) {
+   if (!ResolvePath("clipboard:", RSF::NO_FILE_CHECK, &path)) {
       DeleteFile(path, NULL);
       CreateFolder(path, PERMIT_READ|PERMIT_WRITE);
       FreeResource(path);

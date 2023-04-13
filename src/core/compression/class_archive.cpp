@@ -57,7 +57,7 @@ static ERROR close_folder(DirInfo *);
 static ERROR open_folder(DirInfo *);
 static ERROR get_info(CSTRING, FileInfo *, LONG);
 static ERROR scan_folder(DirInfo *);
-static ERROR test_path(STRING, LONG, LONG *);
+static ERROR test_path(STRING, RSF, LONG *);
 
 //********************************************************************************************************************
 
@@ -473,7 +473,7 @@ static ERROR scan_folder(DirInfo *Dir)
    while ((*name) and (*name != '/') and (*name != '\\')) name++;
    if ((*name IS '/') or (*name IS '\\')) name++;
 
-   log.traceBranch("Path: \"%s\", Flags: $%.8x", name, Dir->prvFlags);
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", name, LONG(Dir->prvFlags));
 
    std::string path(name);
 
@@ -505,20 +505,20 @@ static ERROR scan_folder(DirInfo *Dir)
          if (zf.Name[i]) continue;
       }
 
-      if ((Dir->prvFlags & RDF_FILE) and (!zf.IsFolder)) {
+      if (((Dir->prvFlags & RDF::FILE) != RDF::NIL) and (!zf.IsFolder)) {
 
-         if (Dir->prvFlags & RDF_PERMISSIONS) {
-            Dir->Info->Flags |= RDF_PERMISSIONS;
+         if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::PERMISSIONS;
             Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
          }
 
-         if (Dir->prvFlags & RDF_SIZE) {
-            Dir->Info->Flags |= RDF_SIZE;
+         if ((Dir->prvFlags & RDF::SIZE) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::SIZE;
             Dir->Info->Size = zf.OriginalSize;
          }
 
-         if (Dir->prvFlags & RDF_DATE) {
-            Dir->Info->Flags |= RDF_DATE;
+         if ((Dir->prvFlags & RDF::DATE) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::DATE;
             Dir->Info->Modified.Year   = zf.Year;
             Dir->Info->Modified.Month  = zf.Month;
             Dir->Info->Modified.Day    = zf.Day;
@@ -527,7 +527,7 @@ static ERROR scan_folder(DirInfo *Dir)
             Dir->Info->Modified.Second = 0;
          }
 
-         Dir->Info->Flags |= RDF_FILE;
+         Dir->Info->Flags |= RDF::FILE;
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
          StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
@@ -537,20 +537,20 @@ static ERROR scan_folder(DirInfo *Dir)
          return ERR_Okay;
       }
 
-      if ((Dir->prvFlags & RDF_FOLDER) and (zf.IsFolder)) {
-         Dir->Info->Flags |= RDF_FOLDER;
+      if (((Dir->prvFlags & RDF::FOLDER) != RDF::NIL) and (zf.IsFolder)) {
+         Dir->Info->Flags |= RDF::FOLDER;
 
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
          LONG i = StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
 
-         if (Dir->prvFlags & RDF_QUALIFY) {
+         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
             Dir->Info->Name[i++] = '/';
             Dir->Info->Name[i++] = 0;
          }
 
-         if (Dir->prvFlags & RDF_PERMISSIONS) {
-            Dir->Info->Flags |= RDF_PERMISSIONS;
+         if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::PERMISSIONS;
             Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
          }
 
@@ -589,12 +589,12 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    else return ERR_DoesNotExist;
 
    Info->Size     = item->OriginalSize;
-   Info->Flags    = 0;
+   Info->Flags    = RDF::NIL;
    Info->Created  = item->Created;
    Info->Modified = item->Modified;
 
-   if (item->Flags & FL_FOLDER) Info->Flags |= RDF_FOLDER;
-   else Info->Flags |= RDF_FILE|RDF_SIZE;
+   if (item->Flags & FL_FOLDER) Info->Flags |= RDF::FOLDER;
+   else Info->Flags |= RDF::FILE|RDF::SIZE;
 
    // Extract the file name
 
@@ -604,7 +604,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
-   if (Info->Flags & RDF_FOLDER) {
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
       else if (Info->Name[i-1] != '/') {
          Info->Name[i++] = '/';
@@ -622,7 +622,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an archive: location.
 
-static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
+static ERROR test_path(STRING Path, RSF Flags, LONG *Type)
 {
    Log log(__FUNCTION__);
 
@@ -640,7 +640,7 @@ static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
    CompressedItem *item;
    ERROR error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_MATCH_LEN, &item);
 
-   if ((error) and (Flags & RSF_APPROXIMATE)) {
+   if ((error) and ((Flags & RSF::APPROXIMATE) != RSF::NIL)) {
       file_path.append(".*");
       if (!(error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_WILDCARD, &item))) {
          // Point the path to the discovered item

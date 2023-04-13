@@ -1313,14 +1313,14 @@ static void scan_truetype_folder(objConfig *Config)
 
    log.branch("Scanning for truetype fonts.");
 
-   if (!OpenDir("fonts:truetype/", RDF_FILE, &dir)) {
+   if (!OpenDir("fonts:truetype/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
          snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
          while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
 
-         ResolvePath(location, 0, (STRING *)&open.pathname);
+         ResolvePath(location, RSF::NIL, (STRING *)&open.pathname);
          open.flags = FT_OPEN_PATHNAME;
          if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
@@ -1397,7 +1397,7 @@ static void scan_fixed_folder(objConfig *Config)
    log.branch("Scanning for fixed fonts.");
 
    DirInfo *dir;
-   if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
+   if (!OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
          bool bold = false;
          bool bolditalic = false;

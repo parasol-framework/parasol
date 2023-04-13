@@ -1098,12 +1098,12 @@ void scan_classes(void)
    DeleteFile(glClassBinPath, NULL);
 
    DirInfo *dir;
-   if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
+   if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
       LONG total = 0;
       while (!ScanDir(dir)) {
          FileInfo *list = dir->Info;
 
-         if (list->Flags & RDF_FILE) {
+         if ((list->Flags & RDF::FILE) != RDF::NIL) {
             #ifdef __ANDROID__
                if (!StrCompare("libshim.", list->Name, 0, 0)) continue;
                if (!StrCompare("libcore.", list->Name, 0, 0)) continue;

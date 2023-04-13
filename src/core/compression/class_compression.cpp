@@ -976,7 +976,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       std::string srcfolder(src, pathlen); // Extract the path without the file name
 
       DirInfo *dir;
-      if (!OpenDir(srcfolder.c_str(), RDF_FILE, &dir)) {
+      if (!OpenDir(srcfolder.c_str(), RDF::FILE, &dir)) {
          while (!ScanDir(dir)) {
             FileInfo *scan = dir->Info;
             if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {

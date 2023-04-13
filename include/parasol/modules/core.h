@@ -876,10 +876,15 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
 // Options for SetVolume()
 
-#define VOLUME_REPLACE 0x00000001
-#define VOLUME_PRIORITY 0x00000002
-#define VOLUME_HIDDEN 0x00000004
-#define VOLUME_SYSTEM 0x00000008
+enum class VOLUME : ULONG {
+   NIL = 0,
+   REPLACE = 0x00000001,
+   PRIORITY = 0x00000002,
+   HIDDEN = 0x00000004,
+   SYSTEM = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VOLUME)
 
 // Options for the File Delete() method.
 
@@ -896,12 +901,17 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
 // Flags for ResolvePath()
 
-#define RSF_NO_FILE_CHECK 0x00000001
-#define RSF_CHECK_VIRTUAL 0x00000002
-#define RSF_APPROXIMATE 0x00000004
-#define RSF_NO_DEEP_SCAN 0x00000008
-#define RSF_PATH 0x00000010
-#define RSF_CASE_SENSITIVE 0x00000020
+enum class RSF : ULONG {
+   NIL = 0,
+   NO_FILE_CHECK = 0x00000001,
+   CHECK_VIRTUAL = 0x00000002,
+   APPROXIMATE = 0x00000004,
+   NO_DEEP_SCAN = 0x00000008,
+   PATH = 0x00000010,
+   CASE_SENSITIVE = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RSF)
 
 // Flags for the File Watch() method.
 
@@ -951,37 +961,33 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 #define TOI_ANDROID_CLASS 3
 #define TOI_ANDROID_ASSETMGR 4
 
-// Universal flag values used for searching text
-
-#define STF_CASE 0x00000001
-#define STF_MOVE_CURSOR 0x00000002
-#define STF_SCAN_SELECTION 0x00000004
-#define STF_BACKWARDS 0x00000008
-#define STF_EXPRESSION 0x00000010
-#define STF_WRAP 0x00000020
-
 // Flags for the OpenDir() function.
 
-#define RDF_SIZE 0x00000001
-#define RDF_DATE 0x00000002
-#define RDF_TIME 0x00000002
-#define RDF_PERMISSIONS 0x00000004
-#define RDF_FILES 0x00000008
-#define RDF_FILE 0x00000008
-#define RDF_FOLDERS 0x00000010
-#define RDF_FOLDER 0x00000010
-#define RDF_READ_ALL 0x0000001f
-#define RDF_VOLUME 0x00000020
-#define RDF_LINK 0x00000040
-#define RDF_TAGS 0x00000080
-#define RDF_HIDDEN 0x00000100
-#define RDF_QUALIFY 0x00000200
-#define RDF_QUALIFIED 0x00000200
-#define RDF_VIRTUAL 0x00000400
-#define RDF_STREAM 0x00000800
-#define RDF_READ_ONLY 0x00001000
-#define RDF_ARCHIVE 0x00002000
-#define RDF_OPENDIR 0x00004000
+enum class RDF : ULONG {
+   NIL = 0,
+   SIZE = 0x00000001,
+   DATE = 0x00000002,
+   TIME = 0x00000002,
+   PERMISSIONS = 0x00000004,
+   FILES = 0x00000008,
+   FILE = 0x00000008,
+   FOLDERS = 0x00000010,
+   FOLDER = 0x00000010,
+   READ_ALL = 0x0000001f,
+   VOLUME = 0x00000020,
+   LINK = 0x00000040,
+   TAGS = 0x00000080,
+   HIDDEN = 0x00000100,
+   QUALIFY = 0x00000200,
+   QUALIFIED = 0x00000200,
+   VIRTUAL = 0x00000400,
+   STREAM = 0x00000800,
+   READ_ONLY = 0x00001000,
+   ARCHIVE = 0x00002000,
+   OPENDIR = 0x00004000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RDF)
 
 // File flags
 
@@ -1008,15 +1014,14 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 #define LOC_VOLUME 2
 #define LOC_FILE 3
 
-// IdentifyFile() values
-
-#define IDF_SECTION 0x00000001
-#define IDF_HOST 0x00000002
-#define IDF_IGNORE_HOST 0x00000004
-
 // Flags for LoadFile()
 
-#define LDF_CHECK_EXISTS 0x00000001
+enum class LDF : ULONG {
+   NIL = 0,
+   CHECK_EXISTS = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(LDF)
 
 // Flags for file feedback.
 
@@ -1833,7 +1838,7 @@ struct FileInfo {
    LARGE  TimeStamp;          // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
-   LONG   Flags;              // Additional flags to describe the file.
+   RDF    Flags;              // Additional flags to describe the file.
    LONG   Permissions;        // Standard permission flags.
    LONG   UserID;             // User  ID (Unix systems only).
    LONG   GroupID;            // Group ID (Unix systems only).
@@ -1849,7 +1854,7 @@ struct DirInfo {
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
-   LONG   prvFlags;         // OpenFolder() RDF flags
+   RDF    prvFlags;         // OpenFolder() RDF flags
    LONG   prvTotal;         // Total number of items in the folder
    ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {
@@ -1925,7 +1930,7 @@ struct CoreBase {
    ERROR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
    ERROR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
    ERROR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-   ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
+   ERROR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING * Result);
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
@@ -1963,15 +1968,15 @@ struct CoreBase {
    ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
    ERROR (*_SysUnlock)(LONG Index);
    ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
-   ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
-   ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags);
+   ERROR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
+   ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
    ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
-   ERROR (*_OpenDir)(CSTRING Path, LONG Flags, struct DirInfo ** Info);
+   ERROR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo ** Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
    struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, APTR Target);
    CSTRING (*_GetErrorMsg)(ERROR Error);
@@ -2048,7 +2053,7 @@ inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSy
 inline ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
 inline ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
 inline ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
-inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
+inline ERROR ResolvePath(CSTRING Path, RSF Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
@@ -2086,15 +2091,15 @@ inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG
 inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
 inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
-inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
-inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
+inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
+inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
-inline ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
+inline ERROR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
 inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target) { return CoreBase->_FindField(Object,FieldID,Target); }
 inline CSTRING GetErrorMsg(ERROR Error) { return CoreBase->_GetErrorMsg(Error); }

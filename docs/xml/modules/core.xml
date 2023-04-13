@@ -1131,10 +1131,10 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>LoadFile</name>
     <category>Files</category>
     <comment>Loads files into a local cache for fast file processing.</comment>
-    <prototype>ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache)</prototype>
+    <prototype>ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache)</prototype>
     <input>
       <param type="CSTRING" name="Path">The location of the file to be cached.</param>
-      <param type="LONG" name="Flags" lookup="LDF">Optional flags are specified here.</param>
+      <param type="LDF" name="Flags" lookup="LDF">Optional flags are specified here.</param>
       <param type="struct CacheFile **" name="Cache">A pointer to a CacheFile structure is returned here if successful.</param>
     </input>
     <description>
@@ -1350,10 +1350,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>OpenDir</name>
     <category>Files</category>
     <comment>Opens a folder for content scanning.</comment>
-    <prototype>ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info)</prototype>
+    <prototype>ERROR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info)</prototype>
     <input>
       <param type="CSTRING" name="Path">The folder location to be scanned.  Using an empty string will scan for volume names.</param>
-      <param type="LONG" name="Flags" lookup="RDF">Optional flags.</param>
+      <param type="RDF" name="Flags" lookup="RDF">Optional flags.</param>
       <param type="struct DirInfo **" name="Info">A DirInfo structure will be returned in the pointer referenced here.</param>
     </input>
     <description>
@@ -1601,18 +1601,18 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ResolvePath</name>
     <category>Files</category>
     <comment>Converts volume-based paths into absolute paths applicable to the host platform.</comment>
-    <prototype>ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result)</prototype>
+    <prototype>ERROR ResolvePath(CSTRING Path, RSF Flags, STRING * Result)</prototype>
     <input>
       <param type="CSTRING" name="Path">The path to be resolved.</param>
-      <param type="LONG" name="Flags" lookup="RSF">Optional flags.</param>
+      <param type="RSF" name="Flags" lookup="RSF">Optional flags.</param>
       <param type="STRING *" name="Result">Must point to an empty STRING variable so that the resolved path can be stored.  If NULL, ResolvePath() will work as normal and return a valid error code without the result string.</param>
     </input>
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>
 <p>The resulting path is guaranteed to be absolute, meaning the use of sequences such as <code>..</code>, <code>//</code> and <code>./</code> will be eliminated.</p>
-<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the <code>RSF_NO_FILE_CHECK</code> setting in the Flags parameter.</p>
-<p>When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be treated as an approximation (i.e. file extensions can be ignored) then use the <code>RSF_APPROXIMATE</code> flag to tell the function to ignore extensions for the purpose of file name matching.</p>
-<p>To resolve the location of executable programs on Unix systems, use the <code>RSF_PATH</code> flag.  This uses the PATH environment variable to resolve the file name specified in the Path parameter.</p>
+<p>If the path can be resolved to more than one file, the ResolvePath() method will attempt to guess the correct path by checking the validity of each possible location.  For instance, if resolving a path of <code>user:document.txt</code> and the <code>user:</code> volume refers to both <code>system:users/joebloggs/</code> and <code>system:users/default/</code>, the routine will check both directories for the existence of the <code>document.txt</code> file to determine the correct location.  While helpful, this can cause problems if the intent is to create a new file.  To circumvent this feature, use the <code>RSF::NO_FILE_CHECK</code> setting in the Flags parameter.</p>
+<p>When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be treated as an approximation (i.e. file extensions can be ignored) then use the <code>RSF::APPROXIMATE</code> flag to tell the function to ignore extensions for the purpose of file name matching.</p>
+<p>To resolve the location of executable programs on Unix systems, use the <code>RSF::PATH</code> flag.  This uses the PATH environment variable to resolve the file name specified in the Path parameter.</p>
 <p>The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is no longer required with FreeResource().</p>
 <types lookup="RSF"/>
 <p>If the path resolves to a virtual drive, it may not be possible to confirm whether the target file exists if the virtual driver does not support this check.  This is common when working with network drives.</p>
@@ -1653,7 +1653,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <description>
 <p>The ScanDir() function is used to scan for files and folders in a folder that you have opened using the <function module="Core">OpenDir</function> function. The ScanDir() function is intended to be used in a simple loop, returning a single item for each function call that you make.  The following code sample illustrates typical usage:</p>
 <pre>DirInfo *info;
-if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
+if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
    while (!ScanDir(info)) {
       log.msg("File: %s", info-&gt;Name);
    }
@@ -1935,14 +1935,14 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetVolume</name>
     <category>Files</category>
     <comment>Adds a new volume name to the system.</comment>
-    <prototype>ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags)</prototype>
+    <prototype>ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags)</prototype>
     <input>
       <param type="CSTRING" name="Name">Required.  The name of the volume.</param>
       <param type="CSTRING" name="Path">Required.  The path to be associated with the volume.  If setting multiple paths, separate each path with a semi-colon character.  Each path must terminate with a forward slash to denote a folder.</param>
       <param type="CSTRING" name="Icon">An icon can be associated with the volume so that it has graphical representation when viewed in the UI.  The required icon string format is 'category/name'.</param>
       <param type="CSTRING" name="Label">An optional label or short comment may be applied to the volume.  This may be useful if the volume name has little meaning to the user (e.g. drive1, drive2 ...).</param>
       <param type="CSTRING" name="Device">If the volume references the root of a device, specify a code of 'disk', 'hd', 'cd', 'network' or 'usb'.</param>
-      <param type="LONG" name="Flags" lookup="VOLUME">Optional flags.</param>
+      <param type="VOLUME" name="Flags" lookup="VOLUME">Optional flags.</param>
     </input>
     <description>
 <p>The SetVolume() function is used to create a volume that is associated with one or more paths.  If the volume already exists, it possible to append more paths or replace them entirely.</p>
@@ -2823,12 +2823,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="SMART_NAMES">Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.</const>
     </constants>
 
-    <constants lookup="IDF" comment="IdentifyFile() values">
-      <const name="HOST">Query the host platform's file associations only.</const>
-      <const name="IGNORE_HOST">Ignore the host platform's file assocations.</const>
-      <const name="SECTION">Return the name of the Config group that supports the file association, rather than an executable command.</const>
-    </constants>
-
     <constants lookup="IDTYPE" comment="Types for AllocateID()">
       <const name="FUNCTION">Function ID's are used to track FUNCTION types and are assigned to the function ID field.</const>
       <const name="GLOBAL">Global ID's have no specific association with anything.</const>
@@ -3419,15 +3413,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="NO_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
     </constants>
 
-    <constants lookup="STF" comment="Universal flag values used for searching text">
-      <const name="BACKWARDS">Search backwards</const>
-      <const name="CASE">Case sensitive search</const>
-      <const name="EXPRESSION">Search text is a regular expression</const>
-      <const name="MOVE_CURSOR">The cursor is moved to the text.  If not set, the text is auto-selected</const>
-      <const name="SCAN_SELECTION">Limit search to within the user's current selection</const>
-      <const name="WRAP">Wrap search at the end of the document</const>
-    </constants>
-
     <constants lookup="STP" comment="ScrollToPoint flags">
       <const name="ANIM"/>
       <const name="X"/>
@@ -3670,7 +3655,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="TimeStamp" type="LARGE">64-bit time stamp - usable only for comparison (e.g. sorting).</field>
       <field name="Next" type="struct FileInfo *">Next structure in the list, or NULL.</field>
       <field name="Name" type="STRING">The name of the file.  This string remains valid until the next call to GetFileInfo().</field>
-      <field name="Flags" type="LONG" lookup="FL">Additional flags to describe the file.</field>
+      <field name="Flags" type="RDF" lookup="RDF">Additional flags to describe the file.</field>
       <field name="Permissions" type="LONG" lookup="PERMIT">Standard permission flags.</field>
       <field name="UserID" type="LONG">User  ID (Unix systems only).</field>
       <field name="GroupID" type="LONG">Group ID (Unix systems only).</field>

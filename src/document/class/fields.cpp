@@ -685,7 +685,7 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       }
       else snprintf(buf, sizeof(buf), "%s", workingpath);
 
-      if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+      if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
          Self->WorkingPath = StrClone(workingpath);
       }
    }

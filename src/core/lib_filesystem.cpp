@@ -362,9 +362,9 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
 
    log.traceBranch("%s", Path);
 
-   LONG flags = 0;
+   RSF flags = RSF::NIL;
    if (Path[0] IS '~') {
-      flags |= RSF_APPROXIMATE;
+      flags |= RSF::APPROXIMATE;
       Path++;
    }
 
@@ -389,7 +389,7 @@ ERROR AnalysePath(CSTRING Path, LONG *PathType)
       auto vd = get_fs(test_path);
       if (vd->TestPath) {
          if (!PathType) PathType = &len; // Dummy variable, helps to avoid bugs
-         error = vd->TestPath(test_path, 0, PathType);
+         error = vd->TestPath(test_path, RSF::NIL, PathType);
       }
       else error = ERR_NoSupport;
 
@@ -433,11 +433,11 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
 
    STRING path1, path2;
    ERROR error;
-   if ((error = ResolvePath(PathA, RSF_NO_FILE_CHECK, &path1))) {
+   if ((error = ResolvePath(PathA, RSF::NO_FILE_CHECK, &path1))) {
       return error;
    }
 
-   if ((error = ResolvePath(PathB, RSF_NO_FILE_CHECK, &path2))) {
+   if ((error = ResolvePath(PathB, RSF::NO_FILE_CHECK, &path2))) {
       FreeResource(path1);
       return error;
    }
@@ -667,8 +667,8 @@ ERROR CreateLink(CSTRING From, CSTRING To)
    log.branch("From: %.40s, To: %s", From, To);
 
    STRING src, dest;
-   if (!ResolvePath(From, RSF_NO_FILE_CHECK, &src)) {
-      if (!ResolvePath(To, RSF_NO_FILE_CHECK, &dest)) {
+   if (!ResolvePath(From, RSF::NO_FILE_CHECK, &src)) {
+      if (!ResolvePath(To, RSF::NO_FILE_CHECK, &dest)) {
          auto err = symlink(dest, src);
          FreeResource(dest);
          FreeResource(src);
@@ -736,7 +736,7 @@ ERROR DeleteFile(CSTRING Path, FUNCTION *Callback)
 
    ERROR error;
    STRING resolve;
-   if (!(error = ResolvePath(Path, 0, &resolve))) {
+   if (!(error = ResolvePath(Path, RSF::NIL, &resolve))) {
       const virtual_drive *vd = get_fs(resolve);
       if (vd->Delete) error = vd->Delete(resolve, NULL);
       else error = ERR_NoSupport;
@@ -804,7 +804,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    if ((Path[len] IS ':') and (!Path[len+1])) {
       const virtual_drive *vfs = get_fs(Path);
 
-      Info->Flags = RDF_VOLUME;
+      Info->Flags = RDF::VOLUME;
 
       for (i=0; (i < MAX_FILENAME-1) and (Path[i]) and (Path[i] != ':'); i++) NameBuffer[i] = Path[i];
       LONG pos = i;
@@ -815,7 +815,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
       ThreadLock lock(TL_VOLUMES, 4000);
       if (lock.granted()) {
          if (glVolumes.contains(NameBuffer)) {
-            if (glVolumes[NameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF_HIDDEN;
+            if (glVolumes[NameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF::HIDDEN;
          }
       }
       else error = ERR_LockFailed;
@@ -825,7 +825,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
          NameBuffer[pos] = 0;
 
          if (vfs->is_virtual()) {
-            Info->Flags |= RDF_VIRTUAL;
+            Info->Flags |= RDF::VIRTUAL;
             if (vfs->GetInfo) error = vfs->GetInfo(Path, Info, InfoSize);
          }
 
@@ -837,11 +837,11 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    log.traceBranch("%s", Path);
 
    STRING path;
-   if (!(error = ResolvePath(Path, 0, &path))) {
+   if (!(error = ResolvePath(Path, RSF::NIL, &path))) {
       auto vfs = get_fs(path);
 
       if (vfs->GetInfo) {
-         if (vfs->is_virtual()) Info->Flags |= RDF_VIRTUAL;
+         if (vfs->is_virtual()) Info->Flags |= RDF::VIRTUAL;
 
          if (!(error = vfs->GetInfo(path, Info, InfoSize))) {
             Info->TimeStamp = calc_timestamp(&Info->Modified);
@@ -883,12 +883,12 @@ int(LDF) Flags: Optional flags are specified here.
 Okay: The file was cached successfully.
 NullArgs:
 AllocMemory:
-Search: If LDF_CHECK_EXISTS is specified, this failure indicates that the file is not cached.
+Search: If CHECK_EXISTS is specified, this failure indicates that the file is not cached.
 -END-
 
 *********************************************************************************************************************/
 
-ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
+ERROR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 {
    pf::Log log(__FUNCTION__);
 
@@ -898,11 +898,11 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
 
    STRING path;
    ERROR error;
-   if ((error = ResolvePath(Path, RSF_APPROXIMATE, &path)) != ERR_Okay) return error;
+   if ((error = ResolvePath(Path, RSF::APPROXIMATE, &path)) != ERR_Okay) return error;
 
    const std::lock_guard<std::mutex> lock(glCacheLock);
 
-   log.branch("%.80s, Flags: $%.8x", path, Flags);
+   log.branch("%.80s, Flags: $%.8x", path, LONG(Flags));
 
    objFile::create file = { fl::Path(path), fl::Flags(FL_READ|FL_FILE) };
 
@@ -917,13 +917,13 @@ ERROR LoadFile(CSTRING Path, LONG Flags, CacheFile **Cache)
          FreeResource(path);
 
          *((extCacheFile **)Cache) = &glCache[index];
-         if (!(Flags & LDF_CHECK_EXISTS)) glCache[index].Locks++;
+         if ((Flags & LDF::CHECK_EXISTS) IS LDF::NIL) glCache[index].Locks++;
          return ERR_Okay;
       }
 
       // If the client just wanted to check for the existence of the file, do not proceed in loading it.
 
-      if (Flags & LDF_CHECK_EXISTS) {
+      if ((Flags & LDF::CHECK_EXISTS) != LDF::NIL) {
          FreeResource(path);
          return ERR_Search;
       }
@@ -996,7 +996,7 @@ ERROR CreateFolder(CSTRING Path, LONG Permissions)
 
    ERROR error;
    STRING resolve;
-   if (!(error = ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve))) {
+   if (!(error = ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve))) {
       const virtual_drive *vd = get_fs(resolve);
       if (vd->CreateFolder) {
          error = vd->CreateFolder(resolve, Permissions);
@@ -1114,7 +1114,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 
    ERROR error;
    STRING res_path;
-   if (!(error = ResolvePath(Path, RSF_CHECK_VIRTUAL | (approx ? RSF_APPROXIMATE : 0), &res_path))) {
+   if (!(error = ResolvePath(Path, RSF::CHECK_VIRTUAL | (approx ? RSF::APPROXIMATE : RSF::NIL), &res_path))) {
       if (StrCompare("/dev/", res_path, 5, 0) != ERR_Okay) {
          LONG handle;
          if ((handle = open(res_path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL)) != -1) {
@@ -1217,7 +1217,7 @@ ERROR ReadInfoTag(FileInfo *Info, CSTRING Name, CSTRING *Value)
 ** large buffer as this function will modify it.
 */
 
-ERROR test_path(STRING Path, LONG Flags)
+ERROR test_path(STRING Path, RSF Flags)
 {
    pf::Log log(__FUNCTION__);
    LONG len, type;
@@ -1272,7 +1272,7 @@ ERROR test_path(STRING Path, LONG Flags)
    else {
       // This code handles testing for file locations
 
-      if (Flags & RSF_APPROXIMATE) {
+      if ((Flags & RSF::APPROXIMATE) != RSF::NIL) {
          if (!findfile(Path)) return ERR_Okay;
       }
 #ifdef __unix__
@@ -1585,11 +1585,11 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
    log.traceBranch("\"%s\" to \"%s\"", Source, Dest);
 
-   if ((error = ResolvePath(Source, 0, &src)) != ERR_Okay) {
+   if ((error = ResolvePath(Source, RSF::NIL, &src)) != ERR_Okay) {
       return ERR_FileNotFound;
    }
 
-   if ((error = ResolvePath(Dest, RSF_NO_FILE_CHECK, &tmp)) != ERR_Okay) {
+   if ((error = ResolvePath(Dest, RSF::NO_FILE_CHECK, &tmp)) != ERR_Okay) {
       FreeResource(src);
       return ERR_ResolvePath;
    }
@@ -2142,10 +2142,10 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
 
    DirInfo *dir;
    ERROR error;
-   if (!(error = OpenDir(Source, RDF_FILE|RDF_FOLDER|RDF_PERMISSIONS, &dir))) {
+   if (!(error = OpenDir(Source, RDF::FILE|RDF::FOLDER|RDF::PERMISSIONS, &dir))) {
       while (!(error = ScanDir(dir))) {
          FileInfo *file = dir->Info;
-         if (file->Flags & RDF_LINK) {
+         if ((file->Flags & RDF::LINK) != RDF::NIL) {
             if ((vsrc->ReadLink) and (vdest->CreateLink)) {
                StrCopy(file->Name, Source+srclen);
                StrCopy(file->Name, Dest+destlen);
@@ -2169,7 +2169,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
                error = ERR_NoSupport;
             }
          }
-         else if (file->Flags & RDF_FILE) {
+         else if ((file->Flags & RDF::FILE) != RDF::NIL) {
             StrCopy(file->Name, Source+srclen);
             StrCopy(file->Name, Dest+destlen);
 
@@ -2177,7 +2177,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
                error = fs_copy(Source, Dest, Callback, FALSE);
             AdjustLogLevel(-1);
          }
-         else if (file->Flags & RDF_FOLDER) {
+         else if ((file->Flags & RDF::FOLDER) != RDF::NIL) {
             StrCopy(file->Name, Dest+destlen);
 
             if ((Callback) and (Callback->Type)) {
@@ -2378,35 +2378,35 @@ ERROR fs_scandir(DirInfo *Dir)
       FileInfo *file = Dir->Info;
       if (!(stat64(pathbuf, &info))) {
          if (S_ISDIR(info.st_mode)) {
-            if (!(Dir->prvFlags & RDF_FOLDER)) continue;
-            file->Flags |= RDF_FOLDER;
+            if ((Dir->prvFlags & RDF::FOLDER) IS RDF::NIL) continue;
+            file->Flags |= RDF::FOLDER;
          }
          else {
-            if (!(Dir->prvFlags & RDF_FILE)) continue;
-            file->Flags |= RDF_FILE|RDF_SIZE|RDF_DATE|RDF_PERMISSIONS;
+            if ((Dir->prvFlags & RDF::FILE) IS RDF::NIL) continue;
+            file->Flags |= RDF::FILE|RDF::SIZE|RDF::DATE|RDF::PERMISSIONS;
          }
       }
       else if (!(lstat64(pathbuf, &info))) {
-         if (!(Dir->prvFlags & RDF_FILE)) continue;
-         file->Flags |= RDF_FILE|RDF_SIZE|RDF_DATE|RDF_PERMISSIONS;
+         if ((Dir->prvFlags & RDF::FILE) IS RDF::NIL) continue;
+         file->Flags |= RDF::FILE|RDF::SIZE|RDF::DATE|RDF::PERMISSIONS;
       }
       else continue;
 
       if (lstat64(pathbuf, &link) != -1) {
-         if (S_ISLNK(link.st_mode)) file->Flags |= RDF_LINK;
+         if (S_ISLNK(link.st_mode)) file->Flags |= RDF::LINK;
       }
 
       j = StrCopy(de->d_name, file->Name, MAX_FILENAME);
 
-      if ((file->Flags & RDF_FOLDER) and (Dir->prvFlags & RDF_QUALIFY)) {
+      if (((file->Flags & RDF::FOLDER) != RDF::NIL) and ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL)) {
          file->Name[j++] = '/';
          file->Name[j] = 0;
       }
 
-      if (file->Flags & RDF_FILE) file->Size = info.st_size;
+      if ((file->Flags & RDF::FILE) != RDF::NIL) file->Size = info.st_size;
       else file->Size = 0;
 
-      if (Dir->prvFlags & RDF_PERMISSIONS) {
+      if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
          if (info.st_mode & S_IRUSR) file->Permissions |= PERMIT_READ;
          if (info.st_mode & S_IWUSR) file->Permissions |= PERMIT_WRITE;
          if (info.st_mode & S_IXUSR) file->Permissions |= PERMIT_EXEC;
@@ -2422,7 +2422,7 @@ ERROR fs_scandir(DirInfo *Dir)
          file->GroupID = info.st_gid;
       }
 
-      if (Dir->prvFlags & RDF_DATE) {
+      if ((Dir->prvFlags & RDF::DATE) != RDF::NIL) {
          local = localtime(&info.st_mtime);
          file->Modified.Year   = 1900 + local->tm_year;
          file->Modified.Month  = local->tm_mon + 1;
@@ -2448,23 +2448,23 @@ ERROR fs_scandir(DirInfo *Dir)
    LONG i;
 
    while (winScan(&Dir->prvHandle, Dir->prvResolvedPath, Dir->Info->Name, &Dir->Info->Size, &Dir->Info->Created, &Dir->Info->Modified, &dir, &hidden, &readonly, &archive)) {
-      if (hidden)   Dir->Info->Flags |= RDF_HIDDEN;
-      if (readonly) Dir->Info->Flags |= RDF_READ_ONLY;
-      if (archive)  Dir->Info->Flags |= RDF_ARCHIVE;
+      if (hidden)   Dir->Info->Flags |= RDF::HIDDEN;
+      if (readonly) Dir->Info->Flags |= RDF::READ_ONLY;
+      if (archive)  Dir->Info->Flags |= RDF::ARCHIVE;
 
       if (dir) {
-         if (!(Dir->prvFlags & RDF_FOLDER)) { Dir->Info->Name[0] = 0; continue; }
-         Dir->Info->Flags |= RDF_FOLDER;
+         if ((Dir->prvFlags & RDF::FOLDER) IS RDF::NIL) { Dir->Info->Name[0] = 0; continue; }
+         Dir->Info->Flags |= RDF::FOLDER;
 
-         if (Dir->prvFlags & RDF_QUALIFY) {
+         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
             i = StrLength(Dir->Info->Name);
             Dir->Info->Name[i++] = '/';
             Dir->Info->Name[i] = 0;
          }
       }
       else {
-         if (!(Dir->prvFlags & RDF_FILE)) { Dir->Info->Name[0] = 0; continue; }
-         Dir->Info->Flags |= RDF_FILE|RDF_SIZE|RDF_DATE;
+         if ((Dir->prvFlags & RDF::FILE) IS RDF::NIL) { Dir->Info->Name[0] = 0; continue; }
+         Dir->Info->Flags |= RDF::FILE|RDF::SIZE|RDF::DATE;
       }
 
       return ERR_Okay;
@@ -2531,7 +2531,7 @@ ERROR fs_closedir(DirInfo *Dir)
    }
 
    if (Dir->Info) {
-      if (Dir->prvFlags & RDF_OPENDIR) {
+      if ((Dir->prvFlags & RDF::OPENDIR) != RDF::NIL) {
          // OpenDir() allocates Dir->Info as part of the Dir structure, so no need for a FreeResource(Dir->Info) here.
 
          if (Dir->Info->Tags) { delete Dir->Info->Tags; Dir->Info->Tags = NULL; }
@@ -2560,15 +2560,15 @@ ERROR fs_rename(STRING CurrentPath, STRING NewPath)
 
 //********************************************************************************************************************
 
-ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
+ERROR fs_testpath(CSTRING Path, RSF Flags, LONG *Type)
 {
-   STRING str;
-   LONG len, type;
+   LONG type;
 
-   len = StrLength(Path);
+   auto len = StrLength(Path);
 
    if (Path[len-1] IS ':') {
-      if (!ResolvePath(Path, 0, &str)) {
+      STRING str;
+      if (!ResolvePath(Path, RSF::NIL, &str)) {
          if (*Type) *Type = LOC_VOLUME;
          FreeResource(str);
          return ERR_Okay;
@@ -2588,7 +2588,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 
    #elif _WIN32
 
-      type = winTestLocation(Path, (Flags & RSF_CASE_SENSITIVE) ? TRUE : FALSE);
+      type = winTestLocation(Path, ((Flags & RSF::CASE_SENSITIVE) != RSF::NIL) ? true : false);
 
    #endif
 
@@ -2601,7 +2601,7 @@ ERROR fs_testpath(CSTRING Path, LONG Flags, LONG *Type)
 
 //********************************************************************************************************************
 
-ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
+ERROR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2613,7 +2613,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    if ((size_t)len >= sizeof(path_ref)-1) return ERR_BufferOverflow;
    if ((path_ref[len-1] IS '/') or (path_ref[len-1] IS '\\')) path_ref[len-1] = 0;
 
-   // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF_LINK flag
+   // Get the file info.  Use lstat64() and if it turns out that the file is a symbolic link, set the RDF::LINK flag
    // and then switch to stat64().
 
    struct stat64 info;
@@ -2622,15 +2622,15 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    Info->Flags = 0;
 
    if (S_ISLNK(info.st_mode)) {
-      Info->Flags |= RDF_LINK;
+      Info->Flags |= RDF::LINK;
       if (stat64(path_ref, &info) IS -1) {
          // We do not abort in the case of a broken link, just warn and treat it as an empty file
          log.warning("Broken link detected.");
       }
    }
 
-   if (S_ISDIR(info.st_mode)) Info->Flags |= RDF_FOLDER|RDF_TIME|RDF_PERMISSIONS;
-   else Info->Flags |= RDF_FILE|RDF_SIZE|RDF_TIME|RDF_PERMISSIONS;
+   if (S_ISDIR(info.st_mode)) Info->Flags |= RDF::FOLDER|RDF::TIME|RDF::PERMISSIONS;
+   else Info->Flags |= RDF::FILE|RDF::SIZE|RDF::TIME|RDF::PERMISSIONS;
 
    // Extract file/folder name
 
@@ -2638,7 +2638,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    while ((i > 0) and (path_ref[i-1] != '/') and (path_ref[i-1] != '\\') and (path_ref[i-1] != ':')) i--;
    i = StrCopy(path_ref + i, Info->Name, MAX_FILENAME-2);
 
-   if (Info->Flags & RDF_FOLDER) {
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       Info->Name[i++] = '/';
       Info->Name[i] = 0;
    }
@@ -2681,7 +2681,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
    BYTE dir;
    LONG i, len;
 
-   Info->Flags = 0;
+   Info->Flags = RDF::NIL;
    if (!winFileInfo(Path, &Info->Size, &Info->Modified, &dir)) return ERR_File;
 
    // TimeStamp has to match that produced by GET_TimeStamp
@@ -2702,9 +2702,9 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
    for (len=0; Path[len]; len++);
 
-   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF_FOLDER|RDF_TIME;
-   else if (dir) Info->Flags |= RDF_FOLDER|RDF_TIME;
-   else Info->Flags |= RDF_FILE|RDF_SIZE|RDF_TIME;
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) Info->Flags |= RDF::FOLDER|RDF::TIME;
+   else if (dir) Info->Flags |= RDF::FOLDER|RDF::TIME;
+   else Info->Flags |= RDF::FILE|RDF::SIZE|RDF::TIME;
 
    // Extract the file name
 
@@ -2715,7 +2715,7 @@ ERROR fs_getinfo(CSTRING Path, struct FileInfo *Info, LONG InfoSize)
 
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
-   if (Info->Flags & RDF_FOLDER) {
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
       else if (Info->Name[i-1] != '/') {
          Info->Name[i++] = '/';
@@ -2787,7 +2787,7 @@ restart:
             resolve = NULL;
          }
          else {
-            if (ResolvePath(Path, RSF_NO_FILE_CHECK, &resolve) != ERR_Okay) {
+            if (ResolvePath(Path, RSF::NO_FILE_CHECK, &resolve) != ERR_Okay) {
                if (resolve) FreeResource(resolve);
                return ERR_ResolvePath;
             }
@@ -2810,7 +2810,7 @@ restart:
 
    LARGE bytes_avail, total_size;
 
-   if (!location) error = ResolvePath(Path, RSF_NO_FILE_CHECK, &location);
+   if (!location) error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
    else error = ERR_Okay;
 
    if (!error) {
@@ -2839,7 +2839,7 @@ restart:
 
    if (Info->DeviceFlags & DEVICE_HARD_DISK) {
       if (!location) {
-         error = ResolvePath(Path, RSF_NO_FILE_CHECK, &location);
+         error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
       }
       else error = ERR_Okay;
 

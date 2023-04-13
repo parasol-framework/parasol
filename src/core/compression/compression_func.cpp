@@ -151,17 +151,17 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
    // Enter the directory and compress its contents
 
    DirInfo *dir;
-   if (!OpenDir(Location.c_str(), RDF_FILE|RDF_FOLDER|RDF_QUALIFY, &dir)) {
+   if (!OpenDir(Location.c_str(), RDF::FILE|RDF::FOLDER|RDF::QUALIFY, &dir)) {
       while (!ScanDir(dir)) { // Recurse for each directory in the list
          FileInfo *scan = dir->Info;
-         if ((scan->Flags & RDF_FOLDER) and (!(scan->Flags & RDF_LINK))) {
+         if (((scan->Flags & RDF::FOLDER) != RDF::NIL) and ((scan->Flags & RDF::LINK) IS RDF::NIL)) {
             std::string location = Location + scan->Name;
             std::string path = Path + scan->Name;
             compress_folder(Self, location, path);
          }
-         else if (scan->Flags & (RDF_FILE|RDF_LINK)) {
+         else if ((scan->Flags & (RDF::FILE|RDF::LINK)) != RDF::NIL) {
             std::string location = Location + scan->Name;
-            compress_file(Self, location, Path, (scan->Flags & RDF_LINK) ? true : false);
+            compress_file(Self, location, Path, ((scan->Flags & RDF::LINK) != RDF::NIL) ? true : false);
          }
       }
 

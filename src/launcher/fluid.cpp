@@ -172,10 +172,10 @@ static ERROR process_args(void)
 
             struct DirInfo *dir;
             LONG total = 0;
-            if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
+            if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
                while (!ScanDir(dir)) {
                   struct FileInfo *folder = dir->Info;
-                  if (folder->Flags & RDF_FILE) {
+                  if (folder->Flags & RDF::FILE) {
                      LONG m;
                      for (m=0; m < ARRAYSIZE(modules); m++) {
                         if (!StrCompare(modules[m], folder->Name, 0, 0)) total++;
@@ -206,7 +206,7 @@ static ERROR process_args(void)
             else {
                // Assume this arg is the target file.
 
-               if (ResolvePath(args[i], RSF_APPROXIMATE, &glTargetFile)) {
+               if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile)) {
                   print("Unable to find file '%s'", args[i]);
                   return ERR_Terminate;
                }

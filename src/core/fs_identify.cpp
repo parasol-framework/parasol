@@ -74,7 +74,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    }
 
    ERROR reserror;
-   if ((reserror = ResolvePath(Path, RSF_APPROXIMATE|RSF_PATH|RSF_CHECK_VIRTUAL, &res_path)) != ERR_Okay) {
+   if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR_Okay) {
       if (reserror IS ERR_VirtualVolume) {
          // Virtual volumes may support the IdentifyFile() request as a means of speeding up file identification.  This
          // is often useful when probing remote file systems.  If the FS doesn't support this option, we can still
@@ -110,7 +110,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
          if (Path[i] IS '|') {
             STRING tmp = StrClone(Path);
             tmp[i] = 0;
-            if (ResolvePath(tmp, RSF_APPROXIMATE, &res_path) != ERR_Okay) {
+            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR_Okay) {
                FreeResource(tmp);
                return ERR_FileNotFound;
             }
