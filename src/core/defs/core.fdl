@@ -372,7 +372,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "STOPPING: The process is in its termination phase.",
     "TERMINATED: The process has closed.")
 
-  enum("RES", { start=1 },
+  enum("RES", { type="int", start=1 },
     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
     "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
@@ -401,7 +401,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys."
   )
 
-  enum("RP", { start=1, comment="Path types for SetResourcePath()" },
+  enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
     "MODULE_PATH: An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.",
     "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
@@ -1277,8 +1277,8 @@ template <class T> inline MEMORYID GetMemoryID(T &&A) {
 #define DeregisterFD(a) RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
 #define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
 
-inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
-inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
+inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
+inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
@@ -1881,7 +1881,7 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 

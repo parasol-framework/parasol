@@ -582,7 +582,7 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 #elif __snap__
    // If the system is shutting down, don't touch the display.  This makes things look tidier when the system shuts down.
 
-   LONG state = GetResource(RES_SYSTEM_STATE);
+   LONG state = GetResource(RES::SYSTEM_STATE);
    if ((state IS STATE_SHUTDOWN) or (state IS STATE_RESTART)) {
       log.msg("Not doing anything because system is shutting down.");
    }
@@ -1780,7 +1780,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
    // Save the changes to the monitor.cfg file.  This requires admin privileges, so this is only going to work if
    // SetMonitor() is messaged to the core desktop process.
 
-   priverror = SetResource(RES_PRIVILEGEDUSER, 1);
+   priverror = SetResource(RES::PRIVILEGED_USER, 1);
 
    objConfig::create config = { fl::Path("config:hardware/monitor.cfg") };
    if (config.ok()) {
@@ -1794,7 +1794,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
       config->saveSettings();
    }
 
-   if (!priverror) SetResource(RES_PRIVILEGEDUSER, 0);
+   if (!priverror) SetResource(RES::PRIVILEGED_USER, 0);
    return ERR_Okay;
 #else
    return ERR_NoSupport;

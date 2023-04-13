@@ -63,7 +63,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       return ERR_NotFound;
    }
 
-   LONG branch = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
+   LONG branch = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
 
       // For simplicity, a call to the handler is made for each individual input event.
 
@@ -83,7 +83,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
          Events = Events->Next;
       }
 
-   SetResource(RES_LOG_DEPTH, branch);
+   SetResource(RES::LOG_DEPTH, branch);
 
    log.traceBranch("Collecting garbage.");
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
@@ -429,7 +429,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 
    log.traceBranch("Incoming keyboard input");
 
-   LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
+   LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
    LONG top = lua_gettop(prv->Lua);
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->Callback); // Get the function reference in Lua and place it on the stack
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputValue); // Arg: Input value registered by the client
@@ -443,7 +443,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
    }
 
    lua_settop(prv->Lua, top);
-   SetResource(RES_LOG_DEPTH, depth);
+   SetResource(RES::LOG_DEPTH, depth);
 
    log.traceBranch("Collecting garbage.");
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);

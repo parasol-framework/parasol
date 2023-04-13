@@ -237,7 +237,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 
    for (auto &scan : prv->ActionList) {
       if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
-         LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
+         LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
             pf::Log log;
@@ -264,7 +264,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
             }
          }
 
-         SetResource(RES_LOG_DEPTH, depth);
+         SetResource(RES::LOG_DEPTH, depth);
          return;
       }
    }
@@ -530,7 +530,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
          if ((Args->Object) and (it->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
-            LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
+            LONG step = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
 
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
@@ -568,7 +568,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                   }
                }
 
-            SetResource(RES_LOG_DEPTH, step);
+            SetResource(RES::LOG_DEPTH, step);
 
             it = prv->Requests.erase(it);
             continue;
@@ -1014,13 +1014,13 @@ static ERROR run_script(objScript *Self)
             }
          }
 
-         LONG step = GetResource(RES_LOG_DEPTH);
+         LONG step = GetResource(RES::LOG_DEPTH);
 
          if (lua_pcall(prv->Lua, count, LUA_MULTRET, 0)) {
             pcall_failed = true;
          }
 
-         SetResource(RES_LOG_DEPTH, step);
+         SetResource(RES::LOG_DEPTH, step);
 
          while (r > 0) release_object(release_list[--r]);
       }
@@ -1045,14 +1045,14 @@ static ERROR run_script(objScript *Self)
       }
    }
    else {
-      LONG depth = GetResource(RES_LOG_DEPTH);
+      LONG depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
          if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
             pcall_failed = true;
          }
 
-      SetResource(RES_LOG_DEPTH, depth);
+      SetResource(RES::LOG_DEPTH, depth);
    }
 
    if (!pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.

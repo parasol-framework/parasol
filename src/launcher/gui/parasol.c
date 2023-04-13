@@ -78,7 +78,7 @@ extern "C" void program(void)
    LONG width      = 0;
    LONG height     = 0;
 
-   FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES_FILESYSTEM);
+   FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES::FILESYSTEM);
 
    // Process arguments
 
@@ -94,7 +94,7 @@ extern "C" void program(void)
             time = TRUE;
          }
          else if (!StrMatch(Args[i], "--info")) {
-            print("Instance: %d", GetResource(RES_INSTANCE));
+            print("Instance: %d", GetResource(RES::INSTANCE));
          }
          else if (!StrMatch(Args[i], "--instance")) {
             glTask->get(FID_Instance, &j);

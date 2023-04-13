@@ -148,6 +148,8 @@ struct rkWatchPath {
 
 enum class NF : ULONG;
 enum class FOF : ULONG;
+enum class RES : LONG;
+enum class RP : LONG;
 
 #include <parasol/vector.hpp>
 #include "prototypes.h"

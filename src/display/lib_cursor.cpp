@@ -455,7 +455,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
          pointer->BufferOwner  = OwnerID;
          pointer->BufferFlags  = Flags;
          pointer->BufferObject = ObjectID;
-         pointer->BufferQueue  = GetResource(RES_MESSAGE_QUEUE);
+         pointer->BufferQueue  = GetResource(RES::MESSAGE_QUEUE);
          ReleaseObject(pointer);
          return ERR_Okay;
       }
@@ -569,7 +569,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
       else log.warning("The pointer may only be restricted to public surfaces.");
    }
 
-   pointer->MessageQueue = GetResource(RES_MESSAGE_QUEUE);
+   pointer->MessageQueue = GetResource(RES::MESSAGE_QUEUE);
 
    ReleaseObject(pointer);
    return ERR_Okay;

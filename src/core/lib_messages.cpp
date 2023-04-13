@@ -519,7 +519,7 @@ timer_cycle:
 
          if (!msgfound) break;
 
-         tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES_CURRENTMSG)
+         tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES::CURRENT_MSG)
 
          if (msg->Type IS MSGID_BREAK) {
             // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
@@ -669,7 +669,7 @@ other than `ERR_Okay`.  Use ~ReleaseMemory() to let go of the message queue when
 Here is an example that scans the queue of the active task:
 
 <pre>
-if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &queue)) {
+if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, &queue)) {
    while (!ScanMessages(queue, &index, MSGID_QUIT, NULL, NULL)) {
       ...
    }

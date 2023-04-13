@@ -94,7 +94,7 @@ ERROR add_asset_class(void)
 
    log.branch();
 
-   if (!(openinfo = GetResourcePtr(RES_OPENINFO))) {
+   if (!(openinfo = GetResourcePtr(RES::OPENINFO))) {
       log.warning("No OpenInfo structure set during Core initialisation.");
       return ERR_Failed;
    }
@@ -122,7 +122,7 @@ ERROR add_asset_class(void)
    }
    else {
 
-      JNIEnv *env = GetResourcePtr(RES_JNI_ENV);
+      JNIEnv *env = GetResourcePtr(RES::JNI_ENV);
       glAssetManagerFree = TRUE;
 
       if ((!env) or (!classname)) {
@@ -173,7 +173,7 @@ ERROR add_asset_class(void)
 void free_asset_class(void)
 {
    if ((glAssetManager) and (glAssetManagerFree)) {
-      JNIEnv *env = GetResourcePtr(RES_JNI_ENV);
+      JNIEnv *env = GetResourcePtr(RES::JNI_ENV);
       if (env) (*env)->DeleteGlobalRef(env, glAssetManager);
    }
 
@@ -731,7 +731,7 @@ static AAssetManager * get_asset_manager(void)
    log.trace("Native Access: %d", glAssetManagerFree);
 
    if (glAssetManagerFree) {
-      return AAssetManager_fromJava(GetResourcePtr(RES_JNI_ENV), glAssetManager);
+      return AAssetManager_fromJava(GetResourcePtr(RES::JNI_ENV), glAssetManager);
    }
    else return glAssetManager;
 }

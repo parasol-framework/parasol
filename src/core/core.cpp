@@ -223,9 +223,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    //
    // Any code that needs to regain admin access can use the following code segment:
    //
-   //    if (!SetResource(RES_PRIVILEGEDUSER, TRUE)) {
+   //    if (!SetResource(RES::PRIVILEGED_USER, TRUE)) {
    //       ...admin access...
-   //       SetResource(RES_PRIVILEGEDUSER, FALSE);
+   //       SetResource(RES::PRIVILEGED_USER, FALSE);
    //    }
 
    seteuid(glUID);  // Ensure that the rest of our code is run under the real user name instead of admin
@@ -284,9 +284,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #error Require code to obtain the process ID.
    #endif
 
-   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
+   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP::ROOT_PATH, Info->RootPath);
+   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP::MODULE_PATH, Info->ModulePath);
+   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP::SYSTEM_PATH, Info->SystemPath);
 
    if (glRootPath.empty())   {
       #ifdef _WIN32

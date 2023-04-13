@@ -370,7 +370,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
             // This part will map the video buffer memory into our process.  Access to /dev/mem is required in order
             // for this to work.  After doing this, superuser privileges are dropped immediately.
 
-            if (!SetResource(RES_PRIVILEGED_USER, TRUE)) {
+            if (!SetResource(RES::PRIVILEGED_USER, TRUE)) {
                if ((major >= 2) and (XDGAOpenFramebuffer(XDisplay, screen))) { // Success, DGA is enabled
                   LONG ram;
 
@@ -383,12 +383,12 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
                }
                else if (checked <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
 
-               SetResource(RES_PRIVILEGED_USER, FALSE);
+               SetResource(RES::PRIVILEGED_USER, FALSE);
 
                // Now we permanently drop root capabilities.  The exception to the rule is the desktop executable,
-               // which always runs with privileges (indicated via RES_PRIVILEGED).
+               // which always runs with privileges (indicated via RES::PRIVILEGED).
 
-               if (GetResource(RES_PRIVILEGED) IS FALSE) setuid(getuid());
+               if (GetResource(RES::PRIVILEGED) IS FALSE) setuid(getuid());
             }
             else if (checked <= 1) printf("\033[1mFast video access is not available (driver needs root access)\033[0m\n");
          }
@@ -725,7 +725,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 
    CSTRING driver_name;
-   if ((driver_name = (CSTRING)GetResourcePtr(RES_DISPLAY_DRIVER))) {
+   if ((driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER))) {
       log.msg("User requested display driver '%s'", driver_name);
       if ((!StrMatch(driver_name, "none")) or (!StrMatch(driver_name, "headless"))) {
          glHeadless = TRUE;
@@ -734,7 +734,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // NB: The display module cannot load the Surface module during initialisation due to recursive dependency.
 
-   glSharedControl = (SharedControl *)GetResourcePtr(RES_SHARED_CONTROL);
+   glSharedControl = (SharedControl *)GetResourcePtr(RES::SHARED_CONTROL);
 
    // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
 
@@ -749,7 +749,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    #endif
 
    #ifdef __ANDROID__
-      if (GetResource(RES_SYSTEM_STATE) >= 0) {
+      if (GetResource(RES::SYSTEM_STATE) >= 0) {
          if (objModule::load("android", MODVERSION_ANDROID, (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
 
          FUNCTION fInitWindow, fTermWindow;

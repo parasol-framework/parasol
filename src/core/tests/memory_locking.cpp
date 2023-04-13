@@ -39,7 +39,7 @@ static void * test_locking(struct thread_info *info)
    ERROR error;
    BYTE *memory;
 
-   info->index = GetResource(RES_THREAD_ID);
+   info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
    for (i=0; i < glLockAttempts; i++) {
@@ -115,8 +115,8 @@ void program(void)
    LONG i;
    STRING *args;
 
-   StringsBase = GetResourcePtr(RES_STRINGS);
-   FileSystemBase = GetResourcePtr(RES_FILESYSTEM);
+   StringsBase = GetResourcePtr(RES::STRINGS);
+   FileSystemBase = GetResourcePtr(RES::FILESYSTEM);
 
    if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
       for (i=0; args[i]; i++) {

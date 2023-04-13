@@ -303,7 +303,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          log.warning("Winsock initialisation failed: %s", msg);
          return ERR_SystemCall;
       }
-      SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
+      SetResourcePtr(RES::NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
    }
 #endif
 
@@ -337,7 +337,7 @@ static ERROR MODExpunge(void)
    pf::Log log;
 
 #ifdef _WIN32
-   SetResourcePtr(RES_NET_PROCESSING, NULL);
+   SetResourcePtr(RES::NET_PROCESSING, NULL);
 #endif
 
    if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }

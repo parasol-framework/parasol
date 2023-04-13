@@ -1131,38 +1131,44 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define TSTATE_STOPPING 2
 #define TSTATE_TERMINATED 3
 
-#define RES_MESSAGE_QUEUE 1
-#define RES_CONSOLE_FD 2
-#define RES_SHARED_CONTROL 3
-#define RES_USER_ID 4
-#define RES_DISPLAY_DRIVER 5
-#define RES_PRIVILEGED_USER 6
-#define RES_PRIVILEGED 7
-#define RES_CORE_IDL 8
-#define RES_PARENT_CONTEXT 9
-#define RES_LOG_LEVEL 10
-#define RES_TOTAL_SHARED_MEMORY 11
-#define RES_MAX_PROCESSES 12
-#define RES_LOG_DEPTH 13
-#define RES_JNI_ENV 14
-#define RES_THREAD_ID 15
-#define RES_CURRENT_MSG 16
-#define RES_OPEN_INFO 17
-#define RES_EXCEPTION_HANDLER 18
-#define RES_NET_PROCESSING 19
-#define RES_PROCESS_STATE 20
-#define RES_TOTAL_MEMORY 21
-#define RES_TOTAL_SWAP 22
-#define RES_CPU_SPEED 23
-#define RES_FREE_MEMORY 24
-#define RES_FREE_SWAP 25
-#define RES_KEY_STATE 26
+enum class RES : LONG {
+   NIL = 0,
+   MESSAGE_QUEUE = 1,
+   CONSOLE_FD = 2,
+   SHARED_CONTROL = 3,
+   USER_ID = 4,
+   DISPLAY_DRIVER = 5,
+   PRIVILEGED_USER = 6,
+   PRIVILEGED = 7,
+   CORE_IDL = 8,
+   PARENT_CONTEXT = 9,
+   LOG_LEVEL = 10,
+   TOTAL_SHARED_MEMORY = 11,
+   MAX_PROCESSES = 12,
+   LOG_DEPTH = 13,
+   JNI_ENV = 14,
+   THREAD_ID = 15,
+   CURRENT_MSG = 16,
+   OPEN_INFO = 17,
+   EXCEPTION_HANDLER = 18,
+   NET_PROCESSING = 19,
+   PROCESS_STATE = 20,
+   TOTAL_MEMORY = 21,
+   TOTAL_SWAP = 22,
+   CPU_SPEED = 23,
+   FREE_MEMORY = 24,
+   FREE_SWAP = 25,
+   KEY_STATE = 26,
+};
 
 // Path types for SetResourcePath()
 
-#define RP_MODULE_PATH 1
-#define RP_SYSTEM_PATH 2
-#define RP_ROOT_PATH 3
+enum class RP : LONG {
+   NIL = 0,
+   MODULE_PATH = 1,
+   SYSTEM_PATH = 2,
+   ROOT_PATH = 3,
+};
 
 // Flags for the MetaClass.
 
@@ -1936,8 +1942,8 @@ struct CoreBase {
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
    LARGE (*_GetEventID)(LONG Group, CSTRING SubGroup, CSTRING Event);
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
-   LARGE (*_GetResource)(LONG Resource);
-   LARGE (*_SetResource)(LONG Resource, LARGE Value);
+   LARGE (*_GetResource)(RES Resource);
+   LARGE (*_SetResource)(RES Resource, LARGE Value);
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
    ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
    ERROR (*_SysUnlock)(LONG Index);
@@ -1972,7 +1978,7 @@ struct CoreBase {
    void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
-   ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
+   ERROR (*_SetResourcePath)(RP PathType, CSTRING Path);
    objTask * (*_CurrentTask)(void);
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
@@ -2059,8 +2065,8 @@ inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_Broa
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
 inline LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
-inline LARGE GetResource(LONG Resource) { return CoreBase->_GetResource(Resource); }
-inline LARGE SetResource(LONG Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
+inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
+inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
 inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
@@ -2095,7 +2101,7 @@ inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(
 inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
-inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
+inline ERROR SetResourcePath(RP PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
 inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
@@ -2132,8 +2138,8 @@ template <class T> inline MEMORYID GetMemoryID(T &&A) {
 #define DeregisterFD(a) RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
 #define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
 
-inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
-inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
+inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
+inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
@@ -2736,7 +2742,7 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 

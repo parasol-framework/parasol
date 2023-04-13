@@ -401,28 +401,28 @@ large: Returns the value of the resource that you have requested.  If the resour
 
 *********************************************************************************************************************/
 
-LARGE GetResource(LONG Resource)
+LARGE GetResource(RES Resource)
 {
 #ifdef __linux__
    struct sysinfo sys;
 #endif
 
    switch(Resource) {
-      case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
-      case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
-      case RES_PRIVILEGED:      return glPrivileged;
-      case RES_LOG_LEVEL:       return glLogLevel;
-      case RES_PROCESS_STATE:   return (MAXINT)glTaskState;
-      case RES_MAX_PROCESSES:   return MAX_TASKS;
-      case RES_LOG_DEPTH:       return tlDepth;
-      case RES_CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
-      case RES_OPEN_INFO:       return (MAXINT)glOpenInfo;
-      case RES_JNI_ENV:         return (MAXINT)glJNIEnv;
-      case RES_THREAD_ID:       return (MAXINT)get_thread_id();
-      case RES_CORE_IDL:        return (MAXINT)glIDL;
-      case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+      case RES::MESSAGE_QUEUE:   return glTaskMessageMID;
+      case RES::SHARED_CONTROL:  return (MAXINT)glSharedControl;
+      case RES::PRIVILEGED:      return glPrivileged;
+      case RES::LOG_LEVEL:       return glLogLevel;
+      case RES::PROCESS_STATE:   return (MAXINT)glTaskState;
+      case RES::MAX_PROCESSES:   return MAX_TASKS;
+      case RES::LOG_DEPTH:       return tlDepth;
+      case RES::CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
+      case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
+      case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
+      case RES::THREAD_ID:       return (MAXINT)get_thread_id();
+      case RES::CORE_IDL:        return (MAXINT)glIDL;
+      case RES::DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
 
-      case RES_PARENT_CONTEXT: {
+      case RES::PARENT_CONTEXT: {
          // Return the first parent context that differs to the current context.  This avoids any confusion
          // arising from the the current object making calls to itself.
          auto parent = tlContext->Stack;
@@ -434,12 +434,12 @@ LARGE GetResource(LONG Resource)
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
       // change during runtime.
 
-      case RES_TOTAL_MEMORY: {
+      case RES::TOTAL_MEMORY: {
          if (!sysinfo(&sys)) return (LARGE)sys.totalram * (LARGE)sys.mem_unit;
          else return -1;
       }
 
-      case RES_FREE_MEMORY: {
+      case RES::FREE_MEMORY: {
    #if 0
          // Unfortunately sysinfo() does not report on cached ram, which can be significant
          if (!sysinfo(&sys)) return (LARGE)(sys.freeram + sys.bufferram) * (LARGE)sys.mem_unit; // Buffer RAM is considered as 'free'
@@ -469,19 +469,19 @@ LARGE GetResource(LONG Resource)
    #endif
       }
 
-      case RES_TOTAL_SHARED_MEMORY:
+      case RES::TOTAL_SHARED_MEMORY:
          if (!sysinfo(&sys)) return (LARGE)sys.sharedram * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_TOTAL_SWAP:
+      case RES::TOTAL_SWAP:
          if (!sysinfo(&sys)) return (LARGE)sys.totalswap * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_FREE_SWAP:
+      case RES::FREE_SWAP:
          if (!sysinfo(&sys)) return (LARGE)sys.freeswap * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_CPU_SPEED: {
+      case RES::CPU_SPEED: {
          CSTRING line;
          static LONG cpu_mhz = 0;
 
@@ -693,16 +693,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR SetResourcePath(LONG PathType, CSTRING Path)
+ERROR SetResourcePath(RP PathType, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!PathType) return ERR_NullArgs;
-
-   log.function("Type: %d, Path: %s", PathType, Path);
+   log.function("Type: %d, Path: %s", LONG(PathType), Path);
 
    switch(PathType) {
-      case RP_ROOT_PATH:
+      case RP::ROOT_PATH:
          if (Path) {
             glRootPath = Path;
             if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
@@ -715,7 +713,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
          }
          return ERR_Okay;
 
-      case RP_SYSTEM_PATH:
+      case RP::SYSTEM_PATH:
          if (Path) {
             glSystemPath = Path;
             if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
@@ -728,7 +726,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
          }
          return ERR_Okay;
 
-      case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
+      case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             glModulePath = Path;
             if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
@@ -770,7 +768,7 @@ large: Returns the previous value used for the resource that you have set.  If t
 
 *********************************************************************************************************************/
 
-LARGE SetResource(LONG Resource, LARGE Value)
+LARGE SetResource(RES Resource, LARGE Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -781,9 +779,9 @@ LARGE SetResource(LONG Resource, LARGE Value)
    LARGE oldvalue = 0;
 
    switch(Resource) {
-      case RES_CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
+      case RES::CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
 
-      case RES_EXCEPTION_HANDLER:
+      case RES::EXCEPTION_HANDLER:
          // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.
 
          #ifdef _WIN32
@@ -791,21 +789,21 @@ LARGE SetResource(LONG Resource, LARGE Value)
          #endif
          break;
 
-      case RES_LOG_LEVEL:
+      case RES::LOG_LEVEL:
          if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
          break;
 
-      case RES_LOG_DEPTH: tlDepth = Value; break;
+      case RES::LOG_DEPTH: tlDepth = Value; break;
 
 #ifdef _WIN32
-      case RES_NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
+      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
 #else
-      case RES_NET_PROCESSING: break;
+      case RES::NET_PROCESSING: break;
 #endif
 
-      case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
+      case RES::JNI_ENV: glJNIEnv = L64PTR(Value); break;
 
-      case RES_PRIVILEGED_USER:
+      case RES::PRIVILEGED_USER:
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
@@ -843,7 +841,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, Resource, Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PF64, LONG(Resource), Value);
    }
 
    return oldvalue;

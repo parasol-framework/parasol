@@ -1041,9 +1041,9 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetResource</name>
     <category>System</category>
     <comment>Retrieves miscellaneous resource identifiers.</comment>
-    <prototype>LARGE GetResource(LONG Resource)</prototype>
+    <prototype>LARGE GetResource(RES Resource)</prototype>
     <input>
-      <param type="LONG" name="Resource" lookup="RES">The ID of the resource that you want to obtain.</param>
+      <param type="RES" name="Resource" lookup="RES">The ID of the resource that you want to obtain.</param>
     </input>
     <description>
 <p>The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the Resource identifier for the full list of available resource codes and their meaning.</p>
@@ -1686,7 +1686,7 @@ if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &amp;info)) {
     <description>
 <p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
 <p>Here is an example that scans the queue of the active task:</p>
-<pre>if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &amp;queue)) {
+<pre>if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, &amp;queue)) {
    while (!ScanMessages(queue, &amp;index, MSGID_QUIT, NULL, NULL)) {
       ...
    }
@@ -1896,9 +1896,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetResource</name>
     <category>System</category>
     <comment>Sets miscellaneous resource identifiers.</comment>
-    <prototype>LARGE SetResource(LONG Resource, LARGE Value)</prototype>
+    <prototype>LARGE SetResource(RES Resource, LARGE Value)</prototype>
     <input>
-      <param type="LONG" name="Resource" lookup="RES">The ID of the resource to be set.</param>
+      <param type="RES" name="Resource" lookup="RES">The ID of the resource to be set.</param>
       <param type="LARGE" name="Value">The new value to set for the resource.</param>
     </input>
     <description>
@@ -1916,9 +1916,9 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>SetResourcePath</name>
     <category>System</category>
     <comment>Redefines the location of a system resource path.</comment>
-    <prototype>ERROR SetResourcePath(LONG PathType, CSTRING Path)</prototype>
+    <prototype>ERROR SetResourcePath(RP PathType, CSTRING Path)</prototype>
     <input>
-      <param type="LONG" name="PathType" lookup="RP">The ID of the resource path to set.</param>
+      <param type="RP" name="PathType" lookup="RP">The ID of the resource path to set.</param>
       <param type="CSTRING" name="Path">The new location to set for the resource path.</param>
     </input>
     <description>

@@ -65,7 +65,7 @@ static void * thread_entry(struct thread_info *info)
    LONG i;
    ERROR error;
 
-   info->index = GetResource(RES_THREAD_ID);
+   info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
    for (i=0; i < glLockAttempts; i++) {

@@ -1190,7 +1190,7 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
       }
    }
 
-   SetResourcePtr(RES_EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
    return ERR_Okay;
 }
@@ -1272,7 +1272,7 @@ static void free_socket(extNetSocket *Self)
 
    log.trace("Resetting exception handler.");
 
-   SetResourcePtr(RES_EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
 }
 
