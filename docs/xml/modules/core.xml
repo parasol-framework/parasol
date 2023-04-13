@@ -321,14 +321,14 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
     <name>AllocMutex</name>
     <category>Locks</category>
     <comment>Allocate a mutex suitable for managing synchronisation between threads.</comment>
-    <prototype>ERROR AllocMutex(LONG Flags, APTR * Result)</prototype>
+    <prototype>ERROR AllocMutex(ALF Flags, APTR * Result)</prototype>
     <input>
-      <param type="LONG" name="Flags" lookup="ALF">Optional flags.</param>
+      <param type="ALF" name="Flags" lookup="ALF">Optional flags.</param>
       <param type="APTR *" name="Result">A reference to the new mutex will be returned in this variable if the call succeeds.</param>
     </input>
     <description>
 <p>This function allocates a mutex that is suitable for keeping threads synchronised (inter-process synchronisation is not supported).  Mutexes are locked and unlocked using the <function module="Core">LockMutex</function> and <function module="Core">UnlockMutex</function> functions.</p>
-<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (<code>ALF_RECURSIVE</code> always applies).  Unix systems employ pthread mutexes and will only nest if the <code>ALF_RECURSIVE</code> option is specified.</p>
+<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (<code>ALF::RECURSIVE</code> always applies).  Unix systems employ pthread mutexes and will only nest if the <code>ALF::RECURSIVE</code> option is specified.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1162,7 +1162,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>This function will lock a mutex allocated by <function module="Core">AllocMutex</function>.  If the mutex is already locked by another thread, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
-<p>If the mutex was acquired with the <code>ALF_RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.</p>
+<p>If the mutex was acquired with the <code>ALF::RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.</p>
 <p>Please note that in Microsoft Windows, mutexes are implemented as critical sections and the time-out is not supported in the normal manner.  If the MilliSeconds parameter is set to zero, the mutex will be tested immediately and the return is immediate.  For any other value, the thread will sleep until the mutex is available and the requested timeout will not be honoured.</p>
     </description>
     <result type="ERROR">
@@ -1206,7 +1206,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>This function will lock a shared mutex allocated by <function module="Core">AllocSharedMutex</function>.  If the mutex is already locked by another thread or process, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
-<p>If the mutex was acquired with the <code>ALF_RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call <function module="Core">UnlockSharedMutex</function> for every lock that has been acquired.</p>
+<p>If the mutex was acquired with the <code>ALF::RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call <function module="Core">UnlockSharedMutex</function> for every lock that has been acquired.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1960,17 +1960,17 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrBuildArray</name>
     <category>Strings</category>
     <comment>Builds an array of strings from a sequential string list.</comment>
-    <prototype>STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)</prototype>
+    <prototype>STRING * StrBuildArray(STRING List, LONG Size, LONG Total, SBF Flags)</prototype>
     <input>
       <param type="STRING" name="List">Pointer to a string of sequentially arranged values.</param>
       <param type="LONG" name="Size">The total byte size of the List, not including the terminating byte.</param>
       <param type="LONG" name="Total">The total number of strings specified in the List.</param>
-      <param type="LONG" name="Flags" lookup="SBF">Set to SBF_SORT to sort the list, SBF_NO_DUPLICATES to sort the list and remove duplicated strings, Use SBF_CSV if the List is in CSV format, in which case the Size and Total values are ignored (note - the string will be modified if in CSV).</param>
+      <param type="SBF" name="Flags" lookup="SBF">Set to SORT to sort the list, NO_DUPLICATES to sort the list and remove duplicated strings, Use CSV if the List is in CSV format, in which case the Size and Total values are ignored (note - the string will be modified if in CSV).</param>
     </input>
     <description>
 <p>This function is helpful for converting a buffer of sequential values into a more easily managed string array.  A "sequential list of values" is any number of strings arranged one after the other in a single byte array.  It is similar in arrangement to a CSV file, but null-terminators signal an end to each string value.</p>
-<p>To convert such a string list into an array, you need to know the total byte size of the list, as well as the total number of strings in the list. If you don't know this information, you can either alter your routine to make provisions for it, or you can pass the <code>SBF_CSV</code> flag if the List is in CSV format.  CSV mode incurs a performance hit as the string needs to be analysed first.</p>
-<p>Once you call this function, it will allocate a memory block to contain the array and string information.  The list will then be converted into the array, which will be terminated with a NULL pointer at its end.  If you have specified the <code>SBF_SORT</code> or <code>SBF_NO_DUPLICATES</code> Flags then the array will be sorted into alphabetical order for your convenience.  The <code>SBF_NO_DUPLICATES</code> flag also removes duplicated strings from the array.</p>
+<p>To convert such a string list into an array, you need to know the total byte size of the list, as well as the total number of strings in the list. If you don't know this information, you can either alter your routine to make provisions for it, or you can pass the <code>SBF::CSV</code> flag if the List is in CSV format.  CSV mode incurs a performance hit as the string needs to be analysed first.</p>
+<p>Once you call this function, it will allocate a memory block to contain the array and string information.  The list will then be converted into the array, which will be terminated with a NULL pointer at its end.  If you have specified the <code>SBF::SORT</code> or <code>SBF::NO_DUPLICATES</code> Flags then the array will be sorted into alphabetical order for your convenience.  The <code>SBF::NO_DUPLICATES</code> flag also removes duplicated strings from the array.</p>
 <p>Remember to free the allocated array when it is no longer required.</p>
     </description>
     <result type="STRING *">Returns an array of STRING pointers, or NULL on failure.  The pointer is a memory block that must be freed after use.</result>
@@ -1980,19 +1980,19 @@ SetField(Object, FID_Statement|TSTR, "string");
     <name>StrCompare</name>
     <category>Strings</category>
     <comment>Compares strings to see if they are identical.</comment>
-    <prototype>ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)</prototype>
+    <prototype>ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)</prototype>
     <input>
       <param type="CSTRING" name="String1">Pointer to the first string.</param>
       <param type="CSTRING" name="String2">Pointer to the second string.</param>
       <param type="LONG" name="Length">The maximum number of characters to compare.  Does not apply to wildcard comparisons.</param>
-      <param type="LONG" name="Flags" lookup="STR">Optional flags.</param>
+      <param type="STR" name="Flags" lookup="STR">Optional flags.</param>
     </input>
     <description>
-<p>This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it returns ERR_False.  By default the function is not case sensitive, but you can turn on case sensitivity by specifying the <code>STR_CASE</code> flag.</p>
+<p>This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it returns ERR_False.  By default the function is not case sensitive, but you can turn on case sensitivity by specifying the <code>STR::CASE</code> flag.</p>
 <p>If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all characters matched up until the termination, ERR_Okay will be returned regardless of whether or not one of the strings happened to be longer than the other.</p>
 <p>If the Length is not 0, then the comparison will stop once the specified number of characters to match has been reached.  If one of the strings terminates before the specified Length is matched, ERR_False will be returned.</p>
-<p>If the <code>STR_MATCH_LEN</code> flag is specified, you can force the function into returning an ERR_Okay code only on the condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has been set to 0.</p>
-<p>If the <code>STR_WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
+<p>If the <code>STR::MATCH_LEN</code> flag is specified, you can force the function into returning an ERR_Okay code only on the condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has been set to 0.</p>
+<p>If the <code>STR::WILDCARD</code> flag is set, the first string that is passed may contain wild card characters, which gives special meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance <code>ABC*</code> would match to <code>ABCDEF</code> and <code>1?3</code> would match to <code>1x3</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>

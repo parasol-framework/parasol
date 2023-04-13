@@ -186,12 +186,12 @@ static int processing_get(lua_State *Lua)
    if (fp) {
       CSTRING fieldname;
       if ((fieldname = luaL_checkstring(Lua, 2))) {
-         if (!StrCompare("sleep", fieldname, 0, STR_MATCH_CASE)) {
+         if (!StrCompare("sleep", fieldname, 0, STR::MATCH_CASE)) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &processing_sleep, 1);
             return 1;
          }
-         else if (!StrCompare("signal", fieldname, 0, STR_MATCH_CASE)) {
+         else if (!StrCompare("signal", fieldname, 0, STR::MATCH_CASE)) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &processing_signal, 1);
             return 1;

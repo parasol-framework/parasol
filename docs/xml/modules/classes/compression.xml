@@ -314,14 +314,14 @@ if (!error) {
     <method>
       <name>Find</name>
       <comment>Find the first item that matches a given filter.</comment>
-      <prototype>ERROR cmpFind(OBJECTPTR Object, CSTRING Path, LONG Flags, struct CompressedItem ** Item)</prototype>
+      <prototype>ERROR cmpFind(OBJECTPTR Object, CSTRING Path, STR Flags, struct CompressedItem ** Item)</prototype>
       <input>
         <param type="CSTRING" name="Path">Search for a specific item or items, using wildcards.</param>
-        <param type="LONG" name="Flags" lookup="STR">String comparison flags used by StrCompare().</param>
+        <param type="STR" name="Flags" lookup="STR">String comparison flags used by StrCompare().</param>
         <param type="struct CompressedItem **" name="Item">The discovered item is returned in this parameter, or NULL if the search failed.</param>
       </input>
       <description>
-<p>Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that matches the Path parameter string in conjunction with the options in Flags.  The options match those in the <function module="Core">StrCompare</function> function - in particular <code>STR_CASE</code>, <code>STR_MATCH_LEN</code> and <code>STR_WILDCARD</code> are the most useful.</p>
+<p>Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that matches the Path parameter string in conjunction with the options in Flags.  The options match those in the <function module="Core">StrCompare</function> function - in particular <code>STR::CASE</code>, <code>STR::MATCH_LEN</code> and <code>STR::WILDCARD</code> are the most useful.</p>
 <p>Please refer to the <method>Scan</method> method for a break-down of the CompressedItem structure that is returned by this method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
       </description>
       <result>

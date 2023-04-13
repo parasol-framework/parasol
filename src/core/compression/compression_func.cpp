@@ -292,7 +292,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    auto replace_file = Self->Files.begin();
    for (; replace_file != Self->Files.end(); replace_file++) {
-      if (!StrCompare(replace_file->Name, filename, 0, STR_MATCH_LEN)) break;
+      if (!StrCompare(replace_file->Name, filename, 0, STR::MATCH_LEN)) break;
    }
 
    // Allocate the file entry structure and set up some initial variables.

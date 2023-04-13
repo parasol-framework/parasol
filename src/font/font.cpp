@@ -417,7 +417,7 @@ static ERROR fntGetList(FontList **Result)
             }
 
             if (keys.contains("Scalable")) {
-               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
+               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR::MATCH_LEN)) list->Scalable = TRUE;
             }
 
             list->Points = NULL;
@@ -1077,7 +1077,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       pf::rtrim(name, "'\"");
 
       for (auto & [group, keys] : groups[0]) {
-         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
+         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR::WILDCARD)) {
             // Determine if this is a fixed and/or scalable font.  Note that if the font supports
             // both fixed and scalable, fixed_group and scale_group will point to the same font.
 

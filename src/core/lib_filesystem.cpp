@@ -355,7 +355,7 @@ ERROR AnalysePath(CSTRING Path, LOC *PathType)
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 
-   if (!StrCompare("string:", Path, 7, 0)) {
+   if (!StrCompare("string:", Path, 7)) {
       if (PathType) *PathType = LOC::FILE;
       return ERR_Okay;
    }
@@ -448,9 +448,9 @@ ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB)
    v2 = get_fs(path2);
 
    if ((!v1->CaseSensitive) and (!v2->CaseSensitive)) {
-      error = StrCompare(path1, path2, 0, STR_MATCH_LEN);
+      error = StrCompare(path1, path2, 0, STR::MATCH_LEN);
    }
-   else error = StrCompare(path1, path2, 0, STR_MATCH_LEN|STR_MATCH_CASE);
+   else error = StrCompare(path1, path2, 0, STR::MATCH_LEN|STR::MATCH_CASE);
 
    if (error) {
       if (v1 IS v2) {
@@ -1116,11 +1116,9 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
    ERROR error;
    STRING res_path;
    if (!(error = ResolvePath(Path, RSF::CHECK_VIRTUAL | (approx ? RSF::APPROXIMATE : RSF::NIL), &res_path))) {
-      if (StrCompare("/dev/", res_path, 5, 0) != ERR_Okay) {
-         LONG handle;
-         if ((handle = open(res_path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL)) != -1) {
-            LONG result;
-            if ((result = read(handle, Buffer, BufferSize)) IS -1) {
+      if (StrCompare("/dev/", res_path, 5) != ERR_Okay) {
+         if (auto handle = open(res_path, O_RDONLY|O_NONBLOCK|O_LARGEFILE|WIN32OPEN, NULL); handle != -1) {
+            if (auto result = read(handle, Buffer, BufferSize); result IS -1) {
                error = ERR_Read;
                #ifdef __unix__
                   log.warning("read(%s, %p, %d): %s", Path, Buffer, BufferSize, strerror(errno));
@@ -1379,7 +1377,7 @@ ERROR findfile(STRING Path)
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
          if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-         if ((!StrCompare(Path+len, entry->d_name, 0, 0)) and
+         if ((!StrCompare(Path+len, entry->d_name)) and
              ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
             StrCopy(entry->d_name, Path+len);
 
@@ -1413,7 +1411,7 @@ ERROR findfile(STRING Path)
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS 0)) continue;
             if ((entry->d_name[0] IS '.') and (entry->d_name[1] IS '.') and (entry->d_name[2] IS 0)) continue;
 
-            if ((!StrCompare(Path+len, entry->d_name, 0, NULL)) and
+            if ((!StrCompare(Path+len, entry->d_name)) and
                 ((entry->d_name[namelen] IS '.') or (!entry->d_name[namelen]))) {
                StrCopy(entry->d_name, Path+len);
 
@@ -1686,7 +1684,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
          if (srclen <= destlen) {
-            if (StrCompare(src, dest, srclen, 0) IS ERR_True) {
+            if (StrCompare(src, dest, srclen) IS ERR_True) {
                log.warning("The requested copy would cause recursion.");
                error = ERR_Loop;
                goto exit;
@@ -1926,7 +1924,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       // Check if the copy would cause recursion  - e.g. "/parasol/system/" to "/parasol/system/temp/".
 
       if (srclen <= destlen) {
-         if (StrCompare(src, dest, srclen, 0) IS ERR_True) {
+         if (StrCompare(src, dest, srclen) IS ERR_True) {
             log.warning("The requested copy would cause recursion.");
             error = ERR_Loop;
             goto exit;

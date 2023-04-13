@@ -365,7 +365,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       // Line hook, executes on the execution of a new line
 
-      if (Self->Flags & SCF_DEBUG) {
+      if ((Self->Flags & SCF::DEBUG) != SCF::NIL) {
          // LUA_MASKLINE:  Interpreter is executing a line.
          // LUA_MASKCALL:  Interpreter is calling a function.
          // LUA_MASKRET:   Interpreter returns from a function.
@@ -393,7 +393,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       prv->Lua->ProtectedGlobals = true;
 
       LONG result;
-      if (!StrCompare(LUA_COMPILED, Self->String, 0, 0)) { // The source is compiled
+      if (!StrCompare(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          LONG headerlen = StrLength(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
@@ -655,7 +655,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    pf::Log log;
 
    if (Self->Path) {
-      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR_WILDCARD) != ERR_Okay) {
+      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR::WILDCARD) != ERR_Okay) {
          log.trace("No support for path '%s'", Self->Path);
          return ERR_NoSupport;
       }
@@ -773,7 +773,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    //    \* $FLUID
    //    // $FLUID
 
-   if (!StrCompare("?? $FLUID", str, 0, STR_WILDCARD)) {
+   if (!StrCompare("?? $FLUID", str, 0, STR::WILDCARD)) {
 
    }
 
@@ -849,7 +849,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
             lua_pop(prv->Lua, 1);
          }
 
-         *Value = StrBuildArray((STRING)list, size, total, SBF_SORT);
+         *Value = StrBuildArray((STRING)list, size, total, SBF::SORT);
          *Elements = total;
 
          FreeResource(list);
@@ -874,7 +874,7 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    const Proto *f;
    LONG i;
 
-   log.branch("Save Symbols: %d", Self->Flags & SCF_DEBUG);
+   log.branch("Save Symbols: %d", Self->Flags & SCF::DEBUG);
 
    if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
 
@@ -898,9 +898,9 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    }
 
    if ((code_writer_id > 0) and ((dest = GetObjectPtr(FileID)))) {
-      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF::DEBUG) ? 0 : 1);
    }
-   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF::DEBUG) ? 0 : 1);
 
    LogReturn();
    return ERR_Okay;
@@ -927,7 +927,7 @@ static ERROR run_script(objScript *Self)
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
 
       if (lua_isfunction(prv->Lua, -1)) {
-         if (Self->Flags & SCF_DEBUG) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
+         if ((Self->Flags & SCF::DEBUG) != SCF::NIL) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
 
          top = lua_gettop(prv->Lua);
 

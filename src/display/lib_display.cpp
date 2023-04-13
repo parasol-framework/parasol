@@ -143,13 +143,13 @@ ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
          while (*Filter IS ',') Filter++;
          while ((*Filter) and (*Filter <= 0x20)) Filter++;
 
-         if (!StrCompare("depth", Filter, 5, 0))   extract_value(Filter, &f_depth, &c_depth);
-         if (!StrCompare("bytes", Filter, 5, 0))   extract_value(Filter, &f_bytes, &c_bytes);
-         if (!StrCompare("width", Filter, 5, 0))   extract_value(Filter, &f_width, &c_width);
-         if (!StrCompare("height", Filter, 6, 0))  extract_value(Filter, &f_height, &c_height);
-         if (!StrCompare("refresh", Filter, 7, 0)) extract_value(Filter, &f_refresh, &c_refresh);
-         if (!StrCompare("minrefresh", Filter, 10, 0)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
-         if (!StrCompare("maxrefresh", Filter, 10, 0)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
+         if (!StrCompare("depth", Filter, 5))   extract_value(Filter, &f_depth, &c_depth);
+         if (!StrCompare("bytes", Filter, 5))   extract_value(Filter, &f_bytes, &c_bytes);
+         if (!StrCompare("width", Filter, 5))   extract_value(Filter, &f_width, &c_width);
+         if (!StrCompare("height", Filter, 6))  extract_value(Filter, &f_height, &c_height);
+         if (!StrCompare("refresh", Filter, 7)) extract_value(Filter, &f_refresh, &c_refresh);
+         if (!StrCompare("minrefresh", Filter, 10)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
+         if (!StrCompare("maxrefresh", Filter, 10)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
 
          while ((*Filter) and (*Filter != ',')) Filter++;
       }

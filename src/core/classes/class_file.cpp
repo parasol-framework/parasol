@@ -135,7 +135,7 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    if (Self->Flags & FL_DEVICE) {
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
    }
-   else if (!StrCompare("/dev/", path, 0, 0)) {
+   else if (!StrCompare("/dev/", path, 0)) {
       log.warning("Opening devices not permitted without the DEVICE flag.");
       return ERR_NoPermission;
    }
@@ -599,7 +599,7 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
 
    if (glDefaultPermissions) Self->Permissions = glDefaultPermissions;
 
-   if (!StrCompare("string:", Self->Path, 7, 0)) {
+   if (!StrCompare("string:", Self->Path, 7)) {
       Self->Size = StrLength(Self->Path + 7);
 
       if (Self->Size > 0) {
@@ -2062,7 +2062,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       if (Self->Path[k]) {
          for (auto& [group, keys] : groups[0]) {
             if (keys.contains("Match")) {
-               if (!StrCompare(keys["Match"].c_str(), Self->Path+k, 0, STR_WILDCARD)) {
+               if (!StrCompare(keys["Match"].c_str(), Self->Path+k, 0, STR::WILDCARD)) {
                   if (keys.contains("Icon")) {
                      StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      break;
@@ -2113,7 +2113,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR_Okay;
    }
 
-   if (StrCompare("icons:", icon, 6, 0) != ERR_Okay) {
+   if (StrCompare("icons:", icon, 6) != ERR_Okay) {
       CopyMemory(icon, icon+6, sizeof(icon) - 6);
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
@@ -2227,7 +2227,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
 
    LONG i, j, len;
    if ((Value) and (*Value)) {
-      if (StrCompare("string:", Value, 7, 0) != ERR_Okay) {
+      if (StrCompare("string:", Value, 7) != ERR_Okay) {
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
       }
       else len = StrLength(Value);
@@ -2247,7 +2247,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
             // e.g. "drive1:documents//tutorials/"
 
             for (j=0; Value[j] IS ':'; j++);
-            if (!StrCompare("string:", Value, 7, 0)) {
+            if (!StrCompare("string:", Value, 7)) {
                i = StrCopy(Value, Self->Path);
             }
             else {

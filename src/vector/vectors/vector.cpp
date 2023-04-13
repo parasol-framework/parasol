@@ -1337,7 +1337,7 @@ static ERROR VECTOR_SET_Filter(extVector *Self, CSTRING Value)
    }
 
    OBJECTPTR def = NULL;
-   if (!StrCompare("url(#", Value, 5, 0)) {
+   if (!StrCompare("url(#", Value, 5)) {
       LONG i;
       for (i=5; (Value[i] != ')') and Value[i]; i++);
       std::string name;

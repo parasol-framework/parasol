@@ -207,7 +207,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
    log.trace("Path: %s", Self->Path);
 
-   if (StrCompare("assets:", Self->Path, LEN_ASSETS, 0) != ERR_Okay) return ERR_NoSupport;
+   if (StrCompare("assets:", Self->Path, LEN_ASSETS) != ERR_Okay) return ERR_NoSupport;
 
    if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
@@ -475,7 +475,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    if (mgr) {
       AAsset *asset;
       AAssetDir *assetdir;
-      if (!StrCompare("assets:", Path, LEN_ASSETS, 0)) { // Just a sanity check - the Path is always meant to be resolved.
+      if (!StrCompare("assets:", Path, LEN_ASSETS)) { // Just a sanity check - the Path is always meant to be resolved.
          if ((asset = AAssetManager_open(mgr, Path+LEN_ASSETS, AASSET_MODE_UNKNOWN))) {
             Info->Size = AAsset_getLength(asset);
             AAsset_close(asset);

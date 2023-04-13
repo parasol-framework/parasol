@@ -80,7 +80,7 @@ ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
       Path++;
    }
 
-   if (!StrCompare("string:", Path, 7, 0)) {
+   if (!StrCompare("string:", Path, 7)) {
       if ((*Result = StrClone(Path))) return ERR_Okay;
       else return log.warning(ERR_AllocMemory);
    }
@@ -349,7 +349,7 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
    // Check if the EXT: reference is used.  If so, respond by loading the module or class that handles the volume.
    // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
-   if (!StrCompare("EXT:", path, 4, STR_MATCH_CASE)) {
+   if (!StrCompare("EXT:", path, 4, STR::MATCH_CASE)) {
       StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) {

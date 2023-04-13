@@ -2271,7 +2271,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       Path = Path + i;
 
       for (i=0; i < ARRAYSIZE(glLexers); i++) {
-         if (!StrCompare(glLexers[i].File, Path, 0, STR_WILDCARD)) {
+         if (!StrCompare(glLexers[i].File, Path, 0, STR::WILDCARD)) {
             pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
             log.branch("Lexer for the loaded file is %d.", Self->Lexer);

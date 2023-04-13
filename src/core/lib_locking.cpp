@@ -47,10 +47,10 @@ THREADVAR WORD tlMessageBreak = FALSE; // This variable is set by ProcessMessage
 // Note: THREADLOCK == pthread_mutex_t; CONDLOCK == pthread_cond_t
 
 #ifdef __unix__
-static ERROR alloc_lock(THREADLOCK *Lock, WORD Flags);
-static ERROR alloc_cond(CONDLOCK *Lock, WORD Flags);
-static void free_cond(CONDLOCK *Cond);
-static void free_lock(THREADLOCK *Lock);
+static ERROR alloc_lock(THREADLOCK *, ALF);
+static ERROR alloc_cond(CONDLOCK *, ALF);
+static void free_cond(CONDLOCK *);
+static void free_lock(THREADLOCK *);
 
 static THREADLOCK glPrivateLocks[TL_END];
 static CONDLOCK   glPrivateCond[CN_END];
@@ -86,13 +86,13 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 }
 #endif
 
-ERROR alloc_public_lock(UBYTE LockIndex, WORD Flags)
+ERROR alloc_public_lock(UBYTE LockIndex, ALF Flags)
 {
    if ((LockIndex < 1) or (LockIndex >= PL_END)) return ERR_Args;
    if (!glSharedControl) return ERR_Failed;
-   ERROR error = alloc_lock(&glSharedControl->PublicLocks[LockIndex].Mutex, Flags|ALF_SHARED);
+   ERROR error = alloc_lock(&glSharedControl->PublicLocks[LockIndex].Mutex, Flags|ALF::SHARED);
    if (!error) {
-      if ((error = alloc_cond(&glSharedControl->PublicLocks[LockIndex].Cond, Flags|ALF_SHARED))) {
+      if ((error = alloc_cond(&glSharedControl->PublicLocks[LockIndex].Cond, Flags|ALF::SHARED))) {
          free_lock(&glSharedControl->PublicLocks[LockIndex].Mutex);
       }
    }
@@ -105,15 +105,15 @@ void free_public_lock(UBYTE LockIndex)
    free_cond(&glSharedControl->PublicLocks[LockIndex].Cond);
 }
 
-static ERROR alloc_lock(THREADLOCK *Lock, WORD Flags)
+static ERROR alloc_lock(THREADLOCK *Lock, ALF Flags)
 {
    LONG result;
 
-   if (Flags) {
+   if (Flags != ALF::NIL) {
       pthread_mutexattr_t attrib;
       pthread_mutexattr_init(&attrib);
 
-      if (Flags & ALF_SHARED) {
+      if ((Flags & ALF::SHARED) != ALF::NIL) {
          pthread_mutexattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
          #if !defined(__ANDROID__) && !defined(__APPLE__)
             // If someone crashes holding the mutex, a robust mutex results in EOWNERDEAD being returned to the next
@@ -121,7 +121,7 @@ static ERROR alloc_lock(THREADLOCK *Lock, WORD Flags)
             pthread_mutexattr_setrobust(&attrib, PTHREAD_MUTEX_ROBUST);
          #endif
       }
-      if (Flags & ALF_RECURSIVE) pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_RECURSIVE);
+      if ((Flags & ALF::RECURSIVE) != ALF::NIL) pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_RECURSIVE);
       result = pthread_mutex_init(Lock, &attrib); // Create it.
       pthread_mutexattr_destroy(&attrib);
    }
@@ -131,12 +131,12 @@ static ERROR alloc_lock(THREADLOCK *Lock, WORD Flags)
    else return ERR_Init;
 }
 
-ERROR alloc_private_lock(UBYTE Index, WORD Flags)
+ERROR alloc_private_lock(UBYTE Index, ALF Flags)
 {
    return alloc_lock(&glPrivateLocks[Index], Flags);
 }
 
-ERROR alloc_private_cond(UBYTE Index, WORD Flags)
+ERROR alloc_private_cond(UBYTE Index, ALF Flags)
 {
    return alloc_cond(&glPrivateCond[Index], Flags);
 }
@@ -158,7 +158,7 @@ static ERROR alloc_cond(CONDLOCK *Lock, WORD Flags)
    if (Flags) {
       pthread_condattr_t attrib;
       if (!(result = pthread_condattr_init(&attrib))) {
-         if (Flags & ALF_SHARED) pthread_condattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
+         if (Flags & ALF::SHARED) pthread_condattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
          result = pthread_cond_init(Lock, &attrib);
          pthread_condattr_destroy(&attrib);
       }
@@ -896,8 +896,8 @@ This function allocates a mutex that is suitable for keeping threads synchronise
 supported).  Mutexes are locked and unlocked using the ~LockMutex() and ~UnlockMutex() functions.
 
 The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be
-used and may nest (`ALF_RECURSIVE` always applies).  Unix systems employ pthread mutexes and will only nest if the
-`ALF_RECURSIVE` option is specified.
+used and may nest (`ALF::RECURSIVE` always applies).  Unix systems employ pthread mutexes and will only nest if the
+`ALF::RECURSIVE` option is specified.
 
 -INPUT-
 int(ALF) Flags: Optional flags.
@@ -911,7 +911,7 @@ AllocMemory
 *********************************************************************************************************************/
 
 #ifdef __unix__
-ERROR AllocMutex(LONG Flags, APTR *Result)
+ERROR AllocMutex(ALF Flags, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1034,7 +1034,7 @@ caller will sleep until the mutex is released or a time-out occurs.  If multiple
 order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no
 assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.
 
-If the mutex was acquired with the `ALF_RECURSIVE` flag, then multiple calls to this function within the same thread
+If the mutex was acquired with the `ALF::RECURSIVE` flag, then multiple calls to this function within the same thread
 will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.
 
 Please note that in Microsoft Windows, mutexes are implemented as critical sections and the time-out is not supported
@@ -1076,7 +1076,7 @@ waiting on the mutex, the order of acquisition is dependent on the rules of the 
 the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly
 selected.
 
-If the mutex was acquired with the `ALF_RECURSIVE` flag, then multiple calls to this function within the same thread
+If the mutex was acquired with the `ALF::RECURSIVE` flag, then multiple calls to this function within the same thread
 will nest.  It will be necessary to call ~UnlockSharedMutex() for every lock that has been acquired.
 
 -INPUT-

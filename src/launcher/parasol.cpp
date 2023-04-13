@@ -83,7 +83,7 @@ static ERROR process_args(void)
                   FileInfo *folder = dir->Info;
                   if ((folder->Flags & RDF::FILE) != RDF::NIL) {
                      for (LONG m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name, 0, 0)) total++;
+                        if (!StrCompare(modules[m], folder->Name)) total++;
                      }
                   }
                }

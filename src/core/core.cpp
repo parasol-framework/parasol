@@ -179,20 +179,20 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
-   if (alloc_private_lock(TL_FIELDKEYS, 0)) return NULL; // For access to glFields
-   if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
-   if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
-   if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
-   if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
-   if (alloc_private_lock(TL_MSGHANDLER, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRINT, 0)) return NULL; // For message logging only.
-   if (alloc_private_lock(TL_THREADPOOL, 0)) return NULL;
-   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRIVATE_MEM, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_PRIVATE_MEM, 0)) return NULL;
+   if (alloc_private_lock(TL_FIELDKEYS, ALF::NIL)) return NULL; // For access to glFields
+   if (alloc_private_lock(TL_CLASSDB, ALF::NIL)) return NULL; // For access to glClassDB
+   if (alloc_private_lock(TL_VOLUMES, ALF::NIL)) return NULL; // For access to glVolumes
+   if (alloc_private_lock(TL_GENERIC, ALF::NIL)) return NULL; // A misc. internal mutex, strictly not recursive.
+   if (alloc_private_lock(TL_TIMER, ALF::NIL)) return NULL; // For timer subscriptions.
+   if (alloc_private_lock(TL_MSGHANDLER, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_PRINT, ALF::NIL)) return NULL; // For message logging only.
+   if (alloc_private_lock(TL_THREADPOOL, ALF::NIL)) return NULL;
+   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_PRIVATE_MEM, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_cond(CN_PRIVATE_MEM, ALF::NIL)) return NULL;
 
-   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_OBJECTS, 0)) return NULL;
+   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
 
    // Allocate a private POSIX semaphore for LockObject() and ReleaseObject()
 
@@ -373,7 +373,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
             glShowPrivate = TRUE;
             glDebugMemory = TRUE;
          }
-         else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
+         else if (!StrCompare(arg, "gfx-driver=", 11)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
@@ -394,7 +394,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          #if defined(__unix__) && !defined(__ANDROID__)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
-         else if (!StrCompare("home=", arg, 7, 0)) glHomeFolderName.assign(arg + 7);
+         else if (!StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
          else newargs.push_back(arg);
       }
 
@@ -889,7 +889,7 @@ static ERROR init_shared_control(void)
    #ifdef __unix__
       KMSG("Initialising %d global locks\n", PL_END-1);
       for (UBYTE i=1; i < PL_END; i++) {
-         if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return ERR_Failed; };
+         if (alloc_public_lock(i, ALF::RECURSIVE)) { CloseCore(); return ERR_Failed; };
       }
    #endif
 
@@ -1570,7 +1570,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
          CSTRING str = buffer;
          while (*str) {
-            if (!StrCompare("/dev/hd", str, 0, 0)) {
+            if (!StrCompare("/dev/hd", str)) {
                // Extract mount point
 
                LONG i = 0;

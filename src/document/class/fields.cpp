@@ -344,7 +344,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
       for (i=0; (Self->Path[i]) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
 
-      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len, 0)))) {
+      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len)))) {
          // The location remains unchanged.  A complete reload shouldn't be necessary.
 
          reload = FALSE;

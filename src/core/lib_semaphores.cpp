@@ -185,7 +185,7 @@ the function will return immediately with an ERR_Timeout error.
 
 Each time AccessSemaphore() is called, the system will try to 'block' the semaphore by default.  This means that the
 caller can acquire exclusive access to the resource represented by the semaphore.  If exclusivity is not required, set
-the SMF_NON_BLOCKING flag.  In this mode, the system will decrement the semaphore counter by 1 and return.  The
+the `SMF::NON_BLOCKING` flag.  In this mode, the system will decrement the semaphore counter by 1 and return.  The
 semaphore will only block on future access attempts if its counter has reached a value of zero.
 
 Successful calls to AccessSemaphore() will nest and must be matched with a call to ~ReleaseSemaphore().
@@ -199,7 +199,7 @@ int(SMF) Flags: Optional flags.
 
 *********************************************************************************************************************/
 
-ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
+ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, SMF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -222,7 +222,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
       SemaphoreEntry::SemProcess *process = &semaphore->Processes[pi];
 
       #ifdef DBG_SEMAPHORES
-         if (Flags & SMF_NON_BLOCKING) log.function("ID: %d, Non-Blocking, Counter: %d/%d, Internal: %d:%d,%d", SemaphoreID, semaphore->Counter, semaphore->MaxValue, process->AccessCount, process->BufferCount, process->BlockCount);
+         if ((Flags & SMF::NON_BLOCKING) != SMF::NIL) log.function("ID: %d, Non-Blocking, Counter: %d/%d, Internal: %d:%d,%d", SemaphoreID, semaphore->Counter, semaphore->MaxValue, process->AccessCount, process->BufferCount, process->BlockCount);
          else log.function("ID: %d, Blocking, Counter: %d/%d, Internal: %d:%d,%d", SemaphoreID, semaphore->Counter, semaphore->MaxValue, process->AccessCount, process->BufferCount, process->BlockCount);
       #endif
 
@@ -240,13 +240,13 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
          }
 
          if (process->AccessCount) { // We've already acquired read-access to this semaphore
-            if (Flags & SMF_NON_BLOCKING) break;
+            if ((Flags & SMF::NON_BLOCKING) != SMF::NIL) break;
             else { // If we want blocking access and have already acquired read access, check if we are the only task using the semaphore.
                if ((semaphore->MaxValue - semaphore->Counter) IS 1) break;
             }
          }
 
-         if ((Flags & SMF_NON_BLOCKING) and (semaphore->Counter > 0)) {
+         if (((Flags & SMF::NON_BLOCKING) != SMF::NIL) and (semaphore->Counter > 0)) {
             // We have requested a non-blocking lock and the counter will allow us to grab it
             break;
          }
@@ -321,7 +321,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, LONG Flags)
 
       // If we get out of the loop to get to this part of the routine, then it is safe for us to complete a lock on this semaphore.
 
-      if (Flags & SMF_NON_BLOCKING) {
+      if ((Flags & SMF::NON_BLOCKING) != SMF::NIL) {
          // For non-blocking locks, decrement the counter by 1 and record our lock internally.
 
          if ((process->BufferCount) or (process->BlockCount)) process->BufferCount++;
@@ -383,7 +383,7 @@ specifics of this are discussed in the documentation for ~AccessSemaphore() and 
 
 The handle returned in the Semaphore argument is global, so if you want to secretly share an anonymous semaphore with
 other processes, you may do so if you pass the handle to them.  The other processes will still need to call
-AllocSemaphore(), setting the `SMF_EXISTS` flag and also passing the semaphore handle in the Semaphore parameter.
+AllocSemaphore(), setting the `SMF::EXISTS` flag and also passing the semaphore handle in the Semaphore parameter.
 
 To free a semaphore after allocating it, call ~FreeSemaphore().  AllocSemaphore() will nest if it
 is called multiple times with the same Name.  Each call must be matched with a ~FreeSemaphore() call.  A
@@ -393,7 +393,7 @@ semaphore.
 -INPUT-
 cstr Name: Optional.  The name of the semaphore (up to 15 characters, CASE SENSITIVE) to create or find.
 int Value: The starting value of the semaphore - this indicates the number of locks that can be made before the semaphore blocks.  The minimum starting value is 1.
-int(SMF) Flags: Optional flags, currently SMF_EXISTS is supported.
+int(SMF) Flags: Optional flags, currently EXISTS is supported.
 &int Semaphore: A reference to the semaphore handle will be returned through this pointer.
 
 -END-
@@ -402,7 +402,7 @@ int(SMF) Flags: Optional flags, currently SMF_EXISTS is supported.
 
 #define KEY_SEMAPHORE 0x125af902
 
-ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
+ERROR AllocSemaphore(CSTRING Name, LONG Value, SMF Flags, LONG *SemaphoreID)
 {
    pf::Log log(__FUNCTION__);
    SemaphoreEntry *semaphore;
@@ -413,7 +413,7 @@ ERROR AllocSemaphore(CSTRING Name, LONG Value, LONG Flags, LONG *SemaphoreID)
    if (Value <= 0) Value = 1;
    else if (Value > 255) Value = 255;
 
-   if (Flags & SMF_EXISTS) index = *SemaphoreID;
+   if ((Flags & SMF::EXISTS) != SMF::NIL) index = *SemaphoreID;
    else {
       *SemaphoreID = 0;
       index = 0;
@@ -482,7 +482,7 @@ restart:
 
       if (!semaphore->MaxValue) {
          semaphore->MaxValue   = Value;
-         semaphore->Flags      = Flags & MEM_UNTRACKED;
+         semaphore->Flags      = Flags;
          semaphore->Counter    = Value;
          semaphore->Data       = 0;
          if (Name) semaphore->NameID = StrHash(Name, TRUE);
@@ -492,7 +492,7 @@ restart:
 
       semaphore->Processes[pi].AllocCount++;
 
-      log.function("Name: %s, Value: %d, Flags: $%.8x, ID: %d", Name, Value, Flags, index);
+      log.function("Name: %s, Value: %d, Flags: $%.8x, ID: %d", Name, Value, LONG(Flags), index);
 
       *SemaphoreID = index; // Result
       return ERR_Okay;
@@ -592,7 +592,7 @@ Flags:     Must be set to the flags originally passed to AccessSemaphore().
 
 *********************************************************************************************************************/
 
-ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
+ERROR pReleaseSemaphore(LONG SemaphoreID, SMF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -612,14 +612,14 @@ ERROR pReleaseSemaphore(LONG SemaphoreID, LONG Flags)
       SemaphoreEntry::SemProcess *process = &semaphore->Processes[pi];
 
       #ifdef DBG_SEMAPHORES
-         if (Flags & SMF_NON_BLOCKING) log.function("ID: %d, Non-Blocking, Counter: %d/%d, Internal: %d:%d,%d", SemaphoreID, semaphore->Counter, semaphore->MaxValue, process->AccessCount, process->BufferCount, process->BlockCount);
+         if ((Flags & SMF::NON_BLOCKING) != SMF::NIL) log.function("ID: %d, Non-Blocking, Counter: %d/%d, Internal: %d:%d,%d", SemaphoreID, semaphore->Counter, semaphore->MaxValue, process->AccessCount, process->BufferCount, process->BlockCount);
          else log.function("ID: %d, Blocking, Counter: %d/%d, Internal: %d:%d,%d", SemaphoreID, semaphore->Counter, semaphore->MaxValue, process->AccessCount, process->BufferCount, process->BlockCount);
       #endif
 
       // Release the lock according to the type of lock it is
 
       UBYTE wake = FALSE;
-      if (Flags & SMF_NON_BLOCKING) {
+      if ((Flags & SMF::NON_BLOCKING) != SMF::NIL) {
          if (process->BufferCount > 0) {
             process->BufferCount--;
             return ERR_Okay;

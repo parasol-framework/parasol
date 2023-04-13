@@ -99,7 +99,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
 
-         if (!StrCompare("string:", Path, 7, 0)) { // Do not check for '|' when string: is in use
+         if (!StrCompare("string:", Path, 7)) { // Do not check for '|' when string: is in use
             return ERR_FileNotFound;
          }
 
@@ -132,7 +132,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (!rec.Match.empty()) {
-                  if (!StrCompare(rec.Match.c_str(), filename, 0, STR_WILDCARD)) {
+                  if (!StrCompare(rec.Match.c_str(), filename, 0, STR::WILDCARD)) {
                      if (rec.ParentID) {
                         *ClassID = rec.ParentID;
                         if (SubClassID) *SubClassID = rec.ClassID;

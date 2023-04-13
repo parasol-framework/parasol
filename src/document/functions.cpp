@@ -1545,7 +1545,7 @@ process_object:
             // Check if the tagname refers to a class.  For security reasons, we limit the classes that can be embedded
             // in functional pages.
 
-            if (!StrCompare("obj:", tagname, 4, 0)) tagname += 4;
+            if (!StrCompare("obj:", tagname, 4)) tagname += 4;
 
             CSTRING pagetarget = NULL;
             CLASSID class_id = 0;
@@ -6212,7 +6212,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
       for (i=0; src[i]; i++) {
          if (src[i] IS '[') break;
-         if ((src[i] IS '&') and ((!StrCompare("&lsqr;", src+i, 0, 0)) or (!StrCompare("&rsqr;", src+i, 0, 0)))) break;
+         if ((src[i] IS '&') and ((!StrCompare("&lsqr;", src+i)) or (!StrCompare("&rsqr;", src+i)))) break;
       }
       if (!src[i]) continue;
 
@@ -6229,12 +6229,12 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
       while ((pos >= Self->BufferIndex) and (!error)) {
          if (Buffer[pos] IS '&') {
-            if (!StrCompare("&lsqr;", Buffer+pos, 0, 0)) {
+            if (!StrCompare("&lsqr;", Buffer+pos)) {
                Buffer[pos] = '[';
                CopyMemory(Buffer+pos+6, Buffer+pos+1, StrLength(Buffer+pos+6)+1);
                mod = true;
             }
-            else if (!StrCompare("&rsqr;", Buffer+pos, 0, 0)) {
+            else if (!StrCompare("&rsqr;", Buffer+pos)) {
                Buffer[pos] = ']';
                CopyMemory(Buffer+pos+6, Buffer+pos+1, StrLength(Buffer+pos+6)+1);
                mod = true;
@@ -6274,32 +6274,32 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                BYTE savemod = mod;
                mod = true;
                str = Buffer + pos + 2;
-               if (!StrCompare("index]", str, 0, 0)) {
+               if (!StrCompare("index]", str)) {
                   error = insert_string(std::to_string(Self->LoopIndex).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%index]")-1);
                }
-               else if (!StrCompare("id]", str, 0, 0)) {
+               else if (!StrCompare("id]", str)) {
                   error = insert_string(std::to_string(Self->GeneratedID).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
                }
-               else if (!StrCompare("self]", str, 0, 0)) {
+               else if (!StrCompare("self]", str)) {
                   error = insert_string(std::to_string(Self->UID).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
-               else if (!StrCompare("platform]", str, 0, 0)) {
+               else if (!StrCompare("platform]", str)) {
                   auto state = GetSystemState();
                   insert_string(state->Platform, Buffer, Self->BufferSize, pos, sizeof("[%platform]")-1);
                }
-               else if (!StrCompare("random]", str, 0, 0)) {
+               else if (!StrCompare("random]", str)) {
                   // Generate a random string of digits
                   char random[10];
                   for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + (rand() % 10);
                   random[j] = 0;
                   insert_string(random, Buffer, Self->BufferSize, i, sizeof("[%random]")-1);
                }
-               else if (!StrCompare("currentpage]", str, 0, 0)) {
+               else if (!StrCompare("currentpage]", str)) {
                   str = "";
                   if (Self->PageTag) str = XMLATTRIB(Self->PageTag, "name");
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%currentpage]")-1);
                }
-               else if (!StrCompare("nextpage]", str, 0, 0)) {
+               else if (!StrCompare("nextpage]", str)) {
                   str = "";
                   if (Self->PageTag) {
                      for (auto tag=Self->PageTag->Next; tag; tag=tag->Next) {
@@ -6314,7 +6314,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%nextpage]")-1);
                }
-               else if (!StrCompare("prevpage]", str, 0, 0)) {
+               else if (!StrCompare("prevpage]", str)) {
                   str = "";
                   if (Self->PageTag) {
                      for (auto tag=Self->PageTag->Prev; tag; tag=tag->Prev) {
@@ -6329,28 +6329,28 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%prevpage]")-1);
                }
-               else if (!StrCompare("path]", str, 0, 0)) {
+               else if (!StrCompare("path]", str)) {
                   CSTRING workingpath = "";
                   GET_WorkingPath(Self, &workingpath);
                   if (!workingpath) workingpath = "";
                   error = insert_string(workingpath, Buffer, Self->BufferSize, pos, sizeof("[%path]")-1);
                }
-               else if (!StrCompare("author]", str, 0, 0)) {
+               else if (!StrCompare("author]", str)) {
                   error = insert_string(Self->Author, Buffer, Self->BufferSize, pos, sizeof("[%author]")-1);
                }
-               else if (!StrCompare("description]", str, 0, 0)) {
+               else if (!StrCompare("description]", str)) {
                   error = insert_string(Self->Description, Buffer, Self->BufferSize, pos, sizeof("[%description]")-1);
                }
-               else if (!StrCompare("copyright]", str, 0, 0)) {
+               else if (!StrCompare("copyright]", str)) {
                   error = insert_string(Self->Copyright, Buffer, Self->BufferSize, pos, sizeof("[%copyright]")-1);
                }
-               else if (!StrCompare("keywords]", str, 0, 0)) {
+               else if (!StrCompare("keywords]", str)) {
                   error = insert_string(Self->Keywords, Buffer, Self->BufferSize, pos, sizeof("[%keywords]")-1);
                }
-               else if (!StrCompare("title]", str, 0, 0)) {
+               else if (!StrCompare("title]", str)) {
                   error = insert_string(Self->Title, Buffer, Self->BufferSize, pos, sizeof("[%title]")-1);
                }
-               else if (!StrCompare("font]", str, 0, 0)) {
+               else if (!StrCompare("font]", str)) {
                   objFont *font;
                   char fullfont[256];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
@@ -6358,13 +6358,13 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      error = insert_string(fullfont, Buffer, Self->BufferSize, pos, sizeof("[%font]")-1);
                   }
                }
-               else if (!StrCompare("fontface]", str, 0, 0)) {
+               else if (!StrCompare("fontface]", str)) {
                   objFont *font;
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
                      error = insert_string(font->Face, Buffer, Self->BufferSize, pos, sizeof("[%fontface]")-1);
                   }
                }
-               else if (!StrCompare("fontcolour]", str, 0, 0)) {
+               else if (!StrCompare("fontcolour]", str)) {
                   objFont *font;
                   char colour[28];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
@@ -6372,7 +6372,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      error = insert_string(colour, Buffer, Self->BufferSize, pos, sizeof("[%fontcolour]")-1);
                   }
                }
-               else if (!StrCompare("fontsize]", str, 0, 0)) {
+               else if (!StrCompare("fontsize]", str)) {
                   objFont *font;
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
                      char num[28];
@@ -6380,12 +6380,12 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%fontsize]")-1);
                   }
                }
-               else if (!StrCompare("lineno]", str, 0, 0)) {
+               else if (!StrCompare("lineno]", str)) {
                   char num[28];
                   IntToStr(Self->SegCount, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%lineno]")-1);
                }
-               else if (!StrCompare("content]", str, 0, 0)) {
+               else if (!StrCompare("content]", str)) {
                   if ((Self->InTemplate) and (Self->InjectTag)) {
                      if (!xmlGetContent(Self->InjectXML, Self->InjectTag->Index, Self->Temp, Self->TempSize)) {
                         STRING tmp;
@@ -6396,33 +6396,33 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      }
                   }
                }
-               else if (!StrCompare("tm-day]", str, 0, 0)) {
+               else if (!StrCompare("tm-day]", str)) {
 
                }
-               else if (!StrCompare("tm-month]", str, 0, 0)) {
+               else if (!StrCompare("tm-month]", str)) {
 
                }
-               else if (!StrCompare("tm-year]", str, 0, 0)) {
+               else if (!StrCompare("tm-year]", str)) {
 
                }
-               else if (!StrCompare("tm-hour]", str, 0, 0)) {
+               else if (!StrCompare("tm-hour]", str)) {
 
                }
-               else if (!StrCompare("tm-minute]", str, 0, 0)) {
+               else if (!StrCompare("tm-minute]", str)) {
 
                }
-               else if (!StrCompare("tm-second]", str, 0, 0)) {
+               else if (!StrCompare("tm-second]", str)) {
 
                }
-               else if (!StrCompare("version]", str, 0, 0)) {
+               else if (!StrCompare("version]", str)) {
                   error = insert_string(RIPPLE_VERSION, Buffer, Self->BufferSize, pos, sizeof("[%version]")-1);
                }
-               else if (!StrCompare("viewheight]", str, 0, 0)) {
+               else if (!StrCompare("viewheight]", str)) {
                   char num[28];
                   IntToStr(Self->AreaHeight, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%viewheight]")-1);
                }
-               else if (!StrCompare("viewwidth]", str, 0, 0)) {
+               else if (!StrCompare("viewwidth]", str)) {
                   char num[28];
                   IntToStr(Self->AreaWidth, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%viewwidth]")-1);
@@ -6435,7 +6435,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                for (WORD ni=Self->ArgNestIndex-1; (ni >= 0) and (!processed); ni--) {
                   XMLTag *args = Self->ArgNest[ni];
                   for (arg=1; arg < args->TotalAttrib; arg++) {
-                     if (!StrCompare(args->Attrib[arg].Name, Buffer+pos+2, 0, 0)) {
+                     if (!StrCompare(args->Attrib[arg].Name, Buffer+pos+2)) {
                         end = pos + 2 + StrLength(args->Attrib[arg].Name);
                         if ((Buffer[end] IS ']') or (Buffer[end] IS ':')) {
 

@@ -979,7 +979,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       if (!OpenDir(srcfolder.c_str(), RDF::FILE, &dir)) {
          while (!ScanDir(dir)) {
             FileInfo *scan = dir->Info;
-            if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {
+            if (!StrCompare(filename, scan->Name, 0, STR::WILDCARD)) {
                auto folder = src.substr(0, pathlen);
                folder.append(scan->Name);
                error = compress_file(Self, folder, path, FALSE);
@@ -1151,7 +1151,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    for (auto &zf : Self->Files) {
       log.trace("Found %s", zf.Name);
-      if (!StrCompare(Args->Path, zf.Name, 0, STR_WILDCARD)) {
+      if (!StrCompare(Args->Path, zf.Name, 0, STR::WILDCARD)) {
          log.trace("Extracting \"%s\"", zf.Name);
 
          if (Self->OutputID) {
@@ -1493,7 +1493,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    LONG total_scanned = 0;
    for (auto &list : Self->Files) {
       total_scanned++;
-      if (StrCompare(Args->Path, list.Name, 0, STR_WILDCARD)) continue;
+      if (StrCompare(Args->Path, list.Name, 0, STR::WILDCARD)) continue;
 
       log.trace("Decompressing \"%s\"", list.Name);
 
@@ -1658,7 +1658,7 @@ Find: Find the first item that matches a given filter.
 
 Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that
 matches the Path parameter string in conjunction with the options in Flags.  The options match those in the
-~Core.StrCompare() function - in particular `STR_CASE`, `STR_MATCH_LEN` and `STR_WILDCARD` are the most
+~Core.StrCompare() function - in particular `STR::CASE`, `STR::MATCH_LEN` and `STR::WILDCARD` are the most
 useful.
 
 Please refer to the #Scan() method for a break-down of the CompressedItem structure that is returned by this
@@ -1687,7 +1687,7 @@ static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
    if (Self->isSubClass()) return ERR_NoSupport;
 
-   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
+   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, LONG(Args->Flags));
    for (auto &item : Self->Files) {
       if (StrCompare(Args->Path, item.Name, 0, Args->Flags)) continue;
 
@@ -1933,7 +1933,7 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
    log.msg("%s", Args->Path);
 
    for (auto it = Self->Files.begin(); it != Self->Files.end(); ) {
-      if (!StrCompare(Args->Path, it->Name, 0, STR_WILDCARD)) {
+      if (!StrCompare(Args->Path, it->Name, 0, STR::WILDCARD)) {
          // Delete the file from the archive
 
          if (Self->OutputID) {
@@ -2003,7 +2003,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 
       if (Args->Folder) {
          if ((LONG)item.Name.size() > folder_len) {
-            if (!StrCompare(Args->Folder, item.Name, 0, 0)) {
+            if (!StrCompare(Args->Folder, item.Name)) {
                if ((folder_len > 0) and (item.Name[folder_len] != '/')) continue;
                if ((item.Name[folder_len] IS '/') and (!item.Name[folder_len+1])) continue;
 
@@ -2021,7 +2021,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       }
 
       if ((Args->Filter) and (Args->Filter[0])) {
-         if (!StrCompare(Args->Filter, item.Name, 0, STR_WILDCARD)) break;
+         if (!StrCompare(Args->Filter, item.Name, 0, STR::WILDCARD)) break;
          else continue;
       }
 

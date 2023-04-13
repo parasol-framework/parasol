@@ -1201,8 +1201,8 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 
    Self->Port = 80;
 
-   if (!StrCompare("http://", str, 7, 0)) str += 7;
-   else if (!StrCompare("https://", str, 8, 0)) {
+   if (!StrCompare("http://", str, 7)) str += 7;
+   else if (!StrCompare("https://", str, 8)) {
       str += 8;
       Self->Port = 443;
       Self->Flags |= HTF_SSL;
@@ -1412,7 +1412,7 @@ static ERROR SET_Path(extHTTP *Self, CSTRING Value)
          while ((i > 0) and (Self->AuthPath[i-1] != '/')) i--;
 
          if (i IS len) {
-            if (!StrCompare(Self->Path, Self->AuthPath, len, 0)) {
+            if (!StrCompare(Self->Path, Self->AuthPath, len)) {
                // No change to the current path
                Self->SecurePath = FALSE;
             }

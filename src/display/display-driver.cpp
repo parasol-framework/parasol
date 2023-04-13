@@ -360,8 +360,8 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
       glDGAAvailable = FALSE;
 
       displayname = XDisplayName(NULL);
-      if ((!StrCompare(displayname, ":", 1, NULL)) or
-          (!StrCompare(displayname, "unix:", 5, NULL)) ) {
+      if ((!StrCompare(displayname, ":", 1)) or
+          (!StrCompare(displayname, "unix:", 5)) ) {
          LONG events, errors, major, minor, screen;
 
          if (XDGAQueryExtension(XDisplay, &events, &errors) and XDGAQueryVersion(XDisplay, &major, &minor)) {

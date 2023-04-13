@@ -522,7 +522,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
       LONG i, j, len;
       if ((Value) and (*Value)) {
-         if (!StrCompare("STRING:", Value, 7, 0)) {
+         if (!StrCompare("STRING:", Value, 7)) {
             return SET_String(Self, Value + 7);
          }
 

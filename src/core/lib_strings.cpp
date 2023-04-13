@@ -288,7 +288,7 @@ static LONG str_cmp(CSTRING Name1, CSTRING Name2)
 
 //********************************************************************************************************************
 
-static ERROR str_sort(CSTRING *List, LONG Flags)
+static ERROR str_sort(CSTRING *List, SBF Flags)
 {
    if (!List) return ERR_NullArgs;
 
@@ -301,7 +301,7 @@ static ERROR str_sort(CSTRING *List, LONG Flags)
    LONG h = 1;
    while (h < total / 9) h = 3 * h + 1;
 
-   if (Flags & SBF_DESC) {
+   if ((Flags & SBF::DESC) != SBF::NIL) {
       for (; h > 0; h /= 3) {
          for (LONG i=h; i < total; i++) {
             auto temp = List[i];
@@ -324,9 +324,9 @@ static ERROR str_sort(CSTRING *List, LONG Flags)
       }
    }
 
-   if (Flags & SBF_NO_DUPLICATES) {
-      LONG strflags = STR_MATCH_LEN;
-      if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
+   if ((Flags & SBF::NO_DUPLICATES) != SBF::NIL) {
+      auto strflags = STR::MATCH_LEN;
+      if ((Flags & SBF::CASE) != SBF::NIL) strflags |= STR::MATCH_CASE;
 
       for (LONG i=1; List[i]; i++) {
          if (!StrCompare(List[i-1], List[i], 0, strflags)) {
@@ -350,13 +350,13 @@ similar in arrangement to a CSV file, but null-terminators signal an end to each
 
 To convert such a string list into an array, you need to know the total byte size of the list, as well as the total
 number of strings in the list. If you don't know this information, you can either alter your routine to make provisions
-for it, or you can pass the `SBF_CSV` flag if the List is in CSV format.  CSV mode incurs a performance hit as the string
+for it, or you can pass the `SBF::CSV` flag if the List is in CSV format.  CSV mode incurs a performance hit as the string
 needs to be analysed first.
 
 Once you call this function, it will allocate a memory block to contain the array and string information.  The list
 will then be converted into the array, which will be terminated with a NULL pointer at its end.  If you have specified
-the `SBF_SORT` or `SBF_NO_DUPLICATES` Flags then the array will be sorted into alphabetical order for your convenience.  The
-`SBF_NO_DUPLICATES` flag also removes duplicated strings from the array.
+the `SBF::SORT` or `SBF::NO_DUPLICATES` Flags then the array will be sorted into alphabetical order for your convenience.  The
+`SBF::NO_DUPLICATES` flag also removes duplicated strings from the array.
 
 Remember to free the allocated array when it is no longer required.
 
@@ -364,14 +364,14 @@ Remember to free the allocated array when it is no longer required.
 str List:  Pointer to a string of sequentially arranged values.
 int Size:  The total byte size of the List, not including the terminating byte.
 int Total: The total number of strings specified in the List.
-int(SBF) Flags: Set to SBF_SORT to sort the list, SBF_NO_DUPLICATES to sort the list and remove duplicated strings, Use SBF_CSV if the List is in CSV format, in which case the Size and Total values are ignored (note - the string will be modified if in CSV).
+int(SBF) Flags: Set to SORT to sort the list, NO_DUPLICATES to sort the list and remove duplicated strings, Use CSV if the List is in CSV format, in which case the Size and Total values are ignored (note - the string will be modified if in CSV).
 
 -RESULT-
 !array(str): Returns an array of STRING pointers, or NULL on failure.  The pointer is a memory block that must be freed after use.
 
 *********************************************************************************************************************/
 
-STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
+STRING * StrBuildArray(STRING List, LONG Size, LONG Total, SBF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -380,7 +380,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
    LONG i;
    char *csvbuffer_alloc = NULL;
    char csvbuffer[1024]= { 0 };
-   if (Flags & SBF_CSV) {
+   if ((Flags & SBF::CSV) != SBF::NIL) {
       // Note that empty strings (commas following no content) are allowed and are treated as null strings.
 
       // We are going to modify the string with some nulls, so make a copy of it
@@ -440,8 +440,8 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 
          // Remove duplicate strings and/or do sorting
 
-         if (Flags & SBF_NO_DUPLICATES) {
-            str_sort(array, 0);
+         if ((Flags & SBF::NO_DUPLICATES) != SBF::NIL) {
+            str_sort(array, SBF::NIL);
             for (i=1; array[i]; i++) {
                if (!StrMatch(array[i-1], array[i])) {
                   LONG j;
@@ -452,7 +452,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
             }
             array[Total] = NULL;
          }
-         else if (Flags & SBF_SORT) str_sort(array, 0);
+         else if ((Flags & SBF::SORT) != SBF::NIL) str_sort(array, SBF::NIL);
 
          if (csvbuffer_alloc) free(csvbuffer_alloc);
          return (STRING *)array;
@@ -470,7 +470,7 @@ StrCompare: Compares strings to see if they are identical.
 
 This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it
 returns ERR_False.  By default the function is not case sensitive, but you can turn on case sensitivity by
-specifying the `STR_CASE` flag.
+specifying the `STR::CASE` flag.
 
 If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all
 characters matched up until the termination, ERR_Okay will be returned regardless of whether or not one of the strings
@@ -479,11 +479,11 @@ happened to be longer than the other.
 If the Length is not 0, then the comparison will stop once the specified number of characters to match has been
 reached.  If one of the strings terminates before the specified Length is matched, ERR_False will be returned.
 
-If the `STR_MATCH_LEN` flag is specified, you can force the function into returning an ERR_Okay code only on the
+If the `STR::MATCH_LEN` flag is specified, you can force the function into returning an ERR_Okay code only on the
 condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has
 been set to 0.
 
-If the `STR_WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
+If the `STR::WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
 meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance
 `ABC*` would match to `ABCDEF` and `1?3` would match to `1x3`.
 
@@ -500,10 +500,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
+ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 {
    LONG len, i, j;
-   UBYTE char1, char2, fail;
+   UBYTE char1, char2;
+   bool fail;
    CSTRING Original;
    #define Wildcard String1
 
@@ -516,11 +517,11 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 
    Original = String2;
 
-   if (Flags & STR_WILDCARD) {
+   if ((Flags & STR::WILDCARD) != STR::NIL) {
       if (!Wildcard[0]) return ERR_Okay;
 
       while ((*Wildcard) and (*String2)) {
-         fail = FALSE;
+         fail = false;
          if (*Wildcard IS '*') {
             while (*Wildcard IS '*') Wildcard++;
 
@@ -532,14 +533,14 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
                // Scan to the end of the string for wildcard situation like "*.txt"
 
                for (j=0; String2[j]; j++); // Get the number of characters left in the second string
-               if (j < i) fail = TRUE; // Quit if the second string has run out of characters to cover itself for the wildcard
+               if (j < i) fail = true; // Quit if the second string has run out of characters to cover itself for the wildcard
                else String2 += j - i; // Skip everything in the second string that covers us for the '*' character
             }
             else {
                // Scan to the first matching wildcard character in the string, for handling wildcards like "*.1*.2"
 
                while (*String2) {
-                  if (Flags & STR_CASE) {
+                  if ((Flags & STR::CASE) != STR::NIL) {
                      if (*Wildcard IS *String2) break;
                   }
                   else {
@@ -558,13 +559,13 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
          }
          else if ((*Wildcard IS '\\') and (Wildcard[1])) {
             Wildcard++;
-            if (Flags & STR_CASE) {
-               if (*Wildcard++ != *String2++) fail = TRUE;
+            if ((Flags & STR::CASE) != STR::NIL) {
+               if (*Wildcard++ != *String2++) fail = true;
             }
             else {
                char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
                char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-               if (char1 != char2) fail = TRUE;
+               if (char1 != char2) fail = true;
             }
          }
          else if ((*Wildcard IS '|') and (Wildcard[1])) {
@@ -572,13 +573,13 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
             String2 = Original; // Restart the comparison
          }
          else {
-            if (Flags & STR_CASE) {
-               if (*Wildcard++ != *String2++) fail = TRUE;
+            if ((Flags & STR::CASE) != STR::NIL) {
+               if (*Wildcard++ != *String2++) fail = true;
             }
             else {
                char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
                char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-               if (char1 != char2) fail = TRUE;
+               if (char1 != char2) fail = true;
             }
          }
 
@@ -604,7 +605,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 
       return ERR_False;
    }
-   else if (Flags & STR_CASE) {
+   else if ((Flags & STR::CASE) != STR::NIL) {
       while ((len) and (*String1) and (*String2)) {
          if (*String1++ != *String2++) return ERR_False;
          len--;
@@ -626,7 +627,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    // If we get here, one of strings has terminated or we have exhausted the number of characters that we have been
    // requested to check.
 
-   if (Flags & (STR_MATCH_LEN|STR_WILDCARD)) {
+   if ((Flags & (STR::MATCH_LEN|STR::WILDCARD)) != STR::NIL) {
       if ((*String1 IS 0) and (*String2 IS 0)) return ERR_Okay;
       else return ERR_False;
    }

@@ -1310,7 +1310,7 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
       };
 
       for (LONG ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
+         if (!StrCompare(keys[ki].HKey, Args->Name)) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
             len = StrLength(str); // End of string
 
@@ -1635,7 +1635,7 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
       log.msg("Registry: %s = %s", Args->Name, Args->Value);
 
       for (ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
+         if (!StrCompare(keys[ki].HKey, Args->Name)) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
 
             for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);

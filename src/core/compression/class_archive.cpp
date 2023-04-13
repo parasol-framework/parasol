@@ -204,7 +204,7 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 
    if (!Self->Path) return ERR_FieldNotSet;
 
-   if (StrCompare("archive:", Self->Path, LEN_ARCHIVE, 0) != ERR_Okay) return ERR_NoSupport;
+   if (StrCompare("archive:", Self->Path, LEN_ARCHIVE) != ERR_Okay) return ERR_NoSupport;
 
    if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
 
@@ -227,13 +227,13 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 
             auto it = prv->Archive->Files.begin();
             for (; it != prv->Archive->Files.end(); it++) {
-               if (!StrCompare(file_path, it->Name, 0, STR_CASE|STR_MATCH_LEN)) break;
+               if (!StrCompare(file_path, it->Name, 0, STR::CASE|STR::MATCH_LEN)) break;
             }
 
             if ((it IS prv->Archive->Files.end()) and (Self->Flags & FL_APPROXIMATE)) {
                file_path.append(".*");
                for (it = prv->Archive->Files.begin(); it != prv->Archive->Files.end(); it++) {
-                  if (!StrCompare(file_path, it->Name, 0, STR_WILDCARD)) break;
+                  if (!StrCompare(file_path, it->Name, 0, STR::WILDCARD)) break;
                }
             }
 
@@ -489,7 +489,7 @@ static ERROR scan_folder(DirInfo *Dir)
       ZipFile &zf = *it;
 
       if (!path.empty()) {
-         if (StrCompare(path, zf.Name, 0, 0) != ERR_Okay) continue;
+         if (StrCompare(path, zf.Name) != ERR_Okay) continue;
       }
 
       // Single folders will appear as 'ABCDEF/'
@@ -582,7 +582,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    log.traceBranch("%s", Path);
 
    if (auto cmp = find_archive(Path, file_path)) {
-      struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR_CASE|STR_MATCH_LEN };
+      struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR::CASE|STR::MATCH_LEN };
       if ((error = Action(MT_CmpFind, cmp, &find))) return error;
       item = find.Item;
    }
@@ -638,11 +638,11 @@ static ERROR test_path(STRING Path, RSF Flags, LOC *Type)
    }
 
    CompressedItem *item;
-   ERROR error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_MATCH_LEN, &item);
+   ERROR error = cmpFind(cmp, file_path.c_str(), STR::CASE|STR::MATCH_LEN, &item);
 
    if ((error) and ((Flags & RSF::APPROXIMATE) != RSF::NIL)) {
       file_path.append(".*");
-      if (!(error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_WILDCARD, &item))) {
+      if (!(error = cmpFind(cmp, file_path.c_str(), STR::CASE|STR::WILDCARD, &item))) {
          // Point the path to the discovered item
          LONG i;
          for (i=0; (Path[i] != '/') and (Path[i]); i++);

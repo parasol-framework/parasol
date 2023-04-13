@@ -161,6 +161,11 @@ enum class RDF    : ULONG;
 enum class RSF    : ULONG;
 enum class LDF    : ULONG;
 enum class VOLUME : ULONG;
+enum class STR    : ULONG;
+enum class ALF    : ULONG;
+enum class SCF    : ULONG;
+enum class SBF    : ULONG;
+enum class SMF    : ULONG;
 
 #include <parasol/vector.hpp>
 #include "prototypes.h"
@@ -194,6 +199,28 @@ struct CaseInsensitiveMap {
    bool operator() (const std::string &lhs, const std::string &rhs) const {
       return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
    }
+};
+
+//********************************************************************************************************************
+// Semaphore management structure.
+
+struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
+   ULONG NameID;          // Hashed name of the semaphore
+   LONG  BlockingProcess; // Process ID of the blocker
+   LONG  BlockingThread;  // Global thread ID of the blocker
+   LARGE Data;            // User configurable 64-bit data
+   SMF   Flags;           // Status flags
+   WORD  BlockingValue;   // Value used for blocking access
+   WORD  MaxValue;        // Semaphore maximum value
+   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
+   struct SemProcess {
+      LONG ProcessID;
+      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
+      UBYTE BlockCount;      // Count of blocking locks currently recorded
+      UBYTE AccessCount;     // Count of access locks currently recorded
+      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
+   } Processes[20];
+   //LONG     FIFO[10];       // List of processes currently queued for access
 };
 
 //********************************************************************************************************************
@@ -988,28 +1015,28 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
    void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
    void  free_threadlocks(void);
-   ERROR wake_waitlock(WINHANDLE Lock, LONG ProcessID, LONG TotalSleepers);
-   ERROR alloc_public_waitlock(WINHANDLE *Lock, const char *Name);
-   void  free_public_waitlock(WINHANDLE Lock);
-   ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size);
+   ERROR wake_waitlock(WINHANDLE, LONG, LONG);
+   ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
+   void  free_public_waitlock(WINHANDLE);
+   ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
    LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
-   struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size);
-   ERROR alloc_public_lock(UBYTE, WORD Flags);
-   ERROR alloc_public_cond(CONDLOCK *, WORD Flags);
+   struct sockaddr_un * get_socket_path(LONG, socklen_t *);
+   ERROR alloc_public_lock(UBYTE, ALF);
+   ERROR alloc_public_cond(CONDLOCK *, ALF);
    void  free_public_lock(UBYTE);
    void  free_public_cond(CONDLOCK *);
-   ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout);
-   ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size);
+   ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
+   ERROR send_thread_msg(LONG, LONG, APTR, LONG);
 #endif
 
-ERROR alloc_private_lock(UBYTE, WORD);
-ERROR alloc_private_cond(UBYTE, WORD);
+ERROR alloc_private_lock(UBYTE, ALF);
+ERROR alloc_private_cond(UBYTE, ALF);
 void  free_private_lock(UBYTE);
 void  free_private_cond(UBYTE);
 ERROR thread_lock(UBYTE, LONG);
 void  thread_unlock(UBYTE);
-ERROR cond_wait(UBYTE, UBYTE, LONG Timeout);
+ERROR cond_wait(UBYTE, UBYTE, LONG);
 
 void cond_wake_all(UBYTE);
 void cond_wake_single(UBYTE);

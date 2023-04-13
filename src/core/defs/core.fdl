@@ -32,11 +32,11 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #endif
   ]])
 
-  flags("SCF", { comment="Script flags" },
+  flags("SCF", { strict=true, comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
      "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
 
-  flags("STR", { bits=16 },
+  flags("STR", { strict=true, bits=16 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
      "MATCH_LEN: The strings must be of equal length to be matched.",
      "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
@@ -52,11 +52,11 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("PMF", { strict=true, comment="Flags for ProcessMessages" },
      "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
-  flags("ALF", { bits=16 },
+  flags("ALF", { strict=true, bits=16 },
      "SHARED: The lock will be shared between foreign processes.",
      "RECURSIVE: Set if support for recursive locking within the same thread is required.")
 
-  flags("SMF", { comment="Flags for semaphores" },
+  flags("SMF", { strict=true, comment="Flags for semaphores" },
      "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
      "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
 
@@ -71,7 +71,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "RECALL: Set if the subscriber needs to manually check for incoming/outgoing data.  This is supported as a one-off check, so the flag will be disabled automatically when the subscriber is called.",
      "ALWAYS_CALL: Always call this FD's handler prior to the process going to sleep.")
 
-  flags("SBF", { comment="Flags for StrBuildArray()" },
+  flags("SBF", { strict=true, comment="Flags for StrBuildArray()" },
     "NO_DUPLICATES: Sort the resulting list and remove duplicated strings.",
     "SORT: Sort the resulting list.",
     "CASE: Use case-sensitivity when comparing strings in the list.",
@@ -1268,7 +1268,7 @@ inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
-   return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+   return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
 }
 
 template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
@@ -1322,7 +1322,7 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
-template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
+template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
@@ -2476,29 +2476,6 @@ inline FIELD ResolveField(CSTRING Field) {
 #endif
 
 #ifdef __system__
-
-// Semaphore management structure.
-
-#define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
-
-struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
-   ULONG NameID;          // Hashed name of the semaphore
-   LONG  BlockingProcess; // Process ID of the blocker
-   LONG  BlockingThread;  // Global thread ID of the blocker
-   LARGE Data;            // User configurable 64-bit data
-   WORD  Flags;           // Status flags
-   WORD  BlockingValue;   // Value used for blocking access
-   WORD  MaxValue;        // Semaphore maximum value
-   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
-   struct SemProcess {
-      LONG ProcessID;
-      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
-      UBYTE BlockCount;      // Count of blocking locks currently recorded
-      UBYTE AccessCount;     // Count of access locks currently recorded
-      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
-   } Processes[20];
-   //LONG     FIFO[10];       // List of processes currently queued for access
-};
 
 struct ActionMessage {
    OBJECTID ObjectID;        // The object that is to receive the action

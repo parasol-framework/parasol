@@ -290,7 +290,7 @@ int fcmd_unsubscribe_event(lua_State *Lua)
 
    if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
-      if (Lua->Script->Flags & SCF_DEBUG) log.msg("Handle: %p", handle);
+      if ((Lua->Script->Flags & SCF::DEBUG) != SCF::NIL) log.msg("Handle: %p", handle);
 
       for (auto it=prv->EventList.begin(); it != prv->EventList.end(); it++) {
          if (it->EventHandle IS handle) {
@@ -632,7 +632,7 @@ int fcmd_loadfile(lua_State *Lua)
                LONG len, i;
                char header[256];
                if (!file->read(header, sizeof(header), &len)) {
-                  if (!StrCompare(LUA_COMPILED, header, 0, 0)) {
+                  if (!StrCompare(LUA_COMPILED, header)) {
                      recompile = FALSE; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
@@ -722,7 +722,7 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (!StrCompare(LUA_COMPILED, statement, 0, 0)) {
+         if (!StrCompare(LUA_COMPILED, statement)) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             if (!statement[i]) statement += i + 1;

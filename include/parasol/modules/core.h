@@ -670,13 +670,23 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #endif
 // Script flags
 
-#define SCF_EXIT_ON_ERROR 0x00000001
-#define SCF_DEBUG 0x00000002
+enum class SCF : ULONG {
+   NIL = 0,
+   EXIT_ON_ERROR = 0x00000001,
+   DEBUG = 0x00000002,
+};
 
-#define STR_MATCH_CASE 0x0001
-#define STR_CASE 0x0001
-#define STR_MATCH_LEN 0x0002
-#define STR_WILDCARD 0x0004
+DEFINE_ENUM_FLAG_OPERATORS(SCF)
+
+enum class STR : ULONG {
+   NIL = 0,
+   MATCH_CASE = 0x0001,
+   CASE = 0x0001,
+   MATCH_LEN = 0x0002,
+   WILDCARD = 0x0004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(STR)
 
 // Message flags.
 
@@ -701,14 +711,24 @@ enum class PMF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(PMF)
 
-#define ALF_SHARED 0x0001
-#define ALF_RECURSIVE 0x0002
+enum class ALF : ULONG {
+   NIL = 0,
+   SHARED = 0x0001,
+   RECURSIVE = 0x0002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ALF)
 
 // Flags for semaphores
 
-#define SMF_NO_BLOCKING 0x00000001
-#define SMF_NON_BLOCKING 0x00000001
-#define SMF_EXISTS 0x00000002
+enum class SMF : ULONG {
+   NIL = 0,
+   NO_BLOCKING = 0x00000001,
+   NON_BLOCKING = 0x00000001,
+   EXISTS = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SMF)
 
 // Flags for RegisterFD()
 
@@ -729,11 +749,16 @@ DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
 // Flags for StrBuildArray()
 
-#define SBF_NO_DUPLICATES 0x00000001
-#define SBF_SORT 0x00000002
-#define SBF_CASE 0x00000004
-#define SBF_DESC 0x00000008
-#define SBF_CSV 0x00000010
+enum class SBF : ULONG {
+   NIL = 0,
+   NO_DUPLICATES = 0x00000001,
+   SORT = 0x00000002,
+   CASE = 0x00000004,
+   DESC = 0x00000008,
+   CSV = 0x00000010,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SBF)
 
 // Task flags
 
@@ -1969,7 +1994,7 @@ struct CoreBase {
    ERROR (*_ScanDir)(struct DirInfo * Info);
    ERROR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
-   ERROR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
+   ERROR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
    ERROR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
    ERROR (*_SubscribeEvent)(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
    ERROR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
@@ -2004,7 +2029,7 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERROR (*_AllocMutex)(LONG Flags, APTR Result);
+   ERROR (*_AllocMutex)(ALF Flags, APTR Result);
    void (*_FreeMutex)(APTR Mutex);
    ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockMutex)(APTR Mutex);
@@ -2021,7 +2046,7 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
-   STRING * (*_StrBuildArray)(STRING List, LONG Size, LONG Total, LONG Flags);
+   STRING * (*_StrBuildArray)(STRING List, LONG Size, LONG Total, SBF Flags);
    LONG (*_UTF8CharOffset)(CSTRING String, LONG Offset);
    LONG (*_UTF8Length)(CSTRING String);
    LONG (*_UTF8OffsetToChar)(CSTRING String, LONG Offset);
@@ -2092,7 +2117,7 @@ inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); 
 inline ERROR ScanDir(struct DirInfo * Info) { return CoreBase->_ScanDir(Info); }
 inline ERROR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
-inline ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
+inline ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
 inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
 inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
@@ -2127,7 +2152,7 @@ inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) 
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERROR AllocMutex(LONG Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
+inline ERROR AllocMutex(ALF Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
 inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
 inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
 inline void UnlockMutex(APTR Mutex) { return CoreBase->_UnlockMutex(Mutex); }
@@ -2144,7 +2169,7 @@ inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
-inline STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags) { return CoreBase->_StrBuildArray(List,Size,Total,Flags); }
+inline STRING * StrBuildArray(STRING List, LONG Size, LONG Total, SBF Flags) { return CoreBase->_StrBuildArray(List,Size,Total,Flags); }
 inline LONG UTF8CharOffset(CSTRING String, LONG Offset) { return CoreBase->_UTF8CharOffset(String,Offset); }
 inline LONG UTF8Length(CSTRING String) { return CoreBase->_UTF8Length(String); }
 inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset) { return CoreBase->_UTF8OffsetToChar(String,Offset); }
@@ -2186,7 +2211,7 @@ inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
-   return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+   return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
 }
 
 template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
@@ -2240,7 +2265,7 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
-template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
+template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
@@ -3636,7 +3661,7 @@ class objScript : public BaseClass {
    using create = pf::Create<objScript>;
 
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
-   LONG     Flags;     // Optional flags.
+   SCF      Flags;     // Optional flags.
    ERROR    Error;     // If a script fails during execution, an error code may be readable here.
    LONG     CurrentLine; // Indicates the current line being executed when in debug mode.
    LONG     LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
@@ -3687,7 +3712,7 @@ class objScript : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const SCF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -4212,7 +4237,7 @@ struct cmpCompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize;
 struct cmpDecompressStreamEnd { FUNCTION * Callback;  };
 struct cmpDecompressObject { CSTRING Path; OBJECTPTR Object;  };
 struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
-struct cmpFind { CSTRING Path; LONG Flags; struct CompressedItem * Item;  };
+struct cmpFind { CSTRING Path; STR Flags; struct CompressedItem * Item;  };
 
 INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) {
    struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, 0 };
@@ -4277,7 +4302,7 @@ INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callbac
    return(Action(MT_CmpScan, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem ** Item) {
+INLINE ERROR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) {
    struct cmpFind args = { Path, Flags, 0 };
    ERROR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
@@ -4501,29 +4526,6 @@ inline FIELD ResolveField(CSTRING Field) {
 #endif
 
 #ifdef __system__
-
-// Semaphore management structure.
-
-#define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
-
-struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
-   ULONG NameID;          // Hashed name of the semaphore
-   LONG  BlockingProcess; // Process ID of the blocker
-   LONG  BlockingThread;  // Global thread ID of the blocker
-   LARGE Data;            // User configurable 64-bit data
-   WORD  Flags;           // Status flags
-   WORD  BlockingValue;   // Value used for blocking access
-   WORD  MaxValue;        // Semaphore maximum value
-   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
-   struct SemProcess {
-      LONG ProcessID;
-      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
-      UBYTE BlockCount;      // Count of blocking locks currently recorded
-      UBYTE AccessCount;     // Count of access locks currently recorded
-      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
-   } Processes[20];
-   //LONG     FIFO[10];       // List of processes currently queued for access
-};
 
 struct ActionMessage {
    OBJECTID ObjectID;        // The object that is to receive the action

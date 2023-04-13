@@ -511,7 +511,7 @@ static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
    STRING buffer = Args->Buffer;
    buffer[0] = 0;
 
-   if (!StrCompare("resolution(", Args->Field, 11, 0)) {
+   if (!StrCompare("resolution(", Args->Field, 11)) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Field + 11;
