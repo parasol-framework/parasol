@@ -9,6 +9,22 @@
 #include <array>
 
 //********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
+extern struct ActionTable *glActions;
+extern OBJECTPTR modDisplay; // Required by fluid_input.c
+extern OBJECTPTR modFluid;
+extern struct DisplayBase *DisplayBase;
+extern OBJECTPTR clFluid;
+extern std::unordered_map<std::string, ULONG> glStructSizes;
+
+//********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
 // Note that struct name hashes are case sensitive.
 
@@ -25,14 +41,6 @@ inline ULONG STRUCTHASH(CSTRING String)
    }
    return hash;
 }
-
-//********************************************************************************************************************
-
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
 
 //********************************************************************************************************************
 
@@ -54,13 +62,32 @@ struct actionmonitor {
    ~actionmonitor() {
       if (ObjectID) {
          pf::Log log(__FUNCTION__);
-         log.branch("Unsubscribe action %d from object #%d", ActionID, ObjectID);
+         log.trace("Unsubscribe action %s from object #%d", glActions[ActionID].Name, ObjectID);
          OBJECTPTR obj;
          if (!AccessObject(ObjectID, 3000, &obj)) {
             UnsubscribeAction(obj, ActionID);
             ReleaseObject(obj);
          }
       }
+   }
+
+   actionmonitor(actionmonitor &&move) noexcept :
+      Object(move.Object), Args(move.Args), Function(move.Function), Reference(move.Reference), ActionID(move.ActionID), ObjectID(move.ObjectID) {
+      move.ObjectID = 0;
+   }
+
+   actionmonitor& operator=(actionmonitor &&move) noexcept {
+      move.swap(*this);
+      return *this;
+   }
+
+   void swap(actionmonitor &other) noexcept {
+      std::swap(Object, other.Object);
+      std::swap(Args, other.Args);
+      std::swap(Function, other.Function);
+      std::swap(Reference, other.Reference);
+      std::swap(ActionID, other.ActionID);
+      std::swap(ObjectID, other.ObjectID);
    }
 };
 
@@ -327,14 +354,6 @@ struct lua_ref {
    CPTR Address;
    LONG Ref;
 };
-
-extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
-extern struct ActionTable *glActions;
-extern OBJECTPTR modDisplay; // Required by fluid_input.c
-extern OBJECTPTR modFluid;
-extern struct DisplayBase *DisplayBase;
-extern OBJECTPTR clFluid;
-extern std::unordered_map<std::string, ULONG> glStructSizes;
 
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
