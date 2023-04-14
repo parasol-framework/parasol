@@ -1413,7 +1413,7 @@ static ERROR create_picture_class(void)
       fl::ClassVersion(VER_PICTURE),
       fl::Name("Picture"),
       fl::Category(CCF_GRAPHICS),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::FileExtension("*.png"),
       fl::FileDescription("PNG Picture"),
       fl::FileHeader("[0:$89504e470d0a1a0a]"),

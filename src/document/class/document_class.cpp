@@ -1441,7 +1441,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
-   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
+   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
    return ERR_Okay;
 }
 

@@ -1,14 +1,6 @@
 /*********************************************************************************************************************
 
-This file is in the public domain and may be distributed and modified without
-restriction.
-
-**********************************************************************************************************************
-
-This version of the initialisation process does not define a main() function.
-Parasol must be initialised via the init_parasol() function and closed with
-close_parasol().  Another difference vs startup-win.c is that error messages
-are returned by the function and not automatically presented in a dialog box.
+This file is in the public domain and may be distributed and modified without restriction.
 
 *********************************************************************************************************************/
 
@@ -114,7 +106,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.CoreVersion = 0; // Minimum required core version
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error = ERR_Okay;
-   info.Flags = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_ARGS|OPF_ERROR;
+   info.Flags = OPF::CORE_VERSION|OPF::COMPILED_AGAINST|OPF::ARGS|OPF::ERROR;
 
    if ((CoreBase = opencore(&info))) {
       OBJECTPTR task = CurrentTask();

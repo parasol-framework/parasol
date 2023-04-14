@@ -77,9 +77,9 @@ static ERROR RECTANGLE_MoveToPoint(extVectorRectangle *Self, struct acMoveToPoin
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Flags & MTF_X) Self->rX = Args->X;
-   if (Args->Flags & MTF_Y) Self->rY = Args->Y;
-   if (Args->Flags & MTF_RELATIVE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->rX = Args->X;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->rY = Args->Y;
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_RELATIVE_X | DMF_RELATIVE_Y);
    reset_path(Self);
    return ERR_Okay;

@@ -5715,7 +5715,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    Self->NoWhitespace = TRUE; // Reset whitespace flag
 
-   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
+   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF::X|MTF::Y);
 
    //drwPermitDrawing();
 
@@ -8341,7 +8341,7 @@ static void show_bookmark(extDocument *Self, CSTRING Bookmark)
       // Get the vertical position of the index and scroll to it
 
       auto esc_index = escape_data<escIndex>(Self->Stream, start);
-      acScrollToPoint(Self,  0, esc_index->Y - 4, 0, MTF_Y);
+      acScrollToPoint(Self,  0, esc_index->Y - 4, 0, MTF::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark);
 }

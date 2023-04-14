@@ -13,7 +13,7 @@ behaviour between platforms can vary.
 
 On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This
 reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to.
-If historical buffering is enabled with the `CLF_HISTORY_BUFFER` option then the clipboard API will actively monitor
+If historical buffering is enabled with the `CPF::HISTORY_BUFFER` option then the clipboard API will actively monitor
 the clipboard and store copied data in the local `clipboard:` file cache.  This results in additional overhead to
 clipboard management.
 
@@ -94,7 +94,7 @@ static ERROR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &I
 {
    pf::Log log;
 
-   if (Self->Flags & CLF_DRAG_DROP) return ERR_NoSupport;
+   if ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL) return ERR_NoSupport;
 
 #ifdef _WIN32
    // Build a list of resolved path names in a new buffer that is suitable for passing to Windows.
@@ -123,7 +123,7 @@ static ERROR add_text_to_host(objClipboard *Self, CSTRING String, LONG Length = 
 {
    pf::Log log(__FUNCTION__);
 
-   if (Self->Flags & CLF_DRAG_DROP) return ERR_NoSupport;
+   if ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL) return ERR_NoSupport;
 
 #ifdef _WIN32
    // Copy text to the windows clipboard.  This requires a conversion from UTF-8 to UTF-16.
@@ -361,7 +361,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else return log.warning(error);
    }
-   else if ((Args->Datatype IS DATA_REQUEST) and (Self->Flags & CLF_DRAG_DROP))  {
+   else if ((Args->Datatype IS DATA_REQUEST) and ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL))  {
       auto request = (struct dcRequest *)Args->Buffer;
       log.branch("Data request from #%d received for item %d, datatype %d", Args->Object->UID, request->Item, request->Preference[0]);
 
@@ -451,7 +451,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
    Args->Files = NULL;
 
-   if (!(Self->Flags & CLF_HISTORY_BUFFER)) {
+   if ((Self->Flags & CPF::HISTORY_BUFFER) IS CPF::NIL) {
 #ifdef _WIN32
       // If the history buffer is disabled then we need to actively retrieve whatever Windows has on the clipboard.
       if (winCurrentClipboardID() != glLastClipID) winCopyClipboard();
@@ -464,7 +464,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
    // Find the first clipboard entry to match what has been requested
 
-   if (Self->Flags & CLF_HISTORY_BUFFER) {
+   if ((Self->Flags & CPF::HISTORY_BUFFER) != CPF::NIL) {
       if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
          if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return log.warning(ERR_OutOfRange);
          std::advance(clip, Args->Index);
@@ -514,7 +514,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
 static ERROR CLIPBOARD_Init(objClipboard *Self, APTR Void)
 {
-   if (Self->Flags & CLF_HISTORY_BUFFER) glHistoryLimit = MAX_CLIPS;
+   if ((Self->Flags & CPF::HISTORY_BUFFER) != CPF::NIL) glHistoryLimit = MAX_CLIPS;
 
    // Create a directory under temp: to store clipboard data
 

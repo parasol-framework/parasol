@@ -181,9 +181,9 @@ static ERROR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Flags & MTF_X) Self->wX = Args->X;
-   if (Args->Flags & MTF_Y) Self->wY = Args->Y;
-   if (Args->Flags & MTF_RELATIVE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->wX = Args->X;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->wY = Args->Y;
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_RELATIVE_X | DMF_RELATIVE_Y);
    reset_path(Self);
    return ERR_Okay;

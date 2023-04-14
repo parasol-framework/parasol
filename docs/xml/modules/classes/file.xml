@@ -43,7 +43,7 @@
 <p>To create a new file from scratch, specify the <code>NEW</code> flag.  This will overwrite any file that exists at the target path.</p>
 <p>To read and write data to the file, specify the <code>READ</code> and/or <code>WRITE</code> modes in the <field>Flags</field> field prior to initialisation. If a file is read-only and the <code>WRITE</code> and <code>READ</code> flags are set in combination, the <code>WRITE</code> flag will be dropped and initialisation will continue as normal.</p>
 <p>If neither of the <code>NEW</code>, <code>READ</code> or <code>WRITE</code> flags are specified, the file object is prepared and queried from disk (if it exists), but will not be opened.  It will be necessary to <action>Activate</action> the file in order to open it.</p>
-<p>The File class supports RAM based file buffering - this is activated by using the BUFFER flag and setting the Size field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.</p>
+<p>The File class supports RAM based file buffering - this is activated by using the <code>BUFFER</code> flag and setting the Size field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.</p>
 <p>Strings can also be loaded into file buffers for read/write access.  This is achieved by specifying the <field>Path</field> <code>string:Data\0</code>, where Data is a sequence of characters to be loaded into a virtual memory space.</p>
       </description>
       <result>
@@ -66,7 +66,7 @@
       <name>Read</name>
       <comment>Reads data from a file.</comment>
       <description>
-<p>Reads data from a file into the given buffer.  Increases the value in the <field>Position</field> field by the amount of bytes read from the file data.  The FL::READ bit in the <field>Flags</field> field must have been set on file initialisation, or the call will fail.</p>
+<p>Reads data from a file into the given buffer.  Increases the value in the <field>Position</field> field by the amount of bytes read from the file data.  The <code>FL::READ</code> bit in the <field>Flags</field> field must have been set on file initialisation, or the call will fail.</p>
 <p>It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g. if the end of the file has been reached.  The Result parameter will be returned as zero in such cases.  Check the current <field>Position</field> against the <field>Size</field> to confirm that the end has been reached.</p>
       </description>
       <result>
@@ -100,7 +100,7 @@
       <name>Write</name>
       <comment>Writes data to a file.</comment>
       <description>
-<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the FL::WRITE bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
+<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the <code>FL::WRITE</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
       </description>
       <result>
         <error code="Okay">All of the data was written to the file.</error>
@@ -141,7 +141,7 @@
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
       </input>
       <description>
-<p>This method is used to copy the data of a file object to another location.  All of the data will be copied, effectively creating a clone of the original file information.  The file object must have been initialised with the FL::READ flag, or the copy operation will not work (this restriction does not apply to directories).  If a matching file name already exists at the destination path, it will be over-written with the new data.</p>
+<p>This method is used to copy the data of a file object to another location.  All of the data will be copied, effectively creating a clone of the original file information.  The file object must have been initialised with the <code>FL::READ</code> flag, or the copy operation will not work (this restriction does not apply to directories).  If a matching file name already exists at the destination path, it will be over-written with the new data.</p>
 <p>The <field>Position</field> field will be reset as a result of calling this method.</p>
 <p>When copying directories with this method, the entire folder structure (i.e. all of the folder contents) will be copied to the new location.  If an error occurs when copying a sub-folder or file, the procedure will be aborted and an error code will be returned.</p>
       </description>
@@ -190,7 +190,7 @@
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
       </input>
       <description>
-<p>This method is used to move the data of a file to another location.  If the file object represents a folder, then the folder and all of its contents will be moved.  The file object must have been initialised with the FL::READ flag, or the move operation will not work (this restriction does not apply to directories).  If a file already exists at the destination path then it will be over-written with the new data.</p>
+<p>This method is used to move the data of a file to another location.  If the file object represents a folder, then the folder and all of its contents will be moved.  The file object must have been initialised with the <code>FL::READ</code> flag, or the move operation will not work (this restriction does not apply to directories).  If a file already exists at the destination path then it will be over-written with the new data.</p>
 <p>The <field>Position</field> field will be reset as a result of calling this method.</p>
       </description>
       <result>
@@ -231,7 +231,7 @@
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
-<p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <field>Position</field> field by the amount of bytes read from the file.  You must have set the FL::READ bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
+<p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <field>Position</field> field by the amount of bytes read from the file.  You must have set the <code>FL::READ</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
 <p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns ERR_NoData when it runs out of information to read from the file.</p>
       </description>
       <result>

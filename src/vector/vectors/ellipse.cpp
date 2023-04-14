@@ -93,9 +93,9 @@ static ERROR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *A
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Flags & MTF_X) Self->eCX = Args->X;
-   if (Args->Flags & MTF_Y) Self->eCY = Args->Y;
-   if (Args->Flags & MTF_RELATIVE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y) & ~(DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y);
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->eCX = Args->X;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->eCY = Args->Y;
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y) & ~(DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y) & ~(DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y);
    reset_path(Self);
    return ERR_Okay;

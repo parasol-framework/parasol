@@ -188,7 +188,7 @@
       <name>Flags</name>
       <comment>Optional flag settings.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="CLF">INT</type>
+      <type lookup="CLF">CLF</type>
       <description>
 <types lookup="CLF"/>
       </description>

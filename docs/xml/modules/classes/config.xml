@@ -266,7 +266,7 @@ print('The Action class is located at ' .. str)
       <name>Flags</name>
       <comment>Optional flags may be set here.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="CNF">INT</type>
+      <type lookup="CNF">CNF</type>
       <description>
 <types lookup="CNF"/>
       </description>

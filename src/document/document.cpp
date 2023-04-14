@@ -976,7 +976,7 @@ static ERROR add_document_class(void)
       fl::ClassVersion(VER_DOCUMENT),
       fl::Name("Document"),
       fl::Category(CCF_GUI),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clDocumentActions),
       fl::Methods(clDocumentMethods),
       fl::Fields(clFields),

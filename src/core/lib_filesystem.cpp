@@ -3033,7 +3033,7 @@ ERROR load_datatypes(void)
 
    if (reload) {
       if (auto cfg = objConfig::create::untracked(fl::Path("config:users/associations.cfg"),
-            fl::Flags(CNF_OPTIONAL_FILES))) {
+            fl::Flags(CNF::OPTIONAL_FILES))) {
          if (glDatatypes) FreeResource(glDatatypes);
          glDatatypes = cfg;
       }

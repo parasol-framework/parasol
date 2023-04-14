@@ -1323,7 +1323,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    // Force certain flags on the class' behalf
 
-   if (mc->Flags & CLF_NO_OWNERSHIP) Flags |= NF::UNTRACKED;
+   if ((mc->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) Flags |= NF::UNTRACKED;
 
    if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
 
@@ -1339,7 +1339,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
       // Tracking for our new object is configured here.
 
-      if (mc->Flags & CLF_NO_OWNERSHIP) { } // Used by classes like RootModule to avoid tracking back to the task.
+      if ((mc->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) { } // Used by classes like RootModule to avoid tracking back to the task.
       else if ((Flags & NF::UNTRACKED) != NF::NIL) {
          if (class_id IS ID_MODULE); // Untracked modules have no owner, due to the expunge process.
          else {
@@ -1656,8 +1656,8 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    if (Object->OwnerID IS Owner->UID) return ERR_Okay;
 
-   if (Object->ExtClass->Flags & CLF_NO_OWNERSHIP) {
-      log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
+   if ((Object->ExtClass->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) {
+      log.traceWarning("Cannot set the object owner as CLF::NO_OWNERSHIP is set in its class.");
       return ERR_Okay;
    }
 

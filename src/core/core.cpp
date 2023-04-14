@@ -170,7 +170,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    LONG i;
 
    if (!Info) return NULL;
-   if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
    glOpenInfo   = Info;
    tlMainThread = TRUE;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
@@ -284,9 +284,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #error Require code to obtain the process ID.
    #endif
 
-   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP::ROOT_PATH, Info->RootPath);
-   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP::MODULE_PATH, Info->ModulePath);
-   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP::SYSTEM_PATH, Info->SystemPath);
+   if ((Info->Flags & OPF::ROOT_PATH) != OPF::NIL) SetResourcePath(RP::ROOT_PATH, Info->RootPath);
+   if ((Info->Flags & OPF::MODULE_PATH) != OPF::NIL) SetResourcePath(RP::MODULE_PATH, Info->ModulePath);
+   if ((Info->Flags & OPF::SYSTEM_PATH) != OPF::NIL) SetResourcePath(RP::SYSTEM_PATH, Info->SystemPath);
 
    if (glRootPath.empty())   {
       #ifdef _WIN32
@@ -323,23 +323,23 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Process the Information structure
 
-   if (Info->Flags & OPF_CORE_VERSION) {
+   if ((Info->Flags & OPF::CORE_VERSION) != OPF::NIL) {
       if (Info->CoreVersion > VER_CORE) {
          KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_CoreVersion;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
          return NULL;
       }
    }
 
    // Debug processing
 
-   if (Info->Flags & OPF_DETAIL)  glLogLevel = (WORD)Info->Detail;
-   if (Info->Flags & OPF_MAX_DEPTH) glMaxDepth = (WORD)Info->MaxDepth;
-   if (Info->Flags & OPF_SHOW_MEMORY) glShowPrivate = TRUE;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)  glLogLevel = (WORD)Info->Detail;
+   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL) glMaxDepth = (WORD)Info->MaxDepth;
+   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = TRUE;
 
    // Android sets an important JNI pointer on initialisation.
 
-   if ((Info->Flags & OPF_OPTIONS) and (Info->Options)) {
+   if (((Info->Flags & OPF::OPTIONS) != OPF::NIL) and (Info->Options)) {
       for (LONG i=0; LONG(Info->Options[i].Tag) != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
             case TOI::ANDROID_ENV: {
@@ -355,7 +355,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Check if the privileged flag has been set, which means "don't drop administration privileges if my binary is known to be suid".
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   if ((Info->Flags & OPF_PRIVILEGED) and (geteuid() != getuid())) {
+   if (((Info->Flags & OPF::PRIVILEGED) != OPF::NIL) and (geteuid() != getuid())) {
       glPrivileged = TRUE;
    }
 #endif
@@ -363,7 +363,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    std::forward_list<std::string> volumes;
 
    pf::vector<std::string> newargs;
-   if (Info->Flags & OPF_ARGS) {
+   if ((Info->Flags & OPF::ARGS) != OPF::NIL) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
          if ((arg[0] != '-') or (arg[1] != '-')) { newargs.push_back(arg); continue; }
@@ -412,7 +412,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
    }
 
-   glShowIO = (Info->Flags & OPF_SHOW_IO) ? TRUE : FALSE;
+   glShowIO = ((Info->Flags & OPF::SHOW_IO) != OPF::NIL);
 
 #if defined(__unix__) && !defined(__ANDROID__)
    // Setting stdout to non-blocking can prevent dead-locks at the cost of dropping excess output.  It is only
@@ -508,7 +508,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (open_shared_control() != ERR_Okay) {
       CloseCore();
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
+      if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
       return NULL;
    }
 
@@ -534,19 +534,19 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
-                  if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+                  if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
                   return NULL;
                }
             }
             else {
-               if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+               if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
                return NULL;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
          return NULL;
       }
 
@@ -591,7 +591,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    fs_initialised = true;
 
-   if (!(Info->Flags & OPF_SCAN_MODULES)) {
+   if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
       objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
@@ -648,7 +648,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
-   if (Info->Flags & OPF_SCAN_MODULES) {
+   if ((Info->Flags & OPF::SCAN_MODULES) != OPF::NIL) {
       log.msg("Class scanning has been enforced by user request.");
       glScanClasses = true;
    }
@@ -662,7 +662,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    log.msg("PROGRAM OPENED");
 
    glSharedControl->SystemState = 0; // Indicates that initialisation is complete.
-   if (Info->Flags & OPF_ERROR) Info->Error = ERR_Okay;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
    return LocalCoreBase;
 }
@@ -1353,9 +1353,9 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
    // default settings for a fixed installation are:
    //
-   // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
-   // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
-   // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
+   // OPF::ROOT_PATH   : parasol : glRootPath   = /usr/local
+   // OPF::MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
+   // OPF::SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
@@ -1408,7 +1408,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
 
-   if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
+   if (((glOpenInfo->Flags & OPF::OPTIONS) != OPF::NIL) and (glOpenInfo->Options)) {
       for (LONG i=0; LONG(glOpenInfo->Options[i].Tag) != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
             case TOI::LOCAL_CACHE: {

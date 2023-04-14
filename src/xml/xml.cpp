@@ -1738,7 +1738,7 @@ static ERROR add_xml_class(void)
       fl::FileExtension("*.xml"),
       fl::FileDescription("XML File"),
       fl::Category(CCF_DATA),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clXMLActions),
       fl::Methods(clXMLMethods),
       fl::Fields(clFields),

@@ -847,18 +847,28 @@ DEFINE_ENUM_FLAG_OPERATORS(MHF)
 
 // ScrollToPoint flags
 
-#define STP_X 0x00000001
-#define STP_Y 0x00000002
-#define STP_Z 0x00000004
-#define STP_ANIM 0x00000008
+enum class STP : ULONG {
+   NIL = 0,
+   X = 0x00000001,
+   Y = 0x00000002,
+   Z = 0x00000004,
+   ANIM = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(STP)
 
 // MoveToPoint flags
 
-#define MTF_X 0x00000001
-#define MTF_Y 0x00000002
-#define MTF_Z 0x00000004
-#define MTF_ANIM 0x00000008
-#define MTF_RELATIVE 0x00000010
+enum class MTF : ULONG {
+   NIL = 0,
+   X = 0x00000001,
+   Y = 0x00000002,
+   Z = 0x00000004,
+   ANIM = 0x00000008,
+   RELATIVE = 0x00000010,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MTF)
 
 // VlogF flags
 
@@ -990,22 +1000,27 @@ enum class STT : LONG {
    STRING = 4,
 };
 
-#define OPF_DEPRECATED 0x00000001
-#define OPF_CORE_VERSION 0x00000002
-#define OPF_OPTIONS 0x00000004
-#define OPF_MAX_DEPTH 0x00000008
-#define OPF_DETAIL 0x00000010
-#define OPF_SHOW_MEMORY 0x00000020
-#define OPF_SHOW_IO 0x00000040
-#define OPF_SHOW_ERRORS 0x00000080
-#define OPF_ARGS 0x00000100
-#define OPF_ERROR 0x00000200
-#define OPF_COMPILED_AGAINST 0x00000400
-#define OPF_PRIVILEGED 0x00000800
-#define OPF_SYSTEM_PATH 0x00001000
-#define OPF_MODULE_PATH 0x00002000
-#define OPF_ROOT_PATH 0x00004000
-#define OPF_SCAN_MODULES 0x00008000
+enum class OPF : ULONG {
+   NIL = 0,
+   DEPRECATED = 0x00000001,
+   CORE_VERSION = 0x00000002,
+   OPTIONS = 0x00000004,
+   MAX_DEPTH = 0x00000008,
+   DETAIL = 0x00000010,
+   SHOW_MEMORY = 0x00000020,
+   SHOW_IO = 0x00000040,
+   SHOW_ERRORS = 0x00000080,
+   ARGS = 0x00000100,
+   ERROR = 0x00000200,
+   COMPILED_AGAINST = 0x00000400,
+   PRIVILEGED = 0x00000800,
+   SYSTEM_PATH = 0x00001000,
+   MODULE_PATH = 0x00002000,
+   ROOT_PATH = 0x00004000,
+   SCAN_MODULES = 0x00008000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(OPF)
 
 enum class TOI : LONG {
    NIL = 0,
@@ -1279,15 +1294,25 @@ enum class RP : LONG {
 
 // Flags for the MetaClass.
 
-#define CLF_PROMOTE_INTEGRAL 0x00000001
-#define CLF_NO_OWNERSHIP 0x00000002
+enum class CLF : ULONG {
+   NIL = 0,
+   PROMOTE_INTEGRAL = 0x00000001,
+   NO_OWNERSHIP = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLF)
 
 // Flags for the Config class.
 
-#define CNF_STRIP_QUOTES 0x00000001
-#define CNF_AUTO_SAVE 0x00000002
-#define CNF_OPTIONAL_FILES 0x00000004
-#define CNF_NEW 0x00000008
+enum class CNF : ULONG {
+   NIL = 0,
+   STRIP_QUOTES = 0x00000001,
+   AUTO_SAVE = 0x00000002,
+   OPTIONAL_FILES = 0x00000004,
+   NEW = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CNF)
 
 // Raw key codes
 
@@ -1564,19 +1589,19 @@ struct OpenTag {
 };
 
 struct OpenInfo {
-   CSTRING Name;            // OPF_NAME
-   CSTRING *Args;           // OPF_ARGS
-   CSTRING SystemPath;      // OPF_SYSTEM_PATH
-   CSTRING ModulePath;      // OPF_MODULE_PATH
-   CSTRING RootPath;        // OPF_ROOT_PATH
-   struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
-   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
-   LONG    MaxDepth;        // OPF_MAX_DEPTH
-   LONG    Detail;          // OPF_DETAIL
-   LONG    ArgCount;        // OPF_ARGS
-   ERROR   Error;           // OPF_ERROR
-   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF_CORE_VERSION
+   CSTRING Name;            // OPF::NAME
+   CSTRING *Args;           // OPF::ARGS
+   CSTRING SystemPath;      // OPF::SYSTEM_PATH
+   CSTRING ModulePath;      // OPF::MODULE_PATH
+   CSTRING RootPath;        // OPF::ROOT_PATH
+   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
+   LONG    MaxDepth;        // OPF::MAX_DEPTH
+   LONG    Detail;          // OPF::DETAIL
+   LONG    ArgCount;        // OPF::ARGS
+   ERROR   Error;           // OPF::ERROR
+   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
+   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -2865,7 +2890,7 @@ struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
 struct acNewChild      { OBJECTPTR Object; };
 struct acNewOwner      { OBJECTPTR NewOwner; };
 struct acRead          { APTR Buffer; LONG Length; LONG Result; };
@@ -2876,7 +2901,7 @@ struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
 struct acSeek          { DOUBLE Offset; LONG Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
@@ -2971,7 +2996,7 @@ inline ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    return Action(AC_Scroll, Object, &args);
 }
 
-inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
    return Action(AC_ScrollToPoint, Object, &args);
 }
@@ -2988,7 +3013,7 @@ inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG S
    return error;
 }
 
-inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
 }
@@ -3092,7 +3117,7 @@ class objMetaClass : public BaseClass {
    CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
    CSTRING Path;                        // The path to the module binary that represents the class.
    LONG    Size;                        // The total size of the object structure represented by the MetaClass.
-   LONG    Flags;                       // Optional flag settings.
+   CLF     Flags;                       // Optional flag settings.
    CLASSID ClassID;                     // Specifies the ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
@@ -3148,7 +3173,7 @@ class objMetaClass : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const CLF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -3524,7 +3549,7 @@ class objConfig : public BaseClass {
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
    STRING GroupFilter;  // Set this field to enable group filtering.
-   LONG   Flags;        // Optional flags may be set here.
+   CNF    Flags;        // Optional flags may be set here.
    public:
    ConfigGroups *Groups;
 
@@ -3629,7 +3654,7 @@ class objConfig : public BaseClass {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const CNF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
@@ -4509,7 +4534,7 @@ inline ERROR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
    return ActionMsg(AC_Move, ObjectID, &move);
 }
 
-inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = MTF_X|MTF_Y) {
+inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
 }
@@ -4524,7 +4549,7 @@ inline ERROR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Dep
    return ActionMsg(AC_Resize, ObjectID, &resize);
 }
 
-inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = STP_X|STP_Y) {
+inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
    struct acScrollToPoint scroll = { X, Y, Z, Flags };
    return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
 }

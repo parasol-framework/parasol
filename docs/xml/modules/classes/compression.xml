@@ -92,7 +92,7 @@ err = cmp.mtDecompressFile('*.def', 'temp:')
         <error code="File">An error was encountered when trying to open the source file.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NoSupport">The sub-class does not support this method.</error>
-        <error code="NoPermission">The CMF_READ_ONLY flag has been set on the compression object.</error>
+        <error code="NoPermission">The READ_ONLY flag has been set on the compression object.</error>
       </result>
     </method>
 

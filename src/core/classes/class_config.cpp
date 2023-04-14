@@ -63,9 +63,9 @@ static ERROR GET_TotalGroups(extConfig *, LONG *);
 static ERROR CONFIG_SaveSettings(extConfig *, APTR);
 
 static const FieldDef clFlags[] = {
-   { "AutoSave",    CNF_AUTO_SAVE },
-   { "StripQuotes", CNF_STRIP_QUOTES },
-   { "New",         CNF_NEW },
+   { "AutoSave",    CNF::AUTO_SAVE },
+   { "StripQuotes", CNF::STRIP_QUOTES },
+   { "New",         CNF::NEW },
    { NULL, 0 }
 };
 
@@ -169,7 +169,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
             else error = ERR_AllocMemory;
          }
       }
-      else if (Self->Flags & CNF_OPTIONAL_FILES) error = ERR_Okay;
+      else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR_Okay;
 
       while ((*Path) and (*Path != ';') and (*Path != '|')) Path++;
       if (*Path) Path++; // Skip separator
@@ -304,7 +304,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & CNF_AUTO_SAVE) {
+   if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) {
       if (Self->Path) {
          auto crc = calc_crc(Self);
 
@@ -363,7 +363,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data even if the path is defined.
+   if ((Self->Flags & CNF::NEW) != CNF::NIL) return ERR_Okay; // Do not load any data even if the path is defined.
 
    ERROR error = ERR_Okay;
    if (Self->Path) {
@@ -374,7 +374,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
       }
    }
 
-   if (Self->Flags & CNF_AUTO_SAVE) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
+   if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
    return error;
 }
 
@@ -518,7 +518,7 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
    log.branch();
 
    ULONG crc = calc_crc(Self);
-   if ((Self->Flags & CNF_AUTO_SAVE) and (crc IS Self->CRC)) return ERR_Okay;
+   if (((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) and (crc IS Self->CRC)) return ERR_Okay;
 
    if (Self->Path) {
       objFile::create file = {
@@ -1007,7 +1007,7 @@ static ERROR parse_config(extConfig *Self, CSTRING Buffer)
             if (*data) data++;
             while ((*data) and (*data <= 0x20)) data++; // Skip any leading whitespace, including new lines
 
-            if ((Self->Flags & CNF_STRIP_QUOTES) and (*data IS '"')) {
+            if (((Self->Flags & CNF::STRIP_QUOTES) != CNF::NIL) and (*data IS '"')) {
                data++;
                for (len=0; (data[len]) and (data[len] != '"'); len++);
                value.assign(data, 0, len);

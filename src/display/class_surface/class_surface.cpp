@@ -1875,10 +1875,10 @@ static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 {
    struct acMove move;
 
-   if (Args->Flags & MTF_X) move.DeltaX = Args->X - Self->X;
+   if ((Args->Flags & MTF::X) != MTF::NIL) move.DeltaX = Args->X - Self->X;
    else move.DeltaX = 0;
 
-   if (Args->Flags & MTF_Y) move.DeltaY = Args->Y - Self->Y;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) move.DeltaY = Args->Y - Self->Y;
    else move.DeltaY = 0;
 
    move.DeltaZ = 0;
@@ -2295,7 +2295,12 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
          }
       }
 
-      struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, Args->Flags };
+      auto flags = MTF::NIL;
+      if ((Args->Flags & STP::X) != STP::NIL) flags |= MTF::X;
+      if ((Args->Flags & STP::Y) != STP::NIL) flags |= MTF::Y;
+      if ((Args->Flags & STP::Z) != STP::NIL) flags |= MTF::Z;
+      if ((Args->Flags & STP::ANIM) != STP::NIL) flags |= MTF::ANIM;
+      struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, flags };
       for (auto &id : surfaces) QueueAction(AC_MoveToPoint, id, &move);
    }
 

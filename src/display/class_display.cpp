@@ -1102,11 +1102,11 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
    // winMoveWindow() treats the coordinates as being indicative of the client area.
 
    if (!winMoveWindow(Self->WindowHandle,
-         (Args->Flags & MTF_X) ? Args->X : F2T(Self->X) + Self->LeftMargin,
-         (Args->Flags & MTF_Y) ? Args->Y : F2T(Self->Y) + Self->TopMargin)) return ERR_Failed;
+         ((Args->Flags & MTF::X) != MTF::NIL) ? Args->X : F2T(Self->X) + Self->LeftMargin,
+         ((Args->Flags & MTF::Y) != MTF::NIL) ? Args->Y : F2T(Self->Y) + Self->TopMargin)) return ERR_Failed;
 
-   if (Args->Flags & MTF_X) Self->X = F2T(Args->X) + Self->LeftMargin;
-   if (Args->Flags & MTF_Y) Self->Y = F2T(Args->Y) + Self->TopMargin;
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = F2T(Args->X) + Self->LeftMargin;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = F2T(Args->Y) + Self->TopMargin;
    return ERR_Okay;
 
 #elif __xwindows__
@@ -1114,11 +1114,11 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
    // Handling margins isn't necessary as the window manager will take that into account when it receives the move request.
 
    XMoveWindow(XDisplay, Self->XWindowHandle,
-      (Args->Flags & MTF_X) ? F2T(Args->X) : Self->X,
-      (Args->Flags & MTF_Y) ? F2T(Args->Y) : Self->Y);
+      ((Args->Flags & MTF::X) != MTF::NIL) ? F2T(Args->X) : Self->X,
+      ((Args->Flags & MTF::Y) != MTF::NIL) ? F2T(Args->Y) : Self->Y);
 
-   if (Args->Flags & MTF_X) Self->X = F2T(Args->X);
-   if (Args->Flags & MTF_Y) Self->Y = F2T(Args->Y);
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = F2T(Args->X);
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = F2T(Args->Y);
    return ERR_Okay;
 
 #else
@@ -1208,7 +1208,7 @@ static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   struct acMoveToPoint moveto = { Args->X, Args->Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint moveto = { Args->X, Args->Y, 0, MTF::X|MTF::Y };
    DISPLAY_MoveToPoint(Self, &moveto);
 
    struct acResize resize = { Args->Width, Args->Height, Args->Depth };
@@ -2975,7 +2975,7 @@ static ERROR SET_X(extDisplay *Self, LONG Value)
       Self->X = Value;
       return ERR_Okay;
    }
-   else return acMoveToPoint(Self, Value, 0, 0, MTF_X);
+   else return acMoveToPoint(Self, Value, 0, 0, MTF::X);
 }
 
 /*********************************************************************************************************************
@@ -2999,7 +2999,7 @@ static ERROR SET_Y(extDisplay *Self, LONG Value)
       Self->Y = Value;
       return ERR_Okay;
    }
-   else return acMoveToPoint(Self, 0, Value, 0, MTF_Y);
+   else return acMoveToPoint(Self, 0, Value, 0, MTF::Y);
 }
 
 //********************************************************************************************************************
@@ -3095,7 +3095,7 @@ ERROR create_display_class(void)
       fl::ClassVersion(VER_DISPLAY),
       fl::Name("Display"),
       fl::Category(CCF_GRAPHICS),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clDisplayActions),
       fl::Methods(clDisplayMethods),
       fl::Fields(DisplayFields),

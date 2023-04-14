@@ -923,7 +923,7 @@ static void field_setup(extMetaClass *Class)
       ULONG integral[ARRAYSIZE(Class->Integral)];
 
       UBYTE int_count = 0;
-      if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
+      if ((Class->Flags & CLF::PROMOTE_INTEGRAL) != CLF::NIL) {
          for (unsigned i=0; i < Class->FieldLookup.size(); i++) {
             if (Class->FieldLookup[i].Flags & FD_INTEGRAL) {
                Class->Integral[int_count] = i;

@@ -582,7 +582,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
          LONG top_margin = display->TopMargin;
          ReleaseObject(display);
 
-         if (!acMoveToPoint(display, X - left_margin, Y - top_margin, 0, MTF_X|MTF_Y)) {
+         if (!acMoveToPoint(display, X - left_margin, Y - top_margin, 0, MTF::X|MTF::Y)) {
             Self->X = X;
             Self->Y = Y;
             UpdateSurfaceRecord(Self);

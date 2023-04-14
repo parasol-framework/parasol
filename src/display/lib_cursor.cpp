@@ -713,7 +713,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
 {
-   struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint move = { X, Y, 0, MTF::X|MTF::Y };
    if (auto pointer = gfxAccessPointer()) {
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
@@ -796,7 +796,7 @@ ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID
 
       if (Surface) {
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
-         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
+         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF::X|MTF::Y);
          acShow(Surface);
          acMoveToFront(Surface);
       }

@@ -244,9 +244,14 @@ class objSurface;
 
 // Clipboard flags
 
-#define CLF_DRAG_DROP 0x00000001
-#define CLF_HOST 0x00000002
-#define CLF_HISTORY_BUFFER 0x00000004
+enum class CPF : ULONG {
+   NIL = 0,
+   DRAG_DROP = 0x00000001,
+   HOST = 0x00000002,
+   HISTORY_BUFFER = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CPF)
 
 #define CEF_DELETE 0x00000001
 #define CEF_EXTEND 0x00000002
@@ -861,7 +866,7 @@ class objDisplay : public BaseClass {
    }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
@@ -1042,7 +1047,7 @@ class objClipboard : public BaseClass {
 
    using create = pf::Create<objClipboard>;
 
-   LONG Flags;    // Optional flags.
+   CPF Flags;    // Optional flags.
 
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
@@ -1059,7 +1064,7 @@ class objClipboard : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const CPF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -1317,7 +1322,7 @@ class objSurface : public BaseClass {
    }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
@@ -1341,7 +1346,7 @@ class objSurface : public BaseClass {
       struct acScroll args = { X, Y, Z };
       return Action(AC_Scroll, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }

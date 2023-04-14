@@ -544,7 +544,7 @@ static ERROR init_svg(void)
       fl::Actions(clSVGActions),
       fl::Methods(clSVGMethods),
       fl::Fields(clSVGFields),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Size(sizeof(extSVG)),
       fl::Path(MOD_PATH));
 

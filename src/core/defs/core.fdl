@@ -105,9 +105,9 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "STATIC: Keep the module code in memory",
     "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)")
 
-  flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
+  flags("STP", { strict=true, comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
-  flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
+  flags("MTF", { strict=true, comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
   flags("VLF", { strict=true, comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
 
@@ -173,7 +173,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "HEX: The string represents a hexadecimal number.",
     "STRING: The string represents plain-text.")
 
-  flags("OPF", { },
+  flags("OPF", { strict=true },
     "DEPRECATED",
     "CORE_VERSION",
     "OPTIONS",
@@ -386,11 +386,11 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
-  flags("CLF", { comment="Flags for the MetaClass." },
+  flags("CLF", { strict=true, comment="Flags for the MetaClass." },
     "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
 
-  flags("CNF", { comment="Flags for the Config class." },
+  flags("CNF", { strict=true, comment="Flags for the Config class." },
     "STRIP_QUOTES: Removes quotes from key values that are quote-encapsulated.",
     "AUTO_SAVE: When the configuration object is freed, automatically save the configuration data back to the original file source.",
     "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
@@ -678,19 +678,19 @@ struct OpenTag {
 };
 
 struct OpenInfo {
-   CSTRING Name;            // OPF_NAME
-   CSTRING *Args;           // OPF_ARGS
-   CSTRING SystemPath;      // OPF_SYSTEM_PATH
-   CSTRING ModulePath;      // OPF_MODULE_PATH
-   CSTRING RootPath;        // OPF_ROOT_PATH
-   struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
-   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
-   LONG    MaxDepth;        // OPF_MAX_DEPTH
-   LONG    Detail;          // OPF_DETAIL
-   LONG    ArgCount;        // OPF_ARGS
-   ERROR   Error;           // OPF_ERROR
-   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF_CORE_VERSION
+   CSTRING Name;            // OPF::NAME
+   CSTRING *Args;           // OPF::ARGS
+   CSTRING SystemPath;      // OPF::SYSTEM_PATH
+   CSTRING ModulePath;      // OPF::MODULE_PATH
+   CSTRING RootPath;        // OPF::ROOT_PATH
+   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
+   LONG    MaxDepth;        // OPF::MAX_DEPTH
+   LONG    Detail;          // OPF::DETAIL
+   LONG    ArgCount;        // OPF::ARGS
+   ERROR   Error;           // OPF::ERROR
+   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
+   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -1879,7 +1879,7 @@ struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
 struct acNewChild      { OBJECTPTR Object; };
 struct acNewOwner      { OBJECTPTR NewOwner; };
 struct acRead          { APTR Buffer; LONG Length; LONG Result; };
@@ -1890,7 +1890,7 @@ struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
 struct acSeek          { DOUBLE Offset; LONG Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
@@ -1985,7 +1985,7 @@ inline ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    return Action(AC_Scroll, Object, &args);
 }
 
-inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
    return Action(AC_ScrollToPoint, Object, &args);
 }
@@ -2002,7 +2002,7 @@ inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG S
    return error;
 }
 
-inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
 }
@@ -2416,7 +2416,7 @@ inline ERROR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
    return ActionMsg(AC_Move, ObjectID, &move);
 }
 
-inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = MTF_X|MTF_Y) {
+inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
 }
@@ -2431,7 +2431,7 @@ inline ERROR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Dep
    return ActionMsg(AC_Resize, ObjectID, &resize);
 }
 
-inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = STP_X|STP_Y) {
+inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
    struct acScrollToPoint scroll = { X, Y, Z, Flags };
    return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
 }

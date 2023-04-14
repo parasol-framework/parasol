@@ -869,7 +869,7 @@ extern "C" ERROR add_module_class(void)
       fl::BaseClassID(ID_ROOTMODULE),
       fl::ClassVersion(1.0),
       fl::Name("RootModule"),
-      fl::Flags(CLF_NO_OWNERSHIP),
+      fl::Flags(CLF::NO_OWNERSHIP),
       fl::Category(CCF_SYSTEM),
       fl::Actions(glRootModuleActions),
       fl::Fields(glRootModuleFields),

@@ -1321,12 +1321,12 @@ static ERROR SCINTILLA_ScrollToPoint(extScintilla *Self, struct acScrollToPoint 
 {
    pf::Log log;
 
-   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", (Args->Flags & STP_X) ? (LONG)Args->X : 0, (Args->Flags & STP_Y) ? (LONG)Args->Y : 0);
+   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", ((Args->Flags & STP::X) != STP::NIL) ? (LONG)Args->X : 0, ((Args->Flags & STP::Y) != STP::NIL) ? (LONG)Args->Y : 0);
 
    Self->ScrollLocked++;
 
-   if (Args->Flags & STP_X) Self->API->panScrollToX(Args->X);
-   if (Args->Flags & STP_Y) Self->API->panScrollToY(Args->Y);
+   if ((Args->Flags & STP::X) != STP::NIL) Self->API->panScrollToX(Args->X);
+   if ((Args->Flags & STP::Y) != STP::NIL) Self->API->panScrollToY(Args->Y);
 
    Self->ScrollLocked--;
    return ERR_Okay;
@@ -2541,7 +2541,7 @@ static ERROR create_scintilla(void)
       fl::ClassVersion(VER_SCINTILLA),
       fl::Name("Scintilla"),
       fl::Category(CCF_TOOL),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clScintillaActions),
       fl::Methods(clScintillaMethods),
       fl::Fields(clFields),
