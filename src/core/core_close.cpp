@@ -52,7 +52,7 @@ EXPORT void CloseCore(void)
                // to stop foreign processes that we've launched.
                kill(task.ProcessID, SIGHUP);
             #else
-               SendMessage(task.TaskID, MSGID_QUIT, 0, NULL, 0);
+               SendMessage(task.TaskID, MSGID_QUIT, MSF::NIL, NULL, 0);
             #endif
 
             WaitTime(0, -100000);
@@ -181,7 +181,7 @@ EXPORT void CloseCore(void)
 
       Expunge(true); // Third and final expunge.  Forcibly unloads modules.
 
-      VirtualVolume("archive", VAS_DEREGISTER, TAGEND);
+      VirtualVolume("archive", VAS::DEREGISTER, TAGEND);
 
       while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
@@ -204,14 +204,14 @@ EXPORT void CloseCore(void)
       if (glRootModuleClass)   { FreeResource(glRootModuleClass);   glRootModuleClass   = 0; }
 
       #ifdef __unix__
-         if (glSocket != -1) RegisterFD(glSocket, RFD_REMOVE, NULL, NULL);
+         if (glSocket != -1) RegisterFD(glSocket, RFD::REMOVE, NULL, NULL);
       #endif
 
       // Report FD's that have not been removed by the client
 
       if (!glCrashStatus) {
          for (auto &fd : glFDTable) {
-            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, fd.Flags);
+            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, LONG(fd.Flags));
          }
       }
    }

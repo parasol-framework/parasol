@@ -90,7 +90,7 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
       log.trace("Broadcasting event $%.8x%.8x",
          (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
          (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff));
-      SendMessage(0, MSGID_EVENT, 0, Event, EventSize);
+      SendMessage(0, MSGID_EVENT, MSF::NIL, Event, EventSize);
    }
 
    return ERR_Okay;
@@ -259,7 +259,7 @@ ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSiz
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   log.msg(VLF_EXTAPI|VLF_BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.msg(VLF::EXTAPI|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;

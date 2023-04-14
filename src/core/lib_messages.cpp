@@ -91,7 +91,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 
       if (glWFOList.empty()) {
          log.trace("All objects signalled.");
-         SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF_WAIT, NULL, 0); // Will result in ProcessMessages() terminating
+         SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF::WAIT, NULL, 0); // Will result in ProcessMessages() terminating
       }
    }
 }
@@ -190,8 +190,8 @@ up with the actual message data.
 
 -INPUT-
 mem Queue:  The memory ID of the message queue is specified here.  If zero, the message queue of the local task will be used.
-int Type:   The message type that you would like to receive, or zero if you would like to receive the next message on the queue.
-int Flags:  This argument is reserved for future use.  Set it to zero.
+int Type:   Filter down to this message type or set to zero to receive the next message on the queue.
+int(MSF) Flags:  This argument is reserved for future use.  Set it to zero.
 buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the incoming message information.  If set to NULL then all accompanying message data will be destroyed.
 bufsize Size:   The byte-size of the buffer that you have supplied.
 
@@ -204,7 +204,7 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG BufferSize)
+ERROR GetMessage(MEMORYID MessageMID, LONG Type, MSF Flags, APTR Buffer, LONG BufferSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -217,7 +217,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
    if (!Buffer) BufferSize = 0;
 
    MessageHeader *header;
-   if (Flags & MSF_ADDRESS) header = (MessageHeader *)(MAXINT)MessageMID;
+   if ((Flags & MSF::ADDRESS) != MSF::NIL) header = (MessageHeader *)(MAXINT)MessageMID;
    else if (AccessMemory(MessageMID, MEM_READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
       return ERR_AccessMemory;
    }
@@ -228,8 +228,8 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
    while (j < header->Count) {
       if (!msg->Type) goto next;
 
-      if (Flags & MSF_MESSAGE_ID) {
-         // The Type argument actually refers to a unique message ID when MSF_MESSAGE_ID is used
+      if ((Flags & MSF::MESSAGE_ID) != MSF::NIL) {
+         // The Type argument actually refers to a unique message ID when MSF::MESSAGE_ID is used
          if (msg->UniqueID != Type) goto next;
       }
       else if ((Type) and (msg->Type != Type)) goto next;
@@ -268,7 +268,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, LONG Flags, APTR Buffer, LONG B
       header->Count--;
       if (header->Count IS 0) header->NextEntry = 0;
 
-      if (!(Flags & MSF_ADDRESS)) ReleaseMemory(MessageMID);
+      if ((Flags & MSF::ADDRESS) IS MSF::NIL) ReleaseMemory(MessageMID);
       return ERR_Okay;
 
 next:
@@ -277,7 +277,7 @@ next:
       msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
    }
 
-   if (!(Flags & MSF_ADDRESS)) ReleaseMemory(MessageMID);
+   if ((Flags & MSF::ADDRESS) IS MSF::NIL) ReleaseMemory(MessageMID);
    return ERR_Search;
 }
 
@@ -304,7 +304,7 @@ If a message with a `MSGID_QUIT` ID is found on the queue, then the function ret
 ERR_Terminate.  The program must respond to the terminate request by exiting immediately.
 
 -INPUT-
-int(PMF) Flags:   Optional flags are specified here (currently no flags are provided).
+int(PMF) Flags: Optional flags are specified here (clients should set a value of zero).
 int TimeOut: A TimeOut value, measured in milliseconds.  If zero, the function will return as soon as all messages on the queue are processed.  If less than zero, the function does not return until a request for termination is received or a user message requires processing.
 
 -ERRORS-
@@ -315,7 +315,7 @@ TimeOut:
 
 *********************************************************************************************************************/
 
-ERROR ProcessMessages(LONG Flags, LONG TimeOut)
+ERROR ProcessMessages(PMF Flags, LONG TimeOut)
 {
    pf::Log log(__FUNCTION__);
 
@@ -346,7 +346,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
    if (TimeOut IS -1) timeout_end = 0x7fffffffffffffffLL; // Infinite loop
    else timeout_end = PreciseTime() + ((LARGE)TimeOut * 1000LL);
 
-   log.traceBranch("Flags: $%.8x, TimeOut: %d", Flags, TimeOut);
+   log.traceBranch("Flags: $%.8x, TimeOut: %d", LONG(Flags), TimeOut);
 
    ERROR returncode = ERR_Okay;
    Message *msg = NULL;
@@ -365,7 +365,7 @@ ERROR ProcessMessages(LONG Flags, LONG TimeOut)
 
       glTimerCycle++;
 timer_cycle:
-      if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK)));
+      if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL));
       else if (!thread_lock(TL_TIMER, 200)) {
          LARGE current_time = PreciseTime();
          for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
@@ -519,7 +519,7 @@ timer_cycle:
 
          if (!msgfound) break;
 
-         tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES_CURRENTMSG)
+         tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES::CURRENT_MSG)
 
          if (msg->Type IS MSGID_BREAK) {
             // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
@@ -593,7 +593,7 @@ timer_cycle:
       #endif
 
       LARGE wait = 0;
-      if ((repass) or (breaking) or ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))));
+      if ((repass) or (breaking) or ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -634,7 +634,7 @@ timer_cycle:
       // Continue the loop?
 
       if (repass) continue; // There are messages left unprocessed
-      else if (((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) or (breaking)) {
+      else if (((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
       }
@@ -648,7 +648,7 @@ timer_cycle:
 
    } while (1);
 
-   if ((glTaskState IS TSTATE_STOPPING) and (!(Flags & PMF_SYSTEM_NO_BREAK))) returncode = ERR_Terminate;
+   if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) returncode = ERR_Terminate;
 
    if (msg) FreeResource(msg);
 
@@ -669,7 +669,7 @@ other than `ERR_Okay`.  Use ~ReleaseMemory() to let go of the message queue when
 Here is an example that scans the queue of the active task:
 
 <pre>
-if (!AccessMemory(GetResource(RES_MESSAGEQUEUE), MEM_READ, &queue)) {
+if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, &queue)) {
    while (!ScanMessages(queue, &index, MSGID_QUIT, NULL, NULL)) {
       ...
    }
@@ -813,7 +813,7 @@ static void view_messages(MessageHeader *Header)
    }
 }
 
-ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
+ERROR SendMessage(OBJECTID TaskID, LONG Type, MSF Flags, APTR Data, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
@@ -835,13 +835,13 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, LONG Flags, APTR Data, LONG Size)
    TaskMessage *msg, *prevmsg;
    MessageHeader *header;
    if (!(error = AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&header))) {
-      if (Flags & (MSF_NO_DUPLICATE|MSF_UPDATE)) {
+      if ((Flags & (MSF::NO_DUPLICATE|MSF::UPDATE)) != MSF::NIL) {
          msg = (TaskMessage *)header->Buffer;
          prevmsg = NULL;
          i = 0;
          while (i < header->Count) {
             if (msg->Type IS Type) {
-               if (Flags & MSF_NO_DUPLICATE) {
+               if ((Flags & MSF::NO_DUPLICATE) != MSF::NIL) {
                   ReleaseMemory(glTaskMessageMID);
                   return ERR_Okay;
                }
@@ -999,7 +999,7 @@ Note that if an object has been signalled prior to entry to this function, its s
 object will not be monitored.
 
 -INPUT-
-int Flags:   Optional flags are specified here (currently no flags are provided).
+int(PMF) Flags: Optional flags are specified here (clients should set a value of zero).
 int TimeOut: A time-out value measured in milliseconds.  If this value is negative then no time-out applies and the function will not return until an incoming message or signal breaks it.
 struct(*ObjectSignal) ObjectSignals: A null-terminated array of objects to monitor for signals.
 
@@ -1014,7 +1014,7 @@ OutsideMainThread
 
 *********************************************************************************************************************/
 
-ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
+ERROR WaitForObjects(PMF Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
 {
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
@@ -1024,7 +1024,7 @@ ERROR WaitForObjects(LONG Flags, LONG TimeOut, ObjectSignal *ObjectSignals)
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR_OutsideMainThread);
 
-   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", Flags, TimeOut, ObjectSignals);
+   log.branch("Flags: $%.8x, Timeout: %d, Signals: %p", LONG(Flags), TimeOut, ObjectSignals);
 
    pf::SwitchContext ctx(glCurrentTask);
 
@@ -1287,39 +1287,39 @@ ERROR sleep_task(LONG Timeout)
       FD_ZERO(&fread);
       FD_ZERO(&fwrite);
       for (auto &fd : glFDTable) {
-         if (fd.Flags & RFD_STOP_RECURSE) continue; // This is an internally managed flag to prevent recursion
-         if (fd.Flags & RFD_READ) FD_SET(fd.FD, &fread);
-         if (fd.Flags & RFD_WRITE) FD_SET(fd.FD, &fwrite);
-         //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", fd.FD, (fd.Flags & RFD_READ) ? 1 : 0, (fd.Flags & RFD_WRITE) ? 1 : 0, fd.Routine, fd.Flags);
+         if ((fd.Flags & RFD::STOP_RECURSE) != RFD::NIL) continue; // This is an internally managed flag to prevent recursion
+         if ((fd.Flags & RFD::READ) != RFD::NIL) FD_SET(fd.FD, &fread);
+         if ((fd.Flags & RFD::WRITE) != RFD::NIL) FD_SET(fd.FD, &fwrite);
+         //log.trace("Listening to %d, Read: %d, Write: %d, Routine: %p, Flags: $%.2x", fd.FD, (fd.Flags & RFD::READ) ? 1 : 0, (fd.Flags & RFD::WRITE) ? 1 : 0, fd.Routine, fd.Flags);
          if (fd.FD > maxfd) maxfd = fd.FD;
 
-         if (fd.Flags & RFD_ALWAYS_CALL) {
+         if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
             if (fd.Routine) fd.Routine(fd.FD, fd.Data);
          }
-         else if (fd.Flags & RFD_RECALL) {
+         else if ((fd.Flags & RFD::RECALL) != RFD::NIL) {
             // If the RECALL flag is set against an FD, it was done so because the subscribed routine needs to manually check
             // for incoming/outgoing data.  These are considered 'one-off' checks, so the subscriber will need to set the RECALL flag
             // again if it wants this service maintained.
             //
             // See the SSL support routines as an example of this requirement.
 
-            fd.Flags &= ~RFD_RECALL; // Turn off the recall flag as each call is a one-off
+            fd.Flags &= ~RFD::RECALL; // Turn off the recall flag as each call is a one-off
 
-            if (!(fd.Flags & RFD_ALLOW_RECURSION)) {
-               fd.Flags |= RFD_STOP_RECURSE;
+            if ((fd.Flags & RFD::ALLOW_RECURSION) IS RFD::NIL) {
+               fd.Flags |= RFD::STOP_RECURSE;
             }
 
             if (fd.Routine) {
                fd.Routine(fd.FD, fd.Data);
 
-               if (fd.Flags & RFD_RECALL) {
+               if ((fd.Flags & RFD::RECALL) != RFD::NIL) {
                   // If the RECALL flag was re-applied by the subscriber, we need to employ a reduced timeout so that the subscriber doesn't get 'stuck'.
 
                   if (Timeout > 10) Timeout = 10;
                }
             }
 
-            fd.Flags &= ~RFD_STOP_RECURSE;
+            fd.Flags &= ~RFD::STOP_RECURSE;
          }
       }
    }
@@ -1354,10 +1354,10 @@ ERROR sleep_task(LONG Timeout)
    if (result > 0) {
       glFDProtected++;
       for (auto &fd : glFDTable) {
-         if (fd.Flags & RFD_READ) {  // Readable FD support
+         if ((fd.Flags & RFD::READ) != RFD::NIL) {  // Readable FD support
             if (FD_ISSET(fd.FD, &fread)) {
-               if (!(fd.Flags & RFD_ALLOW_RECURSION)) {
-                  fd.Flags |= RFD_STOP_RECURSE;
+               if ((fd.Flags & RFD::ALLOW_RECURSION) IS RFD::NIL) {
+                  fd.Flags |= RFD::STOP_RECURSE;
                }
 
                if (fd.Routine) {
@@ -1371,16 +1371,16 @@ ERROR sleep_task(LONG Timeout)
                else while (read(fd.FD, &buffer, sizeof(buffer)) > 0);
             }
 
-            fd.Flags &= ~RFD_STOP_RECURSE;
+            fd.Flags &= ~RFD::STOP_RECURSE;
          }
 
-         if (fd.Flags & RFD_WRITE) { // Writeable FD support
+         if ((fd.Flags & RFD::WRITE) != RFD::NIL) { // Writeable FD support
             if (FD_ISSET(fd.FD, &fwrite)) {
-               if (!(fd.Flags & RFD_ALLOW_RECURSION)) fd.Flags |= RFD_STOP_RECURSE;
+               if ((fd.Flags & RFD::ALLOW_RECURSION) IS RFD::NIL) fd.Flags |= RFD::STOP_RECURSE;
                if (fd.Routine) fd.Routine(fd.FD, fd.Data);
             }
 
-            fd.Flags &= ~RFD_STOP_RECURSE;
+            fd.Flags &= ~RFD::STOP_RECURSE;
          }
       }
       glFDProtected--;
@@ -1403,7 +1403,7 @@ ERROR sleep_task(LONG Timeout)
             if (fstat(fd.FD, &info) < 0) {
                if (errno IS EBADF) {
                   log.warning("FD %d was closed without a call to deregister it.", fd.FD);
-                  RegisterFD(fd.FD, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+                  RegisterFD(fd.FD, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
                   break;
                }
             }
@@ -1472,11 +1472,11 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       else {
          for (auto it = glFDTable.begin(); it != glFDTable.end(); ) {
             auto &fd = *it;
-            if (fd.Flags & RFD_SOCKET); // Ignore network socket FDs (triggered as normal windows messages)
-            else if (fd.Flags & RFD_ALWAYS_CALL) {
+            if ((fd.Flags & RFD::SOCKET) != RFD::NIL); // Ignore network socket FDs (triggered as normal windows messages)
+            else if ((fd.Flags & RFD::ALWAYS_CALL) != RFD::NIL) {
                if (fd.Routine) fd.Routine(fd.FD, fd.Data);
             }
-            else if (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT)) {
+            else if ((fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT)) != RFD::NIL) {
                handles[total++] = fd.FD;
             }
             else {
@@ -1535,7 +1535,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       }
       else if (i IS -2) {
          log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (LARGE)handles[0]);
-         RegisterFD((HOSTHANDLE)handles[0], RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+         RegisterFD((HOSTHANDLE)handles[0], RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
       }
       else if (i IS -4) {
          log.warning("WaitForObjects() failure - error not handled.");

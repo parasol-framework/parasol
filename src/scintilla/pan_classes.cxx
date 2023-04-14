@@ -292,7 +292,7 @@ void Scintilla::Platform::DebugPrintf(const char *format, ...)
 #ifdef DEBUG
    va_list pArguments;
    va_start(pArguments, format);
-   VLogF(VLF_DEBUG, "Scintilla", format, pArguments);
+   VLogF(VLF::DEBUG, "Scintilla", format, pArguments);
    va_end(pArguments);
 #endif
 }

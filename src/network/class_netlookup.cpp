@@ -112,7 +112,7 @@ static ERROR thread_resolve_name(objThread *Thread)
    DNSEntry *dummy;
    rb->Error = resolve_name((CSTRING)(rb + 1), &dummy);
 
-   SendMessage(0, glResolveNameMsgID, MSF_WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
+   SendMessage(0, glResolveNameMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
    return ERR_Okay;
 }
 
@@ -130,7 +130,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
    auto ip_address = (const IPAddress *)(rb + 1);
    rb->Error = resolve_address((CSTRING)(ip_address + 1), ip_address, &dummy);
 
-   SendMessage(0, glResolveAddrMsgID, MSF_WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
+   SendMessage(0, glResolveAddrMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
    return ERR_Okay;
 }
 
@@ -329,7 +329,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    if (!netStrToAddress(Args->Address, &ip)) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
-      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF_AUTO_FREE))) {
+      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
          char buffer[pkg_size];
          auto rb = (resolve_buffer *)&buffer;
          rb->NetLookupID = Self->UID;
@@ -394,7 +394,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
    ERROR error;
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
    if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
-         fl::Flags(THF_AUTO_FREE))) {
+         fl::Flags(THF::AUTO_FREE))) {
       char buffer[pkg_size];
       auto rb = (resolve_buffer *)&buffer;
       rb->NetLookupID = Self->UID;

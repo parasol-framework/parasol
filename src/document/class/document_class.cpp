@@ -381,7 +381,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       if (clipboard.ok()) {
          struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
          if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
-            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL_READ) };
+            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                if ((!file->get(FID_Size, &size)) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
@@ -1441,7 +1441,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
-   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
+   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
    return ERR_Okay;
 }
 

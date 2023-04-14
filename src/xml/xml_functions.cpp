@@ -104,8 +104,8 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    auto line_no = Self->LineNo;
    BYTE raw_content;
 
-   if (!StrCompare("![CDATA[", str, 8, STR_MATCH_CASE)) { raw_content = RAW_CDATA; str += 8; }
-   else if (!StrCompare("![NDATA[", str, 8, STR_MATCH_CASE)) { raw_content = RAW_NDATA; str += 8; }
+   if (!StrCompare("![CDATA[", str, 8, STR::MATCH_CASE)) { raw_content = RAW_CDATA; str += 8; }
+   else if (!StrCompare("![NDATA[", str, 8, STR::MATCH_CASE)) { raw_content = RAW_NDATA; str += 8; }
    else raw_content = RAW_NONE;
 
    if (raw_content) {
@@ -159,7 +159,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    if ((State.Pos[1] IS '?') or (State.Pos[1] IS '!')) {
       if (Self->Flags & XMF_PARSE_ENTITY) {
-         if (!StrCompare("!DOCTYPE", State.Pos+1, 7, 0)) {
+         if (!StrCompare("!DOCTYPE", State.Pos+1, 7)) {
             parse_doctype(Self, State.Pos+7);
          }
       }
@@ -520,7 +520,7 @@ static ERROR parse_source(extXML *Self)
       }
       else Self->ParseError = ERR_AllocMemory;
    }
-   else if (!LoadFile(Self->Path, 0, &filecache)) {
+   else if (!LoadFile(Self->Path, LDF::NIL, &filecache)) {
       Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);
       UnloadFile(filecache);
    }

@@ -60,7 +60,7 @@ ERROR extXML::find_tag(CSTRING XPath)
    // Parse filter instructions
 
    std::string attribvalue, attribname;
-   LONG cmpflags = STR_MATCH_LEN;
+   auto cmpflags = STR::MATCH_LEN;
    LONG subscript = 0;
 
    if (this->Flags & XMF_DEBUG) log.branch("XPath: %s, TagName: %s", XPath, tagname.c_str());
@@ -114,7 +114,7 @@ ERROR extXML::find_tag(CSTRING XPath)
                      escattrib = true;
                   }
                }
-               else if (XPath[end] IS '*') cmpflags = STR_WILDCARD;
+               else if (XPath[end] IS '*') cmpflags = STR::WILDCARD;
                end++;
             }
 
@@ -138,7 +138,7 @@ ERROR extXML::find_tag(CSTRING XPath)
          else {
             LONG end = pos;
             while ((XPath[end]) and (XPath[end] != endchar)) {
-               if (XPath[end] IS '*') cmpflags = STR_WILDCARD;
+               if (XPath[end] IS '*') cmpflags = STR::WILDCARD;
                end++;
             }
             attribvalue.assign(XPath + pos, end - pos);
@@ -152,8 +152,8 @@ ERROR extXML::find_tag(CSTRING XPath)
       pos++;
    }
 
-   LONG tagwild = STR_MATCH_LEN;
-   if (tagname.find('*') != std::string::npos) tagwild = STR_WILDCARD;
+   auto tagwild = STR::MATCH_LEN;
+   if (tagname.find('*') != std::string::npos) tagwild = STR::WILDCARD;
 
    for (; Cursor != CursorTags->end(); Cursor++) {
       bool match = false;
@@ -162,7 +162,7 @@ ERROR extXML::find_tag(CSTRING XPath)
             if (Cursor->name()) {
                if (!attribname.empty()) { // Match by named attribute value
                   for (LONG a=1; a < LONG(Cursor->Attribs.size()); ++a) {
-                     if ((!StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size(), 0)) and
+                     if ((!StrCompare(Cursor->Attribs[a].Name, attribname, attribname.size())) and
                          (!StrCompare(Cursor->Attribs[a].Value, attribvalue, 0, cmpflags))) {
                         match = true;
                         break;

@@ -9,32 +9,32 @@
 #ifdef __unix__
 // In Unix/Linux builds it is assumed that the install location is static.  Dynamic loading is enabled
 // during the build by setting the ROOT_PATH definition to a blank string.
-   #ifndef ROOT_PATH
-      #define ROOT_PATH /usr/local/
+   #ifndef _ROOT_PATH
+      #define _ROOT_PATH /usr/local/
    #endif
-   #ifndef SYSTEM_PATH
-      #define SYSTEM_PATH /usr/local/share/parasol/
+   #ifndef _SYSTEM_PATH
+      #define _SYSTEM_PATH /usr/local/share/parasol/
    #endif
-   #ifndef MODULE_PATH
-      #define MODULE_PATH /usr/local/lib/parasol/
+   #ifndef _MODULE_PATH
+      #define _MODULE_PATH /usr/local/lib/parasol/
    #endif
 #else
 // In Windows, path information is read from the registry.  If there are no registry entries, the system
 // path is the program's working folder.
-   #ifndef ROOT_PATH
-      #define ROOT_PATH ""
+   #ifndef _ROOT_PATH
+      #define _ROOT_PATH ""
    #endif
-   #ifndef SYSTEM_PATH
-      #define SYSTEM_PATH ""
+   #ifndef _SYSTEM_PATH
+      #define _SYSTEM_PATH ""
    #endif
-   #ifndef MODULE_PATH
-      #define MODULE_PATH ""
+   #ifndef _MODULE_PATH
+      #define _MODULE_PATH ""
    #endif
 #endif
 
-std::string glRootPath   = "" ROOT_PATH "";
-std::string glSystemPath = "" SYSTEM_PATH "";
-std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
+std::string glRootPath   = "" _ROOT_PATH "";
+std::string glSystemPath = "" _SYSTEM_PATH "";
+std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
 char glDisplayDriver[28] = "";
 
@@ -135,7 +135,7 @@ bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 BYTE glProgramStage = STAGE_STARTUP;
-UBYTE glTaskState   = TSTATE_RUNNING;
+TSTATE glTaskState  = TSTATE::RUNNING;
 LONG glInotify = -1;
 
 const struct virtual_drive glFSDefault = {

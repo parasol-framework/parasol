@@ -76,15 +76,14 @@ static ERROR process_args(void)
                "audio", "display", "fluid", "font", "http", "json", "network", "picture", "svg", "vector", "xml"
             };
 
-            struct DirInfo *dir;
+            DirInfo *dir;
             LONG total = 0;
-            if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
+            if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
                while (!ScanDir(dir)) {
-                  struct FileInfo *folder = dir->Info;
-                  if (folder->Flags & RDF_FILE) {
-                     LONG m;
-                     for (m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name, 0, 0)) total++;
+                  FileInfo *folder = dir->Info;
+                  if ((folder->Flags & RDF::FILE) != RDF::NIL) {
+                     for (LONG m=0; m < ARRAYSIZE(modules); m++) {
+                        if (!StrCompare(modules[m], folder->Name)) total++;
                      }
                   }
                }
@@ -110,7 +109,7 @@ static ERROR process_args(void)
             }
          }
          else { // If argument not recognised, assume this arg is the target file.
-            if (ResolvePath(args[i].c_str(), RSF_APPROXIMATE, &glTargetFile)) {
+            if (ResolvePath(args[i].c_str(), RSF::APPROXIMATE, &glTargetFile)) {
                print("Unable to find file '%s'", args[i].c_str());
                return ERR_Terminate;
             }
@@ -147,8 +146,8 @@ int main(int argc, CSTRING *argv)
          if (!glTask->get(FID_Path, &path)) log.msg("Path: %s", path);
          else log.error("No working path.");
 
-         LONG type;
-         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
+         LOC type;
+         if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC::FILE)) {
             print("File '%s' does not exist.", glTargetFile);
          }
          else result = exec_source(glTargetFile, glTime, glProcedure);

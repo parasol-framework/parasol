@@ -418,7 +418,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          add_input("Movement-Anchored", userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
       }
       else {
-         struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
+         struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
          NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
 
          // Recalculate the OverObject due to cursor movement
@@ -444,7 +444,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
                }
             }
 
-            acMoveToPoint(Self->DragSurface, sx, sy, 0, MTF_X|MTF_Y);
+            acMoveToPoint(Self->DragSurface, sx, sy, 0, MTF::X|MTF::Y);
          }
 
          LONG absx, absy;
@@ -602,7 +602,7 @@ static ERROR PTR_Move(extPointer *Self, struct acMove *Args)
 
    if (!Args) return log.warning(ERR_Args);
    if ((!Args->DeltaX) and (!Args->DeltaY)) return ERR_Okay;
-   return acMoveToPoint(Self, Self->X + Args->DeltaX, Self->Y + Args->DeltaY, 0, MTF_X|MTF_Y);
+   return acMoveToPoint(Self, Self->X + Args->DeltaX, Self->Y + Args->DeltaY, 0, MTF::X|MTF::Y);
 }
 
 /*********************************************************************************************************************
@@ -625,8 +625,8 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 
    if (!Args) return log.warning(ERR_NullArgs)|ERF_Notified;
 /*
-   if ((!(Args->Flags & MTF_X)) or ((Args->Flags & MTF_X) and (Self->X IS Args->X))) {
-      if ((!(Args->Flags & MTF_Y)) or ((Args->Flags & MTF_Y) and (Self->Y IS Args->Y))) {
+   if ((!(Args->Flags & MTF::X)) or ((Args->Flags & MTF::X) and (Self->X IS Args->X))) {
+      if ((!(Args->Flags & MTF::Y)) or ((Args->Flags & MTF::Y) and (Self->Y IS Args->Y))) {
          return ERR_Okay|ERF_Notified;
       }
    }
@@ -638,8 +638,8 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
       APTR xwin;
 
       if (!surface->getPtr(FID_WindowHandle, &xwin)) {
-         if (Args->Flags & MTF_X) Self->X = Args->X;
-         if (Args->Flags & MTF_Y) Self->Y = Args->Y;
+         if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = Args->X;
+         if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = Args->Y;
          if (Self->X < 0) Self->X = 0;
          if (Self->Y < 0) Self->Y = 0;
 
@@ -653,8 +653,8 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
    OBJECTPTR surface;
 
    if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
-      if (Args->Flags & MTF_X) Self->X = Args->X;
-      if (Args->Flags & MTF_Y) Self->Y = Args->Y;
+      if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = Args->X;
+      if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = Args->Y;
       if (Self->X < 0) Self->X = 0;
       if (Self->Y < 0) Self->Y = 0;
 
@@ -671,7 +671,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 
    // Customised notification (ensures that both X and Y coordinates are reported).
 
-   struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
    NotifySubscribers(Self, AC_MoveToPoint, &moveto, ERR_Okay);
 
    return ERR_Okay|ERF_Notified;
@@ -1017,7 +1017,7 @@ X: The horizontal position of the pointer within its parent display.
 
 static ERROR PTR_SET_X(extPointer *Self, DOUBLE Value)
 {
-   if (Self->initialised()) acMoveToPoint(Self, Value, 0, 0, MTF_X);
+   if (Self->initialised()) acMoveToPoint(Self, Value, 0, 0, MTF::X);
    else Self->X = Value;
    return ERR_Okay;
 }
@@ -1032,7 +1032,7 @@ Y: The vertical position of the pointer within its parent display.
 
 static ERROR PTR_SET_Y(extPointer *Self, DOUBLE Value)
 {
-   if (Self->initialised()) acMoveToPoint(Self, 0, Value, 0, MTF_Y);
+   if (Self->initialised()) acMoveToPoint(Self, 0, Value, 0, MTF::Y);
    else Self->Y = Value;
    return ERR_Okay;
 }

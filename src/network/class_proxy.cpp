@@ -218,17 +218,17 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                LONG i     = 0;
                LONG index = 0;
                while (true) {
-                  if (!StrCompare("ftp=", servers+i, 4, 0)) {
+                  if (!StrCompare("ftp=", servers+i, 4)) {
                      name = "Windows FTP";
                      port = 21;
                      index = i + 4;
                   }
-                  else if (!StrCompare("http=", servers+i, 5, 0)) {
+                  else if (!StrCompare("http=", servers+i, 5)) {
                      name = "Windows HTTP";
                      port = 80;
                      index = i + 5;
                   }
-                  else if (!StrCompare("https=", servers+i, 6, 0)) {
+                  else if (!StrCompare("https=", servers+i, 6)) {
                      name = "Windows HTTPS";
                      port = 443;
                      index = i + 6;
@@ -382,7 +382,7 @@ static ERROR find_proxy(extProxy *Self)
 
             if (!port.compare("0")) { } // Port is set to 'All' (0) so the match is automatic.
             else {
-               if (StrCompare(port.c_str(), Self->FindPort, 0, STR_WILDCARD) != ERR_Okay) {
+               if (StrCompare(port.c_str(), Self->FindPort, 0, STR::WILDCARD) != ERR_Okay) {
                   log.trace("Port '%s' doesn't match requested port '%s'", port.c_str(), Self->FindPort);
                   match = false;
                }
@@ -578,7 +578,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       objFile::create file = {
          fl::Path("user:config/network/proxies.cfg"),
          fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE),
-         fl::Flags(FL_NEW|FL_WRITE)
+         fl::Flags(FL::NEW|FL::WRITE)
       };
 
       if (file.ok()) return config->saveToObject(*file);

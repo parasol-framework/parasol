@@ -344,7 +344,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
       for (i=0; (Self->Path[i]) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
 
-      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len, 0)))) {
+      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len)))) {
          // The location remains unchanged.  A complete reload shouldn't be necessary.
 
          reload = FALSE;
@@ -685,7 +685,7 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       }
       else snprintf(buf, sizeof(buf), "%s", workingpath);
 
-      if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+      if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
          Self->WorkingPath = StrClone(workingpath);
       }
    }

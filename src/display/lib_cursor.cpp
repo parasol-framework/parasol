@@ -455,7 +455,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
          pointer->BufferOwner  = OwnerID;
          pointer->BufferFlags  = Flags;
          pointer->BufferObject = ObjectID;
-         pointer->BufferQueue  = GetResource(RES_MESSAGE_QUEUE);
+         pointer->BufferQueue  = GetResource(RES::MESSAGE_QUEUE);
          ReleaseObject(pointer);
          return ERR_Okay;
       }
@@ -569,7 +569,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
       else log.warning("The pointer may only be restricted to public surfaces.");
    }
 
-   pointer->MessageQueue = GetResource(RES_MESSAGE_QUEUE);
+   pointer->MessageQueue = GetResource(RES::MESSAGE_QUEUE);
 
    ReleaseObject(pointer);
    return ERR_Okay;
@@ -713,7 +713,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y)
 {
-   struct acMoveToPoint move = { X, Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint move = { X, Y, 0, MTF::X|MTF::Y };
    if (auto pointer = gfxAccessPointer()) {
       Action(AC_MoveToPoint, pointer, &move);
       ReleaseObject(pointer);
@@ -796,7 +796,7 @@ ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID
 
       if (Surface) {
          log.trace("Moving draggable surface %d to %dx%d", Surface, pointer->X, pointer->Y);
-         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF_X|MTF_Y);
+         acMoveToPoint(Surface, pointer->X+DRAG_XOFFSET, pointer->Y+DRAG_YOFFSET, 0, MTF::X|MTF::Y);
          acShow(Surface);
          acMoveToFront(Surface);
       }

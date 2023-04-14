@@ -170,7 +170,7 @@ static CSTRING folder(extSVG *Self)
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
    STRING folder;
-   if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &folder)) {
+   if (!ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &folder)) {
       WORD last = 0;
       for (WORD i=0; folder[i]; i++) {
          if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;
@@ -193,7 +193,7 @@ static const std::string uri_name(const std::string Ref)
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
-   else if (!StrCompare("url(#", Ref.c_str() + skip, 5, 0)) {
+   else if (!StrCompare("url(#", Ref.c_str() + skip, 5)) {
       LONG i;
       skip += 5;
       for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
@@ -443,8 +443,8 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
       STRING working_path = NULL;
 
       if (Path) {
-         if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
-            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL_READ))) {
+         if (!StrCompare("*.svgz", Path, 0, STR::WILDCARD)) {
+            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL::READ))) {
                if (auto stream = objCompressedStream::create::global(fl::Owner(file->UID), fl::Input(file))) {
                   xml->setSource(stream);
                }

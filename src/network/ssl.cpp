@@ -106,16 +106,16 @@ static ERROR sslSetup(extNetSocket *Self)
    log.traceBranch("");
 
    if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
-      //if (GetResource(RES_LOG_LEVEL > 3)) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
+      //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
-      if (!ResolvePath("config:ssl/certs", RSF_NO_FILE_CHECK, &path)) {
+      if (!ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path)) {
          if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path)) {
             FreeResource(path);
 
             if ((Self->SSL = SSL_new(Self->CTX))) {
                log.msg("SSL connectivity has been configured successfully.");
 
-               if (GetResource(RES_LOG_LEVEL > 3)) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
+               if (GetResource(RES::LOG_LEVEL) > 3) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
 
                return ERR_Okay;
             }

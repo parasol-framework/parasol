@@ -522,7 +522,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
       LONG i, j, len;
       if ((Value) and (*Value)) {
-         if (!StrCompare("STRING:", Value, 7, 0)) {
+         if (!StrCompare("STRING:", Value, 7)) {
             return SET_String(Self, Value + 7);
          }
 
@@ -854,7 +854,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          else snprintf(buf, sizeof(buf), "%s", workingpath);
 
          pf::SwitchContext ctx(Self);
-         if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+         if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
             Self->WorkingPath = StrClone(workingpath);
          }
       }

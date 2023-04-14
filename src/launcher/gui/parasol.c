@@ -71,14 +71,14 @@ extern "C" void program(void)
    LONG i, j;
 
    glTask = CurrentTask();
-   BYTE time       = FALSE;
+   bool time       = false;
    LONG winhandle  = 0;
    STRING procedure  = NULL;
    STRING scriptfile = NULL;
    LONG width      = 0;
    LONG height     = 0;
 
-   FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES_FILESYSTEM);
+   FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES::FILESYSTEM);
 
    // Process arguments
 
@@ -91,10 +91,10 @@ extern "C" void program(void)
             goto exit;
          }
          else if (!StrMatch(Args[i], "--time")) {
-            time = TRUE;
+            time = true;
          }
          else if (!StrMatch(Args[i], "--info")) {
-            print("Instance: %d", GetResource(RES_INSTANCE));
+            print("Instance: %d", GetResource(RES::INSTANCE));
          }
          else if (!StrMatch(Args[i], "--instance")) {
             glTask->get(FID_Instance, &j);
@@ -144,7 +144,7 @@ extern "C" void program(void)
          }
          else {
             // If argument not recognised, assume this arg is the script file.
-            if (ResolvePath(Args[i], RSF_APPROXIMATE, &scriptfile)) {
+            if (ResolvePath(Args[i], RSF::APPROXIMATE, &scriptfile)) {
                print("Unable to find file '%s'", Args[i]);
                goto exit;
             }
@@ -170,7 +170,8 @@ extern "C" void program(void)
       }
    }
 
-   if ((AnalysePath(scriptfile, &i) != ERR_Okay) or (i != LOC_FILE)) {
+   LOC path_type;
+   if ((AnalysePath(scriptfile, &path_type) != ERR_Okay) or (path_type != LOC::FILE)) {
       print("File '%s' does not exist.", scriptfile);
       goto exit;
    }

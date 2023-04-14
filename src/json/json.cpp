@@ -144,7 +144,7 @@ static ERROR load_file(objXML *Self, CSTRING Path)
 {
    CacheFile *filecache;
 
-   if (!(Self->ParseError = LoadFile(Self->Path, 0, &filecache))) {
+   if (!(Self->ParseError = LoadFile(Self->Path, LDF::NIL, &filecache))) {
       Self->ParseError = txt_to_json(Self, (CSTRING)filecache->Data);
       UnloadFile(filecache);
       return Self->ParseError;
@@ -619,7 +619,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
       number_tag.Children.emplace_back(XMLTag(glTagID++, Line, { { "", numbuf } }));
    }
-   else if (!StrCompare("null", str, 4, 0)) { // Evaluates to <item name="item_name" type="null"/>
+   else if (!StrCompare("null", str, 4)) { // Evaluates to <item name="item_name" type="null"/>
       str += 4;
 
       Tags.emplace_back(XMLTag(glTagID++, Line, {

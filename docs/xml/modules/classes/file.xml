@@ -40,10 +40,10 @@
       <comment>Initialises a file.</comment>
       <description>
 <p>This action will prepare a file or folder at the given <field>Path</field> for use.</p>
-<p>To create a new file from scratch, specify the NEW flag.  This will overwrite any file that exists at the target path.</p>
-<p>To read and write data to the file, specify the READ and/or WRITE modes in the <field>Flags</field> field prior to initialisation. If a file is read-only and the WRITE and READ flags are set in combination, the WRITE flag will be dropped and initialisation will continue as normal.</p>
-<p>If neither of the NEW, READ or WRITE flags are specified, the file object is prepared and queried from disk (if it exists), but will not be opened.  It will be necessary to <action>Activate</action> the file in order to open it.</p>
-<p>The File class supports RAM based file buffering - this is activated by using the BUFFER flag and setting the Size field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.</p>
+<p>To create a new file from scratch, specify the <code>NEW</code> flag.  This will overwrite any file that exists at the target path.</p>
+<p>To read and write data to the file, specify the <code>READ</code> and/or <code>WRITE</code> modes in the <field>Flags</field> field prior to initialisation. If a file is read-only and the <code>WRITE</code> and <code>READ</code> flags are set in combination, the <code>WRITE</code> flag will be dropped and initialisation will continue as normal.</p>
+<p>If neither of the <code>NEW</code>, <code>READ</code> or <code>WRITE</code> flags are specified, the file object is prepared and queried from disk (if it exists), but will not be opened.  It will be necessary to <action>Activate</action> the file in order to open it.</p>
+<p>The File class supports RAM based file buffering - this is activated by using the <code>BUFFER</code> flag and setting the Size field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.</p>
 <p>Strings can also be loaded into file buffers for read/write access.  This is achieved by specifying the <field>Path</field> <code>string:Data\0</code>, where Data is a sequence of characters to be loaded into a virtual memory space.</p>
       </description>
       <result>
@@ -66,7 +66,7 @@
       <name>Read</name>
       <comment>Reads data from a file.</comment>
       <description>
-<p>Reads data from a file into the given buffer.  Increases the value in the <field>Position</field> field by the amount of bytes read from the file data.  The FL_READ bit in the <field>Flags</field> field must have been set on file initialisation, or the call will fail.</p>
+<p>Reads data from a file into the given buffer.  Increases the value in the <field>Position</field> field by the amount of bytes read from the file data.  The <code>FL::READ</code> bit in the <field>Flags</field> field must have been set on file initialisation, or the call will fail.</p>
 <p>It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g. if the end of the file has been reached.  The Result parameter will be returned as zero in such cases.  Check the current <field>Position</field> against the <field>Size</field> to confirm that the end has been reached.</p>
       </description>
       <result>
@@ -74,7 +74,7 @@
         <error code="Failed">The file object refers to a folder, or the object is corrupt.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="OutOfRange">Invalid Length parameter.</error>
-        <error code="FileReadFlag">The FL_READ flag was not specified on initialisation.</error>
+        <error code="FileReadFlag">The FL::READ flag was not specified on initialisation.</error>
         <error code="NotInitialised">The object has not been initialised.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
         <error code="ExpectedFolder">The file object refers to a folder.</error>
@@ -100,13 +100,13 @@
       <name>Write</name>
       <comment>Writes data to a file.</comment>
       <description>
-<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the FL_WRITE bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
+<p>Writes data from the provided buffer into the file, then updates the <field>Position</field> field to reflect the new read/write position.  You must have set the <code>FL::WRITE</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
       </description>
       <result>
         <error code="Okay">All of the data was written to the file.</error>
         <error code="LimitedSuccess">Only some of the data was written to the file.  Check the Result parameter to see how much data was written.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="FileWriteFlag">The FL_WRITE flag was not specified when initialising the file.</error>
+        <error code="FileWriteFlag">The FL::WRITE flag was not specified when initialising the file.</error>
         <error code="ObjectCorrupt">The object structure is corrupt or has not been initialised.</error>
         <error code="ReallocMemory">The reallocation of a memory block failed.</error>
         <error code="ExpectedFile">The operation expected a path to a file.</error>
@@ -141,7 +141,7 @@
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
       </input>
       <description>
-<p>This method is used to copy the data of a file object to another location.  All of the data will be copied, effectively creating a clone of the original file information.  The file object must have been initialised with the FL_READ flag, or the copy operation will not work (this restriction does not apply to directories).  If a matching file name already exists at the destination path, it will be over-written with the new data.</p>
+<p>This method is used to copy the data of a file object to another location.  All of the data will be copied, effectively creating a clone of the original file information.  The file object must have been initialised with the <code>FL::READ</code> flag, or the copy operation will not work (this restriction does not apply to directories).  If a matching file name already exists at the destination path, it will be over-written with the new data.</p>
 <p>The <field>Position</field> field will be reset as a result of calling this method.</p>
 <p>When copying directories with this method, the entire folder structure (i.e. all of the folder contents) will be copied to the new location.  If an error occurs when copying a sub-folder or file, the procedure will be aborted and an error code will be returned.</p>
       </description>
@@ -190,7 +190,7 @@
         <param type="FUNCTION *" name="Callback">Optional callback for receiving feedback during the operation.</param>
       </input>
       <description>
-<p>This method is used to move the data of a file to another location.  If the file object represents a folder, then the folder and all of its contents will be moved.  The file object must have been initialised with the FL_READ flag, or the move operation will not work (this restriction does not apply to directories).  If a file already exists at the destination path then it will be over-written with the new data.</p>
+<p>This method is used to move the data of a file to another location.  If the file object represents a folder, then the folder and all of its contents will be moved.  The file object must have been initialised with the <code>FL::READ</code> flag, or the move operation will not work (this restriction does not apply to directories).  If a file already exists at the destination path then it will be over-written with the new data.</p>
 <p>The <field>Position</field> field will be reset as a result of calling this method.</p>
       </description>
       <result>
@@ -231,7 +231,7 @@
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
-<p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <field>Position</field> field by the amount of bytes read from the file.  You must have set the FL_READ bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
+<p>Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will increase the <field>Position</field> field by the amount of bytes read from the file.  You must have set the <code>FL::READ</code> bit in the <field>Flags</field> field when you initialised the file, or the call will fail.</p>
 <p>The line buffer is managed internally, so there is no need for you to free the result string.  This method returns ERR_NoData when it runs out of information to read from the file.</p>
       </description>
       <result>
@@ -239,7 +239,7 @@
         <error code="Failed">The file object refers to a folder.</error>
         <error code="Args">Invalid arguments passed to function.</error>
         <error code="NoData">There is no more data left to read.</error>
-        <error code="FileReadFlag">The FL_READ flag was not specified on initialisation.</error>
+        <error code="FileReadFlag">The FL::READ flag was not specified on initialisation.</error>
         <error code="ObjectCorrupt">The internal file handle is missing.</error>
         <error code="BufferOverflow">The line is too long for the read routine (4096 byte limit).</error>
       </result>
@@ -248,7 +248,7 @@
     <method>
       <name>SetDate</name>
       <comment>Sets the date on a file.</comment>
-      <prototype>ERROR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, LONG Type)</prototype>
+      <prototype>ERROR flSetDate(OBJECTPTR Object, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type)</prototype>
       <input>
         <param type="LONG" name="Year">Year (-ve for BC, +ve for AD).</param>
         <param type="LONG" name="Month">Month (1 - 12)</param>
@@ -256,7 +256,7 @@
         <param type="LONG" name="Hour">Hour (0 - 23</param>
         <param type="LONG" name="Minute">Minute (0 - 59)</param>
         <param type="LONG" name="Second">Second (0 - 59)</param>
-        <param type="LONG" name="Type" lookup="FDT">The type of date to set (filesystem dependent).</param>
+        <param type="FDT" name="Type" lookup="FDT">The type of date to set (filesystem dependent).</param>
       </input>
       <description>
 <p>The SetDate method provides a convenient way to set the date and time information for a file object.  Date information is set in a human readable year, month, day, hour, minute and second format for your convenience.</p>
@@ -276,15 +276,15 @@
     <method>
       <name>StartStream</name>
       <comment>Starts streaming data from a file source.</comment>
-      <prototype>ERROR flStartStream(OBJECTPTR Object, OBJECTID Subscriber, LONG Flags, LONG Length)</prototype>
+      <prototype>ERROR flStartStream(OBJECTPTR Object, OBJECTID Subscriber, FL Flags, LONG Length)</prototype>
       <input>
         <param type="OBJECTID" name="Subscriber">Reference to an object that will receive streamed data notifications.</param>
-        <param type="LONG" name="Flags" lookup="FL">Use FL_READ for incoming data, FL_WRITE for outgoing data.</param>
+        <param type="FL" name="Flags" lookup="FL">Use READ for incoming data, WRITE for outgoing data.</param>
         <param type="LONG" name="Length">Limits the total amount of data to be streamed.</param>
       </input>
       <description>
 <p>If a file object is a stream (indicated by the <code>STREAM</code> flag), the StartStream method should be used for reading or writing data to the file object.  Although it is possible to call the Read and Write actions on streamed files, they will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers will allow in software.</p>
-<p>A single file object can support read or write streams (pass <code>FL_READ</code> or <code>FL_WRITE</code> in the Flags parameter).  However, only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with the <method>StopStream</method> method and then restarted with StartStream.</p>
+<p>A single file object can support read or write streams (pass <code>FL::READ</code> or <code>FL::WRITE</code> in the Flags parameter).  However, only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with the <method>StopStream</method> method and then restarted with StartStream.</p>
 <p>A stream can be limited by setting the Length parameter to a non-zero value.</p>
 <p>If the StartStream request is successful, the file object will return action notifications to the Subscriber to indicate activity on the file stream.  When reading from a stream, <code>AC_Write</code> notifications will be received to indicate that new data has been written to the file cache.  The Buffer parameter of the reported acWrite structure may refer to a private address that contains the data that was received from the stream and the Result indicates the amount of new data available.</p>
 <p>When writing to a stream, AC_Read notifications will be received to indicate that the stream is ready to accept more data.  The Result parameter will indicate the maximum amount of data that should be written to the stream using the <action>Write</action> action.</p>
@@ -314,11 +314,11 @@
     <method>
       <name>Watch</name>
       <comment>Monitors files and folders for file system events.</comment>
-      <prototype>ERROR flWatch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, LONG Flags)</prototype>
+      <prototype>ERROR flWatch(OBJECTPTR Object, FUNCTION * Callback, LARGE Custom, MFF Flags)</prototype>
       <input>
         <param type="FUNCTION *" name="Callback">The routine that will be called when a file change is triggered by the system.</param>
         <param type="LARGE" name="Custom">A custom 64-bit value that will passed to the Callback routine as a parameter.</param>
-        <param type="LONG" name="Flags" lookup="MFF">Filter events to those indicated in these flags.</param>
+        <param type="MFF" name="Flags" lookup="MFF">Filter events to those indicated in these flags.</param>
       </input>
       <description>
 <p>The WatchFile() function configures event based reporting for changes to any file or folder in the file system. The capabilities of this method are dependent on the host platform, with Windows and Linux systems being able to support most of the current feature set.</p>
@@ -374,7 +374,7 @@
       <name>Flags</name>
       <comment>File flags and options.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="FL">INT</type>
+      <type lookup="FL">FL</type>
       <description>
 <types lookup="FL"/>
       </description>

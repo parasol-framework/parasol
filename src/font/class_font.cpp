@@ -174,9 +174,9 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
    if (cache); // The font exists in the cache
-   else if (!StrCompare("*.ttf", Self->Path, 0, STR_WILDCARD)); // The font is truetype
+   else if (!StrCompare("*.ttf", Self->Path, 0, STR::WILDCARD)); // The font is truetype
    else {
-      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
       if (file.ok()) {
          // Check if the file is a Windows Bitmap Font
 
@@ -515,7 +515,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
    LONG i, j, k;
 
    if ((Value) and (Value[0])) {
-      if (!StrCompare("SRC:", Value, 4, 0)) {
+      if (!StrCompare("SRC:", Value, 4)) {
          for (i=4; Value[i]; i++);
          char path[i-4];
          LONG coloncount = 0;
@@ -846,7 +846,7 @@ character from the font.
 
 static ERROR SET_String(extFont *Self, CSTRING Value)
 {
-   if (!StrCompare(Value, Self->String, 0, STR_MATCH_CASE|STR_MATCH_LEN)) return ERR_Okay;
+   if (!StrCompare(Value, Self->String, 0, STR::MATCH_CASE|STR::MATCH_LEN)) return ERR_Okay;
 
    if ((Self->String) and ((APTR)Self->String != (APTR)Self->prvBuffer)) {
       FreeResource(Self->String);

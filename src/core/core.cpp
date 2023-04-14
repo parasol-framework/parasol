@@ -170,7 +170,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    LONG i;
 
    if (!Info) return NULL;
-   if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
    glOpenInfo   = Info;
    tlMainThread = TRUE;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
@@ -179,20 +179,20 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
-   if (alloc_private_lock(TL_FIELDKEYS, 0)) return NULL; // For access to glFields
-   if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
-   if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
-   if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
-   if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
-   if (alloc_private_lock(TL_MSGHANDLER, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRINT, 0)) return NULL; // For message logging only.
-   if (alloc_private_lock(TL_THREADPOOL, 0)) return NULL;
-   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRIVATE_MEM, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_PRIVATE_MEM, 0)) return NULL;
+   if (alloc_private_lock(TL_FIELDKEYS, ALF::NIL)) return NULL; // For access to glFields
+   if (alloc_private_lock(TL_CLASSDB, ALF::NIL)) return NULL; // For access to glClassDB
+   if (alloc_private_lock(TL_VOLUMES, ALF::NIL)) return NULL; // For access to glVolumes
+   if (alloc_private_lock(TL_GENERIC, ALF::NIL)) return NULL; // A misc. internal mutex, strictly not recursive.
+   if (alloc_private_lock(TL_TIMER, ALF::NIL)) return NULL; // For timer subscriptions.
+   if (alloc_private_lock(TL_MSGHANDLER, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_PRINT, ALF::NIL)) return NULL; // For message logging only.
+   if (alloc_private_lock(TL_THREADPOOL, ALF::NIL)) return NULL;
+   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_PRIVATE_MEM, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_cond(CN_PRIVATE_MEM, ALF::NIL)) return NULL;
 
-   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_OBJECTS, 0)) return NULL;
+   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
 
    // Allocate a private POSIX semaphore for LockObject() and ReleaseObject()
 
@@ -223,9 +223,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    //
    // Any code that needs to regain admin access can use the following code segment:
    //
-   //    if (!SetResource(RES_PRIVILEGEDUSER, TRUE)) {
+   //    if (!SetResource(RES::PRIVILEGED_USER, TRUE)) {
    //       ...admin access...
-   //       SetResource(RES_PRIVILEGEDUSER, FALSE);
+   //       SetResource(RES::PRIVILEGED_USER, FALSE);
    //    }
 
    seteuid(glUID);  // Ensure that the rest of our code is run under the real user name instead of admin
@@ -284,9 +284,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #error Require code to obtain the process ID.
    #endif
 
-   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
+   if ((Info->Flags & OPF::ROOT_PATH) != OPF::NIL) SetResourcePath(RP::ROOT_PATH, Info->RootPath);
+   if ((Info->Flags & OPF::MODULE_PATH) != OPF::NIL) SetResourcePath(RP::MODULE_PATH, Info->ModulePath);
+   if ((Info->Flags & OPF::SYSTEM_PATH) != OPF::NIL) SetResourcePath(RP::SYSTEM_PATH, Info->SystemPath);
 
    if (glRootPath.empty())   {
       #ifdef _WIN32
@@ -323,29 +323,31 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Process the Information structure
 
-   if (Info->Flags & OPF_CORE_VERSION) {
+   if ((Info->Flags & OPF::CORE_VERSION) != OPF::NIL) {
       if (Info->CoreVersion > VER_CORE) {
          KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_CoreVersion;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
          return NULL;
       }
    }
 
    // Debug processing
 
-   if (Info->Flags & OPF_DETAIL)  glLogLevel = (WORD)Info->Detail;
-   if (Info->Flags & OPF_MAX_DEPTH) glMaxDepth = (WORD)Info->MaxDepth;
-   if (Info->Flags & OPF_SHOW_MEMORY) glShowPrivate = TRUE;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)  glLogLevel = (WORD)Info->Detail;
+   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL) glMaxDepth = (WORD)Info->MaxDepth;
+   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = TRUE;
 
    // Android sets an important JNI pointer on initialisation.
 
-   if ((Info->Flags & OPF_OPTIONS) and (Info->Options)) {
-      for (LONG i=0; Info->Options[i].Tag != TAGEND; i++) {
+   if (((Info->Flags & OPF::OPTIONS) != OPF::NIL) and (Info->Options)) {
+      for (LONG i=0; LONG(Info->Options[i].Tag) != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
-            case TOI_ANDROID_ENV: {
+            case TOI::ANDROID_ENV: {
                glJNIEnv = Info->Options[i].Value.Pointer;
                break;
             }
+            default:
+               break;
          }
       }
    }
@@ -353,7 +355,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Check if the privileged flag has been set, which means "don't drop administration privileges if my binary is known to be suid".
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   if ((Info->Flags & OPF_PRIVILEGED) and (geteuid() != getuid())) {
+   if (((Info->Flags & OPF::PRIVILEGED) != OPF::NIL) and (geteuid() != getuid())) {
       glPrivileged = TRUE;
    }
 #endif
@@ -361,7 +363,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    std::forward_list<std::string> volumes;
 
    pf::vector<std::string> newargs;
-   if (Info->Flags & OPF_ARGS) {
+   if ((Info->Flags & OPF::ARGS) != OPF::NIL) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
          if ((arg[0] != '-') or (arg[1] != '-')) { newargs.push_back(arg); continue; }
@@ -371,7 +373,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
             glShowPrivate = TRUE;
             glDebugMemory = TRUE;
          }
-         else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
+         else if (!StrCompare(arg, "gfx-driver=", 11)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
@@ -392,7 +394,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          #if defined(__unix__) && !defined(__ANDROID__)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
-         else if (!StrCompare("home=", arg, 7, 0)) glHomeFolderName.assign(arg + 7);
+         else if (!StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
          else newargs.push_back(arg);
       }
 
@@ -410,7 +412,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
    }
 
-   glShowIO = (Info->Flags & OPF_SHOW_IO) ? TRUE : FALSE;
+   glShowIO = ((Info->Flags & OPF::SHOW_IO) != OPF::NIL);
 
 #if defined(__unix__) && !defined(__ANDROID__)
    // Setting stdout to non-blocking can prevent dead-locks at the cost of dropping excess output.  It is only
@@ -506,7 +508,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (open_shared_control() != ERR_Okay) {
       CloseCore();
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
+      if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
       return NULL;
    }
 
@@ -532,23 +534,23 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
-                  if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+                  if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
                   return NULL;
                }
             }
             else {
-               if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+               if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
                return NULL;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
          return NULL;
       }
 
-      RegisterFD(glSocket, RFD_READ, NULL, NULL);
+      RegisterFD(glSocket, RFD::READ, NULL, NULL);
    #endif
 
    // Print task information
@@ -589,9 +591,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    fs_initialised = true;
 
-   if (!(Info->Flags & OPF_SCAN_MODULES)) {
+   if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
-      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          LONG filesize;
@@ -629,7 +631,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #ifdef _WIN32
    {
       STRING libpath;
-      if (!ResolvePath("modules:lib", RSF_NO_FILE_CHECK, &libpath)) {
+      if (!ResolvePath("modules:lib", RSF::NO_FILE_CHECK, &libpath)) {
          winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
@@ -646,7 +648,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
-   if (Info->Flags & OPF_SCAN_MODULES) {
+   if ((Info->Flags & OPF::SCAN_MODULES) != OPF::NIL) {
       log.msg("Class scanning has been enforced by user request.");
       glScanClasses = true;
    }
@@ -660,7 +662,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    log.msg("PROGRAM OPENED");
 
    glSharedControl->SystemState = 0; // Indicates that initialisation is complete.
-   if (Info->Flags & OPF_ERROR) Info->Error = ERR_Okay;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
    return LocalCoreBase;
 }
@@ -887,7 +889,7 @@ static ERROR init_shared_control(void)
    #ifdef __unix__
       KMSG("Initialising %d global locks\n", PL_END-1);
       for (UBYTE i=1; i < PL_END; i++) {
-         if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return ERR_Failed; };
+         if (alloc_public_lock(i, ALF::RECURSIVE)) { CloseCore(); return ERR_Failed; };
       }
    #endif
 
@@ -1121,7 +1123,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(0, MSGID_QUIT, 0, NULL, 0);
+         SendMessage(0, MSGID_QUIT, MSF::NIL, NULL, 0);
          glCrashStatus = 1;
          return;
       }
@@ -1332,7 +1334,7 @@ static void BreakHandler(void)
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
 {
-   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME_REPLACE | (Hidden ? VOLUME_HIDDEN : 0));
+   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME::REPLACE | (Hidden ? VOLUME::HIDDEN : VOLUME::NIL));
 }
 #endif
 
@@ -1351,72 +1353,74 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
    // default settings for a fixed installation are:
    //
-   // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
-   // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
-   // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
+   // OPF::ROOT_PATH   : parasol : glRootPath   = /usr/local
+   // OPF::MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
+   // OPF::SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else {
-         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
    #elif __unix__
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else {
          std::string path = glRootPath + "lib/parasol/";
-         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
 
-      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME_REPLACE|VOLUME_SYSTEM);
-      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
-      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
    #endif
 
    // Configure some standard volumes.
 
    #ifdef __ANDROID__
-      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    #else
-      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
-         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
-      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    #endif
 
-   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME_HIDDEN);
-   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM); // Refer to widget module for actual configuration
+   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
+   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
 
-   if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
-      for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
+   if (((glOpenInfo->Flags & OPF::OPTIONS) != OPF::NIL) and (glOpenInfo->Options)) {
+      for (LONG i=0; LONG(glOpenInfo->Options[i].Tag) != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
-            case TOI_LOCAL_CACHE: {
-               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+            case TOI::LOCAL_CACHE: {
+               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
-            case TOI_LOCAL_STORAGE: {
-               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+            case TOI::LOCAL_STORAGE: {
+               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
+            default:
+               break;
          }
       }
    }
@@ -1433,7 +1437,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
-         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE);
+         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE);
 
          buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
       }
@@ -1458,8 +1462,8 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // folder if it does not already exist.
 
    if (buffer != "config:users/default/") {
-      LONG location_type = 0;
-      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
+      LOC location_type = LOC::NIL;
+      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC::DIRECTORY)) {
          buffer.pop_back();
          SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
             CopyFile("config:users/default/", buffer.c_str(), NULL);
@@ -1470,7 +1474,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       buffer += "|config:users/default/";
    }
 
-   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
    // Make sure that certain default directories exist
 
@@ -1478,11 +1482,11 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
    // Look for the following drive types:
@@ -1514,19 +1518,19 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
             label[1] = 0;
 
             if (type IS DRIVETYPE_REMOVABLE) {
-               SetVolume(disk, buffer+i, "devices/storage", label, "disk", 0);
+               SetVolume(disk, buffer+i, "devices/storage", label, "disk", VOLUME::NIL);
                disk[4]++;
             }
             else if (type IS DRIVETYPE_CDROM) {
-               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", 0);
+               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", VOLUME::NIL);
                cd[2]++;
             }
             else if (type IS DRIVETYPE_FIXED) {
-               SetVolume(hd, buffer+i, "devices/storage", label, "hd", 0);
+               SetVolume(hd, buffer+i, "devices/storage", label, "hd", VOLUME::NIL);
                hd[5]++;
             }
             else if (type IS DRIVETYPE_NETWORK) {
-               SetVolume(net, buffer+i, "devices/network", label, "network", 0);
+               SetVolume(net, buffer+i, "devices/network", label, "network", VOLUME::NIL);
                net[3]++;
             }
             else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
@@ -1566,7 +1570,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
          CSTRING str = buffer;
          while (*str) {
-            if (!StrCompare("/dev/hd", str, 0, 0)) {
+            if (!StrCompare("/dev/hd", str)) {
                // Extract mount point
 
                LONG i = 0;
@@ -1583,7 +1587,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
                if ((mount[0] IS '/') and (!mount[1]));
                else {
                   IntToStr(driveno++, drivename+5, 3);
-                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", 0);
+                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", VOLUME::NIL);
                }
             }
 
@@ -1607,7 +1611,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
       if (!access(cdroms[i], F_OK)) {
-         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", 0);
+         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", VOLUME::NIL);
          cdname[2] = cdname[2] + 1;
       }
    }
@@ -1624,16 +1628,16 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string name(vol, 0, v);
          std::string path(vol, v + 1, vol.size() - (v + 1));
 
-         LONG flags = glVolumes.contains(name) ? 0 : VOLUME_HIDDEN;
+         VOLUME flags = glVolumes.contains(name) ? VOLUME::NIL : VOLUME::HIDDEN;
 
-         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME_PRIORITY|flags);
+         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME::PRIORITY|flags);
       }
    }
 
    // Change glModulePath to an absolute path to optimise the loading of modules.
 
    STRING mpath;
-   if (!ResolvePath("modules:", RSF_NO_FILE_CHECK, &mpath)) {
+   if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
       glModulePath = mpath;
       FreeResource(mpath);
    }

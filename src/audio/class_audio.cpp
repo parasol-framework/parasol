@@ -378,7 +378,7 @@ static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
 
 #ifdef __linux__
    LONG console;
-   if ((console = GetResource(RES_CONSOLE_FD)) != -1) {
+   if ((console = GetResource(RES::CONSOLE_FD)) != -1) {
       ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((ULONG)Args->Duration << 16));
       return ERR_Okay;
    }
@@ -640,7 +640,7 @@ SaveSettings: Saves the current audio settings.
 
 static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
-   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
 
    if (file.ok()) return Self->saveToObject(*file);
    else return ERR_CreateFile;

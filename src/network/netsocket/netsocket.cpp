@@ -216,17 +216,17 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
       }
 
       Socket->setState( NTC_CONNECTING);
-      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
 
       // The write queue will be signalled once the connection process is completed.
 
-      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_WRITE|RFD_SOCKET, &client_connect, Socket);
+      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
    }
    else {
       log.trace("connect() successful.");
 
       Socket->setState(NTC_CONNECTED);
-      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
    }
 
 #elif _WIN32
@@ -366,13 +366,13 @@ static ERROR NETSOCKET_Free(extNetSocket *Self, APTR Void)
 
 static ERROR NETSOCKET_FreeWarning(extNetSocket *Self, APTR Void)
 {
-   pf::Log log;
 
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
+         pf::Log log;
          log.msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = TRUE;
-         SendMessage(0, MSGID_FREE, 0, &Self->UID, sizeof(OBJECTID));
+         SendMessage(0, MSGID_FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
       }
       return ERR_InUse;
    }
@@ -512,7 +512,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                listen(Self->SocketHandle, Self->Backlog);
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
                return ERR_Okay;
             }
             else if (result IS EADDRINUSE) return log.warning(ERR_InUse);
@@ -536,7 +536,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 
             if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                listen(Self->SocketHandle, Self->Backlog);
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
                return ERR_Okay;
             }
             else if (result IS EADDRINUSE) return log.warning(ERR_InUse);
@@ -832,7 +832,7 @@ static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
       if ((error IS ERR_DataSize) or (error IS ERR_BufferOverflow) or (len > 0))  {
          write_queue(Self, &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
             win_socketstate(Self->SocketHandle, -1, TRUE);
             Self->WriteSocket = &client_server_outgoing;
@@ -1071,7 +1071,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
             #ifdef __linux__
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
+               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
             #elif _WIN32
                win_socketstate(Self->SocketHandle, -1, TRUE);
                Self->WriteSocket = &client_server_outgoing;
@@ -1182,7 +1182,7 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
       if ((Self->State IS NTC_CONNECTED) and ((Self->WriteQueue.Buffer) or (Self->Outgoing.Type != CALL_NONE))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
          #elif _WIN32
             win_socketstate(Self->SocketHandle, -1, TRUE);
             Self->WriteSocket = &client_server_outgoing;
@@ -1190,7 +1190,7 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
       }
    }
 
-   SetResourcePtr(RES_EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
    return ERR_Okay;
 }
@@ -1272,7 +1272,7 @@ static void free_socket(extNetSocket *Self)
 
    log.trace("Resetting exception handler.");
 
-   SetResourcePtr(RES_EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, NULL); // Stop winsock from fooling with our exception handler
 
 }
 
@@ -1424,7 +1424,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
                sslConnect(Socket);
 
                if (Socket->State IS NTC_CONNECTING_SSL) {
-                  //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD_READ|RFD_SOCKET, &client_server_incoming, Socket);
+                  //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, &client_server_incoming, Socket);
                }
             }
             else Socket->setState(NTC_CONNECTED);

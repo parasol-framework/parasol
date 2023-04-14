@@ -79,7 +79,7 @@ end
             src   = 'xsltproc',
             args  = parameters,
             flags = 'WAIT',
-            timeout = 3
+            timeout = 5
          })
          task.acActivate()
       end

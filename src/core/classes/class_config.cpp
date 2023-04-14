@@ -63,9 +63,9 @@ static ERROR GET_TotalGroups(extConfig *, LONG *);
 static ERROR CONFIG_SaveSettings(extConfig *, APTR);
 
 static const FieldDef clFlags[] = {
-   { "AutoSave",    CNF_AUTO_SAVE },
-   { "StripQuotes", CNF_STRIP_QUOTES },
-   { "New",         CNF_NEW },
+   { "AutoSave",    CNF::AUTO_SAVE },
+   { "StripQuotes", CNF::STRIP_QUOTES },
+   { "New",         CNF::NEW },
    { NULL, 0 }
 };
 
@@ -151,7 +151,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
-      objFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
          LONG filesize;
@@ -169,7 +169,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
             else error = ERR_AllocMemory;
          }
       }
-      else if (Self->Flags & CNF_OPTIONAL_FILES) error = ERR_Okay;
+      else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR_Okay;
 
       while ((*Path) and (*Path != ';') and (*Path != '|')) Path++;
       if (*Path) Path++; // Skip separator
@@ -304,14 +304,14 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & CNF_AUTO_SAVE) {
+   if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) {
       if (Self->Path) {
          auto crc = calc_crc(Self);
 
          if ((!crc) or (crc != Self->CRC)) {
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
-            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0) };
+            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(0) };
             Self->saveToObject(*file);
          }
          else log.msg("Not auto-saving data (CRC unchanged).");
@@ -363,7 +363,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data even if the path is defined.
+   if ((Self->Flags & CNF::NEW) != CNF::NIL) return ERR_Okay; // Do not load any data even if the path is defined.
 
    ERROR error = ERR_Okay;
    if (Self->Path) {
@@ -374,7 +374,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
       }
    }
 
-   if (Self->Flags & CNF_AUTO_SAVE) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
+   if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
    return error;
 }
 
@@ -518,11 +518,11 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
    log.branch();
 
    ULONG crc = calc_crc(Self);
-   if ((Self->Flags & CNF_AUTO_SAVE) and (crc IS Self->CRC)) return ERR_Okay;
+   if (((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) and (crc IS Self->CRC)) return ERR_Okay;
 
    if (Self->Path) {
       objFile::create file = {
-         fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0)
+         fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(0)
       };
 
       if (file.ok()) {
@@ -1007,7 +1007,7 @@ static ERROR parse_config(extConfig *Self, CSTRING Buffer)
             if (*data) data++;
             while ((*data) and (*data <= 0x20)) data++; // Skip any leading whitespace, including new lines
 
-            if ((Self->Flags & CNF_STRIP_QUOTES) and (*data IS '"')) {
+            if (((Self->Flags & CNF::STRIP_QUOTES) != CNF::NIL) and (*data IS '"')) {
                data++;
                for (len=0; (data[len]) and (data[len] != '"'); len++);
                value.assign(data, 0, len);
@@ -1100,7 +1100,7 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
    if ((!Group) or (!*Group)) return NULL;
 
    for (auto & [group, keys] : Self->Groups[0]) {
-      if (!StrCompare(Group, group.c_str(), 0, STR_WILDCARD)) return &keys;
+      if (!StrCompare(Group, group.c_str(), 0, STR::WILDCARD)) return &keys;
    }
 
    return NULL;

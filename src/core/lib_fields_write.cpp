@@ -389,7 +389,7 @@ static ERROR writeval_flags(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Dat
                   if (j > 0) {
                      FieldDef *lk = (FieldDef *)Field->Arg;
                      while (lk->Name) {
-                        if ((!StrCompare(lk->Name, str, j, 0)) and (!lk->Name[j])) {
+                        if ((!StrCompare(lk->Name, str, j)) and (!lk->Name[j])) {
                            int64 |= lk->Value;
                            break;
                         }
@@ -444,7 +444,7 @@ static ERROR writeval_lookup(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
          int32 = StrToInt((CSTRING)Data); // If the Data string is a number rather than a lookup, this will extract it
          if ((lookup = (FieldDef *)Field->Arg)) {
             while (lookup->Name) {
-               if (!StrCompare((CSTRING)Data, lookup->Name, 0, STR_MATCH_LEN)) {
+               if (!StrCompare((CSTRING)Data, lookup->Name, 0, STR::MATCH_LEN)) {
                   int32 = lookup->Value;
                   break;
                }

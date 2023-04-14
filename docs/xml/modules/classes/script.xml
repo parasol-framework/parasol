@@ -193,7 +193,7 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="SCF">INT</type>
+      <type lookup="SCF">SCF</type>
       <description>
 <types lookup="SCF"/>
       </description>

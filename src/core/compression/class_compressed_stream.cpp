@@ -64,7 +64,7 @@ static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 //********************************************************************************************************************
 
 static ERROR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
-   Self->Format = CF_GZIP;
+   Self->Format = CF::GZIP;
    return ERR_Okay;
 }
 
@@ -97,15 +97,15 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
       log.trace("Initialising decompression of the stream.");
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
-         case CF_ZLIB:
+         case CF::ZLIB:
             if (inflateInit2(&Self->Stream, MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
             break;
 
-         case CF_DEFLATE:
+         case CF::DEFLATE:
             if (inflateInit2(&Self->Stream, -MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
             break;
 
-         case CF_GZIP:
+         case CF::GZIP:
          default:
             if (inflateInit2(&Self->Stream, 15 + 32) != ERR_Okay) return log.warning(ERR_Decompression);
             // Read the uncompressed size from the gzip header
@@ -245,19 +245,19 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
 
       switch (Self->Format) {
-         case CF_ZLIB:
+         case CF::ZLIB:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
                return log.warning(ERR_Compression);
             }
             break;
 
-         case CF_DEFLATE:
+         case CF::DEFLATE:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
                return log.warning(ERR_Compression);
             }
             break;
 
-         case CF_GZIP:
+         case CF::GZIP:
          default:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, 15 + 32, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
                return log.warning(ERR_Compression);

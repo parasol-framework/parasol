@@ -172,13 +172,13 @@ static ERROR process_args(void)
 
             struct DirInfo *dir;
             LONG total = 0;
-            if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
+            if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
                while (!ScanDir(dir)) {
                   struct FileInfo *folder = dir->Info;
-                  if (folder->Flags & RDF_FILE) {
+                  if (folder->Flags & RDF::FILE) {
                      LONG m;
                      for (m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name, 0, 0)) total++;
+                        if (!StrCompare(modules[m], folder->Name)) total++;
                      }
                   }
                }
@@ -206,7 +206,7 @@ static ERROR process_args(void)
             else {
                // Assume this arg is the target file.
 
-               if (ResolvePath(args[i], RSF_APPROXIMATE, &glTargetFile)) {
+               if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile)) {
                   print("Unable to find file '%s'", args[i]);
                   return ERR_Terminate;
                }
@@ -233,7 +233,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    pf::Log log(__FUNCTION__);
 
    if (Status IS ERR_Finished) {
-      SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
+      SendMessage(0, glScriptReceivedMsg, MSF::WAIT, NULL, 0);
       log.msg("Input pipe closed.");
       return;
    }
@@ -241,7 +241,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    glScriptBuffer.write(Buffer, Size);
 
    if (Buffer[Size-1] IS 0x1a) { // Ctrl-Z
-      SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
+      SendMessage(0, glScriptReceivedMsg, MSF::WAIT, NULL, 0);
       log.msg("EOF received.");
       return;
    }
@@ -270,7 +270,7 @@ int main(int argc, CSTRING *argv)
    int result = 0;
    if (!process_args()) {
       if (glTargetFile) {
-         LONG type;
+         LOC type;
          if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
             result = -1;

@@ -132,22 +132,42 @@ public:
    }
 };
 
+#define STAT_FOLDER 0x0001
+
+enum class RES    : LONG;
+enum class RP     : LONG;
+enum class IDTYPE : LONG;
+enum class TSTATE : BYTE;
+enum class LOC    : LONG;
+enum class STT    : LONG;
+enum class NF     : ULONG;
+enum class FOF    : ULONG;
+enum class RFD    : ULONG;
+enum class PMF    : ULONG;
+enum class MSF    : ULONG;
+enum class RDF    : ULONG;
+enum class RSF    : ULONG;
+enum class LDF    : ULONG;
+enum class VOLUME : ULONG;
+enum class STR    : ULONG;
+enum class ALF    : ULONG;
+enum class SCF    : ULONG;
+enum class SBF    : ULONG;
+enum class SMF    : ULONG;
+enum class VLF    : ULONG;
+enum class MFF    : ULONG;
+
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
    FUNCTION   Routine;   // Routine to call on event trigger
-   LONG       Flags;     // Event mask (original flags supplied to Watch)
+   MFF        Flags;     // Event mask (original flags supplied to Watch)
    ULONG      VirtualID; // If monitored path is virtual, this refers to an ID in the glVirtual table
 
 #ifdef _WIN32
    LONG WinFlags;
 #endif
 };
-
-#define STAT_FOLDER 0x0001
-
-enum class NF : ULONG;
-enum class FOF : ULONG;
 
 #include <parasol/vector.hpp>
 #include "prototypes.h"
@@ -184,6 +204,28 @@ struct CaseInsensitiveMap {
 };
 
 //********************************************************************************************************************
+// Semaphore management structure.
+
+struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
+   ULONG NameID;          // Hashed name of the semaphore
+   LONG  BlockingProcess; // Process ID of the blocker
+   LONG  BlockingThread;  // Global thread ID of the blocker
+   LARGE Data;            // User configurable 64-bit data
+   SMF   Flags;           // Status flags
+   WORD  BlockingValue;   // Value used for blocking access
+   WORD  MaxValue;        // Semaphore maximum value
+   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
+   struct SemProcess {
+      LONG ProcessID;
+      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
+      UBYTE BlockCount;      // Count of blocking locks currently recorded
+      UBYTE AccessCount;     // Count of access locks currently recorded
+      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
+   } Processes[20];
+   //LONG     FIFO[10];       // List of processes currently queued for access
+};
+
+//********************************************************************************************************************
 
 struct ActionSubscription {
    OBJECTPTR Context;
@@ -205,7 +247,7 @@ struct virtual_drive {
    ERROR (*OpenDir)(DirInfo *);
    ERROR (*CloseDir)(DirInfo *);
    ERROR (*Obsolete)(CSTRING, DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, LONG, LONG *);
+   ERROR (*TestPath)(CSTRING, RSF, LOC *);
    ERROR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
    ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
@@ -616,7 +658,7 @@ extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate;
 extern bool glJanitorActive;
 extern WORD glLogLevel, glMaxDepth;
-extern UBYTE glTaskState;
+extern TSTATE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
 extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
@@ -830,9 +872,9 @@ struct FDRecord {
    HOSTHANDLE FD;                         // The file descriptor that is managed by this record.
    void (*Routine)(HOSTHANDLE, APTR);     // The routine that will process read/write messages for the FD.
    APTR Data;                             // A user specific data pointer.
-   LONG Flags;                            // Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
+   RFD  Flags;                            // Set to RFD::READ, RFD::WRITE or RFD::EXCEPT.
 
-   FDRecord(HOSTHANDLE pFD, void (*pRoutine)(HOSTHANDLE, APTR), APTR pData, LONG pFlags) :
+   FDRecord(HOSTHANDLE pFD, void (*pRoutine)(HOSTHANDLE, APTR), APTR pData, RFD pFlags) :
       FD(pFD), Routine(pRoutine), Data(pData), Flags(pFlags) { }
 };
 
@@ -861,7 +903,7 @@ class RootModule : public BaseClass {
    WORD   Version;
    WORD   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
-   LONG   Flags;
+   MHF    Flags;
    UBYTE  NoUnload;
    UBYTE  DLL;                 // TRUE if the module is a Windows DLL
    LONG   (*Init)(OBJECTPTR, struct CoreBase *);
@@ -878,11 +920,11 @@ extern "C" {
 
 //********************************************************************************************************************
 
-ERROR AccessSemaphore(LONG, LONG, LONG);
-ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
+ERROR AccessSemaphore(LONG, LONG, SMF);
+ERROR AllocSemaphore(CSTRING, LONG, SMF, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR pReleaseSemaphore(LONG, LONG);
+ERROR pReleaseSemaphore(LONG, SMF);
 
 ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
@@ -896,7 +938,7 @@ ERROR fs_readlink(STRING, STRING *);
 ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
 ERROR fs_scandir(struct DirInfo *);
-ERROR fs_testpath(CSTRING, LONG, LONG *);
+ERROR fs_testpath(CSTRING, RSF, LOC *);
 ERROR fs_watch_path(class extFile *);
 
 const struct virtual_drive * get_fs(CSTRING Path);
@@ -975,28 +1017,28 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
    void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
    void  free_threadlocks(void);
-   ERROR wake_waitlock(WINHANDLE Lock, LONG ProcessID, LONG TotalSleepers);
-   ERROR alloc_public_waitlock(WINHANDLE *Lock, const char *Name);
-   void  free_public_waitlock(WINHANDLE Lock);
-   ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size);
+   ERROR wake_waitlock(WINHANDLE, LONG, LONG);
+   ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
+   void  free_public_waitlock(WINHANDLE);
+   ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
    LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
-   struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size);
-   ERROR alloc_public_lock(UBYTE, WORD Flags);
-   ERROR alloc_public_cond(CONDLOCK *, WORD Flags);
+   struct sockaddr_un * get_socket_path(LONG, socklen_t *);
+   ERROR alloc_public_lock(UBYTE, ALF);
+   ERROR alloc_public_cond(CONDLOCK *, ALF);
    void  free_public_lock(UBYTE);
    void  free_public_cond(CONDLOCK *);
-   ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout);
-   ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size);
+   ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
+   ERROR send_thread_msg(LONG, LONG, APTR, LONG);
 #endif
 
-ERROR alloc_private_lock(UBYTE, WORD);
-ERROR alloc_private_cond(UBYTE, WORD);
+ERROR alloc_private_lock(UBYTE, ALF);
+ERROR alloc_private_cond(UBYTE, ALF);
 void  free_private_lock(UBYTE);
 void  free_private_cond(UBYTE);
 ERROR thread_lock(UBYTE, LONG);
 void  thread_unlock(UBYTE);
-ERROR cond_wait(UBYTE, UBYTE, LONG Timeout);
+ERROR cond_wait(UBYTE, UBYTE, LONG);
 
 void cond_wake_all(UBYTE);
 void cond_wake_single(UBYTE);

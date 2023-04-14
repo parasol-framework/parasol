@@ -269,8 +269,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return ERR_Failed;
    }
 
-   LONG type;
-   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE);
+   LOC type;
+   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC::FILE);
 
    if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
       if (refresh) fntRefreshFonts();
@@ -417,7 +417,7 @@ static ERROR fntGetList(FontList **Result)
             }
 
             if (keys.contains("Scalable")) {
-               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
+               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR::MATCH_LEN)) list->Scalable = TRUE;
             }
 
             list->Points = NULL;
@@ -900,7 +900,7 @@ static ERROR fntInstallFont(CSTRING Files)
 
       // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
 
-      objFile::create file = { fl::Flags(FL_READ), fl::Path(buffer) };
+      objFile::create file = { fl::Flags(FL::READ), fl::Path(buffer) };
       if (file.ok()) {
          if (!file->read(buffer, 256)) {
             CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
@@ -1077,7 +1077,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       pf::rtrim(name, "'\"");
 
       for (auto & [group, keys] : groups[0]) {
-         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
+         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR::WILDCARD)) {
             // Determine if this is a fixed and/or scalable font.  Note that if the font supports
             // both fixed and scalable, fixed_group and scale_group will point to the same font.
 
@@ -1293,7 +1293,7 @@ static ERROR fntRefreshFonts(void)
 
    log.trace("Saving the font configuration file.");
 
-   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
    if (file.ok()) glConfig->saveToObject(*file);
 
    return ERR_Okay;
@@ -1313,14 +1313,14 @@ static void scan_truetype_folder(objConfig *Config)
 
    log.branch("Scanning for truetype fonts.");
 
-   if (!OpenDir("fonts:truetype/", RDF_FILE, &dir)) {
+   if (!OpenDir("fonts:truetype/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
          snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
          while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
 
-         ResolvePath(location, 0, (STRING *)&open.pathname);
+         ResolvePath(location, RSF::NIL, (STRING *)&open.pathname);
          open.flags = FT_OPEN_PATHNAME;
          if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
@@ -1397,7 +1397,7 @@ static void scan_fixed_folder(objConfig *Config)
    log.branch("Scanning for fixed fonts.");
 
    DirInfo *dir;
-   if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
+   if (!OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
          bool bold = false;
          bool bolditalic = false;
@@ -1500,7 +1500,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
 
    *FaceName = NULL;
-   objFile::create file = { fl::Path(Path), fl::Flags(FL_READ) };
+   objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
       file->read(&mz_header, sizeof(mz_header));
 

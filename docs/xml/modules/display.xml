@@ -973,12 +973,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
     </constants>
 
-    <constants lookup="CLF" comment="Clipboard flags">
-      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
-      <const name="HISTORY_BUFFER">Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.</const>
-      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
-    </constants>
-
     <constants lookup="CLIPTYPE" comment="Clipboard types">
       <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
       <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
@@ -986,6 +980,12 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
       <const name="OBJECT">An object that has been deserialised into binary form.</const>
       <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+    </constants>
+
+    <constants lookup="CPF" comment="Clipboard flags">
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HISTORY_BUFFER">Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
     <constants lookup="CRF" comment="Flags for the SetCursor() function.">

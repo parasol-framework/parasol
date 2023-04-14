@@ -211,7 +211,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     'OBJECT: An object that has been deserialised into binary form.',
     'TEXT: Plain text files such as ASCII and UTF-8 must be identified through this clip type.')
 
-  flags('CLF', { comment='Clipboard flags' },
+  flags('CPF', { strict=true, comment='Clipboard flags' },
     'DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.',
     'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.',
     'HISTORY_BUFFER: Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.')
@@ -475,7 +475,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
   })
 
   class('Clipboard', { src='class_clipboard.cpp', output='class_clipboard_def.c' }, [[
-    int(CLF) Flags      # Optional flags
+    int(CPF) Flags      # Optional flags
   ]],
   [[
    FUNCTION RequestHandler;

@@ -633,22 +633,22 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    auto str = Commands;
    while (*str) {
       if ((*str >= 'a') and (*str <= 'z')) {
-         if (!StrCompare(str, "matrix", 6, 0)) {
+         if (!StrCompare(str, "matrix", 6)) {
             cmd m(M_MUL);
             str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "translate", 9, 0)) {
+         else if (!StrCompare(str, "translate", 9)) {
             cmd m(M_TRANSLATE);
             str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "rotate", 6, 0)) {
+         else if (!StrCompare(str, "rotate", 6)) {
             cmd m(M_ROTATE);
             str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "scale", 5, 0)) {
+         else if (!StrCompare(str, "scale", 5)) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
@@ -656,13 +656,13 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewX", 5, 0)) {
+         else if (!StrCompare(str, "skewX", 5)) {
             cmd m(M_SKEW);
             m.ty = 0;
             str = read_numseq(str+5, &m.tx, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewY", 5, 0)) {
+         else if (!StrCompare(str, "skewY", 5)) {
             cmd m(M_SKEW);
             m.tx = 0;
             str = read_numseq(str+5, &m.ty, TAGEND);
@@ -775,7 +775,7 @@ ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGra
 next:
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
-   if (!StrCompare("url(", IRI, 4, 0)) {
+   if (!StrCompare("url(", IRI, 4)) {
       if (!Scene) {
          log.trace("No Scene specified to enable URL() reference.");
          return ERR_Failed;
@@ -827,7 +827,7 @@ next:
 
       return ERR_Failed;
    }
-   else if (!StrCompare("rgb(", IRI, 4, 0)) {
+   else if (!StrCompare("rgb(", IRI, 4)) {
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
       RGB->Red = StrToFloat(IRI) * (1.0 / 255.0);

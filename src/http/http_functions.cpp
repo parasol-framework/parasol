@@ -317,7 +317,7 @@ redo_upload:
          // Open the next file
 
          if (!parse_file(Self, (STRING)Self->Buffer, Self->BufferSize)) {
-            if ((Self->flInput = objFile::create::integral(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL_READ)))) {
+            if ((Self->flInput = objFile::create::integral(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL::READ)))) {
                if (total_out < Self->BufferSize) goto redo_upload; // Upload as much as possible in each pass
                else goto continue_upload;
             }
@@ -435,7 +435,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
          // Advance search for terminated double CRLF
 
          for (; Self->SearchIndex+4 <= Self->ResponseIndex; Self->SearchIndex++) {
-            if (!StrCompare(Self->Response + Self->SearchIndex, "\r\n\r\n", 4, STR_MATCH_CASE)) {
+            if (!StrCompare(Self->Response + Self->SearchIndex, "\r\n\r\n", 4, STR::MATCH_CASE)) {
                Self->Response[Self->SearchIndex] = 0; // Terminate the header at the CRLF point
 
                if (parse_response(Self, Self->Response) != ERR_Okay) {
@@ -479,8 +479,8 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      char buffer[512];
                      if (!acGetVar(Self, "Location", buffer, sizeof(buffer))) {
                         log.msg("MovedPermanently to %s", buffer);
-                        if (!StrCompare("http:", buffer, 5, 0)) Self->setLocation(buffer);
-                        else if (!StrCompare("https:", buffer, 6, 0)) Self->setLocation(buffer);
+                        if (!StrCompare("http:", buffer, 5)) Self->setLocation(buffer);
+                        else if (!StrCompare("https:", buffer, 6)) Self->setLocation(buffer);
                         else Self->setPath(buffer);
                         acActivate(Self); // Try again
                         Self->Flags |= HTF_MOVED;
@@ -532,7 +532,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   std::string& authenticate = Self->Args[0]["WWW-Authenticate"];
                   if (!authenticate.empty()) {
                      CSTRING auth = authenticate.c_str();
-                     if (!StrCompare("Digest", auth, 6, 0)) {
+                     if (!StrCompare("Digest", auth, 6)) {
                         log.trace("Digest authentication mode.");
 
                         if (Self->Realm)      { FreeResource(Self->Realm);      Self->Realm = NULL; }
@@ -546,16 +546,16 @@ static ERROR socket_incoming(objNetSocket *Socket)
                         while ((auth[i]) and (auth[i] <= 0x20)) i++;
 
                         while (auth[i]) {
-                           if (!StrCompare("realm=", auth+i, 0, 0))       i += extract_value(auth+i, &Self->Realm);
-                           else if (!StrCompare("nonce=", auth+i, 0, 0))  i += extract_value(auth+i, &Self->AuthNonce);
-                           else if (!StrCompare("opaque=", auth+i, 0, 0)) i += extract_value(auth+i, &Self->AuthOpaque);
-                           else if (!StrCompare("algorithm=", auth+i, 0, 0)) {
+                           if (!StrCompare("realm=", auth+i))       i += extract_value(auth+i, &Self->Realm);
+                           else if (!StrCompare("nonce=", auth+i))  i += extract_value(auth+i, &Self->AuthNonce);
+                           else if (!StrCompare("opaque=", auth+i)) i += extract_value(auth+i, &Self->AuthOpaque);
+                           else if (!StrCompare("algorithm=", auth+i)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
                               StrCopy(value, (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
                               FreeResource(value);
                            }
-                           else if (!StrCompare("qop=", auth+i, 0, 0)) {
+                           else if (!StrCompare("qop=", auth+i)) {
                               STRING value;
                               i += extract_value(auth+i, &value);
                               if (StrSearch("auth-int", value) >= 0) {
@@ -900,7 +900,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
 
    // First line: HTTP/1.1 200 OK
 
-   if (StrCompare("HTTP/", Buffer, 5, 0) != ERR_Okay) {
+   if (StrCompare("HTTP/", Buffer, 5) != ERR_Okay) {
       log.warning("Invalid response header, missing 'HTTP/'");
       return ERR_InvalidHTTPResponse;
    }
@@ -976,17 +976,18 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
    Self->setIndex((LARGE)Self->Index + (LARGE)Length); // Use Set() so that field subscribers can track progress with field monitoring
 
    if ((!Self->flOutput) and (Self->OutputFile)) {
-      LONG flags, type;
+      FL flags;
+      LOC type;
 
       if (Self->Flags & HTF_RESUME) {
-         if ((!AnalysePath(Self->OutputFile, &type)) and (type IS LOC_FILE)) {
-            flags = 0;
+         if ((!AnalysePath(Self->OutputFile, &type)) and (type IS LOC::FILE)) {
+            flags = FL::NIL;
          }
-         else flags = FL_NEW;
+         else flags = FL::NEW;
       }
-      else flags = FL_NEW;
+      else flags = FL::NEW;
 
-      if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL_WRITE)))) {
+      if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL::WRITE)))) {
          if (Self->Flags & HTF_RESUME) {
             acSeekEnd(Self->flOutput, 0);
             Self->setIndex(0);

@@ -709,14 +709,14 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       value[n] = 0;
 
       if (n > 0) {
-         LONG dt = StrDatatype(value);
-         if (dt IS STT_NUMBER) {
+         auto dt = StrDatatype(value);
+         if (dt IS STT::NUMBER) {
             lua_pushinteger(Lua, strtoll(value, NULL, 0));
          }
-         else if (dt IS STT_FLOAT) {
+         else if (dt IS STT::FLOAT) {
             lua_pushnumber(Lua, strtod(value, NULL));
          }
-         else if (dt IS STT_HEX) {
+         else if (dt IS STT::HEX) {
             lua_pushnumber(Lua, strtoull(value, NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {

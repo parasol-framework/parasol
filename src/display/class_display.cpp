@@ -511,7 +511,7 @@ static ERROR DISPLAY_GetVar(extDisplay *Self, struct acGetVar *Args)
    STRING buffer = Args->Buffer;
    buffer[0] = 0;
 
-   if (!StrCompare("resolution(", Args->Field, 11, 0)) {
+   if (!StrCompare("resolution(", Args->Field, 11)) {
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Field + 11;
@@ -582,7 +582,7 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
 #elif __snap__
    // If the system is shutting down, don't touch the display.  This makes things look tidier when the system shuts down.
 
-   LONG state = GetResource(RES_SYSTEM_STATE);
+   LONG state = GetResource(RES::SYSTEM_STATE);
    if ((state IS STATE_SHUTDOWN) or (state IS STATE_RESTART)) {
       log.msg("Not doing anything because system is shutting down.");
    }
@@ -619,8 +619,8 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
 
       if (xbpp <= 8) {
-         log.msg(VLF_CRITICAL, "Please change your X11 setup so that it runs in 15 bit mode or better.");
-         log.msg(VLF_CRITICAL, "Currently X11 is configured to use %d bit graphics.", xbpp);
+         log.msg(VLF::CRITICAL, "Please change your X11 setup so that it runs in 15 bit mode or better.");
+         log.msg(VLF::CRITICAL, "Currently X11 is configured to use %d bit graphics.", xbpp);
          return ERR_Failed;
       }
 
@@ -1102,11 +1102,11 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
    // winMoveWindow() treats the coordinates as being indicative of the client area.
 
    if (!winMoveWindow(Self->WindowHandle,
-         (Args->Flags & MTF_X) ? Args->X : F2T(Self->X) + Self->LeftMargin,
-         (Args->Flags & MTF_Y) ? Args->Y : F2T(Self->Y) + Self->TopMargin)) return ERR_Failed;
+         ((Args->Flags & MTF::X) != MTF::NIL) ? Args->X : F2T(Self->X) + Self->LeftMargin,
+         ((Args->Flags & MTF::Y) != MTF::NIL) ? Args->Y : F2T(Self->Y) + Self->TopMargin)) return ERR_Failed;
 
-   if (Args->Flags & MTF_X) Self->X = F2T(Args->X) + Self->LeftMargin;
-   if (Args->Flags & MTF_Y) Self->Y = F2T(Args->Y) + Self->TopMargin;
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = F2T(Args->X) + Self->LeftMargin;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = F2T(Args->Y) + Self->TopMargin;
    return ERR_Okay;
 
 #elif __xwindows__
@@ -1114,11 +1114,11 @@ static ERROR DISPLAY_MoveToPoint(extDisplay *Self, struct acMoveToPoint *Args)
    // Handling margins isn't necessary as the window manager will take that into account when it receives the move request.
 
    XMoveWindow(XDisplay, Self->XWindowHandle,
-      (Args->Flags & MTF_X) ? F2T(Args->X) : Self->X,
-      (Args->Flags & MTF_Y) ? F2T(Args->Y) : Self->Y);
+      ((Args->Flags & MTF::X) != MTF::NIL) ? F2T(Args->X) : Self->X,
+      ((Args->Flags & MTF::Y) != MTF::NIL) ? F2T(Args->Y) : Self->Y);
 
-   if (Args->Flags & MTF_X) Self->X = F2T(Args->X);
-   if (Args->Flags & MTF_Y) Self->Y = F2T(Args->Y);
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->X = F2T(Args->X);
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->Y = F2T(Args->Y);
    return ERR_Okay;
 
 #else
@@ -1208,7 +1208,7 @@ static ERROR DISPLAY_Redimension(extDisplay *Self, struct acRedimension *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   struct acMoveToPoint moveto = { Args->X, Args->Y, 0, MTF_X|MTF_Y };
+   struct acMoveToPoint moveto = { Args->X, Args->Y, 0, MTF::X|MTF::Y };
    DISPLAY_MoveToPoint(Self, &moveto);
 
    struct acResize resize = { Args->Width, Args->Height, Args->Depth };
@@ -1487,7 +1487,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 #ifdef _WIN32
    // NOTE: Dimensions are measured relative to the client area, not the window including its borders.
 
-   log.msg(VLF_BRANCH|VLF_EXTAPI, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
+   log.msg(VLF::BRANCH|VLF::EXTAPI, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
 
    if (!winResizeWindow(Self->WindowHandle, Args->X, Args->Y, Args->Width, Args->Height)) {
       return log.warning(ERR_Failed);
@@ -1780,7 +1780,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
    // Save the changes to the monitor.cfg file.  This requires admin privileges, so this is only going to work if
    // SetMonitor() is messaged to the core desktop process.
 
-   priverror = SetResource(RES_PRIVILEGEDUSER, 1);
+   priverror = SetResource(RES::PRIVILEGED_USER, 1);
 
    objConfig::create config = { fl::Path("config:hardware/monitor.cfg") };
    if (config.ok()) {
@@ -1794,7 +1794,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
       config->saveSettings();
    }
 
-   if (!priverror) SetResource(RES_PRIVILEGEDUSER, 0);
+   if (!priverror) SetResource(RES::PRIVILEGED_USER, 0);
    return ERR_Okay;
 #else
    return ERR_NoSupport;
@@ -2975,7 +2975,7 @@ static ERROR SET_X(extDisplay *Self, LONG Value)
       Self->X = Value;
       return ERR_Okay;
    }
-   else return acMoveToPoint(Self, Value, 0, 0, MTF_X);
+   else return acMoveToPoint(Self, Value, 0, 0, MTF::X);
 }
 
 /*********************************************************************************************************************
@@ -2999,7 +2999,7 @@ static ERROR SET_Y(extDisplay *Self, LONG Value)
       Self->Y = Value;
       return ERR_Okay;
    }
-   else return acMoveToPoint(Self, 0, Value, 0, MTF_Y);
+   else return acMoveToPoint(Self, 0, Value, 0, MTF::Y);
 }
 
 //********************************************************************************************************************
@@ -3095,7 +3095,7 @@ ERROR create_display_class(void)
       fl::ClassVersion(VER_DISPLAY),
       fl::Name("Display"),
       fl::Category(CCF_GRAPHICS),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clDisplayActions),
       fl::Methods(clDisplayMethods),
       fl::Fields(DisplayFields),

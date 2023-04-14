@@ -20,14 +20,14 @@ If the path can be resolved to more than one file, the ResolvePath() method will
 checking the validity of each possible location.  For instance, if resolving a path of `user:document.txt`
 and the `user:` volume refers to both `system:users/joebloggs/` and `system:users/default/`, the routine will check
 both directories for the existence of the `document.txt` file to determine the correct location.  While helpful, this
-can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF_NO_FILE_CHECK`
+can cause problems if the intent is to create a new file.  To circumvent this feature, use the `RSF::NO_FILE_CHECK`
 setting in the Flags parameter.
 
 When checking for the location of a file, ResolvePath() will only accept an exact file name match.  If the path must be
-treated as an approximation (i.e. file extensions can be ignored) then use the `RSF_APPROXIMATE` flag to tell the
+treated as an approximation (i.e. file extensions can be ignored) then use the `RSF::APPROXIMATE` flag to tell the
 function to ignore extensions for the purpose of file name matching.
 
-To resolve the location of executable programs on Unix systems, use the `RSF_PATH` flag.  This uses the PATH environment
+To resolve the location of executable programs on Unix systems, use the `RSF::PATH` flag.  This uses the PATH environment
 variable to resolve the file name specified in the Path parameter.
 
 The resolved path will be returned in the Result parameter as an allocated memory block.  It must be removed once it is
@@ -49,25 +49,25 @@ NullArgs:        Invalid arguments were specified.
 AllocMemory:     The result string could not be allocated.
 LockFailed:
 Search:          The given volume does not exist.
-FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use RSF_NO_FILE_CHECK if you need to avoid this error code).
+FileNotFound:    The path was resolved, but the referenced file or folder does not exist (use NO_FILE_CHECK to avoid this error code).
 Loop:            The volume refers back to itself.
 
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR resolve(STRING, STRING, LONG);
+static ERROR resolve(STRING, STRING, RSF);
 static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result);
 static THREADVAR bool tlClassLoaded;
 
-ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
+ERROR ResolvePath(CSTRING Path, RSF Flags, STRING *Result)
 {
    pf::Log log(__FUNCTION__);
    LONG i, loop;
    char src[MAX_FILENAME];
    char dest[MAX_FILENAME];
 
-   log.traceBranch("%s, Flags: $%.8x", Path, Flags);
+   log.traceBranch("%s, Flags: $%.8x", Path, LONG(Flags));
 
    if (!Path) return log.warning(ERR_NullArgs);
 
@@ -76,11 +76,11 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    tlClassLoaded = false;
 
    if (Path[0] IS '~') {
-      Flags |= RSF_APPROXIMATE;
+      Flags |= RSF::APPROXIMATE;
       Path++;
    }
 
-   if (!StrCompare("string:", Path, 7, 0)) {
+   if (!StrCompare("string:", Path, 7)) {
       if ((*Result = StrClone(Path))) return ERR_Okay;
       else return log.warning(ERR_AllocMemory);
    }
@@ -110,7 +110,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    // Use the PATH environment variable to resolve the filename.  This can only be done if the path is relative
    // (ideally with no leading folder references).
 
-   if ((!resolved) and (Flags & RSF_PATH)) {
+   if ((!resolved) and ((Flags & RSF::PATH) != RSF::NIL)) {
       if (!resolve_path_env(Path, Result)) return ERR_Okay;
    }
 
@@ -120,14 +120,14 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
    }
 
    if (resolved) {
-      if (Flags & RSF_APPROXIMATE) {
+      if ((Flags & RSF::APPROXIMATE) != RSF::NIL) {
          StrCopy(Path, dest, sizeof(dest));
-         if (!test_path(dest, RSF_APPROXIMATE)) Path = dest;
+         if (!test_path(dest, RSF::APPROXIMATE)) Path = dest;
          else return ERR_FileNotFound;
       }
-      else if (!(Flags & RSF_NO_FILE_CHECK)) {
+      else if ((Flags & RSF::NO_FILE_CHECK) IS RSF::NIL) {
          StrCopy(Path, dest, sizeof(dest));
-         if (!test_path(dest, 0)) Path = dest;
+         if (!test_path(dest, RSF::NIL)) Path = dest;
          else return ERR_FileNotFound;
       }
 
@@ -149,13 +149,13 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
       if (error IS ERR_VirtualVolume) {
          log.trace("Detected virtual volume '%s'", dest);
 
-         // If RSF_CHECK_VIRTUAL is set, return ERR_VirtualVolume for reserved volume names.
+         // If RSF::CHECK_VIRTUAL is set, return ERR_VirtualVolume for reserved volume names.
 
-         if (!(Flags & RSF_CHECK_VIRTUAL)) error = ERR_Okay;
+         if ((Flags & RSF::CHECK_VIRTUAL) IS RSF::NIL) error = ERR_Okay;
 
          if (Result) {
-            if (Flags & RSF_APPROXIMATE) { // Ensure that the resolved path is accurate
-               if (test_path(dest, RSF_APPROXIMATE)) error = ERR_FileNotFound;
+            if ((Flags & RSF::APPROXIMATE) != RSF::NIL) { // Ensure that the resolved path is accurate
+               if (test_path(dest, RSF::APPROXIMATE)) error = ERR_FileNotFound;
             }
 
             if (!(*Result = StrClone(dest))) error = ERR_AllocMemory;
@@ -182,7 +182,7 @@ ERROR ResolvePath(CSTRING Path, LONG Flags, STRING *Result)
          #endif
             // Copy the destination to the source buffer and repeat the resolution process.
 
-            if (Flags & RSF_NO_DEEP_SCAN) return ERR_Failed;
+            if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) return ERR_Failed;
             StrCopy(dest, src, sizeof(src));
             continue; // Keep resolving
          }
@@ -299,7 +299,7 @@ static ERROR resolve_path_env(CSTRING RelativePath, STRING *Result)
 
 static ERROR resolve_object_path(STRING, STRING, STRING, LONG);
 
-static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
+static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
 {
    pf::Log log("ResolvePath");
    char fullpath[MAX_FILENAME];
@@ -342,14 +342,14 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 
    if (fullpath[0] IS ':') return resolve_object_path(fullpath+1, Source, Dest, sizeof(fullpath)-1);
 
-   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source, fullpath, Flags);
+   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source, fullpath, LONG(Flags));
 
    STRING path = fullpath;
 
    // Check if the EXT: reference is used.  If so, respond by loading the module or class that handles the volume.
    // The loaded code should replace the volume with the correct information for discovery on the next resolution phase.
 
-   if (!StrCompare("EXT:", path, 4, STR_MATCH_CASE)) {
+   if (!StrCompare("EXT:", path, 4, STR::MATCH_CASE)) {
       StrCopy(Source, Dest, MAX_FILENAME); // Return an exact duplicate of the original source string
 
       if (get_virtual(Source)) {
@@ -428,7 +428,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 
       // Return now if no file checking is to be performed
 
-      if (Flags & RSF_NO_FILE_CHECK) {
+      if ((Flags & RSF::NO_FILE_CHECK) != RSF::NIL) {
          log.trace("No file check will be performed.");
          return ERR_Okay;
       }
@@ -440,7 +440,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
 
       log.trace("File does not exist at %s", Dest);
 
-      if (Flags & RSF_NO_DEEP_SCAN) {
+      if ((Flags & RSF::NO_DEEP_SCAN) != RSF::NIL) {
          log.trace("No deep scanning - additional paths will not be checked.");
          break;
       }
@@ -448,7 +448,7 @@ static ERROR resolve(STRING Source, STRING Dest, LONG Flags)
       if (*path) path++;
    }
 
-   log.trace("Resolved path but no matching file for %s\"%s\".", (Flags & RSF_APPROXIMATE) ? "~" : "", Source);
+   log.trace("Resolved path but no matching file for %s\"%s\".", ((Flags & RSF::APPROXIMATE) != RSF::NIL) ? "~" : "", Source);
    return ERR_FileNotFound;
 }
 

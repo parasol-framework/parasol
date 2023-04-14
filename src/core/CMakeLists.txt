@@ -124,11 +124,11 @@ add_definitions("-D__system__" "-DDBG_DIAGNOSTICS")
 # These definitions tell the Core where the system files are installed.
 
 if (RUN_ANYWHERE)
-   add_definitions("-DROOT_PATH=" "-DSYSTEM_PATH=" "-DMODULE_PATH=\"parasol:lib/\"")
+   add_definitions("-D_ROOT_PATH=" "-D_SYSTEM_PATH=" "-D_MODULE_PATH=\"parasol:lib/\"")
 else ()
-   add_definitions("-DROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
-      "-DSYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
-      "-DMODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
+   add_definitions("-D_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
+      "-D_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
+      "-D_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
 endif ()
 
 target_link_libraries (core PRIVATE zlib)

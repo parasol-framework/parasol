@@ -136,10 +136,10 @@ void process_error(objScript *Self, CSTRING Procedure)
 {
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   LONG flags = VLF_WARNING;
+   auto flags = VLF::WARNING;
    if (prv->CaughtError) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) flags = VLF_EXTAPI; // Non-critical errors are muted to prevent log noise.
+      if (Self->Error <= ERR_Terminate) flags = VLF::EXTAPI; // Non-critical errors are muted to prevent log noise.
    }
 
    pf::Log log;
@@ -237,12 +237,12 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 
    for (auto &scan : prv->ActionList) {
       if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
-         LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
+         LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
             pf::Log log;
 
-            log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
@@ -259,12 +259,12 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
                   process_error(Self, "Action Subscription");
                }
 
-               log.msg(VLF_BRANCH|VLF_EXTAPI, "Collecting garbage.");
+               log.msg(VLF::BRANCH|VLF::EXTAPI, "Collecting garbage.");
                lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
             }
          }
 
-         SetResource(RES_LOG_DEPTH, depth);
+         SetResource(RES::LOG_DEPTH, depth);
          return;
       }
    }
@@ -278,7 +278,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
-   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.msg(VLF::EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
@@ -365,7 +365,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       // Line hook, executes on the execution of a new line
 
-      if (Self->Flags & SCF_DEBUG) {
+      if ((Self->Flags & SCF::DEBUG) != SCF::NIL) {
          // LUA_MASKLINE:  Interpreter is executing a line.
          // LUA_MASKCALL:  Interpreter is calling a function.
          // LUA_MASKRET:   Interpreter returns from a function.
@@ -393,7 +393,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       prv->Lua->ProtectedGlobals = true;
 
       LONG result;
-      if (!StrCompare(LUA_COMPILED, Self->String, 0, 0)) { // The source is compiled
+      if (!StrCompare(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          LONG headerlen = StrLength(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
@@ -449,7 +449,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          prv->SaveCompiled = false;
 
          objFile::create cachefile = {
-            fl::Path(Self->CacheFile), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(prv->CachePermissions)
+            fl::Path(Self->CacheFile), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(prv->CachePermissions)
          };
 
          if (cachefile.ok()) {
@@ -530,7 +530,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
          if ((Args->Object) and (it->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
-            LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
+            LONG step = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
 
                lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
@@ -568,7 +568,7 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
                   }
                }
 
-            SetResource(RES_LOG_DEPTH, step);
+            SetResource(RES::LOG_DEPTH, step);
 
             it = prv->Requests.erase(it);
             continue;
@@ -655,7 +655,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    pf::Log log;
 
    if (Self->Path) {
-      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR_WILDCARD) != ERR_Okay) {
+      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR::WILDCARD) != ERR_Okay) {
          log.trace("No support for path '%s'", Self->Path);
          return ERR_NoSupport;
       }
@@ -773,7 +773,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    //    \* $FLUID
    //    // $FLUID
 
-   if (!StrCompare("?? $FLUID", str, 0, STR_WILDCARD)) {
+   if (!StrCompare("?? $FLUID", str, 0, STR::WILDCARD)) {
 
    }
 
@@ -849,7 +849,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
             lua_pop(prv->Lua, 1);
          }
 
-         *Value = StrBuildArray((STRING)list, size, total, SBF_SORT);
+         *Value = StrBuildArray((STRING)list, size, total, SBF::SORT);
          *Elements = total;
 
          FreeResource(list);
@@ -874,7 +874,7 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    const Proto *f;
    LONG i;
 
-   log.branch("Save Symbols: %d", Self->Flags & SCF_DEBUG);
+   log.branch("Save Symbols: %d", Self->Flags & SCF::DEBUG);
 
    if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
 
@@ -898,9 +898,9 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    }
 
    if ((code_writer_id > 0) and ((dest = GetObjectPtr(FileID)))) {
-      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF::DEBUG) ? 0 : 1);
    }
-   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF::DEBUG) ? 0 : 1);
 
    LogReturn();
    return ERR_Okay;
@@ -927,7 +927,7 @@ static ERROR run_script(objScript *Self)
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
 
       if (lua_isfunction(prv->Lua, -1)) {
-         if (Self->Flags & SCF_DEBUG) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
+         if ((Self->Flags & SCF::DEBUG) != SCF::NIL) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
 
          top = lua_gettop(prv->Lua);
 
@@ -1014,13 +1014,13 @@ static ERROR run_script(objScript *Self)
             }
          }
 
-         LONG step = GetResource(RES_LOG_DEPTH);
+         LONG step = GetResource(RES::LOG_DEPTH);
 
          if (lua_pcall(prv->Lua, count, LUA_MULTRET, 0)) {
             pcall_failed = true;
          }
 
-         SetResource(RES_LOG_DEPTH, step);
+         SetResource(RES::LOG_DEPTH, step);
 
          while (r > 0) release_object(release_list[--r]);
       }
@@ -1045,14 +1045,14 @@ static ERROR run_script(objScript *Self)
       }
    }
    else {
-      LONG depth = GetResource(RES_LOG_DEPTH);
+      LONG depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
          if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
             pcall_failed = true;
          }
 
-      SetResource(RES_LOG_DEPTH, depth);
+      SetResource(RES::LOG_DEPTH, depth);
    }
 
    if (!pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.

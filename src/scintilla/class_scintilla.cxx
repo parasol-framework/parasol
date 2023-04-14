@@ -1321,12 +1321,12 @@ static ERROR SCINTILLA_ScrollToPoint(extScintilla *Self, struct acScrollToPoint 
 {
    pf::Log log;
 
-   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", (Args->Flags & STP_X) ? (LONG)Args->X : 0, (Args->Flags & STP_Y) ? (LONG)Args->Y : 0);
+   log.traceBranch("Sending Scroll requests to Scintilla: %dx%d.", ((Args->Flags & STP::X) != STP::NIL) ? (LONG)Args->X : 0, ((Args->Flags & STP::Y) != STP::NIL) ? (LONG)Args->Y : 0);
 
    Self->ScrollLocked++;
 
-   if (Args->Flags & STP_X) Self->API->panScrollToX(Args->X);
-   if (Args->Flags & STP_Y) Self->API->panScrollToY(Args->Y);
+   if ((Args->Flags & STP::X) != STP::NIL) Self->API->panScrollToX(Args->X);
+   if ((Args->Flags & STP::Y) != STP::NIL) Self->API->panScrollToY(Args->Y);
 
    Self->ScrollLocked--;
    return ERR_Okay;
@@ -2225,9 +2225,9 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
    LONG size, len;
    ERROR error = ERR_Okay;
 
-   if (auto file = objFile::create::integral(fl::Flags(FL_READ), fl::Path(Path))) {
-      if (file->Flags & FL_STREAM) {
-         if (!flStartStream(file, Self->UID, FL_READ, 0)) {
+   if (auto file = objFile::create::integral(fl::Flags(FL::READ), fl::Path(Path))) {
+      if ((file->Flags & FL::STREAM) != FL::NIL) {
+         if (!flStartStream(file, Self->UID, FL::READ, 0)) {
             acClear(Self);
 
             auto callback = make_function_stdc(notify_write);
@@ -2271,7 +2271,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       Path = Path + i;
 
       for (i=0; i < ARRAYSIZE(glLexers); i++) {
-         if (!StrCompare(glLexers[i].File, Path, 0, STR_WILDCARD)) {
+         if (!StrCompare(glLexers[i].File, Path, 0, STR::WILDCARD)) {
             pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
             log.branch("Lexer for the loaded file is %d.", Self->Lexer);
@@ -2541,7 +2541,7 @@ static ERROR create_scintilla(void)
       fl::ClassVersion(VER_SCINTILLA),
       fl::Name("Scintilla"),
       fl::Category(CCF_TOOL),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clScintillaActions),
       fl::Methods(clScintillaMethods),
       fl::Fields(clFields),

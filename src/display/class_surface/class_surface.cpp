@@ -962,7 +962,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if (Self->Flags & RNF_AUTO_QUIT) {
       pf::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      SendMessage(0, MSGID_QUIT, 0, NULL, 0);
+      SendMessage(0, MSGID_QUIT, MSF::NIL, NULL, 0);
    }
 
    if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);
@@ -1578,7 +1578,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    APTR queue;
-   if (!AccessMemory(GetResource(RES_MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
+   if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
       LONG index = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
       while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -1875,10 +1875,10 @@ static ERROR SURFACE_MoveToPoint(extSurface *Self, struct acMoveToPoint *Args)
 {
    struct acMove move;
 
-   if (Args->Flags & MTF_X) move.DeltaX = Args->X - Self->X;
+   if ((Args->Flags & MTF::X) != MTF::NIL) move.DeltaX = Args->X - Self->X;
    else move.DeltaX = 0;
 
-   if (Args->Flags & MTF_Y) move.DeltaY = Args->Y - Self->Y;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) move.DeltaY = Args->Y - Self->Y;
    else move.DeltaY = 0;
 
    move.DeltaZ = 0;
@@ -2295,7 +2295,12 @@ static ERROR SURFACE_ScrollToPoint(extSurface *Self, struct acScrollToPoint *Arg
          }
       }
 
-      struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, Args->Flags };
+      auto flags = MTF::NIL;
+      if ((Args->Flags & STP::X) != STP::NIL) flags |= MTF::X;
+      if ((Args->Flags & STP::Y) != STP::NIL) flags |= MTF::Y;
+      if ((Args->Flags & STP::Z) != STP::NIL) flags |= MTF::Z;
+      if ((Args->Flags & STP::ANIM) != STP::NIL) flags |= MTF::ANIM;
+      struct acMoveToPoint move = { -Args->X, -Args->Y, -Args->Z, flags };
       for (auto &id : surfaces) QueueAction(AC_MoveToPoint, id, &move);
    }
 

@@ -39,8 +39,8 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
             i++;
 
             i += StrCopy("\" --relaunch", cmdline+i, sizeof(cmdline)-i);
-            if (GetResource(RES_LOG_LEVEL) >= 5) i += StrCopy(" --log-debug", cmdline+i, sizeof(cmdline)-i);
-            else if (GetResource(RES_LOG_LEVEL) >= 3) i += StrCopy(" --log-info", cmdline+i, sizeof(cmdline)-i);
+            if (GetResource(RES::LOG_LEVEL) >= 5) i += StrCopy(" --log-debug", cmdline+i, sizeof(cmdline)-i);
+            else if (GetResource(RES::LOG_LEVEL) >= 3) i += StrCopy(" --log-info", cmdline+i, sizeof(cmdline)-i);
 
             pf::vector<std::string> &args = *params;
             for (unsigned a=0; a < args.size(); a++) {
@@ -63,12 +63,12 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
 
             // Temporarily switch off debug messages until the child process returns.
 
-            LONG log_level = GetResource(RES_LOG_LEVEL);
-            SetResource(RES_LOG_LEVEL, 1);
+            LONG log_level = GetResource(RES::LOG_LEVEL);
+            SetResource(RES::LOG_LEVEL, 1);
 
             create_low_process(cmdline, TRUE);
 
-            SetResource(RES_LOG_LEVEL, log_level);
+            SetResource(RES::LOG_LEVEL, log_level);
 
             return ERR_LimitedSuccess;
          }

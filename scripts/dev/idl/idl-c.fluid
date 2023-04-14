@@ -127,7 +127,7 @@ glActionStubs = {
       return Action(AC_Scroll, this, &args);
    }]],
    ScrollToPoint = [[
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }]],
@@ -144,7 +144,7 @@ glActionStubs = {
       return error;
    }]],
    MoveToPoint = [[
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }]],
@@ -742,10 +742,10 @@ function struct(Name, Options, Def, Append)
       for i, f in ipairs(fields) do
          local field_name = cName(f, true)
          local left
-         if nz(field_name) then
-            left = string.format('   %-' .. type_len .. 's %s;', f.type, field_name)
+         if nz(field_name) then -- field_name can be nil if the field describes a function pointer
+            left = string.format('   %-' .. type_len .. 's %s;', nz(f.extType, f.type), field_name)
          else
-            left = string.format('   %-' .. type_len .. 's;', f.type)
+            left = string.format('   %-' .. type_len .. 's;', nz(f.extType, f.type))
          end
 
          if nz(f.comment) then

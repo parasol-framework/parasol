@@ -116,16 +116,16 @@ static ERROR TASK_Expunge(extTask *, APTR);
 static ERROR TASK_Quit(extTask *, APTR);
 
 static const FieldDef clFlags[] = {
-   { "Foreign",    TSF_FOREIGN },
-   { "Wait",       TSF_WAIT },
-   { "Shell",      TSF_SHELL },
-   { "ResetPath",  TSF_RESET_PATH },
-   { "Privileged", TSF_PRIVILEGED },
-   { "Debug",      TSF_DEBUG },
-   { "Quiet",      TSF_QUIET },
-   { "Attached",   TSF_ATTACHED },
-   { "Detached",   TSF_DETACHED },
-   { "Pipe",       TSF_PIPE },
+   { "Foreign",    TSF::FOREIGN },
+   { "Wait",       TSF::WAIT },
+   { "Shell",      TSF::SHELL },
+   { "ResetPath",  TSF::RESET_PATH },
+   { "Privileged", TSF::PRIVILEGED },
+   { "Debug",      TSF::DEBUG },
+   { "Quiet",      TSF::QUIET },
+   { "Attached",   TSF::ATTACHED },
+   { "Detached",   TSF::DETACHED },
+   { "Pipe",       TSF::PIPE },
    { NULL, 0 }
 };
 
@@ -201,7 +201,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
    }
    else if (result IS -2) {
       error = ERR_Finished;
-      RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
    }
    else {
       error = ERR_Failed;
@@ -404,21 +404,21 @@ extern "C" void task_register_stdout(extTask *Task, WINHANDLE Handle)
 {
    pf::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
-   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
+   RegisterFD(Handle, RFD::READ, (void (*)(void *, void *))&task_incoming_stdout, Task);
 }
 
 extern "C" void task_register_stderr(extTask *Task, WINHANDLE Handle)
 {
    pf::Log log(__FUNCTION__);
    log.traceBranch("Handle: %d", (LONG)(MAXINT)Handle);
-   RegisterFD(Handle, RFD_READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
+   RegisterFD(Handle, RFD::READ, (void (*)(void *, void *))&task_incoming_stderr, Task);
 }
 
 //********************************************************************************************************************
 
 extern "C" void task_deregister_incoming(WINHANDLE Handle)
 {
-   RegisterFD(Handle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+   RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
 }
 #endif
 
@@ -512,7 +512,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
 static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   glTaskState = TSTATE_STOPPING;
+   glTaskState = TSTATE::STOPPING;
    return ERR_Okay;
 }
 
@@ -591,7 +591,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    // Send a break if we're waiting for this process to end
 
-   if ((Task->Flags & TSF_WAIT) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, 0, NULL, 0);
+   if (((Task->Flags & TSF::WAIT) != TSF::NIL) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, MSF::NIL, NULL, 0);
 }
 #endif
 
@@ -602,14 +602,14 @@ extern "C" void register_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
-   RegisterFD(ProcessHandle, RFD_READ, (void (*)(void *, void *))&task_process_end, Self);
+   RegisterFD(ProcessHandle, RFD::READ, (void (*)(void *, void *))&task_process_end, Self);
 }
 
 extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
 {
    pf::Log log;
    log.traceBranch("Process: %d", (LONG)(MAXINT)ProcessHandle);
-   if (ProcessHandle) RegisterFD(ProcessHandle, RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT, NULL, NULL);
+   if (ProcessHandle) RegisterFD(ProcessHandle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
 }
 #endif
 
@@ -677,7 +677,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    Self->ReturnCodeSet = false;
 
-   if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
+   if ((Self->Flags & TSF::FOREIGN) != TSF::NIL) Self->Flags |= TSF::SHELL;
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
@@ -693,7 +693,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    launchdir[0] = 0;
    if ((!GET_LaunchPath(Self, &path)) and (path)) {
-      if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
+      if (!ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          launchdir[i] = 0;
          FreeResource(path);
@@ -703,8 +703,8 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          launchdir[i] = 0;
       }
    }
-   else if (Self->Flags & TSF_RESET_PATH) {
-      if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
+   else if ((Self->Flags & TSF::RESET_PATH) != TSF::NIL) {
+      if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          FreeResource(path);
       }
@@ -718,7 +718,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    i = 0;
    buffer[i++] = '"';
-   if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
+   if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
       for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1); i++,j++) {
          if (path[j] IS '/') buffer[i] = '\\';
          else buffer[i] = path[j];
@@ -743,7 +743,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       if (param[0] IS '>') {
          // Redirection argument detected
 
-         if (!ResolvePath(param.c_str() + 1, RSF_NO_FILE_CHECK, &redirect_stdout)) {
+         if (!ResolvePath(param.c_str() + 1, RSF::NO_FILE_CHECK, &redirect_stdout)) {
             redirect_stderr = redirect_stdout;
          }
 
@@ -754,13 +754,13 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
       else if ((param[0] IS '2') and (param[1] IS '>')) {
          log.msg("StdErr redirected to %s", param.c_str() + 2);
-         ResolvePath(param.c_str() + 2, RSF_NO_FILE_CHECK, &redirect_stderr);
+         ResolvePath(param.c_str() + 2, RSF::NO_FILE_CHECK, &redirect_stderr);
          hide_output = true;
          continue;
       }
       else if ((param[0] IS '1') and (param[1] IS '>')) {
          log.msg("StdOut redirected to %s", param.c_str() + 2);
-         ResolvePath(param.c_str() + 2, RSF_NO_FILE_CHECK, &redirect_stdout);
+         ResolvePath(param.c_str() + 2, RSF::NO_FILE_CHECK, &redirect_stdout);
          hide_output = true;
          continue;
       }
@@ -819,33 +819,33 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    // Hide window if this is designated a shell program (i.e. hide the DOS window).
    // NB: If you hide a non-shell program, this usually results in the first GUI window that pops up being hidden.
 
-   if (Self->Flags & TSF_SHELL) hide_output = true;
+   if ((Self->Flags & TSF::SHELL) != TSF::NIL) hide_output = true;
 
-   // Determine whether this new process will be a member of the parent process' group.  This can be forced with the TSF_DETACHED/ATTACHED flags,
+   // Determine whether this new process will be a member of the parent process' group.  This can be forced with the TSF::DETACHED/ATTACHED flags,
    // otherwise it will be determined automatically according to the status of our current task.
 
    bool group;
 
-   if (Self->Flags & TSF_ATTACHED) group = true;
-   else if (Self->Flags & TSF_DETACHED) group = false;
+   if ((Self->Flags & TSF::ATTACHED) != TSF::NIL) group = true;
+   else if ((Self->Flags & TSF::DETACHED) != TSF::NIL) group = false;
    else group = true;
 
    LONG internal_redirect = 0;
    if (Self->OutputCallback.Type) internal_redirect |= TSTD_OUT;
    if (Self->ErrorCallback.Type) internal_redirect |= TSTD_ERR;
-   if (Self->Flags & TSF_PIPE) internal_redirect |= TSTD_IN;
+   if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
    if (!(winerror = winLaunchProcess(Self, buffer, (launchdir[0] != 0) ? launchdir : 0, group,
          internal_redirect, &Self->Platform, hide_output, redirect_stdout, redirect_stderr, &Self->ProcessID))) {
 
       error = ERR_Okay;
-      if ((Self->Flags & TSF_WAIT) and (Self->TimeOut > 0)) {
+      if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
          log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
          glProcessBreak = MSGID_BREAK;
 
-         ProcessMessages(0, Self->TimeOut * 1000.0);
+         ProcessMessages(PMF::NIL, Self->TimeOut * 1000.0);
 
          winGetExitCodeProcess(Self->Platform, &Self->ReturnCode);
          if (Self->ReturnCode != 259) Self->ReturnCodeSet = true;
@@ -872,15 +872,15 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    GET_LaunchPath(Self, &path);
 
    i = 0;
-   if ((Self->Flags & TSF_RESET_PATH) or (path)) {
-      Self->Flags |= TSF_SHELL;
+   if (((Self->Flags & TSF::RESET_PATH) != TSF::NIL) or (path)) {
+      Self->Flags |= TSF::SHELL;
 
       buffer[i++] = 'c';
       buffer[i++] = 'd';
       buffer[i++] = ' ';
 
       if (!path) path = Self->Location;
-      if (!ResolvePath(path, RSF_APPROXIMATE|RSF_PATH, &path)) {
+      if (!ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
          FreeResource(path);
       }
@@ -897,7 +897,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    // Resolve the location of the executable (may contain an volume) and copy it to the command line buffer.
 
-   if (!ResolvePath(Self->Location, RSF_APPROXIMATE|RSF_PATH, &path)) {
+   if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
       for (j=0; (path[j]) and ((size_t)i < sizeof(buffer)-1);) buffer[i++] = path[j++];
       buffer[i] = 0;
       FreeResource(path);
@@ -910,7 +910,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    CSTRING argslist[Self->Parameters.size()+2];
    LONG bufend = i;
 
-   // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF_SHELL is used,
+   // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF::SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
 
    for (auto &param : Self->Parameters) {
@@ -938,7 +938,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 
-   if (!(Self->Flags & TSF_SHELL)) {
+   if ((Self->Flags & TSF::SHELL) IS TSF::NIL) {
       buffer[bufend] = 0;
 
       argslist[0] = buffer;
@@ -948,7 +948,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
       argslist[i+1] = NULL;
 
-      if (Self->Flags & TSF_DEBUG) {
+      if ((Self->Flags & TSF::DEBUG) != TSF::NIL) {
          for (i=1; argslist[i]; i++) {
             log.msg("Arg %d: %s", i, argslist[i]);
          }
@@ -979,7 +979,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
    }
 
-   if ((out_fd IS -1) and (Self->Flags & TSF_QUIET)) {
+   if ((out_fd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
       log.msg("Output will go to NULL");
       out_fd = open("/dev/null", O_RDONLY);
    }
@@ -998,14 +998,14 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
    }
 
-   if ((out_errfd IS -1) and (TSF_QUIET)) {
+   if ((out_errfd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
       out_errfd = open("/dev/null", O_RDONLY);
    }
 
    // Fork a new task.  Remember that forking produces an exact duplicate of the process that made the fork.
 
-   privileged = (Self->Flags & TSF_PRIVILEGED) ? 1 : 0;
-   shell = (Self->Flags & TSF_SHELL) ? 1 : 0;
+   privileged = ((Self->Flags & TSF::PRIVILEGED) != TSF::NIL) ? 1 : 0;
+   shell = ((Self->Flags & TSF::SHELL) != TSF::NIL) ? 1 : 0;
 
    pid = fork();
 
@@ -1029,13 +1029,13 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       glTasks.emplace_back(Self);
 
       if (in_fd != -1) {
-         RegisterFD(in_fd, RFD_READ, &task_stdout, Self);
+         RegisterFD(in_fd, RFD::READ, &task_stdout, Self);
          Self->InFD = in_fd;
          close(out_fd);
       }
 
       if (in_errfd != -1) {
-         RegisterFD(in_errfd, RFD_READ, &task_stderr, Self);
+         RegisterFD(in_errfd, RFD::READ, &task_stderr, Self);
          Self->ErrFD = in_errfd;
          close(out_errfd);
       }
@@ -1048,7 +1048,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
 
       error = ERR_Okay;
-      if (Self->Flags & TSF_WAIT) {
+      if ((Self->Flags & TSF::WAIT) != TSF::NIL) {
          log.branch("Waiting for process to turn into a zombie in %.2fs.", Self->TimeOut);
 
          // Wait for the child process to turn into a zombie.  NB: A parent process or our own child handler may
@@ -1057,7 +1057,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          LONG status = 0;
          LARGE ticks = PreciseTime() + LARGE(Self->TimeOut * 1000000.0);
          while (!waitpid(pid, &status, WNOHANG)) {
-            ProcessMessages(0, 100);
+            ProcessMessages(PMF::NIL, 100);
 
             auto remaining = ticks - PreciseTime();
             if (remaining <= 0) {
@@ -1199,24 +1199,24 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    check_incoming(Self);
 
    if (Self->InFD != -1) {
-      RegisterFD(Self->InFD, RFD_REMOVE, NULL, NULL);
+      RegisterFD(Self->InFD, RFD::REMOVE, NULL, NULL);
       close(Self->InFD);
       Self->InFD = -1;
    }
 
    if (Self->ErrFD != -1) {
-      RegisterFD(Self->ErrFD, RFD_REMOVE, NULL, NULL);
+      RegisterFD(Self->ErrFD, RFD::REMOVE, NULL, NULL);
       close(Self->ErrFD);
       Self->ErrFD = -1;
    }
 
-   if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
 #ifdef _WIN32
    if (Self->Env) { FreeResource(Self->Env); Self->Env = NULL; }
    if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = NULL; }
-   if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+   if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
 
    // Free allocations
@@ -1310,7 +1310,7 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
       };
 
       for (LONG ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
+         if (!StrCompare(keys[ki].HKey, Args->Name)) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
             len = StrLength(str); // End of string
 
@@ -1520,7 +1520,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       log.msg("Process Path: %s", Self->ProcessPath);
       log.msg("Working Path: %s", Self->Path);
    }
-   else if (Self->ProcessID) Self->Flags |= TSF_FOREIGN;
+   else if (Self->ProcessID) Self->Flags |= TSF::FOREIGN;
 
    return ERR_Okay;
 }
@@ -1571,7 +1571,7 @@ static ERROR TASK_Quit(extTask *Self, APTR Void)
    }
    else {
       log.branch("Sending QUIT message to self.");
-      SendMessage(Self->UID, MSGID_QUIT, 0, NULL, 0);
+      SendMessage(Self->UID, MSGID_QUIT, MSF::NIL, NULL, 0);
    }
 
    return ERR_Okay;
@@ -1635,7 +1635,7 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
       log.msg("Registry: %s = %s", Args->Name, Args->Value);
 
       for (ki=0; ki < ARRAYSIZE(keys); ki++) {
-         if (!StrCompare(keys[ki].HKey, Args->Name, 0, 0)) {
+         if (!StrCompare(keys[ki].HKey, Args->Name)) {
             CSTRING str = Args->Name + StrLength(keys[ki].HKey); // str = Parasol\Something
 
             for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);
@@ -1911,9 +1911,9 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
       ERROR error;
       #ifdef __unix__
       fcntl(fileno(stdin), F_SETFL, fcntl(fileno(stdin), F_GETFL) | O_NONBLOCK);
-      if (!(error = RegisterFD(fileno(stdin), RFD_READ, &task_stdinput_callback, Self))) {
+      if (!(error = RegisterFD(fileno(stdin), RFD::READ, &task_stdinput_callback, Self))) {
       #elif _WIN32
-      if (!(error = RegisterFD(winGetStdInput(), RFD_READ, &task_stdinput_callback, Self))) {
+      if (!(error = RegisterFD(winGetStdInput(), RFD::READ, &task_stdinput_callback, Self))) {
       #endif
          Self->InputCallback = *Value;
       }
@@ -1921,9 +1921,9 @@ static ERROR SET_InputCallback(extTask *Self, FUNCTION *Value)
    }
    else {
       #ifdef _WIN32
-      if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.Type) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #else
-      if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD_READ|RFD_REMOVE, &task_stdinput_callback, Self);
+      if (Self->InputCallback.Type) RegisterFD(fileno(stdin), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
       #endif
       Self->InputCallback.Type = CALL_NONE;
    }
@@ -2162,7 +2162,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
 
 #ifdef __unix__
          STRING path;
-         if (!ResolvePath(new_path, RSF_NO_FILE_CHECK, &path)) {
+         if (!ResolvePath(new_path, RSF::NO_FILE_CHECK, &path)) {
             if (chdir(path)) {
                error = ERR_InvalidPath;
                log.msg("Failed to switch current path to: %s", path);
@@ -2172,7 +2172,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
          else error = log.warning(ERR_ResolvePath);
 #elif _WIN32
          STRING path;
-         if (!ResolvePath(new_path, RSF_NO_FILE_CHECK|RSF_PATH, &path)) {
+         if (!ResolvePath(new_path, RSF::NO_FILE_CHECK|RSF::PATH, &path)) {
             if (chdir(path)) {
                error = ERR_InvalidPath;
                log.msg("Failed to switch current path to: %s", path);

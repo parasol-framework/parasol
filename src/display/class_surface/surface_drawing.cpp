@@ -325,7 +325,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
+   MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
    APTR queue;
    if (!AccessMemory(msgqueue, MEM_READ, 3000, &queue)) {
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
@@ -406,7 +406,7 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    APTR queue;
-   MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
+   MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
    if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
       LONG msgindex = 0;
@@ -506,7 +506,7 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    APTR queue;
-   MEMORYID msgqueue = GetResource(RES_MESSAGE_QUEUE);
+   MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
    if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
       LONG msgindex = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
@@ -582,7 +582,7 @@ void move_layer(extSurface *Self, LONG X, LONG Y)
          LONG top_margin = display->TopMargin;
          ReleaseObject(display);
 
-         if (!acMoveToPoint(display, X - left_margin, Y - top_margin, 0, MTF_X|MTF_Y)) {
+         if (!acMoveToPoint(display, X - left_margin, Y - top_margin, 0, MTF::X|MTF::Y)) {
             Self->X = X;
             Self->Y = Y;
             UpdateSurfaceRecord(Self);

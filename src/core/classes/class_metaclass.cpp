@@ -350,8 +350,8 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
          static bool write_attempted = false;
          if ((!glClassFile) and (!write_attempted)) {
             write_attempted = true;
-            LONG flags = FL_WRITE;
-            if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL_NEW;
+            auto flags = FL::WRITE;
+            if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL::NEW;
 
             auto file = objFile::create::untracked(fl::Name("class_dict_output"), fl::Path(glClassBinPath), fl::Flags(flags),
                fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ));
@@ -923,7 +923,7 @@ static void field_setup(extMetaClass *Class)
       ULONG integral[ARRAYSIZE(Class->Integral)];
 
       UBYTE int_count = 0;
-      if (Class->Flags & CLF_PROMOTE_INTEGRAL) {
+      if ((Class->Flags & CLF::PROMOTE_INTEGRAL) != CLF::NIL) {
          for (unsigned i=0; i < Class->FieldLookup.size(); i++) {
             if (Class->FieldLookup[i].Flags & FD_INTEGRAL) {
                Class->Integral[int_count] = i;
@@ -1098,24 +1098,24 @@ void scan_classes(void)
    DeleteFile(glClassBinPath, NULL);
 
    DirInfo *dir;
-   if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
+   if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
       LONG total = 0;
       while (!ScanDir(dir)) {
          FileInfo *list = dir->Info;
 
-         if (list->Flags & RDF_FILE) {
+         if ((list->Flags & RDF::FILE) != RDF::NIL) {
             #ifdef __ANDROID__
-               if (!StrCompare("libshim.", list->Name, 0, 0)) continue;
-               if (!StrCompare("libcore.", list->Name, 0, 0)) continue;
+               if (!StrCompare("libshim.", list->Name)) continue;
+               if (!StrCompare("libcore.", list->Name)) continue;
             #else
-               if (!StrCompare("core.", list->Name, 0, 0)) continue;
+               if (!StrCompare("core.", list->Name)) continue;
             #endif
 
             auto modules = std::string("modules:") + list->Name;
 
             log.msg("Loading module for class scan: %s", modules.c_str());
 
-            objModule::create mod = { fl::Name(modules), fl::Flags(MOF_SYSTEM_PROBE) };
+            objModule::create mod = { fl::Name(modules), fl::Flags(MOF::SYSTEM_PROBE) };
 
             total++;
          }

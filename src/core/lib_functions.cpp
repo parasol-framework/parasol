@@ -62,20 +62,20 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 *********************************************************************************************************************/
 
-LONG AllocateID(LONG Type)
+LONG AllocateID(IDTYPE Type)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Type IS IDTYPE_MESSAGE) {
+   if (Type IS IDTYPE::MESSAGE) {
       LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
       log.function("MessageID: %d", id);
       return id;
    }
-   else if (Type IS IDTYPE_GLOBAL) {
+   else if (Type IS IDTYPE::GLOBAL) {
       LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
       return id;
    }
-   else if (Type IS IDTYPE_FUNCTION) {
+   else if (Type IS IDTYPE::FUNCTION) {
       UWORD id = __sync_add_and_fetch(&glFunctionID, 1);
       return id;
    }
@@ -401,28 +401,28 @@ large: Returns the value of the resource that you have requested.  If the resour
 
 *********************************************************************************************************************/
 
-LARGE GetResource(LONG Resource)
+LARGE GetResource(RES Resource)
 {
 #ifdef __linux__
    struct sysinfo sys;
 #endif
 
    switch(Resource) {
-      case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
-      case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
-      case RES_PRIVILEGED:      return glPrivileged;
-      case RES_LOG_LEVEL:       return glLogLevel;
-      case RES_PROCESS_STATE:   return (MAXINT)glTaskState;
-      case RES_MAX_PROCESSES:   return MAX_TASKS;
-      case RES_LOG_DEPTH:       return tlDepth;
-      case RES_CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
-      case RES_OPEN_INFO:       return (MAXINT)glOpenInfo;
-      case RES_JNI_ENV:         return (MAXINT)glJNIEnv;
-      case RES_THREAD_ID:       return (MAXINT)get_thread_id();
-      case RES_CORE_IDL:        return (MAXINT)glIDL;
-      case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+      case RES::MESSAGE_QUEUE:   return glTaskMessageMID;
+      case RES::SHARED_CONTROL:  return (MAXINT)glSharedControl;
+      case RES::PRIVILEGED:      return glPrivileged;
+      case RES::LOG_LEVEL:       return glLogLevel;
+      case RES::PROCESS_STATE:   return MAXINT(glTaskState);
+      case RES::MAX_PROCESSES:   return MAX_TASKS;
+      case RES::LOG_DEPTH:       return tlDepth;
+      case RES::CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
+      case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
+      case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
+      case RES::THREAD_ID:       return (MAXINT)get_thread_id();
+      case RES::CORE_IDL:        return (MAXINT)glIDL;
+      case RES::DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
 
-      case RES_PARENT_CONTEXT: {
+      case RES::PARENT_CONTEXT: {
          // Return the first parent context that differs to the current context.  This avoids any confusion
          // arising from the the current object making calls to itself.
          auto parent = tlContext->Stack;
@@ -434,12 +434,12 @@ LARGE GetResource(LONG Resource)
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
       // change during runtime.
 
-      case RES_TOTAL_MEMORY: {
+      case RES::TOTAL_MEMORY: {
          if (!sysinfo(&sys)) return (LARGE)sys.totalram * (LARGE)sys.mem_unit;
          else return -1;
       }
 
-      case RES_FREE_MEMORY: {
+      case RES::FREE_MEMORY: {
    #if 0
          // Unfortunately sysinfo() does not report on cached ram, which can be significant
          if (!sysinfo(&sys)) return (LARGE)(sys.freeram + sys.bufferram) * (LARGE)sys.mem_unit; // Buffer RAM is considered as 'free'
@@ -450,13 +450,13 @@ LARGE GetResource(LONG Resource)
          if (!ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result)) {
             LONG i = 0;
             while (i < result) {
-               if (!StrCompare("Cached", str+i, sizeof("Cached")-1, 0)) {
+               if (!StrCompare("Cached", str+i, sizeof("Cached")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1, 0)) {
+               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1, 0)) {
+               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
 
@@ -469,29 +469,29 @@ LARGE GetResource(LONG Resource)
    #endif
       }
 
-      case RES_TOTAL_SHARED_MEMORY:
+      case RES::TOTAL_SHARED_MEMORY:
          if (!sysinfo(&sys)) return (LARGE)sys.sharedram * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_TOTAL_SWAP:
+      case RES::TOTAL_SWAP:
          if (!sysinfo(&sys)) return (LARGE)sys.totalswap * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_FREE_SWAP:
+      case RES::FREE_SWAP:
          if (!sysinfo(&sys)) return (LARGE)sys.freeswap * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_CPU_SPEED: {
+      case RES::CPU_SPEED: {
          CSTRING line;
          static LONG cpu_mhz = 0;
 
          if (cpu_mhz) return cpu_mhz;
 
-         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL_READ|FL_BUFFER) };
+         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
-               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1, 0)) {
+               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1)) {
                   cpu_mhz = StrToInt(line);
                }
             }
@@ -591,10 +591,10 @@ The file descriptor should be configured as non-blocking before registration.  B
 program to hang if not handled carefully.
 
 File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
-Set the `RFD_READ` flag to apply the Routine to the read callback and `RFD_WRITE` for the write callback.  If neither
-flag is specified, `RFD_READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
+Set the `RFD::READ` flag to apply the Routine to the read callback and `RFD::WRITE` for the write callback.  If neither
+flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
-combining the read/write flags with `RFD_REMOVE`.
+combining the read/write flags with `RFD::REMOVE`.
 
 The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
@@ -604,7 +604,7 @@ Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor
 
 -INPUT-
 hhandle FD: The file descriptor that is to be watched.
-int(RFD) Flags: Set to one or more of the flags RFD_READ, RFD_WRITE, RFD_EXCEPT, RFD_REMOVE.
+int(RFD) Flags: Set to at least one of READ, WRITE, EXCEPT, REMOVE.
 fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".
 ptr Data: User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.
 
@@ -617,18 +617,18 @@ NoSupport: The host platform does not support file descriptors.
 *********************************************************************************************************************/
 
 #ifdef _WIN32
-ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #else
-ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
    pf::Log log(__FUNCTION__);
 
-   // Note that FD's < -1 are permitted for the registering of functions marked with RFD_ALWAYS_CALL
+   // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
-   if (Flags & RFD_SOCKET) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
+   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
 #else
    if (FD IS -1) return log.warning(ERR_Args);
 #endif
@@ -638,11 +638,11 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       return ERR_Okay;
    }
 
-   if (Flags & RFD_REMOVE) {
-      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
+   if ((Flags & RFD::REMOVE) != RFD::NIL) {
+      if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL;
 
       for (auto it = glFDTable.begin(); it != glFDTable.end();) {
-         if ((it->FD IS FD) and ((it->Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
+         if ((it->FD IS FD) and (((it->Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL)) & Flags) != RFD::NIL)) {
             if ((Routine) and (it->Routine != Routine)) it++;
             else it = glFDTable.erase(it);
          }
@@ -651,10 +651,10 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       return ERR_Okay;
    }
 
-   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
+   if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
 
    for (auto &fd : glFDTable) {
-      if ((fd.FD IS FD) and (Flags & (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) {
+      if ((fd.FD IS FD) and ((Flags & (fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL))) != RFD::NIL)) {
          fd.Routine = Routine;
          fd.Flags   = Flags;
          fd.Data    = Data;
@@ -662,7 +662,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       }
    }
 
-   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
+   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, LONG(Flags));
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -693,16 +693,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR SetResourcePath(LONG PathType, CSTRING Path)
+ERROR SetResourcePath(RP PathType, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!PathType) return ERR_NullArgs;
-
-   log.function("Type: %d, Path: %s", PathType, Path);
+   log.function("Type: %d, Path: %s", LONG(PathType), Path);
 
    switch(PathType) {
-      case RP_ROOT_PATH:
+      case RP::ROOT_PATH:
          if (Path) {
             glRootPath = Path;
             if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
@@ -715,7 +713,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
          }
          return ERR_Okay;
 
-      case RP_SYSTEM_PATH:
+      case RP::SYSTEM_PATH:
          if (Path) {
             glSystemPath = Path;
             if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
@@ -728,7 +726,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
          }
          return ERR_Okay;
 
-      case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
+      case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             glModulePath = Path;
             if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
@@ -770,7 +768,7 @@ large: Returns the previous value used for the resource that you have set.  If t
 
 *********************************************************************************************************************/
 
-LARGE SetResource(LONG Resource, LARGE Value)
+LARGE SetResource(RES Resource, LARGE Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -781,9 +779,9 @@ LARGE SetResource(LONG Resource, LARGE Value)
    LARGE oldvalue = 0;
 
    switch(Resource) {
-      case RES_CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
+      case RES::CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
 
-      case RES_EXCEPTION_HANDLER:
+      case RES::EXCEPTION_HANDLER:
          // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.
 
          #ifdef _WIN32
@@ -791,21 +789,21 @@ LARGE SetResource(LONG Resource, LARGE Value)
          #endif
          break;
 
-      case RES_LOG_LEVEL:
+      case RES::LOG_LEVEL:
          if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
          break;
 
-      case RES_LOG_DEPTH: tlDepth = Value; break;
+      case RES::LOG_DEPTH: tlDepth = Value; break;
 
 #ifdef _WIN32
-      case RES_NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
+      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
 #else
-      case RES_NET_PROCESSING: break;
+      case RES::NET_PROCESSING: break;
 #endif
 
-      case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
+      case RES::JNI_ENV: glJNIEnv = L64PTR(Value); break;
 
-      case RES_PRIVILEGED_USER:
+      case RES::PRIVILEGED_USER:
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
@@ -843,7 +841,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, Resource, Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PF64, LONG(Resource), Value);
    }
 
    return oldvalue;
@@ -896,8 +894,8 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    auto subscriber = tlContext->object();
    if (subscriber->collecting()) return log.warning(ERR_InvalidState);
 
-   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
-   else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
+   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -958,7 +956,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 
-   log.msg(VLF_EXTAPI|VLF_BRANCH|VLF_FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -1047,7 +1045,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
-         if (ProcessMessages(0, end - current) IS ERR_Terminate) break;
+         if (ProcessMessages(PMF::NIL, end - current) IS ERR_Terminate) break;
          current = (PreciseTime() / 1000LL);
       } while (current < end);
    }

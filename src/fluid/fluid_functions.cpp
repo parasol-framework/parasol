@@ -290,7 +290,7 @@ int fcmd_unsubscribe_event(lua_State *Lua)
 
    if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
-      if (Lua->Script->Flags & SCF_DEBUG) log.msg("Handle: %p", handle);
+      if ((Lua->Script->Flags & SCF::DEBUG) != SCF::NIL) log.msg("Handle: %p", handle);
 
       for (auto it=prv->EventList.begin(); it != prv->EventList.end(); it++) {
          if (it->EventHandle IS handle) {
@@ -521,7 +521,7 @@ int fcmd_require(lua_State *Lua)
 
       auto path = std::string("scripts:") + module + ".fluid";
 
-      objFile::create file = { fl::Path(path), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
@@ -620,7 +620,7 @@ int fcmd_loadfile(lua_State *Lua)
          }
       }
 
-      objFile::create file = { fl::Path(src), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
          APTR buffer;
          if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer)) {
@@ -632,7 +632,7 @@ int fcmd_loadfile(lua_State *Lua)
                LONG len, i;
                char header[256];
                if (!file->read(header, sizeof(header), &len)) {
-                  if (!StrCompare(LUA_COMPILED, header, 0, 0)) {
+                  if (!StrCompare(LUA_COMPILED, header)) {
                      recompile = FALSE; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
@@ -656,7 +656,7 @@ int fcmd_loadfile(lua_State *Lua)
                if (recompile) {
                   objFile::create cachefile = {
                      fl::Path(fbpath),
-                     fl::Flags(FL_NEW|FL_WRITE),
+                     fl::Flags(FL::NEW|FL::WRITE),
                      fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
                   };
 
@@ -722,7 +722,7 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (!StrCompare(LUA_COMPILED, statement, 0, 0)) {
+         if (!StrCompare(LUA_COMPILED, statement)) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             if (!statement[i]) statement += i + 1;

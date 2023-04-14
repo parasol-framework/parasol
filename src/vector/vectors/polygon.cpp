@@ -178,18 +178,18 @@ static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args
 
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
 
-   if (Args->Flags & MTF_X) {
+   if ((Args->Flags & MTF::X) != MTF::NIL) {
       DOUBLE center_x = (Self->BX2 - Self->BX1) * 0.5;
       DOUBLE xchange = Args->X - center_x;
       for (i=0; i < Self->TotalPoints; i++) {
          Self->Points[i].X += xchange;
-         Self->Points[i].XRelative = (Args->Flags & MTF_RELATIVE) ? TRUE : FALSE;
+         Self->Points[i].XRelative = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
       }
       Self->BX1 += xchange;
       Self->BX2 += xchange;
    }
 
-   if (Args->Flags & MTF_Y) {
+   if ((Args->Flags & MTF::Y) != MTF::NIL) {
       DOUBLE center_y = (Self->BY2 - Self->BY1) * 0.5;
       DOUBLE ychange = Args->Y - center_y;
       for (i=0; i < Self->TotalPoints; i++) Self->Points[i].Y += ychange;

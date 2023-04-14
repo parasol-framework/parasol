@@ -164,12 +164,12 @@ static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveTo
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Flags & MTF_X) {
+   if ((Args->Flags & MTF::X) != MTF::NIL) {
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
       Self->vpTargetX = Args->X;
    }
 
-   if (Args->Flags & MTF_Y) {
+   if ((Args->Flags & MTF::Y) != MTF::NIL) {
       Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
       Self->vpTargetY = Args->Y;
    }

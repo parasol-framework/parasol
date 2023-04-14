@@ -577,7 +577,7 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
 
    if (!Self->prvCompress) return ERR_Okay;
 
-   log.msg(VLF_BRANCH|VLF_EXTAPI, "Size: %d, Retain: %d", Self->Size, (Args) ? Args->RetainData : FALSE);
+   log.msg(VLF::BRANCH|VLF::EXTAPI, "Size: %d, Retain: %d", Self->Size, (Args) ? Args->RetainData : FALSE);
 
    // Note: If the decompression fails, we'll keep the bitmap data in memory in order to stop code from failing if it
    // accesses the Data address following attempted decompression.
@@ -1432,7 +1432,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
    OBJECTID display_id;
    LONG i;
 
-   log.msg(VLF_BRANCH|VLF_EXTAPI, "Bitmap: %p, Depth: %d, Width: %d, Height: %d", Self, Self->BitsPerPixel, Self->Width, Self->Height);
+   log.msg(VLF::BRANCH|VLF::EXTAPI, "Bitmap: %p, Depth: %d, Width: %d, Height: %d", Self, Self->BitsPerPixel, Self->Width, Self->Height);
 
    if ((Self->Width <= 0) or (Self->Height <= 0)) {
       return log.warning(ERR_InvalidDimension);

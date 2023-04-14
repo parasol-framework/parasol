@@ -9,18 +9,18 @@ static LONG parse_aspect_ratio(const std::string Value)
    if (!StrMatch("none", v)) return ARF_NONE;
    else {
       LONG flags = 0;
-      if (!StrCompare("xMin", v, 4, 0)) { flags |= ARF_X_MIN; v += 4; }
-      else if (!StrCompare("xMid", v, 4, 0)) { flags |= ARF_X_MID; v += 4; }
-      else if (!StrCompare("xMax", v, 4, 0)) { flags |= ARF_X_MAX; v += 4; }
+      if (!StrCompare("xMin", v, 4)) { flags |= ARF_X_MIN; v += 4; }
+      else if (!StrCompare("xMid", v, 4)) { flags |= ARF_X_MID; v += 4; }
+      else if (!StrCompare("xMax", v, 4)) { flags |= ARF_X_MAX; v += 4; }
 
-      if (!StrCompare("yMin", v, 4, 0)) { flags |= ARF_Y_MIN; v += 4; }
-      else if (!StrCompare("yMid", v, 4, 0)) { flags |= ARF_Y_MID; v += 4; }
-      else if (!StrCompare("yMax", v, 4, 0)) { flags |= ARF_Y_MAX; v += 4; }
+      if (!StrCompare("yMin", v, 4)) { flags |= ARF_Y_MIN; v += 4; }
+      else if (!StrCompare("yMid", v, 4)) { flags |= ARF_Y_MID; v += 4; }
+      else if (!StrCompare("yMax", v, 4)) { flags |= ARF_Y_MAX; v += 4; }
 
       while ((*v) and (*v <= 0x20)) v++;
 
-      if (!StrCompare("meet", v, 4, 0)) { flags |= ARF_MEET; }
-      else if (!StrCompare("slice", v, 5, 0)) { flags |= ARF_SLICE; }
+      if (!StrCompare("meet", v, 4)) { flags |= ARF_MEET; }
+      else if (!StrCompare("slice", v, 5)) { flags |= ARF_SLICE; }
       return flags;
    }
 }
@@ -594,7 +594,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
    if (!Tag.Children.empty()) {
       ERROR error;
       auto &child = Tag.Children[0];
-      if (!StrCompare("feDistantLight", child.name(), 0, STR_WILDCARD)) {
+      if (!StrCompare("feDistantLight", child.name(), 0, STR::WILDCARD)) {
          DOUBLE azimuth = 0, elevation = 0;
 
          for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
@@ -606,7 +606,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
 
          error = ltSetDistantLight(fx, azimuth, elevation);
       }
-      else if (!StrCompare("fePointLight", child.name(), 0, STR_WILDCARD)) {
+      else if (!StrCompare("fePointLight", child.name(), 0, STR::WILDCARD)) {
          DOUBLE x = 0, y = 0, z = 0;
 
          for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
@@ -619,7 +619,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
 
          error = ltSetPointLight(fx, x, y, z);
       }
-      else if (!StrCompare("feSpotLight", child.name(), 0, STR_WILDCARD)) {
+      else if (!StrCompare("feSpotLight", child.name(), 0, STR::WILDCARD)) {
          DOUBLE x = 0, y = 0, z = 0, px = 0, py = 0, pz = 0;
          DOUBLE exponent = 1, cone_angle = 0;
 
@@ -736,7 +736,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
    }
 
    for (auto &child : Tag.Children) {
-      if (!StrCompare("feFunc?", child.name(), 0, STR_WILDCARD)) {
+      if (!StrCompare("feFunc?", child.name(), 0, STR::WILDCARD)) {
          LONG cmp = 0;
          switch(child.name()[6]) {
             case 'R': cmp = CMP_RED; break;
@@ -1580,13 +1580,13 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
    auto val = Path.c_str();
 
    ERROR error = ERR_Okay;
-   if (!StrCompare("data:", val, 5, 0)) { // Check for embedded content
+   if (!StrCompare("data:", val, 5)) { // Check for embedded content
       log.branch("Detected embedded source data");
       val += 5;
-      if (!StrCompare("image/", val, 6, 0)) { // Has to be an image type
+      if (!StrCompare("image/", val, 6)) { // Has to be an image type
          val += 6;
          while ((*val) and (*val != ';')) val++;
-         if (!StrCompare(";base64", val, 7, 0)) { // Is it base 64?
+         if (!StrCompare(";base64", val, 7)) { // Is it base 64?
             val += 7;
             while ((*val) and (*val != ',')) val++;
             if (*val IS ',') val++;
@@ -1600,7 +1600,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
                LONG written;
                if (!(error = Base64Decode(&state, val, size, output, &written))) {
                   Path = "temp:svg.img";
-                  if ((file = objFile::create::integral(fl::Path(Path), fl::Flags(FL_NEW|FL_WRITE)))) {
+                  if ((file = objFile::create::integral(fl::Path(Path), fl::Flags(FL::NEW|FL::WRITE)))) {
                      LONG result;
                      file->write(output, written, &result);
                   }

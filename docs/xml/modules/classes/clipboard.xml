@@ -15,7 +15,7 @@
     <copyright>Paul Manias 2003-2023</copyright>
     <description>
 <p>The Clipboard class manages data transfer between applications on behalf of the user.  Depending on the host system, behaviour between platforms can vary.</p>
-<p>On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to. If historical buffering is enabled with the <code>CLF_HISTORY_BUFFER</code> option then the clipboard API will actively monitor the clipboard and store copied data in the local <code>clipboard:</code> file cache.  This results in additional overhead to clipboard management.</p>
+<p>On Windows the clipboard is tightly integrated by default, allowing it to support native Windows applications.  This reduces the default feature set, but ensures that the clipboard behaves in a way that the user would expect it to. If historical buffering is enabled with the <code>CPF::HISTORY_BUFFER</code> option then the clipboard API will actively monitor the clipboard and store copied data in the local <code>clipboard:</code> file cache.  This results in additional overhead to clipboard management.</p>
 <p>On Linux the clipboard is localised and data is shared between Parasol applications only.</p>
 <p>Multiple clipboard objects can be created, but they will share the same group of clipped data for the logged-in user.</p>
 <p>There is a limit on the number of clipped items that can be stored in the clipboard.  Only 1 grouping of each datatype is permitted (for example, only one group of image clips may exist at any time).  In historical buffer mode there is a fixed limit to the clip count and the oldest members are automatically removed.</p></description>
@@ -150,9 +150,9 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="CLF">INT</type>
+      <type lookup="CPF">CPF</type>
       <description>
-<types lookup="CLF"/>
+<types lookup="CPF"/>
       </description>
     </field>
 
@@ -176,12 +176,6 @@
       <const name="EXTEND">Instead of replacing existing clipboard data, add the new data to the group.</const>
     </constants>
 
-    <constants lookup="CLF" comment="Clipboard flags">
-      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
-      <const name="HISTORY_BUFFER">Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.</const>
-      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
-    </constants>
-
     <constants lookup="CLIPTYPE" comment="Clipboard types">
       <const name="AUDIO">An audio clip that is recognised by the Sound class (such as wav's and mp3's).</const>
       <const name="DATA">Raw information that is uncategorised can be defined as a data clip.</const>
@@ -189,6 +183,12 @@
       <const name="IMAGE">Images that are recognised by the Picture class may be stored as this type (such as jpeg's and png files).</const>
       <const name="OBJECT">An object that has been deserialised into binary form.</const>
       <const name="TEXT">Plain text files such as ASCII and UTF-8 must be identified through this clip type.</const>
+    </constants>
+
+    <constants lookup="CPF" comment="Clipboard flags">
+      <const name="DRAG_DROP">Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.</const>
+      <const name="HISTORY_BUFFER">Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.</const>
+      <const name="HOST">This indicator is automatically set when a clipboard was created due to incoming content from the host system.</const>
     </constants>
 
   </types>

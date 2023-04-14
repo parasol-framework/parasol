@@ -351,7 +351,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
    if (!modIconv) {
       #ifdef _WIN32
-         modIconv = objModule::create::global(fl::Name("libiconv2.dll"), fl::Flags(MOF_LINK_LIBRARY|MOF_STATIC));
+         modIconv = objModule::create::global(fl::Name("libiconv2.dll"), fl::Flags(MOF::LINK_LIBRARY|MOF::STATIC));
 
          if (!modIconv) {
             init_failed = true;
@@ -371,7 +371,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
             return NULL;
          }
       #else
-         modIconv = objModule::create::global(fl::Name("libiconv2"), fl::Flags(MOF_LINK_LIBRARY));
+         modIconv = objModule::create::global(fl::Name("libiconv2"), fl::Flags(MOF::LINK_LIBRARY));
 
          if (!modIconv) {
             init_failed = true;

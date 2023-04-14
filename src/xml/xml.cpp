@@ -431,14 +431,14 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
    CSTRING field = Args->Field;
    Args->Buffer[0] = 0;
 
-   if (!StrCompare("count:", field, 6, 0)) {
+   if (!StrCompare("count:", field, 6)) {
       if (!xmlCount(Self, field+6, &count)) {
          Args->Buffer[IntToStr(count, Args->Buffer, Args->Size)] = 0;
          return ERR_Okay;
       }
       else return ERR_Failed;
    }
-   else if (!StrCompare("exists:", field, 7, 0)) {
+   else if (!StrCompare("exists:", field, 7)) {
       Args->Buffer[0] = '0';
       Args->Buffer[1] = 0;
 
@@ -456,7 +456,7 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 
       return ERR_Okay;
    }
-   else if (!StrCompare("contentexists:", field, 14, 0)) {
+   else if (!StrCompare("contentexists:", field, 14)) {
       Args->Buffer[0] = '0';
       Args->Buffer[1] = 0;
 
@@ -477,10 +477,10 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 
       return ERR_Okay;
    }
-   else if ((!StrCompare("xpath:", field, 6, 0)) or
-            (!StrCompare("xml:", field, 4, 0)) or
-            (!StrCompare("content:", field, 8, 0)) or
-            (!StrCompare("extract:", field, 8, 0)) or
+   else if ((!StrCompare("xpath:", field, 6)) or
+            (!StrCompare("xml:", field, 4)) or
+            (!StrCompare("content:", field, 8)) or
+            (!StrCompare("extract:", field, 8)) or
             (field[0] IS '/')) {
       LONG j;
       for (j=0; field[j] and (field[j] != '/'); j++) j++;
@@ -504,8 +504,8 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 
          UBYTE extract;
 
-         if (!StrCompare("content:", field, 8, 0)) extract = 1; // 'In-Depth' content extract.
-         else if (!StrCompare("extract:", field, 8, 0)) extract = 2;
+         if (!StrCompare("content:", field, 8)) extract = 1; // 'In-Depth' content extract.
+         else if (!StrCompare("extract:", field, 8)) extract = 2;
          else extract = 0;
 
          Args->Buffer[0] = 0;
@@ -1424,12 +1424,12 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
       for (auto &filter : filters) {
          XMLTag *tag = NULL;
          // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
-         if (!StrCompare(filter.first, scan.Attribs[0].Name, 0, STR_WILDCARD)) {
+         if (!StrCompare(filter.first, scan.Attribs[0].Name, 0, STR::WILDCARD)) {
             tag = &scan;
          }
          else {
             for (auto &child : scan.Children) {
-               if (!StrCompare(filter.first, child.Attribs[0].Name, 0, STR_WILDCARD)) {
+               if (!StrCompare(filter.first, child.Attribs[0].Name, 0, STR::WILDCARD)) {
                   tag = &child;
                   break;
                }
@@ -1457,7 +1457,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
          }
          else { // Extract the sort data from the specified tag attribute
             for (auto attrib=tag->Attribs.begin()+1; attrib != tag->Attribs.end(); attrib++) {
-               if (!StrCompare(filter.second, attrib->Name, 0, STR_WILDCARD)) {
+               if (!StrCompare(filter.second, attrib->Name, 0, STR::WILDCARD)) {
                   sortval += attrib->Value;
                   break;
                }
@@ -1521,7 +1521,7 @@ static ERROR SET_Path(extXML *Self, CSTRING Value)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
-   if (!StrCompare("string:", Value, 7, 0)) {
+   if (!StrCompare("string:", Value, 7)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
       // statement.
 
@@ -1738,7 +1738,7 @@ static ERROR add_xml_class(void)
       fl::FileExtension("*.xml"),
       fl::FileDescription("XML File"),
       fl::Category(CCF_DATA),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clXMLActions),
       fl::Methods(clXMLMethods),
       fl::Fields(clFields),

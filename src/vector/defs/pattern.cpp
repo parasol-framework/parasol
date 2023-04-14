@@ -485,7 +485,7 @@ ERROR init_pattern(void) // The pattern is a definition type for creating patter
       fl::BaseClassID(ID_VECTORPATTERN),
       fl::Name("VectorPattern"),
       fl::Category(CCF_GRAPHICS),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clPatternActions),
       fl::Fields(clPatternFields),
       fl::Size(sizeof(extVectorPattern)),
