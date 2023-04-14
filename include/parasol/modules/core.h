@@ -310,18 +310,21 @@ enum class EVG : LONG {
 
 // Data codes
 
-#define DATA_TEXT 1
-#define DATA_RAW 2
-#define DATA_DEVICE_INPUT 3
-#define DATA_XML 4
-#define DATA_AUDIO 5
-#define DATA_RECORD 6
-#define DATA_IMAGE 7
-#define DATA_REQUEST 8
-#define DATA_RECEIPT 9
-#define DATA_FILE 10
-#define DATA_CONTENT 11
-#define DATA_INPUT_READY 12
+enum class DATA : LONG {
+   NIL = 0,
+   TEXT = 1,
+   RAW = 2,
+   DEVICE_INPUT = 3,
+   XML = 4,
+   AUDIO = 5,
+   RECORD = 6,
+   IMAGE = 7,
+   REQUEST = 8,
+   RECEIPT = 9,
+   FILE = 10,
+   CONTENT = 11,
+   INPUT_READY = 12,
+};
 
 // JTYPE flags are used to categorise input types.
 
@@ -2929,7 +2932,7 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase
 struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { OBJECTPTR Object; LONG Datatype; const void *Buffer; LONG Size; };
+struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
 struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
@@ -2992,7 +2995,7 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
    return Action(AC_Draw, Object, &args);
 }
 
-inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, LONG Datatype, const void *Buffer, LONG Size) {
+inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
 }
@@ -3374,7 +3377,7 @@ class objFile : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -3665,7 +3668,7 @@ class objConfig : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -3802,7 +3805,7 @@ class objScript : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -4549,16 +4552,16 @@ class objCompressedStream : public BaseClass {
 // Note that the length of the data is only needed when messaging between processes, so we can skip it for these
 // direct-access data channel macros.
 
-#define acDataContent(a,b)  acDataFeed((a),0,DATA_CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA_XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA_TEXT,(b),0)
+#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
+#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
+#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
 
 inline ERROR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
    struct acCustom args = { Number, String };
    return ActionMsg(AC_Custom, ObjectID, &args);
 }
 
-inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, LONG Datatype, const APTR Data, LONG Size) {
+inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
    struct acDataFeed channel = { Sender, Datatype, Data, Size };
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }

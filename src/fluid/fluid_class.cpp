@@ -515,13 +515,13 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       Self->setStatement((CSTRING)Args->Buffer);
    }
-   else if (Args->Datatype IS DATA_XML) {
+   else if (Args->Datatype IS DATA::XML) {
       Self->setStatement((CSTRING)Args->Buffer);
    }
-   else if (Args->Datatype IS DATA_RECEIPT) {
+   else if (Args->Datatype IS DATA::RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
 
       log.branch("Incoming data receipt from #%d", Args->Object ? Args->Object->UID : 0);

@@ -60,10 +60,10 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Datatype IS DATA_XML) {
+   if (Args->Datatype IS DATA::XML) {
       Self->setStatement((STRING)Args->Buffer);
    }
-   else if (Args->Datatype IS DATA_TEXT) {
+   else if (Args->Datatype IS DATA::TEXT) {
       Self->setStatement((STRING)Args->Buffer);
    }
 

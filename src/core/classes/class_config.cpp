@@ -207,7 +207,7 @@ static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       ERROR error = parse_config(Self, (CSTRING)Args->Buffer);
       if (!error) {
          if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);

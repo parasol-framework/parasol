@@ -333,7 +333,7 @@ static ERROR CLIPBOARD_Clear(objClipboard *Self, APTR Void)
 -ACTION-
 DataFeed: This action can be used to place data in a clipboard.
 
-Data can be sent to a clipboard object via the DataFeed action. Currently, only the `DATA_TEXT` type is supported.
+Data can be sent to a clipboard object via the DataFeed action. Currently, only the `DATA::TEXT` type is supported.
 All data that is sent to a clipboard object through this action will replace any stored information that matches the
 given data type.
 -END-
@@ -345,7 +345,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       log.msg("Copying text to the clipboard.");
 
       add_text_to_host(Self, (CSTRING)Args->Buffer, Args->Size);
@@ -361,7 +361,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else return log.warning(error);
    }
-   else if ((Args->Datatype IS DATA_REQUEST) and ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL))  {
+   else if ((Args->Datatype IS DATA::REQUEST) and ((Self->Flags & CPF::DRAG_DROP) != CPF::NIL))  {
       auto request = (struct dcRequest *)Args->Buffer;
       log.branch("Data request from #%d received for item %d, datatype %d", Args->Object->UID, request->Item, request->Preference[0]);
 
@@ -388,7 +388,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
       return ERR_Okay;
    }
-   else log.warning("Unrecognised data type %d.", Args->Datatype);
+   else log.warning("Unrecognised data type %d.", LONG(Args->Datatype));
 
    return ERR_Okay;
 }
@@ -580,14 +580,14 @@ Flags: Optional flags.
 -FIELD-
 RequestHandler: Provides a hook for responding to drag and drop requests.
 
-Applications can request data from a clipboard if it is in drag-and-drop mode by sending a `DATA_REQUEST` to the
+Applications can request data from a clipboard if it is in drag-and-drop mode by sending a `DATA::REQUEST` to the
 Clipboard's DataFeed action.  Doing so will result in a callback to the function that is referenced in the
 RequestHandler, which must be defined by the source application.  The RequestHandler function must follow this
 template:
 
 `ERROR RequestHandler(*Clipboard, OBJECTPTR Requester, LONG Item, BYTE Datatypes[4])`
 
-The function will be expected to send a `DATA_RECEIPT` to the object referenced in the Requester paramter.  The
+The function will be expected to send a `DATA::RECEIPT` to the object referenced in the Requester paramter.  The
 receipt must provide coverage for the referenced Item and use one of the indicated Datatypes as the data format.
 If this cannot be achieved then `ERR_NoSupport` should be returned by the function.
 

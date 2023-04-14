@@ -176,7 +176,7 @@ class objScintilla : public BaseClass {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }

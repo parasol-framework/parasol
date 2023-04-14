@@ -18,7 +18,7 @@ static void print(extCompression *Self, CSTRING Buffer)
    if (Self->OutputID) {
       struct acDataFeed feed = {
          .Object   = Self,
-         .Datatype = DATA_TEXT,
+         .Datatype = DATA::TEXT,
          .Buffer   = Buffer
       };
       feed.Size = StrLength(Buffer) + 1;
@@ -34,7 +34,7 @@ static void print(extCompression *Self, std::string Buffer)
    if (Self->OutputID) {
       struct acDataFeed feed = {
          .Object   = Self,
-         .Datatype = DATA_TEXT,
+         .Datatype = DATA::TEXT,
          .Buffer   = Buffer.c_str()
       };
       feed.Size = Buffer.length() + 1;

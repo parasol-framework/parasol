@@ -48,7 +48,7 @@ class objSVG : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }

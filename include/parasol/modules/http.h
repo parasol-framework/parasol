@@ -146,7 +146,7 @@ class objHTTP : public BaseClass {
    LONG     Flags;           // Optional flags.
    LONG     Status;          // Indicates the HTTP status code returned on completion of an HTTP request.
    ERROR    Error;           // The error code received for the most recently executed HTTP command.
-   LONG     Datatype;        // The default datatype format to use when passing data to a target object.
+   DATA     Datatype;        // The default datatype format to use when passing data to a target object.
    LONG     CurrentState;    // Indicates the current state of an HTTP object during its interaction with an HTTP server.
    STRING   ProxyServer;     // The targeted HTTP server is specified here, either by name or IP address.
    LONG     ProxyPort;       // The port to use when communicating with the proxy server.
@@ -300,7 +300,7 @@ class objHTTP : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setDatatype(const LONG Value) {
+   inline ERROR setDatatype(const DATA Value) {
       this->Datatype = Value;
       return ERR_Okay;
    }

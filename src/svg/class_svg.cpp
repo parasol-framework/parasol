@@ -63,7 +63,7 @@ static ERROR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Datatype IS DATA_XML) {
+   if (Args->Datatype IS DATA::XML) {
       return load_svg(Self, 0, (CSTRING)Args->Buffer);
    }
 

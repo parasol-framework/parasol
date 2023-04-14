@@ -222,28 +222,31 @@ static int input_request_item(lua_State *Lua)
 
    LONG item = lua_tointeger(Lua, 2);
 
-   LONG datatype;
+   DATA datatype;
    if (lua_isstring(Lua, 3)) {
       CSTRING dt = lua_tostring(Lua, 3);
-      if (!StrMatch("text", dt))              datatype = DATA_TEXT;
-      else if (!StrMatch("raw", dt))          datatype = DATA_RAW;
-      else if (!StrMatch("device_input", dt)) datatype = DATA_DEVICE_INPUT;
-      else if (!StrMatch("xml", dt))          datatype = DATA_XML;
-      else if (!StrMatch("audio", dt))        datatype = DATA_AUDIO;
-      else if (!StrMatch("record", dt))       datatype = DATA_RECORD;
-      else if (!StrMatch("image", dt))        datatype = DATA_IMAGE;
-      else if (!StrMatch("request", dt))      datatype = DATA_REQUEST;
-      else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
-      else if (!StrMatch("file", dt))         datatype = DATA_FILE;
-      else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
+      if (!StrMatch("text", dt))              datatype = DATA::TEXT;
+      else if (!StrMatch("raw", dt))          datatype = DATA::RAW;
+      else if (!StrMatch("device_input", dt)) datatype = DATA::DEVICE_INPUT;
+      else if (!StrMatch("xml", dt))          datatype = DATA::XML;
+      else if (!StrMatch("audio", dt))        datatype = DATA::AUDIO;
+      else if (!StrMatch("record", dt))       datatype = DATA::RECORD;
+      else if (!StrMatch("image", dt))        datatype = DATA::IMAGE;
+      else if (!StrMatch("request", dt))      datatype = DATA::REQUEST;
+      else if (!StrMatch("receipt", dt))      datatype = DATA::RECEIPT;
+      else if (!StrMatch("file", dt))         datatype = DATA::FILE;
+      else if (!StrMatch("content", dt))      datatype = DATA::CONTENT;
       else {
          luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
       }
    }
-   else if ((datatype = lua_tointeger(Lua, 3)) <= 0) {
-      luaL_argerror(Lua, 3, "Datatype invalid");
-      return 0;
+   else {
+      datatype = DATA(lua_tointeger(Lua, 3));
+      if (LONG(datatype) <= 0) {
+         luaL_argerror(Lua, 3, "Datatype invalid");
+         return 0;
+      }
    }
 
    auto function_type = lua_type(Lua, 4);
@@ -258,18 +261,18 @@ static int input_request_item(lua_State *Lua)
 
    struct dcRequest dcr;
    dcr.Item          = item;
-   dcr.Preference[0] = datatype;
+   dcr.Preference[0] = UBYTE(datatype);
    dcr.Preference[1] = 0;
 
    struct acDataFeed dc = {
       .Object   = Lua->Script,
-      .Datatype = DATA_REQUEST,
+      .Datatype = DATA::REQUEST,
       .Buffer   = &dcr,
       .Size     = sizeof(dcr)
    };
 
    {
-      // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+      // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
       pf::Log log("input.request_item");
       log.branch();
       auto error = ActionMsg(AC_DataFeed, source_id, &dc);

@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -842,7 +841,7 @@ static ERROR HTTP_NewObject(extHTTP *Self, APTR Args)
    Self->UserAgent      = StrClone("Parasol Client");
    Self->DataTimeout    = 5.0;
    Self->ConnectTimeout = 10.0;
-   Self->Datatype       = DATA_RAW;
+   Self->Datatype       = DATA::RAW;
    Self->BufferSize     = 16 * 1024;
    StrCopy("auth", (STRING)Self->AuthQOP, sizeof(Self->AuthQOP));
    StrCopy("md5", (STRING)Self->AuthAlgorithm, sizeof(Self->AuthAlgorithm));
@@ -1268,8 +1267,8 @@ static ERROR SET_Method(extHTTP *Self, LONG Value)
 ObjectMode: The access mode used when passing data to a targeted object.
 
 This field is relevant when the #OutputObject field has been set for receiving incoming data. The method of
-communication used against the target object can be defined through the ObjectMode. The default setting is DATA_FEED,
-which passes data through the data feed system (see also the #Datatype to define the type of data being
+communication used against the target object can be defined through the ObjectMode. The default setting is
+DATA::FEED, which passes data through the data feed system (see also the #Datatype to define the type of data being
 sent to the object).  The alternative method is READ_WRITE, which uses the Write action to send data to the targeted
 object.
 
@@ -1283,9 +1282,9 @@ for the callback routine is `ERROR Function(*HTTP, APTR Buffer, LONG BufferSize,
 Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of
 bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.
 
-If an error code of ERR_Terminate is returned by the callback routine, any remaining data will be sent and the transfer
-will be treated as having completed successfully.  Use ERR_TimeOut if data cannot be returned in a reasonable time
-frame.  All other error codes apart from ERR_Okay indicate failure.
+If an error code of `ERR_Terminate` is returned by the callback routine, any remaining data will be sent and the transfer
+will be treated as having completed successfully.  Use `ERR_TimeOut` if data cannot be returned in a reasonable time
+frame.  All other error codes apart from `ERR_Okay` indicate failure.
 
 *********************************************************************************************************************/
 

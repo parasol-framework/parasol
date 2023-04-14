@@ -272,8 +272,8 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
 {
    auto Self = (extScintilla *)CurrentContext();
 
-   // There are two drag-drop cases - DATA_TEXT and DATA_FILE.  DATA_TEXT is something that we can handle ourselves,
-   // while DATA_FILE is handled via an external function provided by the user.  Refer to the DataFeed action for
+   // There are two drag-drop cases - DATA::TEXT and DATA::FILE.  DATA::TEXT is something that we can handle ourselves,
+   // while DATA::FILE is handled via an external function provided by the user.  Refer to the DataFeed action for
    // further code.
 
    if (!Args) return;
@@ -282,17 +282,17 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
 
    struct dcRequest request;
    request.Item          = Args->Item;
-   request.Preference[0] = DATA_FILE;
-   request.Preference[1] = DATA_TEXT;
+   request.Preference[0] = BYTE(DATA::FILE);
+   request.Preference[1] = BYTE(DATA::TEXT);
    request.Preference[2] = 0;
 
    struct acDataFeed dc;
    dc.Object   = Self;
-   dc.Datatype = DATA_REQUEST;
+   dc.Datatype = DATA::REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
    if (!Action(AC_DataFeed, Args->Source, &dc)) {
-      // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+      // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
    }
 }
 
@@ -392,7 +392,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, stru
    SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
    if (Args->Buffer) {
-      acDataFeed(Self, Self, DATA_TEXT, Args->Buffer, Args->Result);
+      acDataFeed(Self, Self, DATA::TEXT, Args->Buffer, Args->Result);
    }
    else { // We have to read the data from the file stream
    }
@@ -455,7 +455,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       CSTRING str;
 
       // Incoming text is appended to the end of the document
@@ -465,7 +465,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
-   else if (Args->Datatype IS DATA_RECEIPT) {
+   else if (Args->Datatype IS DATA::RECEIPT) {
       log.msg("Received item receipt from object %d.", Args->Object ? Args->Object->UID : 0);
 
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };

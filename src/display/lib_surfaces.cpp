@@ -24,7 +24,7 @@ void winDragDropFromHost_Drop(int SurfaceID, char *Datatypes)
 
    if (auto pointer = gfxAccessPointer()) {
       // Pass AC_DragDrop to the surface underneath the mouse cursor.  If a surface subscriber accepts the data, it
-      // will send a DATA_REQUEST to the relevant display object.  See DISPLAY_DataFeed() and winGetData().
+      // will send a DATA::REQUEST to the relevant display object.  See DISPLAY_DataFeed() and winGetData().
 
       OBJECTID modal_id = gfxGetModalSurface();
       if (modal_id IS SurfaceID) modal_id = 0;

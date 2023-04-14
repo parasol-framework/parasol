@@ -110,7 +110,7 @@ static ERROR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
 -ACTION-
 DataFeed: This action can be used to send fake input to a pointer object.
 
-Fake input can be sent to a pointer object with the `DATA_DEVICE_INPUT` data type, as if the user was using the mouse.
+Fake input can be sent to a pointer object with the `DATA::DEVICE_INPUT` data type, as if the user was using the mouse.
 The data will be interpreted no differently to genuine user input from hardware.
 
 Note that if a button click is used in a device input message, the client must follow up with the equivalent release
@@ -126,7 +126,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Datatype IS DATA_DEVICE_INPUT) {
+   if (Args->Datatype IS DATA::DEVICE_INPUT) {
       if (auto input = (struct dcDeviceInput *)Args->Buffer) {
          for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;

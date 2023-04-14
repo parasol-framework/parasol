@@ -258,7 +258,7 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
-   if (Args->Datatype IS DATA_REQUEST) {
+   if (Args->Datatype IS DATA::REQUEST) {
       // Supported for handling the windows clipboard
 
       auto request = (struct dcRequest *)Args->Buffer;
@@ -272,8 +272,8 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
          LONG xmlsize = 100; // Receipt header and tail
 
          for (LONG i=0; i < total_items; i++) {
-            if (data[i].Datatype IS DATA_FILE) xmlsize += 30 + data[i].Length;
-            else if (data[i].Datatype IS DATA_TEXT) xmlsize += 30 + data[i].Length;
+            if (DATA(data[i].Datatype) IS DATA::FILE) xmlsize += 30 + data[i].Length;
+            else if (DATA(data[i].Datatype) IS DATA::TEXT) xmlsize += 30 + data[i].Length;
          }
 
          STRING xml;
@@ -281,10 +281,10 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
             LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
 
             for (LONG i=0; i < total_items; i++) {
-               if (data[i].Datatype IS DATA_FILE) {
+               if (DATA(data[i].Datatype) IS DATA::FILE) {
                   pos += snprintf(xml+pos, xmlsize-pos, "<file path=\"%s\"/>", (STRING)data[i].Data);
                }
-               else if (data[i].Datatype IS DATA_TEXT) {
+               else if (DATA(data[i].Datatype) IS DATA::TEXT) {
                   pos += snprintf(xml+pos, xmlsize-pos, "<text>%s</text>", (STRING)data[i].Data);
                }
                //else TODO: other types like images need their data saved to disk and referenced as a path, e.g. <image path="clipboard:abc.001"/>
@@ -293,7 +293,7 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
 
             struct acDataFeed dc;
             dc.Object   = Self;
-            dc.Datatype = DATA_RECEIPT;
+            dc.Datatype = DATA::RECEIPT;
             dc.Buffer   = xml;
             dc.Size     = pos+1;
             Action(AC_DataFeed, Args->Object, &dc);

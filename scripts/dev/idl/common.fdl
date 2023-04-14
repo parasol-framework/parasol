@@ -165,7 +165,7 @@ enum("EVG", { type="int", start=1, comment="Event categories." }, -- 5 bit limit
     "ANDROID: Android specific events that do not already fit existing categories.",
     "END: Private")
 
-enum("DATA", { start=1, comment="Data codes" }, -- NB: Duplicated in display/win32/windows.c
+enum("DATA", { type="int", start=1, comment="Data codes" }, -- NB: Duplicated in display/win32/windows.c
     "TEXT: Standard ASCII text",
     "RAW: Raw unprocessed data",
     "DEVICE_INPUT: Device activity",
