@@ -450,13 +450,13 @@ LARGE GetResource(RES Resource)
          if (!ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result)) {
             LONG i = 0;
             while (i < result) {
-               if (!StrCompare("Cached", str+i, sizeof("Cached")-1, 0)) {
+               if (!StrCompare("Cached", str+i, sizeof("Cached")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1, 0)) {
+               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1, 0)) {
+               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
 
@@ -491,7 +491,7 @@ LARGE GetResource(RES Resource)
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
-               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1, 0)) {
+               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1)) {
                   cpu_mhz = StrToInt(line);
                }
             }

@@ -151,14 +151,14 @@ void free_private_cond(UBYTE Index)
    free_cond(&glPrivateCond[Index]);
 }
 
-static ERROR alloc_cond(CONDLOCK *Lock, WORD Flags)
+static ERROR alloc_cond(CONDLOCK *Lock, ALF Flags)
 {
    LONG result;
 
    if (Flags) {
       pthread_condattr_t attrib;
       if (!(result = pthread_condattr_init(&attrib))) {
-         if (Flags & ALF::SHARED) pthread_condattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
+         if ((Flags & ALF::SHARED) != ALF::NIL) pthread_condattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
          result = pthread_cond_init(Lock, &attrib);
          pthread_condattr_destroy(&attrib);
       }
