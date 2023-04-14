@@ -487,7 +487,7 @@ LARGE GetResource(RES Resource)
 
          if (cpu_mhz) return cpu_mhz;
 
-         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL_READ|FL_BUFFER) };
+         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
@@ -894,8 +894,8 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    auto subscriber = tlContext->object();
    if (subscriber->collecting()) return log.warning(ERR_InvalidState);
 
-   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
-   else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
+   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -956,7 +956,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 
-   log.msg(VLF_EXTAPI|VLF_BRANCH|VLF_FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {

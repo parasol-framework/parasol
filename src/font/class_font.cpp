@@ -176,7 +176,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    if (cache); // The font exists in the cache
    else if (!StrCompare("*.ttf", Self->Path, 0, STR::WILDCARD)); // The font is truetype
    else {
-      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
       if (file.ok()) {
          // Check if the file is a Windows Bitmap Font
 

@@ -905,7 +905,7 @@ ERROR LoadFile(CSTRING Path, LDF Flags, CacheFile **Cache)
 
    log.branch("%.80s, Flags: $%.8x", path, LONG(Flags));
 
-   objFile::create file = { fl::Path(path), fl::Flags(FL_READ|FL_FILE) };
+   objFile::create file = { fl::Path(path), fl::Flags(FL::READ|FL::FILE) };
 
    if (file.ok()) {
       LARGE timestamp, file_size;
@@ -1140,7 +1140,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
       FreeResource(res_path);
    }
    else if (error IS ERR_VirtualVolume) {
-      extFile::create file = { fl::Path(res_path), fl::Flags(FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0)) };
+      extFile::create file = { fl::Path(res_path), fl::Flags(FL::READ|FL::FILE|(approx ? FL::APPROXIMATE : FL::NIL)) };
 
       if (file.ok()) {
          if (!file->read(Buffer, BufferSize, BytesRead)) error = ERR_Okay;
@@ -1160,7 +1160,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
 
 #else
 
-   extFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_FILE|(approx ? FL_APPROXIMATE : 0)) };
+   extFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::FILE|(approx ? FL::APPROXIMATE : FL::NIL)) };
 
    if (file.ok()) {
       LONG result;
@@ -1643,7 +1643,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Open the source and destination
 
-      extFile::create srcfile = { fl::Path(Source), fl::Flags(FL_READ) };
+      extFile::create srcfile = { fl::Path(Source), fl::Flags(FL::READ) };
 
       if (srcfile.ok()) {
          if ((Move) and (srcvirtual IS destvirtual)) {
@@ -1659,7 +1659,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       extFile::create destfile = {
          fl::Path(Dest),
-         fl::Flags(FL_WRITE|FL_NEW),
+         fl::Flags(FL::WRITE|FL::NEW),
          fl::Permissions(srcfile->Permissions)
       };
 
@@ -1670,10 +1670,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Folder copy
 
-      if (srcfile->Flags & FL_FOLDER) {
+      if ((srcfile->Flags & FL::FOLDER) != FL::NIL) {
          char srcbuffer[2000];
 
-         if (!(destfile->Flags & FL_FOLDER)) {
+         if ((destfile->Flags & FL::FOLDER) IS FL::NIL) {
             // You cannot copy from a folder to a file
             error = ERR_Mismatch;
             goto exit;
@@ -1760,7 +1760,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
                }
 
                len -= result;
-               if (destfile->Flags & FL_STREAM) {
+               if ((destfile->Flags & FL::STREAM) != FL::NIL) {
 
                }
                else if (len > 0) {

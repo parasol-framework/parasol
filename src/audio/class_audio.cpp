@@ -640,7 +640,7 @@ SaveSettings: Saves the current audio settings.
 
 static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
-   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
 
    if (file.ok()) return Self->saveToObject(*file);
    else return ERR_CreateFile;

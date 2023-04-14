@@ -342,7 +342,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    // Fill the buffer with audio information and parse any MP3 header that is present.  This will also prove whether
    // or not this is really an mp3 file.
 
-   if (!(prv->File = objFile::create::integral(fl::Path(location), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+   if (!(prv->File = objFile::create::integral(fl::Path(location), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
       return log.warning(ERR_CreateObject);
    }
 

@@ -877,7 +877,7 @@ cstr Path:     The path that is prefixed to the file name when added to the comp
 Okay: The file was added to the compression object.
 Args:
 File: An error was encountered when trying to open the source file.
-NoPermission: The CMF_READ_ONLY flag has been set on the compression object.
+NoPermission: The READ_ONLY flag has been set on the compression object.
 NoSupport: The sub-class does not support this method.
 
 *********************************************************************************************************************/
@@ -889,7 +889,7 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
    if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
 
-   if (Self->Flags & CMF_READ_ONLY) return log.warning(ERR_NoPermission);
+   if ((Self->Flags & CMF::READ_ONLY) != CMF::NIL) return log.warning(ERR_NoPermission);
 
    if (Self->isSubClass()) return log.warning(ERR_NoSupport);
 
@@ -1284,7 +1284,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
             LONG permissions;
 
-            if (Self->Flags & CMF_APPLY_SECURITY) {
+            if ((Self->Flags & CMF::APPLY_SECURITY) != CMF::NIL) {
                if (zf.Flags & ZIP_SECURITY) {
                   permissions = 0;
                   if (zf.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
@@ -1304,7 +1304,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             else permissions = Self->Permissions;
 
             objFile::create file = {
-               fl::Path(destpath), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(permissions)
+               fl::Path(destpath), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(permissions)
             };
 
             if (!file.ok()) {
@@ -1318,7 +1318,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             Self->Zip.next_out  = 0;
             Self->Zip.avail_out = 0;
 
-            if ((zf.CompressedSize > 0) and (file->Flags & FL_FILE)) {
+            if ((zf.CompressedSize > 0) and ((file->Flags & FL::FILE) != FL::NIL)) {
                if (zf.DeflateMethod IS 0) {
                   // This routine is used if the file is stored rather than compressed
 
@@ -1787,10 +1787,10 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
 
       return ERR_Okay;
    }
-   else if (Self->Flags & CMF_NEW) {
+   else if ((Self->Flags & CMF::NEW) != CMF::NIL) {
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
-      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_WRITE|FL_NEW)))) {
+      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
          return ERR_Okay;
       }
       else {
@@ -1811,17 +1811,17 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
       if (exists) {
          pf::Create<objFile> file({
             fl::Path(path),
-            fl::Flags(FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE))
+            fl::Flags(FL::READ|FL::APPROXIMATE|(((Self->Flags & CMF::READ_ONLY) != CMF::NIL) ? FL::NIL : FL::WRITE))
          }, NF::INTEGRAL);
 
          // Try switching to read-only access if we were denied permission.
 
          if (file.ok()) Self->FileIO = *file;
-         else if ((file.error IS ERR_NoPermission) and (!(Self->Flags & CMF_READ_ONLY))) {
+         else if ((file.error IS ERR_NoPermission) and ((Self->Flags & CMF::READ_ONLY) IS CMF::NIL)) {
             log.trace("Trying read-only access...");
 
-            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
-               Self->Flags |= CMF_READ_ONLY;
+            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+               Self->Flags |= CMF::READ_ONLY;
             }
             else error = ERR_File;
          }
@@ -1847,12 +1847,12 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
          }
          else return ERR_NoSupport;
       }
-      else if ((!exists) and (Self->Flags & CMF_CREATE_FILE)) {
+      else if ((!exists) and ((Self->Flags & CMF::CREATE_FILE) != CMF::NIL)) {
          // Create a new file if the requested location does not exist
 
          log.extmsg("Creating a new file because the location does not exist.");
 
-         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_WRITE|FL_NEW)))) {
+         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
             return ERR_Okay;
          }
          else {

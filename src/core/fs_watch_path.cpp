@@ -80,7 +80,7 @@ ERROR fs_watch_path(extFile *File)
 
    // The path_monitor() function will be called whenever the Path or its content is modified.
 
-   if (!(error = winWatchFile(File->prvWatch->Flags, File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags))) {
+   if (!(error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath, (File->prvWatch + 1), &handle, &winflags))) {
       File->prvWatch->Handle   = handle;
       File->prvWatch->WinFlags = winflags;
       if (!(error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File))) {
@@ -263,7 +263,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
       // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
 
       while ((File->prvWatch) and (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
-         if (!(File->prvWatch->Flags & MFF_DEEP)) { // Ignore if path is in a sub-folder and the deep option is not enabled.
+         if ((File->prvWatch->Flags & MFF::DEEP) IS MFF::NIL) { // Ignore if path is in a sub-folder and the deep option is not enabled.
             LONG i;
             for (i=0; (path[i]) and (path[i] != '\\'); i++);
             if (path[i] IS '\\') continue;

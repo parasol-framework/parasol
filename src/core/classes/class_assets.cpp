@@ -209,7 +209,7 @@ static ERROR ASSET_Init(objFile *Self, APTR Void)
 
    if (StrCompare("assets:", Self->Path, LEN_ASSETS) != ERR_Okay) return ERR_NoSupport;
 
-   if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
+   if (Self->Flags & (FL::NEW|FL::WRITE)) return log.warning(ERR_ReadOnly);
 
    // Allocate private structure
 
@@ -277,7 +277,7 @@ static ERROR ASSET_Read(objFile *Self, struct acRead *Args)
    prvFileAsset *prv;
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
-   if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
+   if (!(Self->Flags & FL::READ)) return log.warning(ERR_FileReadFlag);
 
    Args->Result = AAsset_read(prv->Asset, Args->Buffer, Args->Length);
 

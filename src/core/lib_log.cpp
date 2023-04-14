@@ -331,7 +331,7 @@ exit:
 
 -FUNCTION-
 VLogF: Sends formatted messages to the standard log.
-ExtPrototype: int Flags, const char *Header, const char *Message, va_list Args
+ExtPrototype: VLF Flags, const char *Header, const char *Message, va_list Args
 Status: private
 
 Please refer to LogF().  This function is not intended for external use.
@@ -345,24 +345,24 @@ va_list Args: A va_list corresponding to the arguments referenced in Message.
 
 *********************************************************************************************************************/
 
-void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
+void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
-   if (tlLogStatus <= 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
+   if (tlLogStatus <= 0) { if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++; return; }
 
-   static const ULONG log_levels[10] = {
-      VLF_CRITICAL,
-      VLF_ERROR|VLF_CRITICAL,
-      VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_TRACE|VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_TRACE|VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL
+   static const VLF log_levels[10] = {
+      VLF::CRITICAL,
+      VLF::ERROR|VLF::CRITICAL,
+      VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
    };
 
-   if (Flags & VLF_CRITICAL) { // Print the message irrespective of the log level
+   if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level
       #ifdef __ANDROID__
          __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Parasol", Message, Args);
       #else
@@ -388,7 +388,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          fprintf(stderr, "\n");
       #endif
 
-      if (Flags & VLF_BRANCH) tlDepth++;
+      if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
       return;
    }
 
@@ -396,8 +396,8 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
    if (level > 9) level = 9;
    else if (level < 0) level = 0;
 
-   if (((log_levels[level] & Flags) != 0) or
-       ((glLogLevel > 1) and (Flags & (VLF_WARNING|VLF_ERROR|VLF_CRITICAL))))  {
+   if (((log_levels[level] & Flags) != VLF::NIL) or
+       ((glLogLevel > 1) and ((Flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)))  {
       CSTRING name, action;
       BYTE msgstate;
       BYTE adjust = 0;
@@ -406,7 +406,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       if ((Header) and (!*Header)) Header = NULL;
 
-      if (Flags & (VLF_BRANCH|VLF_FUNCTION)) msgstate = MS_FUNCTION;
+      if ((Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) msgstate = MS_FUNCTION;
       else msgstate = MS_MSG;
 
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
@@ -423,7 +423,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
 
       #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
-         if ((glLogLevel > 2) and (Flags & (VLF_ERROR|VLF_WARNING))) {
+         if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
             #ifdef _WIN32
                fprintf(stderr, "!");
                adjust = 1;
@@ -507,7 +507,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          vfprintf(stderr, Message, Args);
 
          #if defined(ESC_OUTPUT) and !defined(_WIN32)
-            if ((glLogLevel > 2) and (Flags & (VLF_ERROR|VLF_WARNING))) fprintf(stderr, "\033[0m");
+            if ((glLogLevel > 2) and (Flags & ((VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(stderr, "\033[0m");
          #endif
 
          fprintf(stderr, "\n");
@@ -522,7 +522,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
    }
 
-   if (Flags & VLF_BRANCH) tlDepth++;
+   if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
 }
 
 /*********************************************************************************************************************

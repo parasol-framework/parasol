@@ -955,7 +955,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Icons are stored in compressed archives, accessible via "archive:icons/<category>/<icon>.svg"
 
    auto src = std::string(icon_path) + "Default.zip";
-   if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF_READ_ONLY)))) {
+   if (!(glIconArchive = objCompression::create::integral(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
       return ERR_CreateObject;
    }
 

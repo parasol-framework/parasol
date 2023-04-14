@@ -413,7 +413,7 @@ if (!error) {
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="CMF">INT</type>
+      <type lookup="CMF">CMF</type>
       <description>
 <types lookup="CMF"/>
       </description>
@@ -576,7 +576,7 @@ if (!error) {
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
       <field name="OthersID" type="LONG">Original others ID</field>
-      <field name="Flags" type="LONG" lookup="FL">FL flags</field>
+      <field name="Flags" type="FL" lookup="FL">FL flags</field>
       <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
       <field name="Modified" type="struct DateTime">Date and time last modified.</field>
     </struct>

@@ -132,18 +132,6 @@ public:
    }
 };
 
-struct rkWatchPath {
-   LARGE      Custom;    // User's custom data pointer or value
-   HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
-   FUNCTION   Routine;   // Routine to call on event trigger
-   LONG       Flags;     // Event mask (original flags supplied to Watch)
-   ULONG      VirtualID; // If monitored path is virtual, this refers to an ID in the glVirtual table
-
-#ifdef _WIN32
-   LONG WinFlags;
-#endif
-};
-
 #define STAT_FOLDER 0x0001
 
 enum class RES    : LONG;
@@ -166,6 +154,20 @@ enum class ALF    : ULONG;
 enum class SCF    : ULONG;
 enum class SBF    : ULONG;
 enum class SMF    : ULONG;
+enum class VLF    : ULONG;
+enum class MFF    : ULONG;
+
+struct rkWatchPath {
+   LARGE      Custom;    // User's custom data pointer or value
+   HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
+   FUNCTION   Routine;   // Routine to call on event trigger
+   MFF        Flags;     // Event mask (original flags supplied to Watch)
+   ULONG      VirtualID; // If monitored path is virtual, this refers to an ID in the glVirtual table
+
+#ifdef _WIN32
+   LONG WinFlags;
+#endif
+};
 
 #include <parasol/vector.hpp>
 #include "prototypes.h"

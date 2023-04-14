@@ -49,7 +49,7 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          log.warning("Failed to open file \"%s\".", path);
          return ERR_File;
       }
@@ -212,7 +212,7 @@ static ERROR JPEG_Query(extPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR_CreateObject);
       }
    }
@@ -259,7 +259,7 @@ static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
 
-      if (!(file = objFile::create::integral(fl::Path(path), fl::Flags(FL_NEW|FL_WRITE)))) {
+      if (!(file = objFile::create::integral(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {
          return log.warning(ERR_CreateObject);
       }
    }

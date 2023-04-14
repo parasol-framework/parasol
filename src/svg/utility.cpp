@@ -444,7 +444,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
       if (Path) {
          if (!StrCompare("*.svgz", Path, 0, STR::WILDCARD)) {
-            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL_READ))) {
+            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL::READ))) {
                if (auto stream = objCompressedStream::create::global(fl::Owner(file->UID), fl::Input(file))) {
                   xml->setSource(stream);
                }

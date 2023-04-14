@@ -263,7 +263,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
             snprintf(idx, sizeof(idx), ".%.3d", i);
             auto path = std::string("clipboard:") + glProcessID + "_" + get_datatype(datatype) + std::to_string(counter) + idx;
 
-            objFile::create file = { fl::Path(path), fl::Flags(FL_WRITE|FL_NEW) };
+            objFile::create file = { fl::Path(path), fl::Flags(FL::WRITE|FL::NEW) };
             if (file.ok()) acSaveToObject(*object, *file);
             else return ERR_CreateFile;
          }
@@ -352,7 +352,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
 
       std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + std::string(".000") };
       if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
-         objFile::create file = { fl::Path(items[0].Path), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
+         objFile::create file = { fl::Path(items[0].Path), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
          if (file.ok()) {
             if (file->write(Args->Buffer, Args->Size, 0)) return log.warning(ERR_Write);
             return ERR_Okay;
@@ -666,7 +666,7 @@ static ERROR add_clip(CSTRING String)
 
    std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + ".000" };
    if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
-      pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
+      pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT_READ|PERMIT_WRITE) };
       if (file.ok()) {
          file->write(String, StrLength(String), 0);
          return ERR_Okay;

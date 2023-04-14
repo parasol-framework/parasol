@@ -381,7 +381,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       if (clipboard.ok()) {
          struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
          if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
-            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL_READ) };
+            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                if ((!file->get(FID_Size, &size)) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {

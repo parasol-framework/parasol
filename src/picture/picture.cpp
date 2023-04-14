@@ -142,7 +142,7 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) goto exit;
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
    Self->prvFile->seekStart(0);
@@ -473,7 +473,7 @@ static ERROR PICTURE_Query(extPicture *Self, APTR Void)
    if (!Self->prvFile) {
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) goto exit;
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
    Self->prvFile->seekStart(0);
@@ -573,7 +573,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    else {
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
 
-      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL_NEW|FL_WRITE)))) return ERR_CreateObject;
+      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) return ERR_CreateObject;
    }
 
    // Allocate PNG structures

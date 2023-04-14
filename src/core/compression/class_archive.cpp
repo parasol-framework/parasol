@@ -90,7 +90,7 @@ static ERROR seek_to_item(extFile *Self)
    if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) return ERR_Seek;
 
    if (item.CompressedSize > 0) {
-      Self->Flags |= FL_FILE;
+      Self->Flags |= FL::FILE;
 
       if (item.DeflateMethod IS 0) { // The file is stored rather than compressed
          Self->Size = item.CompressedSize;
@@ -104,8 +104,8 @@ static ERROR seek_to_item(extFile *Self)
       else return ERR_Failed;
    }
    else { // Folder or empty file
-      if (item.IsFolder) Self->Flags |= FL_FOLDER;
-      else Self->Flags |= FL_FILE;
+      if (item.IsFolder) Self->Flags |= FL::FOLDER;
+      else Self->Flags |= FL::FILE;
       Self->Size = 0;
       return ERR_Okay;
    }
@@ -172,7 +172,7 @@ static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
    if ((prv->FileStream = extFile::create::integral(
       fl::Name("ArchiveFileStream"),
       fl::Path(prv->Archive->Path),
-      fl::Flags(FL_READ)))) {
+      fl::Flags(FL::READ)))) {
 
       ERROR error = seek_to_item(Self);
       if (error) log.warning(error);
@@ -206,7 +206,7 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 
    if (StrCompare("archive:", Self->Path, LEN_ARCHIVE) != ERR_Okay) return ERR_NoSupport;
 
-   if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
+   if ((Self->Flags & (FL::NEW|FL::WRITE)) != FL::NIL) return log.warning(ERR_ReadOnly);
 
    ERROR error = ERR_Search;
    if (!AllocMemory(sizeof(prvFileArchive), MEM_DATA, &Self->ChildPrivate, NULL)) {
@@ -230,7 +230,7 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
                if (!StrCompare(file_path, it->Name, 0, STR::CASE|STR::MATCH_LEN)) break;
             }
 
-            if ((it IS prv->Archive->Files.end()) and (Self->Flags & FL_APPROXIMATE)) {
+            if ((it IS prv->Archive->Files.end()) and ((Self->Flags & FL::APPROXIMATE) != FL::NIL)) {
                file_path.append(".*");
                for (it = prv->Archive->Files.begin(); it != prv->Archive->Files.end(); it++) {
                   if (!StrCompare(file_path, it->Name, 0, STR::WILDCARD)) break;
@@ -593,7 +593,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    Info->Created  = item->Created;
    Info->Modified = item->Modified;
 
-   if (item->Flags & FL_FOLDER) Info->Flags |= RDF::FOLDER;
+   if ((item->Flags & FL::FOLDER) != FL::NIL) Info->Flags |= RDF::FOLDER;
    else Info->Flags |= RDF::FILE|RDF::SIZE;
 
    // Extract the file name
@@ -657,7 +657,7 @@ static ERROR test_path(STRING Path, RSF Flags, LOC *Type)
       else return error;
    }
 
-   if (item->Flags & FL_FOLDER) *Type = LOC::FOLDER;
+   if ((item->Flags & FL::FOLDER) != FL::NIL) *Type = LOC::FOLDER;
    else *Type = LOC::FILE;
 
    return ERR_Okay;

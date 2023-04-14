@@ -900,7 +900,7 @@ static ERROR fntInstallFont(CSTRING Files)
 
       // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
 
-      objFile::create file = { fl::Flags(FL_READ), fl::Path(buffer) };
+      objFile::create file = { fl::Flags(FL::READ), fl::Path(buffer) };
       if (file.ok()) {
          if (!file->read(buffer, 256)) {
             CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
@@ -1293,7 +1293,7 @@ static ERROR fntRefreshFonts(void)
 
    log.trace("Saving the font configuration file.");
 
-   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
    if (file.ok()) glConfig->saveToObject(*file);
 
    return ERR_Okay;
@@ -1500,7 +1500,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
 
    *FaceName = NULL;
-   objFile::create file = { fl::Path(Path), fl::Flags(FL_READ) };
+   objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
       file->read(&mz_header, sizeof(mz_header));
 

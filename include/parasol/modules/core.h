@@ -862,16 +862,21 @@ DEFINE_ENUM_FLAG_OPERATORS(MHF)
 
 // VlogF flags
 
-#define VLF_BRANCH 0x00000001
-#define VLF_ERROR 0x00000002
-#define VLF_WARNING 0x00000004
-#define VLF_CRITICAL 0x00000008
-#define VLF_INFO 0x00000010
-#define VLF_API 0x00000020
-#define VLF_EXTAPI 0x00000040
-#define VLF_DEBUG 0x00000080
-#define VLF_TRACE 0x00000100
-#define VLF_FUNCTION 0x00000200
+enum class VLF : ULONG {
+   NIL = 0,
+   BRANCH = 0x00000001,
+   ERROR = 0x00000002,
+   WARNING = 0x00000004,
+   CRITICAL = 0x00000008,
+   INFO = 0x00000010,
+   API = 0x00000020,
+   EXTAPI = 0x00000040,
+   DEBUG = 0x00000080,
+   TRACE = 0x00000100,
+   FUNCTION = 0x00000200,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VLF)
 
 // Module flags
 
@@ -926,12 +931,17 @@ DEFINE_ENUM_FLAG_OPERATORS(FDL)
 
 // Compression flags
 
-#define CMF_PASSWORD 0x00000001
-#define CMF_NEW 0x00000002
-#define CMF_CREATE_FILE 0x00000004
-#define CMF_READ_ONLY 0x00000008
-#define CMF_NO_LINKS 0x00000010
-#define CMF_APPLY_SECURITY 0x00000020
+enum class CMF : ULONG {
+   NIL = 0,
+   PASSWORD = 0x00000001,
+   NEW = 0x00000002,
+   CREATE_FILE = 0x00000004,
+   READ_ONLY = 0x00000008,
+   NO_LINKS = 0x00000010,
+   APPLY_SECURITY = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CMF)
 
 // Flags for ResolvePath()
 
@@ -949,21 +959,26 @@ DEFINE_ENUM_FLAG_OPERATORS(RSF)
 
 // Flags for the File Watch() method.
 
-#define MFF_READ 0x00000001
-#define MFF_MODIFY 0x00000002
-#define MFF_WRITE 0x00000002
-#define MFF_CREATE 0x00000004
-#define MFF_DELETE 0x00000008
-#define MFF_MOVED 0x00000010
-#define MFF_RENAME 0x00000010
-#define MFF_ATTRIB 0x00000020
-#define MFF_OPENED 0x00000040
-#define MFF_CLOSED 0x00000080
-#define MFF_UNMOUNT 0x00000100
-#define MFF_FOLDER 0x00000200
-#define MFF_FILE 0x00000400
-#define MFF_SELF 0x00000800
-#define MFF_DEEP 0x00001000
+enum class MFF : ULONG {
+   NIL = 0,
+   READ = 0x00000001,
+   MODIFY = 0x00000002,
+   WRITE = 0x00000002,
+   CREATE = 0x00000004,
+   DELETE = 0x00000008,
+   MOVED = 0x00000010,
+   RENAME = 0x00000010,
+   ATTRIB = 0x00000020,
+   OPENED = 0x00000040,
+   CLOSED = 0x00000080,
+   UNMOUNT = 0x00000100,
+   FOLDER = 0x00000200,
+   FILE = 0x00000400,
+   SELF = 0x00000800,
+   DEEP = 0x00001000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MFF)
 
 // Types for StrDatatype().
 
@@ -1031,21 +1046,26 @@ DEFINE_ENUM_FLAG_OPERATORS(RDF)
 
 // File flags
 
-#define FL_WRITE 0x00000001
-#define FL_NEW 0x00000002
-#define FL_READ 0x00000004
-#define FL_DIRECTORY 0x00000008
-#define FL_FOLDER 0x00000008
-#define FL_APPROXIMATE 0x00000010
-#define FL_LINK 0x00000020
-#define FL_BUFFER 0x00000040
-#define FL_LOOP 0x00000080
-#define FL_FILE 0x00000100
-#define FL_RESET_DATE 0x00000200
-#define FL_DEVICE 0x00000400
-#define FL_STREAM 0x00000800
-#define FL_EXCLUDE_FILES 0x00001000
-#define FL_EXCLUDE_FOLDERS 0x00002000
+enum class FL : ULONG {
+   NIL = 0,
+   WRITE = 0x00000001,
+   NEW = 0x00000002,
+   READ = 0x00000004,
+   DIRECTORY = 0x00000008,
+   FOLDER = 0x00000008,
+   APPROXIMATE = 0x00000010,
+   LINK = 0x00000020,
+   BUFFER = 0x00000040,
+   LOOP = 0x00000080,
+   FILE = 0x00000100,
+   RESET_DATE = 0x00000200,
+   DEVICE = 0x00000400,
+   STREAM = 0x00000800,
+   EXCLUDE_FILES = 0x00001000,
+   EXCLUDE_FOLDERS = 0x00002000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FL)
 
 // AnalysePath() values
 
@@ -1895,7 +1915,7 @@ struct CompressedItem {
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
    LONG    OthersID;                // Original others ID
-   LONG    Flags;                   // FL flags
+   FL      Flags;                   // FL flags
    struct DateTime Created;         // Date and time of the file's creation.
    struct DateTime Modified;        // Date and time last modified.
     std::unordered_map<std::string, std::string> *Tags;
@@ -2063,7 +2083,7 @@ struct CoreBase {
    void (*_FreeSharedMutex)(APTR Mutex);
    ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockSharedMutex)(APTR Mutex);
-   void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
+   void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
    ERROR (*_SetResourcePath)(RP PathType, CSTRING Path);
@@ -2186,7 +2206,7 @@ inline ERROR AllocSharedMutex(CSTRING Name, APTR Mutex) { return CoreBase->_Allo
 inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mutex); }
 inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
-inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
+inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
 inline ERROR SetResourcePath(RP PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
@@ -2434,7 +2454,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::API|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
@@ -2443,7 +2463,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::TRACE|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
@@ -2459,64 +2479,64 @@ class Log { // C++ wrapper for Parasol's log functionality
       void app(CSTRING Message, ...) { // Info level, recommended for applications only
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_INFO, header, Message, arg);
+         VLogF(VLF::INFO, header, Message, arg);
          va_end(arg);
       }
 
       void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, header, Message, arg);
+         VLogF(VLF::API, header, Message, arg);
          va_end(arg);
       }
 
-      void msg(LONG Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
+      void msg(VLF Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
          VLogF(Flags, header, Message, arg);
          va_end(arg);
-         if (Flags & VLF_BRANCH) branches++;
+         if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
       void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_EXTAPI, header, Message, arg);
+         VLogF(VLF::EXTAPI, header, Message, arg);
          va_end(arg);
       }
 
       void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, NULL, Message, arg);
+         VLogF(VLF::API, NULL, Message, arg);
          va_end(arg);
       }
 
       void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_WARNING, header, Message, arg);
+         VLogF(VLF::WARNING, header, Message, arg);
          va_end(arg);
       }
 
       void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_ERROR, header, Message, arg);
+         VLogF(VLF::ERROR, header, Message, arg);
          va_end(arg);
       }
 
       void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, header, Message, arg);
+         VLogF(VLF::DEBUG, header, Message, arg);
          va_end(arg);
       }
 
       void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
+         VLogF(VLF::API|VLF::FUNCTION, header, Message, arg);
          va_end(arg);
       }
 
@@ -2534,7 +2554,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          #ifdef DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_TRACE, header, Message, arg);
+            VLogF(VLF::TRACE, header, Message, arg);
             va_end(arg);
          #endif
       }
@@ -2543,7 +2563,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          #ifdef DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_WARNING, header, Message, arg);
+            VLogF(VLF::WARNING, header, Message, arg);
             va_end(arg);
          #endif
       }
@@ -3218,16 +3238,16 @@ class objStorageDevice : public BaseClass {
 #define MT_FlNext -9
 #define MT_FlWatch -10
 
-struct flStartStream { OBJECTID SubscriberID; LONG Flags; LONG Length;  };
+struct flStartStream { OBJECTID SubscriberID; FL Flags; LONG Length;  };
 struct flDelete { FUNCTION * Callback;  };
 struct flMove { CSTRING Dest; FUNCTION * Callback;  };
 struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
 struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type;  };
 struct flReadLine { STRING Result;  };
 struct flNext { objFile * File;  };
-struct flWatch { FUNCTION * Callback; LARGE Custom; LONG Flags;  };
+struct flWatch { FUNCTION * Callback; LARGE Custom; MFF Flags;  };
 
-INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, LONG Flags, LONG Length) {
+INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, FL Flags, LONG Length) {
    struct flStartStream args = { SubscriberID, Flags, Length };
    return(Action(MT_FlStartStream, (OBJECTPTR)Ob, &args));
 }
@@ -3263,7 +3283,7 @@ INLINE ERROR flNext(APTR Ob, objFile ** File) {
    return(error);
 }
 
-INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
+INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) {
    struct flWatch args = { Callback, Custom, Flags };
    return(Action(MT_FlWatch, (OBJECTPTR)Ob, &args));
 }
@@ -3277,7 +3297,7 @@ class objFile : public BaseClass {
    using create = pf::Create<objFile>;
 
    LARGE    Position; // The current read/write byte position in a file.
-   LONG     Flags;    // File flags and options.
+   FL       Flags;    // File flags and options.
    LONG     Static;   // Set to TRUE if a file object should be static.
    OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
    BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
@@ -3351,7 +3371,7 @@ class objFile : public BaseClass {
       return field->WriteValue(target, field, FD_LARGE, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const FL Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -4345,7 +4365,7 @@ class objCompression : public BaseClass {
    LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
    LONG     CompressionLevel; // The compression level to use when compressing data.
-   LONG     Flags;           // Optional flags.
+   CMF      Flags;           // Optional flags.
    LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
    LONG     Permissions;     // Default permissions for decompressed files are defined here.
    LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
@@ -4370,7 +4390,7 @@ class objCompression : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const CMF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }

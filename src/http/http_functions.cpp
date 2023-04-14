@@ -317,7 +317,7 @@ redo_upload:
          // Open the next file
 
          if (!parse_file(Self, (STRING)Self->Buffer, Self->BufferSize)) {
-            if ((Self->flInput = objFile::create::integral(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL_READ)))) {
+            if ((Self->flInput = objFile::create::integral(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL::READ)))) {
                if (total_out < Self->BufferSize) goto redo_upload; // Upload as much as possible in each pass
                else goto continue_upload;
             }
@@ -976,18 +976,18 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
    Self->setIndex((LARGE)Self->Index + (LARGE)Length); // Use Set() so that field subscribers can track progress with field monitoring
 
    if ((!Self->flOutput) and (Self->OutputFile)) {
-      LONG flags;
+      FL flags;
       LOC type;
 
       if (Self->Flags & HTF_RESUME) {
          if ((!AnalysePath(Self->OutputFile, &type)) and (type IS LOC::FILE)) {
-            flags = 0;
+            flags = FL::NIL;
          }
-         else flags = FL_NEW;
+         else flags = FL::NEW;
       }
-      else flags = FL_NEW;
+      else flags = FL::NEW;
 
-      if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL_WRITE)))) {
+      if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL::WRITE)))) {
          if (Self->Flags & HTF_RESUME) {
             acSeekEnd(Self->flOutput, 0);
             Self->setIndex(0);

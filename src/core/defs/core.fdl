@@ -109,7 +109,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
-  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
+  flags("VLF", { strict=true, comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
 
   flags("MOF", { strict=true, comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
@@ -134,7 +134,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("FDL", { strict=true, comment="Options for the File Delete() method." },
     "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
 
-  flags("CMF", { comment="Compression flags" },
+  flags("CMF", { strict=true, comment="Compression flags" },
     "PASSWORD: A password has been set on the object.",
     "NEW: Force the creation of a new file archive.  Any existing file data at the target location will be destroyed.",
     "CREATE_FILE: Create a new archive only if the source file does not already exist.",
@@ -152,7 +152,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   -- NB: The MFF flags are duplicated in the FileSystem's Win32 code if you're going to change these
 
-  flags("MFF", { comment="Flags for the File Watch() method." },
+  flags("MFF", { strict=true, comment="Flags for the File Watch() method." },
     "READ: File was accessed (read).",
     "MODIFY|WRITE: File modified via write or truncation.",
     "CREATE: New file/link created or renamed in folder.",
@@ -216,7 +216,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "OPENDIR: Internal option.",
     { READ_ALL = "SIZE|DATE|PERMISSIONS|FILES|FOLDERS" })
 
-  flags("FL", { comment="File flags" },
+  flags("FL", { strict=true, comment="File flags" },
     "WRITE: Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.",
     "NEW: Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.",
     "READ: Required if the file needs to be opened for read access.",
@@ -1468,7 +1468,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::API|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
@@ -1477,7 +1477,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::TRACE|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
@@ -1493,64 +1493,64 @@ class Log { // C++ wrapper for Parasol's log functionality
       void app(CSTRING Message, ...) { // Info level, recommended for applications only
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_INFO, header, Message, arg);
+         VLogF(VLF::INFO, header, Message, arg);
          va_end(arg);
       }
 
       void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, header, Message, arg);
+         VLogF(VLF::API, header, Message, arg);
          va_end(arg);
       }
 
-      void msg(LONG Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
+      void msg(VLF Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
          VLogF(Flags, header, Message, arg);
          va_end(arg);
-         if (Flags & VLF_BRANCH) branches++;
+         if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
       void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_EXTAPI, header, Message, arg);
+         VLogF(VLF::EXTAPI, header, Message, arg);
          va_end(arg);
       }
 
       void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, NULL, Message, arg);
+         VLogF(VLF::API, NULL, Message, arg);
          va_end(arg);
       }
 
       void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_WARNING, header, Message, arg);
+         VLogF(VLF::WARNING, header, Message, arg);
          va_end(arg);
       }
 
       void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_ERROR, header, Message, arg);
+         VLogF(VLF::ERROR, header, Message, arg);
          va_end(arg);
       }
 
       void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, header, Message, arg);
+         VLogF(VLF::DEBUG, header, Message, arg);
          va_end(arg);
       }
 
       void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
+         VLogF(VLF::API|VLF::FUNCTION, header, Message, arg);
          va_end(arg);
       }
 
@@ -1568,7 +1568,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          #ifdef DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_TRACE, header, Message, arg);
+            VLogF(VLF::TRACE, header, Message, arg);
             va_end(arg);
          #endif
       }
@@ -1577,7 +1577,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          #ifdef DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_WARNING, header, Message, arg);
+            VLogF(VLF::WARNING, header, Message, arg);
             va_end(arg);
          #endif
       }

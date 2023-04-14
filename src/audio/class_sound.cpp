@@ -706,7 +706,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
-   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
       Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
       if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR_Okay) or
@@ -810,7 +810,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
-   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
       if (!Self->File->read(Self->Header, sizeof(Self->Header))) {
          if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR_Okay) or
              (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR_Okay)) {

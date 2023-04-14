@@ -521,7 +521,7 @@ int fcmd_require(lua_State *Lua)
 
       auto path = std::string("scripts:") + module + ".fluid";
 
-      objFile::create file = { fl::Path(path), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
@@ -620,7 +620,7 @@ int fcmd_loadfile(lua_State *Lua)
          }
       }
 
-      objFile::create file = { fl::Path(src), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
          APTR buffer;
          if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer)) {
@@ -656,7 +656,7 @@ int fcmd_loadfile(lua_State *Lua)
                if (recompile) {
                   objFile::create cachefile = {
                      fl::Path(fbpath),
-                     fl::Flags(FL_NEW|FL_WRITE),
+                     fl::Flags(FL::NEW|FL::WRITE),
                      fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
                   };
 

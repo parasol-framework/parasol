@@ -100,7 +100,7 @@ ERROR AllocSharedMutex(CSTRING Name, APTR * Mutex);
 void FreeSharedMutex(APTR Mutex);
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
-void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args);
+void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args);
 LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
 ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
 ERROR SetResourcePath(RP PathType, CSTRING Path);

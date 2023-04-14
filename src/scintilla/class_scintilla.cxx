@@ -2225,9 +2225,9 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
    LONG size, len;
    ERROR error = ERR_Okay;
 
-   if (auto file = objFile::create::integral(fl::Flags(FL_READ), fl::Path(Path))) {
-      if (file->Flags & FL_STREAM) {
-         if (!flStartStream(file, Self->UID, FL_READ, 0)) {
+   if (auto file = objFile::create::integral(fl::Flags(FL::READ), fl::Path(Path))) {
+      if ((file->Flags & FL::STREAM) != FL::NIL) {
+         if (!flStartStream(file, Self->UID, FL::READ, 0)) {
             acClear(Self);
 
             auto callback = make_function_stdc(notify_write);

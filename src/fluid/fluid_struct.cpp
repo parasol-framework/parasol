@@ -429,7 +429,7 @@ ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequenc
    }
 
    pf::Log log(__FUNCTION__);
-   log.msg(VLF_BRANCH|VLF_DEBUG, "%s, %.50s", StructName.c_str(), Sequence);
+   log.msg(VLF::BRANCH|VLF::DEBUG, "%s, %.50s", StructName.c_str(), Sequence);
 
    prv->Structs[StructName] = struct_record(StructName);
 

@@ -151,7 +151,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
-      objFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
          LONG filesize;
@@ -311,7 +311,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
          if ((!crc) or (crc != Self->CRC)) {
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
-            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0) };
+            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(0) };
             Self->saveToObject(*file);
          }
          else log.msg("Not auto-saving data (CRC unchanged).");
@@ -522,7 +522,7 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 
    if (Self->Path) {
       objFile::create file = {
-         fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0)
+         fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(0)
       };
 
       if (file.ok()) {

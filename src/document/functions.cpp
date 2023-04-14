@@ -5414,7 +5414,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       if (Self->VArg)   { FreeResource(Self->VArg); Self->VArg = NULL; }
 
       #ifdef RAW_OUTPUT
-         objFile::create file = { fl::Path("drive1:doc-stream.bin"), fl::Flags(FL_NEW|FL_WRITE) };
+         objFile::create file = { fl::Path("drive1:doc-stream.bin"), fl::Flags(FL::NEW|FL::WRITE) };
          file->write(Self->Stream, Self->StreamLen);
       #endif
    }

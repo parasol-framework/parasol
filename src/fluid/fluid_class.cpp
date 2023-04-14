@@ -136,10 +136,10 @@ void process_error(objScript *Self, CSTRING Procedure)
 {
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   LONG flags = VLF_WARNING;
+   auto flags = VLF::WARNING;
    if (prv->CaughtError) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) flags = VLF_EXTAPI; // Non-critical errors are muted to prevent log noise.
+      if (Self->Error <= ERR_Terminate) flags = VLF::EXTAPI; // Non-critical errors are muted to prevent log noise.
    }
 
    pf::Log log;
@@ -242,7 +242,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
          {
             pf::Log log;
 
-            log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
             lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
@@ -259,7 +259,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
                   process_error(Self, "Action Subscription");
                }
 
-               log.msg(VLF_BRANCH|VLF_EXTAPI, "Collecting garbage.");
+               log.msg(VLF::BRANCH|VLF::EXTAPI, "Collecting garbage.");
                lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
             }
          }
@@ -278,7 +278,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
-   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.msg(VLF::EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
@@ -449,7 +449,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          prv->SaveCompiled = false;
 
          objFile::create cachefile = {
-            fl::Path(Self->CacheFile), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(prv->CachePermissions)
+            fl::Path(Self->CacheFile), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(prv->CachePermissions)
          };
 
          if (cachefile.ok()) {

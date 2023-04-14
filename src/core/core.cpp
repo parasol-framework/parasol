@@ -593,7 +593,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (!(Info->Flags & OPF_SCAN_MODULES)) {
       ERROR error;
-      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          LONG filesize;

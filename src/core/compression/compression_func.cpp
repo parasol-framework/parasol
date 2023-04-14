@@ -54,7 +54,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
    objFile::create file = { fl::Path(Location) };
    if (!file.ok()) return log.warning(ERR_File);
 
-   if ((file->Flags & FL_LINK) and (!(Self->Flags & CMF_NO_LINKS))) {
+   if (((file->Flags & FL::LINK) != FL::NIL) and ((Self->Flags & CMF::NO_LINKS) IS CMF::NIL)) {
       log.msg("Folder is a link.");
       return compress_file(Self, Location, Path, true);
    }
@@ -197,7 +197,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    // Open the source file for reading only
 
-   objFile::create file = { fl::Path(Location), fl::Flags(Link ? 0 : FL_READ) };
+   objFile::create file = { fl::Path(Location), fl::Flags(Link ? FL::NIL : FL::READ) };
 
    if (!file.ok()) {
       if (Self->OutputID) {
@@ -209,7 +209,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    }
 
 
-   if ((Link) and (!(file->Flags & FL_LINK))) {
+   if ((Link) and ((file->Flags & FL::LINK) IS FL::NIL)) {
       log.warning("Internal Error: Expected a link, but the file is not.");
       return ERR_Failed;
    }
@@ -301,7 +301,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    entry.Offset = dataoffset;
 
-   if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
+   if (((Self->Flags & CMF::NO_LINKS) IS CMF::NIL) and ((file->Flags & FL::LINK) != FL::NIL)) {
       if (!file->get(FID_Link, &symlink)) {
          log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename.c_str(), symlink);
          entry.Flags |= ZIP_LINK;
@@ -815,13 +815,13 @@ void zipfile_to_item(ZipFile &ZF, CompressedItem &Item)
    Item.OriginalSize    = ZF.OriginalSize;
    Item.CompressedSize  = ZF.CompressedSize;
 
-   if (ZF.Flags & ZIP_LINK) Item.Flags |= FL_LINK;
+   if (ZF.Flags & ZIP_LINK) Item.Flags |= FL::LINK;
    else {
       if (!Item.OriginalSize) {
-         if (ZF.Name.back() IS '/') Item.Flags |= FL_FOLDER;
-         else Item.Flags |= FL_FOLDER;
+         if (ZF.Name.back() IS '/') Item.Flags |= FL::FOLDER;
+         else Item.Flags |= FL::FOLDER;
       }
-      else Item.Flags |= FL_FILE;
+      else Item.Flags |= FL::FILE;
    }
 
    if (ZF.Flags & ZIP_SECURITY) {

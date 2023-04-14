@@ -619,8 +619,8 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
 
       if (xbpp <= 8) {
-         log.msg(VLF_CRITICAL, "Please change your X11 setup so that it runs in 15 bit mode or better.");
-         log.msg(VLF_CRITICAL, "Currently X11 is configured to use %d bit graphics.", xbpp);
+         log.msg(VLF::CRITICAL, "Please change your X11 setup so that it runs in 15 bit mode or better.");
+         log.msg(VLF::CRITICAL, "Currently X11 is configured to use %d bit graphics.", xbpp);
          return ERR_Failed;
       }
 
@@ -1487,7 +1487,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
 #ifdef _WIN32
    // NOTE: Dimensions are measured relative to the client area, not the window including its borders.
 
-   log.msg(VLF_BRANCH|VLF_EXTAPI, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
+   log.msg(VLF::BRANCH|VLF::EXTAPI, "%dx%d, %dx%d", Args->X, Args->Y, Args->Width, Args->Height);
 
    if (!winResizeWindow(Self->WindowHandle, Args->X, Args->Y, Args->Width, Args->Height)) {
       return log.warning(ERR_Failed);

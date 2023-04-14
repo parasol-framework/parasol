@@ -578,7 +578,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
       objFile::create file = {
          fl::Path("user:config/network/proxies.cfg"),
          fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE),
-         fl::Flags(FL_NEW|FL_WRITE)
+         fl::Flags(FL::NEW|FL::WRITE)
       };
 
       if (file.ok()) return config->saveToObject(*file);
