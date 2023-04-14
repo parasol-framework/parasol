@@ -1565,8 +1565,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
    pf::Log log(Move ? "MoveFile" : "CopyFile");
 #ifdef __unix__
    struct stat64 stinfo;
-   LONG parentpermissions, gid, uid;
-   LONG i;
+   PERMIT parentpermissions;
+   LONG gid, uid, i;
 #endif
 #ifdef _WIN32
    LONG handle;
@@ -2647,7 +2647,7 @@ ERROR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
    // Set file security information
 
-   Info->Permissions = 0;
+   Info->Permissions = PERMIT::NIL;
    if (info.st_mode & S_IRUSR) Info->Permissions |= PERMIT::READ;
    if (info.st_mode & S_IWUSR) Info->Permissions |= PERMIT::WRITE;
    if (info.st_mode & S_IXUSR) Info->Permissions |= PERMIT::EXEC;
@@ -2898,7 +2898,7 @@ ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
    if ((Permissions & PERMIT::GROUP) != PERMIT::NIL) Permissions |= PERMIT::GROUP_EXEC;
    if ((Permissions & PERMIT::OTHERS) != PERMIT::NIL) Permissions |= PERMIT::OTHERS_EXEC;
 
-   log.branch("%s, Permissions: $%.8x %s", Path, Permissions, (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
+   log.branch("%s, Permissions: $%.8x %s", Path, LONG(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
 
    LONG secureflags = convert_permissions(Permissions);
 
@@ -3136,4 +3136,5 @@ ERROR delete_tree(STRING Path, LONG Size, FUNCTION *Callback, FileFeedback *Feed
 #include "fs_folders.cpp"
 #include "fs_volumes.cpp"
 #include "fs_watch_path.cpp"
+
 

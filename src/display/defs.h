@@ -607,7 +607,8 @@ extern struct XRandRBase *XRandRBase;
 extern bool glX11ShmImage;
 extern UBYTE KeyHeld[K_LIST_END];
 extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
-extern LONG glKeyFlags, glXFD, glDGAPixelsPerLine, glDGABankSize;
+extern KQ glKeyFlags;
+extern LONG glXFD, glDGAPixelsPerLine, glDGABankSize;
 extern Atom atomSurfaceID, XWADeleteWindow;
 extern GC glXGC, glClipXGC;
 extern XWindowAttributes glRootWindow;
@@ -692,3 +693,4 @@ inline LONG find_parent_list(const SURFACELIST &list, extSurface *Self)
 
    return find_surface_list(Self->ParentID);
 }
+

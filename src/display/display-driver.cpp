@@ -37,7 +37,8 @@ struct XRandRBase *XRandRBase = 0;
 bool glX11ShmImage = false;
 UBYTE KeyHeld[K_LIST_END];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
-LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
+KQ glKeyFlags = KQ::NIL;
+LONG glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
 Atom atomSurfaceID = 0, XWADeleteWindow = 0;
 GC glXGC = 0, glClipXGC = 0;
 XWindowAttributes glRootWindow;
@@ -1306,3 +1307,4 @@ static STRUCTS glStructures = {
 };
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, &glStructures)
+

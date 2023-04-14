@@ -3258,9 +3258,9 @@ class objStorageDevice : public BaseClass {
    using create = pf::Create<objStorageDevice>;
 
    DEVICE DeviceFlags;    // These read-only flags identify the type of device and its features.
-   LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
-   LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
-   LARGE BytesUsed;      // Total amount of storage space in use.
+   LARGE  DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
+   LARGE  BytesFree;      // Total amount of storage space that is available, measured in bytes.
+   LARGE  BytesUsed;      // Total amount of storage space in use.
 
    // Customised field setting
 

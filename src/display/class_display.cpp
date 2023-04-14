@@ -2522,7 +2522,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
          // The keyboard qualifiers need to be reset, because if the user is holding down any keys we will lose any
          // key-release messages due on the window that we've terminated.
 
-         glKeyFlags = 0;
+         glKeyFlags = KQ::NIL;
 
          Self->Bitmap->set(FID_Handle, Self->WindowHandle);
          acResize(Self->Bitmap, Self->Width, Self->Height, 0);
@@ -3104,3 +3104,4 @@ ERROR create_display_class(void)
 
    return clDisplay ? ERR_Okay : ERR_AddClass;
 }
+

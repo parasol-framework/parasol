@@ -2318,7 +2318,7 @@ static ERROR GET_Permissions(extFile *Self, PERMIT *Value)
       LONG i = StrLength(path);
       while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
       if (path[i+1] IS '.') Self->Permissions = PERMIT::HIDDEN;
-      else Self->Permissions = 0;
+      else Self->Permissions = PERMIT::NIL;
 
       if (Self->Handle != -1) {
          struct stat64 info;
@@ -2839,3 +2839,4 @@ extern "C" ERROR add_file_class(void)
 
    return glFileClass ? ERR_Okay : ERR_AddClass;
 }
+
