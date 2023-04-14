@@ -14,7 +14,7 @@
    return ERR_Okay;
 }
 
-objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF_AUTO_FREE) };
+objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
 if (thread.ok()) thread-&gt;activate(thread);
 
 </pre>
@@ -33,7 +33,7 @@ if (thread.ok()) thread-&gt;activate(thread);
                            
                           <span class="glyphicon glyphicon-minus text-muted" data-toggle="tooltip" title="Not writeable"></span></td><th class="col-md-1">Error</th><td class="col-md-1"><span class="text-nowrap">ERROR</span></td><td>Reflects the error code returned by the thread routine.</td></tr><tr id="_" data-toggle="collapse" data-target="#fl-Flags" class="clickable"><td class="col-md-1"><a id="tf-Flags"></a><span class="glyphicon glyphicon-ok text-success" data-toggle="tooltip" title="Direct read access"></span>
                            
-                          <span class="glyphicon glyphicon-cog text-danger" data-toggle="tooltip" title="Immutable"></span></td><th class="col-md-1">Flags</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Optional flags can be defined here.</td></tr><tr class="no-hover"><td colspan="4" class="hiddenRow"><div id="fl-Flags" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <span class="glyphicon glyphicon-cog text-danger" data-toggle="tooltip" title="Immutable"></span></td><th class="col-md-1">Flags</th><td class="col-md-1"><span class="text-nowrap">THF</span></td><td>Optional flags can be defined here.</td></tr><tr class="no-hover"><td colspan="4" class="hiddenRow"><div id="fl-Flags" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">THF_AUTO_FREE</th><td>Automatically destroy the Thread object when the user routine has completed.</td></tr></tbody></table>
       </div></div></td></tr><tr id="_" data-toggle="collapse" data-target="#fl-Routine" class="clickable"><td class="col-md-1"><a id="tf-Routine"></a><span class="glyphicon glyphicon-ok text-danger" data-toggle="tooltip" title="Functional read access"></span>
                            
