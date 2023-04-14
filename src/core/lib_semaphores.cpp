@@ -481,10 +481,10 @@ restart:
       // Record the details for the semaphore if we created it
 
       if (!semaphore->MaxValue) {
-         semaphore->MaxValue   = Value;
-         semaphore->Flags      = Flags;
-         semaphore->Counter    = Value;
-         semaphore->Data       = 0;
+         semaphore->MaxValue = Value;
+         semaphore->Flags    = Flags;
+         semaphore->Counter  = Value;
+         semaphore->Data     = 0;
          if (Name) semaphore->NameID = StrHash(Name, TRUE);
       }
 

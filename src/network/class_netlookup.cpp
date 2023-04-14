@@ -329,7 +329,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    if (!netStrToAddress(Args->Address, &ip)) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
-      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF_AUTO_FREE))) {
+      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
          char buffer[pkg_size];
          auto rb = (resolve_buffer *)&buffer;
          rb->NetLookupID = Self->UID;
@@ -394,7 +394,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
    ERROR error;
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
    if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
-         fl::Flags(THF_AUTO_FREE))) {
+         fl::Flags(THF::AUTO_FREE))) {
       char buffer[pkg_size];
       auto rb = (resolve_buffer *)&buffer;
       rb->NetLookupID = Self->UID;

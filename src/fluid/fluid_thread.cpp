@@ -48,7 +48,7 @@ static int thread_script(lua_State *Lua)
       return 0;
    }
 
-   if (auto thread = objThread::create::untracked(fl::Flags(THF_AUTO_FREE), fl::Routine((CPTR)thread_script_entry))) {
+   if (auto thread = objThread::create::untracked(fl::Flags(THF::AUTO_FREE), fl::Routine((CPTR)thread_script_entry))) {
       if (auto script = objScript::create::global(fl::Owner(thread->UID), fl::Statement(statement))) {
          if (lua_isfunction(Lua, 2)) {
             lua_pushvalue(Lua, 2);

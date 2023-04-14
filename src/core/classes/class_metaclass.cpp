@@ -1115,7 +1115,7 @@ void scan_classes(void)
 
             log.msg("Loading module for class scan: %s", modules.c_str());
 
-            objModule::create mod = { fl::Name(modules), fl::Flags(MOF_SYSTEM_PROBE) };
+            objModule::create mod = { fl::Name(modules), fl::Flags(MOF::SYSTEM_PROBE) };
 
             total++;
          }

@@ -3143,7 +3143,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 
     <constants lookup="MHF" comment="Internal options for requesting function tables from modules.">
       <const name="DEFAULT">Use structures to group exported functions (Linux, C/C++ standard)</const>
-      <const name="NULL"/>
       <const name="STATIC">Keep the module code in memory</const>
       <const name="STRUCTURE">Use structures to group exported functions (Linux, C/C++ standard)</const>
     </constants>

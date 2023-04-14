@@ -78,7 +78,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "DESC: Sort in descending order.",
     "CSV: The list is in CSV format and the Size and Total parameters should be ignored. Note that the source string will be modified in this mode.")
 
-  flags("TSF", { comment="Task flags" },
+  flags("TSF", { strict=true, comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
     "WAIT: This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.",
     "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
@@ -101,10 +101,9 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",    "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
     "UNDO")
 
-  flags("MHF", { comment="Internal options for requesting function tables from modules." },
-    "NULL",
-    "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)",
-    "STATIC: Keep the module code in memory")
+  flags("MHF", { strict=true, comment="Internal options for requesting function tables from modules." },
+    "STATIC: Keep the module code in memory",
+    "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)")
 
   flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
@@ -112,12 +111,12 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
 
-  flags("MOF", { comment="Module flags" },
+  flags("MOF", { strict=true, comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
     "STATIC: This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.",
     "SYSTEM_PROBE: Indicates that the module is being probed.  Do not use outside of the core library.")
 
-  flags("THF", { comment="Thread flags" },
+  flags("THF", { strict=true, comment="Thread flags" },
     "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.")
 
   enum("FDT", { type="int", start=0, comment="Flags for the SetDate() file method." },
@@ -132,7 +131,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "HIDDEN: Hides the volume so that it will not show up when reading the root folder.",
     "SYSTEM: Identifies the volume as being created by the system, is immutable and persistent between sessions.")
 
-  flags("FDL", { comment="Options for the File Delete() method." },
+  flags("FDL", { strict=true, comment="Options for the File Delete() method." },
     "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
 
   flags("CMF", { comment="Compression flags" },
@@ -883,7 +882,7 @@ struct FieldValue {
       CSTRING pName) {
 
       HeaderVersion = MODULE_HEADER_VERSION;
-      Flags         = MHF_DEFAULT;
+      Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;
       CoreVersion   = VER_CORE;
       Definitions   = pDef;
@@ -913,6 +912,9 @@ struct FieldValue {
   struct("FieldDef", { comment="Used to define constants for field references." }, [[
     cstr Name  # The name of the constant.
     int Value  # The value of the constant.
+  ]],
+  [[
+   template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(LONG(pValue)) { }
   ]])
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
@@ -2278,7 +2280,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 
   class("Task", { src="../classes/class_task.cpp", output="../classes/class_task_def.c" }, [[
     double TimeOut
-    int Flags
+    int(TSF) Flags
     int ReturnCode
     int ProcessID    # Native process ID of the activated task
   ]])
@@ -2293,7 +2295,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    int   DataSize     # Size of user data.
    int   StackSize    # Pre-set stack size
    error Error        # Error code returned by the thread on completion.
-   int   Flags        # Optional flags.
+   int(THF) Flags     # Optional flags.
   ]])
 
   methods("Module", "Mod", {

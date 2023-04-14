@@ -155,7 +155,7 @@ static ERROR alloc_cond(CONDLOCK *Lock, ALF Flags)
 {
    LONG result;
 
-   if (Flags) {
+   if (Flags != ALF::NIL) {
       pthread_condattr_t attrib;
       if (!(result = pthread_condattr_init(&attrib))) {
          if ((Flags & ALF::SHARED) != ALF::NIL) pthread_condattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.

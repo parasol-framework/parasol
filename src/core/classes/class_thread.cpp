@@ -19,7 +19,7 @@ static ERROR thread_entry(objThread *Thread) {
    return ERR_Okay;
 }
 
-objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF_AUTO_FREE) };
+objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
 if (thread.ok()) thread->activate(thread);
 
 </pre>
@@ -205,7 +205,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
          }
       }
 
-      if (thread->Flags & THF_AUTO_FREE) FreeResource(thread);
+      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(thread);
 
       ReleaseObject(thread);
    }
@@ -267,7 +267,7 @@ static void * thread_entry(extThread *Self)
 
             //Self->Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
          }
-         else if (Self->Flags & THF_AUTO_FREE) {
+         else if ((Self->Flags & THF::AUTO_FREE) != THF::NIL) {
             Self->Active = FALSE;
             FreeResource(Self);
          }
@@ -408,7 +408,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
    if (!Self->Active) return ERR_Okay;
 
    if (!tlMainThread) { // Only the main thread should be terminating child threads.
-      Self->Flags |= THF_AUTO_FREE;
+      Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }
 
@@ -418,7 +418,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 
    if (Self->Active) {
       log.warning("Thread #%d still in use - marking it for automatic termination.", Self->UID);
-      Self->Flags |= THF_AUTO_FREE;
+      Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }
    else return ERR_Okay;
@@ -623,10 +623,7 @@ On some platforms it may not be possible to preset the stack size and the provid
 -END-
 *********************************************************************************************************************/
 
-static const FieldDef clThreadFlags[] = {
-   { "AutoFree",   THF_AUTO_FREE },
-   { NULL, 0 }
-};
+#include "class_thread_def.c"
 
 static const FieldArray clFields[] = {
    { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
@@ -639,8 +636,6 @@ static const FieldArray clFields[] = {
    { "Routine",   FDF_FUNCTIONPTR|FDF_RW, GET_Routine, SET_Routine },
    END_FIELD
 };
-
-#include "class_thread_def.c"
 
 //********************************************************************************************************************
 

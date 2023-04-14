@@ -762,16 +762,21 @@ DEFINE_ENUM_FLAG_OPERATORS(SBF)
 
 // Task flags
 
-#define TSF_FOREIGN 0x00000001
-#define TSF_WAIT 0x00000002
-#define TSF_RESET_PATH 0x00000004
-#define TSF_PRIVILEGED 0x00000008
-#define TSF_SHELL 0x00000010
-#define TSF_DEBUG 0x00000020
-#define TSF_QUIET 0x00000040
-#define TSF_DETACHED 0x00000080
-#define TSF_ATTACHED 0x00000100
-#define TSF_PIPE 0x00000200
+enum class TSF : ULONG {
+   NIL = 0,
+   FOREIGN = 0x00000001,
+   WAIT = 0x00000002,
+   RESET_PATH = 0x00000004,
+   PRIVILEGED = 0x00000008,
+   SHELL = 0x00000010,
+   DEBUG = 0x00000020,
+   QUIET = 0x00000040,
+   DETACHED = 0x00000080,
+   ATTACHED = 0x00000100,
+   PIPE = 0x00000200,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(TSF)
 
 #define AHASH_ACTIVATE 0xdbaf4876
 #define AHASH_ACCESSOBJECT 0xbcf3b98e
@@ -831,10 +836,14 @@ DEFINE_ENUM_FLAG_OPERATORS(SBF)
 
 // Internal options for requesting function tables from modules.
 
-#define MHF_NULL 0x00000001
-#define MHF_DEFAULT 0x00000002
-#define MHF_STRUCTURE 0x00000002
-#define MHF_STATIC 0x00000004
+enum class MHF : ULONG {
+   NIL = 0,
+   STATIC = 0x00000001,
+   STRUCTURE = 0x00000002,
+   DEFAULT = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MHF)
 
 // ScrollToPoint flags
 
@@ -866,13 +875,23 @@ DEFINE_ENUM_FLAG_OPERATORS(SBF)
 
 // Module flags
 
-#define MOF_LINK_LIBRARY 0x00000001
-#define MOF_STATIC 0x00000002
-#define MOF_SYSTEM_PROBE 0x00000004
+enum class MOF : ULONG {
+   NIL = 0,
+   LINK_LIBRARY = 0x00000001,
+   STATIC = 0x00000002,
+   SYSTEM_PROBE = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MOF)
 
 // Thread flags
 
-#define THF_AUTO_FREE 0x00000001
+enum class THF : ULONG {
+   NIL = 0,
+   AUTO_FREE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(THF)
 
 // Flags for the SetDate() file method.
 
@@ -898,7 +917,12 @@ DEFINE_ENUM_FLAG_OPERATORS(VOLUME)
 
 // Options for the File Delete() method.
 
-#define FDL_FEEDBACK 0x00000001
+enum class FDL : ULONG {
+   NIL = 0,
+   FEEDBACK = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FDL)
 
 // Compression flags
 
@@ -1696,7 +1720,7 @@ struct Function {
 
 struct ModHeader {
    LONG    HeaderVersion;                           // The version of this structure.
-   LONG    Flags;                                   // Special flags, type of function table wanted from the Core
+   MHF     Flags;                                   // Special flags, type of function table wanted from the Core
    FLOAT   ModVersion;                              // Version of this module
    FLOAT   CoreVersion;                             // Core version compiled against
    CSTRING Definitions;                             // Module definition string, usable by run-time languages such as Fluid
@@ -1717,7 +1741,7 @@ struct ModHeader {
       CSTRING pName) {
 
       HeaderVersion = MODULE_HEADER_VERSION;
-      Flags         = MHF_DEFAULT;
+      Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;
       CoreVersion   = VER_CORE;
       Definitions   = pDef;
@@ -1745,6 +1769,7 @@ struct FieldArray {
 struct FieldDef {
    CSTRING Name;    // The name of the constant.
    LONG    Value;   // The value of the constant.
+   template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(LONG(pValue)) { }
 };
 
 struct SystemState {
@@ -3825,7 +3850,7 @@ class objTask : public BaseClass {
    using create = pf::Create<objTask>;
 
    DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
-   LONG   Flags;      // Optional flags.
+   TSF    Flags;      // Optional flags.
    LONG   ReturnCode; // The task's return code can be retrieved following execution.
    LONG   ProcessID;  // Reflects the process ID when an executable is launched.
 
@@ -3874,7 +3899,7 @@ class objTask : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const TSF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -3994,7 +4019,7 @@ class objThread : public BaseClass {
    LONG  DataSize;   // The size of the buffer referenced in the Data field.
    LONG  StackSize;  // The stack size to allocate for the thread.
    ERROR Error;      // Reflects the error code returned by the thread routine.
-   LONG  Flags;      // Optional flags can be defined here.
+   THF   Flags;      // Optional flags can be defined here.
 
    // Action stubs
 
@@ -4009,7 +4034,7 @@ class objThread : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const THF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -4059,7 +4084,7 @@ class objModule : public BaseClass {
    APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
    struct RootModule * Root;                // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
-   LONG   Flags;                            // Optional flags.
+   MOF    Flags;                            // Optional flags.
    public:
    static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
@@ -4097,7 +4122,7 @@ class objModule : public BaseClass {
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const MOF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;

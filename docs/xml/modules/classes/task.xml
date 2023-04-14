@@ -215,7 +215,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="TSF">INT</type>
+      <type lookup="TSF">TSF</type>
       <description>
 <types lookup="TSF"/>
       </description>

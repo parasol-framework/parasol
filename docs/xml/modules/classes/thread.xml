@@ -20,7 +20,7 @@
    return ERR_Okay;
 }
 
-objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF_AUTO_FREE) };
+objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
 if (thread.ok()) thread-&gt;activate(thread);
 
 </pre>
@@ -135,7 +135,7 @@ if (thread.ok()) thread-&gt;activate(thread);
       <name>Flags</name>
       <comment>Optional flags can be defined here.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="THF">INT</type>
+      <type lookup="THF">THF</type>
       <description>
 <types lookup="THF"/>
       </description>

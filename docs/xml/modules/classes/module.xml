@@ -62,7 +62,7 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="MOF">INT</type>
+      <type lookup="MOF">MOF</type>
       <description>
 <types lookup="MOF"/>
       </description>

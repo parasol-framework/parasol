@@ -901,7 +901,7 @@ class RootModule : public BaseClass {
    WORD   Version;
    WORD   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
-   LONG   Flags;
+   MHF    Flags;
    UBYTE  NoUnload;
    UBYTE  DLL;                 // TRUE if the module is a Windows DLL
    LONG   (*Init)(OBJECTPTR, struct CoreBase *);

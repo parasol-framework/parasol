@@ -100,8 +100,8 @@ static ERROR SET_Header(extModule *, ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
-   { "LinkLibrary", MOF_LINK_LIBRARY },
-   { "Static",      MOF_STATIC },
+   { "LinkLibrary", MOF::LINK_LIBRARY },
+   { "Static",      MOF::STATIC },
    { NULL, 0 }
 };
 
@@ -138,7 +138,7 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
 
    // Free the module's segment/code area
 
-   if ((Self->NoUnload IS FALSE) and (!(Self->Flags & MHF_STATIC))) {
+   if ((Self->NoUnload IS FALSE) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
       free_module(Self->LibraryBase);
       Self->LibraryBase = NULL;
    }
@@ -253,7 +253,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                }
                else path = glRootPath + "lib/parasol/";
 
-               if (Self->Flags & MOF_LINK_LIBRARY) path += "lib/";
+               if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
 
                #ifdef __ANDROID__
                   if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
@@ -278,7 +278,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                   path += "lib\\";
                }
 
-               if (Self->Flags & MOF_LINK_LIBRARY) path += "lib\\";
+               if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib\\";
                path.append(Self->Name);
             #endif
          }
@@ -315,10 +315,10 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             // other libraries.  SSL is an example of this as the libssl library is dependent
             // on symbols found in libcrypto, therefore libcrypto needs RTLD_GLOBAL.
 
-            if ((master->LibraryBase = dlopen(path.c_str(), (Self->Flags & MOF_LINK_LIBRARY) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
+            if ((master->LibraryBase = dlopen(path.c_str(), ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
                aflags |= AF_SEGMENT;
 
-               if (!(Self->Flags & MOF_LINK_LIBRARY)) {
+               if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
                   if (!(table = (ModHeader *)dlsym(master->LibraryBase, "ModHeader"))) {
                      log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                      goto exit;
@@ -336,7 +336,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             if ((master->LibraryBase = winLoadLibrary(path.c_str()))) {
                aflags |= AF_SEGMENT;
 
-               if (!(Self->Flags & MOF_LINK_LIBRARY)) {
+               if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
                   if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "ModHeader"))) {
                      if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "_ModHeader"))) {
                         log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
@@ -437,7 +437,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             if (error) goto exit;
          }
       }
-      else if (Self->Flags & MOF_LINK_LIBRARY) {
+      else if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) {
          log.msg("Loaded link library '%s'", Self->Name);
       }
       else {
@@ -457,7 +457,7 @@ open_module:
    // If the STATIC option is set then the loaded module must not be removed when the Module object is freed.  This is
    // typically used for symbolic linked libraries.
 
-   if (Self->Flags & MOF_STATIC) master->Flags |= MHF_STATIC;
+   if ((Self->Flags & MOF::STATIC) != MOF::NIL) master->Flags |= MHF::STATIC;
 
    // At this stage the module is 100% resident and it is not possible to reverse the process.  Because of this, if an
    // error occurs we must not try to free any resident allocations from memory.

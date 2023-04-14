@@ -288,6 +288,10 @@ constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); 
 constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
 inline FieldValue ButtonOrder(std::string Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
 
+// Template-based Flags are required for strongly typed enums
+
+template <class T> FieldValue Flags(T Value) { return FieldValue(FID_Flags, LONG(Value)); }
+
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");
    return FieldValue(FID_PageWidth, Value);

@@ -116,16 +116,16 @@ static ERROR TASK_Expunge(extTask *, APTR);
 static ERROR TASK_Quit(extTask *, APTR);
 
 static const FieldDef clFlags[] = {
-   { "Foreign",    TSF_FOREIGN },
-   { "Wait",       TSF_WAIT },
-   { "Shell",      TSF_SHELL },
-   { "ResetPath",  TSF_RESET_PATH },
-   { "Privileged", TSF_PRIVILEGED },
-   { "Debug",      TSF_DEBUG },
-   { "Quiet",      TSF_QUIET },
-   { "Attached",   TSF_ATTACHED },
-   { "Detached",   TSF_DETACHED },
-   { "Pipe",       TSF_PIPE },
+   { "Foreign",    TSF::FOREIGN },
+   { "Wait",       TSF::WAIT },
+   { "Shell",      TSF::SHELL },
+   { "ResetPath",  TSF::RESET_PATH },
+   { "Privileged", TSF::PRIVILEGED },
+   { "Debug",      TSF::DEBUG },
+   { "Quiet",      TSF::QUIET },
+   { "Attached",   TSF::ATTACHED },
+   { "Detached",   TSF::DETACHED },
+   { "Pipe",       TSF::PIPE },
    { NULL, 0 }
 };
 
@@ -591,7 +591,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
 
    // Send a break if we're waiting for this process to end
 
-   if ((Task->Flags & TSF_WAIT) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, MSF::NIL, NULL, 0);
+   if (((Task->Flags & TSF::WAIT) != TSF::NIL) and (Task->TimeOut > 0)) SendMessage(0, glProcessBreak, MSF::NIL, NULL, 0);
 }
 #endif
 
@@ -677,7 +677,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    Self->ReturnCodeSet = false;
 
-   if (Self->Flags & TSF_FOREIGN) Self->Flags |= TSF_SHELL;
+   if ((Self->Flags & TSF::FOREIGN) != TSF::NIL) Self->Flags |= TSF::SHELL;
 
    if (!Self->Location) return log.warning(ERR_MissingPath);
 
@@ -703,7 +703,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
          launchdir[i] = 0;
       }
    }
-   else if (Self->Flags & TSF_RESET_PATH) {
+   else if ((Self->Flags & TSF::RESET_PATH) != TSF::NIL) {
       if (!ResolvePath(Self->Location, RSF::APPROXIMATE|RSF::PATH, &path)) {
          for (i=0; (path[i]) and ((size_t)i < sizeof(launchdir)-1); i++) launchdir[i] = path[i];
          FreeResource(path);
@@ -819,27 +819,27 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    // Hide window if this is designated a shell program (i.e. hide the DOS window).
    // NB: If you hide a non-shell program, this usually results in the first GUI window that pops up being hidden.
 
-   if (Self->Flags & TSF_SHELL) hide_output = true;
+   if ((Self->Flags & TSF::SHELL) != TSF::NIL) hide_output = true;
 
-   // Determine whether this new process will be a member of the parent process' group.  This can be forced with the TSF_DETACHED/ATTACHED flags,
+   // Determine whether this new process will be a member of the parent process' group.  This can be forced with the TSF::DETACHED/ATTACHED flags,
    // otherwise it will be determined automatically according to the status of our current task.
 
    bool group;
 
-   if (Self->Flags & TSF_ATTACHED) group = true;
-   else if (Self->Flags & TSF_DETACHED) group = false;
+   if ((Self->Flags & TSF::ATTACHED) != TSF::NIL) group = true;
+   else if ((Self->Flags & TSF::DETACHED) != TSF::NIL) group = false;
    else group = true;
 
    LONG internal_redirect = 0;
    if (Self->OutputCallback.Type) internal_redirect |= TSTD_OUT;
    if (Self->ErrorCallback.Type) internal_redirect |= TSTD_ERR;
-   if (Self->Flags & TSF_PIPE) internal_redirect |= TSTD_IN;
+   if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
    if (!(winerror = winLaunchProcess(Self, buffer, (launchdir[0] != 0) ? launchdir : 0, group,
          internal_redirect, &Self->Platform, hide_output, redirect_stdout, redirect_stderr, &Self->ProcessID))) {
 
       error = ERR_Okay;
-      if ((Self->Flags & TSF_WAIT) and (Self->TimeOut > 0)) {
+      if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
          log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
          //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
@@ -872,8 +872,8 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    GET_LaunchPath(Self, &path);
 
    i = 0;
-   if ((Self->Flags & TSF_RESET_PATH) or (path)) {
-      Self->Flags |= TSF_SHELL;
+   if (((Self->Flags & TSF::RESET_PATH) != TSF::NIL) or (path)) {
+      Self->Flags |= TSF::SHELL;
 
       buffer[i++] = 'c';
       buffer[i++] = 'd';
@@ -910,7 +910,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
    CSTRING argslist[Self->Parameters.size()+2];
    LONG bufend = i;
 
-   // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF_SHELL is used,
+   // Following the executable path are any arguments that have been used. NOTE: This isn't needed if TSF::SHELL is used,
    // however it is extremely useful in the debug printout to see what is being executed.
 
    for (auto &param : Self->Parameters) {
@@ -938,7 +938,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 
-   if (!(Self->Flags & TSF_SHELL)) {
+   if ((Self->Flags & TSF::SHELL) IS TSF::NIL) {
       buffer[bufend] = 0;
 
       argslist[0] = buffer;
@@ -948,7 +948,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
       argslist[i+1] = NULL;
 
-      if (Self->Flags & TSF_DEBUG) {
+      if ((Self->Flags & TSF::DEBUG) != TSF::NIL) {
          for (i=1; argslist[i]; i++) {
             log.msg("Arg %d: %s", i, argslist[i]);
          }
@@ -979,7 +979,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
    }
 
-   if ((out_fd IS -1) and (Self->Flags & TSF_QUIET)) {
+   if ((out_fd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
       log.msg("Output will go to NULL");
       out_fd = open("/dev/null", O_RDONLY);
    }
@@ -998,14 +998,14 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
    }
 
-   if ((out_errfd IS -1) and (TSF_QUIET)) {
+   if ((out_errfd IS -1) and ((Self->Flags & TSF::QUIET) != TSF::NIL)) {
       out_errfd = open("/dev/null", O_RDONLY);
    }
 
    // Fork a new task.  Remember that forking produces an exact duplicate of the process that made the fork.
 
-   privileged = (Self->Flags & TSF_PRIVILEGED) ? 1 : 0;
-   shell = (Self->Flags & TSF_SHELL) ? 1 : 0;
+   privileged = ((Self->Flags & TSF::PRIVILEGED) != TSF::NIL) ? 1 : 0;
+   shell = ((Self->Flags & TSF::SHELL) != TSF::NIL) ? 1 : 0;
 
    pid = fork();
 
@@ -1048,7 +1048,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
 
       error = ERR_Okay;
-      if (Self->Flags & TSF_WAIT) {
+      if ((Self->Flags & TSF::WAIT) != TSF::NIL) {
          log.branch("Waiting for process to turn into a zombie in %.2fs.", Self->TimeOut);
 
          // Wait for the child process to turn into a zombie.  NB: A parent process or our own child handler may
@@ -1520,7 +1520,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       log.msg("Process Path: %s", Self->ProcessPath);
       log.msg("Working Path: %s", Self->Path);
    }
-   else if (Self->ProcessID) Self->Flags |= TSF_FOREIGN;
+   else if (Self->ProcessID) Self->Flags |= TSF::FOREIGN;
 
    return ERR_Okay;
 }
