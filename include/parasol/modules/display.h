@@ -1102,7 +1102,7 @@ class objPointer : public BaseClass {
    OBJECTID InputID;       // Declares the I/O object to read movement from.
    OBJECTID SurfaceID;     // The top-most surface that is under the pointer's hot spot.
    OBJECTID AnchorID;      // Can refer to a surface that the pointer has been anchored to.
-   LONG     CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
+   PTC      CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
    OBJECTID CursorOwnerID; // The current owner of the cursor, as defined by SetCursor().
    LONG     Flags;         // Optional flags.
    OBJECTID RestrictID;    // Refers to a surface when the pointer is restricted.
@@ -1164,7 +1164,7 @@ class objPointer : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCursor(const LONG Value) {
+   inline ERROR setCursor(const PTC Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->CursorID = Value;
       return ERR_Okay;
@@ -1285,10 +1285,10 @@ class objSurface : public BaseClass {
    LONG     Width;      // Defines the width of a surface object.
    LONG     Height;     // Defines the height of a surface object.
    OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
-   LONG     Align;      // This field allows you to align a surface area within its owner.
+   ALIGN    Align;      // This field allows you to align a surface area within its owner.
    LONG     Dimensions; // Indicates currently active dimension settings.
    LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
-   LONG     Cursor;     // A default cursor image can be set here for changing the mouse pointer.
+   PTC      Cursor;     // A default cursor image can be set here for changing the mouse pointer.
    struct RGB8 Colour;  // String-based field for setting the background colour.
    LONG     Type;       // Internal surface type flags
    LONG     Modal;      // Sets the surface as modal (prevents user interaction with other surfaces).
@@ -1476,7 +1476,7 @@ class objSurface : public BaseClass {
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setAlign(const LONG Value) {
+   inline ERROR setAlign(const ALIGN Value) {
       this->Align = Value;
       return ERR_Okay;
    }
@@ -1487,7 +1487,7 @@ class objSurface : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setCursor(const LONG Value) {
+   inline ERROR setCursor(const PTC Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[53];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1628,11 +1628,11 @@ struct DisplayBase {
    ULONG (*_ReadPixel)(objBitmap * Bitmap, LONG X, LONG Y);
    void (*_ReadRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
    ERROR (*_Resample)(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
-   ERROR (*_RestoreCursor)(LONG Cursor, OBJECTID Owner);
+   ERROR (*_RestoreCursor)(PTC Cursor, OBJECTID Owner);
    DOUBLE (*_ScaleToDPI)(DOUBLE Value);
    ERROR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
    void (*_SetClipRegion)(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-   ERROR (*_SetCursor)(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner);
+   ERROR (*_SetCursor)(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
    ERROR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
    ERROR (*_SetCustomCursor)(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
    ERROR (*_SetHostOption)(LONG Option, LARGE Value);
@@ -1675,11 +1675,11 @@ inline ERROR gfxLockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(S
 inline ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
 inline void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
 inline ERROR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
-inline ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
+inline ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
 inline DOUBLE gfxScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
 inline ERROR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
 inline void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
-inline ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
+inline ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
 inline ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
 inline ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
 inline ERROR gfxSetHostOption(LONG Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }

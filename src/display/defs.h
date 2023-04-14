@@ -188,10 +188,10 @@ enum {
 #define MT_PtrGrabX11Pointer -2
 #define MT_PtrUngrabX11Pointer -3
 
-struct ptrSetWinCursor { LONG Cursor;  };
+struct ptrSetWinCursor { PTC Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
 
-INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, LONG Cursor) {
+INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
    struct ptrSetWinCursor args = { Cursor };
    return Action(MT_PtrSetWinCursor, Ob, &args);
 }
@@ -321,7 +321,7 @@ class extPointer : public objPointer {
    MEMORYID MessageQueue;       // Message port of the task that holds the cursor
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
    LONG     CursorRelease;
-   LONG     BufferCursor;
+   PTC      BufferCursor;
    LONG     BufferFlags;
    MEMORYID BufferQueue;
    OBJECTID BufferOwner;
@@ -335,7 +335,7 @@ class extPointer : public objPointer {
    struct {
       WORD HotX;
       WORD HotY;
-   } Cursors[PTR_END];
+   } Cursors[LONG(PTC::END)];
 };
 
 class extSurface : public objSurface {
@@ -556,7 +556,7 @@ void winTerminate(void);
 APTR winGetDC(APTR);
 void winReleaseDC(APTR, APTR);
 void winSetSurfaceID(APTR, LONG);
-APTR GetWinCursor(LONG);
+APTR GetWinCursor(PTC);
 LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
 void winGetError(LONG, STRING, LONG);
 APTR winCreateCompatibleDC(void);

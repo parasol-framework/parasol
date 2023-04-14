@@ -992,7 +992,7 @@ static ERROR GET_Width(extFont *Self, LONG *Value)
       return ERR_Okay;
    }
 
-   if ((!Self->prvStrWidth) or (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) or (Self->WrapEdge)){
+   if ((!Self->prvStrWidth) or ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) or (Self->WrapEdge)){
       if (Self->WrapEdge > 0) {
          fntStringSize(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, NULL);
       }
@@ -1056,12 +1056,12 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
 {
    if (Self->prvLineCount < 1) calc_lines(Self);
 
-   if (Self->Align & ALIGN_VERTICAL) {
+   if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) {
       LONG offset = (Self->AlignHeight - (Self->Height + (Self->LineSpacing * (Self->prvLineCount-1))))>>1;
       offset += (Self->LineSpacing - Self->MaxHeight)>>1; // Adjust for spacing between each individual line
       *Value = offset;
    }
-   else if (Self->Align & ALIGN_BOTTOM) {
+   else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) {
       *Value = Self->AlignHeight - (Self->MaxHeight + (Self->LineSpacing * (Self->prvLineCount-1)));
    }
    else *Value = 0;
@@ -1194,8 +1194,8 @@ static ERROR draw_vector_font(extFont *Self)
 
    // If horizontal centring is required, calculate the correct horizontal starting coordinate.
 
-   if ((!Self->Angle) and (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT))) {
-      if (Self->Align & ALIGN_HORIZONTAL) {
+   if ((!Self->Angle) and ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL)) {
+      if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
          dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
          if ((Self->Flags & FTF_CHAR_CLIP) and (dxcoord < Self->X)) dxcoord = Self->X;
       }
@@ -1225,8 +1225,8 @@ static ERROR draw_vector_font(extFont *Self)
          fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
          wrapstr = str + wrapindex;
 
-         if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-            if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+         if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+            if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
             else dxcoord = Self->X + Self->AlignWidth - linewidth;
          }
          else dxcoord = Self->X;
@@ -1309,8 +1309,8 @@ static ERROR draw_vector_font(extFont *Self)
             fntStringSize(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
             wrapstr = str + wrapindex;
 
-            if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-               if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+            if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+               if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
                else dxcoord = Self->X + Self->AlignWidth - linewidth;
             }
 
@@ -1756,8 +1756,8 @@ static ERROR draw_bitmap_font(extFont *Self)
 
    // If horizontal centering is required, calculate the correct horizontal starting coordinate.
 
-   if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-      if (Self->Align & ALIGN_HORIZONTAL) {
+   if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+      if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
          dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
          if ((Self->Flags & FTF_CHAR_CLIP) and (dxcoord < Self->X)) dxcoord = Self->X;
       }
@@ -1791,8 +1791,8 @@ static ERROR draw_bitmap_font(extFont *Self)
          fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
          wrapstr = str + wrapindex;
 
-         if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-            if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+         if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+            if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
             else dxcoord = Self->X + Self->AlignWidth - linewidth;
          }
          else dxcoord = Self->X;
@@ -1874,8 +1874,8 @@ static ERROR draw_bitmap_font(extFont *Self)
             fntStringSize(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
             wrapstr = str + wrapindex;
 
-            if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-               if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+            if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+               if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
                else dxcoord = Self->X + Self->AlignWidth - linewidth;
             }
             CHECK_LINE_CLIP(Self, dycoord, bitmap);
@@ -2115,10 +2115,10 @@ static void unload_glyph_cache(extFont *Font)
 #include "class_font_def.c"
 
 static const FieldDef AlignFlags[] = {
-   { "Right",      ALIGN_RIGHT      }, { "Left",     ALIGN_LEFT },
-   { "Bottom",     ALIGN_BOTTOM     }, { "Top",      ALIGN_TOP },
-   { "Horizontal", ALIGN_HORIZONTAL }, { "Vertical", ALIGN_VERTICAL },
-   { "Center",     ALIGN_CENTER     }, { "Middle",   ALIGN_MIDDLE },
+   { "Right",      ALIGN::RIGHT      }, { "Left",     ALIGN::LEFT },
+   { "Bottom",     ALIGN::BOTTOM     }, { "Top",      ALIGN::TOP },
+   { "Horizontal", ALIGN::HORIZONTAL }, { "Vertical", ALIGN::VERTICAL },
+   { "Center",     ALIGN::CENTER     }, { "Middle",   ALIGN::MIDDLE },
    { NULL, 0 }
 };
 

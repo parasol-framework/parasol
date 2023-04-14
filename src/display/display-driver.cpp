@@ -54,30 +54,30 @@ APTR glDGAVideo = NULL;
 HINSTANCE glInstance = 0;
 
 WinCursor winCursors[24] = {
-   { 0, PTR_DEFAULT,           },  // NOTE: Refer to the microsoft.c file if you change anything here
-   { 0, PTR_SIZE_BOTTOM_LEFT,  },
-   { 0, PTR_SIZE_BOTTOM_RIGHT, },
-   { 0, PTR_SIZE_TOP_LEFT,     },
-   { 0, PTR_SIZE_TOP_RIGHT,    },
-   { 0, PTR_SIZE_LEFT,         },
-   { 0, PTR_SIZE_RIGHT,        },
-   { 0, PTR_SIZE_TOP,          },
-   { 0, PTR_SIZE_BOTTOM,       },
-   { 0, PTR_CROSSHAIR,         },
-   { 0, PTR_SLEEP,             },
-   { 0, PTR_SIZING,            },
-   { 0, PTR_SPLIT_VERTICAL,    },
-   { 0, PTR_SPLIT_HORIZONTAL,  },
-   { 0, PTR_MAGNIFIER,         },
-   { 0, PTR_HAND,              },
-   { 0, PTR_HAND_LEFT,         },
-   { 0, PTR_HAND_RIGHT,        },
-   { 0, PTR_TEXT,              },
-   { 0, PTR_PAINTBRUSH,        },
-   { 0, PTR_STOP,              },
-   { 0, PTR_INVISIBLE,         },
-   { 0, PTR_INVISIBLE,         },
-   { 0, PTR_DRAGGABLE,         }
+   { 0, PTC::DEFAULT,           },  // NOTE: Refer to the microsoft.c file if you change anything here
+   { 0, PTC::SIZE_BOTTOM_LEFT,  },
+   { 0, PTC::SIZE_BOTTOM_RIGHT, },
+   { 0, PTC::SIZE_TOP_LEFT,     },
+   { 0, PTC::SIZE_TOP_RIGHT,    },
+   { 0, PTC::SIZE_LEFT,         },
+   { 0, PTC::SIZE_RIGHT,        },
+   { 0, PTC::SIZE_TOP,          },
+   { 0, PTC::SIZE_BOTTOM,       },
+   { 0, PTC::CROSSHAIR,         },
+   { 0, PTC::SLEEP,             },
+   { 0, PTC::SIZING,            },
+   { 0, PTC::SPLIT_VERTICAL,    },
+   { 0, PTC::SPLIT_HORIZONTAL,  },
+   { 0, PTC::MAGNIFIER,         },
+   { 0, PTC::HAND,              },
+   { 0, PTC::HAND_LEFT,         },
+   { 0, PTC::HAND_RIGHT,        },
+   { 0, PTC::TEXT,              },
+   { 0, PTC::PAINTBRUSH,        },
+   { 0, PTC::STOP,              },
+   { 0, PTC::INVISIBLE,         },
+   { 0, PTC::INVISIBLE,         },
+   { 0, PTC::DRAGGABLE,         }
 };
 #endif
 

@@ -152,11 +152,11 @@ gui.divider = function(Options)
 
    if (self._orientation == 'h') then
       self._dividerVP = self._vp.new('VectorViewport', {
-         name='div_vp', x=0, y=0, width=GAP, height='100%', cursor=PTR_SPLIT_HORIZONTAL
+         name='div_vp', x=0, y=0, width=GAP, height='100%', cursor=PTC_SPLIT_HORIZONTAL
       })
    else
       self._dividerVP = self._vp.new('VectorViewport', {
-         name='div_vp', x=0, y=0, width='100%', height=GAP, cursor=PTR_SPLIT_VERTICAL
+         name='div_vp', x=0, y=0, width='100%', height=GAP, cursor=PTC_SPLIT_VERTICAL
       })
    end
 

@@ -190,7 +190,7 @@ class extVectorText : public extVector {
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
-   LONG  txAlignFlags;
+   ALIGN txAlignFlags;
    LONG  txFlags; // VTF flags
    char  txFontStyle[20];
    UBYTE txRelativeFontSize;
@@ -377,20 +377,20 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
 Align: Defines the alignment of the text string.
 
 This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the
-form of `ALIGN_LEFT`, `ALIGN_HORIZONTAL` and `ALIGN_RIGHT`.
+form of `ALIGN::LEFT`, `ALIGN::HORIZONTAL` and `ALIGN::RIGHT`.
 
 In addition, the SVG equivalent values of `start`, `middle` and `end` are supported and map directly to the formerly
 mentioned align flags.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Align(extVectorText *Self, LONG *Value)
+static ERROR TEXT_GET_Align(extVectorText *Self, ALIGN *Value)
 {
    *Value = Self->txAlignFlags;
    return ERR_Okay;
 }
 
-static ERROR TEXT_SET_Align(extVectorText *Self, LONG Value)
+static ERROR TEXT_SET_Align(extVectorText *Self, ALIGN Value)
 {
    Self->txAlignFlags = Value;
    return ERR_Okay;
@@ -1745,8 +1745,8 @@ extern void get_text_xy(extVectorText *Vector)
       else y *= Vector->Scene->PageHeight;
    }
 
-   if (Vector->txAlignFlags & ALIGN_RIGHT) x -= Vector->txWidth;
-   else if (Vector->txAlignFlags & ALIGN_HORIZONTAL) x -= Vector->txWidth * 0.5;
+   if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
+   else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;
 
    if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
       // Bitmap fonts need an adjustment because the Y coordinate corresponds to the base-line.
@@ -2361,13 +2361,13 @@ static const FieldDef clTextFlags[] = {
 };
 
 static const FieldDef clTextAlign[] = {
-   { "Left",       ALIGN_LEFT },
-   { "Horizontal", ALIGN_HORIZONTAL },
-   { "Right",      ALIGN_RIGHT },
+   { "Left",       ALIGN::LEFT },
+   { "Horizontal", ALIGN::HORIZONTAL },
+   { "Right",      ALIGN::RIGHT },
    // SVG synonyms
-   { "Start",      ALIGN_LEFT },
-   { "Middle",     ALIGN_HORIZONTAL },
-   { "End",        ALIGN_RIGHT },
+   { "Start",      ALIGN::LEFT },
+   { "Middle",     ALIGN::HORIZONTAL },
+   { "End",        ALIGN::RIGHT },
    { NULL, 0 }
 };
 

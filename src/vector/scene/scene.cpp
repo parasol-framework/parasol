@@ -387,7 +387,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
       }
    }
 
-   Self->Cursor = PTR_DEFAULT;
+   Self->Cursor = PTC::DEFAULT;
 
    return ERR_Okay;
 }
@@ -1011,7 +1011,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
-   LONG cursor = -1;
+   auto cursor = PTC(-1);
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be destroyed at any time.
@@ -1063,12 +1063,12 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          }
       }
       else if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
-         if (cursor IS -1) cursor = PTR_DEFAULT;
+         if (cursor IS PTC(-1)) cursor = PTC::DEFAULT;
          bool processed = false;
          for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
             auto &bounds = *it;
 
-            if ((processed) and (!bounds.Cursor)) continue;
+            if ((processed) and (bounds.Cursor IS PTC::NIL)) continue;
 
             // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
             // be captured by that vector until the button is released.
@@ -1096,7 +1096,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                send_enter_event(vector, input, bounds.X, bounds.Y);
             }
 
-            if ((!Self->ButtonLock) and (vector->Cursor)) cursor = vector->Cursor;
+            if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
             if (!processed) {
                DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
@@ -1125,7 +1125,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                processed = true;
             }
 
-            if (cursor IS PTR_DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
+            if (cursor IS PTC::DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
             else break; // Input consumed and cursor image identified.
          }
 
@@ -1141,7 +1141,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       else log.warning("Unrecognised movement type %d", LONG(input->Type));
    }
 
-   if ((cursor != -1) and (!Self->ButtonLock) and (Self->SurfaceID)) {
+   if ((cursor != PTC(-1)) and (!Self->ButtonLock) and (Self->SurfaceID)) {
       Self->Cursor = cursor;
       pf::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
       if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {

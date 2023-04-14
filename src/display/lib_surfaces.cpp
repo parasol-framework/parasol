@@ -339,7 +339,7 @@ ERROR track_layer(extSurface *Self)
    record.BytesPerPixel = Self->BytesPerPixel;
    record.LineWidth     = Self->LineWidth;
    record.Data          = Self->Data;
-   record.Cursor        = Self->Cursor;
+   record.Cursor        = BYTE(Self->Cursor);
    record.RootID        = Self->RootID;
    record.Width         = Self->Width;
    record.Height        = Self->Height;
@@ -463,7 +463,7 @@ ERROR update_surface_copy(extSurface *Self)
       list[i].BytesPerPixel = Self->BytesPerPixel;
       list[i].LineWidth     = Self->LineWidth;
       list[i].Data          = Self->Data;
-      list[i].Cursor        = Self->Cursor;
+      list[i].Cursor        = BYTE(Self->Cursor);
       list[i].RootID        = Self->RootID;
 
       // Rebuild absolute coordinates of child objects

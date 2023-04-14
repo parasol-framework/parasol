@@ -1233,7 +1233,7 @@ private:
 
                   // For vectors that read user input, we record the collision box for the cursor.
 
-                  if ((shape->InputSubscriptions) or ((shape->Cursor) and (shape->Cursor != PTR_DEFAULT))) {
+                  if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
                      if (view->vpBX1 > x1) x1 = view->vpBX1;
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;

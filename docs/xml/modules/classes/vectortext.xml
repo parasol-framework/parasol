@@ -58,7 +58,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the form of <code>ALIGN_LEFT</code>, <code>ALIGN_HORIZONTAL</code> and <code>ALIGN_RIGHT</code>.</p>
+<p>This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the form of <code>ALIGN::LEFT</code>, <code>ALIGN::HORIZONTAL</code> and <code>ALIGN::RIGHT</code>.</p>
 <p>In addition, the SVG equivalent values of <code>start</code>, <code>middle</code> and <code>end</code> are supported and map directly to the formerly mentioned align flags.</p>
       </description>
     </field>

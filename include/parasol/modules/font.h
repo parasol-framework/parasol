@@ -83,7 +83,7 @@ class objFont : public BaseClass {
    LONG   Height;                                        // The point size of the font, expressed in pixels.
    LONG   Leading;                                       // 'Internal leading' measured in pixels.  Applies to fixed fonts only.
    LONG   MaxHeight;                                     // The maximum possible pixel height per character.
-   LONG   Align;                                         // Sets the position of a font string to an abstract alignment.
+   ALIGN  Align;                                         // Sets the position of a font string to an abstract alignment.
    LONG   AlignWidth;                                    // The width to use when aligning the font string.
    LONG   AlignHeight;                                   // The height to use when aligning the font string.
    LONG   Ascent;                                        // The total number of pixels above the baseline.
@@ -233,7 +233,7 @@ class objFont : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setAlign(const LONG Value) {
+   inline ERROR setAlign(const ALIGN Value) {
       this->Align = Value;
       return ERR_Okay;
    }

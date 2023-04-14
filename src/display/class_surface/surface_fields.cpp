@@ -63,7 +63,7 @@ The Cursor field may be written with valid cursor names or their ID's, as you pr
 
 *********************************************************************************************************************/
 
-static ERROR SET_Cursor(extSurface *Self, LONG Value)
+static ERROR SET_Cursor(extSurface *Self, PTC Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {

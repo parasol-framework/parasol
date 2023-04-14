@@ -339,7 +339,7 @@ the surface area first).</li>
       <name>Align</name>
       <comment>This field allows you to align a surface area within its owner.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="ALIGN">INT</type>
+      <type lookup="ALIGN">ALIGN</type>
       <description>
 <p>If you would like to set an abstract position for a surface area, you can give it an alignment.  This feature is most commonly used for horizontal and vertical centring, as aligning to the the edges of a surface area is already handled by existing dimension fields.  Note that setting the alignment overrides any settings in related coordinate fields. Valid alignment flags are <code>BOTTOM</code>, <code>CENTER/MIDDLE</code>, <code>LEFT</code>, <code>HORIZONTAL</code>, <code>RIGHT</code>, <code>TOP</code>, <code>VERTICAL</code>.</p>
 <types lookup="ALIGN"/>
@@ -412,12 +412,12 @@ the surface area first).</li>
       <name>Cursor</name>
       <comment>A default cursor image can be set here for changing the mouse pointer.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="PTR">INT</type>
+      <type lookup="PTC">PTC</type>
       <description>
 <p>The Cursor field provides a convenient way of setting the pointer's cursor image in a single operation.  The mouse pointer will automatically switch to the specified cursor image when it enters the surface area.</p>
 <p>The available cursor image settings are listed in the <class name="Pointer" index="CursorID">Pointer:CursorID</class> documentation.</p>
 <p>The Cursor field may be written with valid cursor names or their ID's, as you prefer.</p>
-<types lookup="PTR"/>
+<types lookup="PTC"/>
       </description>
     </field>
 

@@ -1,6 +1,6 @@
 -- These graphics constants are re-usable across all modules.
 
-enum("PTR", { start=0, comment="Predefined cursor styles" },
+enum("PTC", { type="int", start=0, comment="Predefined cursor styles" },
     "NO_CHANGE",
     "DEFAULT: The default cursor (usually an arrow pointing to the upper left).",
     "SIZE_BOTTOM_LEFT: Sizing cursor - for resizing the bottom left corner of any rectangular area.",
@@ -81,17 +81,17 @@ enum("DRL", { start=0, comment="Compass directions." },
     "SOUTH_EAST",
     "SOUTH_WEST")
 
-flags("MOVE", { comment="Generic flags for controlling movement." },
+flags("MOVE", { strict=true, comment="Generic flags for controlling movement." },
     "DOWN",
     "UP",
     "LEFT",
     "RIGHT",
     { ALL = "DOWN|UP|LEFT|RIGHT" })
 
-flags("EDGE", { comment="Edge flags" },
+flags("EDGE", { strict=true, comment="Edge flags" },
     "TOP", "LEFT", "RIGHT", "BOTTOM", "TOP_LEFT", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_RIGHT", { ALL = 0xff })
 
-flags("ALIGN", { comment="Universal values for alignment of graphics and text" },
+flags("ALIGN", { strict=true, comment="Universal values for alignment of graphics and text" },
     "LEFT: Align to left",
     "RIGHT: Align to right",
     "HORIZONTAL: Align to horizontal center",
@@ -101,7 +101,7 @@ flags("ALIGN", { comment="Universal values for alignment of graphics and text" }
     { CENTER = "HORIZONTAL|VERTICAL" },
     { MIDDLE = "HORIZONTAL|VERTICAL" })
 
-flags("LAYOUT", { comment="Universal values for alignment of graphic layouts in documents." },
+flags("LAYOUT", { strict=true, comment="Universal values for alignment of graphic layouts in documents." },
     "TIGHT: Text wraps to the shape of the image (alpha blended/masked images only)",
     "LEFT: The text boundary is extended to the left edge of the page.",
     "RIGHT: The text boundary is extended to the right edge of the page.",

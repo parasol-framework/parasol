@@ -17,7 +17,7 @@
 
 local function checkCursorImage(View)
    if View.pointerLocked and not View.activeZone then
-      mGfx.restoreCursor(PTR_DEFAULT, View.scene.surface)
+      mGfx.restoreCursor(PTC_DEFAULT, View.scene.surface)
       View.pointerLocked = nil
    end
 end

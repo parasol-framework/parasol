@@ -79,11 +79,11 @@ typedef class extVectorClip;
 class InputBoundary {
 public:
    OBJECTID VectorID;
-   LONG Cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
+   PTC Cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
    DOUBLE BX1, BY1, BX2, BY2; // Collision boundary
    DOUBLE X, Y; // Absolute X,Y without collision
 
-   InputBoundary(OBJECTID pV, LONG pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
+   InputBoundary(OBJECTID pV, PTC pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
       VectorID(pV), Cursor(pC), BX1(p1), BY1(p2), BX2(p3), BY2(p4), X(p5), Y(p6) {};
 };
 
@@ -345,7 +345,7 @@ class extVectorScene : public objVectorScene {
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
-   LONG Cursor; // Current cursor image
+   PTC Cursor; // Current cursor image
    UBYTE AdaptorType;
 };
 

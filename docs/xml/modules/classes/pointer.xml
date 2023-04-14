@@ -49,7 +49,7 @@
       <access read="R">Read</access>
       <type class="Bitmap">*Bitmap</type>
       <description>
-<p>The pointer graphic can be changed to a custom image if the <code>PTR_CUSTOM</code> <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
+<p>The pointer graphic can be changed to a custom image if the <code>PTC::CUSTOM</code> <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
       </description>
     </field>
 
@@ -90,9 +90,9 @@
       <name>CursorID</name>
       <comment>Sets the user's cursor image, selected from the pre-defined graphics bank.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="PTR">INT</type>
+      <type lookup="PTC">PTC</type>
       <description>
-<types lookup="PTR"/>
+<types lookup="PTC"/>
       </description>
     </field>
 

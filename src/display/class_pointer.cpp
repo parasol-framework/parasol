@@ -191,7 +191,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Restore the cursor to its default state if cursor release flags have been met
 
       if ((Self->CursorRelease & buttonflag) and (Self->CursorOwnerID)) {
-         gfxRestoreCursor(PTR_DEFAULT, 0);
+         gfxRestoreCursor(PTC::DEFAULT, 0);
       }
 
       if (Self->Buttons[bi].LastClicked) {
@@ -496,7 +496,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    // If a release object has been specified and the cursor is not positioned over it, call the RestoreCursor method.
 
    if ((Self->CursorReleaseID) and (Self->CursorReleaseID != Self->OverObjectID)) {
-      gfxRestoreCursor(PTR_DEFAULT, 0);
+      gfxRestoreCursor(PTC::DEFAULT, 0);
    }
 }
 
@@ -682,7 +682,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 
 static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 {
-   Self->CursorID = PTR_DEFAULT;
+   Self->CursorID = PTC::DEFAULT;
    Self->ClickSlop = 2;
    set_pointer_defaults(Self);
    return ERR_Okay;
@@ -797,7 +797,7 @@ anchor.
 -FIELD-
 Bitmap: Refers to bitmap in which custom cursor images can be drawn.
 
-The pointer graphic can be changed to a custom image if the `PTR_CUSTOM` #CursorID type is defined and an image is
+The pointer graphic can be changed to a custom image if the `PTC::CUSTOM` #CursorID type is defined and an image is
 drawn to the @Bitmap object referenced by this field.
 
 -FIELD-
@@ -1098,7 +1098,7 @@ static bool get_over_object(extPointer *Self)
    OBJECTID li_objectid = glSurfaces[i].SurfaceID;
    DOUBLE li_left       = glSurfaces[i].Left;
    DOUBLE li_top        = glSurfaces[i].Top;
-   LONG cursor_image    = glSurfaces[i].Cursor; // Preferred cursor ID
+   auto cursor_image    = PTC(glSurfaces[i].Cursor); // Preferred cursor ID
 
    if (Self->OverObjectID != li_objectid) {
       pf::Log log(__FUNCTION__);
@@ -1139,12 +1139,12 @@ static bool get_over_object(extPointer *Self)
 
    //drwReleaseList(ARF_READ);
 
-   if (cursor_image) {
+   if (cursor_image != PTC::NIL) {
       if (cursor_image != Self->CursorID) gfxSetCursor(0, 0, cursor_image, NULL, 0);
    }
-   else if ((Self->CursorID != PTR_DEFAULT) and (!Self->CursorOwnerID)) {
+   else if ((Self->CursorID != PTC::DEFAULT) and (!Self->CursorOwnerID)) {
       // Restore the pointer to the default image if the cursor isn't locked
-      gfxSetCursor(0, 0, PTR_DEFAULT, NULL, 0);
+      gfxSetCursor(0, 0, PTC::DEFAULT, NULL, 0);
    }
 
    return changed;
@@ -1230,30 +1230,30 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 
 FieldDef CursorLookup[] = {
    { "None",            0 },
-   { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
-   { "SizeBottomLeft",  PTR_SIZE_BOTTOM_LEFT },
-   { "SizeBottomRight", PTR_SIZE_BOTTOM_RIGHT },
-   { "SizeTopLeft",     PTR_SIZE_TOP_LEFT },
-   { "SizeTopRight",    PTR_SIZE_TOP_RIGHT },
-   { "SizeLeft",        PTR_SIZE_LEFT },
-   { "SizeRight",       PTR_SIZE_RIGHT },
-   { "SizeTop",         PTR_SIZE_TOP },
-   { "SizeBottom",      PTR_SIZE_BOTTOM },
-   { "Crosshair",       PTR_CROSSHAIR },
-   { "Sleep",           PTR_SLEEP },
-   { "Sizing",          PTR_SIZING },
-   { "SplitVertical",   PTR_SPLIT_VERTICAL },
-   { "SplitHorizontal", PTR_SPLIT_HORIZONTAL },
-   { "Magnifier",       PTR_MAGNIFIER },
-   { "Hand",            PTR_HAND },
-   { "HandLeft",        PTR_HAND_LEFT },
-   { "HandRight",       PTR_HAND_RIGHT },
-   { "Text",            PTR_TEXT },
-   { "Paintbrush",      PTR_PAINTBRUSH },
-   { "Stop",            PTR_STOP },
-   { "Invisible",       PTR_INVISIBLE },
-   { "Custom",          PTR_CUSTOM },
-   { "Dragable",        PTR_DRAGGABLE },
+   { "Default",         PTC::DEFAULT },             // Values start from 1 and go up
+   { "SizeBottomLeft",  PTC::SIZE_BOTTOM_LEFT },
+   { "SizeBottomRight", PTC::SIZE_BOTTOM_RIGHT },
+   { "SizeTopLeft",     PTC::SIZE_TOP_LEFT },
+   { "SizeTopRight",    PTC::SIZE_TOP_RIGHT },
+   { "SizeLeft",        PTC::SIZE_LEFT },
+   { "SizeRight",       PTC::SIZE_RIGHT },
+   { "SizeTop",         PTC::SIZE_TOP },
+   { "SizeBottom",      PTC::SIZE_BOTTOM },
+   { "Crosshair",       PTC::CROSSHAIR },
+   { "Sleep",           PTC::SLEEP },
+   { "Sizing",          PTC::SIZING },
+   { "SplitVertical",   PTC::SPLIT_VERTICAL },
+   { "SplitHorizontal", PTC::SPLIT_HORIZONTAL },
+   { "Magnifier",       PTC::MAGNIFIER },
+   { "Hand",            PTC::HAND },
+   { "HandLeft",        PTC::HAND_LEFT },
+   { "HandRight",       PTC::HAND_RIGHT },
+   { "Text",            PTC::TEXT },
+   { "Paintbrush",      PTC::PAINTBRUSH },
+   { "Stop",            PTC::STOP },
+   { "Invisible",       PTC::INVISIBLE },
+   { "Custom",          PTC::CUSTOM },
+   { "Dragable",        PTC::DRAGGABLE },
    { NULL, 0 }
 };
 

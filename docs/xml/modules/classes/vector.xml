@@ -299,11 +299,11 @@
       <name>Cursor</name>
       <comment>The mouse cursor to display when the pointer is within the vector's boundary.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="PTR">INT</type>
+      <type lookup="PTC">PTC</type>
       <description>
 <p>The Cursor field declares the pointer's cursor image to display within the vector's boundary.  The cursor will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect lasts until the cursor vacates the area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<types lookup="PTR"/>
+<types lookup="PTC"/>
       </description>
     </field>
 

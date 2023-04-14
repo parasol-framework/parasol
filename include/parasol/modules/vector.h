@@ -1457,7 +1457,7 @@ class objVector : public BaseClass {
    DOUBLE    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
    LONG      Visibility;              // Controls the visibility of a vector and its children.
    LONG      Flags;                   // Optional flags.
-   LONG      Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
+   PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;             // Defines the quality of a path when it is rendered.
    LONG      ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
 
@@ -1536,7 +1536,7 @@ class objVector : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCursor(const LONG Value) {
+   inline ERROR setCursor(const PTC Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[41];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

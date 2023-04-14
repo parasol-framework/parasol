@@ -546,13 +546,13 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
 
    // Alignment adjustments
 
-   if (Self->Align & ALIGN_LEFT) x = 0;
-   else if (Self->Align & ALIGN_RIGHT) x = parentwidth - width;
-   else if (Self->Align & ALIGN_HORIZONTAL) x = (parentwidth - width) * 0.5;
+   if ((Self->Align & ALIGN::LEFT) != ALIGN::NIL) x = 0;
+   else if ((Self->Align & ALIGN::RIGHT) != ALIGN::NIL) x = parentwidth - width;
+   else if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) x = (parentwidth - width) * 0.5;
 
-   if (Self->Align & ALIGN_TOP) y = 0;
-   else if (Self->Align & ALIGN_BOTTOM) y = parentheight - height;
-   else if (Self->Align & ALIGN_VERTICAL) y = (parentheight - height) * 0.5;
+   if ((Self->Align & ALIGN::TOP) != ALIGN::NIL) y = 0;
+   else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) y = parentheight - height;
+   else if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) y = (parentheight - height) * 0.5;
 
    if (width > Self->MaxWidth) {
       log.trace("Calculated width of %.0f exceeds max limit of %d", width, Self->MaxWidth);
@@ -1189,13 +1189,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       // Alignment adjustments
 
-      if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->setX(Self->X); }
-      else if (Self->Align & ALIGN_RIGHT) { Self->X = parent->Width - Self->Width; Self->setX(Self->X); }
-      else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (parent->Width - Self->Width) / 2; Self->setX(Self->X); }
+      if ((Self->Align & ALIGN::LEFT) != ALIGN::NIL) { Self->X = 0; Self->setX(Self->X); }
+      else if ((Self->Align & ALIGN::RIGHT) != ALIGN::NIL) { Self->X = parent->Width - Self->Width; Self->setX(Self->X); }
+      else if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) { Self->X = (parent->Width - Self->Width) / 2; Self->setX(Self->X); }
 
-      if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->setY(Self->Y); }
-      else if (Self->Align & ALIGN_BOTTOM) { Self->Y = parent->Height - Self->Height; Self->setY(Self->Y); }
-      else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (parent->Height - Self->Height) / 2; Self->setY(Self->Y); }
+      if ((Self->Align & ALIGN::TOP) != ALIGN::NIL) { Self->Y = 0; Self->setY(Self->Y); }
+      else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) { Self->Y = parent->Height - Self->Height; Self->setY(Self->Y); }
+      else if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) { Self->Y = (parent->Height - Self->Height) / 2; Self->setY(Self->Y); }
 
       if (Self->Height < Self->MinHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MinHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  < Self->MinWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;
@@ -1293,13 +1293,13 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
          DISPLAYINFO *display;
          if (!gfxGetDisplayInfo(0, &display)) {
-            if (Self->Align & ALIGN_LEFT) { Self->X = 0; Self->setX(Self->X); }
-            else if (Self->Align & ALIGN_RIGHT) { Self->X = display->Width - Self->Width; Self->setX(Self->X); }
-            else if (Self->Align & ALIGN_HORIZONTAL) { Self->X = (display->Width - Self->Width) / 2; Self->setX(Self->X); }
+            if ((Self->Align & ALIGN::LEFT) != ALIGN::NIL) { Self->X = 0; Self->setX(Self->X); }
+            else if ((Self->Align & ALIGN::RIGHT) != ALIGN::NIL) { Self->X = display->Width - Self->Width; Self->setX(Self->X); }
+            else if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) { Self->X = (display->Width - Self->Width) / 2; Self->setX(Self->X); }
 
-            if (Self->Align & ALIGN_TOP) { Self->Y = 0; Self->setY(Self->Y); }
-            else if (Self->Align & ALIGN_BOTTOM) { Self->Y = display->Height - Self->Height; Self->setY(Self->Y); }
-            else if (Self->Align & ALIGN_VERTICAL) { Self->Y = (display->Height - Self->Height) / 2; Self->setY(Self->Y); }
+            if ((Self->Align & ALIGN::TOP) != ALIGN::NIL) { Self->Y = 0; Self->setY(Self->Y); }
+            else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) { Self->Y = display->Height - Self->Height; Self->setY(Self->Y); }
+            else if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) { Self->Y = (display->Height - Self->Height) / 2; Self->setY(Self->Y); }
          }
       }
 

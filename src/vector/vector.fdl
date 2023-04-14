@@ -514,7 +514,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     double DashOffset       # For the DashArray, applies an initial dash offset.
     int(VIS) Visibility     # Controls the visibility of a vector and its children.
     int(VF)  Flags          # Optional flags.
-    int(PTR) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
+    int(PTC) Cursor         # The mouse cursor to display when the pointer is within the vector's boundary.
     int(RQ)  PathQuality    # Defines the quality of rendered path outlines.
     int(VCS) ColourSpace    # Desired colour space to use when blending colours.
   ]])

@@ -12,34 +12,34 @@ Name: Cursor
 
 struct XCursor {
    Cursor XCursor;
-   LONG CursorID;
+   PTC CursorID;
    LONG XCursorID;
 };
 
 static XCursor XCursors[] = {
-   { 0, PTR_DEFAULT,           XC_left_ptr },
-   { 0, PTR_SIZE_BOTTOM_LEFT,  XC_bottom_left_corner },
-   { 0, PTR_SIZE_BOTTOM_RIGHT, XC_bottom_right_corner },
-   { 0, PTR_SIZE_TOP_LEFT,     XC_top_left_corner },
-   { 0, PTR_SIZE_TOP_RIGHT,    XC_top_right_corner },
-   { 0, PTR_SIZE_LEFT,         XC_left_side },
-   { 0, PTR_SIZE_RIGHT,        XC_right_side },
-   { 0, PTR_SIZE_TOP,          XC_top_side },
-   { 0, PTR_SIZE_BOTTOM,       XC_bottom_side },
-   { 0, PTR_CROSSHAIR,         XC_crosshair },
-   { 0, PTR_SLEEP,             XC_clock },
-   { 0, PTR_SIZING,            XC_sizing },
-   { 0, PTR_SPLIT_VERTICAL,    XC_sb_v_double_arrow },
-   { 0, PTR_SPLIT_HORIZONTAL,  XC_sb_h_double_arrow },
-   { 0, PTR_MAGNIFIER,         XC_hand2 },
-   { 0, PTR_HAND,              XC_hand2 },
-   { 0, PTR_HAND_LEFT,         XC_hand1 },
-   { 0, PTR_HAND_RIGHT,        XC_hand1 },
-   { 0, PTR_TEXT,              XC_xterm },
-   { 0, PTR_PAINTBRUSH,        XC_pencil },
-   { 0, PTR_STOP,              XC_left_ptr },
-   { 0, PTR_INVISIBLE,         XC_dot },
-   { 0, PTR_DRAGGABLE,         XC_sizing }
+   { 0, PTC::DEFAULT,           XC_left_ptr },
+   { 0, PTC::SIZE_BOTTOM_LEFT,  XC_bottom_left_corner },
+   { 0, PTC::SIZE_BOTTOM_RIGHT, XC_bottom_right_corner },
+   { 0, PTC::SIZE_TOP_LEFT,     XC_top_left_corner },
+   { 0, PTC::SIZE_TOP_RIGHT,    XC_top_right_corner },
+   { 0, PTC::SIZE_LEFT,         XC_left_side },
+   { 0, PTC::SIZE_RIGHT,        XC_right_side },
+   { 0, PTC::SIZE_TOP,          XC_top_side },
+   { 0, PTC::SIZE_BOTTOM,       XC_bottom_side },
+   { 0, PTC::CROSSHAIR,         XC_crosshair },
+   { 0, PTC::SLEEP,             XC_clock },
+   { 0, PTC::SIZING,            XC_sizing },
+   { 0, PTC::SPLIT_VERTICAL,    XC_sb_v_double_arrow },
+   { 0, PTC::SPLIT_HORIZONTAL,  XC_sb_h_double_arrow },
+   { 0, PTC::MAGNIFIER,         XC_hand2 },
+   { 0, PTC::HAND,              XC_hand2 },
+   { 0, PTC::HAND_LEFT,         XC_hand1 },
+   { 0, PTC::HAND_RIGHT,        XC_hand1 },
+   { 0, PTC::TEXT,              XC_xterm },
+   { 0, PTC::PAINTBRUSH,        XC_pencil },
+   { 0, PTC::STOP,              XC_left_ptr },
+   { 0, PTC::INVISIBLE,         XC_dot },
+   { 0, PTC::DRAGGABLE,         XC_sizing }
 };
 
 static Cursor create_blank_cursor(void)
@@ -86,7 +86,7 @@ static Cursor get_x11_cursor(LONG CursorID)
 void init_xcursors(void)
 {
    for (WORD i=0; i < ARRAYSIZE(XCursors); i++) {
-      if (XCursors[i].CursorID IS PTR_INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
+      if (XCursors[i].CursorID IS PTC::INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
       else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
    }
 }
@@ -103,14 +103,14 @@ void free_xcursors(void)
 
 #ifdef _WIN32
 
-APTR GetWinCursor(LONG CursorID)
+APTR GetWinCursor(PTC CursorID)
 {
    for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
    }
 
    pf::Log log;
-   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
+   log.warning("Cursor #%d is not a recognised cursor ID.", LONG(CursorID));
    return winCursors[0].WinCursor;
 }
 #endif
@@ -313,10 +313,10 @@ Use the RestoreCursor() function to undo an earlier call to ~SetCursor().  It is
 that was used in the original call to ~SetCursor().
 
 To release ownership of the cursor without changing the current cursor image, use a Cursor setting of
-`PTR_NOCHANGE`.
+`PTC::NOCHANGE`.
 
 -INPUT-
-int(PTR) Cursor: The cursor image that the pointer will be restored to (0 for the default).
+int(PTC) Cursor: The cursor image that the pointer will be restored to (0 for the default).
 oid Owner: The ownership ID that was given in the initial call to SetCursor().
 
 -ERRORS-
@@ -326,7 +326,7 @@ Args
 
 *********************************************************************************************************************/
 
-ERROR gfxRestoreCursor(LONG Cursor, OBJECTID OwnerID)
+ERROR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
 {
    pf::Log log(__FUNCTION__);
    extPointer *pointer;
@@ -388,7 +388,7 @@ program's control until ~RestoreCursor() is called.
 -INPUT-
 oid Surface: Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
 int(CRF) Flags:  Optional flags that affect the cursor.
-int(PTR) Cursor: The ID of the cursor image that is to be set.
+int(PTC) Cursor: The ID of the cursor image that is to be set.
 cstr Name: The name of the cursor image that is to be set (if Cursor is zero).
 oid Owner: The object nominated as the owner of the anchor, and/or owner of the cursor image setting.
 
@@ -402,7 +402,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 *********************************************************************************************************************/
 
-ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, OBJECTID OwnerID)
+ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
 {
    pf::Log log(__FUNCTION__);
    extPointer *pointer;
@@ -416,7 +416,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
 */
    // Validate the cursor ID
 
-   if ((CursorID < 0) or (CursorID >= PTR_END)) return log.warning(ERR_OutOfRange);
+   if ((LONG(CursorID) < 0) or (LONG(CursorID) >= LONG(PTC::END))) return log.warning(ERR_OutOfRange);
 
    if (!(pointer = (extPointer *)gfxAccessPointer())) {
       log.warning("Failed to access the mouse pointer.");
@@ -424,15 +424,15 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
    }
 
    if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, Name);
-   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[CursorID].Name);
+   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[LONG(CursorID)].Name);
 
    // Extract the cursor ID from the cursor name if no ID was given
 
-   if (!CursorID) {
+   if (CursorID IS PTC::NIL) {
       if (Name) {
          for (LONG i=0; CursorLookup[i].Name; i++) {
             if (!StrMatch(CursorLookup[i].Name, Name)) {
-               CursorID = CursorLookup[i].Value;
+               CursorID = PTC(CursorLookup[i].Value);
                break;
             }
          }
@@ -487,8 +487,8 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, LONG CursorID, CSTRING Name, O
    pointer->CursorRelease   = 0;
    pointer->MessageQueue    = 0;
 
-   if (CursorID) {
-      if ((CursorID IS pointer->CursorID) and (CursorID != PTR_CUSTOM)) {
+   if (CursorID != PTC::NIL) {
+      if ((CursorID IS pointer->CursorID) and (CursorID != PTC::CUSTOM)) {
          // Do nothing
       }
       else {
@@ -675,9 +675,9 @@ ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG 
             else mtCopyArea(Bitmap, buffer, NULL, 0, 0, Bitmap->Width, Bitmap->Height, 0, 0);
          }
 
-         pointer->Cursors[PTR_CUSTOM].HotX = HotX;
-         pointer->Cursors[PTR_CUSTOM].HotY = HotY;
-         error = gfxSetCursor(ObjectID, Flags, PTR_CUSTOM, NULL, OwnerID);
+         pointer->Cursors[PTC::CUSTOM].HotX = HotX;
+         pointer->Cursors[PTC::CUSTOM].HotY = HotY;
+         error = gfxSetCursor(ObjectID, Flags, PTC::CUSTOM, NULL, OwnerID);
          ReleaseObject(buffer);
       }
       else error = ERR_AccessObject;
@@ -690,7 +690,7 @@ ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG 
       return ERR_AccessObject;
    }
 #else
-   return gfxSetCursor(ObjectID, Flags, PTR_DEFAULT, NULL, OwnerID);
+   return gfxSetCursor(ObjectID, Flags, PTC::DEFAULT, NULL, OwnerID);
 #endif
 }
 

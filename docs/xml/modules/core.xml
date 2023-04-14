@@ -3274,7 +3274,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <constants lookup="PMF" comment="Flags for ProcessMessages">
     </constants>
 
-    <constants lookup="PTR" comment="Predefined cursor styles">
+    <constants lookup="PTC" comment="Predefined cursor styles">
       <const name="CROSSHAIR">The cross hair is used for targeting specific pixel points (common in paint programs).</const>
       <const name="CUSTOM">Works in conjunction with the SetCustomCursor() function to represent a program defined bitmap.</const>
       <const name="DEFAULT">The default cursor (usually an arrow pointing to the upper left).</const>

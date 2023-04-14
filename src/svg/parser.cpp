@@ -2840,10 +2840,10 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
 
             case SVF_TEXT_ANCHOR:
                switch(StrHash(StrValue)) {
-                  case SVF_START:   Vector->set(FID_Align, ALIGN_LEFT); return ERR_Okay;
-                  case SVF_MIDDLE:  Vector->set(FID_Align, ALIGN_HORIZONTAL); return ERR_Okay;
-                  case SVF_END:     Vector->set(FID_Align, ALIGN_RIGHT); return ERR_Okay;
-                  case SVF_INHERIT: Vector->set(FID_Align, 0); return ERR_Okay;
+                  case SVF_START:   Vector->set(FID_Align, LONG(ALIGN::LEFT)); return ERR_Okay;
+                  case SVF_MIDDLE:  Vector->set(FID_Align, LONG(ALIGN::HORIZONTAL)); return ERR_Okay;
+                  case SVF_END:     Vector->set(FID_Align, LONG(ALIGN::RIGHT)); return ERR_Okay;
+                  case SVF_INHERIT: Vector->set(FID_Align, LONG(ALIGN::NIL)); return ERR_Okay;
                   default: log.warning("text-anchor: No support for value '%s'", StrValue.c_str());
                }
                break;

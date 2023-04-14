@@ -1065,7 +1065,7 @@ It is a pre-requisite that the associated @VectorScene has been linked to a @Sur
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Cursor(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_Cursor(extVector *Self, PTC Value)
 {
    Self->Cursor = Value;
 

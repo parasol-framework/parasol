@@ -583,14 +583,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>RestoreCursor</name>
     <category>Cursor</category>
     <comment>Returns the pointer image to its original state.</comment>
-    <prototype>ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner)</prototype>
     <input>
-      <param type="LONG" name="Cursor" lookup="PTR">The cursor image that the pointer will be restored to (0 for the default).</param>
+      <param type="PTC" name="Cursor" lookup="PTC">The cursor image that the pointer will be restored to (0 for the default).</param>
       <param type="OBJECTID" name="Owner">The ownership ID that was given in the initial call to SetCursor().</param>
     </input>
     <description>
 <p>Use the RestoreCursor() function to undo an earlier call to <function module="Display">SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function module="Display">SetCursor</function>.</p>
-<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTR_NOCHANGE</code>.</p>
+<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTC::NOCHANGE</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -638,11 +638,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
-    <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
       <param type="LONG" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
-      <param type="LONG" name="Cursor" lookup="PTR">The ID of the cursor image that is to be set.</param>
+      <param type="PTC" name="Cursor" lookup="PTC">The ID of the cursor image that is to be set.</param>
       <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if Cursor is zero).</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor, and/or owner of the cursor image setting.</param>
     </input>

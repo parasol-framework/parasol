@@ -495,7 +495,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     oid    Input           # Indicates where pointer input comes from (usually SystemMouse)
     oid    Surface         # Top-most surface that contains the pointer
     oid    Anchor          # Surface object that the pointer is anchored to
-    int(PTR) CursorID      # Current cursor image
+    int(PTC) CursorID      # Current cursor image
     oid    CursorOwner     # Who owns the currently active cursor status
     int(PF) Flags          # Optional flags
     oid    Restrict        # Surface object that the pointer is restricted to
@@ -554,7 +554,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int(ALIGN) Align      # Alignment flags
     int(DMF) Dimensions   # Dimension flags
     int(DRAG) DragStatus  # Indicates the draggable state when dragging is enabled.
-    int(PTR) Cursor       # The preferred cursor image to use when the pointer is over the surface
+    int(PTC) Cursor       # The preferred cursor image to use when the pointer is over the surface
     struct(RGB8) Colour   # Background colour specification
     int Type              # Internal surface type flags
     int Modal             # Set to 1 to enable modal mode
