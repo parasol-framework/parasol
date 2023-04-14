@@ -899,7 +899,7 @@ ERROR init_lightingfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_LIGHTINGFX),
       fl::Name("LightingFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clLightingFXActions),
       fl::Methods(clLightingFXMethods),
       fl::Fields(clLightingFXFields),

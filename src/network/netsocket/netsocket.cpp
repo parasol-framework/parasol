@@ -1516,7 +1516,7 @@ static ERROR init_netsocket(void)
    clNetSocket = objMetaClass::create::global(
       fl::ClassVersion(VER_NETSOCKET),
       fl::Name("NetSocket"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clNetSocketActions),
       fl::Methods(clNetSocketMethods),
       fl::Fields(clSocketFields),

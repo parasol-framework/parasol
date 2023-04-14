@@ -261,7 +261,7 @@ ERROR init_displacementfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_DISPLACEMENTFX),
       fl::Name("DisplacementFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clDisplacementFXActions),
       fl::Fields(clDisplacementFXFields),
       fl::Size(sizeof(extDisplacementFX)),

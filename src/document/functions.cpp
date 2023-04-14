@@ -4674,7 +4674,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
             log.branch("Key: Tab");
             if (Self->TabFocusID) acFocus(Self->TabFocusID);
             else {
-               if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
+               if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
                else advance_tabfocus(Self, 1);
             }
             break;
@@ -4879,7 +4879,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       case K_TAB:
          log.branch("Key: Tab");
          if (Self->TabFocusID) acFocus(Self->TabFocusID);
-         else if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
+         else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
          break;
 
@@ -8350,7 +8350,7 @@ static void show_bookmark(extDocument *Self, CSTRING Bookmark)
 
 static void key_event(extDocument *Self, evKey *Event, LONG Size)
 {
-   if (Event->Qualifiers & KQ_PRESSED) {
+   if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
       keypress(Self, Event->Qualifiers, Event->Code, Event->Unicode);
    }
 }

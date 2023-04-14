@@ -324,7 +324,7 @@ ERROR init_sourcefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_SOURCEFX),
       fl::Name("SourceFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clSourceFXActions),
       fl::Fields(clSourceFXFields),
       fl::Size(sizeof(extSourceFX)),

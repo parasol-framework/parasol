@@ -110,7 +110,7 @@ ERROR init_offsetfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_OFFSETFX),
       fl::Name("OffsetFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clOffsetFXActions),
       fl::Fields(clOffsetFXFields),
       fl::Size(sizeof(extOffsetFX)),

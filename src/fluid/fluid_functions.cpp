@@ -657,7 +657,7 @@ int fcmd_loadfile(lua_State *Lua)
                   objFile::create cachefile = {
                      fl::Path(fbpath),
                      fl::Flags(FL::NEW|FL::WRITE),
-                     fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
+                     fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE)
                   };
 
                   if (cachefile.ok()) {

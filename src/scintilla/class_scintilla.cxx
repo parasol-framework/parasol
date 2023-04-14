@@ -430,17 +430,17 @@ static ERROR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR_NullArgs);
 
-   if (Args->Mode IS CLIPMODE_CUT) {
+   if (Args->Mode IS CLIPMODE::CUT) {
       Self->API->Cut();
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_COPY) {
+   else if (Args->Mode IS CLIPMODE::COPY) {
       Self->API->Copy();
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_PASTE) {
+   else if (Args->Mode IS CLIPMODE::PASTE) {
       Self->API->Paste();
       return ERR_Okay;
    }
@@ -2294,7 +2294,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
    if (Self->Flags & SCF_DISABLED) return;
    if (!(Self->Flags & SCF_EDIT)) return;
 
-   if (Event->Qualifiers & KQ_PRESSED) {
+   if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
       if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = TRUE;
       else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = TRUE;
       else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = TRUE;
@@ -2304,7 +2304,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
       char string[8];
       string[0] = 0;
 
-      if (!(Event->Qualifiers & KQ_NOT_PRINTABLE)) {
+      if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) {
          WORD out = UTF8WriteValue(Event->Unicode, string, sizeof(string)-1);
          if (out >= 0) string[out] = 0;
       }
@@ -2329,7 +2329,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
          case K_ESCAPE:    keyval = SCK_ESCAPE; break;
          case K_BACKSPACE: keyval = SCK_BACK; break;
          default:
-            if (Event->Qualifiers & KQ_NOT_PRINTABLE) {
+            if ((Event->Qualifiers & KQ::NOT_PRINTABLE) != KQ::NIL) {
                // Unhandled non-printable characters are ignored
                keyval = 0;
             }
@@ -2352,7 +2352,7 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
          Self->API->panKeyDown(keyval, Event->Qualifiers);
       }
    }
-   else if (Event->Qualifiers & KQ_RELEASED) {
+   else if ((Event->Qualifiers & KQ::RELEASED) != KQ::NIL) {
       if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = FALSE;
       else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = FALSE;
       else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = FALSE;
@@ -2540,7 +2540,7 @@ static ERROR create_scintilla(void)
    clScintilla = objMetaClass::create::global(
       fl::ClassVersion(VER_SCINTILLA),
       fl::Name("Scintilla"),
-      fl::Category(CCF_TOOL),
+      fl::Category(CCF::TOOL),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clScintillaActions),
       fl::Methods(clScintillaMethods),

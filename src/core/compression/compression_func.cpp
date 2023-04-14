@@ -316,19 +316,19 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
       else entry.TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
    }
 
-   LONG permissions;
-   if (!file->get(FID_Permissions, &permissions)) {
-      if (permissions & PERMIT_USER_READ)   entry.Flags |= ZIP_UREAD;
-      if (permissions & PERMIT_GROUP_READ)  entry.Flags |= ZIP_GREAD;
-      if (permissions & PERMIT_OTHERS_READ) entry.Flags |= ZIP_OREAD;
+   PERMIT permissions;
+   if (!file->get(FID_Permissions, (LONG *)&permissions)) {
+      if ((permissions & PERMIT::USER_READ) != PERMIT::NIL)   entry.Flags |= ZIP_UREAD;
+      if ((permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  entry.Flags |= ZIP_GREAD;
+      if ((permissions & PERMIT::OTHERS_READ) != PERMIT::NIL) entry.Flags |= ZIP_OREAD;
 
-      if (permissions & PERMIT_USER_WRITE)   entry.Flags |= ZIP_UWRITE;
-      if (permissions & PERMIT_GROUP_WRITE)  entry.Flags |= ZIP_GWRITE;
-      if (permissions & PERMIT_OTHERS_WRITE) entry.Flags |= ZIP_OWRITE;
+      if ((permissions & PERMIT::USER_WRITE) != PERMIT::NIL)   entry.Flags |= ZIP_UWRITE;
+      if ((permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL)  entry.Flags |= ZIP_GWRITE;
+      if ((permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) entry.Flags |= ZIP_OWRITE;
 
-      if (permissions & PERMIT_USER_EXEC)   entry.Flags |= ZIP_UEXEC;
-      if (permissions & PERMIT_GROUP_EXEC)  entry.Flags |= ZIP_GEXEC;
-      if (permissions & PERMIT_OTHERS_EXEC) entry.Flags |= ZIP_OEXEC;
+      if ((permissions & PERMIT::USER_EXEC) != PERMIT::NIL)   entry.Flags |= ZIP_UEXEC;
+      if ((permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)  entry.Flags |= ZIP_GEXEC;
+      if ((permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL) entry.Flags |= ZIP_OEXEC;
    }
 
    entry.Flags &= 0xffffff00; // Do not write anything to the low order bits, they have meaning exclusive to MSDOS
@@ -825,18 +825,18 @@ void zipfile_to_item(ZipFile &ZF, CompressedItem &Item)
    }
 
    if (ZF.Flags & ZIP_SECURITY) {
-      LONG permissions = 0;
-      if (ZF.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (ZF.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (ZF.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      auto permissions = PERMIT::NIL;
+      if (ZF.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+      if (ZF.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+      if (ZF.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-      if (ZF.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (ZF.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (ZF.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (ZF.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+      if (ZF.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+      if (ZF.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-      if (ZF.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (ZF.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (ZF.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (ZF.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+      if (ZF.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+      if (ZF.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
 
       Item.Permissions = permissions;
    }

@@ -319,7 +319,7 @@ ERROR init_morphfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_MORPHOLOGYFX),
       fl::Name("MorphologyFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clMorphologyFXActions),
       fl::Fields(clMorphologyFXFields),
       fl::Size(sizeof(extMorphologyFX)),

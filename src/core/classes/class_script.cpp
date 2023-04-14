@@ -908,7 +908,7 @@ extern "C" ERROR add_script_class(void)
    glScriptClass = extMetaClass::create::global(
       fl::ClassVersion(VER_SCRIPT),
       fl::Name("Script"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Actions(clScriptActions),
       fl::Methods(clScriptMethods),
       fl::Fields(clScriptFields),

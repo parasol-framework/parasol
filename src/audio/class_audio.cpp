@@ -1385,7 +1385,7 @@ ERROR add_audio_class(void)
       fl::BaseClassID(ID_AUDIO),
       fl::ClassVersion(1.0),
       fl::Name("Audio"),
-      fl::Category(CCF_AUDIO),
+      fl::Category(CCF::AUDIO),
       fl::Actions(clAudioActions),
       fl::Methods(clAudioMethods),
       fl::Fields(clAudioFields),

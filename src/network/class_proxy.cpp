@@ -577,7 +577,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
       objFile::create file = {
          fl::Path("user:config/network/proxies.cfg"),
-         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE),
+         fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE),
          fl::Flags(FL::NEW|FL::WRITE)
       };
 
@@ -893,7 +893,7 @@ ERROR init_proxy(void)
    clProxy = objMetaClass::create::global(
       fl::ClassVersion(VER_PROXY),
       fl::Name("Proxy"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clProxyActions),
       fl::Methods(clProxyMethods),
       fl::Fields(clProxyFields),

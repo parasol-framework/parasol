@@ -166,7 +166,7 @@ ERROR init_image(void) // The gradient is a definition type for creating gradien
    clVectorImage = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORIMAGE),
       fl::Name("VectorImage"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageActions),
       fl::Fields(clImageFields),
       fl::Size(sizeof(objVectorImage)),

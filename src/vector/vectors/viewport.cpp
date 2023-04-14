@@ -969,7 +969,7 @@ static ERROR init_viewport(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORVIEWPORT),
       fl::Name("VectorViewport"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorViewportActions),
       fl::Fields(clViewFields),
       fl::Size(sizeof(extVectorViewport)),

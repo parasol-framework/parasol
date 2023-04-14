@@ -127,7 +127,7 @@ ERROR init_mergefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_MERGEFX),
       fl::Name("MergeFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clMergeFXActions),
       fl::Fields(clMergeFXFields),
       fl::Size(sizeof(extMergeFX)),

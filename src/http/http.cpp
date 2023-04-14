@@ -1693,7 +1693,7 @@ static ERROR create_http_class(void)
       fl::BaseClassID(ID_HTTP),
       fl::ClassVersion(VER_HTTP),
       fl::Name("HTTP"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clHTTPActions),
       fl::Fields(clFields),
       fl::Size(sizeof(extHTTP)),

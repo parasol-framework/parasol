@@ -72,7 +72,7 @@ LARGE SetResource(RES Resource, LARGE Value);
 ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
 ERROR SysLock(LONG Index, LONG MilliSeconds);
 ERROR SysUnlock(LONG Index);
-ERROR CreateFolder(CSTRING Path, LONG Permissions);
+ERROR CreateFolder(CSTRING Path, PERMIT Permissions);
 ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
 ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
 ERROR DeleteVolume(CSTRING Name);
@@ -121,7 +121,7 @@ ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignal
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 STT StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
-void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions);
+void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 

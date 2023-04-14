@@ -172,7 +172,7 @@ class objScintilla : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR clipboard(LONG Mode) {
+   inline ERROR clipboard(CLIPMODE Mode) {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }

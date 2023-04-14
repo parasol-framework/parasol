@@ -398,7 +398,14 @@ function cType(Field, Origin)
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix
 
-         glActiveRefs['TYPE:' .. prefix] = 1
+         if (glCustomTypes[prefix] != nil) then
+            glActiveRefs['TYPE:' .. prefix] = 1
+            if (glCustomTypes[prefix].type) then -- Strongly typed
+               Field.type = prefix
+            end
+         else
+            print('Unknown custom type "' .. prefix .. '"')
+         end
          goto finalise
       end
    end

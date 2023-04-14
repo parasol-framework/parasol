@@ -60,7 +60,7 @@ glActionStubs = {
       return Action(AC_DragDrop, this, &args);
    }]],
    Clipboard = [[
-   inline ERROR clipboard(LONG Mode) {
+   inline ERROR clipboard(CLIPMODE Mode) {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }]],
@@ -409,7 +409,9 @@ function flags(Prefix, Options, ...)
    end
 
    if (Options.strict) then
-      table.insert(out, string.format('enum class %s : ULONG {', Prefix))
+      local type_size = 'ULONG'
+      if (nz(Options.bits,32) > 32) then type_size = 'LARGE' end
+      table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
    end
 

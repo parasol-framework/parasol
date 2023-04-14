@@ -2318,7 +2318,7 @@ static ERROR init_vector(void)
    clVector = objMetaClass::create::global(
       fl::ClassVersion(VER_VECTOR),
       fl::Name("Vector"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorActions),
       fl::Methods(clVectorMethods),
       fl::Fields(clVectorFields),

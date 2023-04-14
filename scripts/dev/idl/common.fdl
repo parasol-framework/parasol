@@ -1,6 +1,6 @@
 -- These common constants are re-usable across all modules.
 
-flags("CLIPMODE", { comment="Clipboard modes" },
+flags("CLIPMODE", { strict=true, comment="Clipboard modes" },
     "CUT: Cut from the clipboard.",
     "COPY: Copy from the clipboard.",
     "PASTE: Paste from the clipboard.")
@@ -11,7 +11,7 @@ enum("SEEK", { start=0, comment="Seek positions" },
     "END: Use an index at the end of the data buffer.",
     "RELATIVE: The index is between 0 and 1.0 and relative to the data size.")
 
-flags("DEVICE", { bits=64 },
+flags("DEVICE", { strict=true, bits=64 },
     "COMPACT_DISC: Compact disc style device",
     "HARD_DISK: Hard disk style device",
     "FLOPPY_DISK: Floppy disk style device",
@@ -30,7 +30,7 @@ flags("DEVICE", { bits=64 },
     "PRINTER_3D: Device is a three dimensional printer.",
     "SCANNER_3D: Device is a three dimensional scanner.")
 
-flags("CCF", { comment="Class categories" },
+flags("CCF", { strict=true, comment="Class categories" },
     "COMMAND: Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.",
     "DRAWABLE: Drawable classes provide graphical areas that are designed to be drawn to.",
     "EFFECT: Effect classes draw graphics and/or play audio for non-productive demonstration purposes.",
@@ -57,7 +57,7 @@ enum("AC", { start=1, comment="Action identifiers." },
     "MoveToPoint",  "ScrollToPoint",  "Custom",
     "END")
 
-flags("PERMIT", { comment="Permission flags" },
+flags("PERMIT", { strict=true, comment="Permission flags" },
     "READ: User/Owner has read access.  This will not allow compiled code to be executed.",
     "WRITE: User/Owner can write.",
     "EXEC: User/Owner can execute.",
@@ -96,7 +96,7 @@ flags("PERMIT", { comment="Permission flags" },
     { OTHERS             = "OTHERS_READ|OTHERS_WRITE|OTHERS_EXEC|OTHERS_DELETE" }
 )
 
-flags("KQ", { comment="Special qualifier flags" },
+flags("KQ", { strict=true, comment="Special qualifier flags" },
     "L_SHIFT: Left Shift is held",
     "R_SHIFT: Right Shift is held",
     "CAPS_LOCK: Caps-Lock is on",

@@ -202,7 +202,7 @@ static ERROR init_rsvg(void)
       fl::BaseClassID(ID_PICTURE),
       fl::ClassID(ID_RSVG),
       fl::Name("RSVG"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.svg|*.svgz"),
       fl::FileDescription("SVG image"),
       fl::Actions(clActions),

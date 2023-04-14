@@ -1978,29 +1978,29 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 
 static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 {
-   if (!(Event->Qualifiers & KQ_PRESSED)) return;
+   if ((Event->Qualifiers & KQ::PRESSED) IS KQ::NIL) return;
 
    pf::Log log(__FUNCTION__);
 
-   log.trace("$%.8x, Value: %d", Event->Qualifiers, Event->Code);
+   log.trace("$%.8x, Value: %d", LONG(Event->Qualifiers), Event->Code);
 
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
    Self->txCursor.vector->setVisibility(VIS_VISIBLE);
 
-   if ((!(Self->txFlags & VTXF_NO_SYS_KEYS)) and (Event->Qualifiers & KQ_CTRL)) {
+   if ((!(Self->txFlags & VTXF_NO_SYS_KEYS)) and ((Event->Qualifiers & KQ::CTRL) != KQ::NIL)) {
       switch(Event->Code) {
          case K_C: // Copy
-            acClipboard(Self, CLIPMODE_COPY);
+            acClipboard(Self, CLIPMODE::COPY);
             return;
 
          case K_X: // Cut
             if (!(Self->txFlags & VTXF_EDITABLE)) return;
-            acClipboard(Self, CLIPMODE_CUT);
+            acClipboard(Self, CLIPMODE::CUT);
             return;
 
          case K_V: // Paste
             if (!(Self->txFlags & VTXF_EDITABLE)) return;
-            acClipboard(Self, CLIPMODE_PASTE);
+            acClipboard(Self, CLIPMODE::PASTE);
             return;
 
          case K_K: // Delete line
@@ -2018,7 +2018,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
    }
 
-   if (!(Event->Qualifiers & KQ_NOT_PRINTABLE)) { // and (!(Flags & KQ_INSTRUCTIONKEYS))
+   if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) { // and (!(Flags & KQ::INSTRUCTIONKEYS))
       // Printable character handling
 
       if (!(Self->txFlags & VTXF_EDITABLE)) {
@@ -2438,7 +2438,7 @@ static ERROR init_text(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORTEXT),
       fl::Name("VectorText"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorTextActions),
       fl::Methods(clVectorTextMethods),
       fl::Fields(clTextFields),

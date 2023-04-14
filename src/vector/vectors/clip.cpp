@@ -243,7 +243,7 @@ static ERROR init_clip(void)
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Size(sizeof(extVectorClip)),
       fl::Path(MOD_PATH));
 

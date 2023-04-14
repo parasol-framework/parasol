@@ -407,7 +407,7 @@ extern "C" ERROR add_compressed_stream_class(void)
       fl::ClassVersion(1.0),
       fl::Name("CompressedStream"),
       fl::FileDescription("GZip File"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Actions(clStreamActions),
       fl::Fields(clStreamFields),
       fl::Size(sizeof(extCompressedStream)),

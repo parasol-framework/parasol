@@ -768,7 +768,7 @@ ERROR init_gradient(void) // The gradient is a definition type for creating grad
    clVectorGradient = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORGRADIENT),
       fl::Name("VectorGradient"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorGradientActions),
       fl::Fields(clGradientFields),
       fl::Size(sizeof(extVectorGradient)),

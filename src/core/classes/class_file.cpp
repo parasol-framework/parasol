@@ -102,7 +102,7 @@ static ERROR SET_Size(extFile *, LARGE);
 
 static ERROR GET_ResolvedPath(extFile *, CSTRING *);
 
-static ERROR set_permissions(extFile *, LONG);
+static ERROR set_permissions(extFile *, PERMIT);
 
 /*********************************************************************************************************************
 -ACTION-
@@ -229,7 +229,7 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    }
 
    if ((Self->Flags & FL::NEW) != FL::NIL) {
-      if (Self->Permissions) set_permissions(Self, Self->Permissions);
+      if (Self->Permissions != PERMIT::NIL) set_permissions(Self, Self->Permissions);
    }
 
    // If the BUFFER flag is set, load the entire file into RAM and treat it as a read/write memory buffer.
@@ -597,7 +597,7 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
 
    if (!Self->Path) return log.warning(ERR_MissingPath);
 
-   if (glDefaultPermissions) Self->Permissions = glDefaultPermissions;
+   if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
    if (!StrCompare("string:", Self->Path, 7)) {
       Self->Size = StrLength(Self->Path + 7);
@@ -613,7 +613,7 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
       else return log.warning(ERR_Failed);
    }
 
-   if ((!Self->Permissions) or (Self->Permissions & PERMIT_INHERIT)) {
+   if ((Self->Permissions IS PERMIT::NIL) or ((Self->Permissions & PERMIT::INHERIT) != PERMIT::NIL)) {
       FileInfo info;
 
       // If the file already exists, pull the permissions from it.  Otherwise use a default set of permissions (if
@@ -625,11 +625,11 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
       }
       else {
 #ifdef __unix__
-         Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT_ALL_READ|PERMIT_ALL_WRITE);
-         if (!Self->Permissions) Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
-         else log.msg("Inherited permissions: $%.8x", Self->Permissions);
+         Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT::ALL_READ|PERMIT::ALL_WRITE);
+         if (Self->Permissions IS PERMIT::NIL) Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
+         else log.msg("Inherited permissions: $%.8x", LONG(Self->Permissions));
 #else
-         Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
+         Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
 #endif
        }
    }
@@ -733,7 +733,7 @@ retrydir:
       #endif
 
       if ((Self->Flags & FL::NEW) != FL::NIL) {
-         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, Self->Permissions);
+         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, LONG(Self->Permissions));
          if (!CreateFolder(Self->prvResolvedPath, Self->Permissions)) {
             #ifdef __unix__
                if (!(Self->Stream = opendir(Self->prvResolvedPath))) {
@@ -878,7 +878,7 @@ static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
 static ERROR FILE_NewObject(extFile *Self, APTR Void)
 {
    Self->Handle = -1;
-   Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
+   Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
    return ERR_Okay;
 }
 
@@ -2302,11 +2302,11 @@ Lookup: PERMIT
 -END-
 *********************************************************************************************************************/
 
-static ERROR GET_Permissions(extFile *Self, LONG *Value)
+static ERROR GET_Permissions(extFile *Self, PERMIT *Value)
 {
    pf::Log log;
 
-   *Value = 0;
+   *Value = PERMIT::NIL;
 
 #ifdef __unix__
 
@@ -2317,7 +2317,7 @@ static ERROR GET_Permissions(extFile *Self, LONG *Value)
    if (!GET_ResolvedPath(Self, &path)) {
       LONG i = StrLength(path);
       while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
-      if (path[i+1] IS '.') Self->Permissions = PERMIT_HIDDEN;
+      if (path[i+1] IS '.') Self->Permissions = PERMIT::HIDDEN;
       else Self->Permissions = 0;
 
       if (Self->Handle != -1) {
@@ -2342,7 +2342,7 @@ static ERROR GET_Permissions(extFile *Self, LONG *Value)
 
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
-      winGetAttrib(path, Value); // Supports PERMIT_HIDDEN/ARCHIVE/OFFLINE/READ/WRITE
+      winGetAttrib(path, (LONG *)(Value)); // Supports PERMIT::HIDDEN/ARCHIVE/OFFLINE/READ/WRITE
       return ERR_Okay;
    }
    else return ERR_ResolvePath;
@@ -2352,7 +2352,7 @@ static ERROR GET_Permissions(extFile *Self, LONG *Value)
    return ERR_NoSupport;
 }
 
-static ERROR SET_Permissions(extFile *Self, LONG Value)
+static ERROR SET_Permissions(extFile *Self, PERMIT Value)
 {
    if (!Self->initialised()) {
       Self->Permissions = Value;
@@ -2363,32 +2363,32 @@ static ERROR SET_Permissions(extFile *Self, LONG Value)
 
 //********************************************************************************************************************
 
-static ERROR set_permissions(extFile *Self, LONG Permissions)
+static ERROR set_permissions(extFile *Self, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 #ifdef __unix__
 
    if (Self->Handle != -1) {
       LONG flags = 0;
-      if (Permissions & PERMIT_READ)  flags |= S_IRUSR;
-      if (Permissions & PERMIT_WRITE) flags |= S_IWUSR;
-      if (Permissions & PERMIT_EXEC)  flags |= S_IXUSR;
+      if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
+      if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
+      if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)  flags |= S_IXUSR;
 
-      if (Permissions & PERMIT_GROUP_READ)  flags |= S_IRGRP;
-      if (Permissions & PERMIT_GROUP_WRITE) flags |= S_IWGRP;
-      if (Permissions & PERMIT_GROUP_EXEC)  flags |= S_IXGRP;
+      if ((Permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  flags |= S_IRGRP;
+      if ((Permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL) flags |= S_IWGRP;
+      if ((Permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)  flags |= S_IXGRP;
 
-      if (Permissions & PERMIT_OTHERS_READ)  flags |= S_IROTH;
-      if (Permissions & PERMIT_OTHERS_WRITE) flags |= S_IWOTH;
-      if (Permissions & PERMIT_OTHERS_EXEC)  flags |= S_IXOTH;
+      if ((Permissions & PERMIT::OTHERS_READ) != PERMIT::NIL)  flags |= S_IROTH;
+      if ((Permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) flags |= S_IWOTH;
+      if ((Permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL)  flags |= S_IXOTH;
 
       LONG err = fchmod(Self->Handle, flags);
 
       // Note that you need to be root to set the UID/GID flags, so we do it in this subsequent fchmod() call.
 
-      if ((err != -1) and (Permissions & (PERMIT_USERID|PERMIT_GROUPID))) {
-         if (Permissions & PERMIT_USERID)  flags |= S_ISUID;
-         if (Permissions & PERMIT_GROUPID) flags |= S_ISGID;
+      if ((err != -1) and ((Permissions & (PERMIT::USERID|PERMIT::GROUPID)) != PERMIT::NIL)) {
+         if ((Permissions & PERMIT::USERID) != PERMIT::NIL)  flags |= S_ISUID;
+         if ((Permissions & PERMIT::GROUPID) != PERMIT::NIL) flags |= S_ISGID;
          err = fchmod(Self->Handle, flags);
       }
 
@@ -2404,20 +2404,20 @@ static ERROR set_permissions(extFile *Self, LONG Permissions)
       CSTRING path;
       if (!GET_ResolvedPath(Self, &path)) {
          LONG flags = 0;
-         if (Permissions & PERMIT_READ)  flags |= S_IRUSR;
-         if (Permissions & PERMIT_WRITE) flags |= S_IWUSR;
-         if (Permissions & PERMIT_EXEC)  flags |= S_IXUSR;
+         if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
+         if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
+         if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)  flags |= S_IXUSR;
 
-         if (Permissions & PERMIT_GROUP_READ)  flags |= S_IRGRP;
-         if (Permissions & PERMIT_GROUP_WRITE) flags |= S_IWGRP;
-         if (Permissions & PERMIT_GROUP_EXEC)  flags |= S_IXGRP;
+         if ((Permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  flags |= S_IRGRP;
+         if ((Permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL) flags |= S_IWGRP;
+         if ((Permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)  flags |= S_IXGRP;
 
-         if (Permissions & PERMIT_OTHERS_READ)  flags |= S_IROTH;
-         if (Permissions & PERMIT_OTHERS_WRITE) flags |= S_IWOTH;
-         if (Permissions & PERMIT_OTHERS_EXEC)  flags |= S_IXOTH;
+         if ((Permissions & PERMIT::OTHERS_READ) != PERMIT::NIL)  flags |= S_IROTH;
+         if ((Permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) flags |= S_IWOTH;
+         if ((Permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL)  flags |= S_IXOTH;
 
-         if (Permissions & PERMIT_GROUPID) flags |= S_ISGID;
-         if (Permissions & PERMIT_USERID)  flags |= S_ISUID;
+         if ((Permissions & PERMIT::GROUPID) != PERMIT::NIL) flags |= S_ISGID;
+         if ((Permissions & PERMIT::USERID) != PERMIT::NIL)  flags |= S_ISUID;
 
          if (chmod(path, flags) != -1) {
             Self->Permissions = Permissions;
@@ -2431,12 +2431,12 @@ static ERROR set_permissions(extFile *Self, LONG Permissions)
 
 #elif _WIN32
 
-   log.branch("$%.8x", Permissions);
+   log.branch("$%.8x", LONG(Permissions));
 
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
       ERROR error;
-      if (winSetAttrib(path, Permissions)) error = log.warning(ERR_Failed);
+      if (winSetAttrib(path, LONG(Permissions))) error = log.warning(ERR_Failed);
       else error = ERR_Okay;
       return error;
    }
@@ -2769,30 +2769,30 @@ static ERROR SET_User(extFile *Self, LONG Value)
 //********************************************************************************************************************
 
 static const FieldDef PermissionFlags[] = {
-   { "Read",         PERMIT_READ },
-   { "Write",        PERMIT_WRITE },
-   { "Exec",         PERMIT_EXEC },
-   { "Executable",   PERMIT_EXEC },
-   { "Delete",       PERMIT_DELETE },
-   { "Hidden",       PERMIT_HIDDEN },
-   { "Archive",      PERMIT_ARCHIVE },
-   { "Password",     PERMIT_PASSWORD },
-   { "UserID",       PERMIT_USERID },
-   { "GroupID",      PERMIT_GROUPID },
-   { "OthersRead",   PERMIT_OTHERS_READ },
-   { "OthersWrite",  PERMIT_OTHERS_WRITE },
-   { "OthersExec",   PERMIT_OTHERS_EXEC },
-   { "OthersDelete", PERMIT_OTHERS_DELETE },
-   { "GroupRead",    PERMIT_GROUP_READ },
-   { "GroupWrite",   PERMIT_GROUP_WRITE },
-   { "GroupExec",    PERMIT_GROUP_EXEC },
-   { "GroupDelete",  PERMIT_GROUP_DELETE },
-   { "AllRead",      PERMIT_ALL_READ },
-   { "AllWrite",     PERMIT_ALL_WRITE },
-   { "AllExec",      PERMIT_ALL_EXEC },
-   { "UserRead",     PERMIT_READ },
-   { "UserWrite",    PERMIT_WRITE },
-   { "UserExec",     PERMIT_EXEC },
+   { "Read",         PERMIT::READ },
+   { "Write",        PERMIT::WRITE },
+   { "Exec",         PERMIT::EXEC },
+   { "Executable",   PERMIT::EXEC },
+   { "Delete",       PERMIT::DELETE },
+   { "Hidden",       PERMIT::HIDDEN },
+   { "Archive",      PERMIT::ARCHIVE },
+   { "Password",     PERMIT::PASSWORD },
+   { "UserID",       PERMIT::USERID },
+   { "GroupID",      PERMIT::GROUPID },
+   { "OthersRead",   PERMIT::OTHERS_READ },
+   { "OthersWrite",  PERMIT::OTHERS_WRITE },
+   { "OthersExec",   PERMIT::OTHERS_EXEC },
+   { "OthersDelete", PERMIT::OTHERS_DELETE },
+   { "GroupRead",    PERMIT::GROUP_READ },
+   { "GroupWrite",   PERMIT::GROUP_WRITE },
+   { "GroupExec",    PERMIT::GROUP_EXEC },
+   { "GroupDelete",  PERMIT::GROUP_DELETE },
+   { "AllRead",      PERMIT::ALL_READ },
+   { "AllWrite",     PERMIT::ALL_WRITE },
+   { "AllExec",      PERMIT::ALL_EXEC },
+   { "UserRead",     PERMIT::READ },
+   { "UserWrite",    PERMIT::WRITE },
+   { "UserExec",     PERMIT::EXEC },
    { NULL, 0 }
 };
 
@@ -2830,7 +2830,7 @@ extern "C" ERROR add_file_class(void)
    glFileClass = extMetaClass::create::global(
       fl::ClassVersion(VER_FILE),
       fl::Name("File"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clFileActions),
       fl::Methods(clFileMethods),
       fl::Fields(FileFields),

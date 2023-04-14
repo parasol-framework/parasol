@@ -644,7 +644,7 @@ extern "C" ERROR add_thread_class(void)
    glThreadClass = objMetaClass::create::global(
       fl::ClassVersion(VER_THREAD),
       fl::Name("Thread"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clThreadActions),
       fl::Methods(clThreadMethods),
       fl::Fields(clFields),

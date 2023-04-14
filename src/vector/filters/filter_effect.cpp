@@ -340,7 +340,7 @@ ERROR init_filtereffect(void)
    clFilterEffect = objMetaClass::create::global(
       fl::ClassVersion(VER_FILTEREFFECT),
       fl::Name("FilterEffect"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clFilterEffectActions),
       fl::Fields(clFilterEffectFields),
       fl::Size(sizeof(extFilterEffect)),

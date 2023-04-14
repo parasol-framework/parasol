@@ -766,17 +766,16 @@ int(PERMIT) Permissions: Permission flags to be applied to new files.
 
 *********************************************************************************************************************/
 
-void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions)
+void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
    glForceUID = User;
    glForceGID = Group;
 
-   if (Permissions IS -1) {
-      // Prevent improper permission settings
-      log.warning("Permissions of $%.8x is illegal.", Permissions);
-      Permissions = 0;
+   if (Permissions IS PERMIT(-1)) { // Prevent improper permission settings
+      log.warning(ERR_Args);
+      Permissions = PERMIT::NIL;
    }
 
    glDefaultPermissions = Permissions;
@@ -983,16 +982,16 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERROR CreateFolder(CSTRING Path, LONG Permissions)
+ERROR CreateFolder(CSTRING Path, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!Path) or (!*Path)) return log.warning(ERR_NullArgs);
 
-   if (glDefaultPermissions) Permissions = glDefaultPermissions;
-   else if ((!Permissions) or (Permissions & PERMIT_INHERIT)) {
+   if (glDefaultPermissions != PERMIT::NIL) Permissions = glDefaultPermissions;
+   else if ((Permissions IS PERMIT::NIL) or ((Permissions & PERMIT::INHERIT) != PERMIT::NIL)) {
       Permissions |= get_parent_permissions(Path, NULL, NULL);
-      if (!Permissions) Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_EXEC|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_GROUP_EXEC; // If no permissions are set, give current user full access
+      if (Permissions IS PERMIT::NIL) Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::EXEC|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE|PERMIT::GROUP_EXEC; // If no permissions are set, give current user full access
    }
 
    ERROR error;
@@ -1474,29 +1473,29 @@ ERROR findfile(STRING Path)
 
 //********************************************************************************************************************
 
-LONG convert_permissions(LONG Permissions)
+LONG convert_permissions(PERMIT Permissions)
 {
    LONG flags = 0;
 
 #ifdef __unix__
-   if (Permissions & PERMIT_READ)         flags |= S_IRUSR;
-   if (Permissions & PERMIT_WRITE)        flags |= S_IWUSR;
-   if (Permissions & PERMIT_EXEC)         flags |= S_IXUSR;
+   if ((Permissions & PERMIT::READ) != PERMIT::NIL)         flags |= S_IRUSR;
+   if ((Permissions & PERMIT::WRITE) != PERMIT::NIL)        flags |= S_IWUSR;
+   if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)         flags |= S_IXUSR;
 
-   if (Permissions & PERMIT_GROUP_READ)   flags |= S_IRGRP;
-   if (Permissions & PERMIT_GROUP_WRITE)  flags |= S_IWGRP;
-   if (Permissions & PERMIT_GROUP_EXEC)   flags |= S_IXGRP;
+   if ((Permissions & PERMIT::GROUP_READ) != PERMIT::NIL)   flags |= S_IRGRP;
+   if ((Permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL)  flags |= S_IWGRP;
+   if ((Permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)   flags |= S_IXGRP;
 
-   if (Permissions & PERMIT_OTHERS_READ)  flags |= S_IROTH;
-   if (Permissions & PERMIT_OTHERS_WRITE) flags |= S_IWOTH;
-   if (Permissions & PERMIT_OTHERS_EXEC)  flags |= S_IXOTH;
+   if ((Permissions & PERMIT::OTHERS_READ) != PERMIT::NIL)  flags |= S_IROTH;
+   if ((Permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) flags |= S_IWOTH;
+   if ((Permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL)  flags |= S_IXOTH;
 
-   if (Permissions & PERMIT_USERID)       flags |= S_ISUID;
-   if (Permissions & PERMIT_GROUPID)      flags |= S_ISGID;
+   if ((Permissions & PERMIT::USERID) != PERMIT::NIL)       flags |= S_ISUID;
+   if ((Permissions & PERMIT::GROUPID) != PERMIT::NIL)      flags |= S_ISGID;
 #else
-   if (Permissions & PERMIT_ALL_READ)     flags |= S_IREAD;
-   if (Permissions & PERMIT_ALL_WRITE)    flags |= S_IWRITE;
-   if (Permissions & PERMIT_ALL_EXEC)     flags |= S_IEXEC;
+   if ((Permissions & PERMIT::ALL_READ) != PERMIT::NIL)     flags |= S_IREAD;
+   if ((Permissions & PERMIT::ALL_WRITE) != PERMIT::NIL)    flags |= S_IWRITE;
+   if ((Permissions & PERMIT::ALL_EXEC) != PERMIT::NIL)     flags |= S_IEXEC;
 #endif
 
    return flags;
@@ -1504,29 +1503,29 @@ LONG convert_permissions(LONG Permissions)
 
 //********************************************************************************************************************
 
-LONG convert_fs_permissions(LONG Permissions)
+PERMIT convert_fs_permissions(LONG Permissions)
 {
-   LONG flags = 0;
+   PERMIT flags = PERMIT::NIL;
 
 #ifdef __unix__
-   if (Permissions & S_IRUSR) flags |= PERMIT_READ;
-   if (Permissions & S_IWUSR) flags |= PERMIT_WRITE;
-   if (Permissions & S_IXUSR) flags |= PERMIT_EXEC;
+   if (Permissions & S_IRUSR) flags |= PERMIT::READ;
+   if (Permissions & S_IWUSR) flags |= PERMIT::WRITE;
+   if (Permissions & S_IXUSR) flags |= PERMIT::EXEC;
 
-   if (Permissions & S_IRGRP) flags |= PERMIT_GROUP_READ;
-   if (Permissions & S_IWGRP) flags |= PERMIT_GROUP_WRITE;
-   if (Permissions & S_IXGRP) flags |= PERMIT_GROUP_EXEC;
+   if (Permissions & S_IRGRP) flags |= PERMIT::GROUP_READ;
+   if (Permissions & S_IWGRP) flags |= PERMIT::GROUP_WRITE;
+   if (Permissions & S_IXGRP) flags |= PERMIT::GROUP_EXEC;
 
-   if (Permissions & S_IROTH) flags |= PERMIT_OTHERS_READ;
-   if (Permissions & S_IWOTH) flags |= PERMIT_OTHERS_WRITE;
-   if (Permissions & S_IXOTH) flags |= PERMIT_OTHERS_EXEC;
+   if (Permissions & S_IROTH) flags |= PERMIT::OTHERS_READ;
+   if (Permissions & S_IWOTH) flags |= PERMIT::OTHERS_WRITE;
+   if (Permissions & S_IXOTH) flags |= PERMIT::OTHERS_EXEC;
 
-   if (Permissions & S_ISGID) flags |= PERMIT_GROUPID;
-   if (Permissions & S_ISUID) flags |= PERMIT_USERID;
+   if (Permissions & S_ISGID) flags |= PERMIT::GROUPID;
+   if (Permissions & S_ISUID) flags |= PERMIT::USERID;
 #else
-   if (Permissions & S_IREAD)  flags |= PERMIT_READ;
-   if (Permissions & S_IWRITE) flags |= PERMIT_WRITE;
-   if (Permissions & S_IEXEC)  flags |= PERMIT_EXEC;
+   if (Permissions & S_IREAD)  flags |= PERMIT::READ;
+   if (Permissions & S_IWRITE) flags |= PERMIT::WRITE;
+   if (Permissions & S_IEXEC)  flags |= PERMIT::EXEC;
 #endif
    return flags;
 }
@@ -1534,7 +1533,7 @@ LONG convert_fs_permissions(LONG Permissions)
 //********************************************************************************************************************
 // Strips the filename and calls CreateFolder() to create all paths leading up to the filename.
 
-ERROR check_paths(CSTRING Path, LONG Permissions)
+ERROR check_paths(CSTRING Path, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1558,7 +1557,7 @@ ERROR check_paths(CSTRING Path, LONG Permissions)
    return ERR_Failed;
 }
 
-//***************************************************************************
+//********************************************************************************************************************
 // This low level function is used for copying/moving/renaming files and folders.
 
 ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
@@ -1693,8 +1692,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
          // Create the destination folder, then copy the source folder across using a recursive routine.
 
-         if (glDefaultPermissions) CreateFolder(dest, glDefaultPermissions);
-         else CreateFolder(dest, PERMIT_USER|PERMIT_GROUP);
+         if (glDefaultPermissions != PERMIT::NIL) CreateFolder(dest, glDefaultPermissions);
+         else CreateFolder(dest, PERMIT::USER|PERMIT::GROUP);
 
          if (!(error = fs_copydir(srcbuffer, dest, &feedback, Callback, Move))) {
             // Delete the source if we are moving folders
@@ -1829,7 +1828,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
             // On failure, it may be possible that precursing folders need to be created for the link.  Do this here and then try
             // creating the link a second time.
 
-            check_paths(dest, PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE);
+            check_paths(dest, PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE);
 
             if (!symlink(linkto, dest)) error = ERR_Okay;
             else {
@@ -1879,13 +1878,13 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
          // Move successful.  Now assign the user and group id's from the parent folder to the file.
 
-         parentpermissions = get_parent_permissions(dest, &parent_uid, &parent_gid) & (~PERMIT_ALL_EXEC);
+         parentpermissions = get_parent_permissions(dest, &parent_uid, &parent_gid) & (~PERMIT::ALL_EXEC);
 
          gid = -1;
          uid = -1;
 
-         if (parentpermissions & PERMIT_USERID) uid = parent_uid;
-         if (parentpermissions & PERMIT_GROUPID) gid = parent_gid;
+         if ((parentpermissions & PERMIT::USERID) != PERMIT::NIL) uid = parent_uid;
+         if ((parentpermissions & PERMIT::GROUPID) != PERMIT::NIL) gid = parent_gid;
 
          if (glForceGID != -1) gid = glForceGID;
          if (glForceUID != -1) uid = glForceUID;
@@ -1933,10 +1932,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       // Create the destination folder, then copy the source folder across using a recursive routine.
 
-      if (glDefaultPermissions) CreateFolder(dest, glDefaultPermissions);
+      if (glDefaultPermissions != PERMIT::NIL) CreateFolder(dest, glDefaultPermissions);
       else {
 #ifdef _WIN32
-         CreateFolder(dest, PERMIT_USER|PERMIT_GROUP);
+         CreateFolder(dest, PERMIT::USER|PERMIT::GROUP);
 #else
          if (stat64(src, &stinfo) != -1) {
             CreateFolder(dest, convert_fs_permissions(stinfo.st_mode));
@@ -1944,7 +1943,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
          }
          else {
             log.warning("stat64() failed for %s", src);
-            CreateFolder(dest, PERMIT_USER|PERMIT_GROUP);
+            CreateFolder(dest, PERMIT::USER|PERMIT::GROUP);
          }
 #endif
       }
@@ -1971,11 +1970,11 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       // Get permissions of the source file to apply to the destination file
 
 #ifdef _WIN32
-      if (glDefaultPermissions) {
-         if (glDefaultPermissions & PERMIT_INHERIT) {
+      if (glDefaultPermissions != PERMIT::NIL) {
+         if ((glDefaultPermissions & PERMIT::INHERIT) != PERMIT::NIL) {
             //LONG parentpermissions;
-            //parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT_ALL_EXEC);
-            //permissions = convert_permissions((parentpermissions & (~(PERMIT_USERID|PERMIT_GROUPID))) | glDefaultPermissions);
+            //parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
+            //permissions = convert_permissions((parentpermissions & (~(PERMIT::USERID|PERMIT::GROUPID))) | glDefaultPermissions);
              permissions = S_IREAD|S_IWRITE;
          }
          else permissions = convert_permissions(glDefaultPermissions);
@@ -1984,10 +1983,10 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       winFileInfo(src, &feedback.Size, NULL, NULL);
 #else
-      parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT_ALL_EXEC);
-      if (glDefaultPermissions) {
-         if (glDefaultPermissions & PERMIT_INHERIT) {
-            permissions = convert_permissions((parentpermissions & (~(PERMIT_USERID|PERMIT_GROUPID))) | glDefaultPermissions);
+      parentpermissions = get_parent_permissions(dest, NULL, NULL) & (~PERMIT::ALL_EXEC);
+      if (glDefaultPermissions != PERMIT::NIL) {
+         if ((glDefaultPermissions & PERMIT::INHERIT) != PERMIT::NIL) {
+            permissions = convert_permissions((parentpermissions & (~(PERMIT::USERID|PERMIT::GROUPID))) | glDefaultPermissions);
          }
          else permissions = convert_permissions(glDefaultPermissions);
       }
@@ -2040,8 +2039,8 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
       if (glForceUID != -1) uid = glForceUID;
       else uid = stinfo.st_uid;
 
-      if (parentpermissions & PERMIT_GROUPID) gid = -1;
-      if (parentpermissions & PERMIT_USERID) uid = -1;
+      if ((parentpermissions & PERMIT::GROUPID) != PERMIT::NIL) gid = -1;
+      if ((parentpermissions & PERMIT::USERID) != PERMIT::NIL) uid = -1;
 
       if ((uid != -1) or (gid != -1)) fchown(dhandle, uid, gid);
 
@@ -2189,7 +2188,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
             }
 
             AdjustLogLevel(1);
-               error = CreateFolder(Dest, (glDefaultPermissions) ? glDefaultPermissions : file->Permissions);
+               error = CreateFolder(Dest, (glDefaultPermissions != PERMIT::NIL) ? glDefaultPermissions : file->Permissions);
 #ifdef __unix__
                if (vdest->is_default()) {
                   chown(Dest, (glForceUID != -1) ? glForceUID : file->UserID, (glForceGID != -1) ? glForceGID : file->GroupID);
@@ -2224,7 +2223,7 @@ ERROR fs_copydir(STRING Source, STRING Dest, FileFeedback *Feedback, FUNCTION *C
 // Gets the permissions of the parent folder.  Typically used for permission inheritance. NB: It is often wise to
 // remove exec and suid flags returned from this function.
 
-LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
+PERMIT get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
 {
    pf::Log log(__FUNCTION__);
    char folder[512];
@@ -2254,7 +2253,7 @@ LONG get_parent_permissions(CSTRING Path, LONG *UserID, LONG *GroupID)
    }
 
    //log.msg("%s [FAIL]", Path);
-   return 0;
+   return PERMIT::NIL;
 }
 
 //********************************************************************************************************************
@@ -2407,17 +2406,17 @@ ERROR fs_scandir(DirInfo *Dir)
       else file->Size = 0;
 
       if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
-         if (info.st_mode & S_IRUSR) file->Permissions |= PERMIT_READ;
-         if (info.st_mode & S_IWUSR) file->Permissions |= PERMIT_WRITE;
-         if (info.st_mode & S_IXUSR) file->Permissions |= PERMIT_EXEC;
-         if (info.st_mode & S_IRGRP) file->Permissions |= PERMIT_GROUP_READ;
-         if (info.st_mode & S_IWGRP) file->Permissions |= PERMIT_GROUP_WRITE;
-         if (info.st_mode & S_IXGRP) file->Permissions |= PERMIT_GROUP_EXEC;
-         if (info.st_mode & S_IROTH) file->Permissions |= PERMIT_OTHERS_READ;
-         if (info.st_mode & S_IWOTH) file->Permissions |= PERMIT_OTHERS_WRITE;
-         if (info.st_mode & S_IXOTH) file->Permissions |= PERMIT_OTHERS_EXEC;
-         if (info.st_mode & S_ISUID) file->Permissions |= PERMIT_USERID;
-         if (info.st_mode & S_ISGID) file->Permissions |= PERMIT_GROUPID;
+         if (info.st_mode & S_IRUSR) file->Permissions |= PERMIT::READ;
+         if (info.st_mode & S_IWUSR) file->Permissions |= PERMIT::WRITE;
+         if (info.st_mode & S_IXUSR) file->Permissions |= PERMIT::EXEC;
+         if (info.st_mode & S_IRGRP) file->Permissions |= PERMIT::GROUP_READ;
+         if (info.st_mode & S_IWGRP) file->Permissions |= PERMIT::GROUP_WRITE;
+         if (info.st_mode & S_IXGRP) file->Permissions |= PERMIT::GROUP_EXEC;
+         if (info.st_mode & S_IROTH) file->Permissions |= PERMIT::OTHERS_READ;
+         if (info.st_mode & S_IWOTH) file->Permissions |= PERMIT::OTHERS_WRITE;
+         if (info.st_mode & S_IXOTH) file->Permissions |= PERMIT::OTHERS_EXEC;
+         if (info.st_mode & S_ISUID) file->Permissions |= PERMIT::USERID;
+         if (info.st_mode & S_ISGID) file->Permissions |= PERMIT::GROUPID;
          file->UserID = info.st_uid;
          file->GroupID = info.st_gid;
       }
@@ -2649,17 +2648,17 @@ ERROR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
    // Set file security information
 
    Info->Permissions = 0;
-   if (info.st_mode & S_IRUSR) Info->Permissions |= PERMIT_READ;
-   if (info.st_mode & S_IWUSR) Info->Permissions |= PERMIT_WRITE;
-   if (info.st_mode & S_IXUSR) Info->Permissions |= PERMIT_EXEC;
-   if (info.st_mode & S_IRGRP) Info->Permissions |= PERMIT_GROUP_READ;
-   if (info.st_mode & S_IWGRP) Info->Permissions |= PERMIT_GROUP_WRITE;
-   if (info.st_mode & S_IXGRP) Info->Permissions |= PERMIT_GROUP_EXEC;
-   if (info.st_mode & S_IROTH) Info->Permissions |= PERMIT_OTHERS_READ;
-   if (info.st_mode & S_IWOTH) Info->Permissions |= PERMIT_OTHERS_WRITE;
-   if (info.st_mode & S_IXOTH) Info->Permissions |= PERMIT_OTHERS_EXEC;
-   if (info.st_mode & S_ISUID) Info->Permissions |= PERMIT_USERID;
-   if (info.st_mode & S_ISGID) Info->Permissions |= PERMIT_GROUPID;
+   if (info.st_mode & S_IRUSR) Info->Permissions |= PERMIT::READ;
+   if (info.st_mode & S_IWUSR) Info->Permissions |= PERMIT::WRITE;
+   if (info.st_mode & S_IXUSR) Info->Permissions |= PERMIT::EXEC;
+   if (info.st_mode & S_IRGRP) Info->Permissions |= PERMIT::GROUP_READ;
+   if (info.st_mode & S_IWGRP) Info->Permissions |= PERMIT::GROUP_WRITE;
+   if (info.st_mode & S_IXGRP) Info->Permissions |= PERMIT::GROUP_EXEC;
+   if (info.st_mode & S_IROTH) Info->Permissions |= PERMIT::OTHERS_READ;
+   if (info.st_mode & S_IWOTH) Info->Permissions |= PERMIT::OTHERS_WRITE;
+   if (info.st_mode & S_IXOTH) Info->Permissions |= PERMIT::OTHERS_EXEC;
+   if (info.st_mode & S_ISUID) Info->Permissions |= PERMIT::USERID;
+   if (info.st_mode & S_ISGID) Info->Permissions |= PERMIT::GROUPID;
 
    Info->UserID = info.st_uid;
    Info->GroupID = info.st_gid;
@@ -2723,7 +2722,7 @@ ERROR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
       }
    }
 
-   Info->Permissions = 0;
+   Info->Permissions = PERMIT::NIL;
    Info->UserID      = 0;
    Info->GroupID     = 0;
    Info->Tags        = NULL;
@@ -2757,14 +2756,14 @@ restart:
          ThreadLock lock(TL_VOLUMES, 2000); // We keep this lock localised so that it doesn't impact ResolvePath()
          if (lock.granted()) {
             if (glVolumes.contains(vol)) {
-               if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE_SOFTWARE; // Virtual device
+               if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
 
                if (glVolumes[vol].contains("Device")) {
                   auto &device = glVolumes[vol]["Device"];
-                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE_FLOPPY_DISK|DEVICE_REMOVABLE|DEVICE_READ|DEVICE_WRITE;
-                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE_HARD_DISK|DEVICE_READ|DEVICE_WRITE;
-                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE_COMPACT_DISC|DEVICE_REMOVABLE|DEVICE_READ;
-                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE_USB|DEVICE_REMOVABLE;
+                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
+                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
+                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
+                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
                   else log.warning("Device '%s' unrecognised.", device.c_str());
                }
             }
@@ -2772,7 +2771,7 @@ restart:
          else return log.warning(ERR_LockFailed);
       }
 
-      if (!Info->DeviceFlags) {
+      if (Info->DeviceFlags IS DEVICE::NIL) {
          // Unable to find a device reference for the volume, so try to resolve the path and try again.
 
          if (resolve) {
@@ -2802,7 +2801,7 @@ restart:
 
    // Assume that the device is read/write if the device type cannot be assessed
 
-   if (!Info->DeviceFlags) Info->DeviceFlags |= DEVICE_READ|DEVICE_WRITE;
+   if (Info->DeviceFlags IS DEVICE::NIL) Info->DeviceFlags |= DEVICE::READ|DEVICE::WRITE;
 
    // Calculate the amount of available disk space
 
@@ -2837,7 +2836,7 @@ restart:
 
 #elif __unix__
 
-   if (Info->DeviceFlags & DEVICE_HARD_DISK) {
+   if ((Info->DeviceFlags & DEVICE::HARD_DISK) != DEVICE::NIL) {
       if (!location) {
          error = ResolvePath(Path, RSF::NO_FILE_CHECK, &location);
       }
@@ -2856,7 +2855,7 @@ restart:
 
             /* statvfs()
             if (fstat.f_flag & ST_RDONLY) {
-               Info->DeviceFlags &= ~DEVICE_WRITE;
+               Info->DeviceFlags &= ~DEVICE::WRITE;
             }
             */
 
@@ -2884,28 +2883,27 @@ restart:
 
 //********************************************************************************************************************
 
-ERROR fs_makedir(CSTRING Path, LONG Permissions)
+ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
 
    LONG err, i;
-   LONG len = StrLength(Path);
 
    // The 'executable' bit must be set for folders in order to have any sort of access to their content.  So, if
    // the read or write flags are set, we automatically enable the executable bit for that folder.
 
-   Permissions |= PERMIT_EXEC; // At a minimum, ensure the owner has folder access initially
-   if (Permissions & PERMIT_GROUP) Permissions |= PERMIT_GROUP_EXEC;
-   if (Permissions & PERMIT_OTHERS) Permissions |= PERMIT_OTHERS_EXEC;
+   Permissions |= PERMIT::EXEC; // At a minimum, ensure the owner has folder access initially
+   if ((Permissions & PERMIT::GROUP) != PERMIT::NIL) Permissions |= PERMIT::GROUP_EXEC;
+   if ((Permissions & PERMIT::OTHERS) != PERMIT::NIL) Permissions |= PERMIT::OTHERS_EXEC;
 
-   log.branch("%s, Permissions: $%.8x %s", Path, Permissions, (glDefaultPermissions) ? "(forced)" : "");
+   log.branch("%s, Permissions: $%.8x %s", Path, Permissions, (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
 
    LONG secureflags = convert_permissions(Permissions);
 
    if (mkdir(Path, secureflags) IS -1) {
-      char buffer[len+1];
+      char buffer[StrLength(Path)+1];
 
       if (errno IS EEXIST) {
          log.msg("A folder or file already exists at \"%s\"", Path);
@@ -2957,11 +2955,10 @@ ERROR fs_makedir(CSTRING Path, LONG Permissions)
 
 #elif _WIN32
 
-   LONG len = StrLength(Path);
    ERROR error;
    LONG i;
    if ((error = winCreateDir(Path))) {
-      char buffer[len+1];
+      char buffer[StrLength(Path)+1];
 
       if (error IS ERR_FileExists) return ERR_FileExists;
 

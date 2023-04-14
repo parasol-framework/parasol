@@ -426,7 +426,7 @@ ERROR init_blurfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_BLURFX),
       fl::Name("BlurFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clBlurFXActions),
       fl::Fields(clBlurFXFields),
       fl::Size(sizeof(extBlurFX)),

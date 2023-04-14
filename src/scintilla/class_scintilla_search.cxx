@@ -409,7 +409,7 @@ ERROR init_search(void)
    clScintillaSearch = objMetaClass::create::global(
       fl::ClassVersion(1.0),
       fl::Name("ScintillaSearch"),
-      fl::Category(CCF_TOOL),
+      fl::Category(CCF::TOOL),
       fl::Actions(clActions),
       fl::Methods(clMethods),
       fl::Fields(clFields),

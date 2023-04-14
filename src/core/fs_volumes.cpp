@@ -251,7 +251,7 @@ ERROR VirtualVolume(CSTRING Name, ...)
             break;
 
          case VAS::MAKE_DIR:
-            glVirtual[id].CreateFolder = va_arg(list, ERROR (*)(CSTRING, LONG));
+            glVirtual[id].CreateFolder = va_arg(list, ERROR (*)(CSTRING, PERMIT));
             break;
 
          case VAS::OPEN_DIR:

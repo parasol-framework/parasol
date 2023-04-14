@@ -85,7 +85,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::BaseClassID(ID_XML),
       fl::ClassID(ID_JSON),
       fl::Name("JSON"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.json"),
       fl::FileDescription("JSON Data"),
       fl::Actions(clActions),

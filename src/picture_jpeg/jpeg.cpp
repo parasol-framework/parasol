@@ -335,7 +335,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::BaseClassID(ID_PICTURE),
       fl::ClassID(ID_JPEG),
       fl::Name("JPEG"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),
       fl::FileDescription("JPEG Picture"),
       fl::FileHeader("[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]"),

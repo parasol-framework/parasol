@@ -175,7 +175,7 @@ ERROR init_floodfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_FLOODFX),
       fl::Name("FloodFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clFloodFXActions),
       fl::Fields(clFloodFXFields),
       fl::Size(sizeof(extFloodFX)),

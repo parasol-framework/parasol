@@ -828,14 +828,14 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
       auto &sub = *it;
       if (sub.Callback.Type IS CALL_STDC) {
          pf::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
+         auto callback = (ERROR (*)(objVector *, KQ, LONG, LONG))sub.Callback.StdC.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
       }
       else if (sub.Callback.Type IS CALL_SCRIPT) {
          // In this implementation the script function will receive all the events chained via the Next field
          ScriptArg args[] = {
             { "Vector",     FDF_OBJECT, { .Address = Vector } },
-            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
+            { "Qualifiers", FDF_LONG,   { .Long = LONG(Event->Qualifiers) } },
             { "Code",       FDF_LONG,   { .Long = Event->Code } },
             { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
          };
@@ -857,11 +857,11 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
    const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
    if (Event->Code IS K_TAB) {
-      if (!(Event->Qualifiers & KQ_RELEASED)) return;
+      if ((Event->Qualifiers & KQ::RELEASED) IS KQ::NIL) return;
 
-      bool reverse = ((Event->Qualifiers & KQ_QUALIFIERS) & KQ_SHIFT);
+      bool reverse = (((Event->Qualifiers & KQ::QUALIFIERS) & KQ::SHIFT) != KQ::NIL);
 
-      if ((!(Event->Qualifiers & KQ_QUALIFIERS)) or (reverse)) {
+      if (((Event->Qualifiers & KQ::QUALIFIERS) IS KQ::NIL) or (reverse)) {
          if (Self->KeyboardSubscriptions.size() > 1) {
             for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
                auto find = Self->KeyboardSubscriptions.find(*it);
@@ -1179,7 +1179,7 @@ ERROR init_vectorscene(void)
    clVectorScene = objMetaClass::create::global(
       fl::ClassVersion(VER_VECTORSCENE),
       fl::Name("VectorScene"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorSceneActions),
       fl::Methods(clVectorSceneMethods),
       fl::Fields(clSceneFields),

@@ -1465,9 +1465,9 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       LOC location_type = LOC::NIL;
       if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC::DIRECTORY)) {
          buffer.pop_back();
-         SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
+         SetDefaultPermissions(-1, -1, PERMIT::READ|PERMIT::WRITE);
             CopyFile("config:users/default/", buffer.c_str(), NULL);
-         SetDefaultPermissions(-1, -1, 0);
+         SetDefaultPermissions(-1, -1, PERMIT::NIL);
          buffer += '/';
       }
 
@@ -1478,8 +1478,8 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    // Make sure that certain default directories exist
 
-   CreateFolder("user:config/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
-   CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
+   CreateFolder("user:config/", PERMIT::READ|PERMIT::EXEC|PERMIT::WRITE);
+   CreateFolder("user:temp/", PERMIT::READ|PERMIT::EXEC|PERMIT::WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
       SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);

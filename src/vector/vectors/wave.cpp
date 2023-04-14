@@ -595,7 +595,7 @@ static ERROR init_wave(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORWAVE),
       fl::Name("VectorWave"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clWaveActions),
       fl::Fields(clWaveFields),
       fl::Size(sizeof(extVectorWave)),

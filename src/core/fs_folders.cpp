@@ -177,7 +177,7 @@ ERROR ScanDir(DirInfo *Dir)
 
    file->Name[0] = 0;
    file->Flags   = RDF::NIL;
-   file->Permissions = 0;
+   file->Permissions = PERMIT::NIL;
    file->Size    = 0;
    file->UserID  = 0;
    file->GroupID = 0;

@@ -509,7 +509,7 @@ static ERROR init_path(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORPATH),
       fl::Name("VectorPath"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorPathActions),
       fl::Methods(clVectorPathMethods),
       fl::Fields(clPathFields),

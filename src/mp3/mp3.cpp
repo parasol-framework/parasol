@@ -881,7 +881,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::FileExtension("*.mp3"),
       fl::FileDescription("MP3 Audio Stream"),
       fl::Name("MP3"),
-      fl::Category(CCF_AUDIO),
+      fl::Category(CCF::AUDIO),
       fl::Actions(clActions),
       fl::Path(MOD_PATH));
 

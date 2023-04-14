@@ -653,7 +653,7 @@ ERROR init_convolvefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_CONVOLVEFX),
       fl::Name("ConvolveFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clConvolveFXActions),
       fl::Fields(clConvolveFXFields),
       fl::Size(sizeof(extConvolveFX)),

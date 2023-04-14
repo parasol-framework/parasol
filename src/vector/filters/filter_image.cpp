@@ -320,7 +320,7 @@ ERROR init_imagefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_IMAGEFX),
       fl::Name("ImageFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageFXActions),
       fl::Fields(clImageFXFields),
       fl::Size(sizeof(extImageFX)),

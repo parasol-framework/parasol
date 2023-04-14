@@ -1330,7 +1330,7 @@ ERROR create_pointer_class(void)
       fl::BaseClassID(ID_POINTER),
       fl::ClassVersion(VER_POINTER),
       fl::Name("Pointer"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clPointerActions),
       fl::Methods(clPointerMethods),
       fl::Fields(clPointerFields),

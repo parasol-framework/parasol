@@ -184,7 +184,7 @@ struct prvFluid {
    struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;
    ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
-   LONG   CachePermissions;
+   PERMIT CachePermissions;
    LONG   LoadedSize;
    UBYTE  Recurse;
    UBYTE  SaveCompiled;

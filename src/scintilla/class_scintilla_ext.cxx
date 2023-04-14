@@ -836,13 +836,13 @@ void ScintillaParasol::panIdleEvent()
 
 //********************************************************************************************************************
 
-void ScintillaParasol::panKeyDown(int Key, LONG Flags)
+void ScintillaParasol::panKeyDown(int Key, KQ Flags)
 {
    bool consumed;
 
    // After we call KeyDown(), Scintilla will call KeyDefault()
 
-   KeyDown(Key, Flags & KQ_SHIFT, Flags & KQ_CTRL, Flags & KQ_ALT, &consumed);
+   KeyDown(Key, (Flags & KQ::SHIFT) != KQ::NIL, (Flags & KQ::CTRL) != KQ::NIL, (Flags & KQ::ALT) != KQ::NIL, &consumed);
 }
 
 //********************************************************************************************************************

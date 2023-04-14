@@ -2182,7 +2182,7 @@ static ERROR add_font_class(void)
       fl::BaseClassID(ID_FONT),
       fl::ClassVersion(VER_FONT),
       fl::Name("Font"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.font|*.fnt|*.tty|*.fon"),
       fl::FileDescription("Font"),
       fl::Actions(clFontActions),

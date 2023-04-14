@@ -275,18 +275,18 @@ static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 
    auto &item = prv->Info;
    if (item.Flags & ZIP_SECURITY) {
-      LONG permissions = 0;
-      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      PERMIT permissions = PERMIT::NIL;
+      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-      if (item.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (item.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (item.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (item.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+      if (item.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+      if (item.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
 
       Self->Permissions = permissions;
    }
@@ -509,7 +509,7 @@ static ERROR scan_folder(DirInfo *Dir)
 
          if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
             Dir->Info->Flags |= RDF::PERMISSIONS;
-            Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+            Dir->Info->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
          }
 
          if ((Dir->prvFlags & RDF::SIZE) != RDF::NIL) {
@@ -551,7 +551,7 @@ static ERROR scan_folder(DirInfo *Dir)
 
          if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
             Dir->Info->Flags |= RDF::PERMISSIONS;
-            Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+            Dir->Info->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
          }
 
          ((ArchiveDriver *)Dir->Driver)->Index = it;

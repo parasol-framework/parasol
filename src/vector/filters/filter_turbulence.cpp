@@ -491,7 +491,7 @@ ERROR init_turbulencefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_TURBULENCEFX),
       fl::Name("TurbulenceFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clTurbulenceFXActions),
       fl::Fields(clTurbulenceFXFields),
       fl::Size(sizeof(extTurbulenceFX)),

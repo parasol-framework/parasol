@@ -547,7 +547,7 @@ static ERROR init_polygon(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORPOLYGON),
       fl::Name("VectorPolygon"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clPolygonActions),
       fl::Fields(clPolygonFields),
       fl::Size(sizeof(extVectorPoly)),

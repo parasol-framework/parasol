@@ -744,7 +744,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
             if (!src_file.obj->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
-            src_file.obj->get(FID_Permissions, &prv->CachePermissions);
+            src_file.obj->get(FID_Permissions, (LONG *)&prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
@@ -1130,7 +1130,7 @@ ERROR create_fluid(void)
       fl::ClassID(ID_FLUID),
       fl::ClassVersion(VER_FLUID),
       fl::Name("Fluid"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.fluid|*.fb|*.lua"),
       fl::FileDescription("Fluid"),
       fl::Actions(clActions),

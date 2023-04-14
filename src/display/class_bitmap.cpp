@@ -2773,7 +2773,7 @@ ERROR create_bitmap_class(void)
    clBitmap = objMetaClass::create::global(
       fl::ClassVersion(VER_BITMAP),
       fl::Name("Bitmap"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clBitmapActions),
       fl::Methods(clBitmapMethods),
       fl::Fields(clBitmapFields),

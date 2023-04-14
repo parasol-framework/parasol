@@ -484,7 +484,7 @@ ERROR init_pattern(void) // The pattern is a definition type for creating patter
    clVectorPattern = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORPATTERN),
       fl::Name("VectorPattern"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clPatternActions),
       fl::Fields(clPatternFields),

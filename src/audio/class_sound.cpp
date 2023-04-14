@@ -1772,7 +1772,7 @@ ERROR add_sound_class(void)
       fl::FileDescription("Sound Sample"),
       fl::FileHeader("[0:$52494646][8:$57415645]"),
       fl::Name("Sound"),
-      fl::Category(CCF_AUDIO),
+      fl::Category(CCF::AUDIO),
       fl::Actions(clActions),
       fl::Fields(clFields),
       fl::Size(sizeof(extSound)),

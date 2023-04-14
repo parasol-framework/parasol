@@ -540,7 +540,7 @@ static ERROR init_svg(void)
    clSVG = objMetaClass::create::global(
       fl::ClassVersion(VER_SVG),
       fl::Name("SVG"),
-      fl::Category(CCF_GUI),
+      fl::Category(CCF::GUI),
       fl::Actions(clSVGActions),
       fl::Methods(clSVGMethods),
       fl::Fields(clSVGFields),

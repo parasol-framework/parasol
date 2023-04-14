@@ -37,11 +37,33 @@ class objCompressedStream;
 
 #endif
 
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
+// used as an approximation of std::underlying_type<T>
+template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
+
+#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
+inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+#endif
 // Clipboard modes
 
-#define CLIPMODE_CUT 0x00000001
-#define CLIPMODE_COPY 0x00000002
-#define CLIPMODE_PASTE 0x00000004
+enum class CLIPMODE : ULONG {
+   NIL = 0,
+   CUT = 0x00000001,
+   COPY = 0x00000002,
+   PASTE = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLIPMODE)
 
 // Seek positions
 
@@ -50,41 +72,51 @@ class objCompressedStream;
 #define SEEK_END 2
 #define SEEK_RELATIVE 3
 
-#define DEVICE_COMPACT_DISC 0x00000001
-#define DEVICE_HARD_DISK 0x00000002
-#define DEVICE_FLOPPY_DISK 0x00000004
-#define DEVICE_READ 0x00000008
-#define DEVICE_WRITE 0x00000010
-#define DEVICE_REMOVEABLE 0x00000020
-#define DEVICE_REMOVABLE 0x00000020
-#define DEVICE_SOFTWARE 0x00000040
-#define DEVICE_NETWORK 0x00000080
-#define DEVICE_TAPE 0x00000100
-#define DEVICE_PRINTER 0x00000200
-#define DEVICE_SCANNER 0x00000400
-#define DEVICE_TEMPORARY 0x00000800
-#define DEVICE_MEMORY 0x00001000
-#define DEVICE_MODEM 0x00002000
-#define DEVICE_USB 0x00004000
-#define DEVICE_PRINTER_3D 0x00008000
-#define DEVICE_SCANNER_3D 0x00010000
+enum class DEVICE : LARGE {
+   NIL = 0,
+   COMPACT_DISC = 0x00000001,
+   HARD_DISK = 0x00000002,
+   FLOPPY_DISK = 0x00000004,
+   READ = 0x00000008,
+   WRITE = 0x00000010,
+   REMOVEABLE = 0x00000020,
+   REMOVABLE = 0x00000020,
+   SOFTWARE = 0x00000040,
+   NETWORK = 0x00000080,
+   TAPE = 0x00000100,
+   PRINTER = 0x00000200,
+   SCANNER = 0x00000400,
+   TEMPORARY = 0x00000800,
+   MEMORY = 0x00001000,
+   MODEM = 0x00002000,
+   USB = 0x00004000,
+   PRINTER_3D = 0x00008000,
+   SCANNER_3D = 0x00010000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DEVICE)
 
 // Class categories
 
-#define CCF_COMMAND 0x00000001
-#define CCF_DRAWABLE 0x00000002
-#define CCF_EFFECT 0x00000004
-#define CCF_FILESYSTEM 0x00000008
-#define CCF_GRAPHICS 0x00000010
-#define CCF_GUI 0x00000020
-#define CCF_IO 0x00000040
-#define CCF_SYSTEM 0x00000080
-#define CCF_TOOL 0x00000100
-#define CCF_AUDIO 0x00000200
-#define CCF_DATA 0x00000400
-#define CCF_MISC 0x00000800
-#define CCF_NETWORK 0x00001000
-#define CCF_MULTIMEDIA 0x00002000
+enum class CCF : ULONG {
+   NIL = 0,
+   COMMAND = 0x00000001,
+   DRAWABLE = 0x00000002,
+   EFFECT = 0x00000004,
+   FILESYSTEM = 0x00000008,
+   GRAPHICS = 0x00000010,
+   GUI = 0x00000020,
+   IO = 0x00000040,
+   SYSTEM = 0x00000080,
+   TOOL = 0x00000100,
+   AUDIO = 0x00000200,
+   DATA = 0x00000400,
+   MISC = 0x00000800,
+   NETWORK = 0x00001000,
+   MULTIMEDIA = 0x00002000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CCF)
 
 // Action identifiers.
 
@@ -144,74 +176,84 @@ class objCompressedStream;
 
 // Permission flags
 
-#define PERMIT_READ 0x00000001
-#define PERMIT_USER_READ 0x00000001
-#define PERMIT_WRITE 0x00000002
-#define PERMIT_USER_WRITE 0x00000002
-#define PERMIT_EXEC 0x00000004
-#define PERMIT_USER_EXEC 0x00000004
-#define PERMIT_DELETE 0x00000008
-#define PERMIT_USER 0x0000000f
-#define PERMIT_GROUP_READ 0x00000010
-#define PERMIT_GROUP_WRITE 0x00000020
-#define PERMIT_GROUP_EXEC 0x00000040
-#define PERMIT_GROUP_DELETE 0x00000080
-#define PERMIT_GROUP 0x000000f0
-#define PERMIT_OTHERS_READ 0x00000100
-#define PERMIT_EVERYONE_READ 0x00000111
-#define PERMIT_ALL_READ 0x00000111
-#define PERMIT_OTHERS_WRITE 0x00000200
-#define PERMIT_ALL_WRITE 0x00000222
-#define PERMIT_EVERYONE_WRITE 0x00000222
-#define PERMIT_EVERYONE_READWRITE 0x00000333
-#define PERMIT_OTHERS_EXEC 0x00000400
-#define PERMIT_ALL_EXEC 0x00000444
-#define PERMIT_EVERYONE_EXEC 0x00000444
-#define PERMIT_OTHERS_DELETE 0x00000800
-#define PERMIT_EVERYONE_DELETE 0x00000888
-#define PERMIT_ALL_DELETE 0x00000888
-#define PERMIT_OTHERS 0x00000f00
-#define PERMIT_EVERYONE_ACCESS 0x00000fff
-#define PERMIT_HIDDEN 0x00001000
-#define PERMIT_ARCHIVE 0x00002000
-#define PERMIT_PASSWORD 0x00004000
-#define PERMIT_USERID 0x00008000
-#define PERMIT_GROUPID 0x00010000
-#define PERMIT_INHERIT 0x00020000
-#define PERMIT_OFFLINE 0x00040000
-#define PERMIT_NETWORK 0x00080000
+enum class PERMIT : ULONG {
+   NIL = 0,
+   READ = 0x00000001,
+   USER_READ = 0x00000001,
+   WRITE = 0x00000002,
+   USER_WRITE = 0x00000002,
+   EXEC = 0x00000004,
+   USER_EXEC = 0x00000004,
+   DELETE = 0x00000008,
+   USER = 0x0000000f,
+   GROUP_READ = 0x00000010,
+   GROUP_WRITE = 0x00000020,
+   GROUP_EXEC = 0x00000040,
+   GROUP_DELETE = 0x00000080,
+   GROUP = 0x000000f0,
+   OTHERS_READ = 0x00000100,
+   EVERYONE_READ = 0x00000111,
+   ALL_READ = 0x00000111,
+   OTHERS_WRITE = 0x00000200,
+   ALL_WRITE = 0x00000222,
+   EVERYONE_WRITE = 0x00000222,
+   EVERYONE_READWRITE = 0x00000333,
+   OTHERS_EXEC = 0x00000400,
+   ALL_EXEC = 0x00000444,
+   EVERYONE_EXEC = 0x00000444,
+   OTHERS_DELETE = 0x00000800,
+   EVERYONE_DELETE = 0x00000888,
+   ALL_DELETE = 0x00000888,
+   OTHERS = 0x00000f00,
+   EVERYONE_ACCESS = 0x00000fff,
+   HIDDEN = 0x00001000,
+   ARCHIVE = 0x00002000,
+   PASSWORD = 0x00004000,
+   USERID = 0x00008000,
+   GROUPID = 0x00010000,
+   INHERIT = 0x00020000,
+   OFFLINE = 0x00040000,
+   NETWORK = 0x00080000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PERMIT)
 
 // Special qualifier flags
 
-#define KQ_L_SHIFT 0x00000001
-#define KQ_R_SHIFT 0x00000002
-#define KQ_SHIFT 0x00000003
-#define KQ_CAPS_LOCK 0x00000004
-#define KQ_L_CONTROL 0x00000008
-#define KQ_L_CTRL 0x00000008
-#define KQ_R_CTRL 0x00000010
-#define KQ_R_CONTROL 0x00000010
-#define KQ_CTRL 0x00000018
-#define KQ_CONTROL 0x00000018
-#define KQ_L_ALT 0x00000020
-#define KQ_ALTGR 0x00000040
-#define KQ_R_ALT 0x00000040
-#define KQ_ALT 0x00000060
-#define KQ_INSTRUCTION_KEYS 0x00000078
-#define KQ_L_COMMAND 0x00000080
-#define KQ_R_COMMAND 0x00000100
-#define KQ_COMMAND 0x00000180
-#define KQ_QUALIFIERS 0x000001fb
-#define KQ_NUM_PAD 0x00000200
-#define KQ_REPEAT 0x00000400
-#define KQ_RELEASED 0x00000800
-#define KQ_PRESSED 0x00001000
-#define KQ_NOT_PRINTABLE 0x00002000
-#define KQ_INFO 0x00003c04
-#define KQ_SCR_LOCK 0x00004000
-#define KQ_NUM_LOCK 0x00008000
-#define KQ_DEAD_KEY 0x00010000
-#define KQ_WIN_CONTROL 0x00020000
+enum class KQ : ULONG {
+   NIL = 0,
+   L_SHIFT = 0x00000001,
+   R_SHIFT = 0x00000002,
+   SHIFT = 0x00000003,
+   CAPS_LOCK = 0x00000004,
+   L_CONTROL = 0x00000008,
+   L_CTRL = 0x00000008,
+   R_CTRL = 0x00000010,
+   R_CONTROL = 0x00000010,
+   CTRL = 0x00000018,
+   CONTROL = 0x00000018,
+   L_ALT = 0x00000020,
+   ALTGR = 0x00000040,
+   R_ALT = 0x00000040,
+   ALT = 0x00000060,
+   INSTRUCTION_KEYS = 0x00000078,
+   L_COMMAND = 0x00000080,
+   R_COMMAND = 0x00000100,
+   COMMAND = 0x00000180,
+   QUALIFIERS = 0x000001fb,
+   NUM_PAD = 0x00000200,
+   REPEAT = 0x00000400,
+   RELEASED = 0x00000800,
+   PRESSED = 0x00001000,
+   NOT_PRINTABLE = 0x00002000,
+   INFO = 0x00003c04,
+   SCR_LOCK = 0x00004000,
+   NUM_LOCK = 0x00008000,
+   DEAD_KEY = 0x00010000,
+   WIN_CONTROL = 0x00020000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(KQ)
 
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
@@ -652,22 +694,6 @@ struct Edges {
    LONG Bottom;  // Bottom coordinate
 };
 
-#ifndef DEFINE_ENUM_FLAG_OPERATORS
-template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
-// used as an approximation of std::underlying_type<T>
-template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
-
-#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
-inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
-inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
-#endif
 // Script flags
 
 enum class SCF : ULONG {
@@ -1936,7 +1962,7 @@ struct CompressedItem {
    LARGE   CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-   LONG    Permissions;             // Original permissions - see PERMIT flags.
+   PERMIT  Permissions;             // Original permissions - see PERMIT flags.
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
    LONG    OthersID;                // Original others ID
@@ -1952,7 +1978,7 @@ struct FileInfo {
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
    RDF    Flags;              // Additional flags to describe the file.
-   LONG   Permissions;        // Standard permission flags.
+   PERMIT Permissions;        // Standard permission flags.
    LONG   UserID;             // User  ID (Unix systems only).
    LONG   GroupID;            // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
@@ -2080,7 +2106,7 @@ struct CoreBase {
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
    ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
    ERROR (*_SysUnlock)(LONG Index);
-   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
+   ERROR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERROR (*_DeleteVolume)(CSTRING Name);
@@ -2129,7 +2155,7 @@ struct CoreBase {
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
    STT (*_StrDatatype)(CSTRING String);
    void (*_UnloadFile)(struct CacheFile * Cache);
-   void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
+   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
 };
@@ -2203,7 +2229,7 @@ inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResou
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
 inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
-inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
+inline ERROR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
@@ -2252,7 +2278,7 @@ inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * Objec
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
-inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
+inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 #endif
@@ -2882,7 +2908,7 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase
 
 // Action and Notification Structures
 
-struct acClipboard     { LONG Mode; };
+struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
 struct acDataFeed      { OBJECTPTR Object; LONG Datatype; const void *Buffer; LONG Size; };
@@ -2933,7 +2959,7 @@ inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
@@ -3121,7 +3147,7 @@ class objMetaClass : public BaseClass {
    CLASSID ClassID;                     // Specifies the ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
-   LONG    Category;                    // The system category that a class belongs to.
+   CCF     Category;                    // The system category that a class belongs to.
 
    // Customised field setting
 
@@ -3191,7 +3217,7 @@ class objMetaClass : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCategory(const LONG Value) {
+   inline ERROR setCategory(const CCF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Category = Value;
       return ERR_Okay;
@@ -3231,7 +3257,7 @@ class objStorageDevice : public BaseClass {
 
    using create = pf::Create<objStorageDevice>;
 
-   LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
+   DEVICE DeviceFlags;    // These read-only flags identify the type of device and its features.
    LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
    LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
    LARGE BytesUsed;      // Total amount of storage space in use.
@@ -4392,7 +4418,7 @@ class objCompression : public BaseClass {
    LONG     CompressionLevel; // The compression level to use when compressing data.
    CMF      Flags;           // Optional flags.
    LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
-   LONG     Permissions;     // Default permissions for decompressed files are defined here.
+   PERMIT   Permissions;     // Default permissions for decompressed files are defined here.
    LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
    LONG     WindowBits;      // Special option for certain compression formats.
 
@@ -4425,7 +4451,7 @@ class objCompression : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setPermissions(const LONG Value) {
+   inline ERROR setPermissions(const PERMIT Value) {
       this->Permissions = Value;
       return ERR_Okay;
    }
@@ -4685,7 +4711,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; LONG Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

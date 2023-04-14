@@ -268,7 +268,7 @@ extern "C" ERROR add_time_class(void)
       fl::BaseClassID(ID_TIME),
       fl::ClassVersion(VER_TIME),
       fl::Name("Time"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clActions),
       fl::Methods(clMethods),
       fl::Fields(clFields),

@@ -526,7 +526,7 @@ static ERROR init_clientsocket(void)
       fl::BaseClassID(ID_CLIENTSOCKET),
       fl::ClassVersion(1.0),
       fl::Name("ClientSocket"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clClientSocketActions),
       fl::Fields(clClientSocketFields),
       fl::Size(sizeof(extClientSocket)),

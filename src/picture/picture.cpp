@@ -1412,7 +1412,7 @@ static ERROR create_picture_class(void)
    clPicture = objMetaClass::create::global(
       fl::ClassVersion(VER_PICTURE),
       fl::Name("Picture"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::FileExtension("*.png"),
       fl::FileDescription("PNG Picture"),

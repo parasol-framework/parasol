@@ -709,7 +709,7 @@ ERROR init_netlookup(void)
    clNetLookup = objMetaClass::create::global(
       fl::ClassVersion(VER_NETLOOKUP),
       fl::Name("NetLookup"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clNetLookupActions),
       fl::Methods(clNetLookupMethods),
       fl::Fields(clNetLookupFields),

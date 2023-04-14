@@ -14,11 +14,11 @@ void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
 {
    if (!Value) return;
 
-   if ((Printable < 0x20) or (Printable IS 127)) Flags |= KQ_NOT_PRINTABLE;
+   if ((Printable < 0x20) or (Printable IS 127)) Flags |= LONG(KQ::NOT_PRINTABLE);
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
-      .Qualifiers = Flags|KQ_PRESSED,
+      .Qualifiers = KQ(Flags)|KQ::PRESSED,
       .Code       = Value,
       .Unicode    = Printable
    };
@@ -33,7 +33,7 @@ void MsgKeyRelease(LONG Flags, LONG Value)
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
-      .Qualifiers = Flags|KQ_RELEASED,
+      .Qualifiers = KQ(Flags)|KQ::RELEASED,
       .Code       = Value,
       .Unicode    = 0
    };

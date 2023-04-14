@@ -10,15 +10,13 @@ module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
 
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
-  loadFile(glPath .. 'common.fdl')
-  loadFile(glPath .. 'common-graphics.fdl')
-
   c_insert([[
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
 // used as an approximation of std::underlying_type<T>
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
 
@@ -31,6 +29,9 @@ inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
 #endif
   ]])
+
+  loadFile(glPath .. 'common.fdl')
+  loadFile(glPath .. 'common-graphics.fdl')
 
   flags("SCF", { strict=true, comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
@@ -1871,7 +1872,7 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase
 
 // Action and Notification Structures
 
-struct acClipboard     { LONG Mode; };
+struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
 struct acDataFeed      { OBJECTPTR Object; LONG Datatype; const void *Buffer; LONG Size; };
@@ -1922,7 +1923,7 @@ inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
@@ -2567,7 +2568,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; LONG Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

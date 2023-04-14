@@ -565,29 +565,29 @@ void handle_key_press(XEvent *xevent)
    log.traceBranch("XCode: $%x, XSym: $%x, ModSym: $%x, XState: $%x", xevent->xkey.keycode, (int)sym, (int)mod_sym, xevent->xkey.state);
 
    LONG value = xkeysym_to_pkey(sym);
-   LONG flags = KQ_PRESSED;
+   auto flags = KQ::PRESSED;
 
-   if (xevent->xkey.state & LockMask) flags |= KQ_CAPS_LOCK;
+   if (xevent->xkey.state & LockMask) flags |= KQ::CAPS_LOCK;
    if (((value >= K_NP_0) and (value <= K_NP_DIVIDE)) or (value IS K_NP_ENTER)) {
-      flags |= KQ_NUM_PAD;
+      flags |= KQ::NUM_PAD;
    }
 
    if ((value) and (value < ARRAYSIZE(KeyHeld))) {
-      if (KeyHeld[value]) flags |= KQ_REPEAT;
+      if (KeyHeld[value]) flags |= KQ::REPEAT;
       else KeyHeld[value] = 1;
 
-      if (value IS K_L_COMMAND)      glKeyFlags |= KQ_L_COMMAND;
-      else if (value IS K_R_COMMAND) glKeyFlags |= KQ_R_COMMAND;
-      else if (value IS K_L_SHIFT)   glKeyFlags |= KQ_L_SHIFT;
-      else if (value IS K_R_SHIFT)   glKeyFlags |= KQ_R_SHIFT;
-      else if (value IS K_L_CONTROL) glKeyFlags |= KQ_L_CONTROL;
-      else if (value IS K_R_CONTROL) glKeyFlags |= KQ_R_CONTROL;
-      else if (value IS K_L_ALT)     glKeyFlags |= KQ_L_ALT;
-      else if (value IS K_R_ALT)     glKeyFlags |= KQ_R_ALT;
+      if (value IS K_L_COMMAND)      glKeyFlags |= KQ::L_COMMAND;
+      else if (value IS K_R_COMMAND) glKeyFlags |= KQ::R_COMMAND;
+      else if (value IS K_L_SHIFT)   glKeyFlags |= KQ::L_SHIFT;
+      else if (value IS K_R_SHIFT)   glKeyFlags |= KQ::R_SHIFT;
+      else if (value IS K_L_CONTROL) glKeyFlags |= KQ::L_CONTROL;
+      else if (value IS K_R_CONTROL) glKeyFlags |= KQ::R_CONTROL;
+      else if (value IS K_L_ALT)     glKeyFlags |= KQ::L_ALT;
+      else if (value IS K_R_ALT)     glKeyFlags |= KQ::R_ALT;
    }
 
    if ((value) or (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ::NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
@@ -640,23 +640,23 @@ void handle_key_release(XEvent *xevent)
    KeySym sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, 0);
 
    LONG value = xkeysym_to_pkey(sym);
-   LONG flags = KQ_RELEASED;
+   auto flags = KQ::RELEASED;
 
    if ((value) and (value < ARRAYSIZE(KeyHeld))) {
       KeyHeld[value] = 0;
 
-      if (value IS K_L_COMMAND)      glKeyFlags &= ~KQ_L_COMMAND;
-      else if (value IS K_R_COMMAND) glKeyFlags &= ~KQ_R_COMMAND;
-      else if (value IS K_L_SHIFT)   glKeyFlags &= ~KQ_L_SHIFT;
-      else if (value IS K_R_SHIFT)   glKeyFlags &= ~KQ_R_SHIFT;
-      else if (value IS K_L_CONTROL) glKeyFlags &= ~KQ_L_CONTROL;
-      else if (value IS K_R_CONTROL) glKeyFlags &= ~KQ_R_CONTROL;
-      else if (value IS K_L_ALT)     glKeyFlags &= ~KQ_L_ALT;
-      else if (value IS K_R_ALT)     glKeyFlags &= ~KQ_R_ALT;
+      if (value IS K_L_COMMAND)      glKeyFlags &= ~KQ::L_COMMAND;
+      else if (value IS K_R_COMMAND) glKeyFlags &= ~KQ::R_COMMAND;
+      else if (value IS K_L_SHIFT)   glKeyFlags &= ~KQ::L_SHIFT;
+      else if (value IS K_R_SHIFT)   glKeyFlags &= ~KQ::R_SHIFT;
+      else if (value IS K_L_CONTROL) glKeyFlags &= ~KQ::L_CONTROL;
+      else if (value IS K_R_CONTROL) glKeyFlags &= ~KQ::R_CONTROL;
+      else if (value IS K_L_ALT)     glKeyFlags &= ~KQ::L_ALT;
+      else if (value IS K_R_ALT)     glKeyFlags &= ~KQ::R_ALT;
    }
 
   if ((value) or (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ::NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,

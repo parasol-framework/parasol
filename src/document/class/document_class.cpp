@@ -329,8 +329,8 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
    if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
 
-   if ((Args->Mode IS CLIPMODE_CUT) or (Args->Mode IS CLIPMODE_COPY)) {
-      if (Args->Mode IS CLIPMODE_CUT) log.branch("Operation: Cut");
+   if ((Args->Mode IS CLIPMODE::CUT) or (Args->Mode IS CLIPMODE::COPY)) {
+      if (Args->Mode IS CLIPMODE::CUT) log.branch("Operation: Cut");
       else log.branch("Operation: Copy");
 
       // Calculate the length of the highlighted document
@@ -355,7 +355,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
             if (clipboard.ok()) {
                if (!clipAddText(*clipboard, buffer)) {
                   // Delete the highlighted document if the CUT mode was used
-                  if (Args->Mode IS CLIPMODE_CUT) {
+                  if (Args->Mode IS CLIPMODE::CUT) {
                      //delete_selection(Self);
                   }
                }
@@ -369,7 +369,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_PASTE) {
+   else if (Args->Mode IS CLIPMODE::PASTE) {
       log.branch("Operation: Paste");
 
       if (!(Self->Flags & DCF_EDIT)) {

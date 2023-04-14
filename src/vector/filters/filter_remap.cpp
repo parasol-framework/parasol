@@ -512,7 +512,7 @@ ERROR init_remapfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_REMAPFX),
       fl::Name("RemapFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clRemapFXActions),
       fl::Methods(clRemapFXMethods),
       fl::Fields(clRemapFXFields),

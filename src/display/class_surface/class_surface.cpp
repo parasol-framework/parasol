@@ -2676,7 +2676,7 @@ ERROR create_surface_class(void)
    clSurface = objMetaClass::create::global(
       fl::ClassVersion(VER_SURFACE),
       fl::Name("Surface"),
-      fl::Category(CCF_GUI),
+      fl::Category(CCF::GUI),
       fl::Actions(clSurfaceActions),
       fl::Methods(clSurfaceMethods),
       fl::Fields(clSurfaceFields),

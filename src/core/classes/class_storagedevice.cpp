@@ -41,7 +41,7 @@ static ERROR STORAGE_Init(extStorageDevice *Self, APTR Void)
 
    const virtual_drive *vd = get_fs(Self->Volume);
 
-   if (vd->is_virtual()) Self->DeviceFlags |= DEVICE_SOFTWARE;
+   if (vd->is_virtual()) Self->DeviceFlags |= DEVICE::SOFTWARE;
 
    Self->BytesFree  = -1;
    Self->BytesUsed  = 0;
@@ -142,21 +142,21 @@ static ERROR SET_Volume(extStorageDevice *Self, CSTRING Value)
 //********************************************************************************************************************
 
 static const FieldDef clDeviceFlags[] = {
-   { "CompactDisc",  DEVICE_COMPACT_DISC },
-   { "HardDisk",     DEVICE_HARD_DISK },
-   { "FloppyDisk",   DEVICE_FLOPPY_DISK },
-   { "Read",         DEVICE_READ },
-   { "Write",        DEVICE_WRITE },
-   { "Removable",    DEVICE_REMOVABLE },
-   { "Software",     DEVICE_SOFTWARE },
-   { "Network",      DEVICE_NETWORK },
-   { "Tape",         DEVICE_TAPE },
-   { "Printer",      DEVICE_PRINTER },
-   { "Scanner",      DEVICE_SCANNER },
-   { "Temporary",    DEVICE_TEMPORARY },
-   { "Memory",       DEVICE_MEMORY },
-   { "Modem",        DEVICE_MODEM },
-   { "USB",          DEVICE_USB },
+   { "CompactDisc",  DEVICE::COMPACT_DISC },
+   { "HardDisk",     DEVICE::HARD_DISK },
+   { "FloppyDisk",   DEVICE::FLOPPY_DISK },
+   { "Read",         DEVICE::READ },
+   { "Write",        DEVICE::WRITE },
+   { "Removable",    DEVICE::REMOVABLE },
+   { "Software",     DEVICE::SOFTWARE },
+   { "Network",      DEVICE::NETWORK },
+   { "Tape",         DEVICE::TAPE },
+   { "Printer",      DEVICE::PRINTER },
+   { "Scanner",      DEVICE::SCANNER },
+   { "Temporary",    DEVICE::TEMPORARY },
+   { "Memory",       DEVICE::MEMORY },
+   { "Modem",        DEVICE::MODEM },
+   { "USB",          DEVICE::USB },
    { NULL, 0 }
 };
 
@@ -185,7 +185,7 @@ extern "C" ERROR add_storage_class(void)
       fl::BaseClassID(ID_STORAGEDEVICE),
       fl::ClassVersion(VER_STORAGEDEVICE),
       fl::Name("StorageDevice"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clActions),
       fl::Fields(clFields),
       fl::Size(sizeof(extStorageDevice)),

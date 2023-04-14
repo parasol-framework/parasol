@@ -239,7 +239,7 @@ constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value)
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
 constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
-constexpr FieldValue Permissions(LONG Value) { return FieldValue(FID_Permissions, Value); }
+constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, LONG(Value)); }
 constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
 constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
 constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
@@ -249,7 +249,7 @@ constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
 constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
 constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
-constexpr FieldValue Category(LONG Value) { return FieldValue(FID_Category, Value); }
+constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(Value)); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }

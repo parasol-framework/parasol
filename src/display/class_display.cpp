@@ -3094,7 +3094,7 @@ ERROR create_display_class(void)
    clDisplay = objMetaClass::create::global(
       fl::ClassVersion(VER_DISPLAY),
       fl::Name("Display"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clDisplayActions),
       fl::Methods(clDisplayMethods),

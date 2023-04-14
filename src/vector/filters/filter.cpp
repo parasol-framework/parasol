@@ -888,7 +888,7 @@ ERROR init_filter(void)
    clVectorFilter = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORFILTER),
       fl::Name("VectorFilter"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorFilterActions),
       fl::Fields(clFilterFields),
       fl::Size(sizeof(extVectorFilter)),

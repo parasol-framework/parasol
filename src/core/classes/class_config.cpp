@@ -311,7 +311,7 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
          if ((!crc) or (crc != Self->CRC)) {
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
-            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(0) };
+            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::NIL) };
             Self->saveToObject(*file);
          }
          else log.msg("Not auto-saving data (CRC unchanged).");
@@ -522,7 +522,7 @@ static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 
    if (Self->Path) {
       objFile::create file = {
-         fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(0)
+         fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::NIL)
       };
 
       if (file.ok()) {
@@ -1130,7 +1130,7 @@ extern "C" ERROR add_config_class(void)
       fl::BaseClassID(ID_CONFIG),
       fl::ClassVersion(VER_CONFIG),
       fl::Name("Config"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.cfg|*.cnf|*.config"),
       fl::FileDescription("Config File"),
       fl::Actions(clConfigActions),

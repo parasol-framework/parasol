@@ -919,7 +919,7 @@ ERROR init_compositefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_COMPOSITEFX),
       fl::Name("CompositeFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clCompositeFXActions),
       fl::Fields(clCompositeFXFields),
       fl::Size(sizeof(extCompositeFX)),

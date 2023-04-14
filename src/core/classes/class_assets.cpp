@@ -646,7 +646,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
                if (Flags & RDF::PERMISSIONS) {
                   entry->Flags |= RDF::PERMISSIONS;
-                  entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+                  entry->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
                }
 
                if ((Flags & RDF::SIZE) != RDF::NIL) {
@@ -676,7 +676,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
             if ((Flags & RDF::PERMISSIONS) != RDF::NIL) {
                entry->Flags |= RDF::PERMISSIONS;
-               entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+               entry->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
             }
 
             entry->Name = (STRING)(entry + 1);

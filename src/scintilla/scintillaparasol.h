@@ -79,7 +79,7 @@ public:
    virtual void panDraw(objSurface *, objBitmap *Bitmap);
    virtual void panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont);
    virtual void panIdleEvent();
-   virtual void panKeyDown(int Key, LONG);
+   virtual void panKeyDown(int Key, KQ);
    virtual void panMousePress(int ButtonFlags, double x, double y);
    virtual void panMouseRelease(int ButtonFlags, double x, double y);
    virtual void panMouseMove(double x, double y);

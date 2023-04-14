@@ -582,7 +582,7 @@ ERROR init_colourfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_COLOURFX),
       fl::Name("ColourFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourFXActions),
       fl::Fields(clColourFXFields),
       fl::Size(sizeof(extColourFX)),
