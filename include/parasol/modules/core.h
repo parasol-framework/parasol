@@ -67,10 +67,13 @@ DEFINE_ENUM_FLAG_OPERATORS(CLIPMODE)
 
 // Seek positions
 
-#define SEEK_START 0
-#define SEEK_CURRENT 1
-#define SEEK_END 2
-#define SEEK_RELATIVE 3
+enum class SEEK : LONG {
+   NIL = 0,
+   START = 0,
+   CURRENT = 1,
+   END = 2,
+   RELATIVE = 3,
+};
 
 enum class DEVICE : LARGE {
    NIL = 0,
@@ -287,20 +290,23 @@ DEFINE_ENUM_FLAG_OPERATORS(MEM)
 
 // Event categories.
 
-#define EVG_FILESYSTEM 1
-#define EVG_NETWORK 2
-#define EVG_SYSTEM 3
-#define EVG_GUI 4
-#define EVG_DISPLAY 5
-#define EVG_IO 6
-#define EVG_HARDWARE 7
-#define EVG_AUDIO 8
-#define EVG_USER 9
-#define EVG_POWER 10
-#define EVG_CLASS 11
-#define EVG_APP 12
-#define EVG_ANDROID 13
-#define EVG_END 14
+enum class EVG : LONG {
+   NIL = 0,
+   FILESYSTEM = 1,
+   NETWORK = 2,
+   SYSTEM = 3,
+   GUI = 4,
+   DISPLAY = 5,
+   IO = 6,
+   HARDWARE = 7,
+   AUDIO = 8,
+   USER = 9,
+   POWER = 10,
+   CLASS = 11,
+   APP = 12,
+   ANDROID = 13,
+   END = 14,
+};
 
 // Data codes
 
@@ -339,51 +345,54 @@ DEFINE_ENUM_FLAG_OPERATORS(JTYPE)
 
 // JET constants are documented in GetInputEvent()
 
-#define JET_DIGITAL_X 1
-#define JET_DIGITAL_Y 2
-#define JET_BUTTON_1 3
-#define JET_LMB 3
-#define JET_BUTTON_2 4
-#define JET_RMB 4
-#define JET_BUTTON_3 5
-#define JET_MMB 5
-#define JET_BUTTON_4 6
-#define JET_BUTTON_5 7
-#define JET_BUTTON_6 8
-#define JET_BUTTON_7 9
-#define JET_BUTTON_8 10
-#define JET_BUTTON_9 11
-#define JET_BUTTON_10 12
-#define JET_TRIGGER_LEFT 13
-#define JET_TRIGGER_RIGHT 14
-#define JET_BUTTON_START 15
-#define JET_BUTTON_SELECT 16
-#define JET_LEFT_BUMPER_1 17
-#define JET_LEFT_BUMPER_2 18
-#define JET_RIGHT_BUMPER_1 19
-#define JET_RIGHT_BUMPER_2 20
-#define JET_ANALOG_X 21
-#define JET_ANALOG_Y 22
-#define JET_ANALOG_Z 23
-#define JET_ANALOG2_X 24
-#define JET_ANALOG2_Y 25
-#define JET_ANALOG2_Z 26
-#define JET_WHEEL 27
-#define JET_WHEEL_TILT 28
-#define JET_PEN_TILT_VERTICAL 29
-#define JET_PEN_TILT_HORIZONTAL 30
-#define JET_ABS_X 31
-#define JET_ABS_Y 32
-#define JET_ENTERED_SURFACE 33
-#define JET_ENTERED 33
-#define JET_LEFT_SURFACE 34
-#define JET_LEFT 34
-#define JET_PRESSURE 35
-#define JET_DEVICE_TILT_X 36
-#define JET_DEVICE_TILT_Y 37
-#define JET_DEVICE_TILT_Z 38
-#define JET_DISPLAY_EDGE 39
-#define JET_END 40
+enum class JET : LONG {
+   NIL = 0,
+   DIGITAL_X = 1,
+   DIGITAL_Y = 2,
+   BUTTON_1 = 3,
+   LMB = 3,
+   BUTTON_2 = 4,
+   RMB = 4,
+   BUTTON_3 = 5,
+   MMB = 5,
+   BUTTON_4 = 6,
+   BUTTON_5 = 7,
+   BUTTON_6 = 8,
+   BUTTON_7 = 9,
+   BUTTON_8 = 10,
+   BUTTON_9 = 11,
+   BUTTON_10 = 12,
+   TRIGGER_LEFT = 13,
+   TRIGGER_RIGHT = 14,
+   BUTTON_START = 15,
+   BUTTON_SELECT = 16,
+   LEFT_BUMPER_1 = 17,
+   LEFT_BUMPER_2 = 18,
+   RIGHT_BUMPER_1 = 19,
+   RIGHT_BUMPER_2 = 20,
+   ANALOG_X = 21,
+   ANALOG_Y = 22,
+   ANALOG_Z = 23,
+   ANALOG2_X = 24,
+   ANALOG2_Y = 25,
+   ANALOG2_Z = 26,
+   WHEEL = 27,
+   WHEEL_TILT = 28,
+   PEN_TILT_VERTICAL = 29,
+   PEN_TILT_HORIZONTAL = 30,
+   ABS_X = 31,
+   ABS_Y = 32,
+   ENTERED_SURFACE = 33,
+   ENTERED = 33,
+   LEFT_SURFACE = 34,
+   LEFT = 34,
+   PRESSURE = 35,
+   DEVICE_TILT_X = 36,
+   DEVICE_TILT_Y = 37,
+   DEVICE_TILT_Z = 38,
+   DISPLAY_EDGE = 39,
+   END = 40,
+};
 
 // Field descriptors.
 
@@ -459,7 +468,7 @@ struct InputEvent {
    DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    OBJECTID DeviceID;                 // The hardware device that this event originated from
-   LONG     Type;                     // JET constant that describes the event
+   JET      Type;                     // JET constant that describes the event
    JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
    JTYPE    Mask;                     // Mask to use for checking against subscribers
 };
@@ -486,7 +495,7 @@ struct dcDeviceInput {
    LARGE    Timestamp; // PreciseTime() of the recorded input
    OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
    JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
-   LONG     Type;      // JET constant
+   JET      Type;      // JET constant
 };
 
 struct DateTime {
@@ -2108,7 +2117,7 @@ struct CoreBase {
    void (*_UnsubscribeEvent)(APTR Event);
    ERROR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
-   LARGE (*_GetEventID)(LONG Group, CSTRING SubGroup, CSTRING Event);
+   LARGE (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
@@ -2231,7 +2240,7 @@ inline ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase-
 inline void UnsubscribeEvent(APTR Event) { return CoreBase->_UnsubscribeEvent(Event); }
 inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
-inline LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
+inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
@@ -2937,7 +2946,7 @@ struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class;
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
 struct acUndo          { LONG Steps; };
@@ -3063,7 +3072,7 @@ inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
@@ -3100,9 +3109,9 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
 inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
@@ -3392,13 +3401,13 @@ class objFile : public BaseClass {
       return Action(AC_Rename, this, &args);
    }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
@@ -4678,34 +4687,34 @@ struct rkEvent {
    // Data follows
 };
 
-#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
+#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG::DISPLAY, "resolution", "change")
 
-#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
+#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG::GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
-#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG::FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG::FILESYSTEM, "volume", "deleted")
 
-#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
-#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
+#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG::SYSTEM, "task", "created")
+#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG::SYSTEM, "task", "removed")
 
-#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG_POWER, "state", "suspending")
-#define EVID_POWER_STATE_RESUMED        GetEventID(EVG_POWER, "state", "resumed")
-#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG_POWER, "display", "standby")
-#define EVID_POWER_BATTERY_LOW          GetEventID(EVG_POWER, "battery", "low")
-#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG_POWER, "battery", "critical")
-#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG_POWER, "cputemp", "high")
-#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
-#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
-#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
+#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG::POWER, "state", "suspending")
+#define EVID_POWER_STATE_RESUMED        GetEventID(EVG::POWER, "state", "resumed")
+#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG::POWER, "display", "standby")
+#define EVID_POWER_BATTERY_LOW          GetEventID(EVG::POWER, "battery", "low")
+#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG::POWER, "battery", "critical")
+#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG::POWER, "cputemp", "high")
+#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG::POWER, "cputemp", "critical")
+#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG::POWER, "screensaver", "on")
+#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG::POWER, "screensaver", "off")
 
-#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
-#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")
+#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG::IO, "keymap", "change")
+#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG::IO, "keyboard", "keypress")
 
-#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG_AUDIO, "volume", "master")
-#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG_AUDIO, "volume", "linein")
-#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG_AUDIO, "volume", "mic")
-#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG_AUDIO, "volume", "muted") // All volumes have been muted
-#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG_AUDIO, "volume", "unmuted") // All volumes have been unmuted
+#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG::AUDIO, "volume", "master")
+#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG::AUDIO, "volume", "linein")
+#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG::AUDIO, "volume", "mic")
+#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG::AUDIO, "volume", "muted") // All volumes have been muted
+#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG::AUDIO, "volume", "unmuted") // All volumes have been unmuted
 
 // Event structures.
 

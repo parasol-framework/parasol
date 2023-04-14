@@ -75,7 +75,7 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
          // Broadcast the change
 
          UBYTE evdeleted[sizeof(EVENTID) + vol.size() + 1];
-         ((EVENTID *)evdeleted)[0] = GetEventID(EVG_FILESYSTEM, "volume", "deleted");
+         ((EVENTID *)evdeleted)[0] = GetEventID(EVG::FILESYSTEM, "volume", "deleted");
          CopyMemory(vol.c_str(), evdeleted + sizeof(EVENTID), vol.size() + 1);
          BroadcastEvent(evdeleted, sizeof(EVENTID) + vol.size() + 1);
 
@@ -162,7 +162,7 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
    if ((Flags & VOLUME::SYSTEM) != VOLUME::NIL) keys["System"] = "Yes";
 
    UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
-   ((EVENTID *)evbuf)[0] = GetEventID(EVG_FILESYSTEM, "volume", "created");
+   ((EVENTID *)evbuf)[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
    CopyMemory(name.c_str(), evbuf + sizeof(EVENTID), name.size() + 1);
    BroadcastEvent(evbuf, sizeof(EVENTID) + name.size() + 1);
    return ERR_Okay;

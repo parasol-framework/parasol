@@ -27,10 +27,10 @@ cstr: A string describing the input type is returned or NULL if the Type is inva
 
 *********************************************************************************************************************/
 
-CSTRING gfxGetInputTypeName(LONG Type)
+CSTRING gfxGetInputTypeName(JET Type)
 {
-   if ((Type < 1) or (Type >= JET_END)) return NULL;
-   return glInputNames[Type];
+   if ((LONG(Type) < 1) or (LONG(Type) >= LONG(JET::END))) return NULL;
+   return glInputNames[LONG(Type)];
 }
 
 /*********************************************************************************************************************

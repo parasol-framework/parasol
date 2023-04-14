@@ -523,8 +523,8 @@ struct InputType {
    JTYPE Mask;   // Limited flags to declare the mask that must be used to receive that type
 };
 
-extern const InputType glInputType[JET_END];
-extern const CSTRING glInputNames[JET_END];
+extern const InputType glInputType[LONG(JET::END)];
+extern const CSTRING glInputNames[LONG(JET::END)];
 
 //********************************************************************************************************************
 

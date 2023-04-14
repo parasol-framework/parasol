@@ -268,7 +268,7 @@ static ERROR FILE_BufferContent(extFile *Self, APTR Void)
 
    if (Self->Buffer) return ERR_Okay;
 
-   acSeek(Self, 0, SEEK_START);
+   acSeek(Self, 0, SEEK::START);
 
    if (!Self->Size) {
       // If the file has no size, it could be a stream (or simply empty).  This routine handles this situation.
@@ -1280,15 +1280,15 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
 
    // Set the new setting for the Self->Position field
 
-   if (Args->Position IS SEEK_START) {
+   if (Args->Position IS SEEK::START) {
       Self->Position = (LARGE)Args->Offset;
    }
-   else if (Args->Position IS SEEK_END) {
+   else if (Args->Position IS SEEK::END) {
       LARGE filesize;
       Self->get(FID_Size, &filesize);
       Self->Position = filesize - (LARGE)Args->Offset;
    }
-   else if (Args->Position IS SEEK_CURRENT) {
+   else if (Args->Position IS SEEK::CURRENT) {
       Self->Position = Self->Position + (LARGE)Args->Offset;
    }
    else return log.warning(ERR_Args);
@@ -2569,7 +2569,7 @@ static ERROR SET_Size(extFile *Self, LARGE Size)
 
    if (!GET_ResolvedPath(Self, &path)) {
       if (winSetEOF(path, Size)) {
-         acSeek(Self, 0.0, SEEK_END);
+         acSeek(Self, 0.0, SEEK::END);
          Self->Size = Size;
          if (Self->Position > Self->Size) acSeekStart(Self, Size);
          return ERR_Okay;

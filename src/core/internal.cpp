@@ -60,7 +60,7 @@ ERROR validate_process(LONG ProcessID)
 
    if (!task_id) return ERR_False;
 
-   evTaskRemoved task_removed = { GetEventID(EVG_SYSTEM, "task", "removed"), task_id, ProcessID };
+   evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
 
    glValidating = 0;

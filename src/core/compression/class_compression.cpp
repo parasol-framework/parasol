@@ -1207,7 +1207,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
          // Seek to the start of the compressed data
 
-         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
+         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
          }
@@ -1215,7 +1215,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          UWORD namelen, extralen;
          if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
          if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
-         if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
+         if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
          }
@@ -1517,14 +1517,14 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
       // Seek to the start of the compressed data
 
-      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
+      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
 
       UWORD namelen, extralen;
       if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
       if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
-      if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
+      if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
 

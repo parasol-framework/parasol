@@ -1892,7 +1892,7 @@ struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class;
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
 struct acUndo          { LONG Steps; };
@@ -2018,7 +2018,7 @@ inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
@@ -2055,9 +2055,9 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
 inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
@@ -2526,34 +2526,34 @@ struct rkEvent {
    // Data follows
 };
 
-#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
+#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG::DISPLAY, "resolution", "change")
 
-#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
+#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG::GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
-#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG::FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG::FILESYSTEM, "volume", "deleted")
 
-#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
-#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
+#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG::SYSTEM, "task", "created")
+#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG::SYSTEM, "task", "removed")
 
-#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG_POWER, "state", "suspending")
-#define EVID_POWER_STATE_RESUMED        GetEventID(EVG_POWER, "state", "resumed")
-#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG_POWER, "display", "standby")
-#define EVID_POWER_BATTERY_LOW          GetEventID(EVG_POWER, "battery", "low")
-#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG_POWER, "battery", "critical")
-#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG_POWER, "cputemp", "high")
-#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
-#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
-#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
+#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG::POWER, "state", "suspending")
+#define EVID_POWER_STATE_RESUMED        GetEventID(EVG::POWER, "state", "resumed")
+#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG::POWER, "display", "standby")
+#define EVID_POWER_BATTERY_LOW          GetEventID(EVG::POWER, "battery", "low")
+#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG::POWER, "battery", "critical")
+#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG::POWER, "cputemp", "high")
+#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG::POWER, "cputemp", "critical")
+#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG::POWER, "screensaver", "on")
+#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG::POWER, "screensaver", "off")
 
-#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
-#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")
+#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG::IO, "keymap", "change")
+#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG::IO, "keyboard", "keypress")
 
-#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG_AUDIO, "volume", "master")
-#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG_AUDIO, "volume", "linein")
-#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG_AUDIO, "volume", "mic")
-#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG_AUDIO, "volume", "muted") // All volumes have been muted
-#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG_AUDIO, "volume", "unmuted") // All volumes have been unmuted
+#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG::AUDIO, "volume", "master")
+#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG::AUDIO, "volume", "linein")
+#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG::AUDIO, "volume", "mic")
+#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG::AUDIO, "volume", "muted") // All volumes have been muted
+#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG::AUDIO, "volume", "unmuted") // All volumes have been unmuted
 
 // Event structures.
 

@@ -950,7 +950,7 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET_ENTERED_SURFACE,
+      .Type        = JET::ENTERED_SURFACE,
       .Flags       = JTYPE::FEEDBACK,
       .Mask        = JTYPE::FEEDBACK
    };
@@ -972,7 +972,7 @@ static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET_LEFT_SURFACE,
+      .Type        = JET::LEFT_SURFACE,
       .Flags       = JTYPE::FEEDBACK,
       .Mask        = JTYPE::FEEDBACK
    };
@@ -994,7 +994,7 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
       .X           = Scene->ActiveVectorX,
       .Y           = Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET_WHEEL,
+      .Type        = JET::WHEEL,
       .Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT,
       .Mask        = JTYPE::EXT_MOVEMENT
    };
@@ -1025,23 +1025,23 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
+      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value IS 1)) {
          apply_focus(Self, (extVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 
-      if (input->Type IS JET_WHEEL) {
+      if (input->Type IS JET::WHEEL) {
          if (Self->ActiveVector) {
             pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_wheel_event(Self, lock.obj, input);
          }
       }
-      else if (input->Type IS JET_LEFT_SURFACE) {
+      else if (input->Type IS JET::LEFT_SURFACE) {
          if (Self->ActiveVector) {
             pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else if (input->Type IS JET_ENTERED_SURFACE);
+      else if (input->Type IS JET::ENTERED_SURFACE);
       else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 
@@ -1056,7 +1056,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                event.Y    = Self->ActiveVectorY;
                send_input_events(lock.obj, &event);
 
-               if ((input->Type IS JET_LMB) and ((input->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
+               if ((input->Type IS JET::LMB) and ((input->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
                   Self->ButtonLock = input->Value ? target : 0;
                }
             }
@@ -1138,7 +1138,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else log.warning("Unrecognised movement type %d", input->Type);
+      else log.warning("Unrecognised movement type %d", LONG(input->Type));
    }
 
    if ((cursor != -1) and (!Self->ButtonLock) and (Self->SurfaceID)) {

@@ -347,9 +347,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetInputTypeName</name>
     <category>Input</category>
     <comment>Returns the string name for an input type.</comment>
-    <prototype>CSTRING gfxGetInputTypeName(LONG Type)</prototype>
+    <prototype>CSTRING gfxGetInputTypeName(JET Type)</prototype>
     <input>
-      <param type="LONG" name="Type" lookup="JET">JET type integer.</param>
+      <param type="JET" name="Type" lookup="JET">JET type integer.</param>
     </input>
     <description>
 <p>This function converts JET integer constants to their string equivalent.</p>

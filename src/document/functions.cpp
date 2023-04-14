@@ -1042,7 +1042,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
          // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
       }
 
-      if (input->Type IS JET_LMB) {
+      if (input->Type IS JET::LMB) {
          if (input->Value > 0) {
             Self->LMB = TRUE;
             check_mouse_click(Self, input->X, input->Y);

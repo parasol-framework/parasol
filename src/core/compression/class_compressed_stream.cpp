@@ -211,8 +211,8 @@ static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    CSTREAM_Reset(Self, NULL);
 
    LARGE pos = 0;
-   if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
+   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
    else return log.warning(ERR_Args);
 
    if (pos < 0) return log.warning(ERR_OutOfRange);

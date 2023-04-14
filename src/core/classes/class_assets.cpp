@@ -316,9 +316,9 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
-   if (Args->Position IS POS_START) method = SEEK_SET;
-   else if (Args->Position IS POS_END) method = SEEK_END;
-   else if (Args->Position IS POS_CURRENT) method = SEEK_CUR;
+   if (Args->Position IS POS_START) method = SEEK::SET;
+   else if (Args->Position IS POS_END) method = SEEK::END;
+   else if (Args->Position IS POS_CURRENT) method = SEEK::CUR;
    else return log.warning(ERR_Args);
 
    off_t offset = AAsset_seek(prv->Asset, Args->Offset, method);

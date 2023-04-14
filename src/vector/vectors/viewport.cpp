@@ -65,7 +65,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
             }
          }
       }
-      else if ((event->Type IS JET_LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
+      else if ((event->Type IS JET::LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
          if (event->Value > 0) {
             if (Viewport->Visibility != VIS_VISIBLE) continue;
             Viewport->vpDragging = 1;

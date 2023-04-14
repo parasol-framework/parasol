@@ -130,6 +130,7 @@ enum class PERMIT : ULONG;
 enum class CCF    : ULONG;
 enum class MEM    : ULONG;
 enum class ALF    : UWORD;
+enum class EVG    : LONG;
 
 #define STAT_FOLDER 0x0001
 

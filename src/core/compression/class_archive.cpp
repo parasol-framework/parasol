@@ -401,11 +401,11 @@ static ERROR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
    Log log;
    LARGE pos;
 
-   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, Args->Position);
+   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, LONG(Args->Position));
 
-   if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_END) pos = Self->Size - F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) pos = Self->Position + F2T(Args->Offset);
+   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::END) pos = Self->Size - F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->Position + F2T(Args->Offset);
    else return log.warning(ERR_Args);
 
    if (pos < 0) return log.warning(ERR_OutOfRange);

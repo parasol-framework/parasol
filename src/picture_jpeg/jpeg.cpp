@@ -57,7 +57,7 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
 
    // Read the JPEG file
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
+   acSeek(Self->prvFile, 0.0, SEEK::START);
 
    auto bmp = Self->Bitmap;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
@@ -217,7 +217,7 @@ static ERROR JPEG_Query(extPicture *Self, APTR Void)
       }
    }
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
+   acSeek(Self->prvFile, 0.0, SEEK::START);
    if (!AllocMemory(sizeof(struct jpeg_decompress_struct), MEM::DATA, &cinfo)) {
       auto bmp = Self->Bitmap;
       cinfo->err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);

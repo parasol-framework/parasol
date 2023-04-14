@@ -1913,7 +1913,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
    pf::Log log(__FUNCTION__);
 
    while (Events) {
-      if ((Events->Type IS JET_LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
+      if ((Events->Type IS JET::LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
          // Determine the nearest cursor position to the clicked point.
 
          agg::trans_affine transform;

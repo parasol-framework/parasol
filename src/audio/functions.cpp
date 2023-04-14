@@ -116,7 +116,7 @@ int dsReadData(BaseClass *Self, void *Buffer, int Length) {
 
 void dsSeekData(BaseClass *Self, LONG Offset) {
    if (Self->Class->BaseClassID IS ID_SOUND) {
-      ((objSound *)Self)->seek(Offset, SEEK_START);
+      ((objSound *)Self)->seek(Offset, SEEK::START);
    }
    else return; // Seeking not applicable for the Audio class.
 }

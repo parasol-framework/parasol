@@ -161,7 +161,7 @@ void handle_button_press(XEvent *xevent)
       if (xevent->xbutton.button IS 4) value = -9;
       else value = 9;
 
-      input.Type      = JET_WHEEL;
+      input.Type      = JET::WHEEL;
       input.Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL;
       input.Value     = value;
       input.Timestamp = PreciseTime();
@@ -178,15 +178,15 @@ void handle_button_press(XEvent *xevent)
 
    if ((pointer = gfxAccessPointer())) {
       if (xevent->xbutton.button IS 1) {
-         input.Type  = JET_BUTTON_1;
+         input.Type  = JET::BUTTON_1;
          input.Value = 1;
       }
       else if (xevent->xbutton.button IS 2) {
-         input.Type  = JET_BUTTON_3;
+         input.Type  = JET::BUTTON_3;
          input.Value = 1;
       }
       else if (xevent->xbutton.button IS 3) {
-         input.Type  = JET_BUTTON_2;
+         input.Type  = JET::BUTTON_2;
          input.Value = 1;
       }
       ReleaseObject(pointer);
@@ -234,15 +234,15 @@ void handle_button_release(XEvent *xevent)
    objPointer *pointer;
    if ((pointer = gfxAccessPointer())) {
       if (xevent->xbutton.button IS 1) {
-         input.Type  = JET_BUTTON_1;
+         input.Type  = JET::BUTTON_1;
          input.Value = 0;
       }
       else if (xevent->xbutton.button IS 2) {
-         input.Type  = JET_BUTTON_3;
+         input.Type  = JET::BUTTON_3;
          input.Value = 0;
       }
       else if (xevent->xbutton.button IS 3) {
-         input.Type  = JET_BUTTON_2;
+         input.Type  = JET::BUTTON_2;
          input.Value = 0;
       }
       ReleaseObject(pointer);
@@ -712,11 +712,11 @@ void process_movement(Window Window, LONG X, LONG Y)
       feed.Datatype = DATA_DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
-      input[0].Type      = JET_ABS_X;
+      input[0].Type      = JET::ABS_X;
       input[0].Flags     = JTYPE::NIL;
       input[0].Value     = X;
       input[0].Timestamp = PreciseTime();
-      input[1].Type      = JET_ABS_Y;
+      input[1].Type      = JET::ABS_Y;
       input[1].Flags     = JTYPE::NIL;
       input[1].Value     = Y;
       input[1].Timestamp = input[0].Timestamp;

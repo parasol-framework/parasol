@@ -2550,7 +2550,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             }
          }
       }
-      else if ((event->Type IS JET_LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
+      else if ((event->Type IS JET::LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
          if (event->Value > 0) {
             if (Self->Flags & RNF_DISABLED) continue;
 

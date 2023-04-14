@@ -856,20 +856,20 @@ int ScintillaParasol::KeyDefault(int key, int modifiers)
 
 //********************************************************************************************************************
 
-void ScintillaParasol::panMousePress(int Button, double x, double y)
+void ScintillaParasol::panMousePress(JET Button, double x, double y)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("%.0fx%.0f", x, y);
 
-   if (Button IS JET_LMB) {
+   if (Button IS JET::LMB) {
       // This disables the current selection (effectively eliminating the potential for drag and drop).
 
       SetEmptySelection(CurrentPosition());
       Scintilla::Point point((int)x, (int)y);
       ButtonDown(point, (PreciseTime()/1000LL), scintilla->KeyShift, scintilla->KeyCtrl, scintilla->KeyAlt);
    }
-   else if (Button IS JET_RMB) {
+   else if (Button IS JET::RMB) {
 
 
 
@@ -887,14 +887,14 @@ void ScintillaParasol::panMouseMove(double x, double y)
 
 //********************************************************************************************************************
 
-void ScintillaParasol::panMouseRelease(int Button, double x, double y)
+void ScintillaParasol::panMouseRelease(JET Button, double x, double y)
 {
    pf::Log log(__FUNCTION__);
    Scintilla::Point point((int)x, (int)y);
 
    log.trace("%.0fx%.0f", x, y);
 
-   if (Button IS JET_LMB) {
+   if (Button IS JET::LMB) {
       ButtonUp(point, (PreciseTime()/1000LL), scintilla->KeyCtrl);
    }
 }

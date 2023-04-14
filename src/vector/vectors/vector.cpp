@@ -1088,7 +1088,7 @@ static ERROR VECTOR_SET_Cursor(extVector *Self, LONG Value)
          .X           = x,
          .Y           = y,
          .DeviceID    = 0,
-         .Type        = JET_ABS_X,
+         .Type        = JET::ABS_X,
          .Flags       = JTYPE::MOVEMENT,
          .Mask        = JTYPE::MOVEMENT
       };

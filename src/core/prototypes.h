@@ -65,7 +65,7 @@ ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action);
 void UnsubscribeEvent(APTR Event);
 ERROR BroadcastEvent(APTR Event, LONG EventSize);
 void WaitTime(LONG Seconds, LONG MicroSeconds);
-LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event);
+LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
 LARGE GetResource(RES Resource);
 LARGE SetResource(RES Resource, LARGE Value);

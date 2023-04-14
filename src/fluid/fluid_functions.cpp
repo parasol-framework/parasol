@@ -353,25 +353,25 @@ int fcmd_subscribe_event(lua_State *Lua)
       }
    }
 
-   LONG group_id = 0;
+   EVG group_id = EVG::NIL;
    if ((group_hash) and (subgroup_hash)) {
       switch (group_hash) {
-         case HASH_FILESYSTEM: group_id = EVG_FILESYSTEM; break;
-         case HASH_NETWORK:    group_id = EVG_NETWORK; break;
-         case HASH_USER:       group_id = EVG_USER; break;
-         case HASH_SYSTEM:     group_id = EVG_SYSTEM; break;
-         case HASH_GUI:        group_id = EVG_GUI; break;
-         case HASH_DISPLAY:    group_id = EVG_DISPLAY; break;
-         case HASH_IO:         group_id = EVG_IO; break;
-         case HASH_HARDWARE:   group_id = EVG_HARDWARE; break;
-         case HASH_AUDIO:      group_id = EVG_AUDIO; break;
-         case HASH_POWER:      group_id = EVG_POWER; break;
-         case HASH_CLASS:      group_id = EVG_CLASS; break;
-         case HASH_APP:        group_id = EVG_APP; break;
+         case HASH_FILESYSTEM: group_id = EVG::FILESYSTEM; break;
+         case HASH_NETWORK:    group_id = EVG::NETWORK; break;
+         case HASH_USER:       group_id = EVG::USER; break;
+         case HASH_SYSTEM:     group_id = EVG::SYSTEM; break;
+         case HASH_GUI:        group_id = EVG::GUI; break;
+         case HASH_DISPLAY:    group_id = EVG::DISPLAY; break;
+         case HASH_IO:         group_id = EVG::IO; break;
+         case HASH_HARDWARE:   group_id = EVG::HARDWARE; break;
+         case HASH_AUDIO:      group_id = EVG::AUDIO; break;
+         case HASH_POWER:      group_id = EVG::POWER; break;
+         case HASH_CLASS:      group_id = EVG::CLASS; break;
+         case HASH_APP:        group_id = EVG::APP; break;
       }
    }
 
-   if (!group_id) {
+   if (group_id IS EVG::NIL) {
       luaL_error(Lua, "Invalid group name '%s' in event string.", event);
       return 0;
    }

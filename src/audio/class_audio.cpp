@@ -948,7 +948,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       Self->Volumes[index].Flags |= VCF::MUTE;
    }
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
+   EVENTID evid = GetEventID(EVG::AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
    return ERR_Okay;
@@ -1017,7 +1017,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) Self->Volumes[index].Flags &= ~VCF::MUTE;
    else if ((Args->Flags & SVF::MUTE) != SVF::NIL) Self->Volumes[index].Flags |= VCF::MUTE;
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
+   EVENTID evid = GetEventID(EVG::AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
 

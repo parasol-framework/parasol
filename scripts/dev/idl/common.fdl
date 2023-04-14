@@ -5,7 +5,7 @@ flags("CLIPMODE", { strict=true, comment="Clipboard modes" },
     "COPY: Copy from the clipboard.",
     "PASTE: Paste from the clipboard.")
 
-enum("SEEK", { start=0, comment="Seek positions" },
+enum("SEEK", { type="int", start=0, comment="Seek positions" },
     "START: Use an index at position zero.",
     "CURRENT: Use an index at the end of the last read/write operation.",
     "END: Use an index at the end of the data buffer.",
@@ -149,7 +149,7 @@ flags("MEM", { strict=true, comment="Memory types used by AllocMemory().  The lo
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })
 
-enum("EVG", { start=1, comment="Event categories." }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.fluid and fluid_functions.c, line 493
+enum("EVG", { type="int", start=1, comment="Event categories." }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.fluid and fluid_functions.c, line 493
     "FILESYSTEM: File system events.",
     "NETWORK: Network events.",
     "SYSTEM: System-wide events",
@@ -193,7 +193,7 @@ flags("JTYPE", { strict=true, comment="JTYPE flags are used to categorise input 
     "REPEATED: Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)",
     "DRAG_ITEM: This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.")
 
-enum("JET", { start=1, comment="JET constants are documented in GetInputEvent()" },
+enum("JET", { type="int", start=1, comment="JET constants are documented in GetInputEvent()" },
     "DIGITAL_X: Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.",
     "DIGITAL_Y: Vertical digital movement from a relative location.",
     "BUTTON_1|LMB: Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).",

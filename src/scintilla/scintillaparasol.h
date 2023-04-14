@@ -80,8 +80,8 @@ public:
    virtual void panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont);
    virtual void panIdleEvent();
    virtual void panKeyDown(int Key, KQ);
-   virtual void panMousePress(int ButtonFlags, double x, double y);
-   virtual void panMouseRelease(int ButtonFlags, double x, double y);
+   virtual void panMousePress(JET ButtonFlags, double x, double y);
+   virtual void panMouseRelease(JET ButtonFlags, double x, double y);
    virtual void panMouseMove(double x, double y);
    virtual void panResized();
    virtual void panScrollToX(double x);

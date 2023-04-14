@@ -1987,9 +1987,9 @@ Seek: Changes the current byte position for read/write operations.
 
 static ERROR BITMAP_Seek(extBitmap *Self, struct acSeek *Args)
 {
-   if (Args->Position IS SEEK_START) Self->Position = (LONG)Args->Offset;
-   else if (Args->Position IS SEEK_END) Self->Position = (LONG)(Self->Size - Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) Self->Position = (LONG)(Self->Position + Args->Offset);
+   if (Args->Position IS SEEK::START) Self->Position = (LONG)Args->Offset;
+   else if (Args->Position IS SEEK::END) Self->Position = (LONG)(Self->Size - Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) Self->Position = (LONG)(Self->Position + Args->Offset);
    else return ERR_Args;
 
    if (Self->Position > Self->Size) Self->Position = Self->Size;

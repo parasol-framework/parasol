@@ -94,50 +94,50 @@ static void android_term_window(LONG);
 //********************************************************************************************************************
 // Note: These values are used as the input masks
 
-const InputType glInputType[JET_END] = {
+const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET_DIGITAL_X
-   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET_DIGITAL_Y
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_2
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_3
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_4
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_5
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_6
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_7
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_8
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_9
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_10
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_TRIGGER_LEFT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_TRIGGER_RIGHT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_START
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_BUTTON_SELECT
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_LEFT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_LEFT_BUMPER_2
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_RIGHT_BUMPER_1
-   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET_RIGHT_BUMPER_2
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET_ANALOG_X
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET_ANALOG_Y
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET_ANALOG_Z
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET_ANALOG2_X
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET_ANALOG2_Y
-   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET_ANALOG2_Z
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_WHEEL
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_WHEEL_TILT
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_PEN_TILT_VERTICAL
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_PEN_TILT_HORIZONTAL
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET_ABS_X
-   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET_ABS_Y
-   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET_ENTER_SURFACE
-   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET_LEAVE_SURFACE
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_PRESSURE
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_DEVICE_TILT_X
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_DEVICE_TILT_Y
-   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET_DEVICE_TILT_Z
-   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK }     // JET_DISPLAY_EDGE
+   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_X
+   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_Y
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_3
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_4
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_5
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_6
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_7
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_8
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_9
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_10
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_LEFT
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_RIGHT
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_START
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_SELECT
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_1
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_2
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_1
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_2
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_X
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Y
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Z
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_X
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Y
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Z
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_VERTICAL
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_HORIZONTAL
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_X
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_Y
+   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET::ENTER_SURFACE
+   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET::LEAVE_SURFACE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PRESSURE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_X
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Y
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Z
+   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK }     // JET::DISPLAY_EDGE
 };
 
-const CSTRING glInputNames[JET_END] = {
+const CSTRING glInputNames[LONG(JET::END)] = {
    "",
    "DIGITAL_X",
    "DIGITAL_Y",

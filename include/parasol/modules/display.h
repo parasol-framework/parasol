@@ -562,13 +562,13 @@ class objBitmap : public BaseClass {
       struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }
    inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
@@ -1615,7 +1615,7 @@ struct DisplayBase {
    ERROR (*_GetCursorPos)(DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 ** Info);
    LONG (*_GetDisplayType)(void);
-   CSTRING (*_GetInputTypeName)(LONG Type);
+   CSTRING (*_GetInputTypeName)(JET Type);
    OBJECTID (*_GetModalSurface)(void);
    ERROR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetSurfaceCoords)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
@@ -1662,7 +1662,7 @@ inline ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size) { return Disp
 inline ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetCursorPos(X,Y); }
 inline ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
 inline LONG gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
-inline CSTRING gfxGetInputTypeName(LONG Type) { return DisplayBase->_GetInputTypeName(Type); }
+inline CSTRING gfxGetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
 inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
 inline ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
 inline ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }

@@ -184,12 +184,12 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
          file->read(&mz_header, sizeof(mz_header));
 
          if (mz_header.magic IS ID_WINMZ) {
-            file->seek(mz_header.lfanew, SEEK_START);
+            file->seek(mz_header.lfanew, SEEK::START);
 
             winne_header_fields ne_header;
             if ((!file->read(&ne_header, sizeof(ne_header))) and (ne_header.magic IS ID_WINNE)) {
                ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-               file->seek(res_offset, SEEK_START);
+               file->seek(res_offset, SEEK::START);
 
                // Count the number of fonts in the file
 
@@ -210,7 +210,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                      break;
                   }
 
-                  file->seek(4 + (count * 12), SEEK_CURRENT);
+                  file->seek(4 + (count * 12), SEEK::CURRENT);
                }
 
                if ((!font_count) or (!font_offset)) {
@@ -218,7 +218,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                   return ERR_Failed;
                }
 
-               file->seek(font_offset, SEEK_START);
+               file->seek(font_offset, SEEK::START);
 
                // Scan the list of available fonts to find the closest point size for our font
 
@@ -230,14 +230,14 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                   flReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
                   fonts[i].Size   = size<<size_shift;
-                  file->seek(8, SEEK_CURRENT);
+                  file->seek(8, SEEK::CURRENT);
                }
 
                LONG abs = 0x7fff;
                LONG wfi = 0;
                winfnt_header_fields face;
                for (LONG i=0; i < font_count; i++) {
-                  file->seek((DOUBLE)fonts[i].Offset, SEEK_START);
+                  file->seek((DOUBLE)fonts[i].Offset, SEEK::START);
 
                   winfnt_header_fields header;
                   if (!file->read(&header, sizeof(header))) {

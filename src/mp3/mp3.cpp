@@ -555,10 +555,10 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
    LARGE offset;
-   if (Args->Position IS SEEK_START)         offset = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_END)      offset = Self->Length - F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
-   else if (Args->Position IS SEEK_RELATIVE) offset = Self->Length * Args->Offset;
+   if (Args->Position IS SEEK::START)         offset = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::END)      offset = Self->Length - F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
+   else if (Args->Position IS SEEK::RELATIVE) offset = Self->Length * Args->Offset;
    else return log.warning(ERR_Args);
 
    if (offset IS Self->Position) return ERR_Okay;

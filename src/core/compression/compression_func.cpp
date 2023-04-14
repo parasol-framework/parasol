@@ -260,7 +260,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    if (!Self->Files.empty()) {
       auto &chain = Self->Files.back();
 
-      if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
+      if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) return log.warning(ERR_Seek);
 
       UWORD namelen, extralen;
       if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
@@ -268,7 +268,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
       dataoffset = chain.Offset + HEAD_LENGTH + namelen + extralen + chain.CompressedSize;
    }
 
-   if (acSeek(Self->FileIO, dataoffset, SEEK_START) != ERR_Okay) return ERR_Seek;
+   if (acSeek(Self->FileIO, dataoffset, SEEK::START) != ERR_Okay) return ERR_Seek;
 
    // Initialise the compression algorithm
 
@@ -404,7 +404,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    // Update the header that we earlier wrote for our file entry.  Note that the header stores only some of the file's
    // meta information.  The majority is stored in the directory at the end of the zip file.
 
-   if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK_START) != ERR_Okay) return ERR_Seek;
+   if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK::START) != ERR_Okay) return ERR_Seek;
 
    UBYTE header[sizeof(glHeader)];
    CopyMemory(glHeader, header, sizeof(glHeader));
@@ -490,7 +490,7 @@ static ERROR fast_scan_zip(extCompression *Self)
 
    log.traceBranch("");
 
-   if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK_END) != ERR_Okay) return ERR_Seek; // Surface error, fail
+   if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK::END) != ERR_Okay) return ERR_Seek; // Surface error, fail
    if (acRead(Self->FileIO, &tail, TAIL_LENGTH, NULL) != ERR_Okay) return ERR_Read; // Surface error, fail
 
    if (0x06054b50 != ((ULONG *)&tail)[0]) {
@@ -504,7 +504,7 @@ static ERROR fast_scan_zip(extCompression *Self)
    tail.listoffset = le32_cpu(tail.listoffset);
 #endif
 
-   if (acSeek(Self->FileIO, tail.listoffset, SEEK_START) != ERR_Okay) return ERR_Seek;
+   if (acSeek(Self->FileIO, tail.listoffset, SEEK::START) != ERR_Okay) return ERR_Seek;
 
    zipentry *list, *scan;
    LONG total_files = 0;
@@ -592,7 +592,7 @@ static ERROR scan_zip(extCompression *Self)
 
    log.traceBranch("");
 
-   if (acSeek(Self->FileIO, 0.0, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
+   if (acSeek(Self->FileIO, 0.0, SEEK::START) != ERR_Okay) return log.warning(ERR_Seek);
 
    LONG type, result;
    LONG total_files = 0;
@@ -600,7 +600,7 @@ static ERROR scan_zip(extCompression *Self)
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected
 
-         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK_CURRENT) != ERR_Okay) return log.warning(ERR_Seek);
+         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK::CURRENT) != ERR_Okay) return log.warning(ERR_Seek);
 
          struct {
             ULONG compressedsize;

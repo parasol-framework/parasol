@@ -880,9 +880,9 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <name>GetEventID</name>
     <category>Events</category>
     <comment>Generates unique event ID's suitable for event broadcasting.</comment>
-    <prototype>LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)</prototype>
+    <prototype>LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)</prototype>
     <input>
-      <param type="LONG" name="Group" lookup="EVG">The group to which the event belongs.</param>
+      <param type="EVG" name="Group" lookup="EVG">The group to which the event belongs.</param>
       <param type="CSTRING" name="SubGroup">The sub-group to which the event belongs.</param>
       <param type="CSTRING" name="Event">The name of the event.</param>
     </input>
@@ -3681,7 +3681,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="X" type="DOUBLE">Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
       <field name="Y" type="DOUBLE">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from</field>
-      <field name="Type" type="LONG" lookup="JET">JET constant that describes the event</field>
+      <field name="Type" type="JET" lookup="JET">JET constant that describes the event</field>
       <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object</field>
       <field name="Mask" type="JTYPE" lookup="JTYPE">Mask to use for checking against subscribers</field>
     </struct>
@@ -3758,7 +3758,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
       <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object</field>
-      <field name="Type" type="LONG" lookup="JET">JET constant</field>
+      <field name="Type" type="JET" lookup="JET">JET constant</field>
     </struct>
 
     <struct name="dcKeyEntry" comment="Data feed structure for Keypress">

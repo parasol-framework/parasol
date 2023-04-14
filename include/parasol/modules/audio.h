@@ -376,13 +376,13 @@ class objSound : public BaseClass {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);

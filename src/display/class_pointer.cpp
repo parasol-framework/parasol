@@ -54,10 +54,10 @@ inline void add_input(CSTRING Debug, InputEvent &input, JTYPE Flags, OBJECTID Re
 {
    //pf::Log log(__FUNCTION__);
    //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
-   //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
+   //   (input->Type < JET::END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
-   input.Mask        = glInputType[input.Type].Mask;
-   input.Flags       = glInputType[input.Type].Flags | Flags;
+   input.Mask        = glInputType[LONG(input.Type)].Mask;
+   input.Flags       = glInputType[LONG(input.Type)].Flags | Flags;
    input.RecipientID = RecipientID;
    input.OverID      = OverID;
    input.AbsX        = AbsX;
@@ -133,13 +133,13 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
          }
 
          for (LONG i=sizeof(struct dcDeviceInput); i <= Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
-            if ((input->Type < 1) or (input->Type >= JET_END)) continue;
+            if ((LONG(input->Type) < 1) or (LONG(input->Type) >= LONG(JET::END))) continue;
 
-            input->Flags = glInputType[input->Type].Flags;
+            input->Flags = glInputType[LONG(input->Type)].Flags;
 
-            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
+            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET::END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
-            if (input->Type IS JET_WHEEL) process_ptr_wheel(Self, input);
+            if (input->Type IS JET::WHEEL) process_ptr_wheel(Self, input);
             else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) process_ptr_button(Self, input);
             else process_ptr_movement(Self, input);
          }
@@ -170,8 +170,8 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
    auto uiflags = JTYPE::NIL;
 
-   if ((userinput.Type >= JET_BUTTON_1) and (userinput.Type <= JET_BUTTON_10)) {
-      bi = userinput.Type - JET_BUTTON_1;
+   if ((userinput.Type >= JET::BUTTON_1) and (userinput.Type <= JET::BUTTON_10)) {
+      bi = LONG(userinput.Type) - LONG(JET::BUTTON_1);
       buttonflag = Self->ButtonOrderFlags[bi];
    }
    else {
@@ -313,7 +313,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputEvent msg;
-   msg.Type        = JET_WHEEL;
+   msg.Type        = JET::WHEEL;
    msg.Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT | Input->Flags;
    msg.Mask        = JTYPE::EXT_MOVEMENT;
    msg.Value       = Input->Value;
@@ -369,12 +369,12 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
    // All X/Y movement passed through the pointer object must be expressed in absolute coordinates.
 
-   if ((userinput.Type IS JET_DIGITAL_X) or (userinput.Type IS JET_ANALOG_X)) {
-      userinput.Type  = JET_ABS_X;
+   if ((userinput.Type IS JET::DIGITAL_X) or (userinput.Type IS JET::ANALOG_X)) {
+      userinput.Type  = JET::ABS_X;
       userinput.Value += Self->X;
    }
-   else if ((userinput.Type IS JET_DIGITAL_Y) or (userinput.Type IS JET_ANALOG_Y)) {
-      userinput.Type = JET_ABS_Y;
+   else if ((userinput.Type IS JET::DIGITAL_Y) or (userinput.Type IS JET::ANALOG_Y)) {
+      userinput.Type = JET::ABS_Y;
       userinput.Value += Self->Y;
    }
 
@@ -382,8 +382,9 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    DOUBLE current_x = Self->X;
    DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
-      case JET_ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
-      case JET_ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
+      case JET::ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
+      case JET::ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
+      default: break;
    }
 
    if (!moved) {
@@ -1117,7 +1118,7 @@ static bool get_over_object(extPointer *Self)
          .X           = Self->X - li_left,
          .Y           = Self->Y - li_top,
          .DeviceID    = Self->UID,
-         .Type        = JET_LEFT_SURFACE,
+         .Type        = JET::LEFT_SURFACE,
          .Flags       = JTYPE::FEEDBACK,
          .Mask        = JTYPE::FEEDBACK
       };
@@ -1125,7 +1126,7 @@ static bool get_over_object(extPointer *Self)
       const std::lock_guard<std::recursive_mutex> lock(glInputLock);
       glInputEvents.push_back(input);
 
-      input.Type        = JET_ENTERED_SURFACE;
+      input.Type        = JET::ENTERED_SURFACE;
       input.Value       = li_objectid;
       input.RecipientID = li_objectid; // Recipient is the surface we are entering
       glInputEvents.push_back(input);
@@ -1202,7 +1203,7 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
                input.Y = Self->OverY;
             }
 
-            input.Type        = JET_BUTTON_1 + i;
+            input.Type        = JET(LONG(JET::BUTTON_1) + i);
             input.Mask        = JTYPE::BUTTON|JTYPE::REPEATED;
             input.Flags       = JTYPE::BUTTON|JTYPE::REPEATED;
             input.Value       = 1.0; // Self->Buttons[i].LastValue

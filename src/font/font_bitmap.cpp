@@ -98,7 +98,7 @@ public:
 
       // Read character information from the file
 
-      pFile->seek(pWinFont.Offset + 118, SEEK_START);
+      pFile->seek(pWinFont.Offset + 118, SEEK::START);
 
       ClearMemory(Chars, sizeof(Chars));
       if (pFace.version IS 0x300) {
@@ -133,7 +133,7 @@ public:
 
       if (!AllocMemory(size, MEM::UNTRACKED, &mData)) {
          LONG result;
-         pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK_START);
+         pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK::START);
 
          if ((!pFile->read(mData, size, &result)) and (result IS size)) {
             // Convert the graphics format for wide characters from column-first format to row-first format.

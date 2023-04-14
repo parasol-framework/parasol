@@ -49,12 +49,12 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
       gfxReleasePointer(pointer);
 
       struct dcDeviceInput joy[2];
-      joy[0].Type  = JET_ABS_X;
+      joy[0].Type  = JET::ABS_X;
       joy[0].Flags = JTYPE::NIL;
       joy[0].Value = AbsX;
       joy[0].Timestamp = PreciseTime();
 
-      joy[1].Type  = JET_ABS_Y;
+      joy[1].Type  = JET::ABS_Y;
       joy[1].Flags = JTYPE::NIL;
       joy[1].Value = AbsY;
       joy[1].Timestamp = joy[0].Timestamp;
@@ -78,7 +78,7 @@ void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
    }
 
    struct dcDeviceInput joy;
-   joy.Type      = JET_WHEEL;
+   joy.Type      = JET::WHEEL;
    joy.Flags     = JTYPE::NIL;
    joy.Value     = Wheel;
    joy.Timestamp = PreciseTime();
@@ -115,7 +115,7 @@ void MsgButtonPress(LONG button, LONG State)
       LARGE timestamp = PreciseTime();
 
       if (button & 0x0001) {
-         joy[i].Type  = JET_BUTTON_1;
+         joy[i].Type  = JET::BUTTON_1;
          joy[i].Flags = JTYPE::NIL;
          joy[i].Value = State;
          joy[i].Timestamp = timestamp;
@@ -123,7 +123,7 @@ void MsgButtonPress(LONG button, LONG State)
       }
 
       if (button & 0x0002) {
-         joy[i].Type  = JET_BUTTON_2;
+         joy[i].Type  = JET::BUTTON_2;
          joy[i].Flags = JTYPE::NIL;
          joy[i].Value = State;
          joy[i].Timestamp = timestamp;
@@ -131,7 +131,7 @@ void MsgButtonPress(LONG button, LONG State)
       }
 
       if (button & 0x0004) {
-         joy[i].Type  = JET_BUTTON_3;
+         joy[i].Type  = JET::BUTTON_3;
          joy[i].Flags = JTYPE::NIL;
          joy[i].Value = State;
          joy[i].Timestamp = timestamp;
