@@ -43,14 +43,14 @@ ERROR fs_watch_path(extFile *File)
       // Add a watch for this file
 
       LONG nflags = 0;
-      if (File->prvWatch->Flags & MFF_READ) nflags |= IN_ACCESS;
-      if (File->prvWatch->Flags & MFF_MODIFY) nflags |= IN_MODIFY;
-      if (File->prvWatch->Flags & MFF_CREATE) nflags |= IN_CREATE;
-      if (File->prvWatch->Flags & MFF_DELETE) nflags |= IN_DELETE | IN_DELETE_SELF;
-      if (File->prvWatch->Flags & MFF_OPENED) nflags |= IN_OPEN;
-      if (File->prvWatch->Flags & MFF_ATTRIB) nflags |= IN_ATTRIB;
-      if (File->prvWatch->Flags & MFF_CLOSED) nflags |= IN_CLOSE_WRITE | IN_CLOSE_NOWRITE;
-      if (File->prvWatch->Flags & (MFF_MOVED|MFF_RENAME))  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
+      if ((File->prvWatch->Flags & MFF::READ) != MFF::NIL) nflags |= IN_ACCESS;
+      if ((File->prvWatch->Flags & MFF::MODIFY) != MFF::NIL) nflags |= IN_MODIFY;
+      if ((File->prvWatch->Flags & MFF::CREATE) != MFF::NIL) nflags |= IN_CREATE;
+      if ((File->prvWatch->Flags & MFF::DELETE) != MFF::NIL) nflags |= IN_DELETE | IN_DELETE_SELF;
+      if ((File->prvWatch->Flags & MFF::OPENED) != MFF::NIL) nflags |= IN_OPEN;
+      if ((File->prvWatch->Flags & MFF::ATTRIB) != MFF::NIL) nflags |= IN_ATTRIB;
+      if ((File->prvWatch->Flags & MFF::CLOSED) != MFF::NIL) nflags |= IN_CLOSE_WRITE | IN_CLOSE_NOWRITE;
+      if ((File->prvWatch->Flags & (MFF::MOVED|MFF::RENAME)) != MFF::NIL)  nflags |= IN_MOVED_FROM | IN_MOVED_TO;
 
       LONG handle = inotify_add_watch(glInotify, path, nflags);
 
@@ -138,10 +138,10 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
          // Apply the user's filtering rules, if any
 
-         if (glFileMonitor[i].Flags & MFF_FOLDER) {
+         if ((glFileMonitor[i].Flags & MFF::FOLDER) != MFF::NIL) {
             if (!(event->mask & IN_ISDIR)) break;
          }
-         else if (glFileMonitor[i].Flags & MFF_FILE) {
+         else if ((glFileMonitor[i].Flags & MFF::FILE) != MFF::NIL) {
             if (event->mask & IN_ISDIR) break;
          }
 
@@ -159,7 +159,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
             UBYTE fnbuffer[256];
             if ((path[0] IS '/') and (path[1] IS 0)) path = NULL;
-            else if ((glFileMonitor[i].Flags & MFF_QUALIFY) and (event->mask & IN_ISDIR)) {
+            else if (((glFileMonitor[i].Flags & MFF::QUALIFY) != MFF::NIL) and (event->mask & IN_ISDIR)) {
                LONG j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
                fnbuffer[j++] = '/';
                fnbuffer[j] = 0;
@@ -168,29 +168,27 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
          }
          else path = NULL;
 
-         LONG flags = 0L;
-         if (event->mask & IN_Q_OVERFLOW) {
-            log.warning("A buffer overflow has occurred in the file monitor.");
-         }
-         if (event->mask & IN_ACCESS) flags |= MFF_READ;
-         if (event->mask & IN_MODIFY) flags |= MFF_MODIFY;
-         if (event->mask & IN_CREATE) flags |= MFF_CREATE;
-         if (event->mask & IN_DELETE) flags |= MFF_DELETE;
-         if (event->mask & IN_DELETE_SELF) flags |= MFF_DELETE|MFF_SELF;
-         if (event->mask & IN_OPEN)   flags |= MFF_OPENED;
-         if (event->mask & IN_ATTRIB) flags |= MFF_ATTRIB;
-         if (event->mask & (IN_CLOSE_WRITE|IN_CLOSE_NOWRITE)) flags |= MFF_CLOSED;
-         if (event->mask & (IN_MOVED_FROM|IN_MOVED_TO)) flags |= MFF_MOVED;
+         MFF flags = MFF::NIL;
+         if (event->mask & IN_Q_OVERFLOW) log.warning("A buffer overflow has occurred in the file monitor.");
+         if (event->mask & IN_ACCESS) flags |= MFF::READ;
+         if (event->mask & IN_MODIFY) flags |= MFF::MODIFY;
+         if (event->mask & IN_CREATE) flags |= MFF::CREATE;
+         if (event->mask & IN_DELETE) flags |= MFF::DELETE;
+         if (event->mask & IN_DELETE_SELF) flags |= MFF::DELETE|MFF::SELF;
+         if (event->mask & IN_OPEN)   flags |= MFF::OPENED;
+         if (event->mask & IN_ATTRIB) flags |= MFF::ATTRIB;
+         if (event->mask & (IN_CLOSE_WRITE|IN_CLOSE_NOWRITE)) flags |= MFF::CLOSED;
+         if (event->mask & (IN_MOVED_FROM|IN_MOVED_TO)) flags |= MFF::MOVED;
 
-         if (event->mask & IN_UNMOUNT) flags |= MFF_UNMOUNT;
+         if (event->mask & IN_UNMOUNT) flags |= MFF::UNMOUNT;
 
-         if (event->mask & IN_ISDIR) flags |= MFF_FOLDER;
-         else flags |= MFF_FILE;
+         if (event->mask & IN_ISDIR) flags |= MFF::FOLDER;
+         else flags |= MFF::FILE;
 
          ERROR error;
-         if (flags) {
+         if (flags != MFF::NIL) {
             if (glFileMonitor[i].Routine.Type IS CALL_STDC) {
-               ERROR (*routine)(extFile *File, CSTRING path, LARGE Custom, LONG Flags);
+               ERROR (*routine)(extFile *File, CSTRING path, LARGE Custom, MFF Flags);
                routine = glFileMonitor[i].Routine.StdC.Routine;
 
                OBJECTPTR context;
@@ -208,7 +206,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                      { "File",   FD_STRING,  { .Address = glFileMonitor[i].File } },
                      { "Path",   FD_STRING,  { .Address = path } },
                      { "Custom", FD_LARGE,   { .Large = glFileMonitor[i].Custom } },
-                     { "Flags",  FD_LONG,    { .Long = flags } }
+                     { "Flags",  FD_LONG,    { .Long = LONG(flags) } }
                   };
                   if (scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
@@ -217,7 +215,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
             if (error IS ERR_Terminate) Action(MT_FlWatch, glFileMonitor[i].File, NULL);
          }
-         else log.warning("Flags $%.8x not recognised.", flags);
+         else log.warning("Flags $%.8x not recognised.", LONG(flags));
          break;
       }
 
@@ -318,3 +316,4 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 }
 
 #endif
+
