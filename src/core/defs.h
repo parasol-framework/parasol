@@ -918,7 +918,7 @@ extern "C" {
 
 //********************************************************************************************************************
 
-ERROR AccessSemaphore(LONG, LONG, LONG);
+ERROR AccessSemaphore(LONG, LONG, SMF);
 ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
