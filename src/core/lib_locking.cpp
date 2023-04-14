@@ -961,7 +961,7 @@ AllocMemory
 ERROR AllocSharedMutex(CSTRING Name, APTR *Result)
 {
    LONG sem_id;
-   ERROR error = AllocSemaphore(Name, 1, 0, &sem_id);
+   ERROR error = AllocSemaphore(Name, 1, SMF::NIL, &sem_id);
    if (!error) {
       *Result = (APTR)(MAXINT)sem_id;
       return ERR_Okay;
