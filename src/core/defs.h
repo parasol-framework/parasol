@@ -922,7 +922,7 @@ ERROR AccessSemaphore(LONG, LONG, LONG);
 ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
 ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR pReleaseSemaphore(LONG, LONG);
+ERROR pReleaseSemaphore(LONG, SMF);
 
 ERROR fs_closedir(struct DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);

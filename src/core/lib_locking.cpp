@@ -1471,7 +1471,7 @@ ptr Mutex: Reference to a locked mutex.
 #ifdef __unix__
 void UnlockSharedMutex(APTR Mutex)
 {
-   pReleaseSemaphore((MAXINT)Mutex, 0);
+   pReleaseSemaphore((MAXINT)Mutex, SMF::NIL);
 }
 #elif _WIN32 // Refer to windows.c UnlockSharedMutex()
 #else
