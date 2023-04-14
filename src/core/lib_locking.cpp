@@ -1093,7 +1093,7 @@ TimeOut
 #ifdef __unix__
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)
 {
-   return AccessSemaphore((MAXINT)Mutex, MilliSeconds, 0);
+   return AccessSemaphore((MAXINT)Mutex, MilliSeconds, SMF::NIL);
 }
 #elif _WIN32
 // Refer to windows.c LockMutex()
