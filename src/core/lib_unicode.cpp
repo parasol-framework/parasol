@@ -418,7 +418,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
             buffersize = 4096;
             if (buffersize < in) buffersize = in + 1024;
 
-            if (AllocMemory(buffersize, MEM_STRING|MEM_NO_CLEAR, (APTR *)&glIconvBuffer, NULL) != ERR_Okay) {
+            if (AllocMemory(buffersize, MEM::STRING|MEM::NO_CLEAR, (APTR *)&glIconvBuffer, NULL) != ERR_Okay) {
                tlContext = context;
                return NULL;
             }

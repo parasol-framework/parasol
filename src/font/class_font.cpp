@@ -933,7 +933,7 @@ static ERROR SET_Tabs(extFont *Self, WORD *Tabs, LONG Elements)
 
    if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
-   if (!AllocMemory(sizeof(WORD) * Elements, MEM_NO_CLEAR, &Self->prvTabs)) {
+   if (!AllocMemory(sizeof(WORD) * Elements, MEM::NO_CLEAR, &Self->prvTabs)) {
       CopyMemory(Tabs, Self->prvTabs, sizeof(WORD) * Elements);
       Self->prvTotalTabs = Elements;
       return ERR_Okay;
@@ -1551,7 +1551,7 @@ static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
 
                   if (bmp->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
                      LONG size = bmp->bitmap.pitch * bmp->bitmap.rows;
-                     if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &Glyph->Outline)) {
+                     if (!AllocMemory(size, MEM::NO_CLEAR|MEM::UNTRACKED, &Glyph->Outline)) {
                         CopyMemory(bmp->bitmap.buffer, Glyph->Outline, size);
                         Glyph->OutlineTop       = bmp->top;
                         Glyph->OutlineLeft      = bmp->left;
@@ -1609,7 +1609,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
          if (!FT_Render_Glyph(face->glyph, rendermode)) {
             if (face->glyph->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
                LONG size = face->glyph->bitmap.pitch * face->glyph->bitmap.rows;
-               if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &glyph->Data)) {
+               if (!AllocMemory(size, MEM::NO_CLEAR|MEM::UNTRACKED, &glyph->Data)) {
                   CopyMemory(face->glyph->bitmap.buffer, glyph->Data, size);
                   glyph->Top    = face->glyph->bitmap_top;
                   glyph->Left   = face->glyph->bitmap_left;
@@ -1671,7 +1671,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
       if (!GetBitmap) return key_glyph;
 
       LONG size = face->glyph->bitmap.pitch * face->glyph->bitmap.rows;
-      if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &key_glyph->Data)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR|MEM::UNTRACKED, &key_glyph->Data)) {
          CopyMemory(face->glyph->bitmap.buffer, key_glyph->Data, size);
          return key_glyph;
       }

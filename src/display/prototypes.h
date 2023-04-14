@@ -42,7 +42,7 @@ ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG 
 ERROR gfxSetHostOption(LONG Option, LARGE Value);
 OBJECTID gfxSetModalSurface(OBJECTID Surface);
 ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
-ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle);
+ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
 void gfxSync(extBitmap * Bitmap);
 ERROR gfxUnlockBitmap(OBJECTID Surface, extBitmap * Bitmap);
 ERROR gfxUnlockCursor(OBJECTID Surface);

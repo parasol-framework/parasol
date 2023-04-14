@@ -102,7 +102,7 @@ static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
 {
    if (Value) {
       auto callback = make_function_stdc(consume_input_events);
-      if (!gfxSubscribeInput(&callback, Self->UID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
+      if (!gfxSubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle)) {
          Self->DragID = Value;
          return ERR_Okay;
       }

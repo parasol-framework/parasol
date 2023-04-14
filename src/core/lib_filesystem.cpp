@@ -1716,7 +1716,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
       APTR data;
       error = ERR_Okay;
-      if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
+      if (!AllocMemory(bufsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL)) {
          #define STREAM_TIMEOUT (10000LL)
 
          LARGE time = (PreciseTime() / 1000LL);
@@ -2055,7 +2055,7 @@ ERROR fs_copy(CSTRING Source, CSTRING Dest, FUNCTION *Callback, BYTE Move)
 
          LONG bufsize = ((Callback) and (Callback->Type)) ? 65536 : 524288;
          error = ERR_Okay;
-         if (!AllocMemory(bufsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
+         if (!AllocMemory(bufsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL)) {
             while ((len = read(handle, data, bufsize)) > 0) {
                LONG result;
                if ((result = write(dhandle, data, len)) IS -1) {

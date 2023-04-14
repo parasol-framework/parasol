@@ -46,7 +46,7 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM_DATA|MEM_MANAGED, &vector) != ERR_Okay) return NULL;
+   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR_Okay) return NULL;
    set_memory_manager(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;

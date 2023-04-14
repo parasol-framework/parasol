@@ -677,7 +677,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer) != ERR_Okay) {
+      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -717,7 +717,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
             if (total_length > queue->Length) {
                log.trace("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer)) {
+               if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
@@ -1314,7 +1314,7 @@ static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
       }
       else return ERR_ReallocMemory;
    }
-   else if (!AllocMemory(Length, MEM_NO_CLEAR, &Queue->Buffer)) {
+   else if (!AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer)) {
       log.trace("Allocated new buffer of %d bytes.", Length);
       Queue->Index = 0;
       Queue->Length = Length;

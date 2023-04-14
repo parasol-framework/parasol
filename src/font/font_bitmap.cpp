@@ -131,7 +131,7 @@ public:
 
       LONG size = pFace.file_size - pFace.bits_offset;
 
-      if (!AllocMemory(size, MEM_UNTRACKED, &mData)) {
+      if (!AllocMemory(size, MEM::UNTRACKED, &mData)) {
          LONG result;
          pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK_START);
 
@@ -172,7 +172,7 @@ public:
          }
 
          UBYTE *buffer;
-         if (!AllocMemory(size, MEM_UNTRACKED, &buffer)) {
+         if (!AllocMemory(size, MEM::UNTRACKED, &buffer)) {
             LONG pos = 0;
             for (LONG i=0; i < 256; i++) {
                if (Chars[i].Width) {
@@ -215,7 +215,7 @@ public:
          }
 
          UBYTE *buffer;
-         if (!AllocMemory(size, MEM_UNTRACKED, &buffer)) {
+         if (!AllocMemory(size, MEM::UNTRACKED, &buffer)) {
             LONG pos = 0;
             for (LONG i=0; i < 256; i++) {
                if (Chars[i].Width) {
@@ -262,7 +262,7 @@ public:
       }
 
       UBYTE *buffer;
-      if (AllocMemory(size, MEM_UNTRACKED, &buffer) != ERR_Okay) return NULL;
+      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR_Okay) return NULL;
 
       LONG pos = 0;
       for (WORD i=0; i < 256; i++) {

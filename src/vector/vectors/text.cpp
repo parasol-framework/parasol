@@ -209,7 +209,7 @@ static void generate_text_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
 static void reset_font(extVectorText *);
 static ERROR text_input_events(extVector *, const InputEvent *);
-static ERROR text_focus_event(extVector *, LONG);
+static ERROR text_focus_event(extVector *, FM);
 
 //********************************************************************************************************************
 
@@ -303,7 +303,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
       pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
       if (focus.granted()) {
          auto callback = make_function_stdc(text_focus_event);
-         vecSubscribeFeedback(*focus, 0, &callback);
+         vecSubscribeFeedback(*focus, FM::NIL, &callback);
       }
    }
 
@@ -323,7 +323,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
          pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
          if (focus.granted()) {
             auto callback = make_function_stdc(text_focus_event);
-            vecSubscribeFeedback(*focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
+            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &callback);
          }
       }
 
@@ -343,7 +343,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 
       if (Self->ParentView) {
          auto callback = make_function_stdc(text_input_events);
-         vecSubscribeInput(Self->ParentView, JTYPE_BUTTON, &callback);
+         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, &callback);
       }
    }
 
@@ -501,7 +501,7 @@ static ERROR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
    if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDX)) {
+      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX)) {
          CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
          Self->txTotalDX = Elements;
          reset_path(Self);
@@ -532,7 +532,7 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
    if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDY)) {
+      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY)) {
          CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
          Self->txTotalDY = Elements;
          reset_path(Self);
@@ -920,7 +920,7 @@ static ERROR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
 
-   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txRotate)) {
+   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate)) {
       CopyMemory(Values, Self->txRotate, Elements * sizeof(DOUBLE));
       Self->txTotalRotate = Elements;
       reset_path(Self);
@@ -1863,11 +1863,11 @@ static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG 
 
 //********************************************************************************************************************
 
-static ERROR text_focus_event(extVector *Vector, LONG Event)
+static ERROR text_focus_event(extVector *Vector, FM Event)
 {
    auto Self = (extVectorText *)CurrentContext();
 
-   if (Event & FM_HAS_FOCUS) {
+   if ((Event & FM::HAS_FOCUS) != FM::NIL) {
       if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
          acMoveToFront(Self->txCursor.vector);
 
@@ -1887,7 +1887,7 @@ static ERROR text_focus_event(extVector *Vector, LONG Event)
          acDraw(Self);
       }
    }
-   else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
+   else if ((Event & (FM::LOST_FOCUS|FM::CHILD_HAS_FOCUS)) != FM::NIL) {
       if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS_HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
       if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
@@ -1913,7 +1913,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
    pf::Log log(__FUNCTION__);
 
    while (Events) {
-      if ((Events->Type IS JET_LMB) and (!(Events->Flags & JTYPE_REPEATED)) and (Events->Value IS 1)) {
+      if ((Events->Type IS JET_LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
          // Determine the nearest cursor position to the clicked point.
 
          agg::trans_affine transform;

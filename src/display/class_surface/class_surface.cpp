@@ -671,7 +671,7 @@ static ERROR SURFACE_AddCallback(extSurface *Self, struct drwAddCallback *Args)
          LONG new_size = Self->CallbackSize + 10;
          if (new_size > 255) new_size = 255;
          SurfaceCallback *scb;
-         if (!AllocMemory(sizeof(SurfaceCallback) * new_size, MEM_DATA|MEM_NO_CLEAR, &scb)) {
+         if (!AllocMemory(sizeof(SurfaceCallback) * new_size, MEM::DATA|MEM::NO_CLEAR, &scb)) {
             CopyMemory(Self->Callback, scb, sizeof(SurfaceCallback) * Self->CallbackCount);
 
             scb[Self->CallbackCount].Object   = context;
@@ -1411,12 +1411,12 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       pf::ScopedObjectLock<objDisplay> display(Self->DisplayID, 3000);
 
       if (display.granted()) {
-         LONG memflags = MEM_DATA;
+         auto memflags = MEM::DATA;
 
          if (Self->Flags & RNF_VIDEO) {
             // If acceleration is available then it is OK to create the buffer in video RAM.
 
-            if (!(display->Flags & SCR_NO_ACCELERATION)) memflags = MEM_TEXTURE;
+            if (!(display->Flags & SCR_NO_ACCELERATION)) memflags = MEM::TEXTURE;
          }
 
          LONG bpp;
@@ -1578,7 +1578,7 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    APTR queue;
-   if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, 2000, &queue)) {
+   if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ, 2000, &queue)) {
       LONG index = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
       while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -2487,7 +2487,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
 
-      if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+      if ((event->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
          DOUBLE xchange, ychange;
          LONG dragindex;
 
@@ -2497,14 +2497,14 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             if (Self->DragStatus IS DRAG_ANCHOR) {
                xchange = event->X;
                ychange = event->Y;
-               while ((event->Next) and (event->Next->Flags & JTYPE_ANCHORED)) {
+               while ((event->Next) and ((event->Next->Flags & JTYPE::ANCHORED) != JTYPE::NIL)) {
                   event = event->Next;
                   xchange += event->X;
                   ychange += event->Y;
                }
             }
             else {
-               while ((event->Next) and (event->Next->Flags & JTYPE_MOVEMENT)) {
+               while ((event->Next) and ((event->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) {
                   event = event->Next;
                }
 
@@ -2550,7 +2550,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             }
          }
       }
-      else if ((event->Type IS JET_LMB) and (!(event->Flags & JTYPE_REPEATED))) {
+      else if ((event->Type IS JET_LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
          if (event->Value > 0) {
             if (Self->Flags & RNF_DISABLED) continue;
 
@@ -2564,9 +2564,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
                glAnchorX  = event->X;
                glAnchorY  = event->Y;
-               if (!gfxLockCursor(Self->UID)) {
-                  Self->DragStatus = DRAG_ANCHOR;
-               }
+               if (!gfxLockCursor(Self->UID)) Self->DragStatus = DRAG_ANCHOR;
                else Self->DragStatus = DRAG_NORMAL;
             }
          }

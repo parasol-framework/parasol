@@ -37,7 +37,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
      "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
 
-  flags("STR", { strict=true, bits=16 },
+  flags("STR", { strict=true, bits=32 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
      "MATCH_LEN: The strings must be of equal length to be matched.",
      "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
@@ -61,7 +61,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
      "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
 
-  flags("RFD", { strict=true, bits=16, comment="Flags for RegisterFD()" },
+  flags("RFD", { strict=true, bits=32, comment="Flags for RegisterFD()" },
      "WRITE: Activate the callback if there is room to write to the FD's buffer.",
      "EXCEPT: Activate the callback if error conditions are pending.",
      "READ: Activate the callback if there is data available to read.",
@@ -824,7 +824,7 @@ struct FieldValue {
      obj Object
   ]])
 
-  struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM_MANAGED flag.", restrict="c" }, [[
+  struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM::MANAGED flag.", restrict="c" }, [[
      cstr Name            # The name of the resource.
      fptr(error ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
@@ -997,9 +997,9 @@ struct FieldValue {
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
     int  Size          # The size of the memory block.
-    short AccessCount  # Total number of active locks on this block.
-    short Flags        # The type of memory.
+    int(MEM) Flags     # The type of memory.
     mem  MemoryID      # The unique ID for this block.
+    short AccessCount  # Total number of active locks on this block.
   ]])
 
   struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
@@ -1305,7 +1305,7 @@ inline ERROR FreeResource(const void *Address) {
    return FreeResource(((LONG *)Address)[-2]);
 }
 
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -1385,7 +1385,7 @@ inline STRING StrClone(CSTRING String)
 
    LONG len = strlen(String);
    STRING newstr;
-   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }

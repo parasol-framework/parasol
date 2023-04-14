@@ -162,7 +162,7 @@ void handle_button_press(XEvent *xevent)
       else value = 9;
 
       input.Type      = JET_WHEEL;
-      input.Flags     = JTYPE_EXT_MOVEMENT|JTYPE_DIGITAL;
+      input.Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL;
       input.Value     = value;
       input.Timestamp = PreciseTime();
 

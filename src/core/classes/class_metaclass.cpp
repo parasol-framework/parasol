@@ -710,7 +710,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    if (lock.granted()) {
       for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
-         if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
+         if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (object = (OBJECTPTR)mem.Address)) {
             if (Self->Class->ClassID IS object->Class->ClassID) {
                objlist.push_back(object->UID);
             }
@@ -728,7 +728,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
 
    OBJECTID *result;
-   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
+   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM::NO_CLEAR, (APTR *)&result, NULL)) {
       LONG i = 0;
       for (const auto & id : objlist) result[i++] = id;
       *Array = result;

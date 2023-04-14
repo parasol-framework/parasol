@@ -90,15 +90,8 @@ public:
 class InputSubscription {
 public:
    FUNCTION Callback;
-   LONG Mask;
-   InputSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
-};
-
-class FeedbackSubscription {
-public:
-   FUNCTION Callback;
-   LONG Mask;
-   FeedbackSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
+   JTYPE Mask;
+   InputSubscription(FUNCTION pCallback, JTYPE pMask) : Callback(pCallback), Mask(pMask) { }
 };
 
 class KeyboardSubscription {
@@ -178,7 +171,7 @@ public:
          }
 
          if (!Bitmap->Data) {
-            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Data)) {
+            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Data)) {
                DataSize = Bitmap->LineWidth * canvas_height;
             }
             else {
@@ -198,6 +191,13 @@ public:
 #define TB_NOISE 1
 
 #include <parasol/modules/vector.h>
+
+class FeedbackSubscription {
+public:
+   FUNCTION Callback;
+   FM Mask;
+   FeedbackSubscription(FUNCTION pCallback, FM pMask) : Callback(pCallback), Mask(pMask) { }
+};
 
 //********************************************************************************************************************
 
@@ -298,7 +298,7 @@ class extVector : public objVector {
    DashedStroke        *DashArray;
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
    FRGB StrokeColour, FillColour;
-   LONG   InputMask;
+   JTYPE  InputMask;
    LONG   NumericID;
    LONG   PathLength;
    UBYTE  MorphFlags;
@@ -338,7 +338,7 @@ class extVectorScene : public objVectorScene {
    APTR KeyHandle; // Keyboard subscription
    std::unordered_map<std::string, OBJECTPTR> Defs;
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
-   std::unordered_map<extVector *, LONG> InputSubscriptions;
+   std::unordered_map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
@@ -462,7 +462,7 @@ extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
 extern GRADIENT_TABLE * get_fill_gradient_table(extVector &, DOUBLE);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
-extern void apply_parent_transforms(extVector *Start, agg::trans_affine &);
+extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
 extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
@@ -470,7 +470,7 @@ extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool Includ
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
-extern void send_feedback(extVector *, LONG);
+extern void send_feedback(extVector *, FM);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
 extern void set_filter(agg::image_filter_lut &, UBYTE);
 extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);

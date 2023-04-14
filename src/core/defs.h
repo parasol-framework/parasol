@@ -104,36 +104,6 @@ struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
 
-//********************************************************************************************************************
-// Private memory management structures.
-
-class PrivateAddress {
-public:
-   union {
-      APTR      Address;
-      OBJECTPTR Object;
-   };
-   MEMORYID MemoryID;   // Unique identifier
-   OBJECTID OwnerID;    // The object that allocated this block.
-   ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID = 0;
-   WORD     Flags;
-   volatile WORD AccessCount = 0; // Total number of locks
-
-   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, WORD aFlags) :
-      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
-
-   void clear() {
-      Address  = 0;
-      MemoryID = 0;
-      OwnerID  = 0;
-      Flags    = 0;
-      ThreadLockID = 0;
-   }
-};
-
-#define STAT_FOLDER 0x0001
-
 enum class RES    : LONG;
 enum class RP     : LONG;
 enum class IDTYPE : LONG;
@@ -150,7 +120,6 @@ enum class RSF    : ULONG;
 enum class LDF    : ULONG;
 enum class VOLUME : ULONG;
 enum class STR    : ULONG;
-enum class ALF    : ULONG;
 enum class SCF    : ULONG;
 enum class SBF    : ULONG;
 enum class SMF    : ULONG;
@@ -159,6 +128,10 @@ enum class MFF    : ULONG;
 enum class DEVICE : LARGE;
 enum class PERMIT : ULONG;
 enum class CCF    : ULONG;
+enum class MEM    : ULONG;
+enum class ALF    : UWORD;
+
+#define STAT_FOLDER 0x0001
 
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
@@ -203,6 +176,34 @@ enum {
 struct CaseInsensitiveMap {
    bool operator() (const std::string &lhs, const std::string &rhs) const {
       return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+//********************************************************************************************************************
+// Private memory management structures.
+
+class PrivateAddress {
+public:
+   union {
+      APTR      Address;
+      OBJECTPTR Object;
+   };
+   MEMORYID MemoryID;   // Unique identifier
+   OBJECTID OwnerID;    // The object that allocated this block.
+   ULONG    Size;       // 4GB max
+   volatile LONG ThreadLockID = 0;
+   MEM      Flags;
+   volatile WORD AccessCount = 0; // Total number of locks
+
+   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
+      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
+
+   void clear() {
+      Address  = 0;
+      MemoryID = 0;
+      OwnerID  = 0;
+      Flags    = MEM::NIL;
+      ThreadLockID = 0;
    }
 };
 

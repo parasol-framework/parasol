@@ -29,7 +29,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing shared mem
       T *ptr;
       ERROR error;
 
-      ScopedAccessMemory(LONG ID, LONG Flags, LONG Milliseconds = 5000) {
+      ScopedAccessMemory(LONG ID, MEM Flags, LONG Milliseconds = 5000) {
          id = ID;
          error = AccessMemory(ID, Flags, Milliseconds, (APTR *)&ptr);
       }
@@ -268,7 +268,7 @@ constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
 constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
 constexpr FieldValue BytesPerPixel(LONG Value) { return FieldValue(FID_BytesPerPixel, Value); }
-constexpr FieldValue DataFlags(LONG Value) { return FieldValue(FID_DataFlags, Value); }
+constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, LONG(Value)); }
 constexpr FieldValue RefreshRate(DOUBLE Value) { return FieldValue(FID_RefreshRate, Value); }
 constexpr FieldValue Opacity(DOUBLE Value) { return FieldValue(FID_Opacity, Value); }
 constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }

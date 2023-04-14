@@ -138,8 +138,8 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Bitmap->DataFlags & MEM_VIDEO) {
-      // MEM_VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
+   if ((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) {
+      // MEM::VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
       // we can use glReadPixels() to get a copy of the framebuffer and then write changes back.  Because this is
       // extremely bad practice (slow), a debug message is printed to warn the developer to use a different code path.
       //
@@ -148,7 +148,7 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
       log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->UID, Bitmap->DataFlags);
 
       if (!Bitmap->Data) {
-         if (AllocMemory(Bitmap->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Bitmap->DataFlags, &Bitmap->Data) != ERR_Okay) {
+         if (AllocMemory(Bitmap->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Bitmap->DataFlags, &Bitmap->Data) != ERR_Okay) {
             return log.warning(ERR_AllocMemory);
          }
          Bitmap->prvAFlags |= BF_DATA;
@@ -168,9 +168,9 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 
       return ERR_Okay;
    }
-   else if (Bitmap->DataFlags & MEM_TEXTURE) {
+   else if ((Bitmap->DataFlags & MEM::TEXTURE) != MEM::NIL) {
       // Using the CPU on BLIT bitmaps is banned - it is considered to be poor programming.  Instead,
-      // MEM_DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
+      // MEM::DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
 
       return log.warning(ERR_NoSupport);
    }
@@ -185,7 +185,7 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
 
 ERROR unlock_surface(extBitmap *Bitmap)
 {
-   if ((Bitmap->DataFlags & MEM_VIDEO) and (Bitmap->prvWriteBackBuffer)) {
+   if (((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) and (Bitmap->prvWriteBackBuffer)) {
       if (!lock_graphics_active(__func__)) {
          #ifdef GL_DRAW_PIXELS
             glDrawPixels(Bitmap->Width, Bitmap->Height, pixel_type, format, Bitmap->Data);

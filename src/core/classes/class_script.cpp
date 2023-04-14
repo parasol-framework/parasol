@@ -528,7 +528,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
          for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Path, NULL)) {
+         if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
             Self->Path[i] = 0;
 
@@ -712,7 +712,7 @@ static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
       }
       Self->ResultsTotal = Elements;
 
-      if (!AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Results, NULL)) {
+      if (!AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Results, NULL)) {
          STRING str = (STRING)(Self->Results + Elements + 1);
          LONG i;
          for (i=0; Value[i]; i++) {

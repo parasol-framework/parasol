@@ -327,7 +327,7 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
    APTR queue;
-   if (!AccessMemory(msgqueue, MEM_READ, 3000, &queue)) {
+   if (!AccessMemory(msgqueue, MEM::READ, 3000, &queue)) {
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
       LONG msgindex = 0;
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -407,7 +407,7 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
 
    APTR queue;
    MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
-   if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
+   if (!AccessMemory(msgqueue, MEM::READ_WRITE, 3000, &queue)) {
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
       LONG msgindex = 0;
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -507,7 +507,7 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
 
    APTR queue;
    MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
-   if (!AccessMemory(msgqueue, MEM_READ_WRITE, 3000, &queue)) {
+   if (!AccessMemory(msgqueue, MEM::READ_WRITE, 3000, &queue)) {
       LONG msgindex = 0;
       UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
       while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {

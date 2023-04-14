@@ -1189,7 +1189,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    // !!! TODO: The slow methodology of this loop needs attention !!!
 
    for (const auto & mem : glPrivateMemory) {
-      if (!(mem.Flags & MEM_OBJECT)) continue;
+      if (!(mem.Flags & MEM::OBJECT)) continue;
 
       objTask *task;
       if ((task = mem.Address)) {
@@ -1564,7 +1564,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       if (size < 1) size = 8192;
 
       STRING buffer;
-      if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
          size = read(file, buffer, size);
          buffer[size] = 0;
 

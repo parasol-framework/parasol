@@ -137,7 +137,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       if (!List) {
          Cache = false;
          alloc = true;
-         if (AllocMemory(array_size, MEM_DATA, &List) != ERR_Okay) {
+         if (AllocMemory(array_size, MEM::DATA, &List) != ERR_Okay) {
             lua_pushnil(Lua);
             return;
          }

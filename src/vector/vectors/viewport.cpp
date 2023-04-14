@@ -37,9 +37,9 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
 
-      if (event->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+      if ((event->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
          if (Viewport->vpDragging) {
-            while ((event->Next) and (event->Next->Flags & JTYPE_MOVEMENT)) { // Consolidate movement
+            while ((event->Next) and ((event->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) { // Consolidate movement
                event = event->Next;
             }
 
@@ -65,7 +65,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
             }
          }
       }
-      else if ((event->Type IS JET_LMB) and (!(event->Flags & JTYPE_REPEATED))) {
+      else if ((event->Type IS JET_LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
          if (event->Value > 0) {
             if (Viewport->Visibility != VIS_VISIBLE) continue;
             Viewport->vpDragging = 1;
@@ -118,7 +118,7 @@ static ERROR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
 
    if (Self->vpDragCallback.Type) {
       auto callback = make_function_stdc(drag_callback);
-      vecSubscribeInput(Self, 0, &callback);
+      vecSubscribeInput(Self, JTYPE::NIL, &callback);
    }
 
    return ERR_Okay;
@@ -359,7 +359,7 @@ static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
          return log.warning(ERR_FieldNotSet);
       }
 
-      if (vecSubscribeInput(Self, JTYPE_MOVEMENT|JTYPE_BUTTON, &callback)) {
+      if (vecSubscribeInput(Self, JTYPE::MOVEMENT|JTYPE::BUTTON, &callback)) {
          return ERR_Failed;
       }
 
@@ -367,7 +367,7 @@ static ERROR VIEW_SET_DragCallback(extVectorViewport *Self, FUNCTION *Value)
    }
    else {
       Self->vpDragCallback.Type = CALL_NONE;
-      vecSubscribeInput(Self, 0, &callback);
+      vecSubscribeInput(Self, JTYPE::NIL, &callback);
    }
    return ERR_Okay;
 }

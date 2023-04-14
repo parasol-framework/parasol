@@ -126,7 +126,7 @@ flags("KQ", { strict=true, comment="Special qualifier flags" },
     { INFO            = "REPEAT|RELEASED|PRESSED|NOT_PRINTABLE|CAPS_LOCK" }
 )
 
-flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only." },
+flags("MEM", { strict=true, comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only." },
     "MANAGED: Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.",
     "VIDEO: The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.",
     "TEXTURE: The memory space is reserved by a video driver for hosting texture graphics.",
@@ -179,7 +179,7 @@ enum("DATA", { start=1, comment="Data codes" }, -- NB: Duplicated in display/win
     "CONTENT: Document content (between XML tags) - sent by document objects only",
     "INPUT_READY: Device input that has been transformed into user input")
 
-flags("JTYPE", { bits=16, comment="JTYPE flags are used to categorise input types." },
+flags("JTYPE", { strict=true, comment="JTYPE flags are used to categorise input types." },
     "SECONDARY: Indicates to the receiver of this message that it is not the primary/original recipient",
     "ANCHORED: Cursor has been anchored with LockCursor()",
     "DRAGGED: Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).",
@@ -307,14 +307,14 @@ flags("FD", { comment="Field descriptors." },
     large Timestamp   # PreciseTime() of the recorded input
     oid RecipientID   # Surface that the input message is being conveyed to
     oid OverID        # Surface that is directly under the mouse pointer at the time of the event
-    double AbsX       # Absolute horizontal position of mouse cursor
-    double AbsY       # Absolute vertical position of mouse cursor
+    double AbsX       # Absolute horizontal position of mouse cursor (relative to the top left of the display)
+    double AbsY       # Absolute vertical position of mouse cursor (relative to the top left of the display)
     double X          # Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
     double Y          # Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
     oid DeviceID      # The hardware device that this event originated from
-    ushort Type       # JET constant
-    ushort Flags      # Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-    ushort Mask       # Mask to use for checking against subscribers
+    int(JET) Type     # JET constant that describes the event
+    int(JTYPE) Flags  # Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
+    int(JTYPE) Mask   # Mask to use for checking against subscribers
   ]])
 
   struct("dcRequest", { comment="Data feed item request" }, [[
@@ -338,9 +338,8 @@ flags("FD", { comment="Field descriptors." },
     double Value      # The value associated with the Type
     large  Timestamp  # PreciseTime() of the recorded input
     oid    DeviceID   # The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-    int    Flags      # Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-    ushort Type       # JET constant
-    ushort Unused     # Unused value for 32-bit padding
+    int(JTYPE) Flags  # Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
+    int(JET) Type     # JET constant
   ]])
 
   struct("DateTime", { comment="Generic structure for date-time management." }, [[

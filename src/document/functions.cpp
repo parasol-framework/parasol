@@ -843,7 +843,7 @@ repeat:
 
                            if (Self->TBuffer[Self->TBufferSize-1]) {
                               STRING newbuf;
-                              if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING, &newbuf)) {
+                              if (!AllocMemory(Self->TBufferSize + 1024, MEM::STRING, &newbuf)) {
                                  FreeResource(Self->TBuffer);
                                  Self->TBuffer = newbuf;
                                  Self->TBufferSize = Self->TBufferSize + 1024;
@@ -1029,8 +1029,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (extDocument *)CurrentContext();
 
    for (auto input=Events; input; input=input->Next) {
-      if (input->Flags & JTYPE_MOVEMENT) {
-         for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE_MOVEMENT); scan=scan->Next) {
+      if (input->Flags & JTYPE::MOVEMENT) {
+         for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE::MOVEMENT); scan=scan->Next) {
             input = scan;
          }
 
@@ -1236,7 +1236,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
       STRING content;
       LONG length = Self->StreamLen - start;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", Index, length);
-      if (!AllocMemory(length, MEM_DATA|MEM_NO_CLEAR, &content)) {
+      if (!AllocMemory(length, MEM::DATA|MEM::NO_CLEAR, &content)) {
          CopyMemory(Self->Stream + start, content, length); // Take a copy of the inserted data
          CopyMemory(Self->Stream + Index, Self->Stream + Index + length, start - Index); // Make room for the data at the insertion point
          CopyMemory(content, Self->Stream + Index, length); // Copy data to the insertion point
@@ -1637,7 +1637,7 @@ static ERROR insert_text(extDocument *Self, LONG *Index, CSTRING Text, LONG Leng
       // The size of the text extends past the stream buffer, so allocate more space.
 
       size += (BUFFER_BLOCK > Length) ? BUFFER_BLOCK : Length;
-      if (!AllocMemory(size, MEM_NO_CLEAR, &stream)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR, &stream)) {
          if (*Index > 0) CopyMemory(Self->Stream, stream, *Index);
 
          pos = *Index;
@@ -1744,7 +1744,7 @@ static ERROR insert_escape(extDocument *Self, LONG *Index, WORD EscapeCode, APTR
    LONG total_length = Length + ESC_LEN;
    if (size >= Self->StreamSize) {
       size += BUFFER_BLOCK;
-      if (!AllocMemory(size, MEM_NO_CLEAR, &stream)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR, &stream)) {
          if (*Index > 0) CopyMemory(Self->Stream, stream, *Index);
 
          LONG pos = *Index;
@@ -3804,7 +3804,7 @@ repass_row_height_ext:
 
                   if (Self->ECIndex >= Self->ECMax) {
                      EditCell *cells;
-                     if (!AllocMemory(sizeof(Self->EditCells[0]) * (Self->ECMax + 10), MEM_NO_CLEAR, &cells)) {
+                     if (!AllocMemory(sizeof(Self->EditCells[0]) * (Self->ECMax + 10), MEM::NO_CLEAR, &cells)) {
                         if (Self->EditCells) {
                            CopyMemory(Self->EditCells, cells, sizeof(Self->EditCells[0]) * Self->ECMax);
                            FreeResource(Self->EditCells);
@@ -4102,7 +4102,7 @@ static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
    if (!Self->Links) {
       Self->TotalLinks = 0;
       Self->MaxLinks = 20;
-      if (!AllocMemory(sizeof(DocLink) * Self->MaxLinks, MEM_DATA|MEM_NO_CLEAR, &Self->Links)) {
+      if (!AllocMemory(sizeof(DocLink) * Self->MaxLinks, MEM::DATA|MEM::NO_CLEAR, &Self->Links)) {
 
       }
       else return;
@@ -5130,7 +5130,7 @@ restart:
       }
 
       if (Self->SegCount) {
-         if (!AllocMemory(sizeof(Self->SortSegments[0]) * Self->SegCount, MEM_NO_CLEAR, &Self->SortSegments)) {
+         if (!AllocMemory(sizeof(Self->SortSegments[0]) * Self->SegCount, MEM::NO_CLEAR, &Self->SortSegments)) {
             LONG seg, i, j;
 
             for (i=0, seg=0; seg < Self->SegCount; seg++) {
@@ -5264,20 +5264,20 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer)) {
+         if (AllocMemory(Self->BufferSize, MEM::NO_CLEAR, &Self->Buffer)) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->Temp) {
          Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp)) {
+         if (AllocMemory(Self->TempSize, MEM::NO_CLEAR, &Self->Temp)) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg)) {
+         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM::NO_CLEAR, &Self->VArg)) {
             return ERR_AllocMemory;
          }
       }
@@ -5463,7 +5463,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
 {
    docresource *r;
-   if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r)) {
+   if (!AllocMemory(sizeof(docresource), MEM::NO_CLEAR, &r)) {
       r->ObjectID = ID;
       r->Type     = Type;
       r->ClassID  = 0;
@@ -5481,7 +5481,7 @@ static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
 static docresource * add_resource_ptr(extDocument *Self, APTR Address, LONG Type)
 {
    docresource *r;
-   if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r)) {
+   if (!AllocMemory(sizeof(docresource), MEM::NO_CLEAR, &r)) {
       r->Address = Address;
       r->Type    = Type;
       r->Prev    = NULL;
@@ -5608,7 +5608,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    if (!(Flags & ULD_TERMINATE)) {
       Self->MaxSegments = 100;
-      if (AllocMemory(sizeof(Self->Segments[0]) * Self->MaxSegments, MEM_NO_CLEAR, &Self->Segments) != ERR_Okay) {
+      if (AllocMemory(sizeof(Self->Segments[0]) * Self->MaxSegments, MEM::NO_CLEAR, &Self->Segments) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -5915,7 +5915,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
       if (glTotalFonts IS glMaxFonts) {
          log.msg("Extending font array.");
          FontEntry *array;
-         if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(FontEntry), MEM_UNTRACKED, &array)) {
+         if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(FontEntry), MEM::UNTRACKED, &array)) {
             glMaxFonts += FONT_BLOCK_SIZE;
             if (glFonts) {
                CopyMemory(glFonts, array, sizeof(FontEntry) * glTotalFonts);
@@ -6060,7 +6060,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 
    if (segment >= Self->MaxSegments) {
       DocSegment *lines;
-      if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM_NO_CLEAR, &lines)) {
+      if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM::NO_CLEAR, &lines)) {
          CopyMemory(Self->Segments, lines, sizeof(Self->Segments[0]) * Self->MaxSegments);
          FreeResource(Self->Segments);
          Self->Segments = lines;
@@ -6195,7 +6195,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
    if (!Self->TBuffer) {
       Self->TBufferSize = 0xffff;
-      if (AllocMemory(Self->TBufferSize, MEM_STRING|MEM_NO_CLEAR, &Self->TBuffer)) {
+      if (AllocMemory(Self->TBufferSize, MEM::STRING|MEM::NO_CLEAR, &Self->TBuffer)) {
          Self->Error = ERR_AllocMemory;
          return ERR_AllocMemory;
       }
@@ -6591,7 +6591,7 @@ repeat:
                                  if (Self->TBuffer[Self->TBufferSize-1]) {
                                     STRING newbuf;
                                     pf::SwitchContext context(modDocument);
-                                    if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf)) {
+                                    if (!AllocMemory(Self->TBufferSize + 1024, MEM::STRING|MEM::NO_CLEAR, &newbuf)) {
                                        FreeResource(Self->TBuffer);
                                        Self->TBuffer = newbuf;
                                        Self->TBufferSize = Self->TBufferSize + 1024;
@@ -6983,14 +6983,14 @@ static ERROR add_clip(extDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING 
 
    if (!Self->Clips) {
       Self->MaxClips = CLIP_BLOCK;
-      if (AllocMemory(sizeof(DocClip) * Self->MaxClips, MEM_NO_CLEAR, &Self->Clips) != ERR_Okay) return ERR_AllocMemory;
+      if (AllocMemory(sizeof(DocClip) * Self->MaxClips, MEM::NO_CLEAR, &Self->Clips) != ERR_Okay) return ERR_AllocMemory;
    }
    else if (Self->TotalClips >= Self->MaxClips) {
       DocClip *clip;
 
       // Extend the size of the clip array if we're out of space.
 
-      if (!AllocMemory(sizeof(DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM_NO_CLEAR, &clip)) {
+      if (!AllocMemory(sizeof(DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM::NO_CLEAR, &clip)) {
          CopyMemory(Self->Clips, clip, sizeof(DocClip) * Self->MaxClips);
          FreeResource(Self->Clips);
          Self->Clips = clip;
@@ -7057,7 +7057,7 @@ static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG 
 
    log.traceBranch("%s, %dx%d to %dx%d", Function, Left, Top, Right, Bottom);
 
-   if (!AllocMemory(sizeof(*mouseover) + StrLength(Function) + 1, MEM_DATA, &mouseover)) {
+   if (!AllocMemory(sizeof(*mouseover) + StrLength(Function) + 1, MEM::DATA, &mouseover)) {
       mouseover->Left      = Left;
       mouseover->Top       = Top;
       mouseover->Right     = Right;
@@ -7626,7 +7626,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 
    if (!Self->Tabs) {
       Self->MaxTabs = TAB_BLOCK;
-      if (!AllocMemory(sizeof(Self->Tabs[0]) * Self->MaxTabs, MEM_DATA|MEM_NO_CLEAR, &Self->Tabs)) {
+      if (!AllocMemory(sizeof(Self->Tabs[0]) * Self->MaxTabs, MEM::DATA|MEM::NO_CLEAR, &Self->Tabs)) {
          Self->TabIndex = 0;
       }
       else return -1;
@@ -7957,7 +7957,7 @@ static void process_parameters(extDocument *Self, CSTRING String)
 
          String++;
          setsize = 0xffff;
-         if (!AllocMemory(setsize, MEM_STRING|MEM_NO_CLEAR, &set)) { // Allocation is temporary
+         if (!AllocMemory(setsize, MEM::STRING|MEM::NO_CLEAR, &set)) { // Allocation is temporary
             char arg[80];
 
             while (*String) {
@@ -8039,7 +8039,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    if (len > exsbuffer_size) {
       if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
-      if (AllocMemory(len, MEM_STRING|MEM_UNTRACKED, &exsbuffer) != ERR_Okay) return ERR_AllocMemory;
+      if (AllocMemory(len, MEM::STRING|MEM::UNTRACKED, &exsbuffer) != ERR_Okay) return ERR_AllocMemory;
       exsbuffer_size = len;
    }
 

@@ -257,28 +257,33 @@ DEFINE_ENUM_FLAG_OPERATORS(KQ)
 
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
-#define MEM_DATA 0x00000000
-#define MEM_MANAGED 0x00000001
-#define MEM_VIDEO 0x00000002
-#define MEM_TEXTURE 0x00000004
-#define MEM_AUDIO 0x00000008
-#define MEM_CODE 0x00000010
-#define MEM_NO_POOL 0x00000020
-#define MEM_TMP_LOCK 0x00000040
-#define MEM_UNTRACKED 0x00000080
-#define MEM_STRING 0x00000100
-#define MEM_OBJECT 0x00000200
-#define MEM_NO_LOCK 0x00000400
-#define MEM_EXCLUSIVE 0x00000800
-#define MEM_DELETE 0x00001000
-#define MEM_NO_BLOCKING 0x00002000
-#define MEM_NO_BLOCK 0x00002000
-#define MEM_READ 0x00010000
-#define MEM_WRITE 0x00020000
-#define MEM_READ_WRITE 0x00030000
-#define MEM_NO_CLEAR 0x00040000
-#define MEM_HIDDEN 0x00100000
-#define MEM_CALLER 0x00800000
+enum class MEM : ULONG {
+   NIL = 0,
+   DATA = 0x00000000,
+   MANAGED = 0x00000001,
+   VIDEO = 0x00000002,
+   TEXTURE = 0x00000004,
+   AUDIO = 0x00000008,
+   CODE = 0x00000010,
+   NO_POOL = 0x00000020,
+   TMP_LOCK = 0x00000040,
+   UNTRACKED = 0x00000080,
+   STRING = 0x00000100,
+   OBJECT = 0x00000200,
+   NO_LOCK = 0x00000400,
+   EXCLUSIVE = 0x00000800,
+   DELETE = 0x00001000,
+   NO_BLOCKING = 0x00002000,
+   NO_BLOCK = 0x00002000,
+   READ = 0x00010000,
+   WRITE = 0x00020000,
+   READ_WRITE = 0x00030000,
+   NO_CLEAR = 0x00040000,
+   HIDDEN = 0x00100000,
+   CALLER = 0x00800000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MEM)
 
 // Event categories.
 
@@ -314,18 +319,23 @@ DEFINE_ENUM_FLAG_OPERATORS(KQ)
 
 // JTYPE flags are used to categorise input types.
 
-#define JTYPE_SECONDARY 0x0001
-#define JTYPE_ANCHORED 0x0002
-#define JTYPE_DRAGGED 0x0004
-#define JTYPE_FEEDBACK 0x0008
-#define JTYPE_DIGITAL 0x0010
-#define JTYPE_ANALOG 0x0020
-#define JTYPE_EXT_MOVEMENT 0x0040
-#define JTYPE_BUTTON 0x0080
-#define JTYPE_MOVEMENT 0x0100
-#define JTYPE_DBL_CLICK 0x0200
-#define JTYPE_REPEATED 0x0400
-#define JTYPE_DRAG_ITEM 0x0800
+enum class JTYPE : ULONG {
+   NIL = 0,
+   SECONDARY = 0x00000001,
+   ANCHORED = 0x00000002,
+   DRAGGED = 0x00000004,
+   FEEDBACK = 0x00000008,
+   DIGITAL = 0x00000010,
+   ANALOG = 0x00000020,
+   EXT_MOVEMENT = 0x00000040,
+   BUTTON = 0x00000080,
+   MOVEMENT = 0x00000100,
+   DBL_CLICK = 0x00000200,
+   REPEATED = 0x00000400,
+   DRAG_ITEM = 0x00000800,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(JTYPE)
 
 // JET constants are documented in GetInputEvent()
 
@@ -444,14 +454,14 @@ struct InputEvent {
    LARGE    Timestamp;                // PreciseTime() of the recorded input
    OBJECTID RecipientID;              // Surface that the input message is being conveyed to
    OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
-   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor
-   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor
+   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
+   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
    DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    OBJECTID DeviceID;                 // The hardware device that this event originated from
-   UWORD    Type;                     // JET constant
-   UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;                     // Mask to use for checking against subscribers
+   LONG     Type;                     // JET constant that describes the event
+   JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
+   JTYPE    Mask;                     // Mask to use for checking against subscribers
 };
 
 struct dcRequest {
@@ -475,9 +485,8 @@ struct dcDeviceInput {
    DOUBLE   Value;     // The value associated with the Type
    LARGE    Timestamp; // PreciseTime() of the recorded input
    OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-   LONG     Flags;     // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Type;      // JET constant
-   UWORD    Unused;    // Unused value for 32-bit padding
+   JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
+   LONG     Type;      // JET constant
 };
 
 struct DateTime {
@@ -706,10 +715,10 @@ DEFINE_ENUM_FLAG_OPERATORS(SCF)
 
 enum class STR : ULONG {
    NIL = 0,
-   MATCH_CASE = 0x0001,
-   CASE = 0x0001,
-   MATCH_LEN = 0x0002,
-   WILDCARD = 0x0004,
+   MATCH_CASE = 0x00000001,
+   CASE = 0x00000001,
+   MATCH_LEN = 0x00000002,
+   WILDCARD = 0x00000004,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(STR)
@@ -737,7 +746,7 @@ enum class PMF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(PMF)
 
-enum class ALF : ULONG {
+enum class ALF : UWORD {
    NIL = 0,
    SHARED = 0x0001,
    RECURSIVE = 0x0002,
@@ -760,15 +769,15 @@ DEFINE_ENUM_FLAG_OPERATORS(SMF)
 
 enum class RFD : ULONG {
    NIL = 0,
-   WRITE = 0x0001,
-   EXCEPT = 0x0002,
-   READ = 0x0004,
-   REMOVE = 0x0008,
-   STOP_RECURSE = 0x0010,
-   ALLOW_RECURSION = 0x0020,
-   SOCKET = 0x0040,
-   RECALL = 0x0080,
-   ALWAYS_CALL = 0x0100,
+   WRITE = 0x00000001,
+   EXCEPT = 0x00000002,
+   READ = 0x00000004,
+   REMOVE = 0x00000008,
+   STOP_RECURSE = 0x00000010,
+   ALLOW_RECURSION = 0x00000020,
+   SOCKET = 0x00000040,
+   RECALL = 0x00000080,
+   ALWAYS_CALL = 0x00000100,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(RFD)
@@ -1916,9 +1925,9 @@ typedef struct MemInfo {
    APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
    LONG     Size;        // The size of the memory block.
-   WORD     AccessCount; // Total number of active locks on this block.
-   WORD     Flags;       // The type of memory.
+   MEM      Flags;       // The type of memory.
    MEMORYID MemoryID;    // The unique ID for this block.
+   WORD     AccessCount; // Total number of active locks on this block.
 } MEMINFO;
 
 struct ActionEntry {
@@ -2038,13 +2047,13 @@ struct ScriptArg { // For use with scExec
 
 extern struct CoreBase *CoreBase;
 struct CoreBase {
-   ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(IDTYPE Type);
-   ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
+   ERROR (*_AllocMemory)(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
    ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
@@ -2161,13 +2170,13 @@ struct CoreBase {
 };
 
 #ifndef PRV_CORE_MODULE
-inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
+inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
@@ -2341,7 +2350,7 @@ inline ERROR FreeResource(const void *Address) {
    return FreeResource(((LONG *)Address)[-2]);
 }
 
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -2421,7 +2430,7 @@ inline STRING StrClone(CSTRING String)
 
    LONG len = strlen(String);
    STRING newstr;
-   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }

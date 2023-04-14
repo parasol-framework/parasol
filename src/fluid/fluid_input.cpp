@@ -3,7 +3,7 @@
 The input interface provides support for processing input messages.  The InputEvent structure is passed for each incoming
 message that is detected.
 
-   local in = input.subscribe(JTYPE_MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
+   local in = input.subscribe(JTYPE::MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
 
    end)
 
@@ -68,8 +68,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       // For simplicity, a call to the handler is made for each individual input event.
 
       while (Events) {
-         if (Events->Flags & JTYPE_MOVEMENT) {
-            while ((Events->Next) and (Events->Next->Flags & JTYPE_MOVEMENT)) Events = Events->Next;
+         if ((Events->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+            while ((Events->Next) and ((Events->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) Events = Events->Next;
          }
 
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
@@ -289,7 +289,7 @@ static int input_subscribe(lua_State *Lua)
    pf::Log log("input.subscribe");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   LONG mask = lua_tointeger(Lua, 1); // Optional
+   auto mask = JTYPE(lua_tointeger(Lua, 1)); // Optional
 
    OBJECTID object_id;
    struct object *object;
@@ -314,7 +314,7 @@ static int input_subscribe(lua_State *Lua)
       }
    }
 
-   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, mask, device_id);
+   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, LONG(mask), device_id);
 
    struct finput *input;
    if ((input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput)))) {

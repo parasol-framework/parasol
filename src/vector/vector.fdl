@@ -280,7 +280,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
      "INCLUSIVE: The result will be inclusive of all paths that belong to children of the queried vector.",
      "NO_TRANSFORM: The transformation step will not be applied to the vector's path.")
 
-  flags("FM", { comment="Mask for controlling feedback events that are received." },
+  flags("FM", { strict=true, comment="Mask for controlling feedback events that are received." },
      "PATH_CHANGED: The vector path has been modified or affected by a transform.",
      "HAS_FOCUS: The vector has gained the user focus.",
      "CHILD_HAS_FOCUS: A child of the vector has gained the user focus.",

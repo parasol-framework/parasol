@@ -489,7 +489,7 @@ static ERROR parse_source(extXML *Self)
    if (Self->Source) {
       char *buffer;
       LARGE size = 64 * 1024;
-      if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
+      if (!AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer)) {
          LONG pos = 0;
          Self->ParseError = ERR_Okay;
          acSeekStart(Self->Source, 0);

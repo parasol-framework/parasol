@@ -99,7 +99,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(struct NetClient), MEM_DATA, &client_ip) != ERR_Okay) {
+      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR_Okay) {
          CLOSESOCKET(clientfd);
          return;
       }

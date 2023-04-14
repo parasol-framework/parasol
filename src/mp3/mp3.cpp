@@ -330,7 +330,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    }
 
    prvMP3 *prv;
-   if (!AllocMemory(sizeof(prvMP3), MEM_DATA, &Self->ChildPrivate)) {
+   if (!AllocMemory(sizeof(prvMP3), MEM::DATA, &Self->ChildPrivate)) {
       prv = (prvMP3 *)Self->ChildPrivate;
       new (prv) prvMP3;
    }
@@ -679,7 +679,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    prv->File->get(FID_Size, &filesize);
 
    UBYTE *buffer;
-   if (!AllocMemory(SIZE_BUFFER, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
+   if (!AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, &buffer, NULL)) {
       // Load MP3 data from the file
 
       prv->File->seekStart(prv->SeekOffset);

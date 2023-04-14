@@ -410,7 +410,11 @@ function flags(Prefix, Options, ...)
 
    if (Options.strict) then
       local type_size = 'ULONG'
-      if (nz(Options.bits,32) > 32) then type_size = 'LARGE' end
+      if (Options.bits == 64) then
+         type_size = 'LARGE'
+      elseif (Options.bits == 16) then
+         type_size = 'UWORD'
+      end
       table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
    end

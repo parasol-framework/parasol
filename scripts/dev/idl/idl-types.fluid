@@ -334,9 +334,13 @@ function cType(Field, Origin)
    end
 
    do -- Short type reference
-      local prefix = Field.type:match("^short%((%a+)%)")
+      local unsigned, prefix = Field.type:match("^(u-)short%((%a+)%)")
       if (prefix != nil) then
-         Field.type     = "WORD"
+         if nz(unsigned) then
+            Field.type = "UWORD"
+         else
+            Field.type = "WORD"
+         end
          Field.fullType = glTypes.int
          Field.ref      = glCustomTypes[prefix]
          Field.lookup   = prefix

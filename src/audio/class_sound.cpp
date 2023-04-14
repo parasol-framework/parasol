@@ -383,7 +383,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             return ERR_Failed;
          }
       }
-      else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
+      else if (!AllocMemory(Self->Length, MEM::DATA|MEM::NO_CLEAR, &buffer)) {
          auto client_pos = Self->Position;
          if (Self->Position) Self->seek(0, SEEK_START); // Ensure we're reading the entire sample from the start
 
@@ -1533,7 +1533,7 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       LONG i = strlen(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path)) {
+      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path)) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
       }

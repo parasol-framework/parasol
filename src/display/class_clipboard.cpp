@@ -492,7 +492,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    CSTRING *list = NULL;
    LONG str_len = 0;
    for (auto &item : clip->Items) str_len += item.Path.size() + 1;
-   if (!AllocMemory(((clip->Items.size()+1) * sizeof(STRING)) + str_len, MEM_NO_CLEAR|MEM_CALLER, &list)) {
+   if (!AllocMemory(((clip->Items.size()+1) * sizeof(STRING)) + str_len, MEM::NO_CLEAR|MEM::CALLER, &list)) {
       Args->Files    = list;
       Args->Flags    = clip->Flags;
       Args->Datatype = clip->Datatype;

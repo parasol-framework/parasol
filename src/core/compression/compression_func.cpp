@@ -508,7 +508,7 @@ static ERROR fast_scan_zip(extCompression *Self)
 
    zipentry *list, *scan;
    LONG total_files = 0;
-   if (!AllocMemory(tail.listsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&list, NULL)) {
+   if (!AllocMemory(tail.listsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&list, NULL)) {
       log.trace("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
       if (acRead(Self->FileIO, list, tail.listsize, NULL) != ERR_Okay) {
          FreeResource(list);

@@ -146,7 +146,7 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **H
    ThreadLock lock(TL_MSGHANDLER, 5000);
    if (lock.granted()) {
       MsgHandler *handler;
-      if (!AllocMemory(sizeof(MsgHandler), MEM_MANAGED, (APTR *)&handler, NULL)) {
+      if (!AllocMemory(sizeof(MsgHandler), MEM::MANAGED, (APTR *)&handler, NULL)) {
          set_memory_manager(handler, &glResourceMsgHandler);
 
          handler->Prev     = NULL;
@@ -208,7 +208,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, MSF Flags, APTR Buffer, LONG Bu
 {
    pf::Log log(__FUNCTION__);
 
-   //log.branch("Queue: %d, Type: %d, Flags: $%.8x, Size: %d", MessageMID, Type, Flags, BufferSize);
+   //log.branch("Queue: %d, Type: %d, Flags: $%.8x, Size: %d", MessageMID, Type, LONG(Flags), BufferSize);
 
    if (!MessageMID) MessageMID = glTaskMessageMID;
 
@@ -218,7 +218,7 @@ ERROR GetMessage(MEMORYID MessageMID, LONG Type, MSF Flags, APTR Buffer, LONG Bu
 
    MessageHeader *header;
    if ((Flags & MSF::ADDRESS) != MSF::NIL) header = (MessageHeader *)(MAXINT)MessageMID;
-   else if (AccessMemory(MessageMID, MEM_READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
+   else if (AccessMemory(MessageMID, MEM::READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
       return ERR_AccessMemory;
    }
 
@@ -444,7 +444,7 @@ timer_cycle:
       while (1) {
          MessageHeader *msgbuffer;
          bool msgfound = false;
-         if (!AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&msgbuffer)) {
+         if (!AccessMemory(glTaskMessageMID, MEM::READ_WRITE, 2000, (void **)&msgbuffer)) {
             if (msgbuffer->Count) {
                auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
                TaskMessage *prevmsg = NULL;
@@ -478,7 +478,7 @@ timer_cycle:
                         }
                         else msgbufsize = DEFAULT_MSGBUFSIZE;
 
-                        if (AllocMemory(msgbufsize, MEM_NO_CLEAR, (APTR *)&msg, NULL) != ERR_Okay) break;
+                        if (AllocMemory(msgbufsize, MEM::NO_CLEAR, (APTR *)&msg, NULL) != ERR_Okay) break;
                      }
 
                      ((Message *)msg)->UniqueID = scanmsg->UniqueID;
@@ -669,7 +669,7 @@ other than `ERR_Okay`.  Use ~ReleaseMemory() to let go of the message queue when
 Here is an example that scans the queue of the active task:
 
 <pre>
-if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, &queue)) {
+if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ, &queue)) {
    while (!ScanMessages(queue, &index, MSGID_QUIT, NULL, NULL)) {
       ...
    }
@@ -834,7 +834,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, MSF Flags, APTR Data, LONG Size)
    ERROR error;
    TaskMessage *msg, *prevmsg;
    MessageHeader *header;
-   if (!(error = AccessMemory(glTaskMessageMID, MEM_READ_WRITE, 2000, (void **)&header))) {
+   if (!(error = AccessMemory(glTaskMessageMID, MEM::READ_WRITE, 2000, (void **)&header))) {
       if ((Flags & (MSF::NO_DUPLICATE|MSF::UPDATE)) != MSF::NIL) {
          msg = (TaskMessage *)header->Buffer;
          prevmsg = NULL;
@@ -905,7 +905,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, MSF Flags, APTR Data, LONG Size)
          // This routine is slower than the normal compression technique, but is tested as working.
 
          MessageHeader *buffer;
-         if (!AllocMemory(sizeof(MessageHeader), MEM_DATA|MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+         if (!AllocMemory(sizeof(MessageHeader), MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
             // Compress the message buffer to a temporary data store
 
             buffer->NextEntry = 0;

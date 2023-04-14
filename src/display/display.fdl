@@ -343,7 +343,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int   PlaneMod              # Plane differential in bytes
     struct(ClipRectangle) Clip  # Clipping rectangle
     int   Size                  # Total size of the bitmap in bytes
-    int   DataFlags             # Memory flags to use in allocation
+    int(MEM) DataFlags          # Memory flags to use in allocation
     int   AmtColours            # Maximum amount of colours available
     int(BMF) Flags              # Optional flags
     int   TransIndex            # Colour index or packed colour value that acts as the background/transparency

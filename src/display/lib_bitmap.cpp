@@ -72,7 +72,7 @@ static ERROR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, LO
    if (Width * sizeof(RGB16) * 2 > glDitherSize) {
       if (glDither) { FreeResource(glDither); glDither = NULL; }
 
-      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM_NO_CLEAR|MEM_UNTRACKED, &glDither) != ERR_Okay) {
+      if (AllocMemory(Width * sizeof(RGB16) * 2, MEM::NO_CLEAR|MEM::UNTRACKED, &glDither) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       glDitherSize = Width * sizeof(RGB16) * 2;
@@ -607,8 +607,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
 
 #elif _GLES_
 
-   if (dest->DataFlags & MEM_VIDEO) { // Destination is the video display.
-      if (Bitmap->DataFlags & MEM_VIDEO) { // Source is the video display.
+   if ((dest->DataFlags & MEM::VIDEO) != MEM::NIL) { // Destination is the video display.
+      if ((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) { // Source is the video display.
          // No simple way to support this in OpenGL - we have to copy the display into a texture buffer, then copy the texture back to the display.
 
          ERROR error;
@@ -632,7 +632,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
 
          return error;
       }
-      else if (Bitmap->DataFlags & MEM_TEXTURE) {
+      else if ((Bitmap->DataFlags & MEM::TEXTURE) != MEM::NIL) {
          // Texture-to-video blitting (
 
 
@@ -1762,7 +1762,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
    // Standard rectangle (no translucency) video support
 
    #ifdef _GLES_
-      if (Bitmap->DataFlags & MEM_VIDEO) {
+      if ((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) {
       log.warning("TODO: Draw rectangles to opengl");
          glClearColor(0.5, 0.5, 0.5, 1.0);
          glClear(GL_COLOR_BUFFER_BIT);
@@ -1778,7 +1778,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
    #endif
 
    #ifdef __xwindows__
-      if (Bitmap->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) {
+      if ((Bitmap->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
          XSetForeground(XDisplay, glXGC, Colour);
          XFillRectangle(XDisplay, Bitmap->x11.drawable, glXGC, X, Y, Width, Height);
          return;

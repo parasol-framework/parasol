@@ -611,7 +611,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       return ERR_InvalidPath;
    }
 
-   if (AllocMemory(sizeof(DirInfo), MEM_DATA, &dirinfo, NULL)) {
+   if (AllocMemory(sizeof(DirInfo), MEM::DATA, &dirinfo, NULL)) {
       AAssetDir_close(dir);
       return ERR_AllocMemory;
    }
@@ -641,7 +641,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
          if ((Flags & RDF::FILE) != RDF::NIL) {
             LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
-            if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
+            if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
                entry->Flags = RDF::FILE;
 
                if (Flags & RDF::PERMISSIONS) {
@@ -671,7 +671,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       }
       else if ((Flags & RDF::FOLDER) != RDF::NIL) {
          LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
-         if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
+         if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
             entry->Flags = RDF::FOLDER;
 
             if ((Flags & RDF::PERMISSIONS) != RDF::NIL) {

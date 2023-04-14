@@ -1159,7 +1159,7 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
    {
       pf::SwitchContext context(Self);
       len = 7 + StrLength(Self->Host) + 16 + StrLength(Self->Path) + 1;
-      error = AllocMemory(len, MEM_STRING|MEM_NO_CLEAR, &Self->URI);
+      error = AllocMemory(len, MEM::STRING|MEM::NO_CLEAR, &Self->URI);
    }
 
    if (!error) {
@@ -1216,7 +1216,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
    LONG len;
    for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
-   if (AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Host) != ERR_Okay) {
+   if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Host) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
@@ -1389,7 +1389,7 @@ static ERROR SET_Path(extHTTP *Self, CSTRING Value)
       else len++;
    }
 
-   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path)) {
+   if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path)) {
       LONG len = 0;
       for (LONG i=0; Value[i]; i++) {
          if (Value[i] IS ' ') {

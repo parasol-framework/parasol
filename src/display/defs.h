@@ -258,7 +258,7 @@ extern EventBuffer glInputEvents;
 class InputCallback {
 public:
    OBJECTID SurfaceFilter;
-   WORD     InputMask; // JTYPE flags
+   JTYPE    InputMask; // JTYPE flags
    FUNCTION Callback;
 
    bool operator==(const InputCallback &other) const {
@@ -519,8 +519,8 @@ extern THREADVAR WORD tlNoDrawing, tlNoExpose, tlVolatileIndex;
 extern THREADVAR OBJECTID tlFreeExpose;
 
 struct InputType {
-   LONG Flags;  // As many flags as necessary to describe the input type
-   LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
+   JTYPE Flags;  // As many flags as necessary to describe the input type
+   JTYPE Mask;   // Limited flags to declare the mask that must be used to receive that type
 };
 
 extern const InputType glInputType[JET_END];

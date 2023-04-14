@@ -576,7 +576,7 @@ static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorMatrix *transform;
-   if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &transform)) {
+   if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &transform)) {
       // Insert transform at the start of the list.
 
       transform->Vector = Self;
@@ -782,14 +782,14 @@ ERROR callback(*Vector, LONG Event)
 ```
 
 -INPUT-
-int(FM) Mask: Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.
+int(FM) Mask: Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.
 ptr(func) Callback: The function that will receive feedback events.
 
 -ERRORS-
 Okay:
 NullArgs:
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
 {
@@ -797,7 +797,7 @@ static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedba
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Args->Mask) {
+   if (Args->Mask != FM::NIL) {
       if (!Self->FeedbackSubscriptions) {
          Self->FeedbackSubscriptions = new (std::nothrow) std::vector<FeedbackSubscription>;
          if (!Self->FeedbackSubscriptions) return log.warning(ERR_AllocMemory);
@@ -839,7 +839,7 @@ ERROR callback(*Vector, *InputEvent)
 ```
 
 -INPUT-
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
+flags(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
 ptr(func) Callback: Reference to a function that will receive input messages.
 
 -ERRORS-
@@ -857,7 +857,7 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Args->Mask) {
+   if (Args->Mask != JTYPE::NIL) {
       if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
 
       if (!Self->InputSubscriptions) {
@@ -865,8 +865,8 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
          if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
       }
 
-      LONG mask = Args->Mask;
-      if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
+      auto mask = Args->Mask;
+      if ((mask & JTYPE::FEEDBACK) != JTYPE::NIL) mask |= JTYPE::MOVEMENT;
 
       Self->InputMask |= mask;
       ((extVectorScene *)Self->Scene)->InputSubscriptions[Self] = Self->InputMask;
@@ -958,7 +958,7 @@ ptr(func) Callback: The function to call with each coordinate of the path.
 Okay:
 NullArgs:
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 {
@@ -1089,8 +1089,8 @@ static ERROR VECTOR_SET_Cursor(extVector *Self, LONG Value)
          .Y           = y,
          .DeviceID    = 0,
          .Type        = JET_ABS_X,
-         .Flags       = JTYPE_MOVEMENT,
-         .Mask        = JTYPE_MOVEMENT
+         .Flags       = JTYPE::MOVEMENT,
+         .Mask        = JTYPE::MOVEMENT
       };
       scene_input_events(&event, 0);
    }
@@ -2175,7 +2175,7 @@ Visibility: Controls the visibility of a vector and its children.
 //********************************************************************************************************************
 // For sending events to the client
 
-void send_feedback(extVector *Vector, LONG Event)
+void send_feedback(extVector *Vector, FM Event)
 {
    if (!Vector->initialised()) return;
    if (!Vector->FeedbackSubscriptions) return;
@@ -2183,19 +2183,19 @@ void send_feedback(extVector *Vector, LONG Event)
    for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {
       ERROR result;
       auto &sub = *it;
-      if (sub.Mask & Event) {
+      if ((sub.Mask & Event) != FM::NIL) {
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
          if (sub.Callback.Type IS CALL_STDC) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(extVector *, LONG))sub.Callback.StdC.Routine;
+            auto callback = (ERROR (*)(extVector *, FM))sub.Callback.StdC.Routine;
             result = callback(Vector, Event);
          }
          else if (sub.Callback.Type IS CALL_SCRIPT) {
             // In this implementation the script function will receive all the events chained via the Next field
             ScriptArg args[] = {
                { "Vector", FDF_OBJECT, { .Address = Vector } },
-               { "Event",  FDF_LONG,   { .Long = Event } }
+               { "Event",  FDF_LONG,   { .Long = LONG(Event) } }
             };
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }

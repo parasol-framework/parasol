@@ -60,7 +60,7 @@ Here is an example:
 
 <pre>
 APTR address;
-if (!AllocMemory(1000, MEM_DATA, &address, NULL)) {
+if (!AllocMemory(1000, MEM::DATA, &address, NULL)) {
    ...
    FreeResource(address);
 }
@@ -78,7 +78,7 @@ memory block.  This means that before freeing the memory block the client must c
 Blocks that are persistently locked will remain in memory until the process is terminated.
 
 Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large
-blocks it may be wise to turn off this feature, achieved by setting the `MEM_NO_CLEAR` flag.
+blocks it may be wise to turn off this feature, achieved by setting the `MEM::NO_CLEAR` flag.
 
 -INPUT-
 int Size:     The size of the memory block.
@@ -97,7 +97,7 @@ AccessMemory:   The block was allocated but access to it was not granted, causin
 
 *********************************************************************************************************************/
 
-ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
+ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -112,8 +112,8 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    // Determine the object that will own the memory block.  The preferred default is for it to belong to the current context.
 
    OBJECTID object_id = 0;
-   if (Flags & (MEM_HIDDEN|MEM_UNTRACKED));
-   else if (Flags & MEM_CALLER) {
+   if ((Flags & (MEM::HIDDEN|MEM::UNTRACKED)) != MEM::NIL);
+   else if ((Flags & MEM::CALLER) != MEM::NIL) {
       // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
       if (tlContext->Stack) object_id = tlContext->Stack->resource()->UID;
       else object_id = glCurrentTask->UID;
@@ -122,10 +122,10 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    else if (glCurrentTask) object_id = glCurrentTask->UID;
 
    LONG full_size = Size + MEMHEADER;
-   if (Flags & MEM_MANAGED) full_size += sizeof(ResourceManager *);
+   if ((Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
 
    APTR start_mem;
-   if (!(Flags & MEM_NO_CLEAR)) start_mem = calloc(1, full_size);
+   if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) start_mem = calloc(1, full_size);
    else start_mem = malloc(full_size);
 
    if (!start_mem) {
@@ -134,7 +134,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
    }
 
    APTR data_start = (char *)start_mem + sizeof(LONG) + sizeof(LONG); // Skip MEMH and unique ID.
-   if (Flags & MEM_MANAGED) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
+   if ((Flags & MEM::MANAGED) != MEM::NIL) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
 
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) { // For keeping threads synchronised, it is essential that this lock is made early on.
@@ -143,7 +143,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       // Configure the memory header and place boundary cookies at the start and end of the memory block.
 
       APTR header = start_mem;
-      if (Flags & MEM_MANAGED) {
+      if ((Flags & MEM::MANAGED) != MEM::NIL) {
          ((ResourceManager **)header)[0] = NULL;
          header = (char *)header + sizeof(ResourceManager *);
       }
@@ -159,9 +159,9 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       // Remember the memory block's details such as the size, ID, flags and object that it belongs to.  This helps us
       // with resource tracking, identifying the memory block and freeing it later on.  Hidden blocks are never recorded.
 
-      if (!(Flags & MEM_HIDDEN)) {
-         glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (ULONG)Size, (WORD)Flags)));
-         if (Flags & MEM_OBJECT) {
+      if ((Flags & MEM::HIDDEN) IS MEM::NIL) {
+         glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (ULONG)Size, Flags)));
+         if ((Flags & MEM::OBJECT) != MEM::NIL) {
             if (object_id) glObjectChildren[object_id].insert(unique_id);
          }
          else glObjectMemory[object_id].insert(unique_id);
@@ -170,8 +170,8 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
       // Gain exclusive access if both the address pointer and memory ID have been specified.
 
       if ((MemoryID) and (Address)) {
-         if (Flags & MEM_NO_LOCK) *Address = data_start;
-         else if (AccessMemory(unique_id, MEM_READ_WRITE, 2000, Address) != ERR_Okay) {
+         if ((Flags & MEM::NO_LOCK) != MEM::NIL) *Address = data_start;
+         else if (AccessMemory(unique_id, MEM::READ_WRITE, 2000, Address) != ERR_Okay) {
             log.warning("Memory block %d stolen during allocation!", *MemoryID);
             return ERR_AccessMemory;
          }
@@ -182,7 +182,7 @@ ERROR AllocMemory(LONG Size, LONG Flags, APTR *Address, MEMORYID *MemoryID)
          if (MemoryID) *MemoryID = unique_id;
       }
 
-      if (glShowPrivate) log.pmsg("AllocMemory(%p/#%d, %d, $%.8x, Owner: #%d)", data_start, unique_id, Size, Flags, object_id);
+      if (glShowPrivate) log.pmsg("AllocMemory(%p/#%d, %d, $%.8x, Owner: #%d)", data_start, unique_id, Size, LONG(Flags), object_id);
       return ERR_Okay;
    }
    else {
@@ -257,17 +257,17 @@ ERROR FreeResource(MEMORYID MemoryID)
       if ((it != glPrivateMemory.end()) and (it->second.Address)) {
          auto &mem = it->second;
 
-         if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, mem.Flags, mem.OwnerID);
+         if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, LONG(mem.Flags), mem.OwnerID);
          ERROR error = ERR_Okay;
          if (mem.AccessCount > 0) {
             log.msg("Private memory ID #%d marked for deletion (open count %d).", MemoryID, mem.AccessCount);
-            mem.Flags |= MEM_DELETE;
+            mem.Flags |= MEM::DELETE;
          }
          else {
             // If the block has a resource manager then call its Free() implementation.
 
             auto start_mem = (char *)mem.Address - sizeof(LONG) - sizeof(LONG);
-            if (mem.Flags & MEM_MANAGED) {
+            if ((mem.Flags & MEM::MANAGED) != MEM::NIL) {
                start_mem -= sizeof(ResourceManager *);
                auto rm = ((ResourceManager **)start_mem)[0];
                if (rm->Free((APTR)mem.Address) IS ERR_InUse) {
@@ -292,7 +292,7 @@ ERROR FreeResource(MEMORYID MemoryID)
             randomise_memory(mem.Address, mem.Size);
             freemem(start_mem);
 
-            if (mem.Flags & MEM_OBJECT) {
+            if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
                if (auto it = glObjectChildren.find(mem.OwnerID); it != glObjectChildren.end()) {
                   it->second.erase(MemoryID);
                }

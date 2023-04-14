@@ -79,7 +79,7 @@ ERROR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
       LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
-      if (AllocMemory(size, MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
+      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
          FreeResource(resolved_path);
          return ERR_AllocMemory;
       }

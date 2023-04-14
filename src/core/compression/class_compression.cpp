@@ -502,7 +502,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -754,7 +754,7 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -1882,8 +1882,8 @@ static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
 
    new (Self) extCompression;
 
-   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Output, NULL)) {
-      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Input, NULL)) {
+   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL)) {
+      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL)) {
          Self->CompressionLevel = 60; // 60% compression by default
          Self->Permissions      = PERMIT::NIL; // Inherit permissions by default. PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
          Self->MinOutputSize    = (32 * 1024) + 2048; // Has to at least match the minimum 'window size' of each compression block, plus extra in case of overflow.  Min window size is typically 16k

@@ -283,7 +283,7 @@ static void free_children(OBJECTPTR Object)
             if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
             auto &mem = it->second;
 
-            if ((mem.Flags & MEM_DELETE) or (!mem.Object)) continue;
+            if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Object)) continue;
 
             if (mem.Object->OwnerID != Object->UID) {
                log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->OwnerID, Object->UID);
@@ -307,13 +307,13 @@ static void free_children(OBJECTPTR Object)
             if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
             auto &mem = it->second;
 
-            if ((mem.Flags & MEM_DELETE) or (!mem.Address)) continue;
+            if (((mem.Flags & MEM::DELETE) != MEM::NIL) or (!mem.Address)) continue;
 
             if (glLogLevel >= 3) {
-               if (mem.Flags & MEM_STRING) {
+               if ((mem.Flags & MEM::STRING) != MEM::NIL) {
                   log.warning("Unfreed string \"%.40s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
                }
-               else if (mem.Flags & MEM_MANAGED) {
+               else if ((mem.Flags & MEM::MANAGED) != MEM::NIL) {
                   auto res = (ResourceManager **)((char *)mem.Address - sizeof(LONG) - sizeof(LONG) - sizeof(ResourceManager *));
                   if (res[0]) log.warning("Unfreed %s resource at %p.", res[0]->Name, mem.Address);
                   else log.warning("Unfreed resource at %p.", mem.Address);
@@ -1003,7 +1003,7 @@ OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
    if (lock.granted()) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
-         if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
+         if (((mem->second.Flags & MEM::OBJECT) != MEM::NIL) and (mem->second.Object)) {
             if (mem->second.Object->UID IS ObjectID) {
                return mem->second.Object;
             }
@@ -1330,7 +1330,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
    OBJECTPTR head = NULL;
    MEMORYID head_id;
 
-   if (!AllocMemory(mc->Size, MEM_MANAGED|MEM_OBJECT|MEM_NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM_UNTRACKED : 0), (APTR *)&head, &head_id)) {
+   if (!AllocMemory(mc->Size, MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id)) {
       set_memory_manager(head, &glResourceObject);
 
       head->UID     = head_id;
@@ -1717,7 +1717,7 @@ InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
-   AllocMemory(1000, MEM_DATA, &memory, NULL);
+   AllocMemory(1000, MEM::DATA, &memory, NULL);
 
 SetContext(ctx);
 FreeResource(display->UID);
@@ -1732,7 +1732,7 @@ InitObject(display);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &bitmap);
-   AllocMemory(1000, MEM_DATA, &memory, NULL);
+   AllocMemory(1000, MEM::DATA, &memory, NULL);
 
 SetContext(ctx);
 FreeResource(display->UID); // The bitmap and memory would be auto-collected

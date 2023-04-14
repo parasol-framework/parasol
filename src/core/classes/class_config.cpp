@@ -159,7 +159,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
 
          if (filesize > 0) {
             STRING data;
-            if (!AllocMemory(filesize + 3, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
+            if (!AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL)) {
                file->read(data, filesize); // Read the entire file
                data[filesize++] = '\n';
                data[filesize] = 0;

@@ -80,7 +80,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
-   if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
+   if (!AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer)) {
       // Pick the correct mixing routines
 
       if (Self->Flags & ADF_OVER_SAMPLING) {
@@ -219,7 +219,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
    if ((!sample.SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample.Data = NULL;
    }
-   else if (!AllocMemory(Args->DataSize, MEM_DATA|MEM_NO_CLEAR, &sample.Data)) {
+   else if (!AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data)) {
       CopyMemory(Args->Data, sample.Data, Args->DataSize);
    }
    else return log.warning(ERR_AllocMemory);
@@ -343,7 +343,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
    }
 
-   if (AllocMemory(buffer_len, MEM_DATA|MEM_NO_CLEAR, &sample.Data) != ERR_Okay) {
+   if (AllocMemory(buffer_len, MEM::DATA|MEM::NO_CLEAR, &sample.Data) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 

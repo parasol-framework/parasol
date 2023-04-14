@@ -49,7 +49,7 @@ static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
 
 //********************************************************************************************************************
 
-inline void add_input(CSTRING Debug, InputEvent &input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
+inline void add_input(CSTRING Debug, InputEvent &input, JTYPE Flags, OBJECTID RecipientID, OBJECTID OverID,
    DOUBLE AbsX, DOUBLE AbsY, DOUBLE OverX, DOUBLE OverY)
 {
    //pf::Log log(__FUNCTION__);
@@ -140,7 +140,7 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
             //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
             if (input->Type IS JET_WHEEL) process_ptr_wheel(Self, input);
-            else if (input->Flags & JTYPE_BUTTON) process_ptr_button(Self, input);
+            else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) process_ptr_button(Self, input);
             else process_ptr_movement(Self, input);
          }
       }
@@ -168,7 +168,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
    if (!userinput.Timestamp) userinput.Timestamp = PreciseTime();
 
-   LONG uiflags = 0;
+   auto uiflags = JTYPE::NIL;
 
    if ((userinput.Type >= JET_BUTTON_1) and (userinput.Type <= JET_BUTTON_10)) {
       bi = userinput.Type - JET_BUTTON_1;
@@ -197,15 +197,15 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       if (Self->Buttons[bi].LastClicked) {
          LONG absx, absy;
          if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
-            uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
+            uiflags |= Self->DragSourceID ? JTYPE::DRAG_ITEM : JTYPE::NIL;
 
             if ((std::abs(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
                 (std::abs(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
-               uiflags |= JTYPE_DRAGGED;
+               uiflags |= JTYPE::DRAGGED;
             }
 
             if (Self->Buttons[bi].DblClick) {
-               if (!(uiflags & JTYPE_DRAGGED)) uiflags |= JTYPE_DBL_CLICK;
+               if ((uiflags & JTYPE::DRAGGED) IS JTYPE::NIL) uiflags |= JTYPE::DBL_CLICK;
             }
 
             add_input("ButtonRelease-LastClicked", userinput, uiflags, Self->Buttons[bi].LastClicked, Self->OverObjectID,
@@ -261,7 +261,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          if (((DOUBLE)(userinput.Timestamp - Self->Buttons[bi].LastClickTime)) / 1000000.0 < Self->DoubleClick) {
             log.trace("Double click detected (under %.2fs)", Self->DoubleClick);
             Self->Buttons[bi].DblClick = TRUE;
-            uiflags |= JTYPE_DBL_CLICK;
+            uiflags |= JTYPE::DBL_CLICK;
          }
          else Self->Buttons[bi].DblClick = FALSE;
 
@@ -314,8 +314,8 @@ static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputEvent msg;
    msg.Type        = JET_WHEEL;
-   msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
-   msg.Mask        = JTYPE_EXT_MOVEMENT;
+   msg.Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT | Input->Flags;
+   msg.Mask        = JTYPE::EXT_MOVEMENT;
    msg.Value       = Input->Value;
    msg.Timestamp   = Input->Timestamp;
    msg.DeviceID    = Input->DeviceID;
@@ -415,7 +415,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          // environments we cannot maintain a true anchor since the pointer is out of our control, but we still must
          // perform the necessary notification.
 
-         add_input("Movement-Anchored", userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
+         add_input("Movement-Anchored", userinput, JTYPE::NIL, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
       }
       else {
          struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
@@ -449,7 +449,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
          LONG absx, absy;
          if (!get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
-            LONG uiflags = Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
+            auto uiflags = Self->DragSourceID ? JTYPE::DRAG_ITEM : JTYPE::NIL;
 
             // Send the movement message to the last clicked object
 
@@ -461,10 +461,10 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             // The surface directly under the pointer also needs notification - important for the view to highlight
             // folders during drag and drop for example.
 
-            // JTYPE_SECONDARY indicates to the receiver of the input message that it is not the primary recipient.
+            // JTYPE::SECONDARY indicates to the receiver of the input message that it is not the primary recipient.
 
             if (Self->Buttons[0].LastClicked != Self->OverObjectID) {
-               add_input("Movement-LastClicked", userinput, uiflags|JTYPE_SECONDARY, Self->OverObjectID, Self->OverObjectID,
+               add_input("Movement-LastClicked", userinput, uiflags|JTYPE::SECONDARY, Self->OverObjectID, Self->OverObjectID,
                   Self->X, Self->Y, Self->OverX, Self->OverY);
             }
 
@@ -476,7 +476,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       }
       else {
          if (Self->OverObjectID) {
-            add_input("OverObject", userinput, 0, Self->OverObjectID, Self->OverObjectID,
+            add_input("OverObject", userinput, JTYPE::NIL, Self->OverObjectID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
 
@@ -484,7 +484,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          // pointer has moved for one final time.
 
          if ((Self->LastSurfaceID) and (Self->LastSurfaceID != Self->OverObjectID)) {
-            add_input("Movement-PrevSurface", userinput, 0, Self->LastSurfaceID, Self->OverObjectID,
+            add_input("Movement-PrevSurface", userinput, JTYPE::NIL, Self->LastSurfaceID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
       }
@@ -1118,8 +1118,8 @@ static bool get_over_object(extPointer *Self)
          .Y           = Self->Y - li_top,
          .DeviceID    = Self->UID,
          .Type        = JET_LEFT_SURFACE,
-         .Flags       = JTYPE_FEEDBACK,
-         .Mask        = JTYPE_FEEDBACK
+         .Flags       = JTYPE::FEEDBACK,
+         .Mask        = JTYPE::FEEDBACK
       };
 
       const std::lock_guard<std::recursive_mutex> lock(glInputLock);
@@ -1203,8 +1203,8 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
             }
 
             input.Type        = JET_BUTTON_1 + i;
-            input.Mask        = JTYPE_BUTTON|JTYPE_REPEATED;
-            input.Flags       = JTYPE_BUTTON|JTYPE_REPEATED;
+            input.Mask        = JTYPE::BUTTON|JTYPE::REPEATED;
+            input.Flags       = JTYPE::BUTTON|JTYPE::REPEATED;
             input.Value       = 1.0; // Self->Buttons[i].LastValue
             input.Timestamp   = time;
             input.DeviceID    = 0;

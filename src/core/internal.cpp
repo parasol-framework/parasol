@@ -247,7 +247,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                if (memsize > 0) {
                   if (Args[i].Type & FD_RESULT) { // "Receive" pointer type: Prepare a buffer so that we can accept a result
                      APTR mem;
-                     if (!AllocMemory(memsize, MEM_NO_CLEAR, &mem, NULL)) {
+                     if (!AllocMemory(memsize, MEM::NO_CLEAR, &mem, NULL)) {
                         ((APTR *)(Buffer + pos))[0] = mem;
                      }
                      else { error = ERR_AllocMemory; goto looperror; }
@@ -257,7 +257,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                      if ((src = ((BYTE **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
                         if (memsize > MSG_MAXARGSIZE) {
                            // For large data areas, we need to allocate them as public memory blocks
-                           if (!AllocMemory(memsize, MEM_NO_CLEAR, (void **)&data, NULL)) {
+                           if (!AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL)) {
                               ((APTR *)(Buffer + pos))[0] = data;
                               CopyMemory(src, data, memsize);
                            }
@@ -348,7 +348,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
             if (mid < 0) {
                APTR memory;
-               if (!AccessMemory(mid, MEM_READ_WRITE, 3000, &memory)) {
+               if (!AccessMemory(mid, MEM::READ_WRITE, 3000, &memory)) {
                   ((APTR *)(Buffer + pos))[0] = memory;
                }
                else {

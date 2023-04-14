@@ -382,7 +382,7 @@ void gen_vector_path(extVector *Vector)
    }
    else log.warning("Target vector is not a shape.");
 
-   send_feedback(Vector, FM_PATH_CHANGED);
+   send_feedback(Vector, FM::PATH_CHANGED);
 }
 
 //********************************************************************************************************************

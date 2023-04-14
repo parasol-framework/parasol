@@ -357,10 +357,15 @@ class objVectorViewport;
 
 // Mask for controlling feedback events that are received.
 
-#define FM_PATH_CHANGED 0x00000001
-#define FM_HAS_FOCUS 0x00000002
-#define FM_CHILD_HAS_FOCUS 0x00000004
-#define FM_LOST_FOCUS 0x00000008
+enum class FM : ULONG {
+   NIL = 0,
+   PATH_CHANGED = 0x00000001,
+   HAS_FOCUS = 0x00000002,
+   CHILD_HAS_FOCUS = 0x00000004,
+   LOST_FOCUS = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FM)
 
 struct GradientStop {
    DOUBLE Offset;    // An offset in the range of 0 - 1.0
@@ -1370,9 +1375,9 @@ struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
 struct vecGetBoundary { LONG Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
-struct vecSubscribeInput { LONG Mask; FUNCTION * Callback;  };
+struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
 struct vecSubscribeKeyboard { FUNCTION * Callback;  };
-struct vecSubscribeFeedback { LONG Mask; FUNCTION * Callback;  };
+struct vecSubscribeFeedback { FM Mask; FUNCTION * Callback;  };
 struct vecNewMatrix { struct VectorMatrix * Transform;  };
 struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
 
@@ -1401,7 +1406,7 @@ INLINE ERROR vecPointInPath(APTR Ob, DOUBLE X, DOUBLE Y) {
    return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecSubscribeInput(APTR Ob, LONG Mask, FUNCTION * Callback) {
+INLINE ERROR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION * Callback) {
    struct vecSubscribeInput args = { Mask, Callback };
    return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
@@ -1411,7 +1416,7 @@ INLINE ERROR vecSubscribeKeyboard(APTR Ob, FUNCTION * Callback) {
    return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecSubscribeFeedback(APTR Ob, LONG Mask, FUNCTION * Callback) {
+INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) {
    struct vecSubscribeFeedback args = { Mask, Callback };
    return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }

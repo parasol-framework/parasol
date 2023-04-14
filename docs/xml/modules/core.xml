@@ -37,10 +37,10 @@
     <name>AccessMemory</name>
     <category>Memory</category>
     <comment>Grants access to memory blocks by identifier.</comment>
-    <prototype>ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR * Result)</prototype>
+    <prototype>ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR * Result)</prototype>
     <input>
       <param type="MEMORYID" name="Memory">The ID of the memory block that you want to access.</param>
-      <param type="LONG" name="Flags" lookup="MEM">Set to MEM_READ, MEM_WRITE or MEM_READ_WRITE according to requirements.</param>
+      <param type="MEM" name="Flags" lookup="MEM">Set to READ, WRITE or READ_WRITE according to requirements.</param>
       <param type="LONG" name="MilliSeconds">The millisecond interval to wait before a timeout occurs.  Do not set below 40ms for consistent operation.</param>
       <param type="APTR *" name="Result">Must point to an APTR variable that will store the resolved address.</param>
     </input>
@@ -285,10 +285,10 @@ struct FunctionField argsResize[] = {
     <name>AllocMemory</name>
     <category>Memory</category>
     <comment>Allocates a new memory block on the heap.</comment>
-    <prototype>ERROR AllocMemory(LONG Size, LONG Flags, APTR * Address, MEMORYID * ID)</prototype>
+    <prototype>ERROR AllocMemory(LONG Size, MEM Flags, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="LONG" name="Size">The size of the memory block.</param>
-      <param type="LONG" name="Flags" lookup="MEM">Optional flags.</param>
+      <param type="MEM" name="Flags" lookup="MEM">Optional flags.</param>
       <param type="APTR *" name="Address">Set this argument to refer to an APTR type to store an address reference to the allocated memory block.</param>
       <param type="MEMORYID *" name="ID">Set this argument to refer to a MEMORYID type to store a unique ID reference to the allocated memory block.</param>
     </input>
@@ -296,7 +296,7 @@ struct FunctionField argsResize[] = {
 <p>The AllocMemory() function will allocate a new block of memory on the program's heap.  The client will need to define the minimum byte Size, optional Flags and a variable to store the resulting Address and/or ID of the memory block. Here is an example:</p>
 <pre>
 APTR address;
-if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
+if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
    ...
    FreeResource(address);
 }
@@ -305,7 +305,7 @@ if (!AllocMemory(1000, MEM_DATA, &amp;address, NULL)) {
 <types lookup="MEM"/>
 <p>Notice that memory allocation can be returned as an address pointer and/or as a unique memory ID.  Typically a private address with no ID reference is sufficient.</p>
 <p>If the client retrieves both the ID and Address pointer, an internal call will be made to <function module="Core">AccessMemory</function> to lock the memory block.  This means that before freeing the memory block the client must call <function module="Core">ReleaseMemory</function> to unlock it. Blocks that are persistently locked will remain in memory until the process is terminated.</p>
-<p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM_NO_CLEAR</code> flag.</p>
+<p>Memory that is allocated through AllocMemory() is automatically cleared with zero-byte values.  When allocating large blocks it may be wise to turn off this feature, achieved by setting the <code>MEM::NO_CLEAR</code> flag.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1686,7 +1686,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <description>
 <p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
 <p>Here is an example that scans the queue of the active task:</p>
-<pre>if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ, &amp;queue)) {
+<pre>if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ, &amp;queue)) {
    while (!ScanMessages(queue, &amp;index, MSGID_QUIT, NULL, NULL)) {
       ...
    }
@@ -1770,7 +1770,7 @@ SetArray(Object, FID_Table|TLONG, array, 100);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &amp;bitmap);
-   AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
+   AllocMemory(1000, MEM::DATA, &amp;memory, NULL);
 
 SetContext(ctx);
 FreeResource(display-&gt;UID);
@@ -1780,7 +1780,7 @@ FreeResource(display-&gt;UID);
 auto ctx = SetContext(display);
 
    NewObject(ID_BITMAP, &amp;bitmap);
-   AllocMemory(1000, MEM_DATA, &amp;memory, NULL);
+   AllocMemory(1000, MEM::DATA, &amp;memory, NULL);
 
 SetContext(ctx);
 FreeResource(display-&gt;UID); // The bitmap and memory would be auto-collected
@@ -3676,23 +3676,23 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
       <field name="RecipientID" type="OBJECTID">Surface that the input message is being conveyed to</field>
       <field name="OverID" type="OBJECTID">Surface that is directly under the mouse pointer at the time of the event</field>
-      <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor</field>
-      <field name="AbsY" type="DOUBLE">Absolute vertical position of mouse cursor</field>
+      <field name="AbsX" type="DOUBLE">Absolute horizontal position of mouse cursor (relative to the top left of the display)</field>
+      <field name="AbsY" type="DOUBLE">Absolute vertical position of mouse cursor (relative to the top left of the display)</field>
       <field name="X" type="DOUBLE">Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
       <field name="Y" type="DOUBLE">Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from</field>
-      <field name="Type" type="UWORD">JET constant</field>
-      <field name="Flags" type="UWORD">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>
-      <field name="Mask" type="UWORD">Mask to use for checking against subscribers</field>
+      <field name="Type" type="LONG" lookup="JET">JET constant that describes the event</field>
+      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object</field>
+      <field name="Mask" type="JTYPE" lookup="JTYPE">Mask to use for checking against subscribers</field>
     </struct>
 
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
       <field name="Size" type="LONG">The size of the memory block.</field>
-      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
-      <field name="Flags" type="WORD">The type of memory.</field>
+      <field name="Flags" type="MEM" lookup="MEM">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
+      <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
     </struct>
 
     <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
@@ -3757,9 +3757,8 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="Value" type="DOUBLE">The value associated with the Type</field>
       <field name="Timestamp" type="LARGE">PreciseTime() of the recorded input</field>
       <field name="DeviceID" type="OBJECTID">The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)</field>
-      <field name="Flags" type="LONG">Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object</field>
-      <field name="Type" type="UWORD">JET constant</field>
-      <field name="Unused" type="UWORD">Unused value for 32-bit padding</field>
+      <field name="Flags" type="JTYPE" lookup="JTYPE">Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object</field>
+      <field name="Type" type="LONG" lookup="JET">JET constant</field>
     </struct>
 
     <struct name="dcKeyEntry" comment="Data feed structure for Keypress">

@@ -261,13 +261,13 @@ struct metafield {
 struct finput {
    objScript *Script;
    struct finput *Next;
-   APTR KeyEvent;
+   APTR  KeyEvent;
    OBJECTID SurfaceID;
-   LONG InputHandle;
-   LONG Callback;
-   LONG InputValue;
-   LONG Mask;
-   BYTE Mode;
+   LONG  InputHandle;
+   LONG  Callback;
+   LONG  InputValue;
+   JTYPE Mask;
+   BYTE  Mode;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };

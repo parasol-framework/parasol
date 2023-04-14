@@ -175,9 +175,9 @@
     <method>
       <name>SubscribeFeedback</name>
       <comment>Subscribe to events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="LONG" name="Mask" lookup="FM">Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+        <param type="FM" name="Mask" lookup="FM">Combine JTYPE flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
       </input>
       <description>
@@ -196,9 +196,9 @@
     <method>
       <name>SubscribeInput</name>
       <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
+        <param type="JTYPE" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>

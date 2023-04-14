@@ -623,7 +623,7 @@ int fcmd_loadfile(lua_State *Lua)
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
          APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer)) {
+         if (!AllocMemory(SIZE_READ, MEM::NO_CLEAR, &buffer)) {
             struct code_reader_handle handle = { *file, buffer };
 
             // Check for the presence of a compiled header and skip it if present

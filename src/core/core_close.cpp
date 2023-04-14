@@ -157,7 +157,7 @@ EXPORT void CloseCore(void)
       // Remove locks on any private objects that have not been unlocked yet
 
       for (const auto & [ id, mem ] : glPrivateMemory) {
-         if ((mem.Flags & MEM_OBJECT) and (mem.AccessCount > 0)) {
+         if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
             if (auto obj = mem.Object) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->OwnerID, mem.AccessCount);
                for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
@@ -447,7 +447,7 @@ static void free_private_memory(void)
 
    LONG count = 0;
    for (auto & [ id, mem ] : glPrivateMemory) {
-      if ((mem.Address) and (mem.Flags & MEM_STRING)) {
+      if ((mem.Address) and ((mem.Flags & MEM::STRING) != MEM::NIL)) {
          if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
          mem.AccessCount = 0;
          FreeResource(mem.Address);
@@ -461,7 +461,7 @@ static void free_private_memory(void)
    for (auto & [ id, mem ] : glPrivateMemory) {
       if (mem.Address) {
          if (!glCrashStatus) {
-            if (mem.Flags & MEM_OBJECT) {
+            if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
                log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, mem.Object->Class->ClassID, mem.OwnerID);
             }
             else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID);

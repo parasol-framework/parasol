@@ -529,7 +529,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
                len = snprintf(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
                end = StrLength(server_buffer);
-               if (!AllocMemory(end + len + 2, MEM_STRING|MEM_NO_CLEAR, &newlist)) {
+               if (!AllocMemory(end + len + 2, MEM::STRING|MEM::NO_CLEAR, &newlist)) {
                   if (end > 0) {
                      CopyMemory(server_buffer, newlist, end);
                      newlist[end++] = ';';

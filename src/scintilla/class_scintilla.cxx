@@ -841,7 +841,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    {
       auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+      gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
    }
 
    // TODO: Run the scrollbar script here
@@ -1264,7 +1264,7 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
 
    ERROR error;
    APTR buffer;
-   if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
+   if (!(AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &buffer))) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
       error = acWrite(Args->Dest, buffer, len, NULL);
       FreeResource(buffer);
@@ -1974,7 +1974,7 @@ static ERROR GET_String(extScintilla *Self, STRING *Value)
 
    if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
 
-   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer)) {
+   if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->StringBuffer)) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
       *Value = Self->StringBuffer;
       return ERR_Okay;
@@ -2240,7 +2240,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       else if (!file->get(FID_Size, &size)) {
          if (size > 0) {
             if (size < 1024 * 1024 * 10) {
-               if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &str)) {
+               if (!AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &str)) {
                   if (!acRead(file, str, size, &len)) {
                      str[len] = 0;
                      SCICALL(SCI_SETTEXT, str);
@@ -2368,13 +2368,13 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
    for (auto event=Events; event; event=event->Next) {
       if (Self->Flags & SCF_DISABLED) continue;
 
-      if (event->Flags & JTYPE_BUTTON) {
+      if ((event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          if (event->Value > 0) {
             Self->API->panMousePress(event->Type, event->X, event->Y);
          }
          else Self->API->panMouseRelease(event->Type, event->X, event->Y);
       }
-      else if (event->Flags & JTYPE_MOVEMENT) {
+      else if ((event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
          Self->API->panMouseMove(event->X, event->Y);
       }
    }

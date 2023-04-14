@@ -1596,7 +1596,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
 
             UBYTE *output;
             LONG size = strlen(val);
-            if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &output)) {
+            if (!AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &output)) {
                LONG written;
                if (!(error = Base64Decode(&state, val, size, output, &written))) {
                   Path = "temp:svg.img";
@@ -1822,7 +1822,7 @@ static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag &Tag)
 
    STRING css_buffer;
    LONG css_size = 256 * 1024;
-   if (!AllocMemory(css_size, MEM_DATA|MEM_STRING|MEM_NO_CLEAR, &css_buffer)) {
+   if (!AllocMemory(css_size, MEM::DATA|MEM::STRING|MEM::NO_CLEAR, &css_buffer)) {
       if (!(error = xmlGetContent(XML, Tag.ID, css_buffer, css_size))) {
          if (auto css = katana_parse(css_buffer, StrLength(css_buffer), KatanaParserModeStylesheet)) {
             /*#ifdef DEBUG

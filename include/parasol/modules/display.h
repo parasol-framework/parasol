@@ -440,7 +440,7 @@ class objBitmap : public BaseClass {
    LONG    PlaneMod;                                                 // The differential between each bitmap plane.
    struct ClipRectangle Clip;                                        // Defines the bitmap's clipping region.
    LONG    Size;                                                     // The total size of the bitmap, in bytes.
-   LONG    DataFlags;                                                // Defines the memory flags to use in allocating a bitmap's data area.
+   MEM     DataFlags;                                                // Defines the memory flags to use in allocating a bitmap's data area.
    LONG    AmtColours;                                               // The maximum number of displayable colours.
    LONG    Flags;                                                    // Optional flags.
    LONG    TransIndex;                                               // The transparent colour of the bitmap, represented as an index.
@@ -632,7 +632,7 @@ class objBitmap : public BaseClass {
       return field->WriteValue(target, field, 0x08000310, Value, 1);
    }
 
-   inline ERROR setDataFlags(const LONG Value) {
+   inline ERROR setDataFlags(const MEM Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->DataFlags = Value;
       return ERR_Okay;
@@ -1638,7 +1638,7 @@ struct DisplayBase {
    ERROR (*_SetHostOption)(LONG Option, LARGE Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
    ERROR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
-   ERROR (*_SubscribeInput)(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle);
+   ERROR (*_SubscribeInput)(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
    void (*_Sync)(objBitmap * Bitmap);
    ERROR (*_UnlockBitmap)(OBJECTID Surface, objBitmap * Bitmap);
    ERROR (*_UnlockCursor)(OBJECTID Surface);
@@ -1685,7 +1685,7 @@ inline ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap
 inline ERROR gfxSetHostOption(LONG Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID gfxSetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
 inline ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
-inline ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
+inline ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
 inline void gfxSync(objBitmap * Bitmap) { return DisplayBase->_Sync(Bitmap); }
 inline ERROR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
 inline ERROR gfxUnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }

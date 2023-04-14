@@ -61,7 +61,7 @@
       <name>Init</name>
       <comment>Initialises a bitmap.</comment>
       <description>
-<p>This action will initialise a bitmap object so that it is ready for use.  If the bitmap <field>Data</field> field has not been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is dependent on the bitmap <field>DataFlags</field> field.  If you have not specified a memory type, you will get a default of MEM_DATA.  For a display compatible bitmap use MEM_VIDEO.  If you just want to store a bitmap in fast writeable memory, use MEM_TEXTURE.</p>
+<p>This action will initialise a bitmap object so that it is ready for use.  If the bitmap <field>Data</field> field has not been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is dependent on the bitmap <field>DataFlags</field> field.  If you have not specified a memory type, you will get a default of <code>MEM::DATA</code>.  For a display compatible bitmap use <code>MEM::VIDEO</code>.  If you just want to store a bitmap in fast writeable memory, use <code>MEM::TEXTURE</code>.</p>
 <p>This action will not work unless you have defined the <field>Width</field> and <field>Height</field> fields of the bitmap at a minimum.</p>
       </description>
     </action>
@@ -520,10 +520,11 @@ unpackAlpha(Colour)
       <name>DataFlags</name>
       <comment>Defines the memory flags to use in allocating a bitmap's data area.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
+      <type lookup="MEM">MEM</type>
       <description>
-<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the <code>MEM_DATA</code>, <code>MEM_VIDEO</code> and <code>MEM_TEXTURE</code> memory flags.</p>
+<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the <code>MEM::DATA</code>, <code>MEM::VIDEO</code> and <code>MEM::TEXTURE</code> memory flags.</p>
 <p>Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the bitmap <field>Data</field> field directly with these bitmap types.  To circumvent this problem please use the <action>Lock</action> action to enable read access when you require it.</p>
+<types lookup="MEM"/>
       </description>
     </field>
 

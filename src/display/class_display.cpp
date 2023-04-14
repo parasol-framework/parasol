@@ -277,7 +277,7 @@ static ERROR DISPLAY_DataFeed(extDisplay *Self, struct acDataFeed *Args)
          }
 
          STRING xml;
-         if (!AllocMemory(xmlsize, MEM_STRING|MEM_NO_CLEAR, &xml)) {
+         if (!AllocMemory(xmlsize, MEM::STRING|MEM::NO_CLEAR, &xml)) {
             LONG pos = snprintf(xml, xmlsize, "<receipt totalitems=\"%d\" id=\"%d\">", total_items, request->Item);
 
             for (LONG i=0; i < total_items; i++) {
@@ -732,7 +732,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    #ifdef __xwindows__
 
       bmp->Flags |= BMF_NO_DATA;
-      bmp->DataFlags = MEM_VIDEO;
+      bmp->DataFlags = MEM::VIDEO;
 
       // Set the Window Attributes structure
 
@@ -843,7 +843,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       // will be managed by the Surface class.
 
       bmp->Flags |= BMF_NO_DATA;
-      bmp->DataFlags = MEM_VIDEO;
+      bmp->DataFlags = MEM::VIDEO;
 
       if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
@@ -913,7 +913,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       // Initialise the video bitmap that will represent the OpenGL surface
 
       bmp->Flags |= BMF_NO_DATA;
-      bmp->DataFlags = MEM_VIDEO;
+      bmp->DataFlags = MEM::VIDEO;
       if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
       }
@@ -2928,7 +2928,7 @@ static ERROR GET_Title(extDisplay *Self, CSTRING *Value)
 
    buffer[0] = 0;
    winGetWindowTitle(Self->WindowHandle, buffer, sizeof(buffer));
-   if (!AllocMemory(StrLength(buffer) + 1, MEM_STRING|MEM_UNTRACKED, &str)) {
+   if (!AllocMemory(StrLength(buffer) + 1, MEM::STRING|MEM::UNTRACKED, &str)) {
       StrCopy(buffer, str);
       if (glWindowTitle) FreeResource(glWindowTitle);
       glWindowTitle = str;
@@ -3021,9 +3021,9 @@ void alloc_display_buffer(extDisplay *Self)
          fl::Width(Self->Bitmap->Width),
          fl::Height(Self->Bitmap->Height),
          #ifdef __xwindows__
-            fl::DataFlags(MEM_DATA)
+            fl::DataFlags(MEM::DATA)
          #else
-            fl::DataFlags(MEM_TEXTURE)
+            fl::DataFlags(MEM::TEXTURE)
          #endif
       )) {
       Self->BufferID = buffer->UID;

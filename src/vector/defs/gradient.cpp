@@ -409,7 +409,7 @@ static ERROR VECTORGRADIENT_SET_Matrices(extVectorGradient *Self, VectorMatrix *
       auto hook = &Self->Matrices;
       while (Value) {
          VectorMatrix *matrix;
-         if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix)) {
+         if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
             matrix->Vector = NULL;
             matrix->Next   = NULL;
             matrix->ScaleX = Value->ScaleX;
@@ -527,7 +527,7 @@ static ERROR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Val
    if (Self->Stops) { FreeResource(Self->Stops); Self->Stops = NULL; }
 
    if (Elements >= 2) {
-      if (!AllocMemory(sizeof(GradientStop) * Elements, MEM_DATA|MEM_NO_CLEAR, &Self->Stops)) {
+      if (!AllocMemory(sizeof(GradientStop) * Elements, MEM::DATA|MEM::NO_CLEAR, &Self->Stops)) {
          Self->TotalStops = Elements;
          CopyMemory(Value, Self->Stops, Elements * sizeof(GradientStop));
          if (Self->Colours) delete Self->Colours;
@@ -567,7 +567,7 @@ static ERROR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Comma
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
-      if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix)) {
+      if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
          matrix->Vector = NULL;
          matrix->Next   = Self->Matrices;
          matrix->ScaleX = 1.0;

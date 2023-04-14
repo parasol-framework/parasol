@@ -29,7 +29,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
 
    if (Self->Flags & RNF_VISIBLE) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
       APTR queue;
-      if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM_READ_WRITE, 3000, &queue)) {
+      if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ_WRITE, 3000, &queue)) {
          UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
          LONG index = 0;
          while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
