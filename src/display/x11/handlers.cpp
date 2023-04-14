@@ -227,7 +227,7 @@ void handle_button_release(XEvent *xevent)
    feed.Buffer   = &input;
    feed.Size     = sizeof(input);
    input.Type  = 0;
-   input.Flags = 0;
+   input.Flags = JTYPE::NIL;
    input.Value = 0;
    input.Timestamp = PreciseTime();
 
@@ -713,11 +713,11 @@ void process_movement(Window Window, LONG X, LONG Y)
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       input[0].Type      = JET_ABS_X;
-      input[0].Flags     = 0;
+      input[0].Flags     = JTYPE::NIL;
       input[0].Value     = X;
       input[0].Timestamp = PreciseTime();
       input[1].Type      = JET_ABS_Y;
-      input[1].Flags     = 0;
+      input[1].Flags     = JTYPE::NIL;
       input[1].Value     = Y;
       input[1].Timestamp = input[0].Timestamp;
       Action(AC_DataFeed, pointer, &feed);
@@ -725,3 +725,4 @@ void process_movement(Window Window, LONG X, LONG Y)
       ReleaseObject(pointer);
    }
 }
+

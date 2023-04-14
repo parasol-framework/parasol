@@ -177,7 +177,7 @@
       <comment>Subscribe to events that relate to the vector.</comment>
       <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="FM" name="Mask" lookup="FM">Combine JTYPE flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+        <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
       </input>
       <description>
