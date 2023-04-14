@@ -235,7 +235,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
-         RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_write, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_write, Self);
       #elif _WIN32
          if ((Self->WriteSocket) or (Self->Outgoing.Type != CALL_NONE) or (Self->WriteQueue.Buffer)) {
             // Do nothing, we are already listening for writes
@@ -277,7 +277,7 @@ static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
-         RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_read, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
       #elif _WIN32
          // No need to remove any handle monitoring, client_server_incoming() will do so automatically if
          // necessary when new data arrives.
