@@ -15,8 +15,8 @@ restriction.
 
 #include <parasol/main.h>
 
-#ifndef ROOT_PATH
-#define ROOT_PATH "/usr/local"
+#ifndef _ROOT_PATH
+#define _ROOT_PATH "/usr/local"
 #endif
 
 extern "C" void program(void);
@@ -60,7 +60,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error     = ERR_Okay;
    info.RootPath  = root_path;
-   info.Flags     = OPF_CORE_VERSION|OPF_COMPILED_AGAINST|OPF_ARGS|OPF_ERROR|OPF_ROOT_PATH;
+   info.Flags     = OPF::CORE_VERSION|OPF::COMPILED_AGAINST|OPF::ARGS|OPF::ERROR|OPF::ROOT_PATH;
 
    // Check for a local installation in the CWD.
 
@@ -96,8 +96,8 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
 
             snprintf(core_path, sizeof(core_path), "%slib/core.so", root_path);
             if (stat(core_path, &corestat)) { // Support for fixed installations
-               strncpy(root_path, ROOT_PATH"/", sizeof(root_path));
-               strncpy(core_path, ROOT_PATH"/lib/parasol/core.so", sizeof(core_path));
+               strncpy(root_path, _ROOT_PATH"/", sizeof(root_path));
+               strncpy(core_path, _ROOT_PATH"/lib/parasol/core.so", sizeof(core_path));
                if (stat(core_path, &corestat)) {
                   msg = "Failed to find the location of the core.so library";
                   goto failed_lib_open;
@@ -152,3 +152,4 @@ extern "C" void close_parasol(void)
 //********************************************************************************************************************
 
 #include "startup-common.c"
+
