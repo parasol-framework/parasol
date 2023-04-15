@@ -325,7 +325,7 @@ class extPointer : public objPointer {
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
    LONG     CursorRelease;
    PTC      BufferCursor;
-   LONG     BufferFlags;
+   CRF      BufferFlags;
    MEMORYID BufferQueue;
    OBJECTID BufferOwner;
    OBJECTID BufferObject;

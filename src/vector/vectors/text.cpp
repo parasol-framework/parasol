@@ -1547,7 +1547,7 @@ static void generate_text_bitmap(extVectorText *Vector)
 
    Vector->txFont->Bitmap = Vector->txAlphaBitmap;
 
-   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF_FILL);
+   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF::FILL);
 
    if (Vector->txInlineSize) Vector->txFont->WrapEdge = Vector->txInlineSize;
 

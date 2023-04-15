@@ -979,7 +979,7 @@ public:
 
          // Visually debug input boundaries
          //for (auto const &bounds : Scene->InputBoundaries) {
-         //   gfxDrawRectangle(Bitmap, bounds.BX1, bounds.BY1, bounds.BX2-bounds.BX1, bounds.BY2-bounds.BY1, 0xff00ff, FALSE);
+         //   gfxDrawRectangle(Bitmap, bounds.BX1, bounds.BY1, bounds.BX2-bounds.BX1, bounds.BY2-bounds.BY1, 0xff00ff, BAF::NIL);
          //}
       }
    }
@@ -1144,7 +1144,7 @@ private:
             objBitmap *bmp;
             if (!render_filter(filter, mView, shape, mBitmap, &bmp)) {
                bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
-               gfxCopyArea(bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
+               gfxCopyArea(bmp, mBitmap, BAF::BLEND|BAF::COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             }
             continue;
          }

@@ -4132,7 +4132,7 @@ static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
 
 static void draw_background(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF_FILL);
+   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF::FILL);
 }
 
 //********************************************************************************************************************
@@ -4247,20 +4247,20 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
             if ((select_start > segment->Index) and (select_start < segment->Stop)) {
                if (select_end < segment->Stop) {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     select_endx - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                     select_endx - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
                }
                else {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     segment->Width - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                     segment->Width - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
                }
             }
             else if (select_end < segment->Stop) {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, select_endx, segment->Height,
-                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF::FILL);
             }
             else {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, segment->Width, segment->Height,
-                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF::FILL);
             }
             Bitmap->Opacity = 255;
          }
@@ -4272,7 +4272,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
             else {
                if (gfxGetUserFocus() IS Self->PageID) { // Standard text cursor
                   gfxDrawRectangle(Bitmap, segment->X + Self->CursorCharX, segment->Y, 2, segment->BaseLine,
-                     Bitmap->packPixel(255, 0, 0), BAF_FILL);
+                     Bitmap->packPixel(255, 0, 0), BAF::FILL);
                   cursor_drawn = TRUE;
                }
             }
@@ -4421,7 +4421,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                      gfxDrawRectangle(Bitmap,
                         esctable->X+esctable->Thickness, esctable->Y+esctable->Thickness,
                         esctable->Width-(esctable->Thickness<<1), esctable->Height-(esctable->Thickness<<1),
-                        Bitmap->packPixel(esctable->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esctable->Colour), BAF::FILL|BAF::BLEND);
                   }
 
                   if (esctable->Shadow.Alpha > 0) {
@@ -4451,7 +4451,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 
                   if (escrow->Colour.Alpha) {
                      gfxDrawRectangle(Bitmap, esctable->X, escrow->Y, esctable->Width, escrow->RowHeight,
-                        Bitmap->packPixel(escrow->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(escrow->Colour), BAF::FILL|BAF::BLEND);
                   }
                   break;
                }
@@ -4477,7 +4477,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 
                      gfxDrawRectangle(Bitmap, esccell->AbsX+border, esccell->AbsY+border,
                         esctable->Columns[esccell->Column].Width-border, escrow->RowHeight-border,
-                        Bitmap->packPixel(esccell->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esccell->Colour), BAF::FILL|BAF::BLEND);
                   }
 
                   if (esccell->Shadow.Alpha > 0) { // Border colour
@@ -4553,20 +4553,20 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 static void draw_border(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    if ((!Self->BorderEdge) or (Self->BorderEdge IS (DBE_TOP|DBE_BOTTOM|DBE_LEFT|DBE_RIGHT))) {
-      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), 0);
+      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
    }
    else {
       if (Self->BorderEdge & DBE_TOP) {
-         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
       if (Self->BorderEdge & DBE_LEFT) {
-         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
       if (Self->BorderEdge & DBE_RIGHT) {
-         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
       if (Self->BorderEdge & DBE_BOTTOM) {
-         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
    }
 }
@@ -7320,7 +7320,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
             // The mouse pointer is inside a link
 
             if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->UID);
+               gfxSetCursor(0, CRF::BUFFER, PTR_HAND, 0, Self->UID);
                Self->CursorSet = TRUE;
             }
 
@@ -7344,7 +7344,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->MouseOverSegment != -1) {
       if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
+         gfxSetCursor(0, CRF::BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
       }
       return;
@@ -7353,7 +7353,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
    for (LONG i=0; i < Self->ECIndex; i++) {
       if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
           (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
+         gfxSetCursor(0, CRF::BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
          return;
       }

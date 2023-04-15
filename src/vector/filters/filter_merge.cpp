@@ -42,7 +42,7 @@ Draw: Render the effect to the target bitmap.
 static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 {
    objBitmap *bmp;
-   LONG copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF_LINEAR : 0;
+   BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
    for (auto source : Self->List) {
       if (source.Effect) bmp = source.Effect->Target;
       else bmp = get_source_graphic(Self->Filter);
@@ -50,7 +50,7 @@ static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 
       gfxCopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
 
-      copy_flags |= BAF_BLEND|BAF_COPY; // Any subsequent copies are to be blended
+      copy_flags |= BAF::BLEND|BAF::COPY; // Any subsequent copies are to be blended
    }
 
    return ERR_Okay;

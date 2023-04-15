@@ -220,11 +220,11 @@ objects.
 If the `TRANSPARENT` flag is set in the source object, all colours that match the ColourIndex field will be ignored in
 the copy operation.
 
-To enable dithering, pass `BAF_DITHER` in the Flags argument.  The drawing algorithm will use dithering if the source
-needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set `BAF_BLEND` (the source bitmap
+To enable dithering, pass `BAF::DITHER` in the Flags argument.  The drawing algorithm will use dithering if the source
+needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set `BAF::BLEND` (the source bitmap
 will also need to have the `BMF_ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
 
-The quality of 32-bit alpha blending can be improved by selecting the `BAF_LINEAR` flag.  This enables an additional
+The quality of 32-bit alpha blending can be improved by selecting the `BAF::LINEAR` flag.  This enables an additional
 computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The
 discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this
 option is not usable if either bitmap is already in a linear colourspace (`ERR_InvalidState` will be returned if that
@@ -233,7 +233,7 @@ is the case).
 -INPUT-
 ext(Bitmap) Bitmap: The source bitmap.
 ext(Bitmap) Dest: Pointer to the destination bitmap.
-int(BAF) Flags: Special flags.
+int(BAF) Flags: Optional flags.
 int X:      The horizontal position of the area to be copied.
 int Y:      The vertical position of the area to be copied.
 int Width:  The width of the area.
@@ -245,7 +245,7 @@ int YDest:  The vertical position to copy the area to.
 Okay:
 NullArgs: The DestBitmap argument was not specified.
 Mismatch: The destination bitmap is not a close enough match to the source bitmap in order to perform the blit.
-InvalidState: The BAF_LINEAR flag was used when at least one bitmap is using a linear colourspace.
+InvalidState: The LINEAR flag was used when at least one bitmap is using a linear colourspace.
 -END-
 
 *********************************************************************************************************************/
@@ -299,7 +299,7 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
    return 0;
 }
 
-ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
+ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG DestX, LONG DestY)
 {
    pf::Log log(__FUNCTION__);
    RGB8 pixel, src;
@@ -324,7 +324,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
       if (validate_clip(__FUNCTION__, "Dest", dest)) return ERR_Okay;
    }
 
-   if (Flags & BAF_LINEAR) {
+   if ((Flags & BAF::LINEAR) != BAF::NIL) {
       if ((Bitmap->ColourSpace IS CS::LINEAR_RGB) or (dest->ColourSpace IS CS::LINEAR_RGB)) return log.warning(ERR_InvalidState);
       if ((Bitmap->BitsPerPixel != 32) or (!(Bitmap->Flags & BMF_ALPHA_CHANNEL))) return log.warning(ERR_InvalidState);
    }
@@ -450,7 +450,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
          }
       }
       else { // The source is a software image
-         if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+         if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
             ULONG *srcdata;
             UBYTE destred, destgreen, destblue, red, green, blue, alpha;
 
@@ -525,7 +525,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
    }
    else if (dest->x11.drawable) {
       if (!Bitmap->x11.drawable) {
-         if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+         if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
             ULONG *srcdata;
             UBYTE alpha;
             WORD cl, cr, ct, cb;
@@ -669,7 +669,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
 
    // GENERIC SOFTWARE BLITTING ROUTINES
 
-   if ((Flags & BAF_BLEND) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+   if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
       // 32-bit alpha blending support
 
       if (!lock_surface(Bitmap, SURFACE_READ)) {
@@ -692,10 +692,10 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                UBYTE *sdata = Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
                UBYTE *ddata = dest->Data + (DestY * dest->LineWidth) + (DestX<<2);
 
-               if (Flags & BAF_COPY) { // Avoids blending in cases where the destination pixel is zero alpha.
+               if ((Flags & BAF::COPY) != BAF::NIL) { // Avoids blending in cases where the destination pixel is zero alpha.
                   for (LONG y=0; y < Height; y++) {
                      UBYTE *sp = sdata, *dp = ddata;
-                     if (Flags & BAF_LINEAR) {
+                     if ((Flags & BAF::LINEAR) != BAF::NIL) {
                         for (LONG x=0; x < Width; x++) {
                            if (dp[dA]) {
                               if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
@@ -748,7 +748,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                   while (Height > 0) {
                      UBYTE *sp = sdata, *dp = ddata;
                      if (Bitmap->Opacity IS 0xff) {
-                        if (Flags & BAF_LINEAR) {
+                        if ((Flags & BAF::LINEAR) != BAF::NIL) {
                            for (i=0; i < Width; i++) {
                               if (sp[sA] IS 0xff) ((ULONG *)dp)[0] = ((ULONG *)sp)[0];
                               else if (auto a = sp[sA]) {
@@ -788,7 +788,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                            }
                         }
                      }
-                     else if (Flags & BAF_LINEAR) {
+                     else if ((Flags & BAF::LINEAR) != BAF::NIL) {
                         for (i=0; i < Width; i++) {
                            if (auto a = sp[sA]) {
                               a = (a * Bitmap->Opacity + 0xff)>>8;
@@ -1091,8 +1091,8 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
             else {
                // If the bitmaps do not match then we need to use this slower RGB translation subroutine.
 
-               bool dithered = FALSE;
-               if (Flags & BAF_DITHER) {
+               bool dithered = false;
+               if ((Flags & BAF::DITHER) != BAF::NIL) {
                   if ((dest->BitsPerPixel < 24) and
                       ((Bitmap->BitsPerPixel > dest->BitsPerPixel) or
                        ((Bitmap->BitsPerPixel <= 8) and (dest->BitsPerPixel > 8)))) {
@@ -1104,7 +1104,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
                   }
                }
 
-               if (dithered IS FALSE) {
+               if (dithered IS false) {
                   if ((Bitmap IS dest) and (DestY >= Y) and (DestY < Y+Height)) {
                      while (Height > 0) {
                         Y += Height - 1;
@@ -1203,7 +1203,7 @@ static ULONG read_surface32(BITMAPSURFACE *Surface, WORD X, WORD Y)
 }
 
 ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
-          LONG Flags, LONG X, LONG Y, LONG Width, LONG Height,
+          CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height,
           LONG XDest, LONG YDest)
 {
    pf::Log log(__FUNCTION__);
@@ -1243,7 +1243,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
 
    // Check if the source that we are blitting from is within its own drawable area.
 
-   if (Flags & CSRF_CLIP) {
+   if ((Flags & CSRF::CLIP) != CSRF::NIL) {
       if (X < 0) {
          if ((Width += X) < 1) return ERR_Okay;
          X = 0;
@@ -1262,7 +1262,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
    if ((XDest + Width)  >= Bitmap->Clip.Right)  Width  = Bitmap->Clip.Right - XDest;
    if ((YDest + Height) >= Bitmap->Clip.Bottom) Height = Bitmap->Clip.Bottom - YDest;
 
-   if (Flags & CSRF_CLIP) {
+   if ((Flags & CSRF::CLIP) != CSRF::NIL) {
       if ((X + Width)  >= Surface->Clip.Right)  Width  = Surface->Clip.Right - X;
       if ((Y + Height) >= Surface->Clip.Bottom) Height = Surface->Clip.Bottom - Y;
    }
@@ -1272,7 +1272,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
 
    // Adjust coordinates by offset values
 
-   if (Flags & CSRF_OFFSET) {
+   if ((Flags & CSRF::OFFSET) != CSRF::NIL) {
       X += Surface->XOffset;
       Y += Surface->YOffset;
    }
@@ -1280,7 +1280,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
    XDest += Bitmap->XOffset;
    YDest += Bitmap->YOffset;
 
-   if (Flags & CSRF_DEFAULT_FORMAT) gfxGetColourFormat(&Surface->Format, Surface->BitsPerPixel, 0, 0, 0, 0);;
+   if ((Flags & CSRF::DEFAULT_FORMAT) != CSRF::NIL) gfxGetColourFormat(&Surface->Format, Surface->BitsPerPixel, 0, 0, 0, 0);;
 
    switch(Surface->BytesPerPixel) {
       case 1: read_surface = read_surface8; break;
@@ -1334,7 +1334,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
 #endif // __xwindows__
 
    if (lock_surface(Bitmap, SURFACE_WRITE) IS ERR_Okay) {
-      if ((Flags & CSRF_ALPHA) and (Surface->BitsPerPixel IS 32)) { // 32-bit alpha blending support
+      if (((Flags & CSRF::ALPHA) != CSRF::NIL) and (Surface->BitsPerPixel IS 32)) { // 32-bit alpha blending support
          ULONG *sdata = (ULONG *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
 
          if (Bitmap->BitsPerPixel IS 32) {
@@ -1402,10 +1402,10 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
             Height--;
          }
       }
-      else if (Flags & CSRF_TRANSPARENT) {
+      else if ((Flags & CSRF::TRANSPARENT) != CSRF::NIL) {
          // Transparent colour blitting
 
-         if ((Flags & CSRF_TRANSLUCENT) and (Surface->Opacity < 255)) {
+         if (((Flags & CSRF::TRANSLUCENT) != CSRF::NIL) and (Surface->Opacity < 255)) {
             // Transparent mask with translucent pixels
 
             srctable  = glAlphaLookup.data() + (Surface->Opacity<<8);
@@ -1481,7 +1481,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
          }
       }
       else { // Straight copy operation
-         if ((Flags & CSRF_TRANSLUCENT) and (Surface->Opacity < 255)) { // Straight translucent blit
+         if (((Flags & CSRF::TRANSLUCENT) != CSRF::NIL) and (Surface->Opacity < 255)) { // Straight translucent blit
             srctable  = glAlphaLookup.data() + (Surface->Opacity<<8);
             desttable = glAlphaLookup.data() + ((255-Surface->Opacity)<<8);
 
@@ -1582,9 +1582,9 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
 DrawRectangle: Draws rectangles, both filled and unfilled.
 
 This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position
-(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF_FILL` then
+(X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines `BAF::FILL` then
 the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by
-the pixel value in the Colour argument.  Blending is not enabled unless the `BAF_BLEND` flag is defined and an alpha
+the pixel value in the Colour argument.  Blending is not enabled unless the `BAF::BLEND` flag is defined and an alpha
 value is present in the Colour.
 
 -INPUT-
@@ -1594,11 +1594,11 @@ int Y:       The top-most coordinate of the rectangle.
 int Width:   The width of the rectangle.
 int Height:  The height of the rectangle.
 uint Colour: The colour value to use for the rectangle.
-int(BAF) Flags: Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.
+int(BAF) Flags: Use FILL to fill the rectangle.  Use of BLEND will enable blending.
 
 *********************************************************************************************************************/
 
-void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)
+void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)
 {
    pf::Log log(__FUNCTION__);
    RGB8 pixel;
@@ -1611,13 +1611,13 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 
    // If we are not going to fill the rectangle, use this routine to draw an outline.
 
-   if ((!(Flags & BAF_FILL)) and (Width > 1) and (Height > 1)) {
+   if (((Flags & BAF::FILL) IS BAF::NIL) and (Width > 1) and (Height > 1)) {
       EX = X + Width - 1;
       EY = Y + Height - 1;
-      if (X >= Bitmap->Clip.Left) gfxDrawRectangle(Bitmap, X, Y, 1, Height, Colour, Flags|BAF_FILL); // Left
-      if (Y >= Bitmap->Clip.Top)  gfxDrawRectangle(Bitmap, X, Y, Width, 1, Colour, Flags|BAF_FILL); // Top
-      if (Y + Height <= Bitmap->Clip.Bottom) gfxDrawRectangle(Bitmap, X, EY, Width, 1, Colour, Flags|BAF_FILL); // Bottom
-      if (X + Width <= Bitmap->Clip.Right)   gfxDrawRectangle(Bitmap, X+Width-1, Y, 1, Height, Colour, Flags|BAF_FILL);
+      if (X >= Bitmap->Clip.Left) gfxDrawRectangle(Bitmap, X, Y, 1, Height, Colour, Flags|BAF::FILL); // Left
+      if (Y >= Bitmap->Clip.Top)  gfxDrawRectangle(Bitmap, X, Y, Width, 1, Colour, Flags|BAF::FILL); // Top
+      if (Y + Height <= Bitmap->Clip.Bottom) gfxDrawRectangle(Bitmap, X, EY, Width, 1, Colour, Flags|BAF::FILL); // Bottom
+      if (X + Width <= Bitmap->Clip.Right)   gfxDrawRectangle(Bitmap, X+Width-1, Y, 1, Height, Colour, Flags|BAF::FILL);
       return;
    }
 
@@ -1650,8 +1650,8 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 
    // Translucent rectangle support
 
-   // NB: The opacity Bitmap field is deprecated and BAF_BLEND should be used instead, or default to 255.
-   UBYTE opacity = (Flags & BAF_BLEND) ? Bitmap->unpackAlpha(Colour) : Bitmap->Opacity;
+   // NB: The opacity Bitmap field is deprecated and BAF::BLEND should be used instead, or default to 255.
+   UBYTE opacity = ((Flags & BAF::BLEND) != BAF::NIL) ? Bitmap->unpackAlpha(Colour) : Bitmap->Opacity;
 
    if (opacity < 255) {
       if (!lock_surface(Bitmap, SURFACE_READWRITE)) {

@@ -339,8 +339,8 @@ ERROR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
-         if (!OwnerID) gfxSetCursor(0, CRF_RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
-         else gfxSetCursor(0, CRF_RESTRICT, Cursor, NULL, OwnerID);
+         if (!OwnerID) gfxSetCursor(0, CRF::RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
+         else gfxSetCursor(0, CRF::RESTRICT, Cursor, NULL, OwnerID);
 
          pointer->CursorOwnerID   = 0;
          pointer->CursorRelease   = 0;
@@ -386,7 +386,7 @@ recommend that it is set to an object ID such as the program's task ID.  As the 
 program's control until ~RestoreCursor() is called.
 
 -INPUT-
-oid Surface: Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
+oid Surface: Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
 int(CRF) Flags:  Optional flags that affect the cursor.
 int(PTC) Cursor: The ID of the cursor image that is to be set.
 cstr Name: The name of the cursor image that is to be set (if Cursor is zero).
@@ -402,11 +402,11 @@ AccessObject: Failed to access the internally maintained image object.
 
 *********************************************************************************************************************/
 
-ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
+ERROR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID OwnerID)
 {
    pf::Log log(__FUNCTION__);
    extPointer *pointer;
-   LONG flags;
+   CRF flags;
 
 /*
    if (!OwnerID) {
@@ -423,8 +423,8 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OB
       return ERR_AccessObject;
    }
 
-   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, Name);
-   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, Flags, OwnerID, pointer->CursorOwnerID, CursorLookup[LONG(CursorID)].Name);
+   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, LONG(Flags), OwnerID, pointer->CursorOwnerID, Name);
+   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, LONG(Flags), OwnerID, pointer->CursorOwnerID, CursorLookup[LONG(CursorID)].Name);
 
    // Extract the cursor ID from the cursor name if no ID was given
 
@@ -445,7 +445,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OB
    if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
       if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID) != ERR_True)) pointer->CursorOwnerID = 0;
       else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = 0;
-      else if (Flags & CRF_BUFFER) {
+      else if ((Flags & CRF::BUFFER) != CRF::NIL) {
          // If the BUFFER option is used, then we can buffer the change so that it
          // will be activated as soon as the current holder releases the cursor.
 
@@ -467,9 +467,9 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OB
 
    log.trace("Anchor: %d, Owner: %d, Release: $%x, Cursor: %d", ObjectID, OwnerID, Flags, CursorID);
 
-   // If CRF_NOBUTTONS is used, the cursor can only be set if no mouse buttons are held down at the current time.
+   // If CRF::NOBUTTONS is used, the cursor can only be set if no mouse buttons are held down at the current time.
 
-   if (Flags & CRF_NO_BUTTONS) {
+   if ((Flags & CRF::NO_BUTTONS) != CRF::NIL) {
       if ((pointer->Buttons[0].LastClicked) or (pointer->Buttons[1].LastClicked) or (pointer->Buttons[2].LastClicked)) {
          ReleaseObject(pointer);
          return ERR_NothingDone;
@@ -478,7 +478,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OB
 
    // Reset restrictions/anchoring if the correct flags are set, or if the cursor is having a change of ownership.
 
-   if ((Flags & CRF_RESTRICT) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = 0;
+   if (((Flags & CRF::RESTRICT) != CRF::NIL) or (OwnerID != pointer->CursorOwnerID)) pointer->RestrictID = 0;
 
    if (OwnerID IS pointer->BufferOwner) pointer->BufferOwner = 0;
 
@@ -527,7 +527,7 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OB
          #endif
       }
 
-      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE) and (!(Flags & CRF_RESTRICT))) {
+      if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE) and ((Flags & CRF::RESTRICT) IS CRF::NIL)) {
          pointer->CursorReleaseID = ObjectID; // Release the cursor image if it goes outside of the given surface object
       }
    }
@@ -537,22 +537,22 @@ ERROR gfxSetCursor(OBJECTID ObjectID, LONG Flags, PTC CursorID, CSTRING Name, OB
    // Manage button release flag options (useful when the RESTRICT or ANCHOR options are used).
 
    flags = Flags;
-   if (flags & (CRF_LMB|CRF_MMB|CRF_RMB)) {
-      if (flags & CRF_LMB) {
+   if ((flags & (CRF::LMB|CRF::MMB|CRF::RMB)) != CRF::NIL) {
+      if ((flags & CRF::LMB) != CRF::NIL) {
          if (pointer->Buttons[0].LastClicked) pointer->CursorRelease |= 0x01;
-         else flags &= ~(CRF_RESTRICT); // The LMB has already been released by the user, so do not allow restrict/anchoring
+         else flags &= ~(CRF::RESTRICT); // The LMB has already been released by the user, so do not allow restrict/anchoring
       }
-      else if (flags & CRF_RMB) {
+      else if ((flags & CRF::RMB) != CRF::NIL) {
          if (pointer->Buttons[1].LastClicked) pointer->CursorRelease |= 0x02;
-         else flags &= ~(CRF_RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
+         else flags &= ~(CRF::RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
       }
-      else if (flags & CRF_MMB) {
+      else if ((flags & CRF::MMB) != CRF::NIL) {
          if (pointer->Buttons[2].LastClicked) pointer->CursorRelease |= 0x04;
-         else flags &= ~(CRF_RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
+         else flags &= ~(CRF::RESTRICT); // The MMB has already been released by the user, so do not allow restrict/anchoring
       }
    }
 
-   if ((flags & CRF_RESTRICT) and (ObjectID)) {
+   if (((flags & CRF::RESTRICT) != CRF::NIL) and (ObjectID)) {
       if ((ObjectID < 0) and (GetClassID(ObjectID) IS ID_SURFACE)) { // Must be a public surface object
          // Restrict the pointer to the specified surface
          pointer->RestrictID = ObjectID;
@@ -614,7 +614,7 @@ if (auto pointer = gfxAccessPointer()) {
 </pre>
 
 -INPUT-
-oid Surface: Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
+oid Surface: Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.
 int(CRF) Flags: Optional flags affecting the cursor are set here.
 obj(Bitmap) Bitmap: The bitmap to set for the mouse cursor.
 int HotX: The horizontal position of the cursor hot-spot.
@@ -630,7 +630,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 *********************************************************************************************************************/
 
-ERROR gfxSetCustomCursor(OBJECTID ObjectID, LONG Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
+ERROR gfxSetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
 #ifdef __snap__
    pf::Log log(__FUNCTION__);

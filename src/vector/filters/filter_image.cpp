@@ -129,7 +129,7 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
    }
    else {
-      gfxCopyArea(Self->Bitmap, Self->Target, 0, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
+      gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
    }
 
    return ERR_Okay;

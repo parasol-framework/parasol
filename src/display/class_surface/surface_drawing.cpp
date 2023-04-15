@@ -822,7 +822,7 @@ void copy_bkgd(const SURFACELIST &List, LONG Index, LONG End, LONG Master, ClipR
 
    if (Opacity < 255) SrcBitmap->Opacity = 255 - Opacity;
 
-   gfxCopyArea(SrcBitmap, DestBitmap, BAF_BLEND, expose.Left - List[owner].Left, expose.Top - List[owner].Top,
+   gfxCopyArea(SrcBitmap, DestBitmap, BAF::BLEND, expose.Left - List[owner].Left, expose.Top - List[owner].Top,
       expose.Right - expose.Left, expose.Bottom - expose.Top, expose.Left - List[Master].Left, expose.Top - List[Master].Top);
 
    SrcBitmap->Opacity = 255;

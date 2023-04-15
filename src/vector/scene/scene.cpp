@@ -259,7 +259,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 // For debugging purposes, draw a boundary around the target area.
 //   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
 //   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
-//   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, 0);
+//   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 
    return ERR_Okay;
 }

@@ -61,11 +61,11 @@
     <name>CopyArea</name>
     <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
       <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
-      <param type="LONG" name="Flags" lookup="BAF">Special flags.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
       <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
       <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
       <param type="LONG" name="Width">The width of the area.</param>
@@ -76,8 +76,8 @@
     <description>
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
 <p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
-<p>To enable dithering, pass <code>BAF_DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF_BLEND</code> (the source bitmap will also need to have the <code>BMF_ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
-<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF_LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
+<p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF_ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
+<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF::LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -91,11 +91,11 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
       <param type="objBitmap *" name="Bitmap">Destination bitmap.</param>
-      <param type="LONG" name="Flags" lookup="CSRF">Optional flags.</param>
+      <param type="CSRF" name="Flags" lookup="CSRF">Optional flags.</param>
       <param type="LONG" name="X">Horizontal source coordinate.</param>
       <param type="LONG" name="Y">Vertical source coordinate.</param>
       <param type="LONG" name="Width">Source width.</param>
@@ -177,7 +177,7 @@
     <name>DrawRectangle</name>
     <category>Bitmap</category>
     <comment>Draws rectangles, both filled and unfilled.</comment>
-    <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
+    <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
       <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
@@ -185,10 +185,10 @@
       <param type="LONG" name="Width">The width of the rectangle.</param>
       <param type="LONG" name="Height">The height of the rectangle.</param>
       <param type="ULONG" name="Colour">The colour value to use for the rectangle.</param>
-      <param type="LONG" name="Flags" lookup="BAF">Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Use FILL to fill the rectangle.  Use of BLEND will enable blending.</param>
     </input>
     <description>
-<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines <code>BAF_FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.  Blending is not enabled unless the <code>BAF_BLEND</code> flag is defined and an alpha value is present in the Colour.</p>
+<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.  Blending is not enabled unless the <code>BAF::BLEND</code> flag is defined and an alpha value is present in the Colour.</p>
     </description>
   </function>
 
@@ -638,10 +638,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
-    <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
-      <param type="LONG" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="CRF" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
       <param type="PTC" name="Cursor" lookup="PTC">The ID of the cursor image that is to be set.</param>
       <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if Cursor is zero).</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor, and/or owner of the cursor image setting.</param>
@@ -684,10 +684,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCustomCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
-      <param type="LONG" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
       <param type="objBitmap *" name="Bitmap">The bitmap to set for the mouse cursor.</param>
       <param type="LONG" name="HotX">The horizontal position of the cursor hot-spot.</param>
       <param type="LONG" name="HotY">The vertical position of the cursor hot-spot.</param>
@@ -1161,13 +1161,13 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
       <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
       <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF::TRANSLUCENT is used.</field>
       <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF::TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.</field>
       <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
       <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.</field>
       <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
     </struct>
 
@@ -1185,7 +1185,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="Height" type="WORD">Pixel height of the display</field>
       <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
       <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
-      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
       <field name="AmtColours" type="LONG">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>

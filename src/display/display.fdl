@@ -99,16 +99,16 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "TRANSPARENT: Defines an RGB colour that is to be used as transparent."
   )
 
-  flags("PF", { comment="Flags for the Pointer class." },
+  flags("PF", { strict=true, comment="Flags for the Pointer class." },
      "UNUSED",  -- TBD
      "VISIBLE: Indicates that the pointer is currently visible.  Read-only.",
      "ANCHOR: Allow the pointer to be anchored.")
 
-  flags("ACF", { comment="Acceleration flags for GetDisplayInfo()." },
+  flags("ACF", { strict=true, comment="Acceleration flags for GetDisplayInfo()." },
      "VIDEO_BLIT: Video blitting is supported for this display.",
      "SOFTWARE_BLIT: Software blitting is used (or forced) for this display.")
 
-  flags("CRF", { comment="Flags for the SetCursor() function." },
+  flags("CRF", { strict=true, comment="Flags for the SetCursor() function." },
      "LMB: Release the cursor after the left mouse button is held and released.",
      "MMB: Release the cursor after the middle mouse button is held and released.",
      "RMB: Release the cursor after the right mouse button is held and released.",
@@ -117,7 +117,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
      "NO_BUTTONS: Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down."
   )
 
-  flags("BAF", { comment="Instructions for basic graphics operations." },
+  flags("BAF", { strict=true, comment="Instructions for basic graphics operations." },
     { DITHER = "0x1: Perform dithering if the colour formats differ between the source and destination." },
     { BLEND  = "0x2: Enable alpha blending to the destination if the source supports an alpha channel." },
     { FILL   = "0x1: For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture." },
@@ -125,7 +125,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { LINEAR = "0x8: Use linear interpolation to improve the quality of alpha blending." }
   )
 
-  flags("CSRF", { comment="Flags for CopySurface()." },
+  flags("CSRF", { strict=true, comment="Flags for CopySurface()." },
     "TRANSPARENT: Enable transparent copying, whereby colours matching the source's Colour field will be ignored.",
     "ALPHA: Enable alpha blending if the source is in 32-bit colour format with an alpha channel.",
     "TRANSLUCENT: Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.",
@@ -308,13 +308,13 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int   LineWidth      # The distance between bitmap lines, measured in bytes.
     uchar BitsPerPixel   # The number of bits per pixel (8, 15, 16, 24, 32).
     uchar BytesPerPixel  # The number of bytes per pixel (1, 2, 3, 4).
-    uchar Opacity        # Opacity level of the source if CSRF_TRANSLUCENT is used.
+    uchar Opacity        # Opacity level of the source if CSRF::TRANSLUCENT is used.
     uchar Version        # Version of this structure.
-    int   Colour         # Colour index to use if CSRF_TRANSPARENT is used.
-    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.
+    int   Colour         # Colour index to use if CSRF::TRANSPARENT is used.
+    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
     short XOffset        # Offset all X coordinate references by the given value.
     short YOffset        # Offset all Y coordinate references by the given value.
-    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.
+    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
     ptr  Private        # A private pointer reserved for internal usage
   ]])
 

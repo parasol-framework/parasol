@@ -1216,7 +1216,7 @@ static ERROR draw_vector_font(extFont *Self)
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
          if (Self->Underline.Alpha > 0) {
-            gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
+            gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, BAF::FILL);
          }
 
          str++;
@@ -1437,7 +1437,7 @@ static ERROR draw_vector_font(extFont *Self)
    // Draw an underline for the current line if underlining is turned on
 
    if (Self->Underline.Alpha > 0) {
-      gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, BAF_FILL);
+      gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, BAF::FILL);
    }
 
    Self->EndX = dxcoord;
@@ -1782,7 +1782,7 @@ static ERROR draw_bitmap_font(extFont *Self)
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
          if (Self->Underline.Alpha > 0) {
-            gfxDrawRectangle(bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
+            gfxDrawRectangle(bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, BAF::FILL);
          }
 
          str++;
@@ -2082,7 +2082,7 @@ static ERROR draw_bitmap_font(extFont *Self)
    if (Self->Underline.Alpha > 0) {
       if (Self->Flags & FTF_BASE_LINE) sy = dycoord;
       else sy = dycoord + Self->Height + Self->Leading + 1;
-      gfxDrawRectangle(bitmap, startx, sy, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
+      gfxDrawRectangle(bitmap, startx, sy, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, BAF::FILL);
    }
 
    Self->EndX = dxcoord;

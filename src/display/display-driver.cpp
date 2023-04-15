@@ -506,7 +506,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
                Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when X11DGA is active (it does not provide blitter syncing)
             }
          #else
-            Info->AccelFlags = -1;
+            Info->AccelFlags = ACF(-1);
          #endif
 
          Info->PixelFormat.RedShift   = display->Bitmap->ColourFormat->RedShift;
@@ -594,7 +594,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       Info->Height        = height;
       Info->BitsPerPixel  = bits;
       Info->BytesPerPixel = bytes;
-      Info->AccelFlags    = 0xffffffffffffffffLL;
+      Info->AccelFlags    = ACF(-1);
       Info->HDensity      = hdpi;
       Info->VDensity      = vdpi;
       if (Info->HDensity < 96) Info->HDensity = 96;

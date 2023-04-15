@@ -940,9 +940,9 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
                bool composite = ((list_i.Flags & RNF::COMPOSITE) != RNF::NIL);
 
                if (composite) {
-                  gfxCopyArea(src, Bitmap, BAF_BLEND|(((Flags & BDF::DITHER) != BDF::NIL) ? BAF_DITHER : 0), X, Y, Width, Height, XDest, YDest);
+                  gfxCopyArea(src, Bitmap, BAF::BLEND|(((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL), X, Y, Width, Height, XDest, YDest);
                }
-               else gfxCopyArea(src, Bitmap, ((Flags & BDF::DITHER) != BDF::NIL) ? BAF_DITHER : 0, X, Y, Width, Height, XDest, YDest);
+               else gfxCopyArea(src, Bitmap, ((Flags & BDF::DITHER) != BDF::NIL) ? BAF::DITHER : BAF::NIL, X, Y, Width, Height, XDest, YDest);
 
                ReleaseObject(src);
                return ERR_Okay;
@@ -960,8 +960,8 @@ ERROR gfxCopySurface(OBJECTID SurfaceID, extBitmap *Bitmap, BDF Flags,
 
             bool composite = ((list_i.Flags & RNF::COMPOSITE) != RNF::NIL);
 
-            if (composite) gfxCopyRawBitmap(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET|CSRF_ALPHA, X, Y, Width, Height, XDest, YDest);
-            else gfxCopyRawBitmap(&surface, Bitmap, CSRF_DEFAULT_FORMAT|CSRF_OFFSET, X, Y, Width, Height, XDest, YDest);
+            if (composite) gfxCopyRawBitmap(&surface, Bitmap, CSRF::DEFAULT_FORMAT|CSRF::OFFSET|CSRF::ALPHA, X, Y, Width, Height, XDest, YDest);
+            else gfxCopyRawBitmap(&surface, Bitmap, CSRF::DEFAULT_FORMAT|CSRF::OFFSET, X, Y, Width, Height, XDest, YDest);
 
             return ERR_Okay;
          }
@@ -1613,10 +1613,10 @@ void _redraw_surface_do(extSurface *Self, const SURFACELIST &list, LONG Index, C
       prepare_background(Self, list, Index, DestBitmap, abs, STAGE_PRECOPY);
    }
    else if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) {
-      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(0, 0, 0, 0), TRUE);
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(0, 0, 0, 0), BAF::FILL);
    }
    else if (Self->Colour.Alpha > 0) {
-      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue), TRUE);
+      gfxDrawRectangle(DestBitmap, 0, 0, Self->Width, Self->Height, DestBitmap->packPixel(Self->Colour.Red, Self->Colour.Green, Self->Colour.Blue), BAF::FILL);
    }
 
    // Draw graphics to the buffer

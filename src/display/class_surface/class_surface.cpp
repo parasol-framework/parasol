@@ -281,7 +281,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
       // Blend the surface's graphics into the composited buffer
       // NOTE: THE FOLLOWING IS NOT OPTIMISED WITH RESPECT TO CLIPPING
 
-      gfxCopyArea(Bitmap, glComposite, BAF_BLEND, 0, 0, list[Index].Width, list[Index].Height, 0, 0);
+      gfxCopyArea(Bitmap, glComposite, BAF::BLEND, 0, 0, list[Index].Width, list[Index].Height, 0, 0);
 
       Bitmap = glComposite;
       sx = 0;  // Always zero as composites own their bitmap
@@ -2462,7 +2462,7 @@ static void draw_region(extSurface *Self, extSurface *Parent, extBitmap *Bitmap)
       // Clear the Bitmap to the background colour if necessary
 
       if (Self->Colour.Alpha > 0) {
-         gfxDrawRectangle(Bitmap, 0, 0, Self->Width, Self->Height, Bitmap->packPixel(Self->Colour, 255), TRUE);
+         gfxDrawRectangle(Bitmap, 0, 0, Self->Width, Self->Height, Bitmap->packPixel(Self->Colour, 255), BAF::FILL);
       }
 
       process_surface_callbacks(Self, Bitmap);

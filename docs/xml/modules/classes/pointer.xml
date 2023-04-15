@@ -141,7 +141,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="PF">INT</type>
+      <type lookup="PF">PF</type>
       <description>
 <types lookup="PF"/>
       </description>

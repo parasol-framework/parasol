@@ -181,10 +181,10 @@
     <method>
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
-      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
       <input>
         <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
-        <param type="LONG" name="Flags" lookup="BAF">Optional flags.</param>
+        <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
         <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
         <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
         <param type="LONG" name="Width">The width of the area.</param>
@@ -237,14 +237,14 @@
     <method>
       <name>DrawRectangle</name>
       <comment>Draws rectangles, both filled and unfilled.</comment>
-      <prototype>ERROR bmpDrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
+      <prototype>ERROR bmpDrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
       <input>
         <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
         <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
         <param type="LONG" name="Width">The width of the rectangle.</param>
         <param type="LONG" name="Height">The height of the rectangle.</param>
         <param type="ULONG" name="Colour">The colour index to use for the rectangle.</param>
-        <param type="LONG" name="Flags" lookup="BAF">Supports BAF_FILL and BAF_BLEND.</param>
+        <param type="BAF" name="Flags" lookup="BAF">Supports FILL and BLEND.</param>
       </input>
       <description>
 <p>This method draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Fill argument is set to TRUE then the rectangle will be filled, otherwise the rectangle's outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.</p>

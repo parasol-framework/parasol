@@ -145,7 +145,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       mark_dirty(Self->Scene->Viewport, RC_TRANSFORM);
 
       Self->Scene->Bitmap = cache;
-      gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF_FILL);
+      gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF::FILL);
       acDraw(Self->Scene);
 
       filter->Disabled = false;
@@ -156,7 +156,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       mark_dirty(Self->Source, RC_ALL);
    }
 
-   gfxCopyArea(Self->Bitmap, Self->Target, 0, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
+   gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
 
    Self->Render = false;
    return ERR_Okay;

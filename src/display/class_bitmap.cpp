@@ -272,7 +272,7 @@ static ERROR BITMAP_Clear(extBitmap *Self, APTR Void)
 
    LONG opacity = Self->Opacity;
    Self->Opacity = 255;
-   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF_FILL);
+   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    Self->Opacity = opacity;
    return ERR_Okay;
 }
@@ -638,17 +638,17 @@ static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
    LONG max_height = Self->Height > target->Height ? target->Height : Self->Height;
 
    if (Self->Width >= target->Width) { // Source is wider or equal to the target
-      gfxCopyArea(Self, target, 0, 0, 0, target->Width, max_height, 0, 0);
+      gfxCopyArea(Self, target, BAF::NIL, 0, 0, target->Width, max_height, 0, 0);
    }
    else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
-      gfxCopyArea(Self, target, 0, 0, 0, Self->Width, max_height, 0, 0);
-      gfxDrawRectangle(target, Self->Width, 0, target->Width - Self->Width, max_height, target->BkgdIndex, BAF_FILL);
+      gfxCopyArea(Self, target, BAF::NIL, 0, 0, Self->Width, max_height, 0, 0);
+      gfxDrawRectangle(target, Self->Width, 0, target->Width - Self->Width, max_height, target->BkgdIndex, BAF::FILL);
    }
 
    // If the target height is greater, we will need to clear the pixels trailing at the bottom.
 
    if (Self->Height < target->Height) {
-      gfxDrawRectangle(target, 0, Self->Height, target->Width, target->Height - Self->Height, target->BkgdIndex, BAF_FILL);
+      gfxDrawRectangle(target, 0, Self->Height, target->Width, target->Height - Self->Height, target->BkgdIndex, BAF::FILL);
    }
 
    return ERR_Okay;
@@ -738,7 +738,7 @@ Draw: Clears a bitmap's image to its assigned background colour.
 
 static ERROR BITMAP_Draw(extBitmap *Self, APTR Void)
 {
-   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF_FILL);
+   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    return ERR_Okay;
 }
 
@@ -758,7 +758,7 @@ int Y: The top-most coordinate of the rectangle.
 int Width:  The width of the rectangle.
 int Height: The height of the rectangle.
 uint Colour: The colour index to use for the rectangle.
-int(BAF) Flags:  Supports BAF_FILL and BAF_BLEND.
+int(BAF) Flags:  Supports FILL and BLEND.
 
 -ERRORS-
 Okay
@@ -1800,7 +1800,7 @@ setfields:
    CalculatePixelRoutines(Self);
 
    if (Self->Flags & BMF_CLEAR) {
-      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF_FILL);
+      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF::FILL);
    }
 
 #ifdef __xwindows__

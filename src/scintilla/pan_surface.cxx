@@ -179,7 +179,7 @@ void SurfacePan::LineTo(int x, int y)
 
       //DBGDRAW("panLineTo:","%dx%d - %dx%d", penx, peny, x, y);
 
-      gfxDrawRectangle(bitmap, penx, peny, x-penx, y-peny, pencol, TRUE);
+      gfxDrawRectangle(bitmap, penx, peny, x-penx, y-peny, pencol, BAF::FILL);
       penx = x;
       peny = y;
    }
@@ -225,8 +225,8 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 
       DBGDRAW("panRectangleDraw()","#%.8x, #%.8x", bk32, fr32);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), bk32, TRUE);
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), fr32, FALSE);
+      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), bk32, BAF::FILL);
+      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), fr32, BAF::NIL);
    }
 }
 
@@ -242,7 +242,7 @@ void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 
       DBGDRAW("panFillRectangle()","Bitmap: %p, Size: %dx%d,%dx%d, Colour: $%.8x, Clipping: %dx%d,%dx%d", bitmap, rc.left, rc.top, rc.Width(), rc.Height(), colour, bitmap->Clip.Left, bitmap->Clip.Right, bitmap->Clip.Top, bitmap->Clip.Bottom);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), colour, TRUE);
+      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), colour, BAF::FILL);
    }
 }
 
@@ -295,11 +295,11 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 
       DBGDRAW("panCopy:","From: %dx%d To: %dx%d,%dx%d, Clip: %dx%d,%dx%d", from.x, from.y, rc.left, rc.top, rc.Width(), rc.Height(), bitmap->Clip.Left, bitmap->Clip.Top, bitmap->Clip.Right, bitmap->Clip.Bottom);
       DBGDRAW("panCopy:","Bitmap: %d, Offset: %dx%d", bitmap->Head.UID, bitmap->XOffset, bitmap->YOffset);
-      gfxCopyArea(src_surface.bitmap, bitmap, 0,
+      gfxCopyArea(src_surface.bitmap, bitmap, BAF::NIL,
          from.x, from.y, rc.Width(), rc.Height(), /* source */
          rc.left, rc.top); /* dest */
 
-      //bmpDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), PackPixel(bitmap, 255, 0, 0, 255), 0);
+      //bmpDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), PackPixel(bitmap, 255, 0, 0, 255), BAF::NIL);
    }
    else log.warning(ERR_Args);
 }
@@ -587,9 +587,9 @@ void SurfacePan::AlphaRectangle(Scintilla::PRectangle rc, int cornerSize, Scinti
    if (bitmap) {
       BitmapClipper clipper(bitmap, cliprect);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, fill), TRUE);
+      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, fill), BAF::FILL);
 
-      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, outline), FALSE);
+      gfxDrawRectangle(bitmap, rc.left, rc.top, rc.Width(), rc.Height(), to_pan_col(bitmap, outline), BAF::NIL);
    }
    else log.warning("Bitmap was NULL.");
 

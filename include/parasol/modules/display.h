@@ -169,40 +169,65 @@ enum class HOST : LONG {
 
 // Flags for the Pointer class.
 
-#define PF_UNUSED 0x00000001
-#define PF_VISIBLE 0x00000002
-#define PF_ANCHOR 0x00000004
+enum class PF : ULONG {
+   NIL = 0,
+   UNUSED = 0x00000001,
+   VISIBLE = 0x00000002,
+   ANCHOR = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PF)
 
 // Acceleration flags for GetDisplayInfo().
 
-#define ACF_VIDEO_BLIT 0x00000001
-#define ACF_SOFTWARE_BLIT 0x00000002
+enum class ACF : ULONG {
+   NIL = 0,
+   VIDEO_BLIT = 0x00000001,
+   SOFTWARE_BLIT = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ACF)
 
 // Flags for the SetCursor() function.
 
-#define CRF_LMB 0x00000001
-#define CRF_MMB 0x00000002
-#define CRF_RMB 0x00000004
-#define CRF_RESTRICT 0x00000008
-#define CRF_BUFFER 0x00000010
-#define CRF_NO_BUTTONS 0x00000020
+enum class CRF : ULONG {
+   NIL = 0,
+   LMB = 0x00000001,
+   MMB = 0x00000002,
+   RMB = 0x00000004,
+   RESTRICT = 0x00000008,
+   BUFFER = 0x00000010,
+   NO_BUTTONS = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CRF)
 
 // Instructions for basic graphics operations.
 
-#define BAF_DITHER 0x00000001
-#define BAF_FILL 0x00000001
-#define BAF_BLEND 0x00000002
-#define BAF_COPY 0x00000004
-#define BAF_LINEAR 0x00000008
+enum class BAF : ULONG {
+   NIL = 0,
+   DITHER = 0x00000001,
+   FILL = 0x00000001,
+   BLEND = 0x00000002,
+   COPY = 0x00000004,
+   LINEAR = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(BAF)
 
 // Flags for CopySurface().
 
-#define CSRF_TRANSPARENT 0x00000001
-#define CSRF_ALPHA 0x00000002
-#define CSRF_TRANSLUCENT 0x00000004
-#define CSRF_DEFAULT_FORMAT 0x00000008
-#define CSRF_CLIP 0x00000010
-#define CSRF_OFFSET 0x00000020
+enum class CSRF : ULONG {
+   NIL = 0,
+   TRANSPARENT = 0x00000001,
+   ALPHA = 0x00000002,
+   TRANSLUCENT = 0x00000004,
+   DEFAULT_FORMAT = 0x00000008,
+   CLIP = 0x00000010,
+   OFFSET = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CSRF)
 
 // Bitmap types
 
@@ -406,7 +431,7 @@ typedef struct DisplayInfoV3 {
    WORD     Height;                   // Pixel height of the display
    WORD     BitsPerPixel;             // Bits per pixel
    WORD     BytesPerPixel;            // Bytes per pixel
-   LARGE    AccelFlags;               // Flags describing supported hardware features.
+   ACF      AccelFlags;               // Flags describing supported hardware features.
    LONG     AmtColours;               // Total number of supported colours.
    struct PixelFormat PixelFormat;    // The colour format to use for each pixel.
    FLOAT    MinRefresh;               // Minimum refresh rate
@@ -433,13 +458,13 @@ typedef struct BitmapSurfaceV2 {
    LONG  LineWidth;              // The distance between bitmap lines, measured in bytes.
    UBYTE BitsPerPixel;           // The number of bits per pixel (8, 15, 16, 24, 32).
    UBYTE BytesPerPixel;          // The number of bytes per pixel (1, 2, 3, 4).
-   UBYTE Opacity;                // Opacity level of the source if CSRF_TRANSLUCENT is used.
+   UBYTE Opacity;                // Opacity level of the source if CSRF::TRANSLUCENT is used.
    UBYTE Version;                // Version of this structure.
-   LONG  Colour;                 // Colour index to use if CSRF_TRANSPARENT is used.
-   struct ClipRectangle Clip;    // A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.
+   LONG  Colour;                 // Colour index to use if CSRF::TRANSPARENT is used.
+   struct ClipRectangle Clip;    // A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
    WORD  XOffset;                // Offset all X coordinate references by the given value.
    WORD  YOffset;                // Offset all Y coordinate references by the given value.
-   struct ColourFormat Format;   // The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.
+   struct ColourFormat Format;   // The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
    APTR  Private;                // A private pointer reserved for internal usage
 } BITMAPSURFACE;
 
@@ -461,15 +486,15 @@ typedef struct BitmapSurfaceV2 {
 #define MT_BmpConvertToLinear -12
 #define MT_BmpConvertToRGB -13
 
-struct bmpCopyArea { objBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
+struct bmpCopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
 struct bmpDecompress { LONG RetainData;  };
 struct bmpFlip { FLIP Orientation;  };
-struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; LONG Flags;  };
+struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags;  };
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 
-INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
+INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
@@ -489,7 +514,7 @@ INLINE ERROR bmpFlip(APTR Ob, FLIP Orientation) {
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) {
+INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
 }
@@ -1196,7 +1221,7 @@ class objPointer : public BaseClass {
    OBJECTID AnchorID;      // Can refer to a surface that the pointer has been anchored to.
    PTC      CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
    OBJECTID CursorOwnerID; // The current owner of the cursor, as defined by SetCursor().
-   LONG     Flags;         // Optional flags.
+   PF       Flags;         // Optional flags.
    OBJECTID RestrictID;    // Refers to a surface when the pointer is restricted.
    LONG     HostX;         // Indicates the current position of the host cursor on Windows or X11
    LONG     HostY;         // Indicates the current position of the host cursor on Windows or X11
@@ -1267,7 +1292,7 @@ class objPointer : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const PF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -1701,12 +1726,12 @@ extern struct DisplayBase *DisplayBase;
 struct DisplayBase {
    objPointer * (*_AccessPointer)(void);
    ERROR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
-   ERROR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERROR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    ERROR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    void (*_DrawPixel)(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
    void (*_DrawRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
-   void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);
+   void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
    ERROR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
    void (*_FlipBitmap)(objBitmap * Bitmap, FLIP Orientation);
    void (*_GetColourFormat)(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
@@ -1731,9 +1756,9 @@ struct DisplayBase {
    DOUBLE (*_ScaleToDPI)(DOUBLE Value);
    ERROR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
    void (*_SetClipRegion)(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-   ERROR (*_SetCursor)(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
+   ERROR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
    ERROR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
-   ERROR (*_SetCustomCursor)(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
+   ERROR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
    ERROR (*_SetHostOption)(HOST Option, LARGE Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
    ERROR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
@@ -1748,12 +1773,12 @@ struct DisplayBase {
 #ifndef PRV_DISPLAY_MODULE
 inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(); }
 inline ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
-inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
 inline ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
 inline void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
 inline void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
-inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
+inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
 inline ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
 inline void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
 inline void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
@@ -1778,9 +1803,9 @@ inline ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->
 inline DOUBLE gfxScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
 inline ERROR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
 inline void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
-inline ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
+inline ERROR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
 inline ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
-inline ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
+inline ERROR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
 inline ERROR gfxSetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID gfxSetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
 inline ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }

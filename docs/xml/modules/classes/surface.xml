@@ -970,13 +970,13 @@ the surface area first).</li>
       <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
       <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
       <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF::TRANSLUCENT is used.</field>
       <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF::TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.</field>
       <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
       <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.</field>
       <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
     </struct>
 
@@ -994,7 +994,7 @@ the surface area first).</li>
       <field name="Height" type="WORD">Pixel height of the display</field>
       <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
       <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
-      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
       <field name="AmtColours" type="LONG">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>

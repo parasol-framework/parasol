@@ -160,7 +160,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
    if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
-         gfxCopyArea(sg, bmp, 0, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
+         gfxCopyArea(sg, bmp, BAF::NIL, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
       }
    }
    else if (SourceType IS VSF_ALPHA) { // SourceAlpha
@@ -188,7 +188,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
 
       if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
-         gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->VectorClip.Left, Self->VectorClip.Top,
+         gfxCopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.Left, Self->VectorClip.Top,
             Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
       }
@@ -311,7 +311,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    Self->ClientVector->Next = NULL;
    Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
-   gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF_FILL);
+   gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF::FILL);
    Self->SourceScene->Bitmap = Self->SourceGraphic;
    acDraw(Self->SourceScene);
 
@@ -457,12 +457,12 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
       if (e->UsageCount > 0) { // This effect is an input to something else
          if (auto error = get_banked_bitmap(Self, &e->Target)) return error;
-         gfxDrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF_FILL);
+         gfxDrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF::FILL);
       }
       else { // This effect can render directly to the shared output bitmap
          if (!out) {
             if (auto error = get_banked_bitmap(Self, &out)) return error;
-            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
          }
          e->Target = out;
       }
@@ -474,7 +474,7 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
    if (!out) {
       log.warning("Effect pipeline did not produce an output bitmap.");
       if (auto error = get_banked_bitmap(Self, &out)) return error;
-      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
@@ -482,7 +482,7 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
    #endif
 
    #ifdef DEBUG_FILTER_BITMAP
-      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
+      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, BAF::NIL);
    #endif
 
    *Output = out;

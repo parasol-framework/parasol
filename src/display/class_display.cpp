@@ -1981,7 +1981,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
       Self->Opacity);
    return ERR_Okay;
 #else
-   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, 0,
+   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL,
       Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest));
 #endif
 }

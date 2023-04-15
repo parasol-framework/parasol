@@ -545,7 +545,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       winShowCursor(0);
    #endif
 
-   Self->Flags &= ~PF_VISIBLE;
+   Self->Flags &= ~PF::VISIBLE;
    return ERR_Okay;
 }
 
@@ -773,7 +773,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
       winShowCursor(1);
    #endif
 
-   Self->Flags |= PF_VISIBLE;
+   Self->Flags |= PF::VISIBLE;
    return ERR_Okay;
 }
 
@@ -1140,11 +1140,11 @@ static bool get_over_object(extPointer *Self)
    //drwReleaseList(ARF_READ);
 
    if (cursor_image != PTC::NIL) {
-      if (cursor_image != Self->CursorID) gfxSetCursor(0, 0, cursor_image, NULL, 0);
+      if (cursor_image != Self->CursorID) gfxSetCursor(0, CRF::NIL, cursor_image, NULL, 0);
    }
    else if ((Self->CursorID != PTC::DEFAULT) and (!Self->CursorOwnerID)) {
       // Restore the pointer to the default image if the cursor isn't locked
-      gfxSetCursor(0, 0, PTC::DEFAULT, NULL, 0);
+      gfxSetCursor(0, CRF::NIL, PTC::DEFAULT, NULL, 0);
    }
 
    return changed;
@@ -1273,7 +1273,7 @@ static const ActionArray clPointerActions[] = {
 };
 
 static const FieldDef clPointerFlags[] = {
-   { "Visible",  PF_VISIBLE },
+   { "Visible",  PF::VISIBLE },
    { NULL, 0 }
 };
 

@@ -6,12 +6,12 @@ extern "C" {
 
 objPointer * gfxAccessPointer();
 ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child);
-ERROR gfxCopyArea(extBitmap * Bitmap, extBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, extBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+ERROR gfxCopyArea(extBitmap * Bitmap, extBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, extBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 ERROR gfxCopySurface(OBJECTID Surface, extBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 void gfxDrawPixel(extBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
 void gfxDrawRGBPixel(extBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
-void gfxDrawRectangle(extBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);
+void gfxDrawRectangle(extBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
 ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
 void gfxFlipBitmap(extBitmap * Bitmap, FLIP Orientation);
 void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
@@ -36,9 +36,9 @@ ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner);
 DOUBLE gfxScaleToDPI(DOUBLE Value);
 ERROR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
 void gfxSetClipRegion(extBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
+ERROR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y);
-ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
+ERROR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
 ERROR gfxSetHostOption(HOST Option, LARGE Value);
 OBJECTID gfxSetModalSurface(OBJECTID Surface);
 ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
