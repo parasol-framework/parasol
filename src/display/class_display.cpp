@@ -382,7 +382,7 @@ static ERROR DISPLAY_Focus(extDisplay *Self, APTR Void)
 #ifdef _WIN32
    winFocus(Self->WindowHandle);
 #elif __xwindows__
-   if (Self->Flags & SCR_BORDERLESS) XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
+   if ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
 #endif
    return ERR_Okay;
 }
@@ -393,7 +393,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & SCR_AUTO_SAVE) {
+   if ((Self->Flags & SCR::AUTO_SAVE) != SCR::NIL) {
       log.trace("Autosave enabled.");
       acSaveSettings(Self);
    }
@@ -409,7 +409,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
    if (XDisplay) {
       while (XCheckWindowEvent(XDisplay, Self->XWindowHandle, ExposureMask, &xevent) IS True);
 
-      if (!(Self->Flags & SCR_CUSTOM_WINDOW)) {
+      if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
          if (Self->WindowHandle) {
             XDestroyWindow(XDisplay, Self->XWindowHandle);
             Self->WindowHandle = NULL;
@@ -419,7 +419,7 @@ static ERROR DISPLAY_Free(extDisplay *Self, APTR Void)
 #endif
 
 #ifdef _WIN32
-   if (!(Self->Flags & SCR_CUSTOM_WINDOW)) {
+   if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
       if (Self->WindowHandle) {
          winDestroyWindow(Self->WindowHandle);
          Self->WindowHandle = NULL;
@@ -540,12 +540,12 @@ static ERROR DISPLAY_Hide(extDisplay *Self, APTR Void)
    else sciCloseVideoMode(Self->VideoHandle);
 
 #elif _GLES_
-   if (Self->Flags & SCR_VISIBLE) {
+   if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
       adHideDisplay(Self->UID);
    }
 #endif
 
-   Self->Flags &= ~SCR_VISIBLE;
+   Self->Flags &= ~SCR::VISIBLE;
    return ERR_Okay;
 }
 
@@ -623,7 +623,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    if (Self->Width  < 4)  Self->Width  = 4;
    if (Self->Height < 4)  Self->Height = 4;
 
-   if (info.Flags & SCR_MAXSIZE) {
+   if ((info.Flags & SCR::MAXSIZE) != SCR::NIL) {
       if (Self->Width > info.Width) {
          log.msg("Limiting requested width of %d to %d", Self->Width, info.Width);
          Self->Width = info.Width;
@@ -641,7 +641,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    #ifdef __xwindows__
       // If the display object will act as window manager, the dimensions must match that of the root window.
 
-      if ((glX11.Manager) or (Self->Flags & SCR_MAXIMISE)) {
+      if ((glX11.Manager) or ((Self->Flags & SCR::MAXIMISE) != SCR::NIL)) {
          Self->Width  = glRootWindow.width;
          Self->Height = glRootWindow.height;
       }
@@ -668,7 +668,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       else bmp->BitsPerPixel = xbpp;
       bmp->BytesPerPixel = xbytes;
    #elif _WIN32
-      if (Self->Flags & SCR_COMPOSITE) {
+      if ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) {
          log.msg("Composite mode will force a 32-bit window area.");
          bmp->BitsPerPixel = 32;
          bmp->BytesPerPixel = 4;
@@ -682,7 +682,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
    #ifdef __xwindows__
 
-      bmp->Flags |= BMF_NO_DATA;
+      bmp->Flags |= BMF::NO_DATA;
       bmp->DataFlags = MEM::VIDEO;
 
       // Set the Window Attributes structure
@@ -690,7 +690,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       swa.bit_gravity = CenterGravity;
       swa.win_gravity = CenterGravity;
       swa.cursor      = C_Default;
-      swa.override_redirect = (Self->Flags & SCR_BORDERLESS) ? 1 : 0;
+      swa.override_redirect = ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0;
       swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                         |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
@@ -737,7 +737,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          protocols[0] = XWADeleteWindow;
          XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, 1);
 
-         Self->Flags |= SCR_HOSTED;
+         Self->Flags |= SCR::HOSTED;
 
          bmp->Width  = Self->Width;
          bmp->Height = Self->Height;
@@ -778,7 +778,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
 
          if (glDGAAvailable IS TRUE) {
-            bmp->Flags |= BMF_X11_DGA;
+            bmp->Flags |= BMF::X11_DGA;
             bmp->Data = (UBYTE *)glDGAVideo;
          }
       }
@@ -793,7 +793,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       // in the Bitmap object will also be pointed to the window that we have created, but this
       // will be managed by the Surface class.
 
-      bmp->Flags |= BMF_NO_DATA;
+      bmp->Flags |= BMF::NO_DATA;
       bmp->DataFlags = MEM::VIDEO;
 
       if (InitObject(bmp) != ERR_Okay) {
@@ -802,7 +802,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
       if (!Self->WindowHandle) {
          bool desktop = false;
-         if (Self->Flags & SCR_COMPOSITE) {
+         if ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) {
             // Not a desktop
          }
          else {
@@ -825,8 +825,8 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
 
          if (!(Self->WindowHandle = (APTR)winCreateScreen(popover, &Self->X, &Self->Y, &Self->Width, &Self->Height,
-               (Self->Flags & SCR_MAXIMISE) ? 1 : 0, (Self->Flags & SCR_BORDERLESS) ? 1 : 0, name,
-               (Self->Flags & SCR_COMPOSITE) ? 1 : 0, Self->Opacity, desktop))) {
+               ((Self->Flags & SCR::MAXIMISE) != SCR::NIL) ? 1 : 0, ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0, name,
+               ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) ? 1 : 0, Self->Opacity, desktop))) {
             return log.warning(ERR_SystemCall);
          }
       }
@@ -839,7 +839,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
       }
 
-      Self->Flags |= SCR_HOSTED;
+      Self->Flags |= SCR::HOSTED;
 
       // Get the size of the host window frame.  Note that the winCreateScreen() function we called earlier
       // would have already reset the X/Y fields so that they reflect the absolute client position of the window.
@@ -863,7 +863,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
       // Initialise the video bitmap that will represent the OpenGL surface
 
-      bmp->Flags |= BMF_NO_DATA;
+      bmp->Flags |= BMF::NO_DATA;
       bmp->DataFlags = MEM::VIDEO;
       if (InitObject(bmp) != ERR_Okay) {
          return log.warning(ERR_Init);
@@ -873,7 +873,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       #error This platform requires display initialisation code.
    #endif
 
-   if (Self->Flags & SCR_BUFFER) alloc_display_buffer(Self);
+   if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
    pal.NewPalette = bmp->Palette;
    Action(MT_GfxUpdatePalette, Self, &pal);
@@ -882,7 +882,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
    CopyMemory(bmp->ColourFormat, &glColourFormat, sizeof(glColourFormat));
 
-   if (glSixBitDisplay) Self->Flags |= SCR_BIT_6;
+   if (glSixBitDisplay) Self->Flags |= SCR::BIT_6;
 
    update_displayinfo(Self); // Update the glDisplayInfo cache.
 
@@ -1264,7 +1264,7 @@ static ERROR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
 
    // If a display buffer is in use, reallocate it from scratch.
 
-   if (Self->Flags & SCR_BUFFER) alloc_display_buffer(Self);
+   if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
    update_displayinfo(Self);
 
@@ -1302,7 +1302,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
    objConfig::create config = { fl::Path("user:config/display.cfg") };
 
    if (config.ok()) {
-      if (!(Self->Flags & SCR_BORDERLESS)) {
+      if ((Self->Flags & SCR::BORDERLESS) IS SCR::NIL) {
          config->write("DISPLAY", "WindowX", Self->X);
          config->write("DISPLAY", "WindowY", Self->Y);
 
@@ -1314,7 +1314,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
       }
 
       config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
-      config->write("DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? 1 : 0);
+      config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0);
 
       config->saveSettings();
    }
@@ -1336,7 +1336,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
             config->write("DISPLAY", "WindowY", y);
             config->write("DISPLAY", "Maximise", maximise);
             config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
-            config->write("DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? 1 : 0);
+            config->write("DISPLAY", "FullScreen", ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0);
             acSaveSettings(*config);
          }
       }
@@ -1493,7 +1493,7 @@ static ERROR DISPLAY_SetDisplay(extDisplay *Self, struct gfxSetDisplay *Args)
    // If a display buffer is in use, reallocate it from scratch.  Note: A failure to allocate a display buffer is not
    // considered terminal.
 
-   if (Self->Flags & SCR_BUFFER) alloc_display_buffer(Self);
+   if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
 
    update_displayinfo(Self);
    return ERR_Okay;
@@ -1686,8 +1686,8 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
    log.branch("%s", Args->Name);
 
    glSixBitDisplay = ((Args->Flags & MON::BIT_6) != MON::NIL);
-   if (glSixBitDisplay) Self->Flags |= SCR_BIT_6;
-   else Self->Flags &= ~SCR_BIT_6;
+   if (glSixBitDisplay) Self->Flags |= SCR::BIT_6;
+   else Self->Flags &= ~SCR::BIT_6;
 
    if (Args->Name) StrCopy(Args->Name, Self->Display, sizeof(Self->Display));
 
@@ -1792,13 +1792,13 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
       // Some window managers fool with our position when mapping, so we use XMoveWindow() before and after to be
       // certain that we get the position that we want.
 
-      if (!(Self->Flags & SCR_BORDERLESS)) {
+      if ((Self->Flags & SCR::BORDERLESS) IS SCR::NIL) {
          XMoveWindow(XDisplay, Self->XWindowHandle, Self->X, Self->Y);
       }
 
       XMapWindow(XDisplay, Self->XWindowHandle);
 
-      if (!(Self->Flags & SCR_BORDERLESS)) {
+      if ((Self->Flags & SCR::BORDERLESS) IS SCR::NIL) {
          XMoveWindow(XDisplay, Self->XWindowHandle, Self->X, Self->Y);
       }
 
@@ -1825,7 +1825,7 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
    #elif _WIN32
 
-      if (Self->Flags & SCR_MAXIMISE) winShowWindow(Self->WindowHandle, TRUE);
+      if ((Self->Flags & SCR::MAXIMISE) != SCR::NIL) winShowWindow(Self->WindowHandle, TRUE);
       else winShowWindow(Self->WindowHandle, FALSE);
 
       winUpdateWindow(Self->WindowHandle);
@@ -1842,13 +1842,13 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 
       #warning TODO: Bring back the native window if it is hidden.
       glActiveDisplayID = Self->UID;
-      Self->Flags &= ~SCR_NOACCELERATION;
+      Self->Flags &= ~SCR::NOACCELERATION;
 
    #else
       #error Display code is required for this platform.
    #endif
 
-   Self->Flags |= SCR_VISIBLE;
+   Self->Flags |= SCR::VISIBLE;
 
    objPointer *pointer;
    OBJECTID pointer_id;
@@ -1977,7 +1977,7 @@ static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Ar
       bmp->ColourFormat->RedMask   << bmp->ColourFormat->RedPos,
       bmp->ColourFormat->GreenMask << bmp->ColourFormat->GreenPos,
       bmp->ColourFormat->BlueMask  << bmp->ColourFormat->BluePos,
-      (Self->Flags & SCR_COMPOSITE) ? (bmp->ColourFormat->AlphaMask << bmp->ColourFormat->AlphaPos) : 0,
+      ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) ? (bmp->ColourFormat->AlphaMask << bmp->ColourFormat->AlphaPos) : 0,
       Self->Opacity);
    return ERR_Okay;
 #else
@@ -2340,24 +2340,24 @@ Optional display flags can be defined here.  Post-initialisation, the only flags
 
 *********************************************************************************************************************/
 
-static ERROR SET_Flags(extDisplay *Self, LONG Value)
+static ERROR SET_Flags(extDisplay *Self, SCR Value)
 {
    pf::Log log;
 
    if (Self->initialised()) {
       // Only flags that are explicitly supported here may be set post-initialisation.
 
-      #define ACCEPT_FLAGS (SCR_AUTO_SAVE)
-      LONG accept = Value & ACCEPT_FLAGS;
+      #define ACCEPT_FLAGS (SCR::AUTO_SAVE)
+      auto accept = Value & ACCEPT_FLAGS;
       Self->Flags = (Self->Flags & (~ACCEPT_FLAGS)) | accept;
 
-      if (((Self->Flags & SCR_BORDERLESS) and (!(Value & SCR_BORDERLESS))) or
-          (!(Self->Flags & SCR_BORDERLESS) and (Value & SCR_BORDERLESS))) {
+      if ((((Self->Flags & SCR::BORDERLESS) != SCR::NIL) and ((Value & SCR::BORDERLESS) IS SCR::NIL)) or
+          (((Self->Flags & SCR::BORDERLESS) IS SCR::NIL) and ((Value & SCR::BORDERLESS) != SCR::NIL))) {
       #ifdef _WIN32
 
          log.msg("Switching window type.");
 
-         bool maximise = TRUE;
+         bool maximise = true;
          STRING title;
          Self->get(FID_Title, &title); // Get the window title before we kill it
 
@@ -2367,9 +2367,9 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
          HWND popover = 0;
          if ((Self->WindowHandle = winCreateScreen(popover, &Self->X, &Self->Y, &Self->Width, &Self->Height,
-               maximise, (Self->Flags & SCR_BORDERLESS) ? FALSE : TRUE, title, FALSE, 255, TRUE))) {
+               maximise, ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? false : true, title, FALSE, 255, TRUE))) {
 
-            Self->Flags ^= SCR_BORDERLESS;
+            Self->Flags = Self->Flags ^ SCR::BORDERLESS;
 
             winSetSurfaceID(Self->WindowHandle, surface_id);
             winGetMargins(Self->WindowHandle, &Self->LeftMargin, &Self->TopMargin, &Self->RightMargin, &Self->BottomMargin);
@@ -2386,7 +2386,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
 
             resize_feedback(&Self->ResizeFeedback, Self->UID, cx, cy, cwidth, cheight);
 
-            if (Self->Flags & SCR_VISIBLE) {
+            if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
                winShowWindow(Self->WindowHandle, TRUE);
                QueueAction(AC_Focus, Self->UID);
             }
@@ -2410,18 +2410,18 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
          XDestroyWindow(XDisplay, Self->XWindowHandle);
          Self->WindowHandle = NULL;
 
-         Self->Flags ^= SCR_BORDERLESS;
+         Self->Flags ^= SCR::BORDERLESS;
 
          swa.bit_gravity = CenterGravity;
          swa.win_gravity = CenterGravity;
          swa.cursor      = C_Default;
-         swa.override_redirect = (Self->Flags & SCR_BORDERLESS) ? 1 : 0;
+         swa.override_redirect = (Self->Flags & SCR::BORDERLESS) ? 1 : 0;
          swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                            |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
          cwflags = CWEventMask|CWOverrideRedirect;
 
-         if (Self->Flags & SCR_BORDERLESS) {
+         if ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) {
             Self->X = 0;
             Self->Y = 0;
             Self->Width  = glRootWindow.width;
@@ -2471,7 +2471,7 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
          Self->Bitmap->set(FID_Handle, Self->WindowHandle);
          acResize(Self->Bitmap, Self->Width, Self->Height, 0);
 
-         if (Self->Flags & SCR_VISIBLE) {
+         if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) {
             acShow(Self);
             XSetInputFocus(XDisplay, Self->XWindowHandle, RevertToNone, CurrentTime);
             QueueAction(AC_Focus, Self->UID);
@@ -2481,25 +2481,25 @@ static ERROR SET_Flags(extDisplay *Self, LONG Value)
       #endif
       }
 
-      if ((Self->Flags & SCR_MAXIMISE) and (!(Value & SCR_MAXIMISE))) { // Turn maximise off
+      if (((Self->Flags & SCR::MAXIMISE) != SCR::NIL) and ((Value & SCR::MAXIMISE) IS SCR::NIL)) { // Turn maximise off
          #ifdef _WIN32
-            if (Self->Flags & SCR_VISIBLE) winShowWindow(Self->WindowHandle, FALSE);
-            Self->Flags |= SCR_MAXIMISE;
+            if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) winShowWindow(Self->WindowHandle, FALSE);
+            Self->Flags |= SCR::MAXIMISE;
          #elif __xwindows__
 
          #endif
       }
 
-      if (!(Self->Flags & SCR_MAXIMISE) and (Value & SCR_MAXIMISE)) { // Turn maximise on
+      if (((Self->Flags & SCR::MAXIMISE) IS SCR::NIL) and ((Value & SCR::MAXIMISE) != SCR::NIL)) { // Turn maximise on
          #ifdef _WIN32
-            if (Self->Flags & SCR_VISIBLE) winShowWindow(Self->WindowHandle, TRUE);
-            Self->Flags |= SCR_MAXIMISE;
+            if ((Self->Flags & SCR::VISIBLE) != SCR::NIL) winShowWindow(Self->WindowHandle, TRUE);
+            Self->Flags |= SCR::MAXIMISE;
          #elif __xwindows__
 
          #endif
       }
    }
-   else Self->Flags = (Value) & (~SCR_READ_ONLY);
+   else Self->Flags = (Value) & (~SCR::READ_ONLY);
 
    return ERR_Okay;
 }
@@ -2850,7 +2850,7 @@ static ERROR SET_WindowHandle(extDisplay *Self, APTR Value)
 
    if (Value) {
       Self->WindowHandle = Value;
-      Self->Flags |= SCR_CUSTOM_WINDOW;
+      Self->Flags |= SCR::CUSTOM_WINDOW;
       #ifdef __xwindows__
          glPlugin = TRUE;
       #endif

@@ -1532,7 +1532,7 @@ static void generate_text_bitmap(extVectorText *Vector)
             fl::Width(longest_line_width),
             fl::Height(dy),
             fl::BitsPerPixel(32),
-            fl::Flags(BMF_ALPHA_CHANNEL)))) return;
+            fl::Flags(BMF::ALPHA_CHANNEL)))) return;
 
       if (!(Vector->txBitmapImage = objVectorImage::create::integral(
             fl::Bitmap(Vector->txAlphaBitmap),

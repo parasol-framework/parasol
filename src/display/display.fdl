@@ -137,7 +137,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
-  flags("BMF", { comment="Bitmap flags" },
+  flags("BMF", { strict=true, comment="Bitmap flags" },
     "BLANK_PALETTE: Forces a blank/black palette on initialisation.",
     "COMPRESSED: The bitmap data is compressed.",
     "NO_DATA: Do not allocate memory in the Data field on initialisation.",
@@ -161,7 +161,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "HORIZONTAL: Flip the bitmap from top to bottom.",
     "VERTICAL: Flip the bitmap from left to right.")
 
-  flags("SCR", { comment="Display flags." },
+  flags("SCR", { strict=true, comment="Display flags." },
     "VISIBLE: Set if the screen is on display.",
     "AUTO_SAVE: Saves settings to the global display state when the object is freed.",
     "BUFFER: Set if you would like a complementing buffer in video RAM.",
@@ -171,7 +171,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "ALPHA_BLEND|COMPOSITE: Enables alpha channel blending (if display is hosted and 32-bit).",
     { MAXIMISE        = "0x80000000: Special win32 flag." },
     { CUSTOM_WINDOW   = "0x40000000: The display has been created with a custom window reference." },
-    { FLIPPABLE       = "0x20000000: If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer." },
+    { FLIPPABLE       = "0x20000000: If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer." },
     { GTF_ENABLED     = "0x10000000: GTF frequency timings are supported." },
     { DPMS_ENABLED    = "0x08000000: Power saving through DPMS is supported." },
     { POWERSAVE       = "0x04000000: Power saving is active (read-only)." },

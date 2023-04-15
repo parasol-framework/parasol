@@ -92,7 +92,7 @@ static ERROR RSVG_Query(extPicture *Self, APTR Void)
    ERROR error;
    if ((!(error = prv->SVG->getPtr(FID_Scene, &scene))) and (scene)) {
       if (Self->Flags & PCF_FORCE_ALPHA_32) {
-         bmp->Flags |= BMF_ALPHA_CHANNEL;
+         bmp->Flags |= BMF::ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
          bmp->BytesPerPixel = 4;
       }

@@ -200,7 +200,7 @@ static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
                fl::Width(1),
                fl::Height(1),
                fl::BitsPerPixel(32),
-               fl::Flags(BMF_ALPHA_CHANNEL|BMF_NO_DATA)))) {
+               fl::Flags(BMF::ALPHA_CHANNEL|BMF::NO_DATA)))) {
             return ERR_Okay;
          }
          else return ERR_CreateObject;

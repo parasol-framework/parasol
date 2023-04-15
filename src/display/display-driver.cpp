@@ -530,7 +530,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    else {
       // If no display is specified, return default display settings for the main monitor and availability flags.
 
-      Info->Flags = 0;
+      Info->Flags = SCR::NIL;
 
 #ifdef __xwindows__
       if ((glHeadless) or (!XDisplay)) {
@@ -616,7 +616,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
             glDisplayInfo.BitsPerPixel  = 16;
             glDisplayInfo.BytesPerPixel = 2;
             glDisplayInfo.AccelFlags    = ACF_VIDEO_BLIT;
-            glDisplayInfo.Flags         = SCR_MAXSIZE;  // Indicates that the width and height are the display's maximum.
+            glDisplayInfo.Flags         = SCR::MAXSIZE;  // Indicates that the width and height are the display's maximum.
 
             AConfiguration *config;
             if (!adGetConfig(&config)) {

@@ -76,7 +76,7 @@
     <description>
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
 <p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
-<p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF_ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
+<p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF::ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
 <p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF::LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
     </description>
     <result type="ERROR">
@@ -1129,7 +1129,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
       <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="FLIPPABLE">If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
       <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>
@@ -1180,7 +1180,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
       <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
       <field name="Width" type="WORD">Pixel width of the display</field>
       <field name="Height" type="WORD">Pixel height of the display</field>
       <field name="BitsPerPixel" type="WORD">Bits per pixel</field>

@@ -425,7 +425,7 @@
       <name>Flags</name>
       <comment>Optional flag settings.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="SCR">INT</type>
+      <type lookup="SCR">SCR</type>
       <description>
 <p>Optional display flags can be defined here.  Post-initialisation, the only flags that can be set are <code>AUTO_SAVE</code> and <code>BORDERLESS</code>.</p>
 <types lookup="SCR"/>
@@ -726,7 +726,7 @@
       <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
       <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="FLIPPABLE">If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
       <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>

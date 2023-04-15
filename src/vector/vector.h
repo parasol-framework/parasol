@@ -151,7 +151,7 @@ public:
          Bitmap = objBitmap::create::integral(
             fl::Name("dummy_fx_bitmap"),
             fl::Width(Width), fl::Height(Height), fl::BitsPerPixel(32),
-            fl::Flags(Debug ? BMF_ALPHA_CHANNEL : (BMF_ALPHA_CHANNEL|BMF_NO_DATA)));
+            fl::Flags(Debug ? BMF::ALPHA_CHANNEL : (BMF::ALPHA_CHANNEL|BMF::NO_DATA)));
          if (!Bitmap) return NULL;
       }
 

@@ -289,7 +289,7 @@ Once a bitmap is compressed, its image data is invalid.  Any attempt to access t
 result in a memory access fault.  The image data will remain invalid until the #Decompress() method is
 called to restore the bitmap to its original state.
 
-The `BMF_COMPRESSED` bit will be set in the #Flags field after a successful call to this function to indicate that the
+The `BMF::COMPRESSED` bit will be set in the #Flags field after a successful call to this function to indicate that the
 bitmap is compressed.
 
 -INPUT-
@@ -363,7 +363,7 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
          Self->Data = NULL;
       }
 
-      Self->Flags |= BMF_COMPRESSED;
+      Self->Flags |= BMF::COMPRESSED;
    }
 
    return error;
@@ -373,7 +373,7 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 -METHOD-
 ConvertToLinear: Convert a bitmap's colour space to linear RGB.
 
-Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the `BMF_ALPHA_CHANNEL` flag
+Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the `BMF::ALPHA_CHANNEL` flag
 is enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `LINEAR_RGB` on completion.  This method returns immediately if the #ColourSpace is
@@ -402,7 +402,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
 
-   if (Self->Flags & BMF_ALPHA_CHANNEL) {
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
       const UBYTE R = Self->ColourFormat->RedPos>>3;
       const UBYTE G = Self->ColourFormat->GreenPos>>3;
       const UBYTE B = Self->ColourFormat->BluePos>>3;
@@ -449,7 +449,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 -METHOD-
 ConvertToRGB: Convert a bitmap's colour space to standard RGB.
 
-Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF_ALPHA_CHANNEL` flag is
+Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF::ALPHA_CHANNEL` flag is
 enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `SRGB` on completion.  This method returns immediately if the #ColourSpace is
@@ -478,7 +478,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
 
-   if (Self->Flags & BMF_ALPHA_CHANNEL) {
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
       const UBYTE R = Self->ColourFormat->RedPos>>3;
       const UBYTE G = Self->ColourFormat->GreenPos>>3;
       const UBYTE B = Self->ColourFormat->BluePos>>3;
@@ -608,7 +608,7 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
    else {
       FreeResource(Self->prvCompress);
       Self->prvCompress = NULL;
-      Self->Flags &= ~BMF_COMPRESSED;
+      Self->Flags &= ~BMF::COMPRESSED;
    }
 
    return error;
@@ -689,9 +689,9 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
       }
    }
 
-   if (!(Self->Flags & BMF_PREMUL)) return log.warning(ERR_NothingDone);
+   if ((Self->Flags & BMF::PREMUL) IS BMF::NIL) return log.warning(ERR_NothingDone);
    if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
-   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -725,7 +725,7 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
       data += Self->LineWidth;
    }
 
-   Self->Flags &= ~BMF_PREMUL;
+   Self->Flags &= ~BMF::PREMUL;
    return ERR_Okay;
 }
 
@@ -1002,7 +1002,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    Self->DataFlags &= ~MEM::TEXTURE; // Blitter memory not available in X11
 
    if (!Self->Data) {
-      if (!(Self->Flags & BMF_NO_DATA)) {
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
          Self->DataFlags &= ~MEM::VIDEO; // Video memory not available for allocation in X11 (may be set to identify X11 windows only)
 
          if (!Self->Size) {
@@ -1080,7 +1080,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    Self->DataFlags &= ~MEM::TEXTURE; // Video buffer memory not available in Win32
 
    if (!Self->Data) {
-      if (!(Self->Flags & BMF_NO_DATA)) {
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
          if (!Self->Size) {
             log.warning("The Bitmap has no Size (there is a dimensional error).");
             return ERR_FieldNotSet;
@@ -1103,13 +1103,13 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    }
 
 #elif _GLES_
-   // MEM::VIDEO + BMF_NO_DATA: The bitmap represents the OpenGL display.  No data area will be allocated as direct access to the OpenGL video frame buffer is not possible.
+   // MEM::VIDEO + BMF::NO_DATA: The bitmap represents the OpenGL display.  No data area will be allocated as direct access to the OpenGL video frame buffer is not possible.
    // MEM::VIDEO: Not currently used as a means of allocating a particular type of OpenGL buffer.
    // MEM::TEXTURE:  The bitmap is to be used as an OpenGL texture or off-screen buffer.  The bitmap content is temporary - i.e. the content can be dumped by the graphics driver if the video display changes.
    // MEM::DATA:  The bitmap resides in regular CPU accessible memory.
 
    if (!Self->Data) {
-      if (!(Self->Flags & BMF_NO_DATA)) {
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
          if (Self->Size <= 0) {
             log.warning("The Bitmap has no Size (there is a dimensional error).");
             return ERR_FieldNotSet;
@@ -1132,7 +1132,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
       }
    }
 
-   if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) Self->Flags |= BMF_2DACCELERATED;
+   if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) Self->Flags |= BMF::2DACCELERATED;
 
 #else
    #error Platform requires memory allocation routines for the Bitmap class.
@@ -1193,14 +1193,14 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                         (((255 >> Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
    }
 
-   if ((!(Self->Flags & BMF_NO_DATA)) and (Self->Flags & BMF_CLEAR)) {
+   if (((Self->Flags & BMF::NO_DATA) IS BMF::NIL) and ((Self->Flags & BMF::CLEAR) != BMF::NIL)) {
       log.trace("Clearing Bitmap...");
       acClear(Self);
    }
 
    // Sanitise the Flags field
 
-   if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF_ALPHA_CHANNEL;
+   if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF::ALPHA_CHANNEL;
 
    //log.msg("Red: %.2x/%d/%d , Green: %.2x/%d/%d",
    //   Self->prvColourFormat.RedMask,   Self->prvColourFormat.RedShift,   Self->prvColourFormat.RedPos,
@@ -1371,12 +1371,12 @@ static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & BMF_PREMUL) {
+   if ((Self->Flags & BMF::PREMUL) != BMF::NIL) {
       return log.warning(ERR_NothingDone);
    }
 
    if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
-   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -1407,7 +1407,7 @@ static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
       data += Self->LineWidth;
    }
 
-   Self->Flags |= BMF_PREMUL;
+   Self->Flags |= BMF::PREMUL;
    return ERR_Okay;
 }
 
@@ -1457,9 +1457,9 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
       }
    #endif
 
-   // If the BMF_MASK flag is set then the programmer wants to use the Bitmap object as a 1 or 8-bit mask.
+   // If the BMF::MASK flag is set then the programmer wants to use the Bitmap object as a 1 or 8-bit mask.
 
-   if (Self->Flags & BMF_MASK) {
+   if ((Self->Flags & BMF::MASK) != BMF::NIL) {
       if ((!Self->BitsPerPixel) and (!Self->AmtColours)) {
          Self->BitsPerPixel = 1;
          Self->AmtColours = 2;
@@ -1570,7 +1570,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 #endif
 
 #ifdef _GLES_
-   if ((Self->BitsPerPixel IS 8) and (Self->Flags & BMF_MASK)) Self->prvGLPixel = GL_ALPHA;
+   if ((Self->BitsPerPixel IS 8) and ((Self->Flags & BMF::MASK) != BMF::NIL)) Self->prvGLPixel = GL_ALPHA;
    else if (Self->BitsPerPixel <= 24) Self->prvGLPixel = GL_RGB;
    else Self->prvGLPixel = GL_RGBA;
 
@@ -1587,7 +1587,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
    }
    else Self->Size = Self->LineWidth * Self->Height;
 
-   Self->Flags |= BMF_QUERIED;
+   Self->Flags |= BMF::QUERIED;
    return ERR_Okay;
 }
 
@@ -1643,12 +1643,12 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Args->Height > 0) height = (LONG)Args->Height;
    else height = Self->Height;
 
-   if ((Args->Depth > 0) and (!(Self->Flags & BMF_FIXED_DEPTH))) bpp = (LONG)Args->Depth;
+   if ((Args->Depth > 0) and ((Self->Flags & BMF::FIXED_DEPTH) IS BMF::NIL)) bpp = (LONG)Args->Depth;
    else bpp = Self->BitsPerPixel;
 
    // If the NEVER_SHRINK option is set, the width and height may not be set to anything less than what is current.
 
-   if (Self->Flags & BMF_NEVER_SHRINK) {
+   if ((Self->Flags & BMF::NEVER_SHRINK) != BMF::NIL) {
       if (width < Self->Width) width = Self->Width;
       if (height < Self->Height) height = Self->Height;
    }
@@ -1700,7 +1700,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->prvAFlags & BF_WINVIDEO) return ERR_NoSupport;
 #endif
 
-   if (Self->Flags & BMF_NO_DATA);
+   if ((Self->Flags & BMF::NO_DATA) != BMF::NIL);
    #ifdef __xwindows__
    else if (Self->x11.XShmImage);
    #endif
@@ -1799,7 +1799,7 @@ setfields:
 
    CalculatePixelRoutines(Self);
 
-   if (Self->Flags & BMF_CLEAR) {
+   if ((Self->Flags & BMF::CLEAR) != BMF::NIL) {
       gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF::FILL);
    }
 
@@ -2523,7 +2523,7 @@ static ERROR SET_Trans(extBitmap *Self, RGB8 *Value)
    }
    else Self->TransIndex = RGBToValue(&Self->TransRGB, Self->Palette);
 
-   if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF_TRANSPARENT;
+   if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF::TRANSPARENT;
    return ERR_Okay;
 }
 
@@ -2547,7 +2547,7 @@ static ERROR SET_TransIndex(extBitmap *Self, LONG Index)
    Self->TransIndex = Index;
    Self->TransRGB   = Self->Palette->Col[Self->TransIndex];
 
-   if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF_TRANSPARENT;
+   if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF::TRANSPARENT;
    return ERR_Okay;
 }
 

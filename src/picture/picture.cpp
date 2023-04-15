@@ -201,12 +201,12 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
 
          bmp->BitsPerPixel  = 32;
          bmp->BytesPerPixel = 4;
-         bmp->Flags |= BMF_ALPHA_CHANNEL;
+         bmp->Flags |= BMF::ALPHA_CHANNEL;
       }
       else {
          if ((Self->Mask = objBitmap::create::integral(
                fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
-               fl::AmtColours(256), fl::Flags(BMF_MASK)))) {
+               fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
             Self->Flags |= PCF_MASK|PCF_ALPHA;
          }
          else goto exit;
@@ -368,7 +368,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
       if (Self->Flags & PCF_FORCE_ALPHA_32) {
          Self->Bitmap->BitsPerPixel  = 32;
          Self->Bitmap->BytesPerPixel = 4;
-         Self->Bitmap->Flags |= BMF_ALPHA_CHANNEL;
+         Self->Bitmap->Flags |= BMF::ALPHA_CHANNEL;
       }
 
       Self->Flags &= ~(PCF_RESIZE_X|PCF_RESIZE_Y|PCF_LAZY|PCF_SCALABLE); // Turn off irrelevant flags that don't match these
@@ -383,7 +383,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
             if (Self->Flags & (PCF_ALPHA|PCF_MASK)) {
                if ((Self->Mask = objBitmap::create::integral(fl::Width(Self->Bitmap->Width),
                      fl::Height(Self->Bitmap->Height),
-                     fl::Flags(BMF_MASK),
+                     fl::Flags(BMF::MASK),
                      fl::BitsPerPixel((Self->Flags & PCF_ALPHA) ? 8 : 1)))) {
                   Self->Flags |= PCF_MASK;
                }
@@ -456,7 +456,7 @@ static ERROR PICTURE_Query(extPicture *Self, APTR Void)
    png_uint_32 width, height;
    int bit_depth, color_type;
 
-   if (Self->Bitmap->Flags & BMF_QUERIED) return ERR_Okay;
+   if ((Self->Bitmap->Flags & BMF::QUERIED) != BMF::NIL) return ERR_Okay;
    if (!Self->prvFile) return ERR_NotInitialised;
 
    log.branch();
@@ -608,7 +608,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    }
 
    if (bmp->AmtColours > 256) {
-      if (bmp->Flags & BMF_ALPHA_CHANNEL) {
+      if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
          log.trace("Saving as 32-bit alpha.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
@@ -693,7 +693,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       }
    }
    else if (bmp->BitsPerPixel IS 32) {
-      if (bmp->Flags & BMF_ALPHA_CHANNEL) {
+      if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UBYTE *data = bmp->Data;

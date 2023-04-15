@@ -81,7 +81,7 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
    LONG size;
    WORD alignment;
 
-   if ((Bitmap->Flags & BMF_X11_DGA) and (glDGAAvailable)) {
+   if (((Bitmap->Flags & BMF::X11_DGA) != BMF::NIL) and (glDGAAvailable)) {
       return ERR_Okay;
    }
    else if ((Bitmap->x11.drawable) and (Access & SURFACE_READ)) {
@@ -669,7 +669,7 @@ static void check_bmp_buffer_depth(extSurface *Self, objBitmap *Bitmap)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Bitmap->Flags & BMF_FIXED_DEPTH) return;  // Don't change bitmaps marked as fixed-depth
+   if ((Bitmap->Flags & BMF::FIXED_DEPTH) != BMF::NIL) return;  // Don't change bitmaps marked as fixed-depth
 
    DISPLAYINFO *info;
    if (!gfxGetDisplayInfo(Self->DisplayID, &info)) {

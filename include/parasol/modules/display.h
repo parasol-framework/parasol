@@ -239,23 +239,28 @@ enum class BMP : LONG {
 
 // Bitmap flags
 
-#define BMF_BLANK_PALETTE 0x00000001
-#define BMF_COMPRESSED 0x00000002
-#define BMF_NO_DATA 0x00000004
-#define BMF_TRANSPARENT 0x00000008
-#define BMF_MASK 0x00000010
-#define BMF_INVERSE_ALPHA 0x00000020
-#define BMF_QUERIED 0x00000040
-#define BMF_CLEAR 0x00000080
-#define BMF_USER 0x00000100
-#define BMF_ACCELERATED_2D 0x00000200
-#define BMF_ACCELERATED_3D 0x00000400
-#define BMF_ALPHA_CHANNEL 0x00000800
-#define BMF_NEVER_SHRINK 0x00001000
-#define BMF_X11_DGA 0x00002000
-#define BMF_FIXED_DEPTH 0x00004000
-#define BMF_NO_BLEND 0x00008000
-#define BMF_PREMUL 0x00010000
+enum class BMF : ULONG {
+   NIL = 0,
+   BLANK_PALETTE = 0x00000001,
+   COMPRESSED = 0x00000002,
+   NO_DATA = 0x00000004,
+   TRANSPARENT = 0x00000008,
+   MASK = 0x00000010,
+   INVERSE_ALPHA = 0x00000020,
+   QUERIED = 0x00000040,
+   CLEAR = 0x00000080,
+   USER = 0x00000100,
+   ACCELERATED_2D = 0x00000200,
+   ACCELERATED_3D = 0x00000400,
+   ALPHA_CHANNEL = 0x00000800,
+   NEVER_SHRINK = 0x00001000,
+   X11_DGA = 0x00002000,
+   FIXED_DEPTH = 0x00004000,
+   NO_BLEND = 0x00008000,
+   PREMUL = 0x00010000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(BMF)
 
 // Flags for the bitmap Flip method.
 
@@ -267,24 +272,29 @@ enum class FLIP : LONG {
 
 // Display flags.
 
-#define SCR_READ_ONLY 0xfe300019
-#define SCR_VISIBLE 0x00000001
-#define SCR_AUTO_SAVE 0x00000002
-#define SCR_BUFFER 0x00000004
-#define SCR_NO_ACCELERATION 0x00000008
-#define SCR_BIT_6 0x00000010
-#define SCR_BORDERLESS 0x00000020
-#define SCR_COMPOSITE 0x00000040
-#define SCR_ALPHA_BLEND 0x00000040
-#define SCR_MAXSIZE 0x00100000
-#define SCR_REFRESH 0x00200000
-#define SCR_HOSTED 0x02000000
-#define SCR_POWERSAVE 0x04000000
-#define SCR_DPMS_ENABLED 0x08000000
-#define SCR_GTF_ENABLED 0x10000000
-#define SCR_FLIPPABLE 0x20000000
-#define SCR_CUSTOM_WINDOW 0x40000000
-#define SCR_MAXIMISE 0x80000000
+enum class SCR : ULONG {
+   NIL = 0,
+   READ_ONLY = 0xfe300019,
+   VISIBLE = 0x00000001,
+   AUTO_SAVE = 0x00000002,
+   BUFFER = 0x00000004,
+   NO_ACCELERATION = 0x00000008,
+   BIT_6 = 0x00000010,
+   BORDERLESS = 0x00000020,
+   COMPOSITE = 0x00000040,
+   ALPHA_BLEND = 0x00000040,
+   MAXSIZE = 0x00100000,
+   REFRESH = 0x00200000,
+   HOSTED = 0x02000000,
+   POWERSAVE = 0x04000000,
+   DPMS_ENABLED = 0x08000000,
+   GTF_ENABLED = 0x10000000,
+   FLIPPABLE = 0x20000000,
+   CUSTOM_WINDOW = 0x40000000,
+   MAXIMISE = 0x80000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SCR)
 
 // Flags for the Display class SetMonitor() method.
 
@@ -426,7 +436,7 @@ typedef struct PixelFormat {
 
 typedef struct DisplayInfoV3 {
    OBJECTID DisplayID;                // Object ID related to the display
-   LONG     Flags;                    // Display flags
+   SCR      Flags;                    // Display flags
    WORD     Width;                    // Pixel width of the display
    WORD     Height;                   // Pixel height of the display
    WORD     BitsPerPixel;             // Bits per pixel
@@ -559,7 +569,7 @@ class objBitmap : public BaseClass {
    LONG    Size;                                                     // The total size of the bitmap, in bytes.
    MEM     DataFlags;                                                // Defines the memory flags to use in allocating a bitmap's data area.
    LONG    AmtColours;                                               // The maximum number of displayable colours.
-   LONG    Flags;                                                    // Optional flags.
+   BMF     Flags;                                                    // Optional flags.
    LONG    TransIndex;                                               // The transparent colour of the bitmap, represented as an index.
    LONG    BytesPerPixel;                                            // The number of bytes per pixel.
    LONG    BitsPerPixel;                                             // The number of bits per pixel
@@ -761,7 +771,7 @@ class objBitmap : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const BMF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -931,7 +941,7 @@ class objDisplay : public BaseClass {
 
    DOUBLE   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
-   LONG     Flags;        // Optional flag settings.
+   SCR      Flags;        // Optional flag settings.
    LONG     Width;        // Defines the width of the display.
    LONG     Height;       // Defines the height of the display.
    LONG     X;            // Defines the horizontal coordinate of the display.
@@ -1014,7 +1024,7 @@ class objDisplay : public BaseClass {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const SCR Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

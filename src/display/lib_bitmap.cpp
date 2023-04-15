@@ -222,7 +222,7 @@ the copy operation.
 
 To enable dithering, pass `BAF::DITHER` in the Flags argument.  The drawing algorithm will use dithering if the source
 needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set `BAF::BLEND` (the source bitmap
-will also need to have the `BMF_ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
+will also need to have the `BMF::ALPHA_CHANNEL` flag set to indicate that an alpha channel is available).
 
 The quality of 32-bit alpha blending can be improved by selecting the `BAF::LINEAR` flag.  This enables an additional
 computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The
@@ -326,7 +326,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
 
    if ((Flags & BAF::LINEAR) != BAF::NIL) {
       if ((Bitmap->ColourSpace IS CS::LINEAR_RGB) or (dest->ColourSpace IS CS::LINEAR_RGB)) return log.warning(ERR_InvalidState);
-      if ((Bitmap->BitsPerPixel != 32) or (!(Bitmap->Flags & BMF_ALPHA_CHANNEL))) return log.warning(ERR_InvalidState);
+      if ((Bitmap->BitsPerPixel != 32) or ((Bitmap->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) return log.warning(ERR_InvalidState);
    }
 
    if (Bitmap IS dest) { // Use this clipping routine only if we are copying within the same bitmap
@@ -450,7 +450,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          }
       }
       else { // The source is a software image
-         if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+         if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
             ULONG *srcdata;
             UBYTE destred, destgreen, destblue, red, green, blue, alpha;
 
@@ -487,7 +487,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                Height--;
             }
          }
-         else if (Bitmap->Flags & BMF_TRANSPARENT) {
+         else if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL) {
             ULONG wincolour;
             while (Height > 0) {
                for (i=0; i < Width; i++) {
@@ -519,13 +519,13 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
 
    // Use this routine if the destination is a pixmap (write only memory).  X11 windows are always represented as pixmaps.
 
-   if ((dest->Flags & BMF_X11_DGA) and (glDGAAvailable) and (dest != Bitmap)) {
+   if (((dest->Flags & BMF::X11_DGA) != BMF::NIL) and (glDGAAvailable) and (dest != Bitmap)) {
       // We have direct access to the graphics address, so drop through to the software routine
       dest->Data = (UBYTE *)glDGAVideo;
    }
    else if (dest->x11.drawable) {
       if (!Bitmap->x11.drawable) {
-         if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+         if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
             ULONG *srcdata;
             UBYTE alpha;
             WORD cl, cr, ct, cb;
@@ -570,7 +570,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
             dest->Clip.Top    = ct;
             dest->Clip.Bottom = cb;
          }
-         else if (Bitmap->Flags & BMF_TRANSPARENT) {
+         else if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL) {
             while (Height > 0) {
                for (i = 0; i < Width; i++) {
                   colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
@@ -669,7 +669,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
 
    // GENERIC SOFTWARE BLITTING ROUTINES
 
-   if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and (Bitmap->Flags & BMF_ALPHA_CHANNEL)) {
+   if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
       // 32-bit alpha blending support
 
       if (!lock_surface(Bitmap, SURFACE_READ)) {
@@ -906,7 +906,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
 
       return ERR_Okay;
    }
-   else if (Bitmap->Flags & BMF_TRANSPARENT) {
+   else if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL) {
       // Transparent colour copying.  In this mode, the alpha component of individual source pixels is ignored
 
       if (!lock_surface(Bitmap, SURFACE_READ)) {
@@ -1096,7 +1096,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                   if ((dest->BitsPerPixel < 24) and
                       ((Bitmap->BitsPerPixel > dest->BitsPerPixel) or
                        ((Bitmap->BitsPerPixel <= 8) and (dest->BitsPerPixel > 8)))) {
-                     if (Bitmap->Flags & BMF_TRANSPARENT);
+                     if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL);
                      else {
                         dither(Bitmap, dest, NULL, Width, Height, X, Y, DestX, DestY);
                         dithered = TRUE;

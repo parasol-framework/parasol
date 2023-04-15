@@ -422,9 +422,6 @@ static ERROR SET_WindowType(extSurface *Self, SWIN Value)
 {
    if (Self->initialised()) {
       pf::Log log;
-      bool border;
-      LONG flags;
-      objDisplay *display;
 
       if (Self->WindowType IS Value) {
          log.trace("WindowType == %d", Value);
@@ -432,9 +429,11 @@ static ERROR SET_WindowType(extSurface *Self, SWIN Value)
       }
 
       if (Self->DisplayID) {
+         objDisplay *display;
          if (!AccessObject(Self->DisplayID, 2000, &display)) {
             log.trace("Changing window type to %d.", Value);
 
+            bool border;
             switch(Value) {
                case SWIN::TASKBAR:
                case SWIN::ICON_TRAY:
@@ -446,14 +445,15 @@ static ERROR SET_WindowType(extSurface *Self, SWIN Value)
                   break;
             }
 
+            SCR flags;
             if (border) {
-               if (display->Flags & SCR_BORDERLESS) {
-                  flags = display->Flags & (~SCR_BORDERLESS);
+               if ((display->Flags & SCR::BORDERLESS) != SCR::NIL) {
+                  flags = display->Flags & (~SCR::BORDERLESS);
                   display->setFlags(flags);
                }
             }
-            else if (!(display->Flags & SCR_BORDERLESS)) {
-               flags = display->Flags | SCR_BORDERLESS;
+            else if ((display->Flags & SCR::BORDERLESS) IS SCR::NIL) {
+               flags = display->Flags | SCR::BORDERLESS;
                display->setFlags(flags);
             }
 

@@ -632,66 +632,8 @@ AccessObject: Failed to access the internally maintained image object.
 
 ERROR gfxSetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
-#ifdef __snap__
-   pf::Log log(__FUNCTION__);
-   extPointer *pointer;
-   objBitmap *buffer;
-   ERROR error;
-
-   if (Bitmap) log.extmsg("Object: %d, Bitmap: %p, Size: %dx%d, BPP: %d", ObjectID, Bitmap, Bitmap->Width, Bitmap->Height, Bitmap->BitsPerPixel);
-   else log.extmsg("Object: %d, Bitmap Preset", ObjectID);
-
-   if ((pointer = gfxAccessPointer())) {
-      if (!AccessObject(pointer->BitmapID, 0, &buffer)) {
-         if (Bitmap) {
-            // Adjust the clipping area of our custom bitmap to match the incoming dimensions of the new cursor image.
-
-            buffer->Clip.Right = Bitmap->Width;
-            buffer->Clip.Bottom = Bitmap->Height;
-            if (buffer->Clip.Right > buffer->Width) buffer->Clip.Right = buffer->Width;
-            if (buffer->Clip.Bottom > buffer->Height) buffer->Clip.Bottom = buffer->Height;
-
-            if (Bitmap->BitsPerPixel IS 2) {
-               ULONG mask;
-
-               // Monochrome: 0 = mask, 1 = black (fg), 2 = white (bg), 3 = XOR
-
-               if (buffer->Flags & BMF_INVERSEALPHA) mask = PackPixelA(buffer, 0, 0, 0, 255);
-               else mask = PackPixelA(buffer, 0, 0, 0, 0);
-
-               ULONG foreground = PackPixel(buffer, Bitmap->Palette->Col[1].Red, Bitmap->Palette->Col[1].Green, Bitmap->Palette->Col[1].Blue);
-               ULONG background = PackPixel(buffer, Bitmap->Palette->Col[2].Red, Bitmap->Palette->Col[2].Green, Bitmap->Palette->Col[2].Blue);
-               for (LONG y=0; y < Bitmap->Clip.Bottom; y++) {
-                  for (LONG x=0; x < Bitmap->Clip.Right; x++) {
-                     switch (Bitmap->ReadUCPixel(Bitmap, x, y)) {
-                        case 0: buffer->DrawUCPixel(buffer, x, y, mask); break;
-                        case 1: buffer->DrawUCPixel(buffer, x, y, foreground); break;
-                        case 2: buffer->DrawUCPixel(buffer, x, y, background); break;
-                        case 3: buffer->DrawUCPixel(buffer, x, y, foreground); break;
-                     }
-                  }
-               }
-            }
-            else mtCopyArea(Bitmap, buffer, NULL, 0, 0, Bitmap->Width, Bitmap->Height, 0, 0);
-         }
-
-         pointer->Cursors[PTC::CUSTOM].HotX = HotX;
-         pointer->Cursors[PTC::CUSTOM].HotY = HotY;
-         error = gfxSetCursor(ObjectID, Flags, PTC::CUSTOM, NULL, OwnerID);
-         ReleaseObject(buffer);
-      }
-      else error = ERR_AccessObject;
-
-      ReleaseObject(pointer);
-      return error;
-   }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
-#else
+   // If the driver doesn't support custom cursors then divert to gfxSetCursor()
    return gfxSetCursor(ObjectID, Flags, PTC::DEFAULT, NULL, OwnerID);
-#endif
 }
 
 /*********************************************************************************************************************

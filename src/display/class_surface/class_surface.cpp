@@ -1220,7 +1220,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       Self->Flags &= ~(RNF::TRANSPARENT|RNF::PRECOPY|RNF::AFTER_COPY);
 
-      LONG scrflags = 0;
+      SCR scrflags = SCR::NIL;
 
       if ((Self->Type & RT::ROOT) != RT::NIL) {
          gfxSetHostOption(HOST::TASKBAR, 1);
@@ -1234,22 +1234,22 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
          case SWIN::TASKBAR:
             log.trace("Enabling borderless taskbar based surface.");
-            scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
-            if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR_MAXIMISE;
+            scrflags |= SCR::BORDERLESS; // Stop the display from creating a host window for the surface
+            if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR::MAXIMISE;
             gfxSetHostOption(HOST::TASKBAR, 1);
             break;
 
          case SWIN::ICON_TRAY:
             log.trace("Enabling borderless icon-tray based surface.");
-            scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
-            if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR_MAXIMISE;
+            scrflags |= SCR::BORDERLESS; // Stop the display from creating a host window for the surface
+            if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR::MAXIMISE;
             gfxSetHostOption(HOST::TRAY_ICON, 1);
             break;
 
          case SWIN::NONE:
             log.trace("Enabling borderless, presence-less surface.");
-            scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
-            if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR_MAXIMISE;
+            scrflags |= SCR::BORDERLESS; // Stop the display from creating a host window for the surface
+            if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR::MAXIMISE;
             gfxSetHostOption(HOST::TASKBAR, 0);
             gfxSetHostOption(HOST::TRAY_ICON, 0);
             break;
@@ -1258,8 +1258,8 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       if (gfxGetDisplayType() IS DT::NATIVE) Self->Flags &= ~(RNF::COMPOSITE);
 
       if (((gfxGetDisplayType() IS DT::WINDOWS) or (gfxGetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
-         if (glpMaximise) scrflags |= SCR_MAXIMISE;
-         if (glpFullScreen) scrflags |= SCR_MAXIMISE|SCR_BORDERLESS;
+         if (glpMaximise) scrflags |= SCR::MAXIMISE;
+         if (glpFullScreen) scrflags |= SCR::MAXIMISE|SCR::BORDERLESS;
       }
 
       if (!(Self->Dimensions & DMF_FIXED_WIDTH)) {
@@ -1312,7 +1312,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfxSetHostOption(HOST::STICK_TO_FRONT, 1);
       else gfxSetHostOption(HOST::STICK_TO_FRONT, 0);
 
-      if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) scrflags |= SCR_COMPOSITE;
+      if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) scrflags |= SCR::COMPOSITE;
 
       OBJECTID id, pop_display = 0;
       CSTRING name = FindObject("SystemDisplay", 0, FOF::NIL, &id) ? "SystemDisplay" : (CSTRING)NULL;
@@ -1416,7 +1416,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          if ((Self->Flags & RNF::VIDEO) != RNF::NIL) {
             // If acceleration is available then it is OK to create the buffer in video RAM.
 
-            if (!(display->Flags & SCR_NO_ACCELERATION)) memflags = MEM::TEXTURE;
+            if ((display->Flags & SCR::NO_ACCELERATION) IS SCR::NIL) memflags = MEM::TEXTURE;
          }
 
          LONG bpp;
@@ -1433,9 +1433,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          if (auto bitmap = objBitmap::create::integral(
                fl::BitsPerPixel(bpp), fl::Width(Self->Width), fl::Height(Self->Height),
                fl::DataFlags(memflags),
-               fl::Flags((((Self->Flags & RNF::COMPOSITE) != RNF::NIL) ? (BMF_ALPHA_CHANNEL|BMF_FIXED_DEPTH) : 0)))) {
+               fl::Flags((((Self->Flags & RNF::COMPOSITE) != RNF::NIL) ? (BMF::ALPHA_CHANNEL|BMF::FIXED_DEPTH) : BMF::NIL)))) {
 
-            if (Self->BitsPerPixel) bitmap->Flags |= BMF_FIXED_DEPTH; // This flag prevents automatic changes to the bit depth
+            if (Self->BitsPerPixel) bitmap->Flags |= BMF::FIXED_DEPTH; // This flag prevents automatic changes to the bit depth
 
             Self->BitsPerPixel  = bitmap->BitsPerPixel;
             Self->BytesPerPixel = bitmap->BytesPerPixel;
@@ -1459,7 +1459,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
    if ((Self->Flags & RNF::FIXED_BUFFER) != RNF::NIL) {
       if (!AccessObject(Self->BufferID, 5000, &bitmap)) {
-         bitmap->Flags |= BMF_NEVER_SHRINK;
+         bitmap->Flags |= BMF::NEVER_SHRINK;
          ReleaseObject(bitmap);
       }
    }

@@ -133,7 +133,7 @@
       <description>
 <p>A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <method>Decompress</method> method is called to restore the bitmap to its original state.</p>
-<p>The <code>BMF_COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
+<p>The <code>BMF::COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -149,7 +149,7 @@
       <comment>Convert a bitmap's colour space to linear RGB.</comment>
       <prototype>ERROR bmpConvertToLinear(OBJECTPTR Object)</prototype>
       <description>
-<p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF_ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
+<p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <field>ColourSpace</field> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>LINEAR_RGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
@@ -166,7 +166,7 @@
       <comment>Convert a bitmap's colour space to standard RGB.</comment>
       <prototype>ERROR bmpConvertToRGB(OBJECTPTR Object)</prototype>
       <description>
-<p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF_ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
+<p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <field>ColourSpace</field> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>SRGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
@@ -569,7 +569,7 @@ unpackAlpha(Colour)
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="BMF">INT</type>
+      <type lookup="BMF">BMF</type>
       <description>
 <types lookup="BMF"/>
       </description>

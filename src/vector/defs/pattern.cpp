@@ -41,7 +41,7 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
    else if (!(Self->Bitmap = objBitmap::create::integral(
       fl::Width(Self->Scene->PageWidth),
       fl::Height(Self->Scene->PageHeight),
-      fl::Flags(BMF_ALPHA_CHANNEL),
+      fl::Flags(BMF::ALPHA_CHANNEL),
       fl::BitsPerPixel(32)))) return ERR_CreateObject;
 
    ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);

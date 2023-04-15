@@ -133,7 +133,7 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 
    if (bmp) {
       bmp->ColourSpace = CS::SRGB;
-      bmp->Flags &= ~BMF_PREMUL;
+      bmp->Flags &= ~BMF::PREMUL;
       *BitmapResult = bmp;
       Self->BankIndex++;
       return ERR_Okay;
@@ -187,7 +187,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
 
-      if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
+      if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
          gfxCopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.Left, Self->VectorClip.Top,
             Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
@@ -195,7 +195,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
    }
    else if (SourceType IS VSF_BKGD_ALPHA) {
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
-      if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
+      if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
          LONG dy = bmp->Clip.Top;
          for (LONG sy=Self->BkgdBitmap->Clip.Top; sy < Self->BkgdBitmap->Clip.Bottom; sy++) {
             ULONG *src = (ULONG *)(Self->BkgdBitmap->Data + (sy * Self->BkgdBitmap->LineWidth));
@@ -272,7 +272,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
          fl::Width(Self->ClientViewport->Scene->PageWidth),
          fl::Height(Self->ClientViewport->Scene->PageHeight),
          fl::BitsPerPixel(32),
-         fl::Flags(BMF_ALPHA_CHANNEL),
+         fl::Flags(BMF::ALPHA_CHANNEL),
          fl::ColourSpace(CS::SRGB)))) return NULL;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or

@@ -1179,7 +1179,7 @@ private:
                   fl::Width(mBitmap->Width),
                   fl::Height(mBitmap->Height),
                   fl::BitsPerPixel(32),
-                  fl::Flags(BMF_ALPHA_CHANNEL),
+                  fl::Flags(BMF::ALPHA_CHANNEL),
                   fl::ColourSpace(mBitmap->ColourSpace)))) {
                bmpSave = mBitmap;
                mBitmap = bmpBkgd;

@@ -576,7 +576,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
          fl::Height(MAX_CURSOR_HEIGHT),
          fl::BitsPerPixel(32),
          fl::BytesPerPixel(4),
-         fl::Flags(BMF_ALPHA_CHANNEL)))) {
+         fl::Flags(BMF::ALPHA_CHANNEL)))) {
    }
    else log.warning(ERR_NewObject);
 

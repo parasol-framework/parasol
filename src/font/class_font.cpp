@@ -2036,8 +2036,8 @@ static ERROR draw_bitmap_font(extFont *Self)
                   }
                }
                else if (bitmap->BitsPerPixel IS 8) {
-                  if (bitmap->Flags & BMF_MASK) {
-                     if (bitmap->Flags & BMF_INVERSE_ALPHA) colour = 0;
+                  if ((bitmap->Flags & BMF::MASK) != BMF::NIL) {
+                     if ((bitmap->Flags & BMF::INVERSE_ALPHA) != BMF::NIL) colour = 0;
                      else colour = 255;
                   }
 

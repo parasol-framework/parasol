@@ -989,7 +989,7 @@ the surface area first).</li>
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
       <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
       <field name="Width" type="WORD">Pixel width of the display</field>
       <field name="Height" type="WORD">Pixel height of the display</field>
       <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
