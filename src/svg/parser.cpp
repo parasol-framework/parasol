@@ -1222,7 +1222,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
 
    if (!NewObject(ID_VECTORFILTER, &filter)) {
       filter->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGFilter"),
-         fl::Units(VUNIT_BOUNDING_BOX), fl::ColourSpace(VCS_LINEAR_RGB));
+         fl::Units(VUNIT_BOUNDING_BOX), fl::ColourSpace(VCS::LINEAR_RGB));
 
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          auto &val = Tag.Attribs[a].Value;
@@ -1258,10 +1258,10 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
             }
 
             case SVF_COLOR_INTERPOLATION_FILTERS: // The default is linearRGB
-               if (!StrMatch("auto", val)) filter->set(FID_ColourSpace, VCS_LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) filter->set(FID_ColourSpace, VCS_SRGB);
-               else if (!StrMatch("linearRGB", val)) filter->set(FID_ColourSpace, VCS_LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) filter->set(FID_ColourSpace, VCS_INHERIT);
+               if (!StrMatch("auto", val)) filter->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
+               else if (!StrMatch("sRGB", val)) filter->set(FID_ColourSpace, LONG(VCS::SRGB));
+               else if (!StrMatch("linearRGB", val)) filter->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
+               else if (!StrMatch("inherit", val)) filter->set(FID_ColourSpace, LONG(VCS::INHERIT));
                break;
 
             case SVF_PRIMITIVEUNITS:
@@ -2958,10 +2958,10 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
 
       case SVF_COLOUR_INTERPOLATION:
       case SVF_COLOR_INTERPOLATION: {
-         if (!StrMatch("auto", StrValue)) Vector->set(FID_ColourSpace, VCS_SRGB);
-         else if (!StrMatch("sRGB", StrValue)) Vector->set(FID_ColourSpace, VCS_SRGB);
-         else if (!StrMatch("linearRGB", StrValue)) Vector->set(FID_ColourSpace, VCS_LINEAR_RGB);
-         else if (!StrMatch("inherit", StrValue)) Vector->set(FID_ColourSpace, VCS_INHERIT);
+         if (!StrMatch("auto", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
+         else if (!StrMatch("sRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::SRGB));
+         else if (!StrMatch("linearRGB", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::LINEAR_RGB));
+         else if (!StrMatch("inherit", StrValue)) Vector->set(FID_ColourSpace, LONG(VCS::INHERIT));
          else log.warning("Invalid color-interpolation value '%s' at line %d", StrValue.c_str(), Tag.LineNo);
       }
 

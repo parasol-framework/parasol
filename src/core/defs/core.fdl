@@ -1837,7 +1837,11 @@ class Create {
                      if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
-               else { error = log.warning(ERR_UnsupportedField); return; }
+               else {
+                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  error = log.warning(ERR_UnsupportedField);
+                  return;
+               }
             }
 
             if ((error = InitObject(obj))) {

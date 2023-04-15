@@ -155,16 +155,16 @@ extern std::recursive_mutex glSurfaceLock;
 class WindowHook {
 public:
    OBJECTID SurfaceID;
-   UBYTE Event;
+   WH Event;
 
-   WindowHook(OBJECTID aSurfaceID, UBYTE aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
+   WindowHook(OBJECTID aSurfaceID, WH aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
 
    bool operator== (const WindowHook &rhs) const {
       return (SurfaceID == rhs.SurfaceID) and (Event == rhs.Event);
    }
 
    bool operator() (const WindowHook &lhs, const WindowHook &rhs) const {
-       if (lhs.SurfaceID == rhs.SurfaceID) return lhs.Event < rhs.Event;
+       if (lhs.SurfaceID == rhs.SurfaceID) return UBYTE(lhs.Event) < UBYTE(rhs.Event);
        else return lhs.SurfaceID < rhs.SurfaceID;
    }
 };
@@ -173,7 +173,7 @@ namespace std {
    template <> struct hash<WindowHook> {
       std::size_t operator()(const WindowHook &k) const {
          return ((std::hash<OBJECTID>()(k.SurfaceID)
-            ^ (std::hash<UBYTE>()(k.Event) << 1)) >> 1);
+            ^ (std::hash<UBYTE>()(UBYTE(k.Event)) << 1)) >> 1);
       }
    };
 }

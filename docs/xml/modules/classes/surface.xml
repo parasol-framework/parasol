@@ -459,7 +459,7 @@ the surface area first).</li>
       <name>DragStatus</name>
       <comment>Indicates the draggable state when dragging is enabled.</comment>
       <access read="R">Read</access>
-      <type lookup="DRAG">INT</type>
+      <type lookup="DRAG">DRAG</type>
       <description>
 <p>If the surface is draggable, the DragStatus indicates the current state of the surface with respect to it being dragged.</p>
 <types lookup="DRAG"/>

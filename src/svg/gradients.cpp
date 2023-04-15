@@ -3,10 +3,10 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
 {
    switch (Attrib) {
       case SVF_COLOR_INTERPOLATION:
-         if (!StrMatch("auto", Value)) Gradient->setColourSpace(VCS_LINEAR_RGB);
-         else if (!StrMatch("sRGB", Value)) Gradient->setColourSpace(VCS_SRGB);
-         else if (!StrMatch("linearRGB", Value)) Gradient->setColourSpace(VCS_LINEAR_RGB);
-         else if (!StrMatch("inherit", Value)) Gradient->setColourSpace(VCS_INHERIT);
+         if (!StrMatch("auto", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
+         else if (!StrMatch("sRGB", Value)) Gradient->setColourSpace(VCS::SRGB);
+         else if (!StrMatch("linearRGB", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
+         else if (!StrMatch("inherit", Value)) Gradient->setColourSpace(VCS::INHERIT);
          return ERR_Okay;
 
       case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); break;
@@ -117,10 +117,10 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
             case SVF_Y2: set_double_units(gradient, FID_Y2, val, gradient->Units); break;
 
             case SVF_COLOR_INTERPOLATION:
-               if (!StrMatch("auto", val)) gradient->setColourSpace(VCS_LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) gradient->setColourSpace(VCS_SRGB);
-               else if (!StrMatch("linearRGB", val)) gradient->setColourSpace(VCS_LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) gradient->setColourSpace(VCS_INHERIT);
+               if (!StrMatch("auto", val)) gradient->setColourSpace(VCS::LINEAR_RGB);
+               else if (!StrMatch("sRGB", val)) gradient->setColourSpace(VCS::SRGB);
+               else if (!StrMatch("linearRGB", val)) gradient->setColourSpace(VCS::LINEAR_RGB);
+               else if (!StrMatch("inherit", val)) gradient->setColourSpace(VCS::INHERIT);
                break;
 
             case SVF_SPREADMETHOD: {

@@ -13,12 +13,12 @@ void gfxDrawPixel(extBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
 void gfxDrawRGBPixel(extBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
 void gfxDrawRectangle(extBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);
 ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
-void gfxFlipBitmap(extBitmap * Bitmap, LONG Orientation);
+void gfxFlipBitmap(extBitmap * Bitmap, FLIP Orientation);
 void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
 ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size);
 ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y);
 ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info);
-LONG gfxGetDisplayType();
+DT gfxGetDisplayType();
 CSTRING gfxGetInputTypeName(JET Type);
 OBJECTID gfxGetModalSurface();
 ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
@@ -47,7 +47,7 @@ void gfxSync(extBitmap * Bitmap);
 ERROR gfxUnlockBitmap(OBJECTID Surface, extBitmap * Bitmap);
 ERROR gfxUnlockCursor(OBJECTID Surface);
 ERROR gfxUnsubscribeInput(LONG Handle);
-ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback);
+ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
 
 #ifdef  __cplusplus
 }

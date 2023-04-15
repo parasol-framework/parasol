@@ -27,7 +27,7 @@ mind the implications of creating a shared display.
 // Class definition at end of this source file.
 
 static ERROR DISPLAY_Resize(extDisplay *, struct acResize *);
-static CSTRING dpms_name(LONG Index);
+static CSTRING dpms_name(DPMS Index);
 
 static void alloc_display_buffer(extDisplay *Self);
 
@@ -322,46 +322,14 @@ This action does nothing if the display is in hosted mode.
 
 -ERRORS-
 Okay: The display was disabled.
-NoSupport: The display or graphics card does not support DPMS.
+NoSupport: The display driver does not support DPMS.
 -END-
 
 *********************************************************************************************************************/
 
 static ERROR DISPLAY_Disable(extDisplay *Self, APTR Void)
 {
-#ifdef __snap__
-
-   pf::Log log;
-   LONG cap = 0;
-   if (glSNAP->gsDPMS.DPMSdetect(&cap)) {
-      if ((Self->DPMS IS DPMS_SUSPEND) and (cap & DPMS_suspend)) cap = DPMS_suspend;
-      else if ((Self->DPMS IS DPMS_STANDBY) and (cap & DPMS_standby)) cap = DPMS_standby;
-      else if ((Self->DPMS IS DPMS_OFF) and (cap & DPMS_off)) cap = DPMS_off;
-
-      error = ERR_Okay;
-      if (cap & DPMS_off) { // Turn the display off and stop sending output to the display
-         log.msg("Initiating DPMS Off state.");
-         glSNAP->gsDPMS.DPMSsetState(DPMS_off);
-      }
-      else if (cap & DPMS_suspend) { // Put the display into power-saving mode
-         log.msg("Initiating DPMS Suspend state.");
-         glSNAP->gsDPMS.DPMSsetState(DPMS_suspend);
-      }
-      else if (cap & DPMS_standby) { // Standby usually just blanks the display and leaves power on
-         log.msg("Initiating DPMS Standby state.");
-         glSNAP->gsDPMS.DPMSsetState(DPMS_standby);
-      }
-      else error = ERR_NoSupport;
-
-      return error;
-   }
-   else return ERR_NoSupport;
-
-#else
-
    return ERR_NoSupport;
-
-#endif
 }
 
 /*********************************************************************************************************************
@@ -372,24 +340,7 @@ Enable: Restores the screen display from power saving mode.
 
 static ERROR DISPLAY_Enable(extDisplay *Self, APTR Void)
 {
-#ifdef __snap__
-
-   pf::Log log;
-   log.branch();
-
-   if (!glSNAP->gsDPMS.DPMSsetState) {
-      log.msg("DPMS not available.");
-      return ERR_NoSupport;
-   }
-
-   glSNAP->gsDPMS.DPMSsetState(DPMS_on);
-   return ERR_Okay;
-
-#else
-
    return ERR_NoSupport;
-
-#endif
 }
 
 //********************************************************************************************************************
@@ -710,7 +661,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    if (!bmp->Height) bmp->Height = Self->Height;
    else if (Self->Height > bmp->Height) bmp->Height = Self->Height;
 
-   bmp->Type = BMP_CHUNKY;
+   bmp->Type = BMP::CHUNKY;
 
    #ifdef __xwindows__
       if (xbytes IS 4) bmp->BitsPerPixel = 32;
@@ -1186,13 +1137,13 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    Self->Opacity     = 255;
 
    #ifdef __xwindows__
-      Self->DisplayType = DT_X11;
+      Self->DisplayType = DT::X11;
    #elif _WIN32
-      Self->DisplayType = DT_WINDOWS;
+      Self->DisplayType = DT::WINDOWS;
    #elif _GLES_
-      Self->DisplayType = DT_GLES;
+      Self->DisplayType = DT::GLES;
    #else
-      Self->DisplayType = DT_NATIVE;
+      Self->DisplayType = DT::NATIVE;
    #endif
 
    return ERR_Okay;
@@ -1362,7 +1313,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
          else config->write("DISPLAY", "WindowHeight", 480);
       }
 
-      config->write("DISPLAY", "DPMS", dpms_name(Self->DPMS));
+      config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
       config->write("DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? 1 : 0);
 
       config->saveSettings();
@@ -1384,7 +1335,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
             config->write("DISPLAY", "WindowX", x);
             config->write("DISPLAY", "WindowY", y);
             config->write("DISPLAY", "Maximise", maximise);
-            config->write("DISPLAY", "DPMS", dpms_name(Self->DPMS));
+            config->write("DISPLAY", "DPMS", dpms_name(Self->PowerMode));
             config->write("DISPLAY", "FullScreen", (Self->Flags & SCR_BORDERLESS) ? 1 : 0);
             acSaveSettings(*config);
          }
@@ -2332,13 +2283,6 @@ If the display is hosted in a client window, the BottomMargin indicates the numb
 and the bottom window edge.
 
 -FIELD-
-DPMS: Holds the default display power management method.
-
-When DPMS is enabled via a call to #Disable(), the DPMS method that is applied is controlled by this field.
-
-DPMS is a user configurable option and it is not recommended that the DPMS value is changed manually.
-
--FIELD-
 DriverCopyright: String containing copyright information on the graphics driver software.
 
 The string in this field returns copyright information related to the graphics driver.  If this information is not
@@ -2783,6 +2727,13 @@ static ERROR SET_PopOver(extDisplay *Self, OBJECTID Value)
 /*********************************************************************************************************************
 
 -FIELD-
+PowerMode: The display's power management method.
+
+When DPMS is enabled via a call to #Disable(), the DPMS method that is applied is controlled by this field.
+
+DPMS is a user configurable option and it is not recommended that the PowerMode value is changed manually.
+
+-FIELD-
 RefreshRate: This field manages the display refresh rate.
 
 The value in this field reflects the refresh rate of the currently active display, if operating in full-screen mode.
@@ -3052,7 +3003,7 @@ static const FieldArray DisplayFields[] = {
    { "MinVScan",       FDF_LONG|FDF_R },
    { "MaxVScan",       FDF_LONG|FDF_R },
    { "DisplayType",    FDF_LONG|FDF_LOOKUP|FDF_R, NULL, NULL, &clDisplayDisplayType },
-   { "DPMS",           FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clDisplayDPMS },
+   { "PowerMode",      FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clDisplayPowerMode },
    { "PopOver",        FDF_OBJECTID|FDF_W, NULL, SET_PopOver },
    { "LeftMargin",     FDF_LONG|FDF_R },
    { "RightMargin",    FDF_LONG|FDF_R },
@@ -3082,9 +3033,9 @@ static const FieldArray DisplayFields[] = {
 
 //********************************************************************************************************************
 
-CSTRING dpms_name(LONG Index)
+CSTRING dpms_name(DPMS Index)
 {
-   return clDisplayDPMS[Index].Name;
+   return clDisplayPowerMode[LONG(Index)].Name;
 }
 
 //********************************************************************************************************************

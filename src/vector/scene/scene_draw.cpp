@@ -1153,9 +1153,9 @@ private:
             log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->UID, shape->Matrices);
          #endif
 
-         if (mBitmap->ColourSpace IS CS_LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
-         else if (shape->ColourSpace IS VCS_LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
-         else if (shape->ColourSpace IS VCS_SRGB) state.mLinearRGB = false;
+         if (mBitmap->ColourSpace IS CS::LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
+         else if (shape->ColourSpace IS VCS::LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
+         else if (shape->ColourSpace IS VCS::SRGB) state.mLinearRGB = false;
 
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
          if (shape->InnerJoin != agg::inner_inherit) state.mInnerJoin = shape->InnerJoin;

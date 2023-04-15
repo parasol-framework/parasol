@@ -71,7 +71,7 @@ flags("DMF", { bits=32 },
     }
 )
 
-enum("DRL", { start=0, comment="Compass directions." },
+enum("DRL", { type="int", start=0, comment="Compass directions." },
     "NORTH|UP",
     "SOUTH|DOWN",
     "EAST|RIGHT",

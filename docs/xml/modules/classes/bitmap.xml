@@ -258,9 +258,9 @@
     <method>
       <name>Flip</name>
       <comment>Flips a bitmap around the horizontal or vertical axis.</comment>
-      <prototype>ERROR bmpFlip(OBJECTPTR Object, LONG Orientation)</prototype>
+      <prototype>ERROR bmpFlip(OBJECTPTR Object, FLIP Orientation)</prototype>
       <input>
-        <param type="LONG" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.</param>
+        <param type="FLIP" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.</param>
       </input>
       <description>
 <p>This method is used to flip bitmap images on their horizontal or vertical axis.</p>
@@ -500,7 +500,7 @@ unpackAlpha(Colour)
       <name>ColourSpace</name>
       <comment>Defines the colour space for RGB values.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="CS">INT</type>
+      <type lookup="CS">CS</type>
       <description>
 <types lookup="CS"/>
       </description>
@@ -723,7 +723,7 @@ unpackAlpha(Colour)
       <name>Type</name>
       <comment>Defines the data type of the bitmap.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="BMP">INT</type>
+      <type lookup="BMP">BMP</type>
       <description>
 <p>This field defines the graphics data type - either PLANAR (required for 1-bit bitmaps) or CHUNKY (the default).</p>
 <types lookup="BMP"/>

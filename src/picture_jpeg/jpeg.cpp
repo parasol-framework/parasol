@@ -65,12 +65,12 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
    jpeg_stdio_src(&cinfo, Self->prvFile);
    jpeg_read_header(&cinfo, TRUE);
 
-   if (!bmp->Width)          bmp->Width          = cinfo.image_width;
-   if (!bmp->Height)         bmp->Height         = cinfo.image_height;
-   if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;
-   if (!Self->DisplayHeight) Self->DisplayHeight = bmp->Height;
-   if (!bmp->Type)           bmp->Type           = BMP_CHUNKY;
-   if (!bmp->BitsPerPixel)   bmp->BitsPerPixel   = 32;
+   if (!bmp->Width)           bmp->Width          = cinfo.image_width;
+   if (!bmp->Height)          bmp->Height         = cinfo.image_height;
+   if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
+   if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
+   if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
+   if (!bmp->BitsPerPixel)    bmp->BitsPerPixel   = 32;
 
    if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
@@ -225,11 +225,11 @@ static ERROR JPEG_Query(extPicture *Self, APTR Void)
       jpeg_stdio_src(cinfo, Self->prvFile);
       jpeg_read_header(cinfo, FALSE);
 
-      if (!bmp->Width)          bmp->Width          = cinfo->image_width;
-      if (!bmp->Height)         bmp->Height         = cinfo->image_height;
-      if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;
-      if (!Self->DisplayHeight) Self->DisplayHeight = bmp->Height;
-      if (!bmp->Type)           bmp->Type           = BMP_CHUNKY;
+      if (!bmp->Width)           bmp->Width          = cinfo->image_width;
+      if (!bmp->Height)          bmp->Height         = cinfo->image_height;
+      if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
+      if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
+      if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
       if (!bmp->BitsPerPixel) {
          bmp->BitsPerPixel = 24;
          bmp->BytesPerPixel = 3;

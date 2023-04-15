@@ -105,7 +105,7 @@ ERROR lock_surface(extBitmap *Bitmap, WORD Access)
       else if (Bitmap->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
-      if (Bitmap->Type IS BMP_PLANAR) {
+      if (Bitmap->Type IS BMP::PLANAR) {
          size = Bitmap->LineWidth * Bitmap->Height * Bitmap->BitsPerPixel;
       }
       else size = Bitmap->LineWidth * Bitmap->Height;
@@ -1924,9 +1924,9 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION *Callback)
+ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback)
 {
-   if ((!SurfaceID) or (!Event) or (!Callback)) return ERR_NullArgs;
+   if ((!SurfaceID) or (Event IS WH::NIL) or (!Callback)) return ERR_NullArgs;
 
    const WindowHook hook(SurfaceID, Event);
    glWindowHooks[hook] = *Callback;

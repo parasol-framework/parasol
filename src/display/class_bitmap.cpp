@@ -393,7 +393,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->ColourSpace IS CS_LINEAR_RGB) return log.warning(ERR_NothingDone);
+   if (Self->ColourSpace IS CS::LINEAR_RGB) return log.warning(ERR_NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
@@ -440,7 +440,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
       }
    }
 
-   Self->ColourSpace = CS_LINEAR_RGB;
+   Self->ColourSpace = CS::LINEAR_RGB;
    return ERR_Okay;
 }
 
@@ -469,7 +469,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Self->ColourSpace IS CS_SRGB) return log.warning(ERR_NothingDone);
+   if (Self->ColourSpace IS CS::SRGB) return log.warning(ERR_NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
@@ -516,7 +516,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
       }
    }
 
-   Self->ColourSpace = CS_SRGB;
+   Self->ColourSpace = CS::SRGB;
    return ERR_Okay;
 }
 
@@ -799,7 +799,7 @@ static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
    // NB: A faster way to flip a Bitmap would be to use CopyArea() to do the transfer in strips, but would require a
    // temporary memory area to hold the information.
 
-   if (Args->Orientation IS FLIP_HORIZONTAL) {
+   if (Args->Orientation IS FLIP::HORIZONTAL) {
       if (!lock_surface(Self, SURFACE_READWRITE)) {
          for (LONG y=0; y < Self->Height/2; y++) {
             for (LONG x=0; x < Self->Width; x++) {
@@ -812,7 +812,7 @@ static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
          unlock_surface(Self);
       }
    }
-   else if (Args->Orientation IS FLIP_VERTICAL) {
+   else if (Args->Orientation IS FLIP::VERTICAL) {
       if (!lock_surface(Self, SURFACE_READWRITE)) {
          // Palette based Bitmap
          for (LONG x=0; x < Self->Width/2; x++) {
@@ -1245,7 +1245,7 @@ static ERROR BITMAP_Lock(extBitmap *Self, APTR Void)
       else if (Self->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
-      if (Self->Type IS BMP_PLANAR) {
+      if (Self->Type IS BMP::PLANAR) {
          size = Self->ByteWidth * Self->Height * Self->BitsPerPixel;
       }
       else size = Self->ByteWidth * Self->Height;
@@ -1283,7 +1283,7 @@ static ERROR BITMAP_NewObject(extBitmap *Self, APTR Void)
 
    Self->Palette      = &Self->prvPaletteArray;
    Self->ColourFormat = &Self->prvColourFormat;
-   Self->ColourSpace  = CS_SRGB;
+   Self->ColourSpace  = CS::SRGB;
 
    Self->Opacity = 255;
 
@@ -1463,11 +1463,11 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
       if ((!Self->BitsPerPixel) and (!Self->AmtColours)) {
          Self->BitsPerPixel = 1;
          Self->AmtColours = 2;
-         Self->Type = BMP_PLANAR;
+         Self->Type = BMP::PLANAR;
       }
       else if (Self->AmtColours >= 256) {
          Self->AmtColours = 256;
-         Self->Type = BMP_CHUNKY;
+         Self->Type = BMP::CHUNKY;
          // Change the palette to grey scale for alpha channel masks
          for (i=0; i < 256; i++) {
             Self->Palette->Col[i].Red   = i;
@@ -1480,11 +1480,11 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // If no type has been set, use the type that is native to the system that Parasol is running on.
 
-   if (!Self->Type) Self->Type = BMP_CHUNKY;
+   if (Self->Type IS BMP::NIL) Self->Type = BMP::CHUNKY;
 
    if (Self->BitsPerPixel) {
       switch(Self->BitsPerPixel) {
-         case 1:  Self->BytesPerPixel = 1; Self->AmtColours = 2; Self->Type = BMP_PLANAR; break;
+         case 1:  Self->BytesPerPixel = 1; Self->AmtColours = 2; Self->Type = BMP::PLANAR; break;
          case 2:  Self->BytesPerPixel = 1; Self->AmtColours = 4; break;
          case 8:  Self->BytesPerPixel = 1; Self->AmtColours = 256; break;
          case 15: Self->BytesPerPixel = 2; Self->AmtColours = 32768; break;
@@ -1544,7 +1544,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // Calculate ByteWidth, make sure it's word aligned
 
-   if (Self->Type IS BMP_PLANAR) {
+   if (Self->Type IS BMP::PLANAR) {
       Self->ByteWidth = (Self->Width + 7) / 8;
    }
    else Self->ByteWidth = Self->Width * Self->BytesPerPixel;
@@ -1582,7 +1582,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // Calculate the total size of the bitmap
 
-   if (Self->Type IS BMP_PLANAR) {
+   if (Self->Type IS BMP::PLANAR) {
       Self->Size = Self->LineWidth * Self->Height * Self->BitsPerPixel;
    }
    else Self->Size = Self->LineWidth * Self->Height;
@@ -1673,13 +1673,13 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
                amtcolours = 1<<bpp;
    }
 
-   if (Self->Type IS BMP_PLANAR) bytewidth = (width + (width % 16))/8;
+   if (Self->Type IS BMP::PLANAR) bytewidth = (width + (width % 16))/8;
    else bytewidth = width * bytesperpixel;
 
    LONG linewidth = ALIGN32(bytewidth);
    LONG planemod = bytewidth * height;
 
-   if (Self->Type IS BMP_PLANAR) size = linewidth * height * bpp;
+   if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
    if (GetClassID(Self->ownerID()) IS ID_DISPLAY) goto setfields;
@@ -1900,7 +1900,7 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
             for (p=0; p < 3; p++) {
                Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
 
-               if (Self->ColourSpace IS CS_LINEAR_RGB) {
+               if (Self->ColourSpace IS CS::LINEAR_RGB) {
                   rgb.Red   = conv_l2r(rgb.Red);
                   rgb.Green = conv_l2r(rgb.Green);
                   rgb.Blue  = conv_l2r(rgb.Blue);
@@ -2576,7 +2576,7 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
 {
    pf::Log log;
 
-   if (Self->Type IS BMP_PLANAR) {
+   if (Self->Type IS BMP::PLANAR) {
       Self->ReadUCPixel  = MemReadPixelPlanar;
       Self->ReadUCRPixel = MemReadRGBPixelPlanar;
       Self->ReadUCRIndex = MemReadRGBIndexPlanar;
@@ -2586,8 +2586,8 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
       return ERR_Okay;
    }
 
-   if (Self->Type != BMP_CHUNKY) {
-      log.warning("Unsupported Bitmap->Type %d.", Self->Type);
+   if (Self->Type != BMP::CHUNKY) {
+      log.warning("Unsupported Bitmap->Type %d.", LONG(Self->Type));
       return ERR_Failed;
    }
 

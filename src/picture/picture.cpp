@@ -169,7 +169,7 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
 
    if (!bmp->Width)  bmp->Width  = png_width;
    if (!bmp->Height) bmp->Height = png_height;
-   if (!bmp->Type)   bmp->Type   = BMP_CHUNKY;
+   if (bmp->Type IS BMP::NIL) bmp->Type = BMP::CHUNKY;
 
    if (!Self->DisplayWidth)  Self->DisplayWidth  = png_width;
    if (!Self->DisplayHeight) Self->DisplayHeight = png_height;
@@ -496,7 +496,7 @@ static ERROR PICTURE_Query(extPicture *Self, APTR Void)
 
    if (!Bitmap->Width)  Bitmap->Width  = width;
    if (!Bitmap->Height) Bitmap->Height = height;
-   if (!Bitmap->Type)   Bitmap->Type   = BMP_CHUNKY;
+   if (Bitmap->Type IS BMP::NIL) Bitmap->Type = BMP::CHUNKY;
 
    if (!Self->DisplayWidth)  Self->DisplayWidth  = width;
    if (!Self->DisplayHeight) Self->DisplayHeight = height;
@@ -679,7 +679,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = mask[maskx++];  // Alpha
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -705,7 +705,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = data[x+3];  // Alpha
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
@@ -725,7 +725,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];     // Red
                row[i++] = mask[maskx++]; // Alpha
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -742,7 +742,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
@@ -763,7 +763,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = bmp->unpackRed(data[x]);
                row[i++] = mask[maskx++];
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
@@ -781,7 +781,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = bmp->unpackGreen(data[x]);
                row[i++] = bmp->unpackRed(data[x]);
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
          }

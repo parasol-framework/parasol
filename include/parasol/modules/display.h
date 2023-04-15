@@ -21,20 +21,29 @@ class objClipboard;
 class objPointer;
 class objSurface;
 
-#define DRAG_NONE 0
-#define DRAG_ANCHOR 1
-#define DRAG_NORMAL 2
+enum class DRAG : LONG {
+   NIL = 0,
+   NONE = 0,
+   ANCHOR = 1,
+   NORMAL = 2,
+};
 
 // Events for WindowHook()
 
-#define WH_CLOSE 1
+enum class WH : LONG {
+   NIL = 0,
+   CLOSE = 1,
+};
 
 // Colour space options.
 
-#define CS_SRGB 1
-#define CS_LINEAR_RGB 2
-#define CS_CIE_LAB 3
-#define CS_CIE_LCH 4
+enum class CS : LONG {
+   NIL = 0,
+   SRGB = 1,
+   LINEAR_RGB = 2,
+   CIE_LAB = 3,
+   CIE_LCH = 4,
+};
 
 // Optional flags for the ExposeSurface() function.
 
@@ -153,8 +162,11 @@ class objSurface;
 
 // Bitmap types
 
-#define BMP_PLANAR 2
-#define BMP_CHUNKY 3
+enum class BMP : LONG {
+   NIL = 0,
+   PLANAR = 2,
+   CHUNKY = 3,
+};
 
 // Bitmap flags
 
@@ -178,8 +190,11 @@ class objSurface;
 
 // Flags for the bitmap Flip method.
 
-#define FLIP_HORIZONTAL 1
-#define FLIP_VERTICAL 2
+enum class FLIP : LONG {
+   NIL = 0,
+   HORIZONTAL = 1,
+   VERTICAL = 2,
+};
 
 // Display flags.
 
@@ -213,25 +228,34 @@ class objSurface;
 
 // Flags for GetDisplayType().
 
-#define DT_NATIVE 1
-#define DT_X11 2
-#define DT_WINDOWS 3
-#define DT_GLES 4
+enum class DT : LONG {
+   NIL = 0,
+   NATIVE = 1,
+   X11 = 2,
+   WINDOWS = 3,
+   GLES = 4,
+};
 
-// Possible modes for the Display class' DPMS field.
+// Possible modes for the Display class' PowerMode field.
 
-#define DPMS_DEFAULT 0
-#define DPMS_OFF 1
-#define DPMS_SUSPEND 2
-#define DPMS_STANDBY 3
+enum class DPMS : LONG {
+   NIL = 0,
+   DEFAULT = 0,
+   OFF = 1,
+   SUSPEND = 2,
+   STANDBY = 3,
+};
 
-#define CT_DATA 0
-#define CT_AUDIO 1
-#define CT_IMAGE 2
-#define CT_FILE 3
-#define CT_OBJECT 4
-#define CT_TEXT 5
-#define CT_END 6
+enum class CT : LONG {
+   NIL = 0,
+   DATA = 0,
+   AUDIO = 1,
+   IMAGE = 2,
+   FILE = 3,
+   OBJECT = 4,
+   TEXT = 5,
+   END = 6,
+};
 
 // Clipboard types
 
@@ -372,7 +396,7 @@ typedef struct BitmapSurfaceV2 {
 struct bmpCopyArea { objBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
 struct bmpDecompress { LONG RetainData;  };
-struct bmpFlip { LONG Orientation;  };
+struct bmpFlip { FLIP Orientation;  };
 struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; LONG Flags;  };
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
@@ -392,7 +416,7 @@ INLINE ERROR bmpDecompress(APTR Ob, LONG RetainData) {
    return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpFlip(APTR Ob, LONG Orientation) {
+INLINE ERROR bmpFlip(APTR Ob, FLIP Orientation) {
    struct bmpFlip args = { Orientation };
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
@@ -435,7 +459,7 @@ class objBitmap : public BaseClass {
    LONG    Width;                                                    // The width of the bitmap, in pixels.
    LONG    ByteWidth;                                                // The width of the bitmap, in bytes.
    LONG    Height;                                                   // The height of the bitmap, in pixels.
-   LONG    Type;                                                     // Defines the data type of the bitmap.
+   BMP     Type;                                                     // Defines the data type of the bitmap.
    LONG    LineWidth;                                                // Line differential in bytes
    LONG    PlaneMod;                                                 // The differential between each bitmap plane.
    struct ClipRectangle Clip;                                        // Defines the bitmap's clipping region.
@@ -453,7 +477,7 @@ class objBitmap : public BaseClass {
    struct RGB8 TransRGB;                                             // The transparent colour of the bitmap, in RGB format.
    struct RGB8 BkgdRGB;                                              // Background colour (for clearing, resizing)
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
-   LONG    ColourSpace;                                              // Defines the colour space for RGB values.
+   CS      ColourSpace;                                              // Defines the colour space for RGB values.
    public:
    inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
@@ -620,7 +644,7 @@ class objBitmap : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setType(const LONG Value) {
+   inline ERROR setType(const BMP Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Type = Value;
       return ERR_Okay;
@@ -695,7 +719,7 @@ class objBitmap : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const CS Value) {
       this->ColourSpace = Value;
       return ERR_Okay;
    }
@@ -827,8 +851,8 @@ class objDisplay : public BaseClass {
    LONG     MaxHScan;     // The maximum horizontal scan rate of the display output device.
    LONG     MinVScan;     // The minimum vertical scan rate of the display output device.
    LONG     MaxVScan;     // The maximum vertical scan rate of the display output device.
-   LONG     DisplayType;  // In hosted mode, indicates the bottom margin of the client window.
-   LONG     DPMS;         // Holds the default display power management method.
+   DT       DisplayType;  // In hosted mode, indicates the bottom margin of the client window.
+   DPMS     PowerMode;    // The display's power management method.
    OBJECTID PopOverID;    // Enables pop-over support for hosted display windows.
    LONG     LeftMargin;   // In hosted mode, indicates the left-hand margin of the client window.
    LONG     RightMargin;  // In hosted mode, indicates the pixel margin between the client window and right window edge.
@@ -937,8 +961,8 @@ class objDisplay : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setDPMS(const LONG Value) {
-      this->DPMS = Value;
+   inline ERROR setPowerMode(const DPMS Value) {
+      this->PowerMode = Value;
       return ERR_Okay;
    }
 
@@ -956,19 +980,19 @@ class objDisplay : public BaseClass {
 
    inline ERROR setHDensity(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setVDensity(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setOpacity(const DOUBLE Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
@@ -980,7 +1004,7 @@ class objDisplay : public BaseClass {
 
    inline ERROR setWindowHandle(APTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08000308, Value, 1);
    }
 
@@ -1287,7 +1311,7 @@ class objSurface : public BaseClass {
    OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
    ALIGN    Align;      // This field allows you to align a surface area within its owner.
    LONG     Dimensions; // Indicates currently active dimension settings.
-   LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
+   DRAG     DragStatus; // Indicates the draggable state when dragging is enabled.
    PTC      Cursor;     // A default cursor image can be set here for changing the mouse pointer.
    struct RGB8 Colour;  // String-based field for setting the background colour.
    LONG     Type;       // Internal surface type flags
@@ -1609,12 +1633,12 @@ struct DisplayBase {
    void (*_DrawRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
    void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);
    ERROR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
-   void (*_FlipBitmap)(objBitmap * Bitmap, LONG Orientation);
+   void (*_FlipBitmap)(objBitmap * Bitmap, FLIP Orientation);
    void (*_GetColourFormat)(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
    ERROR (*_GetCursorInfo)(struct CursorInfo * Info, LONG Size);
    ERROR (*_GetCursorPos)(DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 ** Info);
-   LONG (*_GetDisplayType)(void);
+   DT (*_GetDisplayType)(void);
    CSTRING (*_GetInputTypeName)(JET Type);
    OBJECTID (*_GetModalSurface)(void);
    ERROR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
@@ -1643,7 +1667,7 @@ struct DisplayBase {
    ERROR (*_UnlockBitmap)(OBJECTID Surface, objBitmap * Bitmap);
    ERROR (*_UnlockCursor)(OBJECTID Surface);
    ERROR (*_UnsubscribeInput)(LONG Handle);
-   ERROR (*_WindowHook)(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback);
+   ERROR (*_WindowHook)(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
 };
 
 #ifndef PRV_DISPLAY_MODULE
@@ -1656,12 +1680,12 @@ inline void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { ret
 inline void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
 inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
 inline ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
-inline void gfxFlipBitmap(objBitmap * Bitmap, LONG Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
+inline void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
 inline void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
 inline ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
 inline ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetCursorPos(X,Y); }
 inline ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
-inline LONG gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
+inline DT gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
 inline CSTRING gfxGetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
 inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
 inline ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
@@ -1690,7 +1714,7 @@ inline void gfxSync(objBitmap * Bitmap) { return DisplayBase->_Sync(Bitmap); }
 inline ERROR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
 inline ERROR gfxUnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
 inline ERROR gfxUnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
-inline ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
+inline ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
 #endif
 
 // Direct ColourFormat versions

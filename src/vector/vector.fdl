@@ -166,7 +166,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "Y_MID: Align the source so that it is morphed along the middle of the target path.",
     "Y_MAX: Align the source so that it is morphed along the bottom of the target path.")
 
-  enum("VCS", { start=0, comment="Colour space options." },
+  enum("VCS", { type="int", start=0, comment="Colour space options." },
     "INHERIT: Inherit the colour space option from the parent vector.",
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
     "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.")

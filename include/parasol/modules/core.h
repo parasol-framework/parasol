@@ -585,18 +585,21 @@ enum class PTC : LONG {
 
 // Compass directions.
 
-#define DRL_NORTH 0
-#define DRL_UP 0
-#define DRL_SOUTH 1
-#define DRL_DOWN 1
-#define DRL_EAST 2
-#define DRL_RIGHT 2
-#define DRL_WEST 3
-#define DRL_LEFT 3
-#define DRL_NORTH_EAST 4
-#define DRL_NORTH_WEST 5
-#define DRL_SOUTH_EAST 6
-#define DRL_SOUTH_WEST 7
+enum class DRL : LONG {
+   NIL = 0,
+   NORTH = 0,
+   UP = 0,
+   SOUTH = 1,
+   DOWN = 1,
+   EAST = 2,
+   RIGHT = 2,
+   WEST = 3,
+   LEFT = 3,
+   NORTH_EAST = 4,
+   NORTH_WEST = 5,
+   SOUTH_EAST = 6,
+   SOUTH_WEST = 7,
+};
 
 // Generic flags for controlling movement.
 
@@ -2917,7 +2920,11 @@ class Create {
                      if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
-               else { error = log.warning(ERR_UnsupportedField); return; }
+               else {
+                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  error = log.warning(ERR_UnsupportedField);
+                  return;
+               }
             }
 
             if ((error = InitObject(obj))) {

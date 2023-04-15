@@ -11,15 +11,15 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     c_include("<X11/Xlib.h>", "<X11/extensions/XShm.h>")
   end)
 
-  enum("DRAG", { start=0, flags="Flags for the DragStatus field." },
+  enum("DRAG", { type="int", start=0, flags="Flags for the DragStatus field." },
     "NONE: The surface is not being dragged.",
     "ANCHOR: The surface is being dragged and the mouse pointer is anchored to the surface.",
     "NORMAL: The surface is being dragged.")
 
-  enum("WH", { start=1, comment="Events for WindowHook()" },
+  enum("WH", { type="int", start=1, comment="Events for WindowHook()" },
     "CLOSE")
 
-  enum("CS", { start=1, comment="Colour space options." },
+  enum("CS", { type="int", start=1, comment="Colour space options." },
     "SRGB: The default colour-space is sRGB.",
     "LINEAR_RGB: Linear RGB is used to improve colour balance in blending operations.",
     "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
@@ -132,7 +132,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "CLIP: Enable clipping of the source coordinates.",
     "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
 
-  enum("BMP", { start=2, comment="Bitmap types" },
+  enum("BMP", { type="int", start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
@@ -156,7 +156,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
-  enum("FLIP", { start=1, comment="Flags for the bitmap Flip method." },
+  enum("FLIP", { type="int", start=1, comment="Flags for the bitmap Flip method." },
     "HORIZONTAL: Flip the bitmap from top to bottom.",
     "VERTICAL: Flip the bitmap from left to right.")
 
@@ -187,19 +187,19 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
   flags("GMF", { comment="Flags for gamma operations." },
      "SAVE: Save the provided settings permanently.")
 
-  enum("DT", { start=1, comment="Flags for GetDisplayType()." },
+  enum("DT", { type="int", start=1, comment="Flags for GetDisplayType()." },
     "NATIVE: The display is native (supported by internal drivers).",
     "X11: The display is driven by the X Window System (X11, X.Org, XFree86)",
     "WINDOWS: The display is driven by Microsoft Windows drivers.",
     "GLES: The display is driven by OpenGLES.")
 
-  enum("DPMS", { start=0, comment="Possible modes for the Display class' DPMS field." },
+  enum("DPMS", { type="int", start=0, comment="Possible modes for the Display class' PowerMode field." },
     "DEFAULT: Use the default DPMS mode as defined by the display driver.",
     "OFF: Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).",
     "SUSPEND: Puts the display into suspend mode (blanks the display output while maintaining normal power levels).",
     "STANDBY: Puts the display into standby (reduced power) mode.")
 
-  enum('CT', { start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
+  enum('CT', { type="int", start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
 
   -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
 
@@ -458,7 +458,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int MinVScan         # The minimum vertical scan rate of the display output device.
     int MaxVScan         # The maximum vertical scan rate of the display output device.
     int(DT) DisplayType  # Indicates the display type.
-    int(DPMS) DPMS       # Optional display power modes.
+    int(DPMS) PowerMode  # Optional display power modes.
     oid PopOver          # For hosted displays, PopOver can refer to another display that should always remain behind us
     int LeftMargin       # Left window margin, if hosted
     int RightMargin      # Right window margin, if hosted

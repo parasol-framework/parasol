@@ -258,7 +258,6 @@ constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Va
 constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMethod, Value); }
 constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
 constexpr FieldValue AspectRatio(LONG Value) { return FieldValue(FID_AspectRatio, Value); }
-constexpr FieldValue ColourSpace(LONG Value) { return FieldValue(FID_ColourSpace, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
@@ -289,6 +288,8 @@ constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOr
 inline FieldValue ButtonOrder(std::string Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
 
 // Template-based Flags are required for strongly typed enums
+
+template <class T> FieldValue ColourSpace(T Value) { return FieldValue(FID_ColourSpace, LONG(Value)); }
 
 template <class T> FieldValue Flags(T Value) { return FieldValue(FID_Flags, LONG(Value)); }
 

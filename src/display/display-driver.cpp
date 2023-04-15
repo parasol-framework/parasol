@@ -212,7 +212,7 @@ bool glSixBitDisplay = false;
 static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
-static BYTE glDisplayType = DT_NATIVE;
+static auto glDisplayType = DT::NATIVE;
 DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
 LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
@@ -914,7 +914,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (config.ok()) {
       cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
 
-      if ((glDisplayType IS DT_X11) or (glDisplayType IS DT_WINDOWS)) {
+      if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINDOWS)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
          if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
             cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);

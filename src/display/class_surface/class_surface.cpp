@@ -30,6 +30,7 @@ areas.
 
 #undef __xwindows__
 #include "../defs.h"
+#include <parasol/modules/picture.h>
 
 static ERROR SET_Opacity(extSurface *, DOUBLE);
 static ERROR SET_XOffset(extSurface *, Variable *);
@@ -1090,7 +1091,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
    // If no parent surface is set, check if the client has set the FULL_SCREEN flag.  If not, try to give the
    // surface a parent.
 
-   if ((!Self->ParentID) and (gfxGetDisplayType() IS DT_NATIVE)) {
+   if ((!Self->ParentID) and (gfxGetDisplayType() IS DT::NATIVE)) {
       if (!(Self->Flags & RNF_FULL_SCREEN)) {
          if (FindObject("desktop", ID_SURFACE, FOF::NIL, &Self->ParentID) != ERR_Okay) {
             if (!glSurfaces.empty()) Self->ParentID = glSurfaces[0].SurfaceID;
@@ -1254,9 +1255,9 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             break;
       }
 
-      if (gfxGetDisplayType() IS DT_NATIVE) Self->Flags &= ~(RNF_COMPOSITE);
+      if (gfxGetDisplayType() IS DT::NATIVE) Self->Flags &= ~(RNF_COMPOSITE);
 
-      if (((gfxGetDisplayType() IS DT_WINDOWS) or (gfxGetDisplayType() IS DT_X11)) and (Self->Flags & RNF_HOST)) {
+      if (((gfxGetDisplayType() IS DT::WINDOWS) or (gfxGetDisplayType() IS DT::X11)) and (Self->Flags & RNF_HOST)) {
          if (glpMaximise) scrflags |= SCR_MAXIMISE;
          if (glpFullScreen) scrflags |= SCR_MAXIMISE|SCR_BORDERLESS;
       }
@@ -1288,7 +1289,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
          Self->Height = 480;
       }
 
-      if (gfxGetDisplayType() != DT_NATIVE) {
+      if (gfxGetDisplayType() != DT::NATIVE) {
          // Alignment adjustments
 
          DISPLAYINFO *display;
@@ -1337,7 +1338,6 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             fl::BitsPerPixel(glpDisplayDepth),
             fl::RefreshRate(glpRefreshRate),
             fl::Flags(scrflags),
-            fl::DPMS(glpDPMS),
             fl::Opacity(Self->Opacity * (100.0 / 255.0)),
             fl::PopOver(pop_display),
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
@@ -2176,18 +2176,18 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
    CLASSID class_id = (!Args->ClassID) ? ID_PICTURE: Args->ClassID;
 
-   OBJECTPTR picture;
+   objPicture *picture;
    if (!NewObject(class_id, &picture)) {
-      picture->set(FID_Flags, "NEW");
-      picture->set(FID_Width, Self->Width);
-      picture->set(FID_Height, Self->Height);
+      picture->setFlags(PCF_NEW);
+      picture->Bitmap->setWidth(Self->Width);
+      picture->Bitmap->setHeight(Self->Height);
 
       objDisplay *display;
       objBitmap *video_bmp;
       if (!access_video(Self->DisplayID, &display, &video_bmp)) {
-         picture->set(FID_BitsPerPixel, video_bmp->BitsPerPixel);
-         picture->set(FID_BytesPerPixel, video_bmp->BytesPerPixel);
-         picture->set(FID_Type, video_bmp->Type);
+         picture->Bitmap->setBitsPerPixel(video_bmp->BitsPerPixel);
+         picture->Bitmap->setBytesPerPixel(video_bmp->BytesPerPixel);
+         picture->Bitmap->setType(video_bmp->Type);
          release_video(display);
       }
 
@@ -2493,8 +2493,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
          // Dragging support
 
-         if (Self->DragStatus) { // Consolidate movement changes
-            if (Self->DragStatus IS DRAG_ANCHOR) {
+         if (Self->DragStatus != DRAG::NIL) { // Consolidate movement changes
+            if (Self->DragStatus IS DRAG::ANCHOR) {
                xchange = event->X;
                ychange = event->Y;
                while ((event->Next) and ((event->Next->Flags & JTYPE::ANCHORED) != JTYPE::NIL)) {
@@ -2540,7 +2540,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
             // The new pointer position is based on the position of the surface that's being dragged.
 
-            if (Self->DragStatus IS DRAG_ANCHOR) {
+            if (Self->DragStatus IS DRAG::ANCHOR) {
                const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
                if ((dragindex = find_surface_list(Self)) != -1) {
                   DOUBLE absx = glSurfaces[dragindex].Left + glAnchorX;
@@ -2556,7 +2556,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
             // Anchor the pointer position if dragging is enabled
 
-            if ((Self->DragID) and (Self->DragStatus IS DRAG_NONE)) {
+            if ((Self->DragID) and (Self->DragStatus IS DRAG::NONE)) {
                log.trace("Dragging object %d; Anchored to %dx%d", Self->DragID, event->X, event->Y);
 
                // Ask the pointer to anchor itself to our surface.  If the left mouse button is released, the
@@ -2564,14 +2564,14 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
                glAnchorX  = event->X;
                glAnchorY  = event->Y;
-               if (!gfxLockCursor(Self->UID)) Self->DragStatus = DRAG_ANCHOR;
-               else Self->DragStatus = DRAG_NORMAL;
+               if (!gfxLockCursor(Self->UID)) Self->DragStatus = DRAG::ANCHOR;
+               else Self->DragStatus = DRAG::NORMAL;
             }
          }
          else { // Click released
-            if (Self->DragStatus) {
+            if (Self->DragStatus != DRAG::NIL) {
                gfxUnlockCursor(Self->UID);
-               Self->DragStatus = DRAG_NONE;
+               Self->DragStatus = DRAG::NONE;
             }
          }
       }

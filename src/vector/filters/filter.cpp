@@ -132,7 +132,7 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
    #endif
 
    if (bmp) {
-      bmp->ColourSpace = CS_SRGB;
+      bmp->ColourSpace = CS::SRGB;
       bmp->Flags &= ~BMF_PREMUL;
       *BitmapResult = bmp;
       Self->BankIndex++;
@@ -273,7 +273,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
          fl::Height(Self->ClientViewport->Scene->PageHeight),
          fl::BitsPerPixel(32),
          fl::Flags(BMF_ALPHA_CHANNEL),
-         fl::ColourSpace(CS_SRGB)))) return NULL;
+         fl::ColourSpace(CS::SRGB)))) return NULL;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
             (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
@@ -569,7 +569,7 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
    Self->Y              = -0.1;
    Self->Width          = 1.2;  // +120% default as per SVG requirements
    Self->Height         = 1.2;
-   Self->ColourSpace    = VCS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
+   Self->ColourSpace    = VCS::SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
    Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
    return ERR_Okay;
 }

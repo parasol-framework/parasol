@@ -525,7 +525,7 @@ static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
    Self->ClipRule      = VFR_NON_ZERO;
    Self->Dirty         = RC_ALL;
    Self->TabOrder      = 255;
-   Self->ColourSpace   = VCS_INHERIT;
+   Self->ColourSpace   = VCS::INHERIT;
    return ERR_Okay;
 }
 

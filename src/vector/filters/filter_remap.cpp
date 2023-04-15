@@ -179,7 +179,7 @@ static ERROR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
       auto dp = (ULONG *)dest;
       auto sp = in;
 
-      if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) {
+      if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
          for (LONG x=0; x < width; x++) {
             if (auto a = sp[A]) {
                UBYTE out[4];

@@ -42,7 +42,7 @@
       </description>
       <result>
         <error code="Okay">The display was disabled.</error>
-        <error code="NoSupport">The display or graphics card does not support DPMS.</error>
+        <error code="NoSupport">The display driver does not support DPMS.</error>
       </result>
     </action>
 
@@ -361,18 +361,6 @@
     </field>
 
     <field>
-      <name>DPMS</name>
-      <comment>Holds the default display power management method.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type lookup="DPMS">INT</type>
-      <description>
-<p>When DPMS is enabled via a call to <action>Disable</action>, the DPMS method that is applied is controlled by this field.</p>
-<p>DPMS is a user configurable option and it is not recommended that the DPMS value is changed manually.</p>
-<types lookup="DPMS"/>
-      </description>
-    </field>
-
-    <field>
       <name>Display</name>
       <comment>String describing the display (e.g. model name of the monitor).</comment>
       <access read="G">Get</access>
@@ -396,7 +384,7 @@
       <name>DisplayType</name>
       <comment>In hosted mode, indicates the bottom margin of the client window.</comment>
       <access read="R">Read</access>
-      <type lookup="DT">INT</type>
+      <type lookup="DT">DT</type>
       <description>
 <p>If the display is hosted in a client window, the BottomMargin indicates the number of pixels between the client area and the bottom window edge.</p>
 <types lookup="DT"/>
@@ -580,6 +568,18 @@
     </field>
 
     <field>
+      <name>PowerMode</name>
+      <comment>The display's power management method.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="DPMS">DPMS</type>
+      <description>
+<p>When DPMS is enabled via a call to <action>Disable</action>, the DPMS method that is applied is controlled by this field.</p>
+<p>DPMS is a user configurable option and it is not recommended that the PowerMode value is changed manually.</p>
+<types lookup="DPMS"/>
+      </description>
+    </field>
+
+    <field>
       <name>RefreshRate</name>
       <comment>This field manages the display refresh rate.</comment>
       <access read="R" write="S">Read/Set</access>
@@ -694,7 +694,7 @@
 
   </fields>
   <types>
-    <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
+    <constants lookup="DPMS" comment="Possible modes for the Display class' PowerMode field.">
       <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
       <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
       <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>

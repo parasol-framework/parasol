@@ -69,16 +69,16 @@ int(DT): Returns an integer indicating the display type.
 
 *********************************************************************************************************************/
 
-LONG gfxGetDisplayType(void)
+DT gfxGetDisplayType(void)
 {
 #ifdef _WIN32
-   return DT_WINDOWS;
+   return DT::WINDOWS;
 #elif __xwindows__
-   return DT_X11;
+   return DT::X11;
 #elif _GLES_
-   return DT_GLES;
+   return DT::GLES;
 #else
-   return DT_NATIVE;
+   return DT::NATIVE;
 #endif
 }
 

@@ -237,9 +237,12 @@ class objVectorViewport;
 
 // Colour space options.
 
-#define VCS_INHERIT 0
-#define VCS_SRGB 1
-#define VCS_LINEAR_RGB 2
+enum class VCS : LONG {
+   NIL = 0,
+   INHERIT = 0,
+   SRGB = 1,
+   LINEAR_RGB = 2,
+};
 
 // Filter source types - these are used internally
 
@@ -763,7 +766,7 @@ class objVectorGradient : public BaseClass {
    LONG   Units;                   // Defines the coordinate system for fields X1, Y1, X2 and Y2.
    LONG   Type;                    // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    LONG   Flags;                   // Dimension flags are stored here.
-   LONG   ColourSpace;             // Defines the colour space to use when interpolating gradient colours.
+   VCS    ColourSpace;             // Defines the colour space to use when interpolating gradient colours.
    LONG   TotalStops;              // Total number of stops defined in the Stops array.
 
    // Action stubs
@@ -863,7 +866,7 @@ class objVectorGradient : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const VCS Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ColourSpace = Value;
       return ERR_Okay;
@@ -1276,7 +1279,7 @@ class objVectorFilter : public BaseClass {
    LONG   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
    LONG   PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
-   LONG   ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
+   VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
 
    // Action stubs
 
@@ -1347,7 +1350,7 @@ class objVectorFilter : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const VCS Value) {
       this->ColourSpace = Value;
       return ERR_Okay;
    }
@@ -1459,7 +1462,7 @@ class objVector : public BaseClass {
    LONG      Flags;                   // Optional flags.
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;             // Defines the quality of a path when it is rendered.
-   LONG      ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
+   VCS       ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
 
    // Action stubs
 
@@ -1547,7 +1550,7 @@ class objVector : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const VCS Value) {
       this->ColourSpace = Value;
       return ERR_Okay;
    }

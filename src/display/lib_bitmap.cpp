@@ -325,7 +325,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, LONG Flags, LONG X, LONG Y
    }
 
    if (Flags & BAF_LINEAR) {
-      if ((Bitmap->ColourSpace IS CS_LINEAR_RGB) or (dest->ColourSpace IS CS_LINEAR_RGB)) return log.warning(ERR_InvalidState);
+      if ((Bitmap->ColourSpace IS CS::LINEAR_RGB) or (dest->ColourSpace IS CS::LINEAR_RGB)) return log.warning(ERR_InvalidState);
       if ((Bitmap->BitsPerPixel != 32) or (!(Bitmap->Flags & BMF_ALPHA_CHANNEL))) return log.warning(ERR_InvalidState);
    }
 
@@ -1793,7 +1793,7 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
          return;
       }
 
-      if (Bitmap->Type IS BMP_CHUNKY) {
+      if (Bitmap->Type IS BMP::CHUNKY) {
          if (Bitmap->BitsPerPixel IS 32) {
             longdata = (ULONG *)(Bitmap->Data + (Bitmap->LineWidth * Y));
             while (Height > 0) {
@@ -1911,7 +1911,7 @@ int(FLIP) Orientation: Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set t
 
 *********************************************************************************************************************/
 
-void gfxFlipBitmap(extBitmap *Bitmap, LONG Orientation)
+void gfxFlipBitmap(extBitmap *Bitmap, FLIP Orientation)
 {
    bmpFlip(Bitmap, Orientation);
 }

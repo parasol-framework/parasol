@@ -273,7 +273,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
    pf::Log log(__FUNCTION__);
 
    if (SurfaceID) {
-      const WindowHook hook(SurfaceID, WH_CLOSE);
+      const WindowHook hook(SurfaceID, WH::CLOSE);
 
       if (glWindowHooks.contains(hook)) {
          auto func = &glWindowHooks[hook];
