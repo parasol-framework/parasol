@@ -1223,35 +1223,35 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       LONG scrflags = 0;
 
       if ((Self->Type & RT::ROOT) != RT::NIL) {
-         gfxSetHostOption(HOST_TASKBAR, 1);
-         gfxSetHostOption(HOST_TRAY_ICON, 0);
+         gfxSetHostOption(HOST::TASKBAR, 1);
+         gfxSetHostOption(HOST::TRAY_ICON, 0);
       }
       else switch(Self->WindowType) {
          default: // SWIN::HOST
             log.trace("Enabling standard hosted window mode.");
-            gfxSetHostOption(HOST_TASKBAR, 1);
+            gfxSetHostOption(HOST::TASKBAR, 1);
             break;
 
          case SWIN::TASKBAR:
             log.trace("Enabling borderless taskbar based surface.");
             scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
             if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR_MAXIMISE;
-            gfxSetHostOption(HOST_TASKBAR, 1);
+            gfxSetHostOption(HOST::TASKBAR, 1);
             break;
 
          case SWIN::ICON_TRAY:
             log.trace("Enabling borderless icon-tray based surface.");
             scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
             if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR_MAXIMISE;
-            gfxSetHostOption(HOST_TRAY_ICON, 1);
+            gfxSetHostOption(HOST::TRAY_ICON, 1);
             break;
 
          case SWIN::NONE:
             log.trace("Enabling borderless, presence-less surface.");
             scrflags |= SCR_BORDERLESS; // Stop the display from creating a host window for the surface
             if ((Self->Flags & RNF::HOST) != RNF::NIL) scrflags |= SCR_MAXIMISE;
-            gfxSetHostOption(HOST_TASKBAR, 0);
-            gfxSetHostOption(HOST_TRAY_ICON, 0);
+            gfxSetHostOption(HOST::TASKBAR, 0);
+            gfxSetHostOption(HOST::TRAY_ICON, 0);
             break;
       }
 
@@ -1309,8 +1309,8 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       if (Self->Height > Self->MaxHeight + Self->TopMargin  + Self->BottomMargin) Self->Height = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin;
       if (Self->Width  > Self->MaxWidth  + Self->LeftMargin + Self->RightMargin)  Self->Width  = Self->MaxWidth  + Self->LeftMargin + Self->RightMargin;
 
-      if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfxSetHostOption(HOST_STICK_TO_FRONT, 1);
-      else gfxSetHostOption(HOST_STICK_TO_FRONT, 0);
+      if ((Self->Flags & RNF::STICK_TO_FRONT) != RNF::NIL) gfxSetHostOption(HOST::STICK_TO_FRONT, 1);
+      else gfxSetHostOption(HOST::STICK_TO_FRONT, 0);
 
       if ((Self->Flags & RNF::COMPOSITE) != RNF::NIL) scrflags |= SCR_COMPOSITE;
 
@@ -1342,8 +1342,8 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             fl::PopOver(pop_display),
             fl::WindowHandle((APTR)Self->DisplayWindow))) { // Sometimes a window may be preset, e.g. for a web plugin
 
-         gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF_SAVE);
-         gfxSetHostOption(HOST_TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
+         gfxSetGamma(display, glpGammaRed, glpGammaGreen, glpGammaBlue, GMF::SAVE);
+         gfxSetHostOption(HOST::TASKBAR, 1); // Reset display system so that windows open with a taskbar by default
 
          // Get the true coordinates of the client area of the surface
 

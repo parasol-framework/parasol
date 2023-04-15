@@ -186,16 +186,16 @@
     <method>
       <name>SetGamma</name>
       <comment>Sets the display gamma levels.</comment>
-      <prototype>ERROR gfxSetGamma(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags)</prototype>
+      <prototype>ERROR gfxSetGamma(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
       <input>
         <param type="DOUBLE" name="Red">Gamma correction for the red gun.</param>
         <param type="DOUBLE" name="Green">Gamma correction for the green gun.</param>
         <param type="DOUBLE" name="Blue">Gamma correction for the blue gun.</param>
-        <param type="LONG" name="Flags" lookup="GMF">Optional flags.</param>
+        <param type="GMF" name="Flags" lookup="GMF">Optional flags.</param>
       </input>
       <description>
 <p>The SetGamma method controls the gamma correction levels for the display.  Gamma levels for the red, green and blue colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the minimum value is 0.0 and the maximum value is 100.</p>
-<p>Optional flags include <code>GMF_SAVE</code>.  This option will save the requested settings as the user default when future displays are opened.</p>
+<p>Optional flags include <code>GMF::SAVE</code>.  This option will save the requested settings as the user default when future displays are opened.</p>
 <p>If you would like to know the default gamma correction settings for a display, please refer to the <field>Gamma</field> field.</p>
       </description>
       <result>
@@ -208,12 +208,12 @@
     <method>
       <name>SetGammaLinear</name>
       <comment>Sets the display gamma level using a linear algorithm.</comment>
-      <prototype>ERROR gfxSetGammaLinear(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags)</prototype>
+      <prototype>ERROR gfxSetGammaLinear(OBJECTPTR Object, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags)</prototype>
       <input>
         <param type="DOUBLE" name="Red">New red gamma value.</param>
         <param type="DOUBLE" name="Green">New green gamma value.</param>
         <param type="DOUBLE" name="Blue">New blue gamma value.</param>
-        <param type="LONG" name="Flags" lookup="GMF">Use GMF_SAVE to store the new settings.</param>
+        <param type="GMF" name="Flags" lookup="GMF">Use SAVE to store the new settings.</param>
       </input>
       <description>
 <p>Call SetGammaLinear to update a target display's gamma values with a linear algorithm that takes input from Red, Green and Blue parameters provided by the client.</p>
@@ -227,14 +227,14 @@
     <method>
       <name>SetMonitor</name>
       <comment>Changes the default monitor settings.</comment>
-      <prototype>ERROR gfxSetMonitor(OBJECTPTR Object, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, LONG Flags)</prototype>
+      <prototype>ERROR gfxSetMonitor(OBJECTPTR Object, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the display.</param>
         <param type="LONG" name="MinH">The minimum horizontal scan rate.  Usually set to 31.</param>
         <param type="LONG" name="MaxH">The maximum horizontal scan rate.</param>
         <param type="LONG" name="MinV">The minimum vertical scan rate.  Usually set to 50.</param>
         <param type="LONG" name="MaxV">The maximum vertical scan rate.</param>
-        <param type="LONG" name="Flags" lookup="SMF">Set to SMF_AUTO_DETECT if the monitor settings should be auto-detected on startup.  Set SMF_BIT_6 if the device is limited to 6-bit colour output.</param>
+        <param type="MON" name="Flags" lookup="MON">Set to AUTO_DETECT if the monitor settings should be auto-detected on startup.  Set BIT_6 if the device is limited to 6-bit colour output.</param>
       </input>
       <description>
 <p>Use the SetMonitor method to change the settings that configure the user's monitor display.  You can set the model name of the monitor and the frequencies that are supported by it.  Altering the display frequencies will affect the available display resolutions, as well as the maximum allowable refresh rate.</p>
@@ -712,6 +712,11 @@
       <const name="SAVE">Save the provided settings permanently.</const>
     </constants>
 
+    <constants lookup="MON" comment="Flags for the Display class SetMonitor() method.">
+      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
+      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
+    </constants>
+
     <constants lookup="SCR" comment="Display flags.">
       <const name="ALPHA_BLEND">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="AUTO_SAVE">Saves settings to the global display state when the object is freed.</const>
@@ -731,11 +736,6 @@
       <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
       <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
-      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
-      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
     </constants>
 
   </types>

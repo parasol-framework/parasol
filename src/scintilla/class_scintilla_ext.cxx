@@ -326,7 +326,7 @@ void ScintillaParasol::Paste()
 
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
-      struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
+      struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
       if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
          objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {

@@ -33,12 +33,12 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 #define MAX_CLIPS 10 // Maximum number of clips stored in the historical buffer
 
 static const FieldDef glDatatypes[] = {
-   { "data",   CLIPTYPE_DATA },
-   { "audio",  CLIPTYPE_AUDIO },
-   { "image",  CLIPTYPE_IMAGE },
-   { "file",   CLIPTYPE_FILE },
-   { "object", CLIPTYPE_OBJECT },
-   { "text",   CLIPTYPE_TEXT },
+   { "data",   CLIPTYPE::DATA },
+   { "audio",  CLIPTYPE::AUDIO },
+   { "image",  CLIPTYPE::IMAGE },
+   { "file",   CLIPTYPE::FILE },
+   { "object", CLIPTYPE::OBJECT },
+   { "text",   CLIPTYPE::TEXT },
    { NULL, 0 }
 };
 
@@ -52,8 +52,8 @@ static LONG glLastClipID = -1;
 
 //********************************************************************************************************************
 
-static std::string get_datatype(LONG);
-static ERROR add_clip(LONG, const std::vector<ClipItem> &, LONG = 0);
+static std::string get_datatype(CLIPTYPE);
+static ERROR add_clip(CLIPTYPE, const std::vector<ClipItem> &, CEF = CEF::NIL);
 static ERROR add_clip(CSTRING);
 static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 
@@ -62,7 +62,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *, struct clipAddObjects *);
 ClipRecord::~ClipRecord() {
    pf::Log log(__FUNCTION__);
 
-   if (Datatype != CLIPTYPE_FILE) {
+   if (Datatype != CLIPTYPE::FILE) {
       log.branch("Deleting clip files for %s datatype.", get_datatype(Datatype).c_str());
       for (auto &item : Items) DeleteFile(item.Path.c_str(), NULL);
    }
@@ -71,10 +71,10 @@ ClipRecord::~ClipRecord() {
 
 //********************************************************************************************************************
 
-static std::string get_datatype(LONG Datatype)
+static std::string get_datatype(CLIPTYPE Datatype)
 {
    for (unsigned i=0; glDatatypes[i].Name; i++) {
-      if (Datatype IS glDatatypes[i].Value) return std::string(glDatatypes[i].Name);
+      if (LONG(Datatype) IS glDatatypes[i].Value) return std::string(glDatatypes[i].Name);
    }
 
    return "unknown";
@@ -110,7 +110,7 @@ static ERROR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &I
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
 
    auto str = list.str();
-   winAddClip(CLIPTYPE_FILE, str.c_str(), str.size(), Cut);
+   winAddClip(CLIPTYPE::FILE, str.c_str(), str.size(), Cut);
    return ERR_Okay;
 #else
    return ERR_NoSupport;
@@ -145,7 +145,7 @@ static ERROR add_text_to_host(objClipboard *Self, CSTRING String, LONG Length = 
    }
    utf16[i] = 0;
 
-   auto error = winAddClip(CLIPTYPE_TEXT, utf16.data(), utf16.size() * sizeof(UWORD), false);
+   auto error = winAddClip(CLIPTYPE::TEXT, utf16.data(), utf16.size() * sizeof(UWORD), false);
    if (error) log.warning(error);
    return error;
 #else
@@ -194,11 +194,11 @@ static ERROR CLIPBOARD_AddFile(objClipboard *Self, struct clipAddFile *Args)
    log.branch("Path: %s", Args->Path);
 
    std::vector<ClipItem> items = { std::string(Args->Path) };
-   if (!add_file_to_host(Self, items, (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
+   if (!add_file_to_host(Self, items, ((Args->Flags & CEF::DELETE) != CEF::NIL) ? true : false)) {
       if (glHistoryLimit <= 1) return ERR_Okay;
    }
 
-   return add_clip(Args->Datatype, items, Args->Flags & (CEF_DELETE|CEF_EXTEND));
+   return add_clip(Args->Datatype, items, Args->Flags & (CEF::DELETE|CEF::EXTEND));
 }
 
 /*********************************************************************************************************************
@@ -211,16 +211,16 @@ clipboard will ask that the object save its data directly to a cache file, compl
 client to save the object data to an interim file for the clipboard.
 
 Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for
-instance, Picture objects will be put into the `CLIPTYPE_IMAGE` data category).  If an object's class is not recognised by
-the clipboard system then the data will be stored in the `CLIPTYPE_OBJECT` category to signify that there is a class in the
+instance, Picture objects will be put into the `CLIPTYPE::IMAGE` data category).  If an object's class is not recognised by
+the clipboard system then the data will be stored in the `CLIPTYPE::OBJECT` category to signify that there is a class in the
 system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype
-parameter with one of the available `CLIPTYPE*` types.
+parameter with one of the available `CLIPTYPE` values.
 
 This method supports groups of objects in a single clip, thus requires an array of object ID's terminated
 with a zero entry.
 
 Optional flags that may be passed to this method are the same as those specified in the #AddFile() method.  The
-`CEF_DELETE` flag has no effect on objects.
+`CEF::DELETE` flag has no effect on objects.
 
 -INPUT-
 int(CLIPTYPE) Datatype: The type of data representing the objects, or NULL for automatic recognition.
@@ -244,7 +244,7 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
 
    LONG counter = glCounter++;
    CLASSID classid = 0;
-   LONG datatype = Args->Datatype;
+   auto datatype = Args->Datatype;
 
    std::vector<ClipItem> items;
    for (unsigned i=0; Args->Objects[i]; i++) {
@@ -253,10 +253,10 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
          if (!classid) classid = object.obj->Class->ClassID;
 
          if (classid IS object.obj->Class->ClassID) { // The client may not mix and match classes.
-            if (!datatype) {
-               if (object.obj->Class->ClassID IS ID_PICTURE) datatype = CLIPTYPE_IMAGE;
-               else if (object.obj->Class->ClassID IS ID_SOUND) datatype = CLIPTYPE_AUDIO;
-               else datatype = CLIPTYPE_OBJECT;
+            if (datatype IS CLIPTYPE::NIL) {
+               if (object.obj->Class->ClassID IS ID_PICTURE) datatype = CLIPTYPE::IMAGE;
+               else if (object.obj->Class->ClassID IS ID_SOUND) datatype = CLIPTYPE::AUDIO;
+               else datatype = CLIPTYPE::OBJECT;
             }
 
             char idx[5];
@@ -271,11 +271,11 @@ static ERROR CLIPBOARD_AddObjects(objClipboard *Self, struct clipAddObjects *Arg
       else return ERR_Lock;
    }
 
-   if (!add_file_to_host(Self, items, (Args->Flags & CEF_DELETE) ? TRUE : FALSE)) {
+   if (!add_file_to_host(Self, items, ((Args->Flags & CEF::DELETE) != CEF::NIL) ? true : false)) {
       if (glHistoryLimit <= 1) return ERR_Okay;
    }
 
-   return add_clip(datatype, items, Args->Flags & CEF_EXTEND);
+   return add_clip(datatype, items, Args->Flags & CEF::EXTEND);
 }
 
 /*********************************************************************************************************************
@@ -351,7 +351,7 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       add_text_to_host(Self, (CSTRING)Args->Buffer, Args->Size);
 
       std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + std::string(".000") };
-      if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
+      if (auto error = add_clip(CLIPTYPE::TEXT, items); !error) {
          objFile::create file = { fl::Path(items[0].Path), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
          if (file.ok()) {
             if (file->write(Args->Buffer, Args->Size, 0)) return log.warning(ERR_Write);
@@ -422,7 +422,7 @@ a readable clipboard entry - how the client reads it depends on the resulting Da
 ~Core.IdentifyFile() function could be used to find a class that supports the data.  The resulting Files array is a
 memory allocation that must be freed with a call to ~Core.FreeResource().
 
-If this method returns the `CEF_DELETE` flag in the Flags parameter, the client must delete the source files after
+If this method returns the `CEF::DELETE` flag in the Flags parameter, the client must delete the source files after
 successfully copying the data.  When cutting and pasting files within the file system, using ~Core.MoveFile() is
 recommended as the most efficient method.
 
@@ -430,7 +430,7 @@ recommended as the most efficient method.
 &int(CLIPTYPE) Datatype: Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.
 int Index: If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.
 !array(cstr) Files: The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().
-&int(CEF) Flags: Result flags are returned in this parameter.  If CEF_DELETE is set, you need to delete the files after use in order to support the 'cut' operation.
+&int(CEF) Flags: Result flags are returned in this parameter.  If DELETE is set, you need to delete the files after use in order to support the 'cut' operation.
 
 -ERRORS-
 Okay: A matching clip was found and returned.
@@ -447,7 +447,7 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Datatype: $%.8x", Args->Datatype);
+   log.branch("Datatype: $%.8x", LONG(Args->Datatype));
 
    Args->Files = NULL;
 
@@ -465,14 +465,14 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
    // Find the first clipboard entry to match what has been requested
 
    if ((Self->Flags & CPF::HISTORY_BUFFER) != CPF::NIL) {
-      if (!Args->Datatype) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
+      if (Args->Datatype IS CLIPTYPE::NIL) { // Retrieve the most recent clip item, or the one indicated in the Index parameter.
          if ((Args->Index < 0) or (Args->Index >= LONG(glClips.size()))) return log.warning(ERR_OutOfRange);
          std::advance(clip, Args->Index);
       }
       else {
          bool found = false;
          for (auto &scan : glClips) {
-            if (Args->Datatype & scan.Datatype) {
+            if ((Args->Datatype & scan.Datatype) != CLIPTYPE::NIL) {
                found = true;
                clip = &scan;
                break;
@@ -480,13 +480,13 @@ static ERROR CLIPBOARD_GetFiles(objClipboard *Self, struct clipGetFiles *Args)
          }
 
          if (!found) {
-            log.warning("No clips available for datatype $%x", Args->Datatype);
+            log.warning("No clips available for datatype $%x", LONG(Args->Datatype));
             return ERR_NoData;
          }
       }
    }
-   else if (Args->Datatype) {
-      if (!(clip->Datatype & Args->Datatype)) return ERR_NoData;
+   else if (Args->Datatype != CLIPTYPE::NIL) {
+      if ((clip->Datatype & Args->Datatype) IS CLIPTYPE::NIL) return ERR_NoData;
    }
 
    CSTRING *list = NULL;
@@ -553,12 +553,12 @@ static ERROR CLIPBOARD_Remove(objClipboard *Self, struct clipRemove *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Datatype)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->Datatype IS CLIPTYPE::NIL)) return log.warning(ERR_NullArgs);
 
-   log.branch("Datatype: $%x", Args->Datatype);
+   log.branch("Datatype: $%x", LONG(Args->Datatype));
 
    for (auto it=glClips.begin(); it != glClips.end();) {
-      if (it->Datatype & Args->Datatype) {
+      if ((it->Datatype & Args->Datatype) != CLIPTYPE::NIL) {
          if (it IS glClips.begin()) {
             #ifdef _WIN32
             winClearClipboard();
@@ -618,19 +618,19 @@ static ERROR SET_RequestHandler(objClipboard *Self, FUNCTION *Value)
 
 //********************************************************************************************************************
 
-static ERROR add_clip(LONG Datatype, const std::vector<ClipItem> &Items, LONG Flags)
+static ERROR add_clip(CLIPTYPE Datatype, const std::vector<ClipItem> &Items, CEF Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Datatype: $%x, Flags: $%x, Total Items: %d", Datatype, Flags, LONG(Items.size()));
+   log.branch("Datatype: $%x, Flags: $%x, Total Items: %d", LONG(Datatype), LONG(Flags), LONG(Items.size()));
 
    if (Items.empty()) return ERR_Args;
 
-   if (Flags & CEF_EXTEND) {
+   if ((Flags & CEF::EXTEND) != CEF::NIL) {
       // Search for an existing clip that matches the requested datatype
       for (auto it = glClips.begin(); it != glClips.end(); it++) {
          if (it->Datatype IS Datatype) {
-            log.msg("Extending existing clip record for datatype $%x.", Datatype);
+            log.msg("Extending existing clip record for datatype $%x.", LONG(Datatype));
 
             auto clip = *it;
             clip.Items.insert(clip.Items.end(), Items.begin(), Items.end());
@@ -653,7 +653,7 @@ static ERROR add_clip(LONG Datatype, const std::vector<ClipItem> &Items, LONG Fl
 
    if (LONG(glClips.size()) > glHistoryLimit) glClips.pop_back(); // Remove oldest clip if history buffer is full.
 
-   glClips.emplace_front(Datatype, Flags & CEF_DELETE, Items);
+   glClips.emplace_front(Datatype, Flags & CEF::DELETE, Items);
    return ERR_Okay;
 }
 
@@ -665,7 +665,7 @@ static ERROR add_clip(CSTRING String)
    log.branch();
 
    std::vector<ClipItem> items = { std::string("clipboard:") + glProcessID + "_text" + std::to_string(glCounter++) + ".000" };
-   if (auto error = add_clip(CLIPTYPE_TEXT, items); !error) {
+   if (auto error = add_clip(CLIPTYPE::TEXT, items); !error) {
       pf::Create<objFile> file = { fl::Path(items[0].Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::READ|PERMIT::WRITE) };
       if (file.ok()) {
          file->write(String, StrLength(String), 0);
@@ -702,7 +702,7 @@ extern "C" void report_windows_files(APTR Data, LONG CutOperation)
    for (LONG i=0; winExtractFile(Data, i, buffer, sizeof(buffer)); i++) {
       items.push_back(std::string(buffer));
    }
-   add_clip(CLIPTYPE_FILE, items, CutOperation ? CEF_DELETE : 0);
+   add_clip(CLIPTYPE::FILE, items, CutOperation ? CEF::DELETE : CEF::NIL);
    glLastClipID = winCurrentClipboardID();
 }
 
@@ -720,7 +720,7 @@ extern "C" void report_windows_hdrop(STRING Data, LONG CutOperation)
       Data++; // Skip null byte
    }
 
-   add_clip(CLIPTYPE_FILE, items, CutOperation ? CEF_DELETE : 0);
+   add_clip(CLIPTYPE::FILE, items, CutOperation ? CEF::DELETE : CEF::NIL);
    glLastClipID = winCurrentClipboardID();
 }
 

@@ -158,11 +158,14 @@ enum class RNF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(RNF)
 
-#define HOST_TRAY_ICON 1
-#define HOST_TASKBAR 2
-#define HOST_STICK_TO_FRONT 3
-#define HOST_TRANSLUCENCE 4
-#define HOST_TRANSPARENT 5
+enum class HOST : LONG {
+   NIL = 0,
+   TRAY_ICON = 1,
+   TASKBAR = 2,
+   STICK_TO_FRONT = 3,
+   TRANSLUCENCE = 4,
+   TRANSPARENT = 5,
+};
 
 // Flags for the Pointer class.
 
@@ -260,12 +263,22 @@ enum class FLIP : LONG {
 
 // Flags for the Display class SetMonitor() method.
 
-#define SMF_AUTO_DETECT 0x00000001
-#define SMF_BIT_6 0x00000002
+enum class MON : ULONG {
+   NIL = 0,
+   AUTO_DETECT = 0x00000001,
+   BIT_6 = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MON)
 
 // Flags for gamma operations.
 
-#define GMF_SAVE 0x00000001
+enum class GMF : ULONG {
+   NIL = 0,
+   SAVE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(GMF)
 
 // Flags for GetDisplayType().
 
@@ -300,12 +313,17 @@ enum class CT : LONG {
 
 // Clipboard types
 
-#define CLIPTYPE_DATA 0x00000001
-#define CLIPTYPE_AUDIO 0x00000002
-#define CLIPTYPE_IMAGE 0x00000004
-#define CLIPTYPE_FILE 0x00000008
-#define CLIPTYPE_OBJECT 0x00000010
-#define CLIPTYPE_TEXT 0x00000020
+enum class CLIPTYPE : ULONG {
+   NIL = 0,
+   DATA = 0x00000001,
+   AUDIO = 0x00000002,
+   IMAGE = 0x00000004,
+   FILE = 0x00000008,
+   OBJECT = 0x00000010,
+   TEXT = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLIPTYPE)
 
 // Clipboard flags
 
@@ -318,8 +336,13 @@ enum class CPF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(CPF)
 
-#define CEF_DELETE 0x00000001
-#define CEF_EXTEND 0x00000002
+enum class CEF : ULONG {
+   NIL = 0,
+   DELETE = 0x00000001,
+   EXTEND = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CEF)
 
 #define VER_SURFACEINFO 2
 
@@ -827,9 +850,9 @@ class objBitmap : public BaseClass {
 struct gfxUpdatePalette { struct RGBPalette * NewPalette;  };
 struct gfxSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
 struct gfxSizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight;  };
-struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; LONG Flags;  };
-struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; LONG Flags;  };
-struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; LONG Flags;  };
+struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
+struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
+struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags;  };
 struct gfxUpdateDisplay { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 
 #define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
@@ -849,17 +872,17 @@ INLINE ERROR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth,
    return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags) {
+INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) {
    struct gfxSetGamma args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags) {
+INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) {
    struct gfxSetGammaLinear args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, LONG Flags) {
+INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) {
    struct gfxSetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
    return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
 }
@@ -1073,24 +1096,24 @@ class objDisplay : public BaseClass {
 #define MT_ClipAddText -4
 #define MT_ClipRemove -5
 
-struct clipAddFile { LONG Datatype; CSTRING Path; LONG Flags;  };
-struct clipAddObjects { LONG Datatype; OBJECTID * Objects; LONG Flags;  };
-struct clipGetFiles { LONG Datatype; LONG Index; CSTRING * Files; LONG Flags;  };
+struct clipAddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags;  };
+struct clipAddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags;  };
+struct clipGetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;  };
 struct clipAddText { CSTRING String;  };
-struct clipRemove { LONG Datatype;  };
+struct clipRemove { CLIPTYPE Datatype;  };
 
-INLINE ERROR clipAddFile(APTR Ob, LONG Datatype, CSTRING Path, LONG Flags) {
+INLINE ERROR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) {
    struct clipAddFile args = { Datatype, Path, Flags };
    return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipAddObjects(APTR Ob, LONG Datatype, OBJECTID * Objects, LONG Flags) {
+INLINE ERROR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) {
    struct clipAddObjects args = { Datatype, Objects, Flags };
    return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipGetFiles(APTR Ob, LONG * Datatype, LONG Index, CSTRING ** Files, LONG * Flags) {
-   struct clipGetFiles args = { 0, Index, 0, 0 };
+INLINE ERROR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) {
+   struct clipGetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
    ERROR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
    if (Datatype) *Datatype = args.Datatype;
    if (Files) *Files = args.Files;
@@ -1103,7 +1126,7 @@ INLINE ERROR clipAddText(APTR Ob, CSTRING String) {
    return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
+INLINE ERROR clipRemove(APTR Ob, CLIPTYPE Datatype) {
    struct clipRemove args = { Datatype };
    return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
 }
@@ -1711,7 +1734,7 @@ struct DisplayBase {
    ERROR (*_SetCursor)(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
    ERROR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
    ERROR (*_SetCustomCursor)(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-   ERROR (*_SetHostOption)(LONG Option, LARGE Value);
+   ERROR (*_SetHostOption)(HOST Option, LARGE Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
    ERROR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
    ERROR (*_SubscribeInput)(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
@@ -1758,7 +1781,7 @@ inline void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG To
 inline ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
 inline ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
 inline ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
-inline ERROR gfxSetHostOption(LONG Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
+inline ERROR gfxSetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID gfxSetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
 inline ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
 inline ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }

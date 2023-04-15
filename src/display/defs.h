@@ -289,12 +289,12 @@ struct ClipItem {
 };
 
 struct ClipRecord {
-   LONG  Datatype;    // The type of data clipped
-   LONG  Flags;       // CEF_DELETE may be set for the 'cut' operation
+   CLIPTYPE Datatype; // The type of data clipped
+   CEF Flags;         // CEF::DELETE may be set for the 'cut' operation
    std::vector<ClipItem> Items;  // List of file locations referencing all the data in this clip entry
 
    ~ClipRecord();
-   ClipRecord(LONG pDatatype, LONG pFlags, const std::vector<ClipItem> pItems) :
+   ClipRecord(CLIPTYPE pDatatype, CEF pFlags, const std::vector<ClipItem> pItems) :
       Datatype(pDatatype), Flags(pFlags), Items(pItems) { }
 };
 
@@ -550,11 +550,11 @@ DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 
-int winAddClip(int Datatype, const void *, int, int);
+int winAddClip(CLIPTYPE, const void *, int, int);
 void winClearClipboard(void);
 void winCopyClipboard(void);
 int winExtractFile(void *, int, char *, int);
-void winGetClip(int Datatype);
+void winGetClip(CLIPTYPE);
 void winTerminate(void);
 APTR winGetDC(APTR);
 void winReleaseDC(APTR, APTR);

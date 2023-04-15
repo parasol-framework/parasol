@@ -44,11 +44,11 @@
     <method>
       <name>AddFile</name>
       <comment>Add files to the clipboard.</comment>
-      <prototype>ERROR clipAddFile(OBJECTPTR Object, LONG Datatype, CSTRING Path, LONG Flags)</prototype>
+      <prototype>ERROR clipAddFile(OBJECTPTR Object, CLIPTYPE Datatype, CSTRING Path, CEF Flags)</prototype>
       <input>
-        <param type="LONG" name="Datatype" lookup="CLIPTYPE">Set this argument to indicate the type of data you are copying to the clipboard.</param>
+        <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">Set this argument to indicate the type of data you are copying to the clipboard.</param>
         <param type="CSTRING" name="Path">The path of the file to add.</param>
-        <param type="LONG" name="Flags" lookup="CEF">Optional flags.</param>
+        <param type="CEF" name="Flags" lookup="CEF">Optional flags.</param>
       </input>
       <description>
 <p>This method is used to add a file to the clipboard.  You are required to specify the type of data that is represented by the file. This allows the file content to be pasted by other applications that understand the data.  Adding files to the clipboard with a known datatype can be very efficient compared to other methods, as it saves loading the data into memory until the user is ready to paste the content.</p>
@@ -67,17 +67,17 @@
     <method>
       <name>AddObjects</name>
       <comment>Extract data from objects and add it all to the clipboard.</comment>
-      <prototype>ERROR clipAddObjects(OBJECTPTR Object, LONG Datatype, OBJECTID * Objects, LONG Flags)</prototype>
+      <prototype>ERROR clipAddObjects(OBJECTPTR Object, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags)</prototype>
       <input>
-        <param type="LONG" name="Datatype" lookup="CLIPTYPE">The type of data representing the objects, or NULL for automatic recognition.</param>
+        <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The type of data representing the objects, or NULL for automatic recognition.</param>
         <param type="OBJECTID *" name="Objects">Array of object ID's to add to the clipboard.</param>
-        <param type="LONG" name="Flags" lookup="CEF">Optional flags.</param>
+        <param type="CEF" name="Flags" lookup="CEF">Optional flags.</param>
       </input>
       <description>
 <p>Data can be saved to the clipboard directly from an object if the object's class supports the SaveToObject action.  The clipboard will ask that the object save its data directly to a cache file, completely removing the need for the client to save the object data to an interim file for the clipboard.</p>
-<p>Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for instance, Picture objects will be put into the <code>CLIPTYPE_IMAGE</code> data category).  If an object's class is not recognised by the clipboard system then the data will be stored in the <code>CLIPTYPE_OBJECT</code> category to signify that there is a class in the system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype parameter with one of the available <code>CLIPTYPE*</code> types.</p>
+<p>Certain classes are recognised by the clipboard system and will be added to the correct datatype automatically (for instance, Picture objects will be put into the <code>CLIPTYPE::IMAGE</code> data category).  If an object's class is not recognised by the clipboard system then the data will be stored in the <code>CLIPTYPE::OBJECT</code> category to signify that there is a class in the system that recognises the data.  If you want to over-ride any aspect of this behaviour, force the Datatype parameter with one of the available <code>CLIPTYPE</code> values.</p>
 <p>This method supports groups of objects in a single clip, thus requires an array of object ID's terminated with a zero entry.</p>
-<p>Optional flags that may be passed to this method are the same as those specified in the <method>AddFile</method> method.  The <code>CEF_DELETE</code> flag has no effect on objects.</p>
+<p>Optional flags that may be passed to this method are the same as those specified in the <method>AddFile</method> method.  The <code>CEF::DELETE</code> flag has no effect on objects.</p>
       </description>
       <result>
         <error code="Okay">The objects were added to the clipboard.</error>
@@ -105,18 +105,18 @@
     <method>
       <name>GetFiles</name>
       <comment>Retrieve the most recently clipped data as a list of files.</comment>
-      <prototype>ERROR clipGetFiles(OBJECTPTR Object, LONG * Datatype, LONG Index, CSTRING ** Files, LONG * Flags)</prototype>
+      <prototype>ERROR clipGetFiles(OBJECTPTR Object, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags)</prototype>
       <input>
-        <param type="LONG *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
+        <param type="CLIPTYPE *" name="Datatype" lookup="CLIPTYPE">Filter down to the specified data types.  This parameter will be updated to reflect the retrieved data type when the method returns.  Set to zero to disable.</param>
         <param type="LONG" name="Index">If the Datatype parameter is zero, this parameter may be set to the index of the desired clip item.</param>
         <param type="CSTRING **" name="Files">The resulting location(s) of the requested clip data are returned in this parameter; terminated with a NULL entry.  You are required to free the returned array with FreeResource().</param>
-        <param type="LONG *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If CEF_DELETE is set, you need to delete the files after use in order to support the 'cut' operation.</param>
+        <param type="CEF *" name="Flags" lookup="CEF">Result flags are returned in this parameter.  If DELETE is set, you need to delete the files after use in order to support the 'cut' operation.</param>
       </input>
       <description>
 <p>This method returns a list of items that are on the clipboard.  The caller must declare the types of data that it supports (or zero if all datatypes are recognised).</p>
 <p>The most recently clipped datatype is always returned.  To scan for all available clip items, set the Datatype parameter to zero and repeatedly call this method with incremented Index numbers until the error code ERR_OutOfRange is returned.</p>
 <p>On success this method will return a list of files (terminated with a NULL entry) in the Files parameter.  Each file is a readable clipboard entry - how the client reads it depends on the resulting Datatype.  Additionally, the <function module="Core">IdentifyFile</function> function could be used to find a class that supports the data.  The resulting Files array is a memory allocation that must be freed with a call to <function module="Core">FreeResource</function>.</p>
-<p>If this method returns the <code>CEF_DELETE</code> flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
+<p>If this method returns the <code>CEF::DELETE</code> flag in the Flags parameter, the client must delete the source files after successfully copying the data.  When cutting and pasting files within the file system, using <function module="Core">MoveFile</function> is recommended as the most efficient method.</p>
       </description>
       <result>
         <error code="Okay">A matching clip was found and returned.</error>
@@ -129,9 +129,9 @@
     <method>
       <name>Remove</name>
       <comment>Remove items from the clipboard.</comment>
-      <prototype>ERROR clipRemove(OBJECTPTR Object, LONG Datatype)</prototype>
+      <prototype>ERROR clipRemove(OBJECTPTR Object, CLIPTYPE Datatype)</prototype>
       <input>
-        <param type="LONG" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
+        <param type="CLIPTYPE" name="Datatype" lookup="CLIPTYPE">The datatype(s) that will be deleted (datatypes may be logically-or'd together).</param>
       </input>
       <description>
 <p>The Remove method will clear all items that match a specified datatype.  Clear multiple datatypes by combining flags in the Datatype parameter.  To clear all content from the clipboard, use the <action>Clear</action> action instead of this method.</p>

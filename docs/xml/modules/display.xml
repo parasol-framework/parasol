@@ -728,9 +728,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetHostOption</name>
     <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
-    <prototype>ERROR gfxSetHostOption(LONG Option, LARGE Value)</prototype>
+    <prototype>ERROR gfxSetHostOption(HOST Option, LARGE Value)</prototype>
     <input>
-      <param type="LONG" name="Option" lookup="HOST">One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.</param>
+      <param type="HOST" name="Option" lookup="HOST">One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</param>
       <param type="LARGE" name="Value">The value to be applied to the option.</param>
     </input>
     <description>
@@ -1071,6 +1071,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="EXPOSE_CHANGES"/>
     </constants>
 
+    <constants lookup="MON" comment="Flags for the Display class SetMonitor() method.">
+      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
+      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
+    </constants>
+
     <constants lookup="PF" comment="Flags for the Pointer class.">
       <const name="ANCHOR">Allow the pointer to be anchored.</const>
       <const name="UNUSED"/>
@@ -1134,11 +1139,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
       <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
-      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
-      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
     </constants>
 
     <constants lookup="SWIN" comment="Options for the Surface WindowType field.">

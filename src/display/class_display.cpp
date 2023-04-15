@@ -1508,7 +1508,7 @@ The SetGamma method controls the gamma correction levels for the display.  Gamma
 colour components can be set at floating point precision.  The default gamma level for each component is 1.0; the
 minimum value is 0.0 and the maximum value is 100.
 
-Optional flags include `GMF_SAVE`.  This option will save the requested settings as the user default when future displays
+Optional flags include `GMF::SAVE`.  This option will save the requested settings as the user default when future displays
 are opened.
 
 If you would like to know the default gamma correction settings for a display, please refer to the #Gamma
@@ -1549,7 +1549,7 @@ static ERROR DISPLAY_SetGamma(extDisplay *Self, struct gfxSetGamma *Args)
    if (green > 100.0) green = 100.0;
    if (blue  > 100.0) blue  = 100.0;
 
-   if (Args->Flags & GMF_SAVE) {
+   if ((Args->Flags & GMF::SAVE) != GMF::NIL) {
       Self->Gamma[0]   = red;
       Self->Gamma[1] = green;
       Self->Gamma[2]  = blue;
@@ -1581,7 +1581,7 @@ and Blue parameters provided by the client.
 double Red: New red gamma value.
 double Green: New green gamma value.
 double Blue: New blue gamma value.
-int(GMF) Flags: Use GMF_SAVE to store the new settings.
+int(GMF) Flags: Use SAVE to store the new settings.
 
 -ERRORS-
 Okay:
@@ -1610,7 +1610,7 @@ static ERROR DISPLAY_SetGammaLinear(extDisplay *Self, struct gfxSetGammaLinear *
    if (green > 100.0) green = 100.0;
    if (blue  > 100.0) blue  = 100.0;
 
-   if (Args->Flags & GMF_SAVE) {
+   if ((Args->Flags & GMF::SAVE) != GMF::NIL) {
       Self->Gamma[0]   = red;
       Self->Gamma[1] = green;
       Self->Gamma[2]  = blue;
@@ -1659,7 +1659,7 @@ int MinH: The minimum horizontal scan rate.  Usually set to 31.
 int MaxH: The maximum horizontal scan rate.
 int MinV: The minimum vertical scan rate.  Usually set to 50.
 int MaxV: The maximum vertical scan rate.
-int(SMF) Flags: Set to SMF_AUTO_DETECT if the monitor settings should be auto-detected on startup.  Set SMF_BIT_6 if the device is limited to 6-bit colour output.
+int(MON) Flags: Set to AUTO_DETECT if the monitor settings should be auto-detected on startup.  Set BIT_6 if the device is limited to 6-bit colour output.
 
 -ERRORS-
 Okay
@@ -1685,7 +1685,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
 
    log.branch("%s", Args->Name);
 
-   glSixBitDisplay = (Args->Flags & SMF_BIT_6) ? 1 : 0;
+   glSixBitDisplay = ((Args->Flags & MON::BIT_6) != MON::NIL);
    if (glSixBitDisplay) Self->Flags |= SCR_BIT_6;
    else Self->Flags &= ~SCR_BIT_6;
 
@@ -1740,7 +1740,7 @@ static ERROR DISPLAY_SetMonitor(extDisplay *Self, struct gfxSetMonitor *Args)
       config->write("MONITOR", "MaxH", Self->MaxHScan);
       config->write("MONITOR", "MinV", Self->MinVScan);
       config->write("MONITOR", "MaxV", Self->MaxVScan);
-      config->write("MONITOR", "AutoDetect", (Args->Flags & SMF_AUTODETECT) ? 1 : 0);
+      config->write("MONITOR", "AutoDetect", ((Args->Flags & MON::AUTODETECT) != MON::NIL) ? 1 : 0);
       config->write("MONITOR", "6Bit", glSixBitDisplay);
       config->saveSettings();
    }

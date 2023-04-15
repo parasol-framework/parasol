@@ -39,7 +39,7 @@ void gfxSetClipRegion(extBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG
 ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
 ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y);
 ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-ERROR gfxSetHostOption(LONG Option, LARGE Value);
+ERROR gfxSetHostOption(HOST Option, LARGE Value);
 OBJECTID gfxSetModalSurface(OBJECTID Surface);
 ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
 ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);

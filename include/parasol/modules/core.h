@@ -3170,7 +3170,7 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
 
 INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
+   struct mcFindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
    ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
    if (Field) *Field = args.Field;
    if (Source) *Source = args.Source;
@@ -3379,7 +3379,7 @@ INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
 INLINE ERROR flNext(APTR Ob, objFile ** File) {
-   struct flNext args = { 0 };
+   struct flNext args = { (objFile *)0 };
    ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
    return(error);
@@ -3567,7 +3567,7 @@ struct cfgMergeFile { CSTRING Path;  };
 struct cfgMerge { OBJECTPTR Source;  };
 
 INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
-   struct cfgReadValue args = { Group, Key, 0 };
+   struct cfgReadValue args = { Group, Key, (CSTRING)0 };
    ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
@@ -3594,7 +3594,7 @@ INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) {
 }
 
 INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) {
-   struct cfgGetGroupFromIndex args = { Index, 0 };
+   struct cfgGetGroupFromIndex args = { Index, (CSTRING)0 };
    ERROR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
    if (Group) *Group = args.Group;
    return(error);
@@ -3786,14 +3786,14 @@ INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
 }
 
 INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) {
-   struct scCallback args = { ProcedureID, Args, TotalArgs, 0 };
+   struct scCallback args = { ProcedureID, Args, TotalArgs, (LONG)0 };
    ERROR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
    if (Error) *Error = args.Error;
    return(error);
 }
 
 INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
-   struct scGetProcedureID args = { Procedure, 0 };
+   struct scGetProcedureID args = { Procedure, (LARGE)0 };
    ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
    if (ProcedureID) *ProcedureID = args.ProcedureID;
    return(error);
@@ -3952,7 +3952,7 @@ INLINE ERROR taskAddArgument(APTR Ob, CSTRING Argument) {
 #define taskQuit(obj) Action(MT_TaskQuit,(obj),0)
 
 INLINE ERROR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) {
-   struct taskGetEnv args = { Name, 0 };
+   struct taskGetEnv args = { Name, (CSTRING)0 };
    ERROR error = Action(MT_TaskGetEnv, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
@@ -4187,7 +4187,7 @@ class objThread : public BaseClass {
 struct modResolveSymbol { CSTRING Name; APTR Address;  };
 
 INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
-   struct modResolveSymbol args = { Name, 0 };
+   struct modResolveSymbol args = { Name, (APTR)0 };
    ERROR error = Action(MT_ModResolveSymbol, (OBJECTPTR)Ob, &args);
    if (Address) *Address = args.Address;
    return(error);
@@ -4387,7 +4387,7 @@ struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
 struct cmpFind { CSTRING Path; STR Flags; struct CompressedItem * Item;  };
 
 INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) {
-   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, 0 };
+   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpCompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -4399,7 +4399,7 @@ INLINE ERROR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) {
 }
 
 INLINE ERROR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) {
-   struct cmpDecompressBuffer args = { Input, Output, OutputSize, 0 };
+   struct cmpDecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpDecompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -4450,7 +4450,7 @@ INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callbac
 }
 
 INLINE ERROR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) {
-   struct cmpFind args = { Path, Flags, 0 };
+   struct cmpFind args = { Path, Flags, (struct CompressedItem *)0 };
    ERROR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);

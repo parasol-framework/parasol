@@ -71,7 +71,7 @@ static Cursor create_blank_cursor(void)
    return cursor;
 }
 
-static Cursor get_x11_cursor(LONG CursorID)
+static Cursor get_x11_cursor(PTC CursorID)
 {
    pf::Log log(__FUNCTION__);
 

@@ -91,7 +91,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
 
-  enum("HOST", { start=1 },
+  enum("HOST", { type="int", start=1 },
     "TRAY_ICON: All new displays are represented in the system tray when this option is active.",
     "TASKBAR: The hosted display is given a taskbar button.",
     "STICK_TO_FRONT: The hosted display sticks to the front.",
@@ -181,11 +181,11 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { READ_ONLY       = "MAXIMISE|CUSTOM_WINDOW|FLIPPABLE|GTF_ENABLED|DPMS_ENABLED|POWERSAVE|HOSTED|MAXSIZE|REFRESH|BIT_6|VISIBLE|NO_ACCELERATION" }
   )
 
-  flags("SMF", { comment="Flags for the Display class SetMonitor() method." },
+  flags("MON", { strict=true, comment="Flags for the Display class SetMonitor() method." },
      "AUTO_DETECT: Monitor settings to be auto-detected on startup.",
      "BIT_6: The device is limited to 6-bit colour production in real terms.")
 
-  flags("GMF", { comment="Flags for gamma operations." },
+  flags("GMF", { strict=true, comment="Flags for gamma operations." },
      "SAVE: Save the provided settings permanently.")
 
   enum("DT", { type="int", start=1, comment="Flags for GetDisplayType()." },
@@ -204,7 +204,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
 
-  flags('CLIPTYPE', { comment='Clipboard types' },
+  flags('CLIPTYPE', { strict=true, comment='Clipboard types' },
     'DATA: Raw information that is uncategorised can be defined as a data clip.',
     'AUDIO: An audio clip that is recognised by the Sound class (such as wav\'s and mp3\'s).',
     'IMAGE: Images that are recognised by the Picture class may be stored as this type (such as jpeg\'s and png files).',
@@ -217,7 +217,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.',
     'HISTORY_BUFFER: Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.')
 
-  flags('CEF', { },
+  flags('CEF', { strict=true },
     'DELETE: Requests that the original file source is deleted if a successful paste operation takes place.',
     'EXTEND: Instead of replacing existing clipboard data, add the new data to the group.')
 

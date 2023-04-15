@@ -236,7 +236,7 @@ SetHostOption: Alter options associated with the host display system.
 For internal usage only.
 
 -INPUT-
-int(HOST) Option: One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.
+int(HOST) Option: One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.
 large Value: The value to be applied to the option.
 
 -ERRORS-
@@ -244,28 +244,28 @@ Okay
 
 *********************************************************************************************************************/
 
-ERROR gfxSetHostOption(LONG Option, LARGE Value)
+ERROR gfxSetHostOption(HOST Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    pf::Log log(__FUNCTION__);
 
    switch (Option) {
-      case HOST_TRAY_ICON:
+      case HOST::TRAY_ICON:
          glTrayIcon += Value;
          if (glTrayIcon) glTaskBar = 0;
          break;
 
-      case HOST_TASKBAR:
+      case HOST::TASKBAR:
          glTaskBar = Value;
          if (glTaskBar) glTrayIcon = 0;
          break;
 
-      case HOST_STICK_TO_FRONT:
+      case HOST::STICK_TO_FRONT:
          glStickToFront += Value;
          break;
 
       default:
-         log.warning("Invalid option %d, Data %" PF64, Option, Value);
+         log.warning("Invalid option %d, Data %" PF64, LONG(Option), Value);
    }
 #endif
 

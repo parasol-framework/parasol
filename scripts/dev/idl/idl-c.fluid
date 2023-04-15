@@ -991,7 +991,7 @@ function class(Name, Options, Blueprint, Private, Custom)
 
                if nz(values) then values = values .. ', ' end
                if (param.resultValue) then
-                  values  = values .. '0'
+                  values  = values .. '(' .. param.basicType .. ')0'
                   results = true
                else
                   values = values .. pName(param)
