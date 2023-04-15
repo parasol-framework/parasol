@@ -217,7 +217,7 @@ DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
 LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
-LONG glpWindowType = SWIN_HOST;
+SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
 

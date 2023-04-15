@@ -1160,7 +1160,7 @@ static LONG examine_chain(extPointer *Self, LONG Index, SURFACELIST &List, LONG 
    auto x = Self->X;
    auto y = Self->Y;
    for (auto i=End-1; i >= 0; i--) {
-      if ((List[i].ParentID IS objectid) and (List[i].Flags & RNF_VISIBLE)) {
+      if ((List[i].ParentID IS objectid) and (List[i].visible())) {
          if ((x >= List[i].Left) and (x < List[i].Right) and (y >= List[i].Top) and (y < List[i].Bottom)) {
             LONG new_end;
             for (new_end=i+1; List[new_end].Level > List[i].Level; new_end++); // Recalculate the end (optimisation)

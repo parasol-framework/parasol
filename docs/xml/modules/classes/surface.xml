@@ -164,13 +164,13 @@ the surface area first).</li>
     <method>
       <name>Expose</name>
       <comment>Redraws a surface region to the display, preferably from its graphics buffer.</comment>
-      <prototype>ERROR drwExpose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)</prototype>
+      <prototype>ERROR drwExpose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
       <input>
         <param type="LONG" name="X">X coordinate of the expose area.</param>
         <param type="LONG" name="Y">Y coordinate of the expose area.</param>
         <param type="LONG" name="Width">Width of the expose area.</param>
         <param type="LONG" name="Height">Height of the expose area.</param>
-        <param type="LONG" name="Flags" lookup="EXF">Optional flags.</param>
+        <param type="EXF" name="Flags" lookup="EXF">Optional flags.</param>
       </input>
       <description>
 <p>Call the Expose method to copy a surface region to the display.  The functionality is identical to that of the ExposeSurface() function in the Surface module.  Please refer to it for further documentation.</p>
@@ -470,7 +470,7 @@ the surface area first).</li>
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="RNF">INT</type>
+      <type lookup="RNF">RNF</type>
       <description>
 <p>The Flags field allows special options to be set for a surface object.  Use a logical-OR operation when setting this field so that existing flags are not overwritten.  To not do so can produce unexpected behaviour.</p>
 <types lookup="RNF"/>
@@ -912,7 +912,7 @@ the surface area first).</li>
       <const name="EXPOSE_CHANGES"/>
     </constants>
 
-    <constants lookup="RNF">
+    <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
       <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
@@ -944,6 +944,10 @@ the surface area first).</li>
       <const name="VISIBLE">If a surface object is visible to the user, the VISIBLE flag will be set.  If the flag is not set, the surface object is hidden.</const>
       <const name="VOLATILE">Synonym for PRECOPY | AFTER_COPY | CURSOR</const>
       <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
+    </constants>
+
+    <constants lookup="RT">
+      <const name="ROOT">Can be used by window surfaces to identify themselves as a root layer.</const>
     </constants>
 
     <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
@@ -1006,7 +1010,7 @@ the surface area first).</li>
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
       <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
-      <field name="Flags" type="LONG" lookup="RNF">Surface flags</field>
+      <field name="Flags" type="RNF" lookup="RNF">Surface flags</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
       <field name="Width" type="LONG">Width of the surface area</field>

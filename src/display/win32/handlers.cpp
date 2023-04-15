@@ -199,7 +199,7 @@ void MsgSetFocus(OBJECTID SurfaceID)
    pf::Log log;
    objSurface *surface;
    if (!AccessObject(SurfaceID, 3000, &surface)) {
-      if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
+      if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
       }
@@ -233,7 +233,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
       if (*Width > maxwidth + left + right)   *Width  = maxwidth + left + right;
       if (*Height > maxheight + top + bottom) *Height = maxheight + top + bottom;
 
-      if (surface->Flags & RNF_ASPECT_RATIO) {
+      if ((surface->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
          if (minwidth > minheight) {
             DOUBLE scale = (DOUBLE)minheight / (DOUBLE)minwidth;
             *Height = *Width * scale;
@@ -253,7 +253,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    if ((Width) and (Height)) {
-      struct drwExpose expose = { X, Y, Width, Height, EXF_CHILDREN };
+      struct drwExpose expose = { X, Y, Width, Height, EXF::CHILDREN };
       ActionMsg(MT_DrwExpose, SurfaceID, &expose);
    }
    else ActionMsg(MT_DrwExpose, SurfaceID, NULL);

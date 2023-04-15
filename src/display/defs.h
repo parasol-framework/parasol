@@ -106,8 +106,6 @@
 #include <parasol/modules/xml.h>
 #include <parasol/linear_rgb.h>
 
-#define URF_REDRAWS_CHILDREN     0x00000001
-
 #define UpdateSurfaceRecord(a) update_surface_copy(a)
 
 struct SurfaceRecord {
@@ -118,7 +116,7 @@ struct SurfaceRecord {
    OBJECTID DisplayID;     // Display
    OBJECTID RootID;        // RootLayer
    OBJECTID PopOverID;
-   LONG     Flags;         // Surface flags (RNF_VISIBLE etc)
+   RNF      Flags;         // Surface flags (RNF::VISIBLE etc)
    LONG     X;             // Horizontal coordinate
    LONG     Y;             // Vertical coordinate
    LONG     Width;         // Width
@@ -145,8 +143,13 @@ struct SurfaceRecord {
       return std::move(ClipRectangle(Left, Top, Right, Bottom));
    }
 
-   inline bool hasFocus() const { return Flags & RNF_HAS_FOCUS; }
-   inline void dropFocus() { Flags &= RNF_HAS_FOCUS; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline void dropFocus() { Flags &= RNF::HAS_FOCUS; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool isVolatile() const { return (Flags & RNF::VOLATILE) != RNF::NIL; }
+   inline bool isCursor() const { return (Flags & RNF::CURSOR) != RNF::NIL; }
 };
 
 typedef std::vector<SurfaceRecord> SURFACELIST;
@@ -355,6 +358,7 @@ class extSurface : public objSurface {
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
+   SWIN     WindowType;           // See SWIN constants
    TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
    SurfaceCallback CallbackCache[4];
@@ -372,7 +376,6 @@ class extSurface : public objSurface {
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
    UBYTE    CallbackSize;         // Current size of the callback array.
-   BYTE     WindowType;           // See SWIN constants
    BYTE     Anchored;
 };
 
@@ -470,14 +473,14 @@ extern void  untrack_layer(OBJECTID);
 extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
 extern ERROR load_style_values(void);
 extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, LONG, LONG);
-extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
-extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
-extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, LONG);
+extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
+extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
+extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
+extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
 extern ERROR update_surface_copy(extSurface *);
 
-extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
+extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
 #ifdef DBG_LAYERS
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
@@ -501,7 +504,7 @@ extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
 extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
 extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
 extern LONG glpMaximise, glpFullScreen;
-extern LONG glpWindowType;
+extern SWIN glpWindowType;
 extern char glpDPMS[20];
 extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;

@@ -807,7 +807,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    objSurface *surface;
    if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
-      surface->setFlags(surface->Flags|RNF_GRAB_FOCUS);
+      surface->setFlags(surface->Flags|RNF::GRAB_FOCUS);
 
       Self->Surface.X = surface->X;
       Self->Surface.Y = surface->Y;
@@ -830,7 +830,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
       callback = make_function_stdc(notify_show);
       SubscribeAction(surface, AC_Show, &callback);
 
-      if (surface->Flags & RNF_HAS_FOCUS) {
+      if (surface->hasFocus()) {
          auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }

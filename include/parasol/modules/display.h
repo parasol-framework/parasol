@@ -47,75 +47,116 @@ enum class CS : LONG {
 
 // Optional flags for the ExposeSurface() function.
 
-#define EXF_CHILDREN 0x00000001
-#define EXF_REDRAW_VOLATILE 0x00000002
-#define EXF_REDRAW_VOLATILE_OVERLAP 0x00000004
-#define EXF_ABSOLUTE_COORDS 0x00000008
-#define EXF_ABSOLUTE 0x00000008
-#define EXF_CURSOR_SPLIT 0x00000010
+enum class EXF : ULONG {
+   NIL = 0,
+   CHILDREN = 0x00000001,
+   REDRAW_VOLATILE = 0x00000002,
+   REDRAW_VOLATILE_OVERLAP = 0x00000004,
+   ABSOLUTE_COORDS = 0x00000008,
+   ABSOLUTE = 0x00000008,
+   CURSOR_SPLIT = 0x00000010,
+};
 
-#define RT_ROOT 0x00000001
+DEFINE_ENUM_FLAG_OPERATORS(EXF)
+
+enum class RT : ULONG {
+   NIL = 0,
+   ROOT = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RT)
 
 // drwLockBitmap() result flags
 
-#define LVF_EXPOSE_CHANGES 0x00000001
+enum class LVF : ULONG {
+   NIL = 0,
+   EXPOSE_CHANGES = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(LVF)
 
 // Flags for RedrawSurface().
 
-#define IRF_IGNORE_NV_CHILDREN 0x00000001
-#define IRF_IGNORE_CHILDREN 0x00000002
-#define IRF_SINGLE_BITMAP 0x00000004
-#define IRF_RELATIVE 0x00000008
-#define IRF_FORCE_DRAW 0x00000010
+enum class IRF : ULONG {
+   NIL = 0,
+   IGNORE_NV_CHILDREN = 0x00000001,
+   IGNORE_CHILDREN = 0x00000002,
+   SINGLE_BITMAP = 0x00000004,
+   RELATIVE = 0x00000008,
+   FORCE_DRAW = 0x00000010,
+   REDRAWS_CHILDREN = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(IRF)
 
 // CopySurface() flags
 
-#define BDF_REDRAW 0x00000001
-#define BDF_DITHER 0x00000002
+enum class BDF : ULONG {
+   NIL = 0,
+   REDRAW = 0x00000001,
+   DITHER = 0x00000002,
+};
 
-#define DSF_NO_DRAW 0x00000001
-#define DSF_NO_EXPOSE 0x00000002
+DEFINE_ENUM_FLAG_OPERATORS(BDF)
+
+enum class DSF : ULONG {
+   NIL = 0,
+   NO_DRAW = 0x00000001,
+   NO_EXPOSE = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DSF)
 
 // Options for the Surface WindowType field.
 
-#define SWIN_HOST 0
-#define SWIN_TASKBAR 1
-#define SWIN_ICON_TRAY 2
-#define SWIN_NONE 3
+enum class SWIN : LONG {
+   NIL = 0,
+   HOST = 0,
+   TASKBAR = 1,
+   ICON_TRAY = 2,
+   NONE = 3,
+};
 
-#define RNF_TRANSPARENT 0x00000001
-#define RNF_STICK_TO_BACK 0x00000002
-#define RNF_STICK_TO_FRONT 0x00000004
-#define RNF_VISIBLE 0x00000008
-#define RNF_STICKY 0x00000010
-#define RNF_GRAB_FOCUS 0x00000020
-#define RNF_HAS_FOCUS 0x00000040
-#define RNF_DISABLED 0x00000080
-#define RNF_AUTO_QUIT 0x00000100
-#define RNF_HOST 0x00000200
-#define RNF_PRECOPY 0x00000400
-#define RNF_WRITE_ONLY 0x00000800
-#define RNF_VIDEO 0x00000800
-#define RNF_NO_HORIZONTAL 0x00001000
-#define RNF_NO_VERTICAL 0x00002000
-#define RNF_CURSOR 0x00004000
-#define RNF_POINTER 0x00004000
-#define RNF_SCROLL_CONTENT 0x00008000
-#define RNF_AFTER_COPY 0x00010000
-#define RNF_READ_ONLY 0x00014040
-#define RNF_VOLATILE 0x00014400
-#define RNF_FIXED_BUFFER 0x00020000
-#define RNF_PERVASIVE_COPY 0x00040000
-#define RNF_NO_FOCUS 0x00080000
-#define RNF_FIXED_DEPTH 0x00100000
-#define RNF_TOTAL_REDRAW 0x00200000
-#define RNF_POST_COMPOSITE 0x00400000
-#define RNF_COMPOSITE 0x00400000
-#define RNF_NO_PRECOMPOSITE 0x00400000
-#define RNF_FULL_SCREEN 0x00800000
-#define RNF_IGNORE_FOCUS 0x01000000
-#define RNF_INIT_ONLY 0x01960e81
-#define RNF_ASPECT_RATIO 0x02000000
+// Switches for the Surface class' Flags field.
+
+enum class RNF : ULONG {
+   NIL = 0,
+   TRANSPARENT = 0x00000001,
+   STICK_TO_BACK = 0x00000002,
+   STICK_TO_FRONT = 0x00000004,
+   VISIBLE = 0x00000008,
+   STICKY = 0x00000010,
+   GRAB_FOCUS = 0x00000020,
+   HAS_FOCUS = 0x00000040,
+   DISABLED = 0x00000080,
+   AUTO_QUIT = 0x00000100,
+   HOST = 0x00000200,
+   PRECOPY = 0x00000400,
+   WRITE_ONLY = 0x00000800,
+   VIDEO = 0x00000800,
+   NO_HORIZONTAL = 0x00001000,
+   NO_VERTICAL = 0x00002000,
+   CURSOR = 0x00004000,
+   POINTER = 0x00004000,
+   SCROLL_CONTENT = 0x00008000,
+   AFTER_COPY = 0x00010000,
+   READ_ONLY = 0x00014040,
+   VOLATILE = 0x00014400,
+   FIXED_BUFFER = 0x00020000,
+   PERVASIVE_COPY = 0x00040000,
+   NO_FOCUS = 0x00080000,
+   FIXED_DEPTH = 0x00100000,
+   TOTAL_REDRAW = 0x00200000,
+   POST_COMPOSITE = 0x00400000,
+   COMPOSITE = 0x00400000,
+   NO_PRECOMPOSITE = 0x00400000,
+   FULL_SCREEN = 0x00800000,
+   IGNORE_FOCUS = 0x01000000,
+   INIT_ONLY = 0x01960e81,
+   ASPECT_RATIO = 0x02000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RNF)
 
 #define HOST_TRAY_ICON 1
 #define HOST_TASKBAR 2
@@ -287,7 +328,7 @@ typedef struct SurfaceInfoV2 {
    OBJECTID ParentID;    // Object that contains the surface area
    OBJECTID BitmapID;    // Surface bitmap buffer
    OBJECTID DisplayID;   // Refers to the display if this object is at root level
-   LONG     Flags;       // Surface flags
+   RNF      Flags;       // Surface flags
    LONG     X;           // Horizontal coordinate
    LONG     Y;           // Vertical coordinate
    LONG     Width;       // Width of the surface area
@@ -298,6 +339,10 @@ typedef struct SurfaceInfoV2 {
    BYTE     BitsPerPixel; // Bits per pixel of the bitmap
    BYTE     BytesPerPixel; // Bytes per pixel of the bitmap
    LONG     LineWidth;   // Line width of the bitmap, in bytes
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
 } SURFACEINFO;
 
 struct SurfaceCallback {
@@ -1235,8 +1280,8 @@ class objPointer : public BaseClass {
 #define MT_DrwRemoveCallback -9
 #define MT_DrwScheduleRedraw -10
 
-struct drwInheritedFocus { OBJECTID FocusID; LONG Flags;  };
-struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; LONG Flags;  };
+struct drwInheritedFocus { OBJECTID FocusID; RNF Flags;  };
+struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
 struct drwInvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height;  };
 struct drwSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
 struct drwSetOpacity { DOUBLE Value; DOUBLE Adjustment;  };
@@ -1244,12 +1289,12 @@ struct drwAddCallback { FUNCTION * Callback;  };
 struct drwResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
 struct drwRemoveCallback { FUNCTION * Callback;  };
 
-INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, LONG Flags) {
+INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) {
    struct drwInheritedFocus args = { FocusID, Flags };
    return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
 }
@@ -1303,7 +1348,7 @@ class objSurface : public BaseClass {
    LONG     TopLimit;   // Prevents a surface object from moving beyond a given point at the top of its container.
    LONG     BottomLimit; // Prevents a surface object from moving beyond a given point at the bottom of its container.
    OBJECTID DisplayID;  // Refers to the @Display object that is managing the surface's graphics.
-   LONG     Flags;      // Optional flags.
+   RNF      Flags;      // Optional flags.
    LONG     X;          // Determines the horizontal position of a surface object.
    LONG     Y;          // Determines the vertical position of a surface object.
    LONG     Width;      // Defines the width of a surface object.
@@ -1314,7 +1359,7 @@ class objSurface : public BaseClass {
    DRAG     DragStatus; // Indicates the draggable state when dragging is enabled.
    PTC      Cursor;     // A default cursor image can be set here for changing the mouse pointer.
    struct RGB8 Colour;  // String-based field for setting the background colour.
-   LONG     Type;       // Internal surface type flags
+   RT       Type;       // Internal surface type flags
    LONG     Modal;      // Sets the surface as modal (prevents user interaction with other surfaces).
 
 #ifdef PRV_SURFACE
@@ -1325,6 +1370,13 @@ class objSurface : public BaseClass {
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
 #endif
+   public:
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
+   inline bool disabled() const { return (Flags & RNF::DISABLED) != RNF::NIL; }
+   inline bool isCursor() const { return (Flags & RNF::CURSOR) != RNF::NIL; }
 
    // Action stubs
 
@@ -1466,7 +1518,7 @@ class objSurface : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const RNF Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1522,7 +1574,7 @@ class objSurface : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setType(const LONG Value) {
+   inline ERROR setType(const RT Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Type = Value;
       return ERR_Okay;
@@ -1628,11 +1680,11 @@ struct DisplayBase {
    ERROR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
    ERROR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERROR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERROR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    void (*_DrawPixel)(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
    void (*_DrawRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
    void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);
-   ERROR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
+   ERROR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
    void (*_FlipBitmap)(objBitmap * Bitmap, FLIP Orientation);
    void (*_GetColourFormat)(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
    ERROR (*_GetCursorInfo)(struct CursorInfo * Info, LONG Size);
@@ -1643,11 +1695,11 @@ struct DisplayBase {
    OBJECTID (*_GetModalSurface)(void);
    ERROR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetSurfaceCoords)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-   ERROR (*_GetSurfaceFlags)(OBJECTID Surface, LONG * Flags);
+   ERROR (*_GetSurfaceFlags)(OBJECTID Surface, RNF * Flags);
    ERROR (*_GetSurfaceInfo)(OBJECTID Surface, struct SurfaceInfoV2 ** Info);
    OBJECTID (*_GetUserFocus)(void);
    ERROR (*_GetVisibleArea)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-   ERROR (*_LockBitmap)(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info);
+   ERROR (*_LockBitmap)(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info);
    ERROR (*_LockCursor)(OBJECTID Surface);
    ULONG (*_ReadPixel)(objBitmap * Bitmap, LONG X, LONG Y);
    void (*_ReadRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
@@ -1675,11 +1727,11 @@ inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(
 inline ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
 inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
 inline ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
 inline void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
 inline void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
 inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
-inline ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
+inline ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
 inline void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
 inline void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
 inline ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
@@ -1690,11 +1742,11 @@ inline CSTRING gfxGetInputTypeName(JET Type) { return DisplayBase->_GetInputType
 inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
 inline ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
 inline ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
+inline ERROR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
 inline ERROR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
 inline OBJECTID gfxGetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
 inline ERROR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
+inline ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
 inline ERROR gfxLockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
 inline ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
 inline void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
@@ -1738,7 +1790,7 @@ INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width
    return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
 }
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return ActionMsg(MT_DrwExpose, ObjectID, &args);
 }

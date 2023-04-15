@@ -118,11 +118,11 @@
     <name>CopySurface</name>
     <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
       <param type="objBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
-      <param type="LONG" name="Flags" lookup="BDF">Optional flags.</param>
+      <param type="BDF" name="Flags" lookup="BDF">Optional flags.</param>
       <param type="LONG" name="X">The horizontal source coordinate.</param>
       <param type="LONG" name="Y">The vertical source coordinate.</param>
       <param type="LONG" name="Width">The width of the graphic that will be copied.</param>
@@ -196,17 +196,17 @@
     <name>ExposeSurface</name>
     <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
-    <prototype>ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)</prototype>
+    <prototype>ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
       <param type="LONG" name="X">The horizontal coordinate of the area to expose.</param>
       <param type="LONG" name="Y">The vertical coordinate of the area to expose.</param>
       <param type="LONG" name="Width">The width of the expose area.</param>
       <param type="LONG" name="Height">The height of the expose area.</param>
-      <param type="LONG" name="Flags" lookup="EXF">Optional flags - EXF_CHILDREN will expose all intersecting child regions.</param>
+      <param type="EXF" name="Flags" lookup="EXF">Optional flags - using CHILDREN will expose all intersecting child regions.</param>
     </input>
     <description>
-<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF_CHILDREN</code> flag.</p>
+<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF::CHILDREN</code> flag.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -416,10 +416,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceFlags</name>
     <category>Surfaces</category>
     <comment>Retrieves the Flags field from a surface.</comment>
-    <prototype>ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags)</prototype>
+    <prototype>ERROR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level surface is queried.</param>
-      <param type="LONG *" name="Flags">The flags value is returned here.</param>
+      <param type="RNF *" name="Flags" lookup="RNF">The flags value is returned here.</param>
     </input>
     <description>
 <p>This function returns the current Flags field from a surface.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
@@ -491,11 +491,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>LockBitmap</name>
     <category>Surfaces</category>
     <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info)</prototype>
+    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
       <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
-      <param type="LONG *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If LVF_EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
+      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
     </input>
     <description>
 <p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
@@ -1077,7 +1077,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
     </constants>
 
-    <constants lookup="RNF">
+    <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
       <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
@@ -1225,7 +1225,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
       <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
-      <field name="Flags" type="LONG" lookup="RNF">Surface flags</field>
+      <field name="Flags" type="RNF" lookup="RNF">Surface flags</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
       <field name="Width" type="LONG">Width of the surface area</field>

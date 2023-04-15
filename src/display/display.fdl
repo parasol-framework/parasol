@@ -25,41 +25,42 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
     "CIE_LCH: Polar L*CHab colour space defined by CIE 15.")
 
-  flags("EXF", { comment="Optional flags for the ExposeSurface() function." },
+  flags("EXF", { strict=true, comment="Optional flags for the ExposeSurface() function." },
     "CHILDREN: If set, all child surfaces that intersect with exposed region will be included in the expose operation.",
     "REDRAW_VOLATILE: Redraw every volatile object that intersects with the expose region, including internal volatile children.",
     "REDRAW_VOLATILE_OVERLAP: Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.",
     "ABSOLUTE_COORDS|ABSOLUTE: The supplied coordinates for exposure are absolute (relative to the display).",
     "CURSOR_SPLIT: Internal flag used to reduce screen flickering when a software cursor is in use.")
 
-  flags("RT", { },
+  flags("RT", { strict=true },
      "ROOT: Can be used by window surfaces to identify themselves as a root layer.")
 
-  flags("LVF", { comment="drwLockBitmap() result flags" },
+  flags("LVF", { strict=true, comment="drwLockBitmap() result flags" },
      "EXPOSE_CHANGES")
 
-  flags("IRF", { comment="Flags for RedrawSurface()." },
+  flags("IRF", { strict=true, comment="Flags for RedrawSurface()." },
     "IGNORE_NV_CHILDREN: Do not draw child surfaces unless they are volatile.",
     "IGNORE_CHILDREN: Do not draw child surfaces (this includes volatile children).",
     "SINGLE_BITMAP: Only draw children and/or siblings when they share our bitmap space.",
     "RELATIVE: Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.",
-    "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).")
+    "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).",
+    "REDRAWS_CHILDREN: Private.")
 
-  flags("BDF", { comment="CopySurface() flags" },
+  flags("BDF", { strict=true, comment="CopySurface() flags" },
     "REDRAW: Redraw the surface before performing the copy operation.",
     "DITHER: Allow the use of dithering to improve image quality at a cost of speed.")
 
-  flags("DSF", { },
+  flags("DSF", { strict=true },
     "NO_DRAW: Drawing and exposures are disabled",
     "NO_EXPOSE: Drawing is enabled, exposures are disabled")
 
-  enum("SWIN", { start=0, comment="Options for the Surface WindowType field." },
+  enum("SWIN", { type="int", start=0, comment="Options for the Surface WindowType field." },
     "HOST: Default to the standard hosted window mode with full titlebar, borders and taskbar representation.",
     "TASKBAR: Create a borderless (custom) window with taskbar representation.",
     "ICON_TRAY: Create a borderless (custom) window with icon tray representation.",
     "NONE: Create a borderless (custom) window with no UI representation.")
 
-  flags("RNF", { "Switches for the Surface class' Flags field." },
+  flags("RNF", { strict=true, comment="Switches for the Surface class' Flags field." },
     "TRANSPARENT: Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.",
     "STICK_TO_BACK: Enable if the surface object must stick to the back of its container.",
     "STICK_TO_FRONT: Enable if the surface object must stick to the front of its container.",
@@ -236,6 +237,12 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     char BitsPerPixel   # Bits per pixel of the bitmap
     char BytesPerPixel  # Bytes per pixel of the bitmap
     int LineWidth       # Line width of the bitmap, in bytes
+  ]],
+  [[
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
   ]])
 
   struct("SurfaceCallback", { restrict="c", comment="Private structure for managing surface callbacks." }, [[
@@ -556,7 +563,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int(DRAG) DragStatus  # Indicates the draggable state when dragging is enabled.
     int(PTC) Cursor       # The preferred cursor image to use when the pointer is over the surface
     struct(RGB8) Colour   # Background colour specification
-    int Type              # Internal surface type flags
+    int(RT) Type          # Internal surface type flags
     int Modal             # Set to 1 to enable modal mode
   ]],
   [[
@@ -566,6 +573,14 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
    DOUBLE   YOffsetPercent;       // Relative vertical offset
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
+  ]],
+  [[
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
+   inline bool disabled() const { return (Flags & RNF::DISABLED) != RNF::NIL; }
+   inline bool isCursor() const { return (Flags & RNF::CURSOR) != RNF::NIL; }
   ]])
 
   functionNames("gfx",
@@ -636,7 +651,7 @@ INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width
    return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
 }
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return ActionMsg(MT_DrwExpose, ObjectID, &args);
 }

@@ -150,7 +150,7 @@ static int input_keyboard(lua_State *Lua)
 
       objSurface *surface;
       if (!AccessObject(object_id, 5000, &surface)) {
-         if (surface->Flags & RNF_HAS_FOCUS) sub_keyevent = true;
+         if (surface->hasFocus()) sub_keyevent = true;
          ReleaseObject(surface);
       }
       else {

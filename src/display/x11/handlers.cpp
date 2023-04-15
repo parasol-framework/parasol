@@ -66,7 +66,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if ((Atom)xevent.xclient.data.l[0] == XWADeleteWindow) {
                if (auto display_id = get_display(xevent.xany.window)) {
                   auto surface_id = GetOwnerID(display_id);
-                  const WindowHook hook(surface_id, WH_CLOSE);
+                  const WindowHook hook(surface_id, WH::CLOSE);
 
                   if (glWindowHooks.contains(hook)) {
                      auto func = &glWindowHooks[hook];
@@ -337,7 +337,7 @@ void handle_exposure(XExposeEvent *event)
 
       XEvent xevent;
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
-      struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF_CHILDREN };
+      struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
       QueueAction(MT_DrwExpose, surface_id, &region); // Redraw everything
    }
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);

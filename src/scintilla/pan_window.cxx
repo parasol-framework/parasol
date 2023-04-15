@@ -40,7 +40,7 @@ bool Scintilla::Window::HasFocus()
    log.branch();
 
    if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
-      if (info->Flags & RNF_HAS_FOCUS) return 1;
+      if (info->hasFocus()) return 1;
    }
 
    return 0;

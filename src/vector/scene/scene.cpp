@@ -375,7 +375,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
          callback = make_function_stdc(notify_lostfocus);
          SubscribeAction(*surface, AC_LostFocus, &callback);
 
-         if (surface->Flags & RNF_HAS_FOCUS) {
+         if (surface->hasFocus()) {
             callback = make_function_stdc(scene_key_event);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
          }
