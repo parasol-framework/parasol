@@ -1,16 +1,16 @@
 
 //********************************************************************************************************************
 
-static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG State)
+static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC State)
 {
    pf::Log log("http_feedback");
 
-   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
+   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, LONG(State), CurrentContext()->UID);
 
    auto Self = (extHTTP *)Socket->UserData; //(extHTTP *)CurrentContext();
    if (Self->Class->ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
 
-   if (State IS NTC_CONNECTING) {
+   if (State IS NTC::CONNECTING) {
       log.msg("Waiting for connection...");
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
@@ -21,7 +21,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 
       Self->Connecting = TRUE;
    }
-   else if (State IS NTC_CONNECTED) {
+   else if (State IS NTC::CONNECTED) {
       // The GET request has been pre-written to the socket on its creation, so we don't need to do anything further
       // here.
 
@@ -29,7 +29,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
       Self->Connecting = FALSE;
    }
-   else if (State IS NTC_DISCONNECTED) {
+   else if (State IS NTC::DISCONNECTED) {
       // Socket disconnected.  The HTTP state must change to either COMPLETED (completed naturally) or TERMINATED
       // (abnormal termination) to correctly inform the user as to what has happened.
 
@@ -447,7 +447,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   if (Self->Status IS 200) {
                      // Proxy tunnel established.  Convert the socket to an SSL connection, then send the HTTP command.
 
-                     if (!netSetSSL(Socket, NSL_CONNECT, TRUE, TAGEND)) {
+                     if (!netSetSSL(Socket, NSL::CONNECT, TRUE, TAGEND)) {
                         return acActivate(Self);
                      }
                      else {

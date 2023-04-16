@@ -164,9 +164,9 @@ static ERROR sslLinkSocket(extNetSocket *Self)
 // NetSocket has the NSF_SSL flag set, then the connection is handled automatically.  Otherwise a plain text socket
 // connection can be converted to SSL at any time (if the server is ready for it) by calling this function.
 //
-// The state will be changed to NTC_CONNECTED if the SSL connection is established immediately, otherwise
-// NTC_CONNECTING_SSL may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
-// NTC_DISCONNECTED and the Error field is set appropriately.
+// The state will be changed to NTC::CONNECTED if the SSL connection is established immediately, otherwise
+// NTC::CONNECTING_SSL may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
+// NTC::DISCONNECTED and the Error field is set appropriately.
 
 static ERROR sslConnect(extNetSocket *Self)
 {
@@ -190,10 +190,10 @@ static ERROR sslConnect(extNetSocket *Self)
 
          case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR_Disconnected; break;
 
-         case SSL_ERROR_WANT_READ:        Self->setState(NTC_CONNECTING_SSL);
+         case SSL_ERROR_WANT_READ:        Self->setState(NTC::CONNECTING_SSL);
                                           return ERR_Okay;
 
-         case SSL_ERROR_WANT_WRITE:       Self->setState(NTC_CONNECTING_SSL);
+         case SSL_ERROR_WANT_WRITE:       Self->setState(NTC::CONNECTING_SSL);
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR_WouldBlock; break;
@@ -209,12 +209,12 @@ static ERROR sslConnect(extNetSocket *Self)
       }
 
       log.warning("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
-      Self->setState(NTC_DISCONNECTED);
+      Self->setState(NTC::DISCONNECTED);
       return Self->Error;
    }
    else {
       log.trace("sslConnect:","SSL server connection successful.");
-      Self->setState(NTC_CONNECTED);
+      Self->setState(NTC::CONNECTED);
       return ERR_Okay;
    }
 }

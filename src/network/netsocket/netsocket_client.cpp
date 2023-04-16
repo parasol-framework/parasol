@@ -30,7 +30,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       sslConnect(Self);
       if (Self->Error) return;
 
-      if (Self->State IS NTC_CONNECTING_SSL) {
+      if (Self->State IS NTC::CONNECTING_SSL) {
          RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       }
       return;
@@ -39,7 +39,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    if (!result) {
       log.traceBranch("Connection succesful.");
-      Self->setState(NTC_CONNECTED);
+      Self->setState(NTC::CONNECTED);
       RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       return;
    }
@@ -54,7 +54,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
       log.error(Self->Error);
 
-      Self->setState(NTC_DISCONNECTED);
+      Self->setState(NTC::DISCONNECTED);
    }
 }
 #endif
@@ -82,7 +82,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
    }
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC_CONNECTING_SSL)) {
+   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.traceBranch("Continuing SSL communication...");
       sslConnect(Self);
       return;
@@ -173,7 +173,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if (Self->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC_CONNECTING_SSL)) {
+   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }

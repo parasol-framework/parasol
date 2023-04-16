@@ -266,7 +266,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="NSF">INT</type>
+      <type lookup="NSF">NSF</type>
       <description>
 <types lookup="NSF"/>
       </description>
@@ -333,7 +333,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>State</name>
       <comment>The current connection state of the netsocket object.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="NTC">INT</type>
+      <type lookup="NTC">NTC</type>
       <description>
 <types lookup="NTC"/>
       </description>
@@ -392,7 +392,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   <structs>
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
+      <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 

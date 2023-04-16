@@ -87,7 +87,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if (Socket->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Socket->SSL) and (Socket->State IS NTC_CONNECTING_SSL)) {
+   if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }

@@ -248,12 +248,12 @@ static LONG  extract_value(CSTRING, STRING *);
 static void  writehex(HASH, HASHHEX);
 static void  digest_calc_ha1(extHTTP *, HASHHEX);
 static void  digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERROR write_socket(extHTTP *, CPTR Buffer, LONG Length, LONG *Result);
+static ERROR write_socket(extHTTP *, CPTR, LONG, LONG *);
 static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &);
 static ERROR SET_Path(extHTTP *, CSTRING);
 static ERROR SET_Location(extHTTP *, CSTRING);
 static ERROR timeout_manager(extHTTP *, LARGE, LARGE);
-static void  socket_feedback(objNetSocket *, objClientSocket *, LONG);
+static void  socket_feedback(objNetSocket *, objClientSocket *, NTC);
 static ERROR socket_incoming(objNetSocket *);
 static ERROR socket_outgoing(objNetSocket *);
 
@@ -380,7 +380,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    Self->Tunneling     = FALSE;
    Self->Flags        &= ~(HTF_MOVED|HTF_REDIRECTED);
 
-   if ((Self->Socket) and (Self->Socket->State IS NTC_DISCONNECTED)) {
+   if ((Self->Socket) and (Self->Socket->State IS NTC::DISCONNECTED)) {
       Self->Socket->set(FID_Feedback, (APTR)NULL);
       FreeResource(Self->Socket);
       Self->Socket = NULL;
@@ -633,7 +633,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
 
-      LONG flags = ((Self->Flags & HTF_SSL) and (!Self->Tunneling)) ? NSF_SSL : 0;
+      auto flags = ((Self->Flags & HTF_SSL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
 
       if (!(Self->Socket = objNetSocket::create::integral(
             fl::UserData(Self),
@@ -665,7 +665,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
    auto cstr = cmd.str();
    if (!write_socket(Self, cstr.c_str(), cstr.length(), NULL)) {
-      if (Self->Socket->State IS NTC_DISCONNECTED) {
+      if (Self->Socket->State IS NTC::DISCONNECTED) {
          ERROR result;
          if ((result = nsConnect(Self->Socket, Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port)) IS ERR_Okay) {
             Self->Connecting = true;
@@ -732,7 +732,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
       // (for example due to a timeout, or an early call to Deactivate).  This prevents any more incoming data from the
       // server being processed when we don't want it.
 
-      if ((Self->Socket->State IS NTC_DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
+      if ((Self->Socket->State IS NTC::DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
          Self->Socket->set(FID_Feedback, (APTR)NULL);
          FreeResource(Self->Socket);
