@@ -290,14 +290,14 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       xmlNewAttrib(tag, "stroke-dasharray", buffer);
    }
 
-   LONG linecap;
-   if ((!error) and (!Vector->get(FID_LineCap, &linecap))) {
+   VLC linecap;
+   if ((!error) and (!Vector->get(FID_LineCap, (LONG *)&linecap))) {
       switch (linecap) {
          default:
-         case VLC_BUTT:    break; // Default
-         case VLC_SQUARE:  xmlNewAttrib(tag, "stroke-linecap", "square"); break;
-         case VLC_ROUND:   xmlNewAttrib(tag, "stroke-linecap", "round"); break;
-         case VLC_INHERIT: xmlNewAttrib(tag, "stroke-linecap", "inherit"); break;
+         case VLC::BUTT:    break; // Default
+         case VLC::SQUARE:  xmlNewAttrib(tag, "stroke-linecap", "square"); break;
+         case VLC::ROUND:   xmlNewAttrib(tag, "stroke-linecap", "round"); break;
+         case VLC::INHERIT: xmlNewAttrib(tag, "stroke-linecap", "inherit"); break;
       }
    }
 

@@ -47,7 +47,7 @@ class extTurbulenceFX : public extFilterEffect {
    DOUBLE FX, FY;
    LONG Octaves;
    LONG Seed;
-   UBYTE Type;
+   TB Type;
    bool Stitch;
 
    private:
@@ -111,7 +111,7 @@ class extTurbulenceFX : public extFilterEffect {
       DOUBLE ratio = 1.0;
       for (LONG n=0; n < Octaves; n++) {
          DOUBLE noise = noise2(Channel, vx, vy);
-         if (Type IS TB_NOISE) sum += noise * ratio;
+         if (Type IS TB::NOISE) sum += noise * ratio;
          else sum += fabs(noise) * ratio;
          vx *= 2.0;
          vy *= 2.0;
@@ -119,7 +119,7 @@ class extTurbulenceFX : public extFilterEffect {
       }
 
       LONG col;
-      if (Type IS TB_NOISE) col = ((sum * 255.0) + 255.0) * 0.5;
+      if (Type IS TB::NOISE) col = ((sum * 255.0) + 255.0) * 0.5;
       else col = sum * 255.0;
 
       return (col < 0) ? 0 : (col > 255) ? 255 : col;
@@ -138,7 +138,7 @@ class extTurbulenceFX : public extFilterEffect {
       for (LONG n=0; n < Octaves; n++) {
          DOUBLE noise = noise2(Channel, vx, vy);
 
-         if (Type IS TB_NOISE) sum += noise * ratio;
+         if (Type IS TB::NOISE) sum += noise * ratio;
          else sum += fabs(noise) * ratio;
 
          vx *= 2;
@@ -153,7 +153,7 @@ class extTurbulenceFX : public extFilterEffect {
       }
 
       LONG col;
-      if (Type IS TB_NOISE) col = ((sum * 255.0) + 255.0) * 0.5;
+      if (Type IS TB::NOISE) col = ((sum * 255.0) + 255.0) * 0.5;
       else col = sum * 255.0;
 
       return (col < 0) ? 0 : (col > 255) ? 255 : col;
@@ -296,7 +296,7 @@ static ERROR TURBULENCEFX_NewObject(extTurbulenceFX *Self, APTR Void)
    Self->Octaves    = 1;
    Self->Stitch     = false;
    Self->Seed       = 0;
-   Self->Type       = TB_TURBULENCE;
+   Self->Type       = TB::TURBULENCE;
    Self->FX         = 0;
    Self->FY         = 0;
    Self->SourceType = VSF::NONE;
@@ -433,13 +433,13 @@ Type: Can be set to 'noise' or 'turbulence'.
 
 *********************************************************************************************************************/
 
-static ERROR TURBULENCEFX_GET_Type(extTurbulenceFX *Self, LONG *Value)
+static ERROR TURBULENCEFX_GET_Type(extTurbulenceFX *Self, TB *Value)
 {
    *Value = Self->Type;
    return ERR_Okay;
 }
 
-static ERROR TURBULENCEFX_SET_Type(extTurbulenceFX *Self, LONG Value)
+static ERROR TURBULENCEFX_SET_Type(extTurbulenceFX *Self, TB Value)
 {
    Self->Type = Value;
    return ERR_Okay;
@@ -468,8 +468,8 @@ static ERROR TURBULENCEFX_GET_XMLDef(extTurbulenceFX *Self, STRING *Value)
 #include "filter_turbulence_def.c"
 
 static const FieldDef clTurbulenceType[] = {
-   { "Turbulence", TB_TURBULENCE },
-   { "Noise",      TB_NOISE },
+   { "Turbulence", TB::TURBULENCE },
+   { "Noise",      TB::NOISE },
    { NULL, 0 }
 };
 static const FieldArray clTurbulenceFXFields[] = {

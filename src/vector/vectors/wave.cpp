@@ -30,7 +30,7 @@ class extVectorWave : public extVector {
    DOUBLE wDegree;
    DOUBLE wThickness;
    LONG   wDimensions;
-   UBYTE  wClose;
+   WVC    wClose;
    UBYTE  wStyle;
 };
 
@@ -57,15 +57,15 @@ static void generate_wave(extVectorWave *Vector)
    DOUBLE x = 0, y = sin(DEG2RAD * Vector->wDegree) * amp + (height * 0.5);
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);
 
-   if ((!Vector->wClose) or (Vector->wThickness > 0)) {
+   if ((Vector->wClose IS WVC::NIL) or (Vector->wThickness > 0)) {
       Vector->BasePath.move_to(ox + x, oy + y);
    }
-   else if (Vector->wClose IS WVC_TOP) {
+   else if (Vector->wClose IS WVC::TOP) {
       Vector->BasePath.move_to(ox + width, oy); // Top right
       Vector->BasePath.line_to(ox, oy); // Top left
       Vector->BasePath.line_to(ox + x, oy + y);
    }
-   else if (Vector->wClose IS WVC_BOTTOM) {
+   else if (Vector->wClose IS WVC::BOTTOM) {
       Vector->BasePath.move_to(ox + width, oy + height); // Bottom right
       Vector->BasePath.line_to(ox, oy + height); // Bottom left
       Vector->BasePath.line_to(ox + x, oy + y);
@@ -146,7 +146,7 @@ static void generate_wave(extVectorWave *Vector)
       Vector->BasePath.translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
    }
 
-   if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
+   if ((Vector->wClose != WVC::NIL) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
 
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
@@ -245,18 +245,18 @@ static ERROR WAVE_SET_Amplitude(extVectorWave *Self, DOUBLE Value)
 -FIELD-
 Close: Closes the generated wave path at either the top or bottom.
 
-Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
+Setting the Close field to `TOP` or `BOTTOM` will close the generated wave's path so that it is suitable for being
 filled.
 
 *********************************************************************************************************************/
 
-static ERROR WAVE_GET_Close(extVectorWave *Self, LONG *Value)
+static ERROR WAVE_GET_Close(extVectorWave *Self, WVC *Value)
 {
    *Value = Self->wClose;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Close(extVectorWave *Self, LONG Value)
+static ERROR WAVE_SET_Close(extVectorWave *Self, WVC Value)
 {
    Self->wClose = Value;
    reset_path(Self);
@@ -539,16 +539,16 @@ static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clWaveClose[] = {
-   { "None",   WVC_NONE },
-   { "Top",    WVC_TOP },
-   { "Bottom", WVC_BOTTOM },
+   { "None",   WVC::NONE },
+   { "Top",    WVC::TOP },
+   { "Bottom", WVC::BOTTOM },
    { NULL, 0 }
 };
 
 static const FieldDef clWaveStyle[] = {
-   { "Curved",   WVS_CURVED },
-   { "Angled",   WVS_ANGLED },
-   { "Sawtooth", WVS_SAWTOOTH },
+   { "Curved",   WVS::CURVED },
+   { "Angled",   WVS::ANGLED },
+   { "Sawtooth", WVS::SAWTOOTH },
    { NULL, 0 }
 };
 

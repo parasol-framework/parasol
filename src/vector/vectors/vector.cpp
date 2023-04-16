@@ -1466,23 +1466,23 @@ of a stroked path.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineCap(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_LineCap(extVector *Self, VLC *Value)
 {
-   if (Self->LineCap IS agg::butt_cap)         *Value = VLC_BUTT;
-   else if (Self->LineCap IS agg::square_cap)  *Value = VLC_SQUARE;
-   else if (Self->LineCap IS agg::round_cap)   *Value = VLC_ROUND;
-   else if (Self->LineCap IS agg::inherit_cap) *Value = VLC_INHERIT;
-   else *Value = 0;
+   if (Self->LineCap IS agg::butt_cap)         *Value = VLC::BUTT;
+   else if (Self->LineCap IS agg::square_cap)  *Value = VLC::SQUARE;
+   else if (Self->LineCap IS agg::round_cap)   *Value = VLC::ROUND;
+   else if (Self->LineCap IS agg::inherit_cap) *Value = VLC::INHERIT;
+   else *Value = VLC::NIL;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_LineCap(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_LineCap(extVector *Self, VLC Value)
 {
    switch(Value) {
-      case VLC_BUTT:    Self->LineCap = agg::butt_cap; break;
-      case VLC_SQUARE:  Self->LineCap = agg::square_cap; break;
-      case VLC_ROUND:   Self->LineCap = agg::round_cap; break;
-      case VLC_INHERIT: Self->LineCap = agg::inherit_cap; break;
+      case VLC::BUTT:    Self->LineCap = agg::butt_cap; break;
+      case VLC::SQUARE:  Self->LineCap = agg::square_cap; break;
+      case VLC::ROUND:   Self->LineCap = agg::round_cap; break;
+      case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
       default: return ERR_Failed;
    }
    return ERR_Okay;
@@ -2244,10 +2244,10 @@ static const FieldDef clLineJoin[] = {
 };
 
 static const FieldDef clLineCap[] = {
-   { "Butt",    VLC_BUTT },
-   { "Square",  VLC_SQUARE },
-   { "Round",   VLC_ROUND },
-   { "Inherit", VLC_INHERIT },
+   { "Butt",    VLC::BUTT },
+   { "Square",  VLC::SQUARE },
+   { "Round",   VLC::ROUND },
+   { "Inherit", VLC::INHERIT },
    { NULL, 0 }
 };
 

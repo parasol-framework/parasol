@@ -396,7 +396,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 
 static ERROR VECTORSCENE_NewObject(extVectorScene *Self, APTR Void)
 {
-   Self->SampleMethod = VSM_BILINEAR;
+   Self->SampleMethod = VSM::BILINEAR;
 
    new (Self) extVectorScene;
 

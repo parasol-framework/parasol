@@ -27,21 +27,21 @@ static ARF parse_aspect_ratio(const std::string Value)
 
 //********************************************************************************************************************
 
-static LONG shape_rendering_to_render_quality(const std::string Value)
+static RQ shape_rendering_to_render_quality(const std::string Value)
 {
    pf::Log log;
 
-   if (!StrMatch("auto", Value)) return RQ_AUTO;
-   else if (!StrMatch("optimize-speed", Value)) return RQ_FAST;
-   else if (!StrMatch("optimizeSpeed", Value)) return RQ_FAST;
-   else if (!StrMatch("crisp-edges", Value)) return RQ_CRISP;
-   else if (!StrMatch("crispEdges", Value)) return RQ_CRISP;
-   else if (!StrMatch("geometric-precision", Value)) return RQ_PRECISE;
-   else if (!StrMatch("geometricPrecision", Value)) return RQ_PRECISE;
-   else if (!StrMatch("best", Value)) return RQ_BEST;
+   if (!StrMatch("auto", Value)) return RQ::AUTO;
+   else if (!StrMatch("optimize-speed", Value)) return RQ::FAST;
+   else if (!StrMatch("optimizeSpeed", Value)) return RQ::FAST;
+   else if (!StrMatch("crisp-edges", Value)) return RQ::CRISP;
+   else if (!StrMatch("crispEdges", Value)) return RQ::CRISP;
+   else if (!StrMatch("geometric-precision", Value)) return RQ::PRECISE;
+   else if (!StrMatch("geometricPrecision", Value)) return RQ::PRECISE;
+   else if (!StrMatch("best", Value)) return RQ::BEST;
    else log.warning("Unknown shape-rendering value '%s'", Value.c_str());
 
-   return RQ_AUTO;
+   return RQ::AUTO;
 }
 
 //********************************************************************************************************************
@@ -66,7 +66,7 @@ static void apply_state(svgState &State, OBJECTPTR Vector)
    if (State.Opacity >= 0.0) Vector->set(FID_Opacity, State.Opacity);
 
    if (Vector->Class->ClassID != ID_VECTORTEXT) {
-      if (State.PathQuality != RQ_AUTO) Vector->set(FID_PathQuality, State.PathQuality);
+      if (State.PathQuality != RQ::AUTO) Vector->set(FID_PathQuality, LONG(State.PathQuality));
    }
 }
 
@@ -384,28 +384,28 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_TYPE: {
             const DOUBLE *m = NULL;
-            LONG mode = 0;
+            CM mode = CM::NIL;
             switch(StrHash(val)) {
-               case SVF_NONE:          mode = CM_NONE; break;
-               case SVF_MATRIX:        mode = CM_MATRIX; break;
-               case SVF_SATURATE:      mode = CM_SATURATE; break;
-               case SVF_HUEROTATE:     mode = CM_HUE_ROTATE; break;
-               case SVF_LUMINANCETOALPHA: mode = CM_LUMINANCE_ALPHA; break;
+               case SVF_NONE:          mode = CM::NONE; break;
+               case SVF_MATRIX:        mode = CM::MATRIX; break;
+               case SVF_SATURATE:      mode = CM::SATURATE; break;
+               case SVF_HUEROTATE:     mode = CM::HUE_ROTATE; break;
+               case SVF_LUMINANCETOALPHA: mode = CM::LUMINANCE_ALPHA; break;
                // These are special modes that are not included by SVG
-               case SVF_CONTRAST:      mode = CM_CONTRAST; break;
-               case SVF_BRIGHTNESS:    mode = CM_BRIGHTNESS; break;
-               case SVF_HUE:           mode = CM_HUE; break;
-               case SVF_COLOURISE:     mode = CM_COLOURISE; break;
-               case SVF_DESATURATE:    mode = CM_DESATURATE; break;
+               case SVF_CONTRAST:      mode = CM::CONTRAST; break;
+               case SVF_BRIGHTNESS:    mode = CM::BRIGHTNESS; break;
+               case SVF_HUE:           mode = CM::HUE; break;
+               case SVF_COLOURISE:     mode = CM::COLOURISE; break;
+               case SVF_DESATURATE:    mode = CM::DESATURATE; break;
                // Colour blindness modes
-               case SVF_PROTANOPIA:    mode = CM_MATRIX; m = glProtanopia; break;
-               case SVF_PROTANOMALY:   mode = CM_MATRIX; m = glProtanomaly; break;
-               case SVF_DEUTERANOPIA:  mode = CM_MATRIX; m = glDeuteranopia; break;
-               case SVF_DEUTERANOMALY: mode = CM_MATRIX; m = glDeuteranomaly; break;
-               case SVF_TRITANOPIA:    mode = CM_MATRIX; m = glTritanopia; break;
-               case SVF_TRITANOMALY:   mode = CM_MATRIX; m = glTritanomaly; break;
-               case SVF_ACHROMATOPSIA: mode = CM_MATRIX; m = glAchromatopsia; break;
-               case SVF_ACHROMATOMALY: mode = CM_MATRIX; m = glAchromatomaly; break;
+               case SVF_PROTANOPIA:    mode = CM::MATRIX; m = glProtanopia; break;
+               case SVF_PROTANOMALY:   mode = CM::MATRIX; m = glProtanomaly; break;
+               case SVF_DEUTERANOPIA:  mode = CM::MATRIX; m = glDeuteranopia; break;
+               case SVF_DEUTERANOMALY: mode = CM::MATRIX; m = glDeuteranomaly; break;
+               case SVF_TRITANOPIA:    mode = CM::MATRIX; m = glTritanopia; break;
+               case SVF_TRITANOMALY:   mode = CM::MATRIX; m = glTritanomaly; break;
+               case SVF_ACHROMATOPSIA: mode = CM::MATRIX; m = glAchromatopsia; break;
+               case SVF_ACHROMATOMALY: mode = CM::MATRIX; m = glAchromatomaly; break;
 
                default:
                   log.warning("Unrecognised colour matrix type '%s'", val.c_str());
@@ -413,8 +413,8 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
                   return ERR_InvalidValue;
             }
 
-            fx->set(FID_Mode, mode);
-            if (mode IS CM_MATRIX) SetArray(fx, FID_Values|TDOUBLE, (APTR)m, CM_SIZE);
+            fx->set(FID_Mode, LONG(mode));
+            if (mode IS CM::MATRIX) SetArray(fx, FID_Values|TDOUBLE, (APTR)m, CM_SIZE);
             break;
          }
 
@@ -985,7 +985,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
             break;
 
          case SVF_TYPE:
-            if (!StrMatch("fractalNoise", val)) fx->set(FID_Type, TB_NOISE);
+            if (!StrMatch("fractalNoise", val)) fx->set(FID_Type, LONG(TB::NOISE));
             else fx->set(FID_Type, 0);
             break;
 
@@ -1153,8 +1153,8 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
 
          case SVF_IMAGE_RENDERING: {
-            if (!StrMatch("optimizeSpeed", val)) fx->set(FID_ResampleMethod, VSM_BILINEAR);
-            else if (!StrMatch("optimizeQuality", val)) fx->set(FID_ResampleMethod, VSM_LANCZOS3);
+            if (!StrMatch("optimizeSpeed", val)) fx->set(FID_ResampleMethod, LONG(VSM::BILINEAR));
+            else if (!StrMatch("optimizeQuality", val)) fx->set(FID_ResampleMethod, LONG(VSM::LANCZOS3));
             else if (!StrMatch("auto", val));
             else if (!StrMatch("inherit", val));
             else log.warning("Unrecognised image-rendering option '%s'", val.c_str());
@@ -2989,10 +2989,10 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
 
       case SVF_STROKE_LINECAP:
          switch(StrHash(StrValue)) {
-            case SVF_BUTT:    Vector->set(FID_LineCap, VLC_BUTT); break;
-            case SVF_SQUARE:  Vector->set(FID_LineCap, VLC_SQUARE); break;
-            case SVF_ROUND:   Vector->set(FID_LineCap, VLC_ROUND); break;
-            case SVF_INHERIT: Vector->set(FID_LineCap, VLC_INHERIT); break;
+            case SVF_BUTT:    Vector->set(FID_LineCap, LONG(VLC::BUTT)); break;
+            case SVF_SQUARE:  Vector->set(FID_LineCap, LONG(VLC::SQUARE)); break;
+            case SVF_ROUND:   Vector->set(FID_LineCap, LONG(VLC::ROUND)); break;
+            case SVF_INHERIT: Vector->set(FID_LineCap, LONG(VLC::INHERIT)); break;
          }
          break;
 
@@ -3072,7 +3072,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
       case SVF_STROKE_DASHARRAY: Vector->set(FID_DashArray, StrValue); break;
       case SVF_OPACITY:          Vector->set(FID_Opacity, StrValue); break;
       case SVF_FILL_OPACITY:     Vector->set(FID_FillOpacity, StrToFloat(StrValue)); break;
-      case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, shape_rendering_to_render_quality(StrValue)); break;
+      case SVF_SHAPE_RENDERING:  Vector->set(FID_PathQuality, LONG(shape_rendering_to_render_quality(StrValue))); break;
 
       case SVF_STROKE_WIDTH:            field_id = FID_StrokeWidth; break;
       case SVF_STROKE_OPACITY:          Vector->set(FID_StrokeOpacity, StrValue); break;

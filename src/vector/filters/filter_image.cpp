@@ -33,7 +33,7 @@ class extImageFX : public extFilterEffect {
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
    ARF  AspectRatio;     // Aspect ratio flags.
-   LONG ResampleMethod;  // Resample method.
+   VSM ResampleMethod;  // Resample method.
 };
 
 /*********************************************************************************************************************
@@ -177,7 +177,7 @@ static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 static ERROR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
 {
    Self->AspectRatio    = ARF::X_MID|ARF::Y_MID|ARF::MEET;
-   Self->ResampleMethod = VSM_BILINEAR;
+   Self->ResampleMethod = VSM::BILINEAR;
    Self->SourceType     = VSF::PREVIOUS;
    return ERR_Okay;
 }
@@ -253,13 +253,13 @@ ResampleMethod: The resample algorithm to use for transforming the source image.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_ResampleMethod(extImageFX *Self, LONG *Value)
+static ERROR IMAGEFX_GET_ResampleMethod(extImageFX *Self, VSM *Value)
 {
    *Value = Self->ResampleMethod;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_ResampleMethod(extImageFX *Self, LONG Value)
+static ERROR IMAGEFX_SET_ResampleMethod(extImageFX *Self, VSM Value)
 {
    Self->ResampleMethod = Value;
    return ERR_Okay;
@@ -282,22 +282,22 @@ static ERROR IMAGEFX_GET_XMLDef(extImageFX *Self, STRING *Value)
 //********************************************************************************************************************
 
 static const FieldDef clResampleMethod[] = {
-   { "Auto",      VSM_AUTO },
-   { "Neighbour", VSM_NEIGHBOUR },
-   { "Bilinear",  VSM_BILINEAR },
-   { "Bicubic",   VSM_BICUBIC },
-   { "Spline16",  VSM_SPLINE16 },
-   { "Kaiser",    VSM_KAISER },
-   { "Quadric",   VSM_QUADRIC },
-   { "Gaussian",  VSM_GAUSSIAN },
-   { "Bessel",    VSM_BESSEL },
-   { "Mitchell",  VSM_MITCHELL },
-   { "Sinc3",     VSM_SINC3 },
-   { "Lanczos3",  VSM_LANCZOS3 },
-   { "Blackman3", VSM_BLACKMAN3 },
-   { "Sinc8",     VSM_SINC8 },
-   { "Lanczos8",  VSM_LANCZOS8 },
-   { "Blackman8", VSM_BLACKMAN8 },
+   { "Auto",      VSM::AUTO },
+   { "Neighbour", VSM::NEIGHBOUR },
+   { "Bilinear",  VSM::BILINEAR },
+   { "Bicubic",   VSM::BICUBIC },
+   { "Spline16",  VSM::SPLINE16 },
+   { "Kaiser",    VSM::KAISER },
+   { "Quadric",   VSM::QUADRIC },
+   { "Gaussian",  VSM::GAUSSIAN },
+   { "Bessel",    VSM::BESSEL },
+   { "Mitchell",  VSM::MITCHELL },
+   { "Sinc3",     VSM::SINC3 },
+   { "Lanczos3",  VSM::LANCZOS3 },
+   { "Blackman3", VSM::BLACKMAN3 },
+   { "Sinc8",     VSM::SINC8 },
+   { "Lanczos8",  VSM::LANCZOS8 },
+   { "Blackman8", VSM::BLACKMAN8 },
    { NULL, 0 }
 };
 

@@ -473,7 +473,7 @@ extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
 extern void send_feedback(extVector *, FM);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
-extern void set_filter(agg::image_filter_lut &, UBYTE);
+extern void set_filter(agg::image_filter_lut &, VSM);
 extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 

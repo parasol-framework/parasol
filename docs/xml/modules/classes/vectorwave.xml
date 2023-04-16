@@ -39,7 +39,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being filled.</p>
+<p>Setting the Close field to <code>TOP</code> or <code>BOTTOM</code> will close the generated wave's path so that it is suitable for being filled.</p>
       </description>
     </field>
 

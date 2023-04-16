@@ -188,10 +188,13 @@ enum class VLJ : LONG {
 
 // Line-cap options.
 
-#define VLC_BUTT 1
-#define VLC_SQUARE 2
-#define VLC_ROUND 3
-#define VLC_INHERIT 4
+enum class VLC : LONG {
+   NIL = 0,
+   BUTT = 1,
+   SQUARE = 2,
+   ROUND = 3,
+   INHERIT = 4,
+};
 
 // Inner join options for angled lines.
 
@@ -330,28 +333,37 @@ enum class VSF : LONG {
 
 // Wave options.
 
-#define WVC_NONE 1
-#define WVC_TOP 2
-#define WVC_BOTTOM 3
+enum class WVC : LONG {
+   NIL = 0,
+   NONE = 1,
+   TOP = 2,
+   BOTTOM = 3,
+};
 
 // Wave style options.
 
-#define WVS_CURVED 1
-#define WVS_ANGLED 2
-#define WVS_SAWTOOTH 3
+enum class WVS : LONG {
+   NIL = 0,
+   CURVED = 1,
+   ANGLED = 2,
+   SAWTOOTH = 3,
+};
 
 // Colour modes for ColourFX.
 
-#define CM_NONE 0
-#define CM_MATRIX 1
-#define CM_SATURATE 2
-#define CM_HUE_ROTATE 3
-#define CM_LUMINANCE_ALPHA 4
-#define CM_CONTRAST 5
-#define CM_BRIGHTNESS 6
-#define CM_HUE 7
-#define CM_DESATURATE 8
-#define CM_COLOURISE 9
+enum class CM : LONG {
+   NIL = 0,
+   NONE = 0,
+   MATRIX = 1,
+   SATURATE = 2,
+   HUE_ROTATE = 3,
+   LUMINANCE_ALPHA = 4,
+   CONTRAST = 5,
+   BRIGHTNESS = 6,
+   HUE = 7,
+   DESATURATE = 8,
+   COLOURISE = 9,
+};
 
 // Gradient flags
 
@@ -386,31 +398,40 @@ enum class VPF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(VPF)
 
-#define TB_TURBULENCE 0
-#define TB_NOISE 1
+enum class TB : LONG {
+   NIL = 0,
+   TURBULENCE = 0,
+   NOISE = 1,
+};
 
-#define VSM_AUTO 0
-#define VSM_NEIGHBOUR 1
-#define VSM_BILINEAR 2
-#define VSM_BICUBIC 3
-#define VSM_SPLINE16 4
-#define VSM_KAISER 5
-#define VSM_QUADRIC 6
-#define VSM_GAUSSIAN 7
-#define VSM_BESSEL 8
-#define VSM_MITCHELL 9
-#define VSM_SINC3 10
-#define VSM_LANCZOS3 11
-#define VSM_BLACKMAN3 12
-#define VSM_SINC8 13
-#define VSM_LANCZOS8 14
-#define VSM_BLACKMAN8 15
+enum class VSM : LONG {
+   NIL = 0,
+   AUTO = 0,
+   NEIGHBOUR = 1,
+   BILINEAR = 2,
+   BICUBIC = 3,
+   SPLINE16 = 4,
+   KAISER = 5,
+   QUADRIC = 6,
+   GAUSSIAN = 7,
+   BESSEL = 8,
+   MITCHELL = 9,
+   SINC3 = 10,
+   LANCZOS3 = 11,
+   BLACKMAN3 = 12,
+   SINC8 = 13,
+   LANCZOS8 = 14,
+   BLACKMAN8 = 15,
+};
 
-#define RQ_AUTO 0
-#define RQ_FAST 1
-#define RQ_CRISP 2
-#define RQ_PRECISE 3
-#define RQ_BEST 4
+enum class RQ : LONG {
+   NIL = 0,
+   AUTO = 0,
+   FAST = 1,
+   CRISP = 2,
+   PRECISE = 3,
+   BEST = 4,
+};
 
 enum class RC : UBYTE {
    NIL = 0,
@@ -599,7 +620,7 @@ class objVectorScene : public BaseClass {
    VPF      Flags;                // Optional flags.
    LONG     PageWidth;            // The width of the page that contains the vector.
    LONG     PageHeight;           // The height of the page that contains the vector.
-   LONG     SampleMethod;         // The sampling method to use when interpolating images and patterns.
+   VSM      SampleMethod;         // The sampling method to use when interpolating images and patterns.
 
    // Action stubs
 
@@ -665,7 +686,7 @@ class objVectorScene : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setSampleMethod(const LONG Value) {
+   inline ERROR setSampleMethod(const VSM Value) {
       this->SampleMethod = Value;
       return ERR_Okay;
    }
@@ -1552,7 +1573,7 @@ class objVector : public BaseClass {
    VIS       Visibility;              // Controls the visibility of a vector and its children.
    VF        Flags;                   // Optional flags.
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
-   LONG      PathQuality;             // Defines the quality of a path when it is rendered.
+   RQ        PathQuality;             // Defines the quality of a path when it is rendered.
    VCS       ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
 
    // Action stubs
@@ -1636,7 +1657,7 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPathQuality(const LONG Value) {
+   inline ERROR setPathQuality(const RQ Value) {
       this->PathQuality = Value;
       return ERR_Okay;
    }

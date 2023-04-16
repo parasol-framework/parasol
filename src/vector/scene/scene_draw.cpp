@@ -296,28 +296,28 @@ void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG W
 
 //********************************************************************************************************************
 
-void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
+void set_filter(agg::image_filter_lut &Filter, VSM Method)
 {
    switch(Method) {
-      case VSM_AUTO:
-      case VSM_NEIGHBOUR: // There is a 'span_image_filter_rgb_nn' class but no equivalent image_filter_neighbour() routine?
-      case VSM_BILINEAR:  Filter.calculate(agg::image_filter_bilinear(), true); break;
-      case VSM_BICUBIC:   Filter.calculate(agg::image_filter_bicubic(), true); break;
-      case VSM_SPLINE16:  Filter.calculate(agg::image_filter_spline16(), true); break;
-      case VSM_KAISER:    Filter.calculate(agg::image_filter_kaiser(), true); break;
-      case VSM_QUADRIC:   Filter.calculate(agg::image_filter_quadric(), true); break;
-      case VSM_GAUSSIAN:  Filter.calculate(agg::image_filter_gaussian(), true); break;
-      case VSM_BESSEL:    Filter.calculate(agg::image_filter_bessel(), true); break;
-      case VSM_MITCHELL:  Filter.calculate(agg::image_filter_mitchell(), true); break;
-      case VSM_SINC3:     Filter.calculate(agg::image_filter_sinc(3.0), true); break;
-      case VSM_LANCZOS3:  Filter.calculate(agg::image_filter_lanczos(3.0), true); break;
-      case VSM_BLACKMAN3: Filter.calculate(agg::image_filter_blackman(3.0), true); break;
-      case VSM_SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
-      case VSM_LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
-      case VSM_BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
+      case VSM::AUTO:
+      case VSM::NEIGHBOUR: // There is a 'span_image_filter_rgb_nn' class but no equivalent image_filter_neighbour() routine?
+      case VSM::BILINEAR:  Filter.calculate(agg::image_filter_bilinear(), true); break;
+      case VSM::BICUBIC:   Filter.calculate(agg::image_filter_bicubic(), true); break;
+      case VSM::SPLINE16:  Filter.calculate(agg::image_filter_spline16(), true); break;
+      case VSM::KAISER:    Filter.calculate(agg::image_filter_kaiser(), true); break;
+      case VSM::QUADRIC:   Filter.calculate(agg::image_filter_quadric(), true); break;
+      case VSM::GAUSSIAN:  Filter.calculate(agg::image_filter_gaussian(), true); break;
+      case VSM::BESSEL:    Filter.calculate(agg::image_filter_bessel(), true); break;
+      case VSM::MITCHELL:  Filter.calculate(agg::image_filter_mitchell(), true); break;
+      case VSM::SINC3:     Filter.calculate(agg::image_filter_sinc(3.0), true); break;
+      case VSM::LANCZOS3:  Filter.calculate(agg::image_filter_lanczos(3.0), true); break;
+      case VSM::BLACKMAN3: Filter.calculate(agg::image_filter_blackman(3.0), true); break;
+      case VSM::SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
+      case VSM::LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
+      case VSM::BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
       default: {
          pf::Log log;
-         log.warning("Unrecognised sampling method %d", Method);
+         log.warning("Unrecognised sampling method %d", LONG(Method));
          Filter.calculate(agg::image_filter_bicubic(), true);
          break;
       }
@@ -327,7 +327,7 @@ void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 //********************************************************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
 
-static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
+static void drawBitmap(VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
    objBitmap *SrcBitmap, VSPREAD SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
 {
    agg::pixfmt_psl pixels(*SrcBitmap);
@@ -395,7 +395,7 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
 // vector's dimensions.
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
-   LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
+   VSM SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
@@ -621,7 +621,7 @@ void draw_brush(const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl>
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.
 
-static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
+static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, VSM SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha = 1.0)
@@ -1008,7 +1008,7 @@ private:
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
          auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
 
-         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
+         if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(colour);
 
@@ -1076,7 +1076,7 @@ private:
          draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
       }
       else {
-         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
+         if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.StrokeColour, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
@@ -1448,14 +1448,14 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*FillStyle;
-         draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
+         draw_image(bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORGRADIENT) {
          extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORPATTERN) {
-         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
       else log.warning("The FillStyle is not supported.");
    }
@@ -1473,7 +1473,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
-         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;
