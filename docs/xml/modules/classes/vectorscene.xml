@@ -143,7 +143,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VPF">INT</type>
+      <type lookup="VPF">VPF</type>
       <description>
 <types lookup="VPF"/>
       </description>

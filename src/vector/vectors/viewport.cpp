@@ -32,7 +32,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
    static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
    static DOUBLE glDragOriginX = 0, glDragOriginY = 0;
 
-   if (Viewport->Dirty) gen_vector_tree(Viewport);
+   if (Viewport->dirty()) gen_vector_tree(Viewport);
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
@@ -150,7 +150,7 @@ static ERROR VECTORVIEWPORT_Move(extVectorViewport *Self, struct acMove *Args)
    Self->vpTargetX += Args->DeltaX;
    Self->vpTargetY += Args->DeltaY;
 
-   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -174,7 +174,7 @@ static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveTo
       Self->vpTargetY = Args->Y;
    }
 
-   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -212,7 +212,7 @@ static ERROR VECTORVIEWPORT_Redimension(extVectorViewport *Self, struct acRedime
 
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
-   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -234,7 +234,7 @@ static ERROR VECTORVIEWPORT_Resize(extVectorViewport *Self, struct acResize *Arg
 
    if (Self->vpTargetWidth < 1) Self->vpTargetWidth = 1;
    if (Self->vpTargetHeight < 1) Self->vpTargetHeight = 1;
-   mark_dirty((extVector *)Self, RC_FINAL_PATH|RC_TRANSFORM);
+   mark_dirty((extVector *)Self, RC::FINAL_PATH|RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -250,7 +250,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERROR VIEW_GET_AbsX(extVectorViewport *Self, LONG *Value)
 {
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    *Value = Self->vpBX1;
    return ERR_Okay;
@@ -268,7 +268,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 static ERROR VIEW_GET_AbsY(extVectorViewport *Self, LONG *Value)
 {
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    *Value = Self->vpBY1;
    return ERR_Okay;
@@ -316,7 +316,7 @@ static ERROR VIEW_GET_Dimensions(extVectorViewport *Self, LONG *Value)
 static ERROR VIEW_SET_Dimensions(extVectorViewport *Self, LONG Value)
 {
    Self->vpDimensions = Value;
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -387,7 +387,7 @@ static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_HEIGHT) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
@@ -436,7 +436,7 @@ static ERROR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -533,7 +533,7 @@ static ERROR VIEW_SET_ViewHeight(extVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewHeight = Value;
-      mark_dirty((extVector *)Self, RC_ALL);
+      mark_dirty((extVector *)Self, RC::ALL);
       return ERR_Okay;
    }
    else return ERR_InvalidValue;
@@ -558,7 +558,7 @@ static ERROR VIEW_GET_ViewX(extVectorViewport *Self, DOUBLE *Value)
 static ERROR VIEW_SET_ViewX(extVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewX = Value;
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -582,7 +582,7 @@ static ERROR VIEW_SET_ViewWidth(extVectorViewport *Self, DOUBLE Value)
 {
    if (Value > 0.0) {
       Self->vpViewWidth = Value;
-      mark_dirty((extVector *)Self, RC_ALL);
+      mark_dirty((extVector *)Self, RC::ALL);
       return ERR_Okay;
    }
    else return ERR_InvalidValue;
@@ -607,7 +607,7 @@ static ERROR VIEW_GET_ViewY(extVectorViewport *Self, DOUBLE *Value)
 static ERROR VIEW_SET_ViewY(extVectorViewport *Self, DOUBLE Value)
 {
    Self->vpViewY = Value;
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -624,7 +624,7 @@ static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE val;
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
       if (Value->Type & FD_PERCENTAGE) {
@@ -672,7 +672,7 @@ static ERROR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -693,7 +693,7 @@ static ERROR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE width, value;
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_X) value = Self->vpTargetX;
    else if (Self->vpDimensions & DMF_RELATIVE_X) {
@@ -731,7 +731,7 @@ static ERROR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -753,7 +753,7 @@ static ERROR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    DOUBLE width;
    DOUBLE value = 0;
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_X_OFFSET) value = Self->vpTargetXO;
    else if (Self->vpDimensions & DMF_RELATIVE_X_OFFSET) {
@@ -793,7 +793,7 @@ static ERROR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
 
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -814,7 +814,7 @@ static ERROR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
 {
    DOUBLE value, height;
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_Y) value = Self->vpTargetY;
    else if (Self->vpDimensions & DMF_RELATIVE_Y) {
@@ -852,7 +852,7 @@ static ERROR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 
@@ -874,7 +874,7 @@ static ERROR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    DOUBLE height;
    DOUBLE value = 0;
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_Y_OFFSET) value = Self->vpTargetYO;
    else if (Self->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
@@ -913,7 +913,7 @@ static ERROR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
    if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
 
-   mark_dirty((extVector *)Self, RC_ALL);
+   mark_dirty((extVector *)Self, RC::ALL);
    return ERR_Okay;
 }
 

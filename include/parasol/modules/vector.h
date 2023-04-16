@@ -325,10 +325,15 @@ enum class VCS : LONG {
 
 // Optional flags for the VectorScene object.
 
-#define VPF_BITMAP_SIZED 0x00000001
-#define VPF_RENDER_TIME 0x00000002
-#define VPF_RESIZE 0x00000004
-#define VPF_OUTLINE_VIEWPORTS 0x00000008
+enum class VPF : ULONG {
+   NIL = 0,
+   BITMAP_SIZED = 0x00000001,
+   RENDER_TIME = 0x00000002,
+   RESIZE = 0x00000004,
+   OUTLINE_VIEWPORTS = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VPF)
 
 #define TB_TURBULENCE 0
 #define TB_NOISE 1
@@ -356,10 +361,15 @@ enum class VCS : LONG {
 #define RQ_PRECISE 3
 #define RQ_BEST 4
 
-#define RC_FINAL_PATH 0x00000001
-#define RC_BASE_PATH 0x00000002
-#define RC_TRANSFORM 0x00000004
-#define RC_ALL 0x00000007
+enum class RC : UBYTE {
+   NIL = 0,
+   FINAL_PATH = 0x00000001,
+   BASE_PATH = 0x00000002,
+   TRANSFORM = 0x00000004,
+   ALL = 0x00000007,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RC)
 
 // Aspect ratios control alignment, scaling and clipping.
 
@@ -380,8 +390,13 @@ DEFINE_ENUM_FLAG_OPERATORS(ARF)
 
 // Options for vecGetBoundary().
 
-#define VBF_INCLUSIVE 0x00000001
-#define VBF_NO_TRANSFORM 0x00000002
+enum class VBF : ULONG {
+   NIL = 0,
+   INCLUSIVE = 0x00000001,
+   NO_TRANSFORM = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VBF)
 
 // Mask for controlling feedback events that are received.
 
@@ -530,7 +545,7 @@ class objVectorScene : public BaseClass {
    objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
    OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
-   LONG     Flags;                // Optional flags.
+   VPF      Flags;                // Optional flags.
    LONG     PageWidth;            // The width of the page that contains the vector.
    LONG     PageHeight;           // The height of the page that contains the vector.
    LONG     SampleMethod;         // The sampling method to use when interpolating images and patterns.
@@ -582,7 +597,7 @@ class objVectorScene : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const VPF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
@@ -1401,7 +1416,7 @@ class objVectorFilter : public BaseClass {
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
-struct vecGetBoundary { LONG Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
+struct vecGetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
 struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
 struct vecSubscribeKeyboard { FUNCTION * Callback;  };
@@ -1419,7 +1434,7 @@ INLINE ERROR vecTracePath(APTR Ob, FUNCTION * Callback) {
    return(Action(MT_VecTracePath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecGetBoundary(APTR Ob, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) {
+INLINE ERROR vecGetBoundary(APTR Ob, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) {
    struct vecGetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
    ERROR error = Action(MT_VecGetBoundary, (OBJECTPTR)Ob, &args);
    if (X) *X = args.X;

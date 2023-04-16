@@ -49,7 +49,7 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
    Self->Bitmap = Bitmap;
 
    if ((!Self->PageWidth) or (!Self->PageHeight)) {
-      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+      if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
    }
 
    acDraw(Self);
@@ -71,12 +71,12 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 {
    auto Self = (objVectorScene *)CurrentContext();
 
-   if (Self->Flags & VPF_RESIZE) {
+   if ((Self->Flags & VPF::RESIZE) != VPF::NIL) {
       Self->PageWidth  = Args->Width;
       Self->PageHeight = Args->Height;
 
       if (Self->Viewport) {
-         mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+         mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
       }
 
       ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
@@ -249,7 +249,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
    }
    else adaptor = static_cast<VMAdaptor *> (Self->Adaptor);
 
-   if (Self->Flags & VPF_RENDER_TIME) { // Client wants to know how long the rendering takes to complete
+   if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
       LARGE time = PreciseTime();
       adaptor->draw(bmp);
       if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
@@ -358,7 +358,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
          Action(MT_DrwAddCallback, *surface, &args);
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
-            Self->Flags |= VPF_RESIZE;
+            Self->Flags |= VPF::RESIZE;
             surface->get(FID_Width, &Self->PageWidth);
             surface->get(FID_Height, &Self->PageHeight);
          }
@@ -522,7 +522,7 @@ static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
          Self->Buffer->attach(Value->Data, Value->Width, Value->Height, Value->LineWidth);
          Self->Bitmap = Value;
 
-         if (Self->Flags & VPF_BITMAP_SIZED) {
+         if ((Self->Flags & VPF::BITMAP_SIZED) != VPF::NIL) {
             Self->PageWidth = Value->Width;
             Self->PageHeight = Value->Height;
          }
@@ -576,7 +576,7 @@ static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
    if (Value < 1) Self->PageHeight = 1;
    else Self->PageHeight = Value;
 
-   if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+   if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
    return ERR_Okay;
 }
 
@@ -597,7 +597,7 @@ static ERROR SET_PageWidth(extVectorScene *Self, LONG Value)
    if (Value < 1) Self->PageWidth = 1;
    else Self->PageWidth = Value;
 
-   if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM);
+   if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -616,7 +616,7 @@ The `RENDER_TIME` flag should also be set before fetching this value, as it is r
 
 static ERROR GET_RenderTime(extVectorScene *Self, LARGE *Value)
 {
-   Self->Flags |= VPF_RENDER_TIME;
+   Self->Flags |= VPF::RENDER_TIME;
    *Value = Self->RenderTime;
    return ERR_Okay;
 }
@@ -743,7 +743,7 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVecto
       if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
          auto vp = (extVectorViewport *)scan;
 
-         if (vp->Dirty) gen_vector_path(vp);
+         if (vp->dirty()) gen_vector_path(vp);
 
          if ((X >= vp->vpBX1) and (Y >= vp->vpBY1) and (X < vp->vpBX2) and (Y < vp->vpBY2)) {
             Collection[Branch].emplace_back(vp);

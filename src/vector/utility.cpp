@@ -279,7 +279,7 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
    if (!Vector) return;
 
    for (; Vector; Vector=(extVector *)Vector->Next) {
-      if (Vector->Dirty) gen_vector_path(Vector);
+      if (Vector->dirty()) gen_vector_path(Vector);
 
       if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;

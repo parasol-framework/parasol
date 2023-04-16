@@ -142,7 +142,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
       filter->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
-      mark_dirty(Self->Scene->Viewport, RC_TRANSFORM);
+      mark_dirty(Self->Scene->Viewport, RC::TRANSFORM);
 
       Self->Scene->Bitmap = cache;
       gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF::FILL);
@@ -153,7 +153,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       Self->Source->Parent = save_parent;
       Self->Source->Next   = save_next;
       ((extVectorViewport *)Self->Scene->Viewport)->Matrices = NULL;
-      mark_dirty(Self->Source, RC_ALL);
+      mark_dirty(Self->Source, RC::ALL);
    }
 
    gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);

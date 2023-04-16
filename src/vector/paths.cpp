@@ -28,7 +28,7 @@ void gen_vector_tree(extVector *Vector)
 {
    if (!Vector->initialised()) return;
 
-   if (Vector->Dirty) {
+   if (Vector->dirty()) {
       std::vector<objVector *> list;
       for (auto scan=(objVector *)Vector->Parent; scan; scan=(objVector *)scan->Parent) {
          if (scan->Class->BaseClassID != ID_VECTOR) break;
@@ -59,7 +59,7 @@ void gen_vector_path(extVector *Vector)
 
    pf::SwitchContext context(Vector);
 
-   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, Vector->Dirty, Vector->ParentView ? Vector->ParentView->UID : 0);
+   log.traceBranch("%s: #%d, Dirty: $%.2x, ParentView: #%d", Vector->Class->ClassName, Vector->UID, LONG(Vector->Dirty), Vector->ParentView ? Vector->ParentView->UID : 0);
 
    auto parent_view = get_parent_view(Vector);
 
@@ -170,10 +170,10 @@ void gen_vector_path(extVector *Vector)
       DOUBLE target_width  = view->vpFixedWidth;
       DOUBLE target_height = view->vpFixedHeight;
 
-      // The client can force the top-level viewport to be resized by using VPF_RESIZE and defining PageWidth/PageHeight
+      // The client can force the top-level viewport to be resized by using VPF::RESIZE and defining PageWidth/PageHeight
 
-      if ((!parent_view) and (Vector->Scene->Flags & VPF_RESIZE)) {
-         log.trace("VPF_RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
+      if ((!parent_view) and ((Vector->Scene->Flags & VPF::RESIZE) != VPF::NIL)) {
+         log.trace("VPF::RESIZE enabled, using target size (%.2f %.2f)", parent_width, parent_height);
          target_width  = parent_width;
          target_height = parent_height;
          view->vpFixedWidth  = parent_width;
@@ -242,7 +242,7 @@ void gen_vector_path(extVector *Vector)
       log.trace("Clipping boundary for #%d is %.2f %.2f %.2f %.2f",
          Vector->UID, view->vpBX1, view->vpBY1, view->vpBX2, view->vpBY2);
 
-      Vector->Dirty &= ~(RC_TRANSFORM | RC_FINAL_PATH | RC_BASE_PATH);
+      Vector->Dirty &= ~(RC::TRANSFORM | RC::FINAL_PATH | RC::BASE_PATH);
 
       if (((extVectorScene *)Vector->Scene)->ResizeSubscriptions.contains(view)) {
          ((extVectorScene *)Vector->Scene)->PendingResizeMsgs.insert(view);
@@ -251,18 +251,18 @@ void gen_vector_path(extVector *Vector)
    else if (Vector->Class->BaseClassID IS ID_VECTOR) {
       Vector->FinalX = 0;
       Vector->FinalY = 0;
-      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Class->ClassID != ID_VECTORTEXT)) {
+      if (((Vector->Dirty & RC::TRANSFORM) != RC::NIL) and (Vector->Class->ClassID != ID_VECTORTEXT)) {
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
-         Vector->Dirty = (Vector->Dirty & (~RC_TRANSFORM)) | RC_FINAL_PATH;
+         Vector->Dirty = (Vector->Dirty & (~RC::TRANSFORM)) | RC::FINAL_PATH;
       }
 
       // Generate base path of the vector if it hasn't been done already or has been reset.
       // NB: The base path is computed after the transform because it can be helpful to know the
       // final scale of the vector, particularly for calculating curved paths.
 
-      if (Vector->Dirty & RC_BASE_PATH) {
+      if ((Vector->Dirty & RC::BASE_PATH) != RC::NIL) {
          Vector->BasePath.free_all();
 
          Vector->GeneratePath(Vector);
@@ -274,7 +274,7 @@ void gen_vector_path(extVector *Vector)
             else {
                auto morph = (extVector *)Vector->Morph;
 
-               if (morph->Dirty) gen_vector_path(morph);
+               if (morph->dirty()) gen_vector_path(morph);
 
                if (morph->BasePath.total_vertices()) {
                   DOUBLE bx1, bx2, by1, by2;
@@ -308,19 +308,19 @@ void gen_vector_path(extVector *Vector)
             }
          }
 
-         Vector->Dirty = (Vector->Dirty & (~RC_BASE_PATH)) | RC_FINAL_PATH;
+         Vector->Dirty = (Vector->Dirty & (~RC::BASE_PATH)) | RC::FINAL_PATH;
       }
 
       // VectorText transform support is handled after base-path generation.  This is because vector text can be
       // aligned, for which the width and height of the base-path must be known.
 
-      if ((Vector->Dirty & RC_TRANSFORM) and (Vector->Class->ClassID IS ID_VECTORTEXT)) {
+      if (((Vector->Dirty & RC::TRANSFORM) != RC::NIL) and (Vector->Class->ClassID IS ID_VECTORTEXT)) {
          get_text_xy((extVectorText *)Vector); // Sets FinalX/Y
 
          Vector->Transform.reset();
          apply_parent_transforms(Vector, Vector->Transform);
 
-         Vector->Dirty = (Vector->Dirty & (~RC_TRANSFORM)) | RC_FINAL_PATH;
+         Vector->Dirty = (Vector->Dirty & (~RC::TRANSFORM)) | RC::FINAL_PATH;
       }
 
       if (Vector->Matrices) {
@@ -378,7 +378,7 @@ void gen_vector_path(extVector *Vector)
          Vector->StrokeRaster = NULL;
       }
 
-      Vector->Dirty &= ~RC_FINAL_PATH;
+      Vector->Dirty &= ~RC::FINAL_PATH;
    }
    else log.warning("Target vector is not a shape.");
 

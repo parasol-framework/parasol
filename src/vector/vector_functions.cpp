@@ -543,7 +543,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    d.ShearX     = t2;
    d.TranslateX = t4;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -584,7 +584,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    d.ShearX     = t2;
    d.TranslateX = t4;
 
-   if (Target->Vector) mark_dirty(Target->Vector, RC_TRANSFORM);
+   if (Target->Vector) mark_dirty(Target->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -722,7 +722,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
       }
    });
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -953,7 +953,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    Matrix->TranslateX = 0;
    Matrix->TranslateY = 0;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -1022,7 +1022,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    Matrix->TranslateX += CenterX;
    Matrix->TranslateY += CenterY;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -1066,7 +1066,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->ScaleY     *= Y;
    Matrix->TranslateY *= Y;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -1198,7 +1198,7 @@ ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->TranslateX += X;
    Matrix->TranslateY += Y;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 

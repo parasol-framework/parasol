@@ -95,9 +95,9 @@
     <method>
       <name>GetBoundary</name>
       <comment>Returns the graphical boundary of a vector.</comment>
-      <prototype>ERROR vecGetBoundary(OBJECTPTR Object, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
+      <prototype>ERROR vecGetBoundary(OBJECTPTR Object, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
       <input>
-        <param type="LONG" name="Flags" lookup="VBF">Optional flags.</param>
+        <param type="VBF" name="Flags" lookup="VBF">Optional flags.</param>
         <param type="DOUBLE *" name="X">The left-most position of the boundary is returned here.</param>
         <param type="DOUBLE *" name="Y">The top-most position of the boundary is returned here.</param>
         <param type="DOUBLE *" name="Width">The width of the boundary is returned here.</param>

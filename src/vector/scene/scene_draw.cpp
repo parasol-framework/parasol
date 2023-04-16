@@ -249,7 +249,7 @@ private:
 static bool check_dirty(extVector *Shape) {
    while (Shape) {
       if (Shape->Class->BaseClassID != ID_VECTOR) return true;
-      if (Shape->Dirty) return true;
+      if (Shape->dirty()) return true;
 
       if (Shape->Child) {
          if (check_dirty((extVector *)Shape->Child)) return true;
@@ -417,7 +417,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth = dwidth;
          Pattern.Scene->PageHeight = dheight;
-         mark_dirty(Pattern.Scene->Viewport, RC_ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
       }
    }
    else {
@@ -443,7 +443,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth  = dwidth;
          Pattern.Scene->PageHeight = dheight;
-         mark_dirty(Pattern.Scene->Viewport, RC_ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
       }
    }
 
@@ -1114,9 +1114,9 @@ private:
          }
          else if (!shape->Scene) continue;
 
-         if (shape->Dirty) {
+         if (shape->dirty()) {
             gen_vector_path(shape);
-            shape->Dirty = 0;
+            shape->Dirty = RC::NIL;
          }
          else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
@@ -1241,7 +1241,7 @@ private:
                      Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
-                  if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
+                  if ((Scene->Flags & VPF::OUTLINE_VIEWPORTS) != VPF::NIL) { // Debug option: Draw the viewport's path with a green outline
                      agg::renderer_scanline_bin_solid renderer(mRenderBase);
                      renderer.color(agg::rgba(0, 1, 0));
                      agg::rasterizer_scanline_aa stroke_raster;

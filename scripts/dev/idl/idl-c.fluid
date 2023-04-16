@@ -414,6 +414,8 @@ function flags(Prefix, Options, ...)
          type_size = 'LARGE'
       elseif (Options.bits == 16) then
          type_size = 'UWORD'
+      elseif (Options.bits == 8) then
+         type_size = 'UBYTE'
       end
       table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')

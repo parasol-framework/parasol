@@ -270,7 +270,7 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
    else if ((size_t)Args->Line < Self->txLines.size()) Self->txLines.erase(Self->txLines.begin() + Args->Line);
    else return ERR_Args;
 
-   mark_dirty(Self, RC_BASE_PATH);
+   mark_dirty(Self, RC::BASE_PATH);
 
    if (Self->txCursor.row() IS Args->Line) {
       Self->txCursor.move(Self, Self->txCursor.row(), 0);
@@ -1151,9 +1151,9 @@ static void generate_text(extVectorText *Vector)
          morph = NULL;
       }
       else {
-         if (morph->Dirty) { // Regenerate the target path if necessary
+         if (morph->dirty()) { // Regenerate the target path if necessary
             gen_vector_path(morph);
-            morph->Dirty = 0;
+            morph->Dirty = RC::NIL;
          }
 
          if (!morph->BasePath.total_vertices()) morph = NULL;
@@ -2057,7 +2057,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       else; // Do nothing, cursor at (0,0)
 
-      mark_dirty(Self, RC_BASE_PATH);
+      mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
       break;
 
@@ -2079,7 +2079,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txLines[Self->txCursor.row()] += Self->txLines[Self->txCursor.row()+1];
          Self->txLines.erase(Self->txLines.begin() + Self->txCursor.row() + 1);
       }
-      mark_dirty(Self, RC_BASE_PATH);
+      mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
       break;
 
@@ -2104,7 +2104,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
       if (!offset) Self->txLines[row].clear();
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
-      mark_dirty(Self, RC_BASE_PATH);
+      mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
       break;
    }
@@ -2213,7 +2213,7 @@ static void delete_selection(extVectorText *Self)
       if (end_column > 0) Self->txLines[row].replace(0, end_column, "");
    }
 
-   mark_dirty(Self, RC_BASE_PATH);
+   mark_dirty(Self, RC::BASE_PATH);
 }
 
 //********************************************************************************************************************
@@ -2314,7 +2314,7 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 {
    if ((!Self) or (!Unicode)) return;
 
-   mark_dirty(Self, RC_BASE_PATH);
+   mark_dirty(Self, RC::BASE_PATH);
 
    char buffer[6];
    LONG charlen = UTF8WriteValue(Unicode, buffer, 6);

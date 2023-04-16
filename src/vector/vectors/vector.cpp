@@ -201,7 +201,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if (Self->Dirty) gen_vector_tree(Self);
+      if (Self->dirty()) gen_vector_tree(Self);
 
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -343,7 +343,7 @@ static ERROR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
 
    FreeResource(Args->Matrix);
 
-   mark_dirty(Self, RC_TRANSFORM);
+   mark_dirty(Self, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -356,10 +356,10 @@ This method will return the boundary of a vector's path in terms of its top-left
 transformations and position information that applies to the vector will be taken into account when computing the
 boundary.
 
-If the `VBF_INCLUSIVE` flag is used, the result will include an analysis of all paths that belong to children of the
+If the `VBF::INCLUSIVE` flag is used, the result will include an analysis of all paths that belong to children of the
 target vector, including transforms.
 
-If the `VBF_NO_TRANSFORM` flag is used, the transformation step is not applied to the vector's path.
+If the `VBF::NO_TRANSFORM` flag is used, the transformation step is not applied to the vector's path.
 
 It is recommended that this method is not called until at least one rendering pass has been made, as some vector
 dimensions may not be computed before then.
@@ -389,13 +389,13 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if (Self->Dirty) gen_vector_tree(Self);
+      if (Self->dirty()) gen_vector_tree(Self);
 
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
       std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
 
-      if (Args->Flags & VBF_NO_TRANSFORM) {
+      if ((Args->Flags & VBF::NO_TRANSFORM) != VBF::NIL) {
          bounds[0] = Self->BX1 + Self->FinalX;
          bounds[1] = Self->BY1 + Self->FinalY;
          bounds[2] = Self->BX2 + Self->FinalX;
@@ -407,7 +407,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
          bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
       }
 
-      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary((extVector *)Self->Child, bounds, true);
+      if ((Args->Flags & VBF::INCLUSIVE) != VBF::NIL) calc_full_boundary((extVector *)Self->Child, bounds, true);
 
       Args->X      = bounds[0];
       Args->Y      = bounds[1];
@@ -416,7 +416,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       return ERR_Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
-      if (Self->Dirty) gen_vector_tree(Self);
+      if (Self->dirty()) gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
       Args->X      = view->vpBX1;
@@ -523,7 +523,7 @@ static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
    Self->Visibility    = VIS_VISIBLE;
    Self->FillRule      = VFR_NON_ZERO;
    Self->ClipRule      = VFR_NON_ZERO;
-   Self->Dirty         = RC_ALL;
+   Self->Dirty         = RC::ALL;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
    return ERR_Okay;
@@ -591,7 +591,7 @@ static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
       Self->Matrices = transform;
       Args->Transform = transform;
 
-      mark_dirty(Self, RC_TRANSFORM);
+      mark_dirty(Self, RC::TRANSFORM);
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -624,7 +624,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
@@ -966,7 +966,7 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
@@ -1894,7 +1894,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 

@@ -302,9 +302,9 @@ class extVector : public objVector {
    LONG   NumericID;
    LONG   PathLength;
    VMF    MorphFlags;
+   RC     Dirty;
    UBYTE  FillRule;
    UBYTE  ClipRule;
-   UBYTE  Dirty;
    UBYTE  TabOrder;
    UBYTE  EnableBkgd:1;
    UBYTE  DisableFillColour:1;
@@ -317,6 +317,7 @@ class extVector : public objVector {
    agg::inner_join_e InnerJoin;
    // Methods
    DOUBLE fixed_stroke_width();
+   inline bool dirty() { return Dirty != RC::NIL; }
 };
 
 struct TabOrderedVector {
@@ -483,7 +484,7 @@ extern std::vector<extVector *> glFocusList; // The first reference is the most 
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-inline static void mark_dirty(objVector *Vector, const UBYTE Flags)
+inline static void mark_dirty(objVector *Vector, const RC Flags)
 {
    ((extVector *)Vector)->Dirty |= Flags;
    for (auto scan=(extVector *)Vector->Child; scan; scan=(extVector *)scan->Next) {
@@ -510,8 +511,8 @@ inline static agg::path_storage basic_path(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUB
 
 inline static void reset_path(objVector *Vector)
 {
-   ((extVector *)Vector)->Dirty |= RC_BASE_PATH;
-   mark_dirty(Vector, RC_FINAL_PATH);
+   ((extVector *)Vector)->Dirty |= RC::BASE_PATH;
+   mark_dirty(Vector, RC::FINAL_PATH);
 }
 
 //********************************************************************************************************************
@@ -520,7 +521,7 @@ inline static void reset_path(objVector *Vector)
 
 inline static void reset_final_path(objVector *Vector)
 {
-   mark_dirty(Vector, RC_FINAL_PATH);
+   mark_dirty(Vector, RC::FINAL_PATH);
 }
 
 //********************************************************************************************************************
