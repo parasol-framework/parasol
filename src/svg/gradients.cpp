@@ -95,10 +95,10 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -124,9 +124,9 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
                break;
 
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -169,10 +169,10 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -193,9 +193,9 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
             case SVF_ID: id = val; break;
             case SVF_SPREADMETHOD:
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
 
             default: {
@@ -235,10 +235,10 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -257,9 +257,9 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -299,10 +299,10 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -320,9 +320,9 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
             case SVF_X2: set_double_units(gradient, FID_X2, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -364,10 +364,10 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -381,17 +381,17 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) gradient->setUnits(VUNIT_USERSPACE);
-               else if (!StrMatch("objectBoundingBox", val)) gradient->setUnits(VUNIT_BOUNDING_BOX);
+               if (!StrMatch("userSpaceOnUse", val)) gradient->setUnits(VUNIT::USERSPACE);
+               else if (!StrMatch("objectBoundingBox", val)) gradient->setUnits(VUNIT::BOUNDING_BOX);
                break;
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;

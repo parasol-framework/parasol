@@ -1907,7 +1907,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    for (ULONG i=0; i < base.total_vertices(); i++) {
-      LONG cmd = base.command(i);
+      auto cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
 
@@ -1915,25 +1915,25 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
       // leaving out the Z.
 
       switch(cmd) {
-         case agg::path_cmd_stop: // PE_ClosePath
+         case agg::path_cmd_stop: // PE::ClosePath
             seq << 'Z';
             break;
 
-         case agg::path_cmd_move_to: // PE_Move
+         case agg::path_cmd_move_to: // PE::Move
             base.vertex(i, &x, &y);
             seq << 'M' << x << ',' << y;
             last_x = x;
             last_y = y;
             break;
 
-         case agg::path_cmd_line_to: // PE_Line
+         case agg::path_cmd_line_to: // PE::Line
             base.vertex(i, &x, &y);
             seq << 'L' << x << ',' << y;
             last_x = x;
             last_y = y;
             break;
 
-         case agg::path_cmd_curve3: // PE_QuadCurve
+         case agg::path_cmd_curve3: // PE::QuadCurve
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2); // End of line
             seq << "q" << x - last_x << ',' << y - last_y << ',' << x2 - last_x << ',' << y2 - last_y;
@@ -1942,7 +1942,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             i += 1;
             break;
 
-         case agg::path_cmd_curve4: // PE_Curve
+         case agg::path_cmd_curve4: // PE::Curve
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2);
             base.vertex(i+2, &x3, &y3); // End of line
@@ -1952,7 +1952,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             i += 2;
             break;
 
-         case agg::path_cmd_end_poly: // PE_ClosePath
+         case agg::path_cmd_end_poly: // PE::ClosePath
             seq << 'Z';
             break;
 

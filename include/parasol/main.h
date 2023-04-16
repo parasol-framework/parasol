@@ -255,8 +255,6 @@ constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
-constexpr FieldValue SpreadMethod(LONG Value) { return FieldValue(FID_SpreadMethod, Value); }
-constexpr FieldValue Units(LONG Value) { return FieldValue(FID_Units, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
@@ -291,6 +289,8 @@ inline FieldValue ButtonOrder(std::string Value) { return FieldValue(FID_ButtonO
 template <class T> FieldValue AspectRatio(T Value) { return FieldValue(FID_AspectRatio, LONG(Value)); }
 template <class T> FieldValue ColourSpace(T Value) { return FieldValue(FID_ColourSpace, LONG(Value)); }
 template <class T> FieldValue Flags(T Value) { return FieldValue(FID_Flags, LONG(Value)); }
+template <class T> FieldValue Units(T Value) { return FieldValue(FID_Units, LONG(Value)); }
+template <class T> FieldValue SpreadMethod(T Value) { return FieldValue(FID_SpreadMethod, LONG(Value)); }
 
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");

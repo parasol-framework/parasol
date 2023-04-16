@@ -112,7 +112,7 @@
       <name>PrimitiveUnits</name>
       <comment>Alters the behaviour of some effects that support alternative position calculations.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <type lookup="VUNIT">VUNIT</type>
       <description>
 <p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a relative coordinate space of (0,0,100%,100%).</p>
 <types lookup="VUNIT"/>
@@ -143,7 +143,7 @@
       <name>Units</name>
       <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <type lookup="VUNIT">VUNIT</type>
       <description>
 <p>The default coordinate system is <code>BOUNDING_BOX</code>, which positions the filter within the client vector. The alternative is <code>USERSPACE</code>, which positions the filter relative to the client vector's nearest viewport.</p>
 <types lookup="VUNIT"/>

@@ -63,7 +63,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
    DOUBLE img_width = filter->TargetWidth;
    DOUBLE img_height = filter->TargetHeight;
 
-   if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+   if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
       if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
       if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * filter->BoundWidth;
@@ -191,7 +191,7 @@ static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
 {
    Self->AspectRatio = ARF::X_MID|ARF::Y_MID|ARF::MEET;
-   Self->SourceType  = VSF_NONE;
+   Self->SourceType  = VSF::NONE;
    Self->Render      = true;
 
    if ((Self->Scene = objVectorScene::create::integral(fl::Name("fx_src_scene"), fl::PageWidth(1), fl::PageHeight(1)))) {

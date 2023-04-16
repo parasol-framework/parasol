@@ -99,7 +99,7 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 
    DOUBLE sx, sy;
    DOUBLE scale_against;
-   if (Self->Filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+   if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // Scale is relative to the bounding box dimensions
       scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
       DOUBLE scale = Self->Scale / scale_against;
@@ -116,7 +116,7 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    const UBYTE x_type = RGBA[Self->XChannel];
    const UBYTE y_type = RGBA[Self->YChannel];
 
-   //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX);
+   //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX);
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
 
    static const DOUBLE HALF8BIT = 255.0 * 0.5;

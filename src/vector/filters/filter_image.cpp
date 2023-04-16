@@ -52,7 +52,7 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
    DOUBLE p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
 
-   if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+   if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
       // If the user does set the XYWH of the image then 'fixed' coordinates act as multipliers, as if they were relative.
 
@@ -178,7 +178,7 @@ static ERROR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
 {
    Self->AspectRatio    = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->ResampleMethod = VSM_BILINEAR;
-   Self->SourceType     = VSF_PREVIOUS;
+   Self->SourceType     = VSF::PREVIOUS;
    return ERR_Okay;
 }
 

@@ -299,7 +299,7 @@ static ERROR TURBULENCEFX_NewObject(extTurbulenceFX *Self, APTR Void)
    Self->Type       = TB_TURBULENCE;
    Self->FX         = 0;
    Self->FY         = 0;
-   Self->SourceType = VSF_NONE;
+   Self->SourceType = VSF::NONE;
    return ERR_Okay;
 }
 

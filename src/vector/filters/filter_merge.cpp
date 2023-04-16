@@ -60,7 +60,7 @@ static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 
 static ERROR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
 {
-   Self->SourceType = VSF_IGNORE;
+   Self->SourceType = VSF::IGNORE;
    return ERR_Okay;
 }
 
@@ -84,7 +84,7 @@ static ERROR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG E
    }
 
    for (LONG i=0; i < Elements; i++) {
-      if (Value[i].SourceType IS VSF_REFERENCE) {
+      if (Value[i].SourceType IS VSF::REFERENCE) {
          if (Value[i].Effect) ((extFilterEffect *)Value[i].Effect)->UsageCount++;
          else return ERR_InvalidData;
       }

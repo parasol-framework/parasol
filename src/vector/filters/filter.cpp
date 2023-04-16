@@ -36,7 +36,7 @@ struct target {
    DOUBLE x, y, width, height;
 };
 
-static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilterEffect *, bool);
+static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
 
 //********************************************************************************************************************
 
@@ -75,7 +75,7 @@ static void compute_target_area(extVectorFilter *Self)
    Self->BoundWidth  = bounds[2] - bounds[0];
    Self->BoundHeight = bounds[3] - bounds[1];
 
-   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+   if (Self->Units IS VUNIT::BOUNDING_BOX) {
       if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = boundX;
       else if (Self->Dimensions & DMF_RELATIVE_X) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
       else Self->TargetX = boundX;
@@ -146,7 +146,7 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 // reference will be returned.  Otherwise a new bitmap is allocated and rendered with the effect.  The bitmap must
 // not be freed as they are permanently maintained until the VectorFilter is destroyed.
 
-static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, UBYTE SourceType, objFilterEffect *Effect, bool Premultiply)
+static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VSF SourceType, objFilterEffect *Effect, bool Premultiply)
 {
    pf::Log log(__FUNCTION__);
 
@@ -154,16 +154,16 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
 
    pf::SwitchContext ctx(Self);
 
-   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, SourceType);
+   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, LONG(SourceType));
 
    objBitmap *bmp = NULL;
-   if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
+   if (SourceType IS VSF::GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
          gfxCopyArea(sg, bmp, BAF::NIL, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
       }
    }
-   else if (SourceType IS VSF_ALPHA) { // SourceAlpha
+   else if (SourceType IS VSF::ALPHA) { // SourceAlpha
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
          LONG dy = bmp->Clip.Top;
@@ -178,7 +178,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          }
       }
    }
-   else if (SourceType IS VSF_BKGD) {
+   else if (SourceType IS VSF::BKGD) {
       // "Represents an image snapshot of the canvas under the filter region at the time that the filter element is invoked."
       // NOTE: The client needs to specify 'enable-background' in the nearest container element in order to indicate where the background is coming from;
       // additionally it serves as a marker for graphics to be rendered to a separate bitmap (essential for coping with any transformations in the scene graph).
@@ -193,7 +193,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
             bmp->Clip.Left, bmp->Clip.Top);
       }
    }
-   else if (SourceType IS VSF_BKGD_ALPHA) {
+   else if (SourceType IS VSF::BKGD_ALPHA) {
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
          LONG dy = bmp->Clip.Top;
@@ -208,7 +208,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          }
       }
    }
-   else if (SourceType IS VSF_REFERENCE) {
+   else if (SourceType IS VSF::REFERENCE) {
       if (auto e = Effect) {
          // Find first effect in the hierarchy that outputs a bitmap.
 
@@ -227,7 +227,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          return ERR_NoData;
       }
   }
-   else if (SourceType IS VSF_NONE) {
+   else if (SourceType IS VSF::NONE) {
       *BitmapResult = NULL;
       return ERR_Continue;
    }
@@ -336,7 +336,7 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
       return ERR_NothingDone;
    }
 
-   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+   if (Self->Units IS VUNIT::BOUNDING_BOX) {
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
       // The bounds are oriented to the client vector's transforms.
 
@@ -527,7 +527,7 @@ static ERROR VECTORFILTER_Init(extVectorFilter *Self, APTR Void)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
@@ -562,8 +562,8 @@ static ERROR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Arg
 static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 {
    new (Self) extVectorFilter;
-   Self->Units          = VUNIT_BOUNDING_BOX;
-   Self->PrimitiveUnits = VUNIT_UNDEFINED;
+   Self->Units          = VUNIT::BOUNDING_BOX;
+   Self->PrimitiveUnits = VUNIT::UNDEFINED;
    Self->Opacity        = 1.0;
    Self->X              = -0.1; // -10% default as per SVG requirements
    Self->Y              = -0.1;

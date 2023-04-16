@@ -105,8 +105,8 @@
       </input>
       <description>
 <p>This method will return the boundary of a vector's path in terms of its top-left position, width and height.  All transformations and position information that applies to the vector will be taken into account when computing the boundary.</p>
-<p>If the <code>VBF_INCLUSIVE</code> flag is used, the result will include an analysis of all paths that belong to children of the target vector, including transforms.</p>
-<p>If the <code>VBF_NO_TRANSFORM</code> flag is used, the transformation step is not applied to the vector's path.</p>
+<p>If the <code>VBF::INCLUSIVE</code> flag is used, the result will include an analysis of all paths that belong to children of the target vector, including transforms.</p>
+<p>If the <code>VBF::NO_TRANSFORM</code> flag is used, the transformation step is not applied to the vector's path.</p>
 <p>It is recommended that this method is not called until at least one rendering pass has been made, as some vector dimensions may not be computed before then.</p>
       </description>
       <result>

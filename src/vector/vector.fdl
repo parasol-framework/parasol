@@ -15,22 +15,22 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.")
 
-  enum("LS", { comment="Light source identifiers." },
+  enum("LS", { type="int", comment="Light source identifiers." },
     "DISTANT: Distant light source.",
     "SPOT: Spot light source.",
     "POINT: Point light source.")
 
-  enum("LT", { start=0, comment="Lighting algorithm for the LightingFX class." },
+  enum("LT", { type="int", start=0, comment="Lighting algorithm for the LightingFX class." },
     "DIFFUSE: Select diffuse lighting.",
     "SPECULAR: Select specular lighting.")
 
-  enum("VUNIT", { start=0 },
+  enum("VUNIT", { type="int", start=0 },
     "UNDEFINED",
     "BOUNDING_BOX: Coordinates are relative to the object's bounding box.",
     "USERSPACE: Coordinates are relative to the current viewport.",
     "END: Private")
 
-  enum("VSPREAD", { start=0, comment="Spread method options define the method to use for tiling filled graphics." },
+  enum("VSPREAD", { type="int", start=0, comment="Spread method options define the method to use for tiling filled graphics." },
     "UNDEFINED: Either the default setting will be applied or the setting will be inherited from a parent object.",
     "PAD: Scale the graphic to the object bounds.",
     "REFLECT: Tile the graphic, reflecting the image alternately on the X and Y axis.",
@@ -40,12 +40,12 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "CLIP: Do not scale the graphic.  Clip it if it extends past imposed boundaries.",
     "END: Private")
 
-  enum("EM", { start=1, "Edge mode options for the convolve effect." },
+  enum("EM", { type="int", start=1, "Edge mode options for the convolve effect." },
     "DUPLICATE: The input image is extended along its borders by duplicating the color values at its edges.",
     "WRAP: The input image is extended by taking the color values from the opposite edge of the image.",
     "NONE: The input image is extended with colour values of zero.")
 
-  enum("PE", { start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
+  enum("PE", { type="int", start=1 }, "Move", "MoveRel", "Line", "LineRel", "HLine", "HLineRel", "VLine", "VLineRel",
     "Curve", "CurveRel", "Smooth", "SmoothRel", "QuadCurve", "QuadCurveRel", "QuadSmooth", "QuadSmoothRel",
     "Arc", "ArcRel", "ClosePath")
 
@@ -171,7 +171,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "SRGB: The default colour-space is sRGB, recommended for its speed.",
     "LINEAR_RGB: Linear RGB is the default colour space for SVG and produces the best results.")
 
-  enum("VSF", { start=0, comment="Filter source types - these are used internally", restrict="c" },
+  enum("VSF", { type="int", start=0, comment="Filter source types - these are used internally", restrict="c" },
     "IGNORE|NONE: The filter does not require an input source.",
     "GRAPHIC: Represents the graphics elements that were the original input into the filter element.",
     "ALPHA: As for GRAPHIC except that only the alpha channel is used.",
@@ -304,20 +304,20 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
   ]])
 
   struct("PathCommand", { comment="Base structure for path commands." }, [[
-    uchar  Type         # The command type (PE value)
-    uchar  Curved       # Private
-    uchar  LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
-    uchar  Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
-    int    Pad          # Private
-    double X            # The targeted X coordinate (absolute or relative) for the command
-    double Y            # The targeted Y coordinate (absolute or relative) for the command
-    double AbsX         # Private
-    double AbsY         # Private
-    double X2           # The X2 coordinate for curve commands, or RX for arcs
-    double Y2           # The Y2 coordinate for curve commands, or RY for arcs
-    double X3           # The X3 coordinate for curve-to or smooth-curve-to
-    double Y3           # The Y3 coordinate for curve-to or smooth-curve-to
-    double Angle        # Arc angle
+    int(PE) Type         # The command type (PE value)
+    uchar   Curved       # Private
+    uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+    uchar   Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+    uchar   Pad1         # Private
+    double  X            # The targeted X coordinate (absolute or relative) for the command
+    double  Y            # The targeted Y coordinate (absolute or relative) for the command
+    double  AbsX         # Private
+    double  AbsY         # Private
+    double  X2           # The X2 coordinate for curve commands, or RX for arcs
+    double  Y2           # The Y2 coordinate for curve commands, or RY for arcs
+    double  X3           # The X3 coordinate for curve-to or smooth-curve-to
+    double  Y3           # The Y3 coordinate for curve-to or smooth-curve-to
+    double  Angle        # Arc angle
   ]])
 
   struct("VectorMatrix", { comment="Vector transformation matrix." }, [[
@@ -424,7 +424,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
    obj(FilterEffect) Effect   # Effect pointer if the SourceType is REFERENCE.
   ]],
   [[
-  MergeSource(LONG pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
+  MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
   ]])
 
   methods("RemapFX", "RF", {

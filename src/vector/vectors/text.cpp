@@ -1536,8 +1536,8 @@ static void generate_text_bitmap(extVectorText *Vector)
 
       if (!(Vector->txBitmapImage = objVectorImage::create::integral(
             fl::Bitmap(Vector->txAlphaBitmap),
-            fl::SpreadMethod(VSPREAD_CLIP),
-            fl::Units(VUNIT_BOUNDING_BOX),
+            fl::SpreadMethod(VSPREAD::CLIP),
+            fl::Units(VUNIT::BOUNDING_BOX),
             fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN)))) return;
    }
    else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);

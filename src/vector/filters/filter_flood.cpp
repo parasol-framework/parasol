@@ -30,7 +30,7 @@ class extFloodFX : public extFilterEffect {
 static ERROR FLOODFX_NewObject(extFloodFX *Self, APTR Void)
 {
    Self->Opacity = 1.0;
-   Self->SourceType = VSF_NONE;
+   Self->SourceType = VSF::NONE;
    return ERR_Okay;
 }
 

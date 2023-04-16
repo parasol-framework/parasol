@@ -105,11 +105,11 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
          case 'M': case 'm': // MoveTo
             Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
             if (cmd IS 'M') {
-               path.Type = PE_Move;
+               path.Type = PE::Move;
                cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
             }
             else {
-               path.Type = PE_MoveRel;
+               path.Type = PE::MoveRel;
                cmd = 'l';
             }
             path.Curved = FALSE;
@@ -117,50 +117,50 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
          case 'L': case 'l': // LineTo
             Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'L') path.Type = PE_Line;
-            else path.Type = PE_LineRel;
+            if (cmd IS 'L') path.Type = PE::Line;
+            else path.Type = PE::LineRel;
             path.Curved = FALSE;
             break;
 
          case 'V': case 'v': // Vertical LineTo
             Value = read_numseq(Value, &path.Y, TAGEND);
-            if (cmd IS 'V') path.Type = PE_VLine;
-            else path.Type = PE_VLineRel;
+            if (cmd IS 'V') path.Type = PE::VLine;
+            else path.Type = PE::VLineRel;
             path.Curved = FALSE;
             break;
 
          case 'H': case 'h': // Horizontal LineTo
             Value = read_numseq(Value, &path.X, TAGEND);
-            if (cmd IS 'H') path.Type = PE_HLine;
-            else path.Type = PE_LineRel;
+            if (cmd IS 'H') path.Type = PE::HLine;
+            else path.Type = PE::LineRel;
             path.Curved = FALSE;
             break;
 
          case 'Q': case 'q': // Quadratic Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'Q') path.Type = PE_QuadCurve;
-            else path.Type = PE_QuadCurveRel;
+            if (cmd IS 'Q') path.Type = PE::QuadCurve;
+            else path.Type = PE::QuadCurveRel;
             path.Curved = TRUE;
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'T') path.Type = PE_QuadSmooth;
-            else path.Type = PE_QuadSmoothRel;
+            if (cmd IS 'T') path.Type = PE::QuadSmooth;
+            else path.Type = PE::QuadSmoothRel;
             path.Curved = TRUE;
            break;
 
          case 'C': case 'c': // Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'C') path.Type = PE_Curve;
-            else path.Type = PE_CurveRel;
+            if (cmd IS 'C') path.Type = PE::Curve;
+            else path.Type = PE::CurveRel;
             path.Curved = TRUE;
             break;
 
          case 'S': case 's': // Smooth Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'S') path.Type = PE_Smooth;
-            else path.Type = PE_SmoothRel;
+            if (cmd IS 'S') path.Type = PE::Smooth;
+            else path.Type = PE::SmoothRel;
             path.Curved = TRUE;
             break;
 
@@ -169,8 +169,8 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
             path.LargeArc = F2T(largearc);
             path.Sweep = F2T(sweep);
-            if (cmd IS 'A') path.Type = PE_Arc;
-            else path.Type = PE_ArcRel;
+            if (cmd IS 'A') path.Type = PE::Arc;
+            else path.Type = PE::ArcRel;
             path.Curved = TRUE;
             break;
          }
@@ -184,7 +184,7 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
          // current point is set to the initial point of the current subpath.
 
          case 'Z': case 'z': { // Close Path
-            path.Type = PE_ClosePath;
+            path.Type = PE::ClosePath;
             path.Curved = FALSE;
             break;
          }

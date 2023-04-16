@@ -66,54 +66,72 @@ DEFINE_ENUM_FLAG_OPERATORS(VF)
 
 // Light source identifiers.
 
-#define LS_DISTANT 0
-#define LS_SPOT 1
-#define LS_POINT 2
+enum class LS : LONG {
+   NIL = 0,
+   DISTANT = 0,
+   SPOT = 1,
+   POINT = 2,
+};
 
 // Lighting algorithm for the LightingFX class.
 
-#define LT_DIFFUSE 0
-#define LT_SPECULAR 1
+enum class LT : LONG {
+   NIL = 0,
+   DIFFUSE = 0,
+   SPECULAR = 1,
+};
 
-#define VUNIT_UNDEFINED 0
-#define VUNIT_BOUNDING_BOX 1
-#define VUNIT_USERSPACE 2
-#define VUNIT_END 3
+enum class VUNIT : LONG {
+   NIL = 0,
+   UNDEFINED = 0,
+   BOUNDING_BOX = 1,
+   USERSPACE = 2,
+   END = 3,
+};
 
 // Spread method options define the method to use for tiling filled graphics.
 
-#define VSPREAD_UNDEFINED 0
-#define VSPREAD_PAD 1
-#define VSPREAD_REFLECT 2
-#define VSPREAD_REPEAT 3
-#define VSPREAD_REFLECT_X 4
-#define VSPREAD_REFLECT_Y 5
-#define VSPREAD_CLIP 6
-#define VSPREAD_END 7
+enum class VSPREAD : LONG {
+   NIL = 0,
+   UNDEFINED = 0,
+   PAD = 1,
+   REFLECT = 2,
+   REPEAT = 3,
+   REFLECT_X = 4,
+   REFLECT_Y = 5,
+   CLIP = 6,
+   END = 7,
+};
 
-#define EM_DUPLICATE 1
-#define EM_WRAP 2
-#define EM_NONE 3
+enum class EM : LONG {
+   NIL = 0,
+   DUPLICATE = 1,
+   WRAP = 2,
+   NONE = 3,
+};
 
-#define PE_Move 1
-#define PE_MoveRel 2
-#define PE_Line 3
-#define PE_LineRel 4
-#define PE_HLine 5
-#define PE_HLineRel 6
-#define PE_VLine 7
-#define PE_VLineRel 8
-#define PE_Curve 9
-#define PE_CurveRel 10
-#define PE_Smooth 11
-#define PE_SmoothRel 12
-#define PE_QuadCurve 13
-#define PE_QuadCurveRel 14
-#define PE_QuadSmooth 15
-#define PE_QuadSmoothRel 16
-#define PE_Arc 17
-#define PE_ArcRel 18
-#define PE_ClosePath 19
+enum class PE : LONG {
+   NIL = 0,
+   Move = 1,
+   MoveRel = 2,
+   Line = 3,
+   LineRel = 4,
+   HLine = 5,
+   HLineRel = 6,
+   VLine = 7,
+   VLineRel = 8,
+   Curve = 9,
+   CurveRel = 10,
+   Smooth = 11,
+   SmoothRel = 12,
+   QuadCurve = 13,
+   QuadCurveRel = 14,
+   QuadSmooth = 15,
+   QuadSmoothRel = 16,
+   Arc = 17,
+   ArcRel = 18,
+   ClosePath = 19,
+};
 
 // Vector fill rules for the FillRule field in the Vector class.
 
@@ -266,16 +284,19 @@ enum class VCS : LONG {
 
 // Filter source types - these are used internally
 
-#define VSF_IGNORE 0
-#define VSF_NONE 0
-#define VSF_GRAPHIC 1
-#define VSF_ALPHA 2
-#define VSF_BKGD 3
-#define VSF_BKGD_ALPHA 4
-#define VSF_FILL 5
-#define VSF_STROKE 6
-#define VSF_REFERENCE 7
-#define VSF_PREVIOUS 8
+enum class VSF : LONG {
+   NIL = 0,
+   IGNORE = 0,
+   NONE = 0,
+   GRAPHIC = 1,
+   ALPHA = 2,
+   BKGD = 3,
+   BKGD_ALPHA = 4,
+   FILL = 5,
+   STROKE = 6,
+   REFERENCE = 7,
+   PREVIOUS = 8,
+};
 
 // Wave options.
 
@@ -428,20 +449,20 @@ struct VectorPoint {
 };
 
 struct PathCommand {
-   UBYTE  Type;       // The command type (PE value)
-   UBYTE  Curved;     // Private
-   UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
-   UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
-   LONG   Pad;        // Private
-   DOUBLE X;          // The targeted X coordinate (absolute or relative) for the command
-   DOUBLE Y;          // The targeted Y coordinate (absolute or relative) for the command
-   DOUBLE AbsX;       // Private
-   DOUBLE AbsY;       // Private
-   DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
-   DOUBLE Y2;         // The Y2 coordinate for curve commands, or RY for arcs
-   DOUBLE X3;         // The X3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Y3;         // The Y3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Angle;      // Arc angle
+   PE     Type;     // The command type (PE value)
+   UBYTE  Curved;   // Private
+   UBYTE  LargeArc; // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+   UBYTE  Sweep;    // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+   UBYTE  Pad1;     // Private
+   DOUBLE X;        // The targeted X coordinate (absolute or relative) for the command
+   DOUBLE Y;        // The targeted Y coordinate (absolute or relative) for the command
+   DOUBLE AbsX;     // Private
+   DOUBLE AbsY;     // Private
+   DOUBLE X2;       // The X2 coordinate for curve commands, or RX for arcs
+   DOUBLE Y2;       // The Y2 coordinate for curve commands, or RY for arcs
+   DOUBLE X3;       // The X3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Y3;       // The Y3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Angle;    // Arc angle
 };
 
 struct VectorMatrix {
@@ -632,14 +653,14 @@ class objVectorImage : public BaseClass {
 
    using create = pf::Create<objVectorImage>;
 
-   DOUBLE X;                // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
-   DOUBLE Y;                // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
+   DOUBLE  X;               // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
+   DOUBLE  Y;               // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
    objPicture * Picture;    // Refers to a @Picture from which the source #Bitmap is acquired.
    objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
-   LONG   Units;            // Declares the coordinate system to use for the #X and #Y values.
-   LONG   Dimensions;       // Dimension flags define whether individual dimension fields contain fixed or relative values.
-   LONG   SpreadMethod;     // Defines the drawing mode.
-   ARF    AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
+   VUNIT   Units;           // Declares the coordinate system to use for the #X and #Y values.
+   LONG    Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or relative values.
+   VSPREAD SpreadMethod;    // Defines the drawing mode.
+   ARF     AspectRatio;     // Flags that affect the aspect ratio of the image within its target vector.
 
    // Customised field setting
 
@@ -665,7 +686,7 @@ class objVectorImage : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       this->Units = Value;
       return ERR_Okay;
    }
@@ -675,7 +696,7 @@ class objVectorImage : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setSpreadMethod(const LONG Value) {
+   inline ERROR setSpreadMethod(const VSPREAD Value) {
       this->SpreadMethod = Value;
       return ERR_Okay;
    }
@@ -698,17 +719,17 @@ class objVectorPattern : public BaseClass {
 
    using create = pf::Create<objVectorPattern>;
 
-   DOUBLE X;                      // X coordinate for the pattern.
-   DOUBLE Y;                      // Y coordinate for the pattern.
-   DOUBLE Width;                  // Width of the pattern tile.
-   DOUBLE Height;                 // Height of the pattern tile.
-   DOUBLE Opacity;                // The opacity of the pattern.
+   DOUBLE  X;                     // X coordinate for the pattern.
+   DOUBLE  Y;                     // Y coordinate for the pattern.
+   DOUBLE  Width;                 // Width of the pattern tile.
+   DOUBLE  Height;                // Height of the pattern tile.
+   DOUBLE  Opacity;               // The opacity of the pattern.
    objVectorScene * Scene;        // Refers to the internal @VectorScene that will contain the rendered pattern.
    objVectorPattern * Inherit;    // Inherit attributes from a VectorPattern referenced here.
-   LONG   SpreadMethod;           // The behaviour to use when the pattern bounds do not match the vector path.
-   LONG   Units;                  // Defines the coordinate system for fields X, Y, Width and Height.
-   LONG   ContentUnits;           // Private. Not yet implemented.
-   LONG   Dimensions;             // Dimension flags are stored here.
+   VSPREAD SpreadMethod;          // The behaviour to use when the pattern bounds do not match the vector path.
+   VUNIT   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT   ContentUnits;          // Private. Not yet implemented.
+   LONG    Dimensions;            // Dimension flags are stored here.
 
    // Customised field setting
 
@@ -752,17 +773,17 @@ class objVectorPattern : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setSpreadMethod(const LONG Value) {
+   inline ERROR setSpreadMethod(const VSPREAD Value) {
       this->SpreadMethod = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       this->Units = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setContentUnits(const LONG Value) {
+   inline ERROR setContentUnits(const VUNIT Value) {
       this->ContentUnits = Value;
       return ERR_Okay;
    }
@@ -792,22 +813,22 @@ class objVectorGradient : public BaseClass {
 
    using create = pf::Create<objVectorGradient>;
 
-   DOUBLE X1;                      // Initial X coordinate for the gradient.
-   DOUBLE Y1;                      // Initial Y coordinate for the gradient.
-   DOUBLE X2;                      // Final X coordinate for the gradient.
-   DOUBLE Y2;                      // Final Y coordinate for the gradient.
-   DOUBLE CenterX;                 // The horizontal center point of the gradient.
-   DOUBLE CenterY;                 // The vertical center point of the gradient.
-   DOUBLE FX;                      // The horizontal focal point for radial gradients.
-   DOUBLE FY;                      // The vertical focal point for radial gradients.
-   DOUBLE Radius;                  // The radius of the gradient.
+   DOUBLE  X1;                     // Initial X coordinate for the gradient.
+   DOUBLE  Y1;                     // Initial Y coordinate for the gradient.
+   DOUBLE  X2;                     // Final X coordinate for the gradient.
+   DOUBLE  Y2;                     // Final Y coordinate for the gradient.
+   DOUBLE  CenterX;                // The horizontal center point of the gradient.
+   DOUBLE  CenterY;                // The vertical center point of the gradient.
+   DOUBLE  FX;                     // The horizontal focal point for radial gradients.
+   DOUBLE  FY;                     // The vertical focal point for radial gradients.
+   DOUBLE  Radius;                 // The radius of the gradient.
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
-   LONG   SpreadMethod;            // The behaviour to use when the gradient bounds do not match the vector path.
-   LONG   Units;                   // Defines the coordinate system for fields X1, Y1, X2 and Y2.
-   LONG   Type;                    // Specifies the type of gradient (e.g. RADIAL, LINEAR)
-   LONG   Flags;                   // Dimension flags are stored here.
-   VCS    ColourSpace;             // Defines the colour space to use when interpolating gradient colours.
-   LONG   TotalStops;              // Total number of stops defined in the Stops array.
+   VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
+   VUNIT   Units;                  // Defines the coordinate system for fields X1, Y1, X2 and Y2.
+   LONG    Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
+   LONG    Flags;                  // Dimension flags are stored here.
+   VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
+   LONG    TotalStops;             // Total number of stops defined in the Stops array.
 
    // Action stubs
 
@@ -884,12 +905,12 @@ class objVectorGradient : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setSpreadMethod(const LONG Value) {
+   inline ERROR setSpreadMethod(const VSPREAD Value) {
       this->SpreadMethod = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Units = Value;
       return ERR_Okay;
@@ -965,8 +986,8 @@ class objFilterEffect : public BaseClass {
    DOUBLE Width;              // Primitive width of the effect area.
    DOUBLE Height;             // Primitive height of the effect area.
    LONG   Dimensions;         // Dimension flags are stored here.
-   LONG   SourceType;         // Specifies an input source for the effect algorithm, if required.
-   LONG   MixType;            // If a secondary mix input is required for the effect, specify it here.
+   VSF    SourceType;         // Specifies an input source for the effect algorithm, if required.
+   VSF    MixType;            // If a secondary mix input is required for the effect, specify it here.
 
    // Action stubs
 
@@ -1031,12 +1052,12 @@ class objFilterEffect : public BaseClass {
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setSourceType(const LONG Value) {
+   inline ERROR setSourceType(const VSF Value) {
       this->SourceType = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMixType(const LONG Value) {
+   inline ERROR setMixType(const VSF Value) {
       this->MixType = Value;
       return ERR_Okay;
    }
@@ -1044,9 +1065,9 @@ class objFilterEffect : public BaseClass {
 };
 
 struct MergeSource {
-   LONG SourceType;             // The type of the required source.
+   VSF SourceType;              // The type of the required source.
    objFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
-  MergeSource(LONG pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
+  MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
 };
 
 // ImageFX class definition
@@ -1316,8 +1337,8 @@ class objVectorFilter : public BaseClass {
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
    LONG   ResX;                  // Width of the intermediate images, measured in pixels.
    LONG   ResY;                  // Height of the intermediate images, measured in pixels.
-   LONG   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
-   LONG   PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
+   VUNIT  Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
 
@@ -1380,12 +1401,12 @@ class objVectorFilter : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       this->Units = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPrimitiveUnits(const LONG Value) {
+   inline ERROR setPrimitiveUnits(const VUNIT Value) {
       this->PrimitiveUnits = Value;
       return ERR_Okay;
    }

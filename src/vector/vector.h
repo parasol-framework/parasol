@@ -426,7 +426,7 @@ class extVectorClip : public extVector {
    agg::path_storage *ClipPath; // Internally generated path
    agg::rendering_buffer ClipRenderer;
    extVector *TargetVector;
-   LONG ClipUnits;
+   VUNIT ClipUnits;
    LONG ClipSize;
 };
 

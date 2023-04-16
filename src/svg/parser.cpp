@@ -183,7 +183,7 @@ static void xtag_clippath(extSVG *Self, objXML *XML, const XMLTag &Tag)
       clip->setFields(
          fl::Owner(Self->Scene->UID), // All clips belong to the root page to prevent hierarchy issues.
          fl::Name("SVGClip"),
-         fl::Units(VUNIT_BOUNDING_BOX)
+         fl::Units(VUNIT::BOUNDING_BOX)
       );
 
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
@@ -316,17 +316,17 @@ static ERROR parse_fe_merge(extSVG *Self, objVectorFilter *Filter, const XMLTag 
          for (LONG a=1; a < LONG(child.Attribs.size()); a++) {
             if (!StrMatch("in", child.Attribs[a].Name)) {
                switch (StrHash(child.Attribs[a].Value)) {
-                  case SVF_SOURCEGRAPHIC:   list.push_back(VSF_GRAPHIC); break;
-                  case SVF_SOURCEALPHA:     list.push_back(VSF_ALPHA); break;
-                  case SVF_BACKGROUNDIMAGE: list.push_back(VSF_BKGD); break;
-                  case SVF_BACKGROUNDALPHA: list.push_back(VSF_BKGD_ALPHA); break;
-                  case SVF_FILLPAINT:       list.push_back(VSF_FILL); break;
-                  case SVF_STROKEPAINT:     list.push_back(VSF_STROKE); break;
+                  case SVF_SOURCEGRAPHIC:   list.push_back(VSF::GRAPHIC); break;
+                  case SVF_SOURCEALPHA:     list.push_back(VSF::ALPHA); break;
+                  case SVF_BACKGROUNDIMAGE: list.push_back(VSF::BKGD); break;
+                  case SVF_BACKGROUNDALPHA: list.push_back(VSF::BKGD_ALPHA); break;
+                  case SVF_FILLPAINT:       list.push_back(VSF::FILL); break;
+                  case SVF_STROKEPAINT:     list.push_back(VSF::STROKE); break;
                   default:  {
                      if (auto ref = child.Attribs[a].Value.c_str()) {
                         while ((*ref) and (*ref <= 0x20)) ref++;
                         if (Self->Effects.contains(ref)) {
-                           list.emplace_back(VSF_REFERENCE, Self->Effects[ref]);
+                           list.emplace_back(VSF::REFERENCE, Self->Effects[ref]);
                         }
                         else log.warning("Invalid 'in' reference '%s'", ref);
                      }
@@ -495,9 +495,9 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
          case SVF_TARGETY: fx->set(FID_TargetY, StrToInt(val)); break;
 
          case SVF_EDGEMODE:
-            if (!StrMatch("duplicate", val)) fx->set(FID_EdgeMode, EM_DUPLICATE);
-            else if (!StrMatch("wrap", val)) fx->set(FID_EdgeMode, EM_WRAP);
-            else if (!StrMatch("none", val)) fx->set(FID_EdgeMode, EM_NONE);
+            if (!StrMatch("duplicate", val)) fx->set(FID_EdgeMode, LONG(EM::DUPLICATE));
+            else if (!StrMatch("wrap", val)) fx->set(FID_EdgeMode, LONG(EM::WRAP));
+            else if (!StrMatch("none", val)) fx->set(FID_EdgeMode, LONG(EM::NONE));
             break;
 
          case SVF_KERNELUNITLENGTH: {
@@ -538,7 +538,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
 //********************************************************************************************************************
 
-static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag, LONG Type)
+static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLTag &Tag, LT Type)
 {
    pf::Log log(__FUNCTION__);
    objFilterEffect *fx;
@@ -546,7 +546,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
    if (NewObject(ID_LIGHTINGFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
-   fx->set(FID_Type, Type);
+   fx->set(FID_Type, LONG(Type));
 
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
@@ -1222,7 +1222,7 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
 
    if (!NewObject(ID_VECTORFILTER, &filter)) {
       filter->setFields(fl::Owner(Self->Scene->UID), fl::Name("SVGFilter"),
-         fl::Units(VUNIT_BOUNDING_BOX), fl::ColourSpace(VCS::LINEAR_RGB));
+         fl::Units(VUNIT::BOUNDING_BOX), fl::ColourSpace(VCS::LINEAR_RGB));
 
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          auto &val = Tag.Attribs[a].Value;
@@ -1234,8 +1234,8 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
 
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_FILTERUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) filter->Units = VUNIT_USERSPACE;
-               else if (!StrMatch("objectBoundingBox", val)) filter->Units = VUNIT_BOUNDING_BOX;
+               if (!StrMatch("userSpaceOnUse", val)) filter->Units = VUNIT::USERSPACE;
+               else if (!StrMatch("objectBoundingBox", val)) filter->Units = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_ID:      if (add_id(Self, Tag, val)) id = val; break;
@@ -1265,8 +1265,8 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
                break;
 
             case SVF_PRIMITIVEUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT_USERSPACE; // Default
-               else if (!StrMatch("objectBoundingBox", val)) filter->PrimitiveUnits = VUNIT_BOUNDING_BOX;
+               if (!StrMatch("userSpaceOnUse", val)) filter->PrimitiveUnits = VUNIT::USERSPACE; // Default
+               else if (!StrMatch("objectBoundingBox", val)) filter->PrimitiveUnits = VUNIT::BOUNDING_BOX;
                break;
 
 /*
@@ -1304,8 +1304,8 @@ static void xtag_filter(extSVG *Self, objXML *XML, svgState &State, const XMLTag
                case SVF_FEMORPHOLOGY:        parse_fe_morphology(Self, filter, child); break;
                case SVF_FEIMAGE:             parse_fe_image(Self, XML, State, filter, child); break;
                case SVF_FECOMPONENTTRANSFER: parse_fe_component_xfer(Self, filter, child); break;
-               case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(Self, filter, child, LT_DIFFUSE); break;
-               case SVF_FESPECULARLIGHTING:  parse_fe_lighting(Self, filter, child, LT_SPECULAR); break;
+               case SVF_FEDIFFUSELIGHTING:   parse_fe_lighting(Self, filter, child, LT::DIFFUSE); break;
+               case SVF_FESPECULARLIGHTING:  parse_fe_lighting(Self, filter, child, LT::SPECULAR); break;
                case SVF_FEDISPLACEMENTMAP:   parse_fe_displacement_map(Self, filter, child); break;
                case SVF_FETILE:
                   log.warning("Filter element '%s' is not currently supported.", child.name());
@@ -1338,8 +1338,8 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag &Tag)
    if (!NewObject(ID_VECTORPATTERN, &pattern)) {
       SetOwner(pattern, Self->Scene);
       pattern->setFields(fl::Name("SVGPattern"),
-         fl::Units(VUNIT_BOUNDING_BOX),
-         fl::SpreadMethod(VSPREAD_REPEAT),
+         fl::Units(VUNIT::BOUNDING_BOX),
+         fl::SpreadMethod(VSPREAD::REPEAT),
          fl::HostScene(Self->Scene));
 
       objVectorViewport *viewport;
@@ -1361,13 +1361,13 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag &Tag)
                // objectBoundingBox: The user coordinate system for the contents of the ‘pattern’ element is established using the bounding box of the element to which the pattern is applied (see Object bounding box units) and then applying the transform specified by attribute ‘patternTransform’.
                // The default is userSpaceOnUse
 
-               if (!StrMatch("userSpaceOnUse", val)) pattern->ContentUnits = VUNIT_USERSPACE;
-               else if (!StrMatch("objectBoundingBox", val)) pattern->ContentUnits = VUNIT_BOUNDING_BOX;
+               if (!StrMatch("userSpaceOnUse", val)) pattern->ContentUnits = VUNIT::USERSPACE;
+               else if (!StrMatch("objectBoundingBox", val)) pattern->ContentUnits = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_PATTERNUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) pattern->Units = VUNIT_USERSPACE;
-               else if (!StrMatch("objectBoundingBox", val)) pattern->Units = VUNIT_BOUNDING_BOX;
+               if (!StrMatch("userSpaceOnUse", val)) pattern->Units = VUNIT::USERSPACE;
+               else if (!StrMatch("objectBoundingBox", val)) pattern->Units = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_PATTERNTRANSFORM: pattern->set(FID_Transform, val); break;
@@ -1389,7 +1389,7 @@ static void process_pattern(extSVG *Self, objXML *XML, const XMLTag &Tag)
             case SVF_VIEWBOX: {
                DOUBLE vx=0, vy=0, vwidth=1, vheight=1; // Default view-box for bounding-box mode
                client_set_viewbox = true;
-               pattern->ContentUnits = VUNIT_USERSPACE;
+               pattern->ContentUnits = VUNIT::USERSPACE;
                read_numseq(val, &vx, &vy, &vwidth, &vheight, TAGEND);
                viewport->setFields(fl::ViewX(vx), fl::ViewY(vy), fl::ViewWidth(vwidth), fl::ViewHeight(vheight));
                break;
@@ -1647,8 +1647,8 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
    if (!NewObject(ID_VECTORIMAGE, &image)) {
       image->setFields(fl::Owner(Self->Scene->UID),
          fl::Name("SVGImage"),
-         fl::Units(VUNIT_BOUNDING_BOX),
-         fl::SpreadMethod(VSPREAD_PAD));
+         fl::Units(VUNIT::BOUNDING_BOX),
+         fl::SpreadMethod(VSPREAD::PAD));
 
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          auto &val = Tag.Attribs[a].Value;
@@ -1656,8 +1656,8 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
 
          switch(StrHash(Tag.Attribs[a].Name)) {
             case SVF_UNITS:
-               if (!StrMatch("userSpaceOnUse", val)) image->Units = VUNIT_USERSPACE;
-               else if (!StrMatch("objectBoundingBox", val)) image->Units = VUNIT_BOUNDING_BOX;
+               if (!StrMatch("userSpaceOnUse", val)) image->Units = VUNIT::USERSPACE;
+               else if (!StrMatch("objectBoundingBox", val)) image->Units = VUNIT::BOUNDING_BOX;
                break;
 
             case SVF_XLINK_HREF: load_pic(Self, val, &pic); break;
@@ -1732,8 +1732,8 @@ static ERROR xtag_image(extSVG *Self, objXML *XML, svgState &State, const XMLTag
       if (auto image = objVectorImage::create::global(
             fl::Owner(Self->Scene->UID),
             fl::Picture(pic),
-            fl::SpreadMethod(VSPREAD_PAD),
-            fl::Units(VUNIT_BOUNDING_BOX),
+            fl::SpreadMethod(VSPREAD::PAD),
+            fl::Units(VUNIT::BOUNDING_BOX),
             fl::AspectRatio(ratio))) {
 
          SetOwner(pic, image); // It's best if the pic belongs to the image.

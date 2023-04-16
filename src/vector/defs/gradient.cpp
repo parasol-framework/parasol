@@ -160,19 +160,19 @@ static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return ERR_OutOfRange;
    }
 
-   if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return ERR_OutOfRange;
    }
 
-   if ((Self->Type IS VGT_CONTOUR) and (Self->Units IS VUNIT_USERSPACE)) {
+   if ((Self->Type IS VGT_CONTOUR) and (Self->Units IS VUNIT::USERSPACE)) {
       log.warning("Contour gradients are not compatible with Units.USERSPACE.");
-      Self->Units = VUNIT_BOUNDING_BOX;
+      Self->Units = VUNIT::BOUNDING_BOX;
    }
 
    return ERR_Okay;
@@ -182,9 +182,9 @@ static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 
 static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
 {
-   Self->SpreadMethod = VSPREAD_PAD;
+   Self->SpreadMethod = VSPREAD::PAD;
    Self->Type    = VGT_LINEAR;
-   Self->Units   = VUNIT_BOUNDING_BOX;
+   Self->Units   = VUNIT::BOUNDING_BOX;
    // SVG requires that these are all set to 50%
    Self->CenterX = 0.5;
    Self->CenterY = 0.5;
@@ -505,7 +505,7 @@ static ERROR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
 SpreadMethod: The behaviour to use when the gradient bounds do not match the vector path.
 
 Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is
-`VSPREAD_PAD`.
+`VSPREAD::PAD`.
 
 -FIELD-
 Stops: Defines the colours to use for the gradient.

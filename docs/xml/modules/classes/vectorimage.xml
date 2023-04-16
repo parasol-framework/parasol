@@ -69,7 +69,7 @@
       <name>SpreadMethod</name>
       <comment>Defines the drawing mode.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
+      <type lookup="VSPREAD">VSPREAD</type>
       <description>
 <p>The SpreadMethod defines the way in which the image is drawn within the target area.  The default setting is PAD.</p>
 <types lookup="VSPREAD"/>
@@ -80,7 +80,7 @@
       <name>Units</name>
       <comment>Declares the coordinate system to use for the <field>X</field> and <field>Y</field> values.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <type lookup="VUNIT">VUNIT</type>
       <description>
 <p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default is BOUNDING_BOX.</p>
 <types lookup="VUNIT"/>

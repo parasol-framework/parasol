@@ -61,20 +61,22 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
 
             if (!error) xmlNewAttrib(tag, "id", key);
 
-            LONG units;
-            if ((!error) and (!gradient->get(FID_Units, &units))) {
+            VUNIT units;
+            if ((!error) and (!gradient->get(FID_Units, (LONG *)&units))) {
                switch(units) {
-                  case VUNIT_USERSPACE:    xmlNewAttrib(tag, "gradientUnits", "userSpaceOnUse"); break;
-                  case VUNIT_BOUNDING_BOX: xmlNewAttrib(tag, "gradientUnits", "objectBoundingBox"); break;
+                  case VUNIT::USERSPACE:    xmlNewAttrib(tag, "gradientUnits", "userSpaceOnUse"); break;
+                  case VUNIT::BOUNDING_BOX: xmlNewAttrib(tag, "gradientUnits", "objectBoundingBox"); break;
+                  default: break;
                }
             }
 
-            LONG spread;
-            if ((!error) and (!gradient->get(FID_SpreadMethod, &spread))) {
+            VSPREAD spread;
+            if ((!error) and (!gradient->get(FID_SpreadMethod, (LONG *)&spread))) {
                switch(spread) {
-                  case VSPREAD_PAD:     break; // Pad is the default SVG setting
-                  case VSPREAD_REFLECT: xmlNewAttrib(tag, "spreadMethod", "reflect"); break;
-                  case VSPREAD_REPEAT:  xmlNewAttrib(tag, "spreadMethod", "repeat"); break;
+                  default:
+                  case VSPREAD::PAD:     break; // Pad is the default SVG setting
+                  case VSPREAD::REFLECT: xmlNewAttrib(tag, "spreadMethod", "reflect"); break;
+                  case VSPREAD::REPEAT:  xmlNewAttrib(tag, "spreadMethod", "repeat"); break;
                }
             }
 
@@ -161,19 +163,20 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             if ((!error) and (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)))
                set_dimension(tag, "height", filter->Height, dim & DMF_RELATIVE_HEIGHT);
 
-            LONG units;
-            if ((!error) and (!filter->get(FID_Units, &units))) {
+            VUNIT units;
+            if ((!error) and (!filter->get(FID_Units, (LONG *)&units))) {
                switch(units) {
                   default:
-                  case VUNIT_BOUNDING_BOX: break; // Default
-                  case VUNIT_USERSPACE:    xmlNewAttrib(tag, "filterUnits", "userSpaceOnUse"); break;
+                  case VUNIT::BOUNDING_BOX: break; // Default
+                  case VUNIT::USERSPACE:    xmlNewAttrib(tag, "filterUnits", "userSpaceOnUse"); break;
                }
             }
 
-            if ((!error) and (!filter->get(FID_PrimitiveUnits, &units))) {
+            if ((!error) and (!filter->get(FID_PrimitiveUnits, (LONG *)&units))) {
                switch(units) {
-                  case VUNIT_USERSPACE:    break;
-                  case VUNIT_BOUNDING_BOX: xmlNewAttrib(tag, "primitiveUnits", "objectBoundingBox"); break;
+                  default:
+                  case VUNIT::USERSPACE:    break;
+                  case VUNIT::BOUNDING_BOX: xmlNewAttrib(tag, "primitiveUnits", "objectBoundingBox"); break;
                }
             }
 
@@ -563,12 +566,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if ((!(error = Vector->get(FID_ID, &str))) and (str)) { // The id is an essential requirement
          error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<clipPath/>", &tag);
 
-         LONG units;
-         if (!Vector->get(FID_Units, &units)) {
+         VUNIT units;
+         if (!Vector->get(FID_Units, (LONG *)&units)) {
             switch(units) {
                default:
-               case VUNIT_USERSPACE:    break; // Default
-               case VUNIT_BOUNDING_BOX: xmlNewAttrib(tag, "clipPathUnits", "objectBoundingBox"); break;
+               case VUNIT::USERSPACE:    break; // Default
+               case VUNIT::BOUNDING_BOX: xmlNewAttrib(tag, "clipPathUnits", "objectBoundingBox"); break;
             }
          }
 

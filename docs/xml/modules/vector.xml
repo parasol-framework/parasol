@@ -836,16 +836,16 @@ Z: Close Path
     </struct>
 
     <struct name="MergeSource" comment="Input source declaration for MergeFX">
-      <field name="SourceType" type="LONG" lookup="VSF">The type of the required source.</field>
+      <field name="SourceType" type="VSF" lookup="VSF">The type of the required source.</field>
       <field name="Effect" type="objFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="UBYTE">The command type (PE value)</field>
+      <field name="Type" type="PE" lookup="PE">The command type (PE value)</field>
       <field name="Curved" type="UBYTE">Private</field>
       <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.</field>
       <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
-      <field name="Pad" type="LONG">Private</field>
+      <field name="Pad1" type="UBYTE">Private</field>
       <field name="X" type="DOUBLE">The targeted X coordinate (absolute or relative) for the command</field>
       <field name="Y" type="DOUBLE">The targeted Y coordinate (absolute or relative) for the command</field>
       <field name="AbsX" type="DOUBLE">Private</field>

@@ -145,9 +145,9 @@
       <name>SpreadMethod</name>
       <comment>The behaviour to use when the gradient bounds do not match the vector path.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
+      <type lookup="VSPREAD">VSPREAD</type>
       <description>
-<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD_PAD</code>.</p>
+<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.</p>
 <types lookup="VSPREAD"/>
       </description>
     </field>
@@ -197,7 +197,7 @@
       <name>Units</name>
       <comment>Defines the coordinate system for fields X1, Y1, X2 and Y2.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="VUNIT">INT</type>
+      <type lookup="VUNIT">VUNIT</type>
       <description>
 <p>The default coordinate system for gradients is <code>BOUNDING_BOX</code>, which positions the gradient around the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the gradient relative to the current viewport.</p>
 <types lookup="VUNIT"/>

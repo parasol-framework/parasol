@@ -74,12 +74,12 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
@@ -107,9 +107,9 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
    if (!NewObject(ID_VECTORSCENE, NF::INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
-         Self->SpreadMethod = VSPREAD_REPEAT;
-         Self->Units        = VUNIT_BOUNDING_BOX;
-         Self->ContentUnits = VUNIT_USERSPACE;
+         Self->SpreadMethod = VSPREAD::REPEAT;
+         Self->Units        = VUNIT::BOUNDING_BOX;
+         Self->ContentUnits = VUNIT::USERSPACE;
          Self->Opacity      = 1.0;
          return ERR_Okay;
       }
@@ -445,17 +445,17 @@ static const FieldDef clPatternDimensions[] = {
 };
 
 static const FieldDef clPatternUnits[] = {
-   { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
-   { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
+   { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
+   { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
 static const FieldDef clPatternSpread[] = {
-   { "Pad",      VSPREAD_PAD },
-   { "Reflect",  VSPREAD_REFLECT },
-   { "Repeat",   VSPREAD_REPEAT },
-   { "ReflectX", VSPREAD_REFLECT_X },
-   { "ReflectY", VSPREAD_REFLECT_Y },
+   { "Pad",      VSPREAD::PAD },
+   { "Reflect",  VSPREAD::REFLECT },
+   { "Repeat",   VSPREAD::REPEAT },
+   { "ReflectX", VSPREAD::REFLECT_X },
+   { "ReflectY", VSPREAD::REFLECT_Y },
    { NULL, 0 }
 };
 

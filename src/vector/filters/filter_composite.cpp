@@ -742,7 +742,7 @@ static ERROR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->MixType) {
+   if (Self->MixType IS VSF::NIL) {
       log.warning("A mix input is required.");
       return ERR_FieldNotSet;
    }
