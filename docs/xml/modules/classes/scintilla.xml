@@ -176,7 +176,7 @@
         <param type="LONG" name="End">The end of the search - set to -1 if covering the entire document.</param>
       </input>
       <description>
-<p>The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a given Start and End point.  The STF::CASE, STF::SCAN_SELECTION and STF::EXPRESSION are valid flag options for this method (see FindText for details).</p>
+<p>The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a given Start and End point.  The <code>STF::CASE</code>, <code>STF::SCAN_SELECTION</code> and <code>STF::EXPRESSION</code> are valid flag options for this method (see FindText for details).</p>
       </description>
     </method>
 

@@ -2495,9 +2495,9 @@ static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "EventFlags",     FDF_LONG|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
    { "Font",           FDF_INTEGRAL|FDF_R, NULL, NULL, ID_FONT },
    { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "EventFlags",     FDF_LONG|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
    { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, ID_SURFACE },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clScintillaFlags },
    { "Focus",          FDF_OBJECTID|FDF_RI },

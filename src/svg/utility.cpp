@@ -502,7 +502,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());
          }
 
-         if (Self->Flags & SVF_AUTOSCALE) {
+         if ((Self->Flags & SVF::AUTOSCALE) != SVF::NIL) {
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             auto view = Self->Scene->Viewport;

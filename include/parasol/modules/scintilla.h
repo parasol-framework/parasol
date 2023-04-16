@@ -167,9 +167,9 @@ class objScintilla : public BaseClass {
 
    using create = pf::Create<objScintilla>;
 
-   SEF       EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
    CSTRING   Path;               // Identifies the location of a text file to load.
+   SEF       EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    OBJECTID  SurfaceID;          // Refers to the @Surface targeted by the Scintilla object.
    SCIF      Flags;              // Optional flags.
    OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
@@ -228,15 +228,15 @@ class objScintilla : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setEventFlags(const SEF Value) {
-      this->EventFlags = Value;
-      return ERR_Okay;
-   }
-
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setEventFlags(const SEF Value) {
+      this->EventFlags = Value;
+      return ERR_Okay;
    }
 
    inline ERROR setSurface(const OBJECTID Value) {

@@ -83,7 +83,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="SVF">INT</type>
+      <type lookup="SVF">SVF</type>
       <description>
 <types lookup="SVF"/>
       </description>

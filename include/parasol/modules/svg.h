@@ -12,8 +12,13 @@ class objSVG;
 
 // SVG flags.
 
-#define SVF_AUTOSCALE 0x00000001
-#define SVF_ALPHA 0x00000002
+enum class SVF : ULONG {
+   NIL = 0,
+   AUTOSCALE = 0x00000001,
+   ALPHA = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SVF)
 
 // SVG class definition
 
@@ -42,7 +47,7 @@ class objSVG : public BaseClass {
    STRING    Path;      // The location of the source SVG data.
    STRING    Title;     // The title of the SVG document.
    LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
-   LONG      Flags;     // Optional flags.
+   SVF       Flags;     // Optional flags.
    LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.
 
    // Action stubs
@@ -88,7 +93,7 @@ class objSVG : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const SVF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
