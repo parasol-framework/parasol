@@ -2255,7 +2255,7 @@ void TextCursor::resetVector(extVectorText *Vector)
 
       if (!line.chars.empty()) {
          auto col = mColumn;
-         if ((size_t)col > line.chars.size()) col = line.chars.size();
+         if ((size_t)col >= line.chars.size()) col = line.chars.size() - 1;
          Vector->txCursor.vector->Points[0].X = line.chars[col].x1 + 0.5;
          Vector->txCursor.vector->Points[0].Y = line.chars[col].y1;
          Vector->txCursor.vector->Points[1].X = line.chars[col].x2 + 0.5;

@@ -2331,11 +2331,11 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
                // Unhandled non-printable characters are ignored
                keyval = 0;
             }
-            else if ((keyval >= LONG(KEY::A)) and (keyval <= LONG(KEY::Z))) {
-               keyval = keyval - LONG(KEY::A) + LONG('a');
+            else if ((LONG(Event->Code) >= LONG(KEY::A)) and (LONG(Event->Code) <= LONG(KEY::Z))) {
+               keyval = LONG(Event->Code) - LONG(KEY::A) + LONG('a');
             }
-            else if((keyval >= LONG(KEY::ZERO)) and (keyval <= LONG(KEY::NINE))) {
-               keyval = keyval - LONG(KEY::ZERO) + LONG('0');
+            else if ((LONG(Event->Code) >= LONG(KEY::ZERO)) and (LONG(Event->Code) <= LONG(KEY::NINE))) {
+               keyval = LONG(Event->Code) - LONG(KEY::ZERO) + LONG('0');
             }
             else {
                // Call KeyDefault(), which will pull the key value from the lastkeytrans buffer
