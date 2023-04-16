@@ -2294,11 +2294,9 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
    if ((Self->Flags & SCIF::EDIT) IS SCIF::NIL) return;
 
    if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
-      if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = TRUE;
-      else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = TRUE;
-      else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = TRUE;
-
-      LONG keyval = Event->Code;
+      if ((Event->Code IS KEY::L_SHIFT) or (Event->Code IS KEY::R_SHIFT)) Self->KeyShift = TRUE;
+      else if ((Event->Code IS KEY::L_ALT) or (Event->Code IS KEY::R_ALT)) Self->KeyAlt = TRUE;
+      else if ((Event->Code IS KEY::L_CONTROL) or (Event->Code IS KEY::R_CONTROL)) Self->KeyCtrl = TRUE;
 
       char string[8];
       string[0] = 0;
@@ -2310,33 +2308,34 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
 
       StrCopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
 
-      switch (keyval) {
+      LONG keyval;
+      switch (Event->Code) {
          // Handle known non-printable character keys first
-         case K_TAB:       keyval = SCK_TAB; break;
-         case K_DOWN:      keyval = SCK_DOWN; break;
-         case K_UP:        keyval = SCK_UP; break;
-         case K_LEFT:      keyval = SCK_LEFT; break;
-         case K_RIGHT:     keyval = SCK_RIGHT; break;
-         case K_HOME:      keyval = SCK_HOME; break;
-         case K_END:       keyval = SCK_END; break;
-         case K_PAGE_UP:   keyval = SCK_PRIOR; break;
-         case K_PAGE_DOWN: keyval = SCK_NEXT; break;
-         case K_DELETE:    keyval = SCK_DELETE; break;
-         case K_INSERT:    keyval = SCK_INSERT; break;
-         case K_ENTER:
-         case K_NP_ENTER:  keyval = SCK_RETURN; break;
-         case K_ESCAPE:    keyval = SCK_ESCAPE; break;
-         case K_BACKSPACE: keyval = SCK_BACK; break;
+         case KEY::TAB:       keyval = SCK_TAB; break;
+         case KEY::DOWN:      keyval = SCK_DOWN; break;
+         case KEY::UP:        keyval = SCK_UP; break;
+         case KEY::LEFT:      keyval = SCK_LEFT; break;
+         case KEY::RIGHT:     keyval = SCK_RIGHT; break;
+         case KEY::HOME:      keyval = SCK_HOME; break;
+         case KEY::END:       keyval = SCK_END; break;
+         case KEY::PAGE_UP:   keyval = SCK_PRIOR; break;
+         case KEY::PAGE_DOWN: keyval = SCK_NEXT; break;
+         case KEY::DELETE:    keyval = SCK_DELETE; break;
+         case KEY::INSERT:    keyval = SCK_INSERT; break;
+         case KEY::ENTER:
+         case KEY::NP_ENTER:  keyval = SCK_RETURN; break;
+         case KEY::ESCAPE:    keyval = SCK_ESCAPE; break;
+         case KEY::BACKSPACE: keyval = SCK_BACK; break;
          default:
             if ((Event->Qualifiers & KQ::NOT_PRINTABLE) != KQ::NIL) {
                // Unhandled non-printable characters are ignored
                keyval = 0;
             }
-            else if ((keyval >= K_A) and (keyval <= K_Z)) {
-               keyval = keyval - K_A + (LONG)'a';
+            else if ((keyval >= LONG(KEY::A)) and (keyval <= LONG(KEY::Z))) {
+               keyval = keyval - LONG(KEY::A) + LONG('a');
             }
-            else if((keyval >= K_ZERO) and (keyval <= K_NINE)) {
-               keyval = keyval - K_ZERO + (LONG)'0';
+            else if((keyval >= LONG(KEY::ZERO)) and (keyval <= LONG(KEY::NINE))) {
+               keyval = keyval - LONG(KEY::ZERO) + LONG('0');
             }
             else {
                // Call KeyDefault(), which will pull the key value from the lastkeytrans buffer
@@ -2347,14 +2346,14 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
       }
 
       if (keyval) {
-         log.traceBranch("Keypress: %d", keyval);
+         log.traceBranch("Keypress: %d", LONG(keyval));
          Self->API->panKeyDown(keyval, Event->Qualifiers);
       }
    }
    else if ((Event->Qualifiers & KQ::RELEASED) != KQ::NIL) {
-      if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = FALSE;
-      else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = FALSE;
-      else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = FALSE;
+      if ((Event->Code IS KEY::L_SHIFT) or (Event->Code IS KEY::R_SHIFT)) Self->KeyShift = FALSE;
+      else if ((Event->Code IS KEY::L_ALT) or (Event->Code IS KEY::R_ALT)) Self->KeyAlt = FALSE;
+      else if ((Event->Code IS KEY::L_CONTROL) or (Event->Code IS KEY::R_CONTROL)) Self->KeyCtrl = FALSE;
    }
 }
 

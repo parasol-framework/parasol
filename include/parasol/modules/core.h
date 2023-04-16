@@ -1389,159 +1389,162 @@ DEFINE_ENUM_FLAG_OPERATORS(CNF)
 
 // Raw key codes
 
-#define K_A 1
-#define K_B 2
-#define K_C 3
-#define K_D 4
-#define K_E 5
-#define K_F 6
-#define K_G 7
-#define K_H 8
-#define K_I 9
-#define K_J 10
-#define K_K 11
-#define K_L 12
-#define K_M 13
-#define K_N 14
-#define K_O 15
-#define K_P 16
-#define K_Q 17
-#define K_R 18
-#define K_S 19
-#define K_T 20
-#define K_U 21
-#define K_V 22
-#define K_W 23
-#define K_X 24
-#define K_Y 25
-#define K_Z 26
-#define K_ONE 27
-#define K_TWO 28
-#define K_THREE 29
-#define K_FOUR 30
-#define K_FIVE 31
-#define K_SIX 32
-#define K_SEVEN 33
-#define K_EIGHT 34
-#define K_NINE 35
-#define K_ZERO 36
-#define K_REVERSE_QUOTE 37
-#define K_MINUS 38
-#define K_EQUALS 39
-#define K_L_SQUARE 40
-#define K_R_SQUARE 41
-#define K_SEMI_COLON 42
-#define K_APOSTROPHE 43
-#define K_COMMA 44
-#define K_DOT 45
-#define K_PERIOD 45
-#define K_SLASH 46
-#define K_BACK_SLASH 47
-#define K_SPACE 48
-#define K_NP_0 49
-#define K_NP_1 50
-#define K_NP_2 51
-#define K_NP_3 52
-#define K_NP_4 53
-#define K_NP_5 54
-#define K_NP_6 55
-#define K_NP_7 56
-#define K_NP_8 57
-#define K_NP_9 58
-#define K_NP_MULTIPLY 59
-#define K_NP_PLUS 60
-#define K_NP_BAR 61
-#define K_NP_SEPARATOR 61
-#define K_NP_MINUS 62
-#define K_NP_DECIMAL 63
-#define K_NP_DOT 63
-#define K_NP_DIVIDE 64
-#define K_L_CONTROL 65
-#define K_R_CONTROL 66
-#define K_HELP 67
-#define K_L_SHIFT 68
-#define K_R_SHIFT 69
-#define K_CAPS_LOCK 70
-#define K_PRINT 71
-#define K_L_ALT 72
-#define K_R_ALT 73
-#define K_L_COMMAND 74
-#define K_R_COMMAND 75
-#define K_F1 76
-#define K_F2 77
-#define K_F3 78
-#define K_F4 79
-#define K_F5 80
-#define K_F6 81
-#define K_F7 82
-#define K_F8 83
-#define K_F9 84
-#define K_F10 85
-#define K_F11 86
-#define K_F12 87
-#define K_F13 88
-#define K_F14 89
-#define K_F15 90
-#define K_F16 91
-#define K_F17 92
-#define K_MACRO 93
-#define K_NP_PLUS_MINUS 94
-#define K_LESS_GREATER 95
-#define K_UP 96
-#define K_DOWN 97
-#define K_RIGHT 98
-#define K_LEFT 99
-#define K_SCR_LOCK 100
-#define K_PAUSE 101
-#define K_WAKE 102
-#define K_SLEEP 103
-#define K_POWER 104
-#define K_BACKSPACE 105
-#define K_TAB 106
-#define K_ENTER 107
-#define K_ESCAPE 108
-#define K_DELETE 109
-#define K_CLEAR 110
-#define K_HOME 111
-#define K_PAGE_UP 112
-#define K_PAGE_DOWN 113
-#define K_END 114
-#define K_SELECT 115
-#define K_EXECUTE 116
-#define K_INSERT 117
-#define K_UNDO 118
-#define K_REDO 119
-#define K_MENU 120
-#define K_FIND 121
-#define K_CANCEL 122
-#define K_BREAK 123
-#define K_NUM_LOCK 124
-#define K_PRT_SCR 125
-#define K_NP_ENTER 126
-#define K_SYSRQ 127
-#define K_F18 128
-#define K_F19 129
-#define K_F20 130
-#define K_WIN_CONTROL 131
-#define K_VOLUME_UP 132
-#define K_VOLUME_DOWN 133
-#define K_BACK 134
-#define K_CALL 135
-#define K_END_CALL 136
-#define K_CAMERA 137
-#define K_AT 138
-#define K_PLUS 139
-#define K_LENS_FOCUS 140
-#define K_STOP 141
-#define K_NEXT 142
-#define K_PREVIOUS 143
-#define K_FORWARD 144
-#define K_REWIND 145
-#define K_MUTE 146
-#define K_STAR 147
-#define K_POUND 148
-#define K_PLAY 149
-#define K_LIST_END 150
+enum class KEY : LONG {
+   NIL = 0,
+   A = 1,
+   B = 2,
+   C = 3,
+   D = 4,
+   E = 5,
+   F = 6,
+   G = 7,
+   H = 8,
+   I = 9,
+   J = 10,
+   K = 11,
+   L = 12,
+   M = 13,
+   N = 14,
+   O = 15,
+   P = 16,
+   Q = 17,
+   R = 18,
+   S = 19,
+   T = 20,
+   U = 21,
+   V = 22,
+   W = 23,
+   X = 24,
+   Y = 25,
+   Z = 26,
+   ONE = 27,
+   TWO = 28,
+   THREE = 29,
+   FOUR = 30,
+   FIVE = 31,
+   SIX = 32,
+   SEVEN = 33,
+   EIGHT = 34,
+   NINE = 35,
+   ZERO = 36,
+   REVERSE_QUOTE = 37,
+   MINUS = 38,
+   EQUALS = 39,
+   L_SQUARE = 40,
+   R_SQUARE = 41,
+   SEMI_COLON = 42,
+   APOSTROPHE = 43,
+   COMMA = 44,
+   DOT = 45,
+   PERIOD = 45,
+   SLASH = 46,
+   BACK_SLASH = 47,
+   SPACE = 48,
+   NP_0 = 49,
+   NP_1 = 50,
+   NP_2 = 51,
+   NP_3 = 52,
+   NP_4 = 53,
+   NP_5 = 54,
+   NP_6 = 55,
+   NP_7 = 56,
+   NP_8 = 57,
+   NP_9 = 58,
+   NP_MULTIPLY = 59,
+   NP_PLUS = 60,
+   NP_BAR = 61,
+   NP_SEPARATOR = 61,
+   NP_MINUS = 62,
+   NP_DECIMAL = 63,
+   NP_DOT = 63,
+   NP_DIVIDE = 64,
+   L_CONTROL = 65,
+   R_CONTROL = 66,
+   HELP = 67,
+   L_SHIFT = 68,
+   R_SHIFT = 69,
+   CAPS_LOCK = 70,
+   PRINT = 71,
+   L_ALT = 72,
+   R_ALT = 73,
+   L_COMMAND = 74,
+   R_COMMAND = 75,
+   F1 = 76,
+   F2 = 77,
+   F3 = 78,
+   F4 = 79,
+   F5 = 80,
+   F6 = 81,
+   F7 = 82,
+   F8 = 83,
+   F9 = 84,
+   F10 = 85,
+   F11 = 86,
+   F12 = 87,
+   F13 = 88,
+   F14 = 89,
+   F15 = 90,
+   F16 = 91,
+   F17 = 92,
+   MACRO = 93,
+   NP_PLUS_MINUS = 94,
+   LESS_GREATER = 95,
+   UP = 96,
+   DOWN = 97,
+   RIGHT = 98,
+   LEFT = 99,
+   SCR_LOCK = 100,
+   PAUSE = 101,
+   WAKE = 102,
+   SLEEP = 103,
+   POWER = 104,
+   BACKSPACE = 105,
+   TAB = 106,
+   ENTER = 107,
+   ESCAPE = 108,
+   DELETE = 109,
+   CLEAR = 110,
+   HOME = 111,
+   PAGE_UP = 112,
+   PAGE_DOWN = 113,
+   END = 114,
+   SELECT = 115,
+   EXECUTE = 116,
+   INSERT = 117,
+   UNDO = 118,
+   REDO = 119,
+   MENU = 120,
+   FIND = 121,
+   CANCEL = 122,
+   BREAK = 123,
+   NUM_LOCK = 124,
+   PRT_SCR = 125,
+   NP_ENTER = 126,
+   SYSRQ = 127,
+   F18 = 128,
+   F19 = 129,
+   F20 = 130,
+   WIN_CONTROL = 131,
+   VOLUME_UP = 132,
+   VOLUME_DOWN = 133,
+   BACK = 134,
+   CALL = 135,
+   END_CALL = 136,
+   CAMERA = 137,
+   AT = 138,
+   PLUS = 139,
+   LENS_FOCUS = 140,
+   STOP = 141,
+   NEXT = 142,
+   PREVIOUS = 143,
+   FORWARD = 144,
+   REWIND = 145,
+   MUTE = 146,
+   STAR = 147,
+   POUND = 148,
+   PLAY = 149,
+   LIST_END = 150,
+};
 
 
 #ifndef __GNUC__
@@ -4762,7 +4765,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; KQ Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

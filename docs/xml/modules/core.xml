@@ -2886,7 +2886,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>
     </constants>
 
-    <constants lookup="K" comment="Raw key codes">
+    <constants lookup="KEY" comment="Raw key codes">
       <const name="A"/>
       <const name="APOSTROPHE"/>
       <const name="AT"/>

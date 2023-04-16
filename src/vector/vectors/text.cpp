@@ -1982,37 +1982,37 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
    pf::Log log(__FUNCTION__);
 
-   log.trace("$%.8x, Value: %d", LONG(Event->Qualifiers), Event->Code);
+   log.trace("$%.8x, Value: %d", LONG(Event->Qualifiers), LONG(Event->Code));
 
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
    Self->txCursor.vector->setVisibility(VIS::VISIBLE);
 
    if (((Self->txFlags & VTXF::NO_SYS_KEYS) IS VTXF::NIL) and ((Event->Qualifiers & KQ::CTRL) != KQ::NIL)) {
       switch(Event->Code) {
-         case K_C: // Copy
+         case KEY::C: // Copy
             acClipboard(Self, CLIPMODE::COPY);
             return;
 
-         case K_X: // Cut
+         case KEY::X: // Cut
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             acClipboard(Self, CLIPMODE::CUT);
             return;
 
-         case K_V: // Paste
+         case KEY::V: // Paste
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             acClipboard(Self, CLIPMODE::PASTE);
             return;
 
-         case K_K: // Delete line
+         case KEY::K: // Delete line
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             vtDeleteLine(Self, Self->txCursor.row());
             return;
 
-         case K_Z: // Undo
+         case KEY::Z: // Undo
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
 
-         case K_Y: // Redo
+         case KEY::Y: // Redo
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
       }
@@ -2033,7 +2033,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    }
 
    switch(Event->Code) {
-   case K_BACKSPACE:
+   case KEY::BACKSPACE:
       if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else if (Self->txCursor.column() > 0) {
          if ((size_t)Self->txCursor.column() > Self->txLines[Self->txCursor.row()].length()) {
@@ -2061,7 +2061,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       acDraw(Self);
       break;
 
-   case K_CLEAR:
+   case KEY::CLEAR:
       if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else {
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
@@ -2069,7 +2069,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       break;
 
-   case K_DELETE:
+   case KEY::DELETE:
       if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else if ((size_t)Self->txCursor.column() < Self->txLines[Self->txCursor.row()].length()) {
          auto offset = Self->txLines[Self->txCursor.row()].utf8CharOffset(Self->txCursor.column());
@@ -2083,15 +2083,15 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       acDraw(Self);
       break;
 
-   case K_END:
+   case KEY::END:
       Self->txCursor.move(Self, Self->txCursor.row(), Self->txLines[Self->txCursor.row()].length());
       break;
 
-   case K_TAB:
+   case KEY::TAB:
       break;
 
-   case K_ENTER:
-   case K_NP_ENTER: {
+   case KEY::ENTER:
+   case KEY::NP_ENTER: {
       if ((Self->txLineLimit) and (Self->txLines.size() >= (size_t)Self->txLineLimit)) break;
 
       if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
@@ -2109,23 +2109,23 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       break;
    }
 
-   case K_HOME:
+   case KEY::HOME:
       Self->txCursor.move(Self, Self->txCursor.row(), 0);
       break;
 
-   case K_INSERT:
+   case KEY::INSERT:
       if ((Self->txFlags & VTXF::OVERWRITE) != VTXF::NIL) Self->txFlags &= ~VTXF::OVERWRITE;
       else Self->txFlags |= VTXF::OVERWRITE;
       break;
 
-   case K_LEFT:
+   case KEY::LEFT:
       Self->txCursor.resetFlash();
       Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (Self->txCursor.column() > 0) Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()-1);
       else if (Self->txCursor.row() > 0) Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()-1].utf8Length());
       break;
 
-   case K_RIGHT:
+   case KEY::RIGHT:
       Self->txCursor.resetFlash();
       Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (!Self->txLines.empty()) {
@@ -2138,12 +2138,12 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       break;
 
-   case K_DOWN:
-   case K_UP:
+   case KEY::DOWN:
+   case KEY::UP:
       Self->txCursor.resetFlash();
       Self->txCursor.vector->setVisibility(VIS::VISIBLE);
-      if (((Event->Code IS K_UP) and (Self->txCursor.row() > 0)) or
-          ((Event->Code IS K_DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
+      if (((Event->Code IS KEY::UP) and (Self->txCursor.row() > 0)) or
+          ((Event->Code IS KEY::DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
          LONG end_column;
 
          // Determine the current true position of the current cursor column, in UTF-8.  Then determine the cursor
@@ -2169,7 +2169,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txFlags &= ~VTXF::AREA_SELECTED;
 
          LONG new_row;
-         if (Event->Code IS K_UP) new_row = Self->txCursor.row() - 1;
+         if (Event->Code IS KEY::UP) new_row = Self->txCursor.row() - 1;
          else new_row = Self->txCursor.row() + 1;
 
          LONG new_column;

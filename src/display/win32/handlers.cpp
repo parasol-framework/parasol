@@ -10,35 +10,39 @@ Notes
 
 *********************************************************************************************************************/
 
-void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
+void MsgKeyPress(KQ Flags, KEY Value, LONG Printable)
 {
-   if (!Value) return;
+   if (Value IS KEY::NIL) return;
 
-   if ((Printable < 0x20) or (Printable IS 127)) Flags |= LONG(KQ::NOT_PRINTABLE);
+   if ((Printable < 0x20) or (Printable IS 127)) Flags |= KQ::NOT_PRINTABLE;
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
-      .Qualifiers = KQ(Flags)|KQ::PRESSED,
+      .Qualifiers = Flags|KQ::PRESSED,
       .Code       = Value,
       .Unicode    = Printable
    };
    BroadcastEvent(&key, sizeof(key));
 }
 
+void MsgKeyPress(int Flags, int Value, int Printable) { MsgKeyPress(KQ(Flags), KEY(Value), Printable); }
+
 //********************************************************************************************************************
 
-void MsgKeyRelease(LONG Flags, LONG Value)
+void MsgKeyRelease(KQ Flags, KEY Value)
 {
-   if (!Value) return;
+   if (Value IS KEY::NIL) return;
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
-      .Qualifiers = KQ(Flags)|KQ::RELEASED,
+      .Qualifiers = Flags|KQ::RELEASED,
       .Code       = Value,
       .Unicode    = 0
    };
    BroadcastEvent(&key, sizeof(key));
 }
+
+void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value)); }
 
 //********************************************************************************************************************
 

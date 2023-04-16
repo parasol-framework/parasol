@@ -828,7 +828,7 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
       auto &sub = *it;
       if (sub.Callback.Type IS CALL_STDC) {
          pf::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERROR (*)(objVector *, KQ, LONG, LONG))sub.Callback.StdC.Routine;
+         auto callback = (ERROR (*)(objVector *, KQ, KEY, LONG))sub.Callback.StdC.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
       }
       else if (sub.Callback.Type IS CALL_SCRIPT) {
@@ -836,7 +836,7 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
          ScriptArg args[] = {
             { "Vector",     FDF_OBJECT, { .Address = Vector } },
             { "Qualifiers", FDF_LONG,   { .Long = LONG(Event->Qualifiers) } },
-            { "Code",       FDF_LONG,   { .Long = Event->Code } },
+            { "Code",       FDF_LONG,   { .Long = LONG(Event->Code) } },
             { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
          };
          scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
@@ -856,7 +856,7 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 {
    const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
-   if (Event->Code IS K_TAB) {
+   if (Event->Code IS KEY::TAB) {
       if ((Event->Qualifiers & KQ::RELEASED) IS KQ::NIL) return;
 
       bool reverse = (((Event->Qualifiers & KQ::QUALIFIERS) & KQ::SHIFT) != KQ::NIL);

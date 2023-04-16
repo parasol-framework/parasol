@@ -438,7 +438,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputValue); // Arg: Input value registered by the client
    lua_pushinteger(prv->Lua, Input->SurfaceID);  // Arg: Surface (if applicable)
    lua_pushinteger(prv->Lua, ULONG(Event->Qualifiers)); // Arg: Key Flags
-   lua_pushinteger(prv->Lua, Event->Code);       // Arg: Key Value
+   lua_pushinteger(prv->Lua, LONG(Event->Code));       // Arg: Key Value
    lua_pushinteger(prv->Lua, Event->Unicode);    // Arg: Unicode character
 
    if (lua_pcall(prv->Lua, 5, 0, 0)) {

@@ -702,7 +702,7 @@ static void HandleButtonRelease(HWND window, int button)
 static void HandleKeyPress(WPARAM value)
 {
    RECT winrect, client, desktop;
-   int flags, left, top, width, height;
+   int left, top, width, height;
    POINT point;
 
    if ((glQualifiers & KQ_CTRL) AND (value IS VK_F11)) {
@@ -756,7 +756,7 @@ static void HandleKeyPress(WPARAM value)
 
       result = ToUnicode(value, MapVirtualKey(value, 0), keystate, printable, sizeof(printable)/sizeof(printable[0]), 0);
 
-      flags = 0;
+      int flags = 0;
       if ((value >= 0x60) && (value < 0x70)) flags |= KQ_NUM_PAD;
       if (LOWORD(GetKeyState(VK_CAPITAL)) IS 1) flags |= KQ_CAPS_LOCK;
       if (keyconv[value]) MsgKeyPress(flags|glQualifiers, keyconv[value], printable[0]);
