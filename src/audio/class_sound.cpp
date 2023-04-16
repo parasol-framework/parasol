@@ -329,7 +329,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    if (!Self->Active) {
       // Determine the sample type
 
-      LONG sampleformat = 0;
+      auto sampleformat = SFM::NIL;
       if (Self->BitsPerSample IS 8) {
          if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM::U8_BIT_STEREO;
          else sampleformat = SFM::U8_BIT_MONO;
@@ -339,7 +339,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          else sampleformat = SFM::S16_BIT_MONO;
       }
 
-      if (!sampleformat) return log.warning(ERR_InvalidData);
+      if (sampleformat IS SFM::NIL) return log.warning(ERR_InvalidData);
 
       // Create the audio buffer and fill it with sample data
 
@@ -348,7 +348,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       BYTE *buffer;
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
-         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", sampleformat, Self->Length);
+         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", LONG(sampleformat), Self->Length);
 
          struct sndAddStream stream;
          AudioLoop loop;

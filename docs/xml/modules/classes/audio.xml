@@ -70,7 +70,7 @@
 <p>Audio samples can be loaded into an Audio object for playback via the AddSample() or <method>AddStream</method> methods.  For small samples under 512k we recommend AddSample(), while anything larger should be supported through <method>AddStream</method>.</p>
 <p>When adding a sample, it is essential to select the correct bit format for the sample data.  While it is important to differentiate between simple attributes such as 8 or 16 bit data, mono or stereo format, you should also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
 <types lookup="SFM"/>
-<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, logical-or the SampleFormat value with <code>SFM::BIG_ENDIAN</code>.</p>
+<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, logical-or the SampleFormat value with <code>SFM::F_BIG_ENDIAN</code>.</p>
 <p>It is also possible to supply loop information with the sample data.  This is achieved by configuring the <struct>AudioLoop</struct> structure:</p>
 <struct lookup="AudioLoop"/>
 <p>The types that can be specified in the LoopMode field are:</p>
@@ -106,7 +106,7 @@
 <p>The Offset reflects the retrieval point of the decoded data and is measured in bytes.  The Buffer and BufferSize reflect the target for the decoded data.  The function must return the total number of bytes that were written to the Buffer. If an error occurs, return zero.</p>
 <p>When creating a new stream, pay attention to the audio format that is being used for the sample data. It is important to differentiate between 8-bit, 16-bit, mono and stereo, but also be aware of whether or not the data is little or big endian, and if the sample data consists of signed or unsigned values.  Because of the possible variations there are a number of sample formats, as illustrated in the following table:</p>
 <types lookup="SFM"/>
-<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, logical-or the SampleFormat value with the flag <code>SFM::BIG_ENDIAN</code>.</p>
+<p>By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big endian format, logical-or the SampleFormat value with the flag <code>SFM::F_BIG_ENDIAN</code>.</p>
 <p>It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping formats via the <struct>AudioLoop</struct> structure:</p>
 <struct lookup="AudioLoop"/>
 <p>There are three types of loop modes that can be specified in the LoopMode field:</p>
@@ -395,7 +395,7 @@
     </constants>
 
     <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
-      <const name="BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
+      <const name="F_BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
       <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
       <const name="S16_BIT_STEREO">16-bit stereo signed sample.</const>
       <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>

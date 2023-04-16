@@ -536,7 +536,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       if ((glHeadless) or (!XDisplay)) {
          Info->Width         = 1024;
          Info->Height        = 768;
-         Info->AccelFlags    = 0;
+         Info->AccelFlags    = ACF::NIL;
          Info->VDensity      = 96;
          Info->HDensity      = 96;
          Info->BitsPerPixel  = 32;
