@@ -60,7 +60,7 @@ glActionStubs = {
       return Action(AC_DragDrop, this, &args);
    }]],
    Clipboard = [[
-   inline ERROR clipboard(LONG Mode) {
+   inline ERROR clipboard(CLIPMODE Mode) {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }]],
@@ -71,7 +71,7 @@ glActionStubs = {
       return Action(AC_Draw, this, &args);
    }]],
    DataFeed = [[
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }]],
@@ -159,13 +159,13 @@ glActionStubs = {
       return Action(AC_SaveToObject, this, &args);
    }]],
    Seek = [[
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    ]],
    SetVars = [[
    inline ERROR setVars(CSTRING tags, ...) {
@@ -392,7 +392,7 @@ function flags(Prefix, Options, ...)
    end
 
    local function outputFlagDef(Options, Prefix, flag_name, val)
-      if (Options.strict) then
+      if (not Options.weak) then
          if (Options.bits == 16) then
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
          else
@@ -408,8 +408,16 @@ function flags(Prefix, Options, ...)
       end
    end
 
-   if (Options.strict) then
-      table.insert(out, string.format('enum class %s : ULONG {', Prefix))
+   if (not Options.weak) then
+      local type_size = 'ULONG'
+      if (Options.bits == 64) then
+         type_size = 'LARGE'
+      elseif (Options.bits == 16) then
+         type_size = 'UWORD'
+      elseif (Options.bits == 8) then
+         type_size = 'UBYTE'
+      end
+      table.insert(out, string.format('enum class %s : ' .. type_size .. ' {', Prefix))
       table.insert(out, '   NIL = 0,')
    end
 
@@ -471,7 +479,7 @@ function flags(Prefix, Options, ...)
       table.insert(out, flag.define)
    end
 
-   if (Options.strict) then
+   if (not Options.weak) then
       table.insert(out, '};')
       table.insert(out, '')
       table.insert(out, 'DEFINE_ENUM_FLAG_OPERATORS(' .. Prefix .. ')')
@@ -488,7 +496,7 @@ function flags(Prefix, Options, ...)
       restrict=glRestrict
    }
 
-   if (Options.strict) then -- Promote strong-typing to other C++ definitions
+   if (not Options.weak) then -- Promote strong-typing to other C++ definitions
       glCustomTypes[Prefix].type = 'int'
    end
 end
@@ -530,6 +538,12 @@ function const(Prefix, Options, ...)
       table.insert(out, '')
    end
 
+   if (Options.type) then -- Strong typing enabled, convert via cType()
+      Options.type = cType({ type=Options.type }, Prefix)
+      table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
+      table.insert(out, '   NIL = 0,')
+   end
+
    local list = { }
    for k,va in ipairs({...}) do
       if (type(va) == 'string') then
@@ -560,13 +574,23 @@ function const(Prefix, Options, ...)
             end
             if (val == nil) then val = v.value end
 
-            table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+            if (Options.type) then
+               table.insert(out, '   ' .. v.name .. ' = ' .. val .. ',')
+            else
+               table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+            end
+
             table.insert(list, { name=v.name, value=val, comment=comment })
          end
       else
          error('Invalid const type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
       end
    end
+
+   if (Options.type) then
+      table.insert(out, '};')
+   end
+
    table.insert(out, '')
 
    if (glRestrict == nil) then
@@ -575,7 +599,8 @@ function const(Prefix, Options, ...)
 
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=nz(glRestrict, Options.restrict)
+      restrict=nz(glRestrict, Options.restrict),
+      type=Options.type -- Promotes strong-typing to other C++ definitions
    }
 end
 
@@ -985,7 +1010,7 @@ function class(Name, Options, Blueprint, Private, Custom)
 
                if nz(values) then values = values .. ', ' end
                if (param.resultValue) then
-                  values  = values .. '0'
+                  values  = values .. '(' .. param.basicType .. ')0'
                   results = true
                else
                   values = values .. pName(param)

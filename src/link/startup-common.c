@@ -17,9 +17,9 @@ extern "C" void print(CSTRING text, ...)
 
 static ERROR PROGRAM_DataFeed(OBJECTPTR Task, struct acDataFeed *Args)
 {
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       STRING buffer;
-      if (!AllocMemory(Args->Size+1, MEM_NO_CLEAR|MEM_STRING, &buffer)) {
+      if (!AllocMemory(Args->Size+1, MEM::NO_CLEAR|MEM::STRING, &buffer)) {
          LONG i;
          for (i=0; i < Args->Size; i++) buffer[i] = ((UBYTE *)Args->Buffer)[i];
          buffer[i] = 0;

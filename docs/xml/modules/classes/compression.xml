@@ -465,7 +465,7 @@ if (!error) {
       <name>Permissions</name>
       <comment>Default permissions for decompressed files are defined here.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="PERMIT">INT</type>
+      <type lookup="PERMIT">PERMIT</type>
       <description>
 <p>By default the permissions of files added to an archive are derived from their source location.  This behaviour can be over-ridden by setting the Permissions field.  Valid permission flags are outlined in the <class name="File">File</class> class.</p>
 <types lookup="PERMIT"/>
@@ -572,7 +572,7 @@ if (!error) {
       <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
       <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
       <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
-      <field name="Permissions" type="LONG" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
+      <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
       <field name="UserID" type="LONG">Original user ID</field>
       <field name="GroupID" type="LONG">Original group ID</field>
       <field name="OthersID" type="LONG">Original others ID</field>

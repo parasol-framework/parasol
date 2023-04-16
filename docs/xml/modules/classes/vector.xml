@@ -95,9 +95,9 @@
     <method>
       <name>GetBoundary</name>
       <comment>Returns the graphical boundary of a vector.</comment>
-      <prototype>ERROR vecGetBoundary(OBJECTPTR Object, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
+      <prototype>ERROR vecGetBoundary(OBJECTPTR Object, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height)</prototype>
       <input>
-        <param type="LONG" name="Flags" lookup="VBF">Optional flags.</param>
+        <param type="VBF" name="Flags" lookup="VBF">Optional flags.</param>
         <param type="DOUBLE *" name="X">The left-most position of the boundary is returned here.</param>
         <param type="DOUBLE *" name="Y">The top-most position of the boundary is returned here.</param>
         <param type="DOUBLE *" name="Width">The width of the boundary is returned here.</param>
@@ -105,8 +105,8 @@
       </input>
       <description>
 <p>This method will return the boundary of a vector's path in terms of its top-left position, width and height.  All transformations and position information that applies to the vector will be taken into account when computing the boundary.</p>
-<p>If the <code>VBF_INCLUSIVE</code> flag is used, the result will include an analysis of all paths that belong to children of the target vector, including transforms.</p>
-<p>If the <code>VBF_NO_TRANSFORM</code> flag is used, the transformation step is not applied to the vector's path.</p>
+<p>If the <code>VBF::INCLUSIVE</code> flag is used, the result will include an analysis of all paths that belong to children of the target vector, including transforms.</p>
+<p>If the <code>VBF::NO_TRANSFORM</code> flag is used, the transformation step is not applied to the vector's path.</p>
 <p>It is recommended that this method is not called until at least one rendering pass has been made, as some vector dimensions may not be computed before then.</p>
       </description>
       <result>
@@ -175,9 +175,9 @@
     <method>
       <name>SubscribeFeedback</name>
       <comment>Subscribe to events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERROR vecSubscribeFeedback(OBJECTPTR Object, FM Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="LONG" name="Mask" lookup="FM">Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+        <param type="FM" name="Mask" lookup="FM">Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.</param>
         <param type="FUNCTION *" name="Callback">The function that will receive feedback events.</param>
       </input>
       <description>
@@ -196,9 +196,9 @@
     <method>
       <name>SubscribeInput</name>
       <comment>Create a subscription for input events that relate to the vector.</comment>
-      <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, LONG Mask, FUNCTION * Callback)</prototype>
+      <prototype>ERROR vecSubscribeInput(OBJECTPTR Object, JTYPE Mask, FUNCTION * Callback)</prototype>
       <input>
-        <param type="LONG" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
+        <param type="JTYPE" name="Mask">Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.</param>
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
@@ -288,7 +288,7 @@
       <name>ColourSpace</name>
       <comment>Defines the colour space to use when blending the vector with a target bitmap's content.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VCS">INT</type>
+      <type lookup="VCS">VCS</type>
       <description>
 <p>By default, vectors are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will force the renderer to automatically convert sRGB values to linear RGB when blending on the fly.</p>
 <types lookup="VCS"/>
@@ -299,11 +299,11 @@
       <name>Cursor</name>
       <comment>The mouse cursor to display when the pointer is within the vector's boundary.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="PTR">INT</type>
+      <type lookup="PTC">PTC</type>
       <description>
 <p>The Cursor field declares the pointer's cursor image to display within the vector's boundary.  The cursor will automatically switch to the specified image when it enters the boundary defined by the vector's path.  This effect lasts until the cursor vacates the area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
-<types lookup="PTR"/>
+<types lookup="PTC"/>
       </description>
     </field>
 
@@ -394,7 +394,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="VF">INT</type>
+      <type lookup="VF">VF</type>
       <description>
 <types lookup="VF"/>
       </description>
@@ -542,7 +542,7 @@
       <name>PathQuality</name>
       <comment>Defines the quality of a path when it is rendered.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="RQ">INT</type>
+      <type lookup="RQ">RQ</type>
       <description>
 <p>Adjusting the render quality allows for fine adjustment of the paths produced by the rendering algorithms.  Although the default option of <code>AUTO</code> is recommended, it is optimal to lower the rendering quality to <code>CRISP</code> if the path is composed of lines at 45 degree increments and <code>FAST</code> if points are aligned to whole numbers when rendered to a bitmap.</p>
 <types lookup="RQ"/>
@@ -675,7 +675,7 @@ Z: Close Path
       <name>Visibility</name>
       <comment>Controls the visibility of a vector and its children.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VIS">INT</type>
+      <type lookup="VIS">VIS</type>
       <description>
 <types lookup="VIS"/>
       </description>

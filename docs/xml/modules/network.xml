@@ -192,7 +192,7 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
   <structs>
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
+      <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 

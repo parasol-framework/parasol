@@ -87,7 +87,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if (Socket->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Socket->SSL) and (Socket->State IS NTC_CONNECTING_SSL)) {
+   if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }
@@ -317,7 +317,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer) != ERR_Okay) {
+      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -357,7 +357,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
             if (total_length > queue->Length) {
                MSG("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer)) {
+               if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
@@ -526,7 +526,7 @@ static ERROR init_clientsocket(void)
       fl::BaseClassID(ID_CLIENTSOCKET),
       fl::ClassVersion(1.0),
       fl::Name("ClientSocket"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clClientSocketActions),
       fl::Fields(clClientSocketFields),
       fl::Size(sizeof(extClientSocket)),

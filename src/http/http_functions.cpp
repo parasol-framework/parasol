@@ -1,16 +1,16 @@
 
 //********************************************************************************************************************
 
-static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG State)
+static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC State)
 {
    pf::Log log("http_feedback");
 
-   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, State, CurrentContext()->UID);
+   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, LONG(State), CurrentContext()->UID);
 
    auto Self = (extHTTP *)Socket->UserData; //(extHTTP *)CurrentContext();
    if (Self->Class->ClassID != ID_HTTP) { log.warning(ERR_SystemCorrupt); return; }
 
-   if (State IS NTC_CONNECTING) {
+   if (State IS NTC::CONNECTING) {
       log.msg("Waiting for connection...");
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
@@ -21,7 +21,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 
       Self->Connecting = TRUE;
    }
-   else if (State IS NTC_CONNECTED) {
+   else if (State IS NTC::CONNECTED) {
       // The GET request has been pre-written to the socket on its creation, so we don't need to do anything further
       // here.
 
@@ -29,11 +29,11 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
       Self->Connecting = FALSE;
    }
-   else if (State IS NTC_DISCONNECTED) {
+   else if (State IS NTC::DISCONNECTED) {
       // Socket disconnected.  The HTTP state must change to either COMPLETED (completed naturally) or TERMINATED
       // (abnormal termination) to correctly inform the user as to what has happened.
 
-      log.msg("Disconnected from socket while in state %s.", clHTTPCurrentState[Self->CurrentState].Name);
+      log.msg("Disconnected from socket while in state %s.", clHTTPCurrentState[LONG(Self->CurrentState)].Name);
 
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -42,33 +42,33 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
 
          SET_ERROR(Self, Socket->Error);
          log.branch("Deactivating (connect failure message received).");
-         SetField(Self, FID_CurrentState, HGS_TERMINATED);
+         SetField(Self, FID_CurrentState, HGS::TERMINATED);
          return;
       }
       else Self->Connecting = FALSE;
 
-      if (Self->CurrentState >= HGS_COMPLETED) {
+      if (Self->CurrentState >= HGS::COMPLETED) {
          return;
       }
-      else if (Self->CurrentState IS HGS_READING_HEADER) {
+      else if (Self->CurrentState IS HGS::READING_HEADER) {
          SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Disconnected);
          log.trace("Received broken header as follows:\n%s", Self->Response);
-         SetField(Self, FID_CurrentState, HGS_TERMINATED);
+         SetField(Self, FID_CurrentState, HGS::TERMINATED);
       }
-      else if (Self->CurrentState IS HGS_SEND_COMPLETE) {
+      else if (Self->CurrentState IS HGS::SEND_COMPLETE) {
          // Disconnection on completion of sending data should be no big deal
          SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Okay);
-         Self->setCurrentState(HGS_COMPLETED);
+         Self->setCurrentState(HGS::COMPLETED);
       }
-      else if (Self->CurrentState IS HGS_SENDING_CONTENT) {
+      else if (Self->CurrentState IS HGS::SENDING_CONTENT) {
          SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Disconnected);
 
          // If the socket is not active, then the disconnection is a result of destroying the object (e.g. due to a redirect).
 
          log.branch("State changing to TERMINATED due to disconnection.");
-         Self->setCurrentState(HGS_TERMINATED);
+         Self->setCurrentState(HGS::TERMINATED);
       }
-      else if (Self->CurrentState IS HGS_READING_CONTENT) {
+      else if (Self->CurrentState IS HGS::READING_CONTENT) {
          LONG len;
 
          // Unread data can remain on the socket following disconnection, so try to read anything that's been left.
@@ -79,7 +79,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
          else if ((Self->ContentLength IS -1) or (Self->Index < Self->ContentLength)) {
             UBYTE *buffer;
 
-            if (!AllocMemory(BUFFER_READ_SIZE, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
+            if (!AllocMemory(BUFFER_READ_SIZE, MEM::DATA|MEM::NO_CLEAR, &buffer)) {
                while (1) {
                   len = sizeof(buffer);
                   if (Self->ContentLength != -1) {
@@ -91,7 +91,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
                   }
 
                   if (!len) { // No more incoming data
-                     if (Self->Flags & HTF_DEBUG_SOCKET) {
+                     if ((Self->Flags & HTF::DEBUG_SOCKET) != HTF::NIL) {
                         log.msg("Received %d bytes of content in this content reading session.", len);
                      }
                      break;
@@ -108,24 +108,24 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
          if (Self->ContentLength IS -1) {
             if (Socket->Error IS ERR_Okay) {
                log.msg("Orderly shutdown while streaming data.");
-               Self->setCurrentState(HGS_COMPLETED);
+               Self->setCurrentState(HGS::COMPLETED);
             }
             else {
                SET_ERROR(Self, Socket->Error);
-               SetField(Self, FID_CurrentState, HGS_TERMINATED);
+               SetField(Self, FID_CurrentState, HGS::TERMINATED);
             }
          }
          else if (Self->Index < Self->ContentLength) {
             log.warning("Disconnected before all content was downloaded (%" PF64 " of %" PF64 ")", Self->Index, Self->ContentLength);
             SET_ERROR(Self, Socket->Error ? Socket->Error : ERR_Disconnected);
-            SetField(Self, FID_CurrentState, HGS_TERMINATED);
+            SetField(Self, FID_CurrentState, HGS::TERMINATED);
          }
          else {
             log.trace("Orderly shutdown, received %" PF64 " of the expected %" PF64 " bytes.", Self->Index, Self->ContentLength);
-            SetField(Self, FID_CurrentState, HGS_COMPLETED);
+            SetField(Self, FID_CurrentState, HGS::COMPLETED);
          }
       }
-      else if (Self->CurrentState IS HGS_AUTHENTICATING) {
+      else if (Self->CurrentState IS HGS::AUTHENTICATING) {
          if (Self->DialogWindow) {
             // The HTTP socket was closed because the user is taking too long
             // to authenticate with the dialog window.  We will close the socket
@@ -138,11 +138,11 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, LONG 
             return;
          }
 
-         SetField(Self, FID_CurrentState, HGS_TERMINATED);
+         SetField(Self, FID_CurrentState, HGS::TERMINATED);
       }
    }
-   else if (Self->CurrentState >= HGS_COMPLETED) {
-      // If the state is set to HGS_COMPLETED or HGS_TERMINATED, our code should have returned ERR_Terminate to switch
+   else if (Self->CurrentState >= HGS::COMPLETED) {
+      // If the state is set to HGS::COMPLETED or HGS::TERMINATED, our code should have returned ERR_Terminate to switch
       // off the socket.  This section is entered if we forgot to do that.
 
       log.warning("Warning - socket channel was not closed correctly (didn't return ERR_Terminate).");
@@ -157,13 +157,13 @@ static ERROR socket_outgoing(objNetSocket *Socket)
 {
    pf::Log log("http_outgoing");
 
-   #define CHUNK_LENGTH_OFFSET 16
-   #define CHUNK_TAIL 2 // CRLF
+   static const LONG CHUNK_LENGTH_OFFSET = 16;
+   static const LONG CHUNK_TAIL = 2; // CRLF
 
    auto Self = (extHTTP *)Socket->UserData;
    if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
-   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, Self->CurrentState);
+   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, LONG(Self->CurrentState));
 
    LONG total_out = 0;
 
@@ -171,7 +171,7 @@ static ERROR socket_outgoing(objNetSocket *Socket)
       if (Self->BufferSize < BUFFER_WRITE_SIZE) Self->BufferSize = BUFFER_WRITE_SIZE;
       if (Self->BufferSize > 0xffff) Self->BufferSize = 0xffff;
 
-      if (AllocMemory(Self->BufferSize, MEM_DATA|MEM_NO_CLEAR, &Self->Buffer)) {
+      if (AllocMemory(Self->BufferSize, MEM::DATA|MEM::NO_CLEAR, &Self->Buffer)) {
          return ERR_AllocMemory;
       }
    }
@@ -185,8 +185,8 @@ redo_upload:
       Self->WriteSize   -= CHUNK_LENGTH_OFFSET + CHUNK_TAIL;
    }
 
-   if (Self->CurrentState != HGS_SENDING_CONTENT) {
-      Self->setCurrentState(HGS_SENDING_CONTENT);
+   if (Self->CurrentState != HGS::SENDING_CONTENT) {
+      Self->setCurrentState(HGS::SENDING_CONTENT);
    }
 
    LONG len = 0;
@@ -220,7 +220,7 @@ redo_upload:
       else if (error > ERR_ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
    }
    else if (Self->flInput) {
-      if (Self->Flags & HTF_DEBUG) log.msg("Sending content from an Input file.");
+      if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Sending content from an Input file.");
 
       error = acRead(Self->flInput, Self->WriteBuffer, Self->WriteSize, &len);
 
@@ -237,7 +237,7 @@ redo_upload:
       }
    }
    else if (Self->InputObjectID) {
-      if (Self->Flags & HTF_DEBUG) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
+      if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       OBJECTPTR object;
       if (!(error = AccessObject(Self->InputObjectID, 100, &object))) {
@@ -251,7 +251,7 @@ redo_upload:
       if (Self->MultipleInput) error = ERR_NoData;
       else error = ERR_Terminate;
 
-      log.warning("Method %d: No input fields are defined for me to send data to the server.", Self->Method);
+      log.warning("Method %d: No input fields are defined for me to send data to the server.", LONG(Self->Method));
    }
 
    if (((!error) or (error IS ERR_Terminate)) and (len)) {
@@ -302,7 +302,7 @@ redo_upload:
 
    if ((error) and (error != ERR_Terminate)) {
       if (error != ERR_TimeOut) {
-         Self->setCurrentState(HGS_TERMINATED);
+         Self->setCurrentState(HGS::TERMINATED);
          SET_ERROR(Self, error);
          return ERR_Terminate;
       }
@@ -312,7 +312,7 @@ redo_upload:
       // Check for multiple input files
 
       if ((Self->MultipleInput) and (!Self->flInput)) {
-         /*if (Self->Flags & HTF_DEBUG)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", Self->Index, Self->ContentLength);
+         /*if ((Self->Flags & HTF::DEBUG) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", Self->Index, Self->ContentLength);
 
          // Open the next file
 
@@ -327,7 +327,7 @@ redo_upload:
       // Check if the upload is complete - either Index >= ContentLength or ERR_Terminate has been given as the return code.
       //
       // Note: On completion of an upload, the HTTP server will normally send back a message to confirm completion of
-      // the upload, therefore the state is not changed to HGS_COMPLETED.
+      // the upload, therefore the state is not changed to HGS::COMPLETED.
       //
       // In the case where the server does not respond to completion of the upload, the timeout would eventually take care of it.
 
@@ -336,12 +336,12 @@ redo_upload:
 
          if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
 
-         if (Self->Flags & HTF_DEBUG) log.msg("Transfer complete - sent %" PF64 " bytes.", Self->TotalSent);
-         Self->setCurrentState(HGS_SEND_COMPLETE);
+         if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", Self->TotalSent);
+         Self->setCurrentState(HGS::SEND_COMPLETE);
          return ERR_Terminate;
       }
       else {
-         if (Self->Flags & HTF_DEBUG) log.msg("Sent %" PF64 " bytes of %" PF64, Self->Index, Self->ContentLength);
+         if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Sent %" PF64 " bytes of %" PF64, Self->Index, Self->ContentLength);
       }
    }
 
@@ -378,7 +378,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
    if (Self->Class->ClassID != ID_HTTP) return log.warning(ERR_SystemCorrupt);
 
-   if (Self->CurrentState >= HGS_COMPLETED) {
+   if (Self->CurrentState >= HGS::COMPLETED) {
       // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message
       // will cause the socket object to close the connection to the server so that we stop receiving erroneous data.
 
@@ -386,7 +386,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
       return ERR_Terminate;
    }
 
-   if (Self->CurrentState IS HGS_SENDING_CONTENT) {
+   if (Self->CurrentState IS HGS::SENDING_CONTENT) {
       if (Self->ContentLength IS -1) {
          log.warning("Incoming data while streaming content - %" PF64 " bytes already written.", Self->Index);
       }
@@ -395,19 +395,19 @@ static ERROR socket_incoming(objNetSocket *Socket)
       }
    }
 
-   if ((Self->CurrentState IS HGS_SENDING_CONTENT) or (Self->CurrentState IS HGS_SEND_COMPLETE)) {
+   if ((Self->CurrentState IS HGS::SENDING_CONTENT) or (Self->CurrentState IS HGS::SEND_COMPLETE)) {
       log.trace("Switching state from sending content to reading header.");
-      Self->setCurrentState(HGS_READING_HEADER);
+      Self->setCurrentState(HGS::READING_HEADER);
       Self->Index = 0;
    }
 
-   if ((Self->CurrentState IS HGS_READING_HEADER) or (Self->CurrentState IS HGS_AUTHENTICATING)) {
+   if ((Self->CurrentState IS HGS::READING_HEADER) or (Self->CurrentState IS HGS::AUTHENTICATING)) {
       log.trace("HTTP received data, reading header.");
 
       while (1) {
          if (!Self->Response) {
             Self->ResponseSize = 256;
-            if (AllocMemory(Self->ResponseSize + 1, MEM_STRING|MEM_NO_CLEAR, &Self->Response) != ERR_Okay) {
+            if (AllocMemory(Self->ResponseSize + 1, MEM::STRING|MEM::NO_CLEAR, &Self->Response) != ERR_Okay) {
                SET_ERROR(Self, log.warning(ERR_AllocMemory));
                return ERR_Terminate;
             }
@@ -444,10 +444,10 @@ static ERROR socket_incoming(objNetSocket *Socket)
                }
 
                if (Self->Tunneling) {
-                  if (Self->Status IS 200) {
+                  if (Self->Status IS HTS::OKAY) {
                      // Proxy tunnel established.  Convert the socket to an SSL connection, then send the HTTP command.
 
-                     if (!netSetSSL(Socket, NSL_CONNECT, TRUE, TAGEND)) {
+                     if (!netSetSSL(Socket, NSL::CONNECT, TRUE, TAGEND)) {
                         return acActivate(Self);
                      }
                      else {
@@ -461,16 +461,16 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   }
                }
 
-               if ((Self->CurrentState IS HGS_AUTHENTICATING) and (Self->Status != 401)) {
+               if ((Self->CurrentState IS HGS::AUTHENTICATING) and (Self->Status != HTS::UNAUTHORISED)) {
                   log.msg("Authentication successful, reactivating...");
                   Self->SecurePath = FALSE;
-                  Self->setCurrentState(HGS_AUTHENTICATED);
+                  Self->setCurrentState(HGS::AUTHENTICATED);
                   QueueAction(AC_Activate, Self->UID);
                   return ERR_Okay;
                }
 
-               if (Self->Status IS HTS_MOVED_PERMANENTLY) {
-                  if (Self->Flags & HTF_MOVED) {
+               if (Self->Status IS HTS::MOVED_PERMANENTLY) {
+                  if ((Self->Flags & HTF::MOVED) != HTF::NIL) {
                      // Chaining of MovedPermanently messages is disallowed (could cause circular referencing).
 
                      log.warning("Sequential MovedPermanently messages are not supported.");
@@ -483,38 +483,38 @@ static ERROR socket_incoming(objNetSocket *Socket)
                         else if (!StrCompare("https:", buffer, 6)) Self->setLocation(buffer);
                         else Self->setPath(buffer);
                         acActivate(Self); // Try again
-                        Self->Flags |= HTF_MOVED;
+                        Self->Flags |= HTF::MOVED;
                         return ERR_Okay;
                      }
                      else {
-                        Self->Flags |= HTF_MOVED;
+                        Self->Flags |= HTF::MOVED;
                         log.warning("Invalid MovedPermanently HTTP response received (no location specified).");
                      }
                   }
                }
-               else if (Self->Status IS HTS_TEMP_REDIRECT) {
-                  if (Self->Flags & HTF_REDIRECTED) {
+               else if (Self->Status IS HTS::TEMP_REDIRECT) {
+                  if ((Self->Flags & HTF::REDIRECTED) != HTF::NIL) {
                      // Chaining of TempRedirect messages is disallowed (could cause circular referencing).
 
                      log.warning("Sequential TempRedirect messages are not supported.");
                   }
-                  else Self->Flags |= HTF_REDIRECTED;
+                  else Self->Flags |= HTF::REDIRECTED;
                }
 
                if ((!Self->ContentLength) or (Self->ContentLength < -1)) {
                   log.msg("Reponse header received, no content imminent.");
-                  Self->setCurrentState(HGS_COMPLETED);
+                  Self->setCurrentState(HGS::COMPLETED);
                   return ERR_Terminate;
                }
 
                log.msg("Complete response header has been received.  Incoming Content: %" PF64, Self->ContentLength);
 
-               if (Self->CurrentState != HGS_READING_CONTENT) {
-                  Self->setCurrentState(HGS_READING_CONTENT);
+               if (Self->CurrentState != HGS::READING_CONTENT) {
+                  Self->setCurrentState(HGS::READING_CONTENT);
                }
 
                Self->AuthDigest = FALSE;
-               if ((Self->Status IS 401) and (Self->AuthRetries < MAX_AUTH_RETRIES)) {
+               if ((Self->Status IS HTS::UNAUTHORISED) and (Self->AuthRetries < MAX_AUTH_RETRIES)) {
                   Self->AuthRetries++;
 
                   if (Self->Password) {
@@ -588,15 +588,15 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   }
                   else log.msg("Authenticate method unknown.");
 
-                  Self->setCurrentState(HGS_AUTHENTICATING);
+                  Self->setCurrentState(HGS::AUTHENTICATING);
 
-                  if ((!Self->Password) and (!(Self->Flags & HTF_NO_DIALOG))) {
+                  if ((!Self->Password) and ((Self->Flags & HTF::NO_DIALOG) IS HTF::NIL)) {
                      // Pop up a dialog requesting the user to authorise himself with the http server.  The user will
                      // need to respond to the dialog before we can repost the HTTP request.
 
                      ERROR error;
                      STRING scriptfile;
-                     if (!AllocMemory(glAuthScriptLength+1, MEM_STRING|MEM_NO_CLEAR, &scriptfile)) {
+                     if (!AllocMemory(glAuthScriptLength+1, MEM::STRING|MEM::NO_CLEAR, &scriptfile)) {
                         CopyMemory(glAuthScript, scriptfile, glAuthScriptLength);
                         scriptfile[glAuthScriptLength] = 0;
 
@@ -626,7 +626,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                   Self->ChunkLen   = 0;  // Length of the first chunk is unknown at this stage
                   Self->ChunkBuffered = len;
                   if (len > Self->ChunkSize) Self->ChunkSize = len;
-                  if (!AllocMemory(Self->ChunkSize, MEM_DATA|MEM_NO_CLEAR, &Self->Chunk)) {
+                  if (!AllocMemory(Self->ChunkSize, MEM::DATA|MEM::NO_CLEAR, &Self->Chunk)) {
                      if (len > 0) CopyMemory(Self->Response + Self->SearchIndex + 4, Self->Chunk, len);
                   }
                   else {
@@ -650,15 +650,15 @@ static ERROR socket_incoming(objNetSocket *Socket)
                // Note that status check comes after processing of content, as it is legal for content to be attached
                // with bad status codes (e.g. SOAP does this).
 
-               if ((Self->Status < 200) or (Self->Status >= 300)) {
-                  if (Self->CurrentState != HGS_READING_CONTENT) {
-                     if (Self->Status IS 401) log.warning("Exhausted maximum number of retries.");
-                     else log.warning("Status code %d != 2xx", Self->Status);
+               if ((LONG(Self->Status) < 200) or (LONG(Self->Status) >= 300)) {
+                  if (Self->CurrentState != HGS::READING_CONTENT) {
+                     if (Self->Status IS HTS::UNAUTHORISED) log.warning("Exhausted maximum number of retries.");
+                     else log.warning("Status code %d != 2xx", LONG(Self->Status));
 
                      SET_ERROR(Self, ERR_Failed);
                      return ERR_Terminate;
                   }
-                  else log.warning("Status code %d != 2xx.  Receiving content...", Self->Status);
+                  else log.warning("Status code %d != 2xx.  Receiving content...", LONG(Self->Status));
                }
 
                return ERR_Okay;
@@ -666,7 +666,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
          }
       }
    }
-   else if (Self->CurrentState IS HGS_READING_CONTENT) {
+   else if (Self->CurrentState IS HGS::READING_CONTENT) {
       if (Self->Chunked) {
          // Data chunk mode.  Store received data in a chunk buffer.  As long as we know the entire size of the
          // chunk, all data can be immediately passed onto our subscribers.
@@ -709,12 +709,12 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
                if (Self->Error IS ERR_Disconnected) {
                   log.msg("Received all chunked content (disconnected by peer).");
-                  Self->setCurrentState(HGS_COMPLETED);
+                  Self->setCurrentState(HGS::COMPLETED);
                   return ERR_Terminate;
                }
                else if (Self->Error) {
                   log.warning("Read() returned error %d whilst reading content.", Self->Error);
-                  Self->setCurrentState(HGS_COMPLETED);
+                  Self->setCurrentState(HGS::COMPLETED);
                   return ERR_Terminate;
                }
                else if ((!len) and (Self->ChunkIndex >= Self->ChunkBuffered)) {
@@ -747,13 +747,13 @@ static ERROR socket_incoming(objNetSocket *Socket)
                               // interpretation.
 
                               log.msg("End of chunks reached, optional data follows.");
-                              Self->setCurrentState(HGS_COMPLETED);
+                              Self->setCurrentState(HGS::COMPLETED);
                               return ERR_Terminate;
                            }
                            else {
                               // We have reached the terminating line (CRLF on an empty line)
                               log.msg("Received all chunked content.");
-                              Self->setCurrentState(HGS_COMPLETED);
+                              Self->setCurrentState(HGS::COMPLETED);
                               return ERR_Terminate;
                            }
                         }
@@ -806,7 +806,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
          // Maximum number of times that this subroutine can loop (on a fast network we could otherwise download indefinitely).
          // A limit of 64K per read session is acceptable with a time limit of 1/200 frames.
 
-         if (!AllocMemory(BUFFER_READ_SIZE, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
+         if (!AllocMemory(BUFFER_READ_SIZE, MEM::DATA|MEM::NO_CLEAR, &buffer)) {
             LONG looplimit = (64 * 1024) / BUFFER_READ_SIZE;
             LARGE timelimit = PreciseTime() + 5000000LL;
 
@@ -819,7 +819,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                if ((Self->Error = acRead(Socket, buffer, len, &len))) {
                   if ((Self->Error IS ERR_Disconnected) and (Self->ContentLength IS -1)) {
                      log.trace("Received all streamed content (disconnected by peer).");
-                     Self->setCurrentState(HGS_COMPLETED);
+                     Self->setCurrentState(HGS::COMPLETED);
                      FreeResource(buffer);
                      return ERR_Terminate;
                   }
@@ -862,7 +862,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
 
       if ((!acRead(Socket, buffer, sizeof(buffer)-1, &len)) and (len > 0)) {
          buffer[len] = 0;
-         log.warning("WARNING: Received data whilst in state %d.", Self->CurrentState);
+         log.warning("WARNING: Received data whilst in state %d.", LONG(Self->CurrentState));
          log.warning("Content (%d bytes) Follows:\n%.80s", len, buffer);
       }
    }
@@ -896,7 +896,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
       if (!Self->Args) return log.warning(ERR_Memory);
    }
 
-   if (Self->Flags & HTF_DEBUG) log.msg("HTTP RESPONSE HEADER\n%s", Buffer);
+   if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("HTTP RESPONSE HEADER\n%s", Buffer);
 
    // First line: HTTP/1.1 200 OK
 
@@ -915,7 +915,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
    while (*str > 0x20) str++;
    while ((*str) and (*str <= 0x20)) str++;
 
-   Self->Status = StrToInt(str);
+   Self->Status = HTS(StrToInt(str));
 
    str = adv_crlf(str);
 
@@ -925,7 +925,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
 
    // Parse response fields
 
-   log.msg("HTTP response header received, status code %d", Self->Status);
+   log.msg("HTTP response header received, status code %d", LONG(Self->Status));
 
    char field[80], value[300];
    while (*str) {
@@ -949,7 +949,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
          }
          else if (!StrMatch(field, "Transfer-Encoding")) {
             if (!StrMatch(value, "chunked")) {
-               if (!(Self->Flags & HTF_RAW)) Self->Chunked = TRUE;
+               if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = TRUE;
                Self->ContentLength = -1;
             }
          }
@@ -979,7 +979,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       FL flags;
       LOC type;
 
-      if (Self->Flags & HTF_RESUME) {
+      if ((Self->Flags & HTF::RESUME) != HTF::NIL) {
          if ((!AnalysePath(Self->OutputFile, &type)) and (type IS LOC::FILE)) {
             flags = FL::NIL;
          }
@@ -988,7 +988,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
       else flags = FL::NEW;
 
       if ((Self->flOutput = objFile::create::integral(fl::Path(Self->OutputFile), fl::Flags(flags|FL::WRITE)))) {
-         if (Self->Flags & HTF_RESUME) {
+         if ((Self->Flags & HTF::RESUME) != HTF::NIL) {
             acSeekEnd(Self->flOutput, 0);
             Self->setIndex(0);
          }
@@ -998,10 +998,10 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
    if (Self->flOutput) Self->flOutput->write(Buffer, Length, NULL);
 
-   if (Self->Flags & HTF_RECV_BUFFER) {
+   if ((Self->Flags & HTF::RECV_BUFFER) != HTF::NIL) {
       if (!Self->RecvBuffer) {
          Self->RecvSize = Length;
-         if (!AllocMemory(Length+1, MEM_DATA|MEM_NO_CLEAR, &Self->RecvBuffer)) {
+         if (!AllocMemory(Length+1, MEM::DATA|MEM::NO_CLEAR, &Self->RecvBuffer)) {
             CopyMemory(Buffer, Self->RecvBuffer, Self->RecvSize);
             ((STRING)Self->RecvBuffer)[Self->RecvSize] = 0;
          }
@@ -1043,13 +1043,13 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
       if (Self->Error IS ERR_Terminate) {
          pf::Log log(__FUNCTION__);
-         log.branch("State changing to HGS_TERMINATED (terminate message received).");
-         Self->setCurrentState(HGS_TERMINATED);
+         log.branch("State changing to HGS::TERMINATED (terminate message received).");
+         Self->setCurrentState(HGS::TERMINATED);
       }
    }
 
    if (Self->OutputObjectID) {
-      if (Self->ObjectMode IS HOM_DATA_FEED) {
+      if (Self->ObjectMode IS HOM::DATA_FEED) {
          struct acDataFeed data = {
             .Object   = Self,
             .Datatype = Self->Datatype,
@@ -1058,7 +1058,7 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
          };
          ActionMsg(AC_DataFeed, Self->OutputObjectID, &data);
       }
-      else if (Self->ObjectMode IS HOM_READ_WRITE) {
+      else if (Self->ObjectMode IS HOM::READ_WRITE) {
          acWrite(Self->OutputObjectID, Buffer, Length);
       }
    }
@@ -1082,7 +1082,7 @@ static LONG extract_value(CSTRING String, STRING *Result)
          String++;
          for (i=0; (String[i]) and (String[i] != '"'); i++);
 
-         if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &value)) {
+         if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, &value)) {
             CopyMemory(String, value, i);
             value[i] = 0;
          }
@@ -1094,7 +1094,7 @@ static LONG extract_value(CSTRING String, STRING *Result)
       else {
          for (i=0; (String[i]) and (String[i] != ','); i++);
 
-         if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &value)) {
+         if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, &value)) {
             CopyMemory(String, value, i);
             value[i] = 0;
          }
@@ -1229,7 +1229,7 @@ static ERROR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
    if (Length > 0) {
       //log.trace("Length: %d", Length);
 
-      if (Self->Flags & HTF_DEBUG_SOCKET) {
+      if ((Self->Flags & HTF::DEBUG_SOCKET) != HTF::NIL) {
          log.msg("SOCKET-OUTGOING: LEN: %d", Length);
          for (LONG i=0; i < Length; i++) if ((((UBYTE *)Buffer)[i] < 128) and (((UBYTE *)Buffer)[i] >= 10)) {
             printf("%c", ((STRING)Buffer)[i]);
@@ -1261,24 +1261,24 @@ static ERROR timeout_manager(extHTTP *Self, LARGE Elapsed, LARGE CurrentTime)
    log.warning("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
    Self->TimeoutManager = 0;
    SET_ERROR(Self, ERR_TimeOut);
-   Self->setCurrentState(HGS_TERMINATED);
+   Self->setCurrentState(HGS::TERMINATED);
    return ERR_Terminate;
 }
 
 //********************************************************************************************************************
-// Returns ERR_True if the transmission is complete and also sets status to HGS_COMPLETED, otherwise ERR_False.
+// Returns ERR_True if the transmission is complete and also sets status to HGS::COMPLETED, otherwise ERR_False.
 
 static ERROR check_incoming_end(extHTTP *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Self->CurrentState IS HGS_AUTHENTICATING) return ERR_False;
-   if (Self->CurrentState >= HGS_COMPLETED) return ERR_True;
+   if (Self->CurrentState IS HGS::AUTHENTICATING) return ERR_False;
+   if (Self->CurrentState >= HGS::COMPLETED) return ERR_True;
 
    if ((Self->ContentLength != -1) and (Self->Index >= Self->ContentLength)) {
       log.trace("Transmission over.");
       if (Self->Index > Self->ContentLength) log.warning("Warning: received too much content.");
-      Self->setCurrentState(HGS_COMPLETED);
+      Self->setCurrentState(HGS::COMPLETED);
       return ERR_True;
    }
    else {
@@ -1291,7 +1291,7 @@ static ERROR check_incoming_end(extHTTP *Self)
 
 static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &Cmd)
 {
-   if ((Self->ProxyServer) and (!(Self->Flags & HTF_SSL))) {
+   if ((Self->ProxyServer) and ((Self->Flags & HTF::SSL) IS HTF::NIL)) {
       // Normal proxy request without SSL tunneling
       Cmd << Method << " " << ((Self->Port IS 443) ? "https" : "http") << "://" << Self->Host << ":" <<
          Self->Port << "/" << (Self->Path ? Self->Path : "") << " HTTP/1.1" << CRLF;

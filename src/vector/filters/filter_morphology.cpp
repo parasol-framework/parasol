@@ -33,7 +33,7 @@ class extMorphologyFX : public extFilterEffect {
    using create = pf::Create<extMorphologyFX>;
 
    LONG RadiusX, RadiusY;
-   UBYTE Operator;
+   MOP Operator;
 };
 
 /*********************************************************************************************************************
@@ -91,7 +91,7 @@ static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
          const UBYTE *end = endinput;
          auto out         = out_line;
 
-         if (Self->Operator IS MOP_DILATE) {
+         if (Self->Operator IS MOP::DILATE) {
             for (int y = 0; y < canvasHeight; ++y) {
                UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
                for (const UBYTE *pix=in; pix <= end; pix += 4) {
@@ -157,7 +157,7 @@ static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
          const UBYTE *end = endinput;
          auto out = out_line;
 
-         if (Self->Operator IS MOP_DILATE) {
+         if (Self->Operator IS MOP::DILATE) {
             for (int x=0; x < canvasWidth; x++) {
                UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
                for (const UBYTE *pix=in; pix <= end; pix += inwidth) {
@@ -202,7 +202,7 @@ static ERROR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
 static ERROR MORPHOLOGYFX_NewObject(extMorphologyFX *Self, APTR Void)
 {
-   Self->Operator = MOP_ERODE;
+   Self->Operator = MOP::ERODE;
    return ERR_Okay;
 }
 
@@ -214,13 +214,13 @@ Lookup: MOP
 
 *********************************************************************************************************************/
 
-static ERROR MORPHOLOGYFX_GET_Operator(extMorphologyFX *Self, LONG *Value)
+static ERROR MORPHOLOGYFX_GET_Operator(extMorphologyFX *Self, MOP *Value)
 {
    *Value = Self->Operator;
    return ERR_Okay;
 }
 
-static ERROR MORPHOLOGYFX_SET_Operator(extMorphologyFX *Self, LONG Value)
+static ERROR MORPHOLOGYFX_SET_Operator(extMorphologyFX *Self, MOP Value)
 {
    Self->Operator = Value;
    return ERR_Okay;
@@ -284,7 +284,7 @@ static ERROR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
 
    stream << "feMorphology operator=\"";
 
-   if (Self->Operator IS MOP_ERODE) stream << "erode\"";
+   if (Self->Operator IS MOP::ERODE) stream << "erode\"";
    else stream << "dilate\"";
 
    stream << "radius=\"" << Self->RadiusX << " " << Self->RadiusY << "\"";
@@ -298,8 +298,8 @@ static ERROR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
 #include "filter_morphology_def.c"
 
 static const FieldDef clMorphologyFXOperator[] = {
-   { "Erode",  MOP_ERODE },
-   { "Dilate", MOP_DILATE },
+   { "Erode",  MOP::ERODE },
+   { "Dilate", MOP::DILATE },
    { NULL, 0 }
 };
 
@@ -319,7 +319,7 @@ ERROR init_morphfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_MORPHOLOGYFX),
       fl::Name("MorphologyFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clMorphologyFXActions),
       fl::Fields(clMorphologyFXFields),
       fl::Size(sizeof(extMorphologyFX)),

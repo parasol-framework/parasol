@@ -49,7 +49,7 @@ static void render_to_surface(extVectorScene *Self, objSurface *Surface, objBitm
    Self->Bitmap = Bitmap;
 
    if ((!Self->PageWidth) or (!Self->PageHeight)) {
-      if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+      if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
    }
 
    acDraw(Self);
@@ -71,12 +71,12 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 {
    auto Self = (objVectorScene *)CurrentContext();
 
-   if (Self->Flags & VPF_RESIZE) {
+   if ((Self->Flags & VPF::RESIZE) != VPF::NIL) {
       Self->PageWidth  = Args->Width;
       Self->PageHeight = Args->Height;
 
       if (Self->Viewport) {
-         mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+         mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
       }
 
       ActionMsg(MT_DrwScheduleRedraw, Self->SurfaceID, NULL);
@@ -249,7 +249,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
    }
    else adaptor = static_cast<VMAdaptor *> (Self->Adaptor);
 
-   if (Self->Flags & VPF_RENDER_TIME) { // Client wants to know how long the rendering takes to complete
+   if ((Self->Flags & VPF::RENDER_TIME) != VPF::NIL) { // Client wants to know how long the rendering takes to complete
       LARGE time = PreciseTime();
       adaptor->draw(bmp);
       if ((Self->RenderTime = PreciseTime() - time) < 1) Self->RenderTime = 1;
@@ -259,7 +259,7 @@ static ERROR VECTORSCENE_Draw(extVectorScene *Self, struct acDraw *Args)
 // For debugging purposes, draw a boundary around the target area.
 //   static RGB8 highlightA = { .Red = 255, .Green = 0, .Blue = 0, .Alpha = 255 };
 //   ULONG highlight = PackPixelRGBA(bmp, &highlightA);
-//   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, 0);
+//   gfxDrawRectangle(bmp, bmp->Clip.Left, bmp->Clip.Top, bmp->Clip.Right-bmp->Clip.Left, bmp->Clip.Bottom-bmp->Clip.Top, highlight, BAF::NIL);
 
    return ERR_Okay;
 }
@@ -358,7 +358,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
          Action(MT_DrwAddCallback, *surface, &args);
 
          if ((!Self->PageWidth) or (!Self->PageHeight)) {
-            Self->Flags |= VPF_RESIZE;
+            Self->Flags |= VPF::RESIZE;
             surface->get(FID_Width, &Self->PageWidth);
             surface->get(FID_Height, &Self->PageHeight);
          }
@@ -375,19 +375,19 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
          callback = make_function_stdc(notify_lostfocus);
          SubscribeAction(*surface, AC_LostFocus, &callback);
 
-         if (surface->Flags & RNF_HAS_FOCUS) {
+         if (surface->hasFocus()) {
             callback = make_function_stdc(scene_key_event);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->KeyHandle);
          }
       }
 
       auto callback = make_function_stdc(scene_input_events);
-      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_FEEDBACK|JTYPE_BUTTON|JTYPE_REPEATED|JTYPE_EXT_MOVEMENT, 0, &Self->InputHandle)) {
+      if (gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::FEEDBACK|JTYPE::BUTTON|JTYPE::REPEATED|JTYPE::EXT_MOVEMENT, 0, &Self->InputHandle)) {
          return ERR_Function;
       }
    }
 
-   Self->Cursor = PTR_DEFAULT;
+   Self->Cursor = PTC::DEFAULT;
 
    return ERR_Okay;
 }
@@ -396,7 +396,7 @@ static ERROR VECTORSCENE_Init(extVectorScene *Self, APTR Void)
 
 static ERROR VECTORSCENE_NewObject(extVectorScene *Self, APTR Void)
 {
-   Self->SampleMethod = VSM_BILINEAR;
+   Self->SampleMethod = VSM::BILINEAR;
 
    new (Self) extVectorScene;
 
@@ -522,7 +522,7 @@ static ERROR SET_Bitmap(extVectorScene *Self, objBitmap *Value)
          Self->Buffer->attach(Value->Data, Value->Width, Value->Height, Value->LineWidth);
          Self->Bitmap = Value;
 
-         if (Self->Flags & VPF_BITMAP_SIZED) {
+         if ((Self->Flags & VPF::BITMAP_SIZED) != VPF::NIL) {
             Self->PageWidth = Value->Width;
             Self->PageHeight = Value->Height;
          }
@@ -576,7 +576,7 @@ static ERROR SET_PageHeight(extVectorScene *Self, LONG Value)
    if (Value < 1) Self->PageHeight = 1;
    else Self->PageHeight = Value;
 
-   if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
+   if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM); // Base-paths need to be recomputed if they use relative coordinates.
    return ERR_Okay;
 }
 
@@ -597,7 +597,7 @@ static ERROR SET_PageWidth(extVectorScene *Self, LONG Value)
    if (Value < 1) Self->PageWidth = 1;
    else Self->PageWidth = Value;
 
-   if (Self->Viewport) mark_dirty(Self->Viewport, RC_BASE_PATH|RC_TRANSFORM);
+   if (Self->Viewport) mark_dirty(Self->Viewport, RC::BASE_PATH|RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -616,7 +616,7 @@ The `RENDER_TIME` flag should also be set before fetching this value, as it is r
 
 static ERROR GET_RenderTime(extVectorScene *Self, LARGE *Value)
 {
-   Self->Flags |= VPF_RENDER_TIME;
+   Self->Flags |= VPF::RENDER_TIME;
    *Value = Self->RenderTime;
    return ERR_Okay;
 }
@@ -696,15 +696,15 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 
    // Report focus events to vector subscribers.
 
-   auto focus_event = FM_HAS_FOCUS;
+   auto focus_event = FM::HAS_FOCUS;
    for (auto const fgv : focus_gained) {
       bool no_focus = true, lost_focus_to_child = false, was_child_now_primary = false;
 
       if (!glFocusList.empty()) {
          no_focus = std::find(glFocusList.begin(), glFocusList.end(), fgv) IS glFocusList.end();
          if (!no_focus) {
-            lost_focus_to_child = ((fgv IS glFocusList.front()) and (focus_event IS FM_CHILD_HAS_FOCUS));
-            was_child_now_primary = ((fgv != glFocusList.front()) and (focus_event IS FM_HAS_FOCUS));
+            lost_focus_to_child = ((fgv IS glFocusList.front()) and (focus_event IS FM::CHILD_HAS_FOCUS));
+            was_child_now_primary = ((fgv != glFocusList.front()) and (focus_event IS FM::HAS_FOCUS));
          }
       }
 
@@ -712,7 +712,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
          pf::ScopedObjectLock<extVector> vec(fgv, 1000);
          if (vec.granted()) {
             send_feedback((extVector *)fgv, focus_event);
-            focus_event = FM_CHILD_HAS_FOCUS;
+            focus_event = FM::CHILD_HAS_FOCUS;
          }
       }
    }
@@ -722,7 +722,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    for (auto const fv : glFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
          pf::ScopedObjectLock<extVector> vec(fv, 1000);
-         if (vec.granted()) send_feedback(fv, FM_LOST_FOCUS);
+         if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS);
       }
       else break;
    }
@@ -743,7 +743,7 @@ void get_viewport_at_xy_scan(extVector *Vector, std::vector<std::vector<extVecto
       if (scan->Class->ClassID IS ID_VECTORVIEWPORT) {
          auto vp = (extVectorViewport *)scan;
 
-         if (vp->Dirty) gen_vector_path(vp);
+         if (vp->dirty()) gen_vector_path(vp);
 
          if ((X >= vp->vpBX1) and (Y >= vp->vpBY1) and (X < vp->vpBX2) and (Y < vp->vpBY2)) {
             Collection[Branch].emplace_back(vp);
@@ -828,15 +828,15 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
       auto &sub = *it;
       if (sub.Callback.Type IS CALL_STDC) {
          pf::SwitchContext ctx(sub.Callback.StdC.Context);
-         auto callback = (ERROR (*)(objVector *, LONG, LONG, LONG))sub.Callback.StdC.Routine;
+         auto callback = (ERROR (*)(objVector *, KQ, KEY, LONG))sub.Callback.StdC.Routine;
          result = callback(Vector, Event->Qualifiers, Event->Code, Event->Unicode);
       }
       else if (sub.Callback.Type IS CALL_SCRIPT) {
          // In this implementation the script function will receive all the events chained via the Next field
          ScriptArg args[] = {
             { "Vector",     FDF_OBJECT, { .Address = Vector } },
-            { "Qualifiers", FDF_LONG,   { .Long = Event->Qualifiers } },
-            { "Code",       FDF_LONG,   { .Long = Event->Code } },
+            { "Qualifiers", FDF_LONG,   { .Long = LONG(Event->Qualifiers) } },
+            { "Code",       FDF_LONG,   { .Long = LONG(Event->Code) } },
             { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
          };
          scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
@@ -856,12 +856,12 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 {
    const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
-   if (Event->Code IS K_TAB) {
-      if (!(Event->Qualifiers & KQ_RELEASED)) return;
+   if (Event->Code IS KEY::TAB) {
+      if ((Event->Qualifiers & KQ::RELEASED) IS KQ::NIL) return;
 
-      bool reverse = ((Event->Qualifiers & KQ_QUALIFIERS) & KQ_SHIFT);
+      bool reverse = (((Event->Qualifiers & KQ::QUALIFIERS) & KQ::SHIFT) != KQ::NIL);
 
-      if ((!(Event->Qualifiers & KQ_QUALIFIERS)) or (reverse)) {
+      if (((Event->Qualifiers & KQ::QUALIFIERS) IS KQ::NIL) or (reverse)) {
          if (Self->KeyboardSubscriptions.size() > 1) {
             for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
                auto find = Self->KeyboardSubscriptions.find(*it);
@@ -912,8 +912,8 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
    for (auto it=Vector->InputSubscriptions->begin(); it != Vector->InputSubscriptions->end(); ) {
       auto &sub = *it;
 
-      if ((Event->Mask & JTYPE_REPEATED) and (!(sub.Mask & JTYPE_REPEATED))) it++;
-      else if (sub.Mask & Event->Mask) {
+      if (((Event->Mask & JTYPE::REPEATED) != JTYPE::NIL) and ((sub.Mask & JTYPE::REPEATED) IS JTYPE::NIL)) it++;
+      else if ((sub.Mask & Event->Mask) != JTYPE::NIL) {
          ERROR result;
          if (sub.Callback.Type IS CALL_STDC) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
@@ -950,9 +950,9 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET_ENTERED_SURFACE,
-      .Flags       = JTYPE_FEEDBACK,
-      .Mask        = JTYPE_FEEDBACK
+      .Type        = JET::ENTERED_SURFACE,
+      .Flags       = JTYPE::FEEDBACK,
+      .Mask        = JTYPE::FEEDBACK
    };
    send_input_events(Vector, &event);
 }
@@ -972,9 +972,9 @@ static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET_LEFT_SURFACE,
-      .Flags       = JTYPE_FEEDBACK,
-      .Mask        = JTYPE_FEEDBACK
+      .Type        = JET::LEFT_SURFACE,
+      .Flags       = JTYPE::FEEDBACK,
+      .Mask        = JTYPE::FEEDBACK
    };
    send_input_events(Vector, &event);
 }
@@ -994,9 +994,9 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
       .X           = Scene->ActiveVectorX,
       .Y           = Scene->ActiveVectorY,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET_WHEEL,
-      .Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT,
-      .Mask        = JTYPE_EXT_MOVEMENT
+      .Type        = JET::WHEEL,
+      .Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT,
+      .Mask        = JTYPE::EXT_MOVEMENT
    };
    send_input_events(Vector, &event);
 }
@@ -1011,38 +1011,38 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
-   LONG cursor = -1;
+   auto cursor = PTC(-1);
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be destroyed at any time.
 
    for (auto input=Events; input; input=input->Next) {
-      if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-         while ((input->Next) and (input->Next->Flags & JTYPE_MOVEMENT)) { // Consolidate movement
+      if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
+         while ((input->Next) and ((input->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) { // Consolidate movement
             input = input->Next;
          }
       }
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if ((input->Flags & JTYPE_BUTTON) and (input->Type IS JET_LMB) and (input->Value IS 1)) {
+      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value IS 1)) {
          apply_focus(Self, (extVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 
-      if (input->Type IS JET_WHEEL) {
+      if (input->Type IS JET::WHEEL) {
          if (Self->ActiveVector) {
             pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_wheel_event(Self, lock.obj, input);
          }
       }
-      else if (input->Type IS JET_LEFT_SURFACE) {
+      else if (input->Type IS JET::LEFT_SURFACE) {
          if (Self->ActiveVector) {
             pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else if (input->Type IS JET_ENTERED_SURFACE);
-      else if (input->Flags & JTYPE_BUTTON) {
+      else if (input->Type IS JET::ENTERED_SURFACE);
+      else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 
          if (target) {
@@ -1056,19 +1056,19 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                event.Y    = Self->ActiveVectorY;
                send_input_events(lock.obj, &event);
 
-               if ((input->Type IS JET_LMB) and (!(input->Flags & JTYPE_REPEATED))) {
+               if ((input->Type IS JET::LMB) and ((input->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
                   Self->ButtonLock = input->Value ? target : 0;
                }
             }
          }
       }
-      else if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
-         if (cursor IS -1) cursor = PTR_DEFAULT;
+      else if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
+         if (cursor IS PTC(-1)) cursor = PTC::DEFAULT;
          bool processed = false;
          for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
             auto &bounds = *it;
 
-            if ((processed) and (!bounds.Cursor)) continue;
+            if ((processed) and (bounds.Cursor IS PTC::NIL)) continue;
 
             // When the user holds a mouse button over a vector, a 'button lock' will be held.  This causes all events to
             // be captured by that vector until the button is released.
@@ -1096,7 +1096,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                send_enter_event(vector, input, bounds.X, bounds.Y);
             }
 
-            if ((!Self->ButtonLock) and (vector->Cursor)) cursor = vector->Cursor;
+            if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
 
             if (!processed) {
                DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
@@ -1111,7 +1111,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                event.Y    = ty;
                send_input_events(vector, &event);
 
-               if (input->Flags & (JTYPE_ANCHORED|JTYPE_MOVEMENT)) {
+               if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
                   if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
                      pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
@@ -1125,7 +1125,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                processed = true;
             }
 
-            if (cursor IS PTR_DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
+            if (cursor IS PTC::DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
             else break; // Input consumed and cursor image identified.
          }
 
@@ -1138,10 +1138,10 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else log.warning("Unrecognised movement type %d", input->Type);
+      else log.warning("Unrecognised movement type %d", LONG(input->Type));
    }
 
-   if ((cursor != -1) and (!Self->ButtonLock) and (Self->SurfaceID)) {
+   if ((cursor != PTC(-1)) and (!Self->ButtonLock) and (Self->SurfaceID)) {
       Self->Cursor = cursor;
       pf::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
       if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {
@@ -1179,7 +1179,7 @@ ERROR init_vectorscene(void)
    clVectorScene = objMetaClass::create::global(
       fl::ClassVersion(VER_VECTORSCENE),
       fl::Name("VectorScene"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorSceneActions),
       fl::Methods(clVectorSceneMethods),
       fl::Fields(clSceneFields),

@@ -227,7 +227,7 @@ ERROR init_transition(void) // The transition is a definition type for creating 
    clVectorTransition = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORTRANSITION),
       fl::Name("VectorTransition"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clTransitionActions),
       fl::Fields(clTransitionFields),
       fl::Size(sizeof(objVectorTransition)),

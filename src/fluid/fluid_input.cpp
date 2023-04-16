@@ -3,7 +3,7 @@
 The input interface provides support for processing input messages.  The InputEvent structure is passed for each incoming
 message that is detected.
 
-   local in = input.subscribe(JTYPE_MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
+   local in = input.subscribe(JTYPE::MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
 
    end)
 
@@ -68,8 +68,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       // For simplicity, a call to the handler is made for each individual input event.
 
       while (Events) {
-         if (Events->Flags & JTYPE_MOVEMENT) {
-            while ((Events->Next) and (Events->Next->Flags & JTYPE_MOVEMENT)) Events = Events->Next;
+         if ((Events->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+            while ((Events->Next) and ((Events->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) Events = Events->Next;
          }
 
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
@@ -150,7 +150,7 @@ static int input_keyboard(lua_State *Lua)
 
       objSurface *surface;
       if (!AccessObject(object_id, 5000, &surface)) {
-         if (surface->Flags & RNF_HAS_FOCUS) sub_keyevent = true;
+         if (surface->hasFocus()) sub_keyevent = true;
          ReleaseObject(surface);
       }
       else {
@@ -222,28 +222,31 @@ static int input_request_item(lua_State *Lua)
 
    LONG item = lua_tointeger(Lua, 2);
 
-   LONG datatype;
+   DATA datatype;
    if (lua_isstring(Lua, 3)) {
       CSTRING dt = lua_tostring(Lua, 3);
-      if (!StrMatch("text", dt))              datatype = DATA_TEXT;
-      else if (!StrMatch("raw", dt))          datatype = DATA_RAW;
-      else if (!StrMatch("device_input", dt)) datatype = DATA_DEVICE_INPUT;
-      else if (!StrMatch("xml", dt))          datatype = DATA_XML;
-      else if (!StrMatch("audio", dt))        datatype = DATA_AUDIO;
-      else if (!StrMatch("record", dt))       datatype = DATA_RECORD;
-      else if (!StrMatch("image", dt))        datatype = DATA_IMAGE;
-      else if (!StrMatch("request", dt))      datatype = DATA_REQUEST;
-      else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
-      else if (!StrMatch("file", dt))         datatype = DATA_FILE;
-      else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
+      if (!StrMatch("text", dt))              datatype = DATA::TEXT;
+      else if (!StrMatch("raw", dt))          datatype = DATA::RAW;
+      else if (!StrMatch("device_input", dt)) datatype = DATA::DEVICE_INPUT;
+      else if (!StrMatch("xml", dt))          datatype = DATA::XML;
+      else if (!StrMatch("audio", dt))        datatype = DATA::AUDIO;
+      else if (!StrMatch("record", dt))       datatype = DATA::RECORD;
+      else if (!StrMatch("image", dt))        datatype = DATA::IMAGE;
+      else if (!StrMatch("request", dt))      datatype = DATA::REQUEST;
+      else if (!StrMatch("receipt", dt))      datatype = DATA::RECEIPT;
+      else if (!StrMatch("file", dt))         datatype = DATA::FILE;
+      else if (!StrMatch("content", dt))      datatype = DATA::CONTENT;
       else {
          luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
       }
    }
-   else if ((datatype = lua_tointeger(Lua, 3)) <= 0) {
-      luaL_argerror(Lua, 3, "Datatype invalid");
-      return 0;
+   else {
+      datatype = DATA(lua_tointeger(Lua, 3));
+      if (LONG(datatype) <= 0) {
+         luaL_argerror(Lua, 3, "Datatype invalid");
+         return 0;
+      }
    }
 
    auto function_type = lua_type(Lua, 4);
@@ -258,18 +261,18 @@ static int input_request_item(lua_State *Lua)
 
    struct dcRequest dcr;
    dcr.Item          = item;
-   dcr.Preference[0] = datatype;
+   dcr.Preference[0] = UBYTE(datatype);
    dcr.Preference[1] = 0;
 
    struct acDataFeed dc = {
       .Object   = Lua->Script,
-      .Datatype = DATA_REQUEST,
+      .Datatype = DATA::REQUEST,
       .Buffer   = &dcr,
       .Size     = sizeof(dcr)
    };
 
    {
-      // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+      // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
       pf::Log log("input.request_item");
       log.branch();
       auto error = ActionMsg(AC_DataFeed, source_id, &dc);
@@ -289,7 +292,7 @@ static int input_subscribe(lua_State *Lua)
    pf::Log log("input.subscribe");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   LONG mask = lua_tointeger(Lua, 1); // Optional
+   auto mask = JTYPE(lua_tointeger(Lua, 1)); // Optional
 
    OBJECTID object_id;
    struct object *object;
@@ -314,7 +317,7 @@ static int input_subscribe(lua_State *Lua)
       }
    }
 
-   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, mask, device_id);
+   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, LONG(mask), device_id);
 
    struct finput *input;
    if ((input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput)))) {
@@ -434,8 +437,8 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->Callback); // Get the function reference in Lua and place it on the stack
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputValue); // Arg: Input value registered by the client
    lua_pushinteger(prv->Lua, Input->SurfaceID);  // Arg: Surface (if applicable)
-   lua_pushinteger(prv->Lua, Event->Qualifiers); // Arg: Key Flags
-   lua_pushinteger(prv->Lua, Event->Code);       // Arg: Key Value
+   lua_pushinteger(prv->Lua, ULONG(Event->Qualifiers)); // Arg: Key Flags
+   lua_pushinteger(prv->Lua, LONG(Event->Code));       // Arg: Key Value
    lua_pushinteger(prv->Lua, Event->Unicode);    // Arg: Unicode character
 
    if (lua_pcall(prv->Lua, 5, 0, 0)) {

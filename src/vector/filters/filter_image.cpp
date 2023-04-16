@@ -32,8 +32,8 @@ class extImageFX : public extFilterEffect {
 
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
-   LONG AspectRatio;     // Aspect ratio flags.
-   LONG ResampleMethod;  // Resample method.
+   ARF  AspectRatio;     // Aspect ratio flags.
+   VSM ResampleMethod;  // Resample method.
 };
 
 /*********************************************************************************************************************
@@ -52,7 +52,7 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
 
    DOUBLE p_x = filter->TargetX, p_y = filter->TargetY, p_width = filter->TargetWidth, p_height = filter->TargetHeight;
 
-   if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+   if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // In this mode image dimensions typically remain at the default, i.e. (0,0,100%,100%) of the target.
       // If the user does set the XYWH of the image then 'fixed' coordinates act as multipliers, as if they were relative.
 
@@ -129,7 +129,7 @@ static ERROR IMAGEFX_Draw(extImageFX *Self, struct acDraw *Args)
       renderSolidBitmap(renderBase, raster, spangen); // Solid render without blending.
    }
    else {
-      gfxCopyArea(Self->Bitmap, Self->Target, 0, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
+      gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, img_transform.tx, img_transform.ty);
    }
 
    return ERR_Okay;
@@ -176,9 +176,9 @@ static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 
 static ERROR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
 {
-   Self->AspectRatio    = ARF_X_MID|ARF_Y_MID|ARF_MEET;
-   Self->ResampleMethod = VSM_BILINEAR;
-   Self->SourceType     = VSF_PREVIOUS;
+   Self->AspectRatio    = ARF::X_MID|ARF::Y_MID|ARF::MEET;
+   Self->ResampleMethod = VSM::BILINEAR;
+   Self->SourceType     = VSF::PREVIOUS;
    return ERR_Okay;
 }
 
@@ -190,13 +190,13 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_AspectRatio(extImageFX *Self, LONG *Value)
+static ERROR IMAGEFX_GET_AspectRatio(extImageFX *Self, ARF *Value)
 {
    *Value = Self->AspectRatio;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_AspectRatio(extImageFX *Self, LONG Value)
+static ERROR IMAGEFX_SET_AspectRatio(extImageFX *Self, ARF Value)
 {
    Self->AspectRatio = Value;
    return ERR_Okay;
@@ -239,7 +239,7 @@ static ERROR IMAGEFX_SET_Path(extImageFX *Self, CSTRING Value)
 {
    if ((Self->Bitmap) or (Self->Picture)) return ERR_Failed;
 
-   if ((Self->Picture = objPicture::create::integral(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF_FORCE_ALPHA_32)))) {
+   if ((Self->Picture = objPicture::create::integral(fl::Path(Value), fl::BitsPerPixel(32), fl::Flags(PCF::FORCE_ALPHA_32)))) {
       Self->Bitmap = Self->Picture->Bitmap;
       return ERR_Okay;
    }
@@ -253,13 +253,13 @@ ResampleMethod: The resample algorithm to use for transforming the source image.
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_ResampleMethod(extImageFX *Self, LONG *Value)
+static ERROR IMAGEFX_GET_ResampleMethod(extImageFX *Self, VSM *Value)
 {
    *Value = Self->ResampleMethod;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_ResampleMethod(extImageFX *Self, LONG Value)
+static ERROR IMAGEFX_SET_ResampleMethod(extImageFX *Self, VSM Value)
 {
    Self->ResampleMethod = Value;
    return ERR_Okay;
@@ -282,22 +282,22 @@ static ERROR IMAGEFX_GET_XMLDef(extImageFX *Self, STRING *Value)
 //********************************************************************************************************************
 
 static const FieldDef clResampleMethod[] = {
-   { "Auto",      VSM_AUTO },
-   { "Neighbour", VSM_NEIGHBOUR },
-   { "Bilinear",  VSM_BILINEAR },
-   { "Bicubic",   VSM_BICUBIC },
-   { "Spline16",  VSM_SPLINE16 },
-   { "Kaiser",    VSM_KAISER },
-   { "Quadric",   VSM_QUADRIC },
-   { "Gaussian",  VSM_GAUSSIAN },
-   { "Bessel",    VSM_BESSEL },
-   { "Mitchell",  VSM_MITCHELL },
-   { "Sinc3",     VSM_SINC3 },
-   { "Lanczos3",  VSM_LANCZOS3 },
-   { "Blackman3", VSM_BLACKMAN3 },
-   { "Sinc8",     VSM_SINC8 },
-   { "Lanczos8",  VSM_LANCZOS8 },
-   { "Blackman8", VSM_BLACKMAN8 },
+   { "Auto",      VSM::AUTO },
+   { "Neighbour", VSM::NEIGHBOUR },
+   { "Bilinear",  VSM::BILINEAR },
+   { "Bicubic",   VSM::BICUBIC },
+   { "Spline16",  VSM::SPLINE16 },
+   { "Kaiser",    VSM::KAISER },
+   { "Quadric",   VSM::QUADRIC },
+   { "Gaussian",  VSM::GAUSSIAN },
+   { "Bessel",    VSM::BESSEL },
+   { "Mitchell",  VSM::MITCHELL },
+   { "Sinc3",     VSM::SINC3 },
+   { "Lanczos3",  VSM::LANCZOS3 },
+   { "Blackman3", VSM::BLACKMAN3 },
+   { "Sinc8",     VSM::SINC8 },
+   { "Lanczos8",  VSM::LANCZOS8 },
+   { "Blackman8", VSM::BLACKMAN8 },
    { NULL, 0 }
 };
 
@@ -320,7 +320,7 @@ ERROR init_imagefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_IMAGEFX),
       fl::Name("ImageFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageFXActions),
       fl::Fields(clImageFXFields),
       fl::Size(sizeof(extImageFX)),

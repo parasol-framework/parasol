@@ -40,15 +40,15 @@ static ERROR FILTEREFFECT_Init(extFilterEffect *Self, APTR Void)
 
    // If the client didn't specify a source input, figure out what to use.
 
-   if (Self->SourceType IS VSF_PREVIOUS) {
+   if (Self->SourceType IS VSF::PREVIOUS) {
       if (Self->Prev) {
-         Self->SourceType = VSF_REFERENCE;
+         Self->SourceType = VSF::REFERENCE;
          Self->Input = Self->Prev;
          ((extFilterEffect *)Self->Input)->UsageCount++;
          log.msg("Using effect %s #%d as an input.", Self->Input->Class->ClassName, Self->Input->UID);
       }
       else {
-         Self->SourceType = VSF_GRAPHIC;
+         Self->SourceType = VSF::GRAPHIC;
          log.msg("Using SourceGraphic as an input.");
       }
    }
@@ -106,7 +106,7 @@ static ERROR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
 
 static ERROR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
 {
-   Self->SourceType = VSF_PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
+   Self->SourceType = VSF::PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
    return ERR_Okay;
 }
 
@@ -144,7 +144,7 @@ static ERROR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Valu
 
    if (Value IS Self) return log.warning(ERR_InvalidValue);
 
-   Self->SourceType = VSF_REFERENCE;
+   Self->SourceType = VSF::REFERENCE;
    Self->Input      = Value;
    ((extFilterEffect *)Self->Input)->UsageCount++;
    return ERR_Okay;
@@ -199,7 +199,7 @@ static ERROR FILTEREFFECT_SET_Mix(extFilterEffect *Self, extFilterEffect *Value)
 
    if (Value IS Self) return log.warning(ERR_InvalidValue);
 
-   Self->MixType = VSF_REFERENCE;
+   Self->MixType = VSF::REFERENCE;
    Self->Mix     = Value;
    ((extFilterEffect *)Self->Mix)->UsageCount++;
    return ERR_Okay;
@@ -340,7 +340,7 @@ ERROR init_filtereffect(void)
    clFilterEffect = objMetaClass::create::global(
       fl::ClassVersion(VER_FILTEREFFECT),
       fl::Name("FilterEffect"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clFilterEffectActions),
       fl::Fields(clFilterEffectFields),
       fl::Size(sizeof(extFilterEffect)),

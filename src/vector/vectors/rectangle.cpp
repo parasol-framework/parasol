@@ -375,7 +375,7 @@ static ERROR init_rectangle(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORRECTANGLE),
       fl::Name("VectorRectangle"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clRectangleActions),
       fl::Fields(clRectangleFields),
       fl::Size(sizeof(extVectorRectangle)),

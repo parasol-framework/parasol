@@ -172,8 +172,8 @@ class extLightingFX : public extFilterEffect {
    DOUBLE Constant;         // The ks/kd constant value for the light mode.
    DOUBLE UnitX, UnitY;     // SVG kernel unit - scale value for X/Y
    DOUBLE X, Y, Z;          // Position of light source.
-   UBYTE  Type;             // Diffuse or Specular light scattering
-   UBYTE  LightSource;      // Light source identifier, recorded for SVG output purposes only.
+   LT     Type;             // Diffuse or Specular light scattering
+   LS     LightSource;      // Light source identifier, recorded for SVG output purposes only.
 
    // DISTANT LIGHT
    DOUBLE Azimuth, Elevation;    // Distant light
@@ -191,7 +191,7 @@ class extLightingFX : public extFilterEffect {
       SpecularExponent = 1.0;
       Colour   = { 1.0, 1.0, 1.0, 1.0 };
       LinearColour = { 1.0, 1.0, 1.0, 1.0 };
-      Type     = LT_DIFFUSE;
+      Type     = LT::DIFFUSE;
       Constant = 1.0;
       Scale    = 1.0;
       UnitX    = 1.0;
@@ -266,7 +266,7 @@ static void specular_light(extLightingFX *Self, const point3 &Normal, const poin
    Output[R] = glLinearRGB.invert(r);
    Output[G] = glLinearRGB.invert(g);
    Output[B] = glLinearRGB.invert(b);
-   if (Self->LightSource IS LS_DISTANT) {
+   if (Self->LightSource IS LS::DISTANT) {
       Output[A] = Output[R] > Output[G] ? (Output[R] > Output[B] ? Output[R] : Output[B]) : (Output[G] > Output[B] ? Output[G] : Output[B]); // Correct for w3-filters-specular-01 (specular distant light)
    }
    else Output[A] = r > g ? (r > b ? r : b) : (g > b ? g : b);
@@ -291,7 +291,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    DOUBLE pty = Self->PY;
    DOUBLE ptz = Self->PZ;
 
-   if (Self->Filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+   if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       // Light source coordinates are expressed as relative to the client vector's bounding box in this mode.
       auto &client = Self->Filter->ClientVector;
       const DOUBLE c_width  = (client->BX2 - client->BX1);
@@ -301,7 +301,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
       lty = (lty * c_height) + client->BY1;
       ltz = ltz * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
 
-      if (Self->LightSource IS LS_SPOT) {
+      if (Self->LightSource IS LS::SPOT) {
          ptx = (ptx * c_width) + client->BX1;
          pty = (pty * c_height) + client->BY1;
          ptz = ptz * sqrt((c_width * c_width) + (c_height * c_height)) * 0.70710678118654752440084436210485;
@@ -320,7 +320,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    ltx -= Self->Target->Clip.Left;
    lty -= Self->Target->Clip.Top;
 
-   if (Self->LightSource IS LS_SPOT) {
+   if (Self->LightSource IS LS::SPOT) {
       t.transform(&ptx, &pty);
       ptx -= Self->Target->Clip.Left;
       pty -= Self->Target->Clip.Top;
@@ -362,7 +362,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
    UBYTE m[9];
    const DOUBLE scale = Self->Scale * (1.0 / 255.0); // Adjust to match the scale of alpha values.
 
-   if (Self->Type IS LT_DIFFUSE) {
+   if (Self->Type IS LT::DIFFUSE) {
       for (LONG y=0; y < height; y++) {
          const UBYTE *row0 = (y IS 0) ? in : in - bmp->LineWidth;
          const UBYTE *row1 = in;
@@ -376,7 +376,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
          m[7] = row2[A]; row2 += bpp;
          m[8] = row2[A]; row2 += bpp;
 
-         if (Self->LightSource IS LS_DISTANT) { // Diffuse distant light
+         if (Self->LightSource IS LS::DISTANT) { // Diffuse distant light
             diffuse_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
@@ -392,7 +392,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
             shiftMatrixLeft(m);
             diffuse_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
          }
-         else if (Self->LightSource IS LS_SPOT) { // Diffuse spot light
+         else if (Self->LightSource IS LS::SPOT) { // Diffuse spot light
             point3 stl = read_light_delta(Self, ltx, lty - DOUBLE(y), ltz, m[4]);
             diffuse_light(Self, leftNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
             dptr += bpp;
@@ -451,7 +451,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
          m[7] = row2[A]; row2 += bpp;
          m[8] = row2[A]; row2 += bpp;
 
-         if (Self->LightSource IS LS_DISTANT) { // Specular distant light
+         if (Self->LightSource IS LS::DISTANT) { // Specular distant light
             specular_light(Self, leftNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
             dptr += bpp;
 
@@ -467,7 +467,7 @@ static ERROR LIGHTINGFX_Draw(extLightingFX *Self, struct acDraw *Args)
             shiftMatrixLeft(m);
             specular_light(Self, rightNormal(m, scale), Self->Direction, Self->LinearColour, dptr, R, G, B, A);
          }
-         else if (Self->LightSource IS LS_SPOT) { // Specular spot light
+         else if (Self->LightSource IS LS::SPOT) { // Specular spot light
             point3 stl = read_light_delta(Self, ltx, lty - DOUBLE(y), ltz, m[4]);
             specular_light(Self, leftNormal(m, scale), stl, colour_spot_light(Self, stl), dptr, R, G, B, A);
             dptr += bpp;
@@ -565,7 +565,7 @@ static ERROR LIGHTINGFX_SetDistantLight(extLightingFX *Self, struct ltSetDistant
 
    Self->Azimuth     = Args->Azimuth;
    Self->Elevation   = Args->Elevation;
-   Self->LightSource = LS_DISTANT;
+   Self->LightSource = LS::DISTANT;
    Self->Direction   = point3(cos(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Azimuth * DEG2RAD) * cos(Self->Elevation * DEG2RAD), sin(Self->Elevation * DEG2RAD));
    return ERR_Okay;
 }
@@ -604,7 +604,7 @@ static ERROR LIGHTINGFX_SetPointLight(extLightingFX *Self, struct ltSetPointLigh
 
    log.function("Source: %.2fx%.2fx%.2f", Args->X, Args->Y, Args->Z);
 
-   Self->LightSource = LS_POINT;
+   Self->LightSource = LS::POINT;
 
    Self->X = Args->X;
    Self->Y = Args->Y;
@@ -651,7 +651,7 @@ static ERROR LIGHTINGFX_SetSpotLight(extLightingFX *Self, struct ltSetSpotLight 
 
    log.function("Source: %.2fx%.2fx%.2f, Target: %.2fx%.2fx%.2f, Exp: %.2f, Cone Angle: %.2f", Args->X, Args->Y, Args->Z, Args->PX, Args->PY, Args->PZ, Args->Exponent, Args->ConeAngle);
 
-   Self->LightSource = LS_SPOT;
+   Self->LightSource = LS::SPOT;
 
    Self->X  = Args->X;
    Self->Y  = Args->Y;
@@ -781,13 +781,13 @@ Lookup: LT
 
 *********************************************************************************************************************/
 
-static ERROR LIGHTINGFX_GET_Type(extLightingFX *Self, LONG *Value)
+static ERROR LIGHTINGFX_GET_Type(extLightingFX *Self, LT *Value)
 {
    *Value = Self->Type;
    return ERR_Okay;
 }
 
-static ERROR LIGHTINGFX_SET_Type(extLightingFX *Self, LONG Value)
+static ERROR LIGHTINGFX_SET_Type(extLightingFX *Self, LT Value)
 {
    Self->Type = Value;
    return ERR_Okay;
@@ -860,7 +860,7 @@ XMLDef: Returns an SVG compliant XML string that describes the filter.
 static ERROR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
 {
    std::stringstream stream;
-   std::string type(Self->Type IS LT_DIFFUSE ? "feDiffuseLighting" : "feSpecularLighting");
+   std::string type(Self->Type IS LT::DIFFUSE ? "feDiffuseLighting" : "feSpecularLighting");
 
    // TODO
    stream << "<" << type << ">";
@@ -872,8 +872,8 @@ static ERROR LIGHTINGFX_GET_XMLDef(extLightingFX *Self, STRING *Value)
 //********************************************************************************************************************
 
 static const FieldDef clLightingType[] = {
-   { "Diffuse",  LT_DIFFUSE },
-   { "Specular", LT_SPECULAR },
+   { "Diffuse",  LT::DIFFUSE },
+   { "Specular", LT::SPECULAR },
    { NULL, 0 }
 };
 
@@ -899,7 +899,7 @@ ERROR init_lightingfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_LIGHTINGFX),
       fl::Name("LightingFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clLightingFXActions),
       fl::Methods(clLightingFXMethods),
       fl::Fields(clLightingFXFields),

@@ -164,13 +164,13 @@ the surface area first).</li>
     <method>
       <name>Expose</name>
       <comment>Redraws a surface region to the display, preferably from its graphics buffer.</comment>
-      <prototype>ERROR drwExpose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)</prototype>
+      <prototype>ERROR drwExpose(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
       <input>
         <param type="LONG" name="X">X coordinate of the expose area.</param>
         <param type="LONG" name="Y">Y coordinate of the expose area.</param>
         <param type="LONG" name="Width">Width of the expose area.</param>
         <param type="LONG" name="Height">Height of the expose area.</param>
-        <param type="LONG" name="Flags" lookup="EXF">Optional flags.</param>
+        <param type="EXF" name="Flags" lookup="EXF">Optional flags.</param>
       </input>
       <description>
 <p>Call the Expose method to copy a surface region to the display.  The functionality is identical to that of the ExposeSurface() function in the Surface module.  Please refer to it for further documentation.</p>
@@ -339,7 +339,7 @@ the surface area first).</li>
       <name>Align</name>
       <comment>This field allows you to align a surface area within its owner.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="ALIGN">INT</type>
+      <type lookup="ALIGN">ALIGN</type>
       <description>
 <p>If you would like to set an abstract position for a surface area, you can give it an alignment.  This feature is most commonly used for horizontal and vertical centring, as aligning to the the edges of a surface area is already handled by existing dimension fields.  Note that setting the alignment overrides any settings in related coordinate fields. Valid alignment flags are <code>BOTTOM</code>, <code>CENTER/MIDDLE</code>, <code>LEFT</code>, <code>HORIZONTAL</code>, <code>RIGHT</code>, <code>TOP</code>, <code>VERTICAL</code>.</p>
 <types lookup="ALIGN"/>
@@ -412,12 +412,12 @@ the surface area first).</li>
       <name>Cursor</name>
       <comment>A default cursor image can be set here for changing the mouse pointer.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="PTR">INT</type>
+      <type lookup="PTC">PTC</type>
       <description>
 <p>The Cursor field provides a convenient way of setting the pointer's cursor image in a single operation.  The mouse pointer will automatically switch to the specified cursor image when it enters the surface area.</p>
 <p>The available cursor image settings are listed in the <class name="Pointer" index="CursorID">Pointer:CursorID</class> documentation.</p>
 <p>The Cursor field may be written with valid cursor names or their ID's, as you prefer.</p>
-<types lookup="PTR"/>
+<types lookup="PTC"/>
       </description>
     </field>
 
@@ -459,7 +459,7 @@ the surface area first).</li>
       <name>DragStatus</name>
       <comment>Indicates the draggable state when dragging is enabled.</comment>
       <access read="R">Read</access>
-      <type lookup="DRAG">INT</type>
+      <type lookup="DRAG">DRAG</type>
       <description>
 <p>If the surface is draggable, the DragStatus indicates the current state of the surface with respect to it being dragged.</p>
 <types lookup="DRAG"/>
@@ -470,7 +470,7 @@ the surface area first).</li>
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="RNF">INT</type>
+      <type lookup="RNF">RNF</type>
       <description>
 <p>The Flags field allows special options to be set for a surface object.  Use a logical-OR operation when setting this field so that existing flags are not overwritten.  To not do so can produce unexpected behaviour.</p>
 <types lookup="RNF"/>
@@ -912,7 +912,7 @@ the surface area first).</li>
       <const name="EXPOSE_CHANGES"/>
     </constants>
 
-    <constants lookup="RNF">
+    <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
       <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
@@ -946,6 +946,10 @@ the surface area first).</li>
       <const name="WRITE_ONLY">Set this flag if you would like the surface object's data to be managed in video memory only.  While this can give some speed advantages, be warned that video based surfaces are limited to write-only operations.</const>
     </constants>
 
+    <constants lookup="RT">
+      <const name="ROOT">Can be used by window surfaces to identify themselves as a root layer.</const>
+    </constants>
+
     <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
       <const name="HOST">Default to the standard hosted window mode with full titlebar, borders and taskbar representation.</const>
       <const name="ICON_TRAY">Create a borderless (custom) window with icon tray representation.</const>
@@ -966,13 +970,13 @@ the surface area first).</li>
       <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
       <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
       <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF::TRANSLUCENT is used.</field>
       <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF::TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.</field>
       <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
       <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.</field>
       <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
     </struct>
 
@@ -985,12 +989,12 @@ the surface area first).</li>
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
       <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
       <field name="Width" type="WORD">Pixel width of the display</field>
       <field name="Height" type="WORD">Pixel height of the display</field>
       <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
       <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
-      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
       <field name="AmtColours" type="LONG">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
@@ -1006,7 +1010,7 @@ the surface area first).</li>
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
       <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
-      <field name="Flags" type="LONG" lookup="RNF">Surface flags</field>
+      <field name="Flags" type="RNF" lookup="RNF">Surface flags</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
       <field name="Width" type="LONG">Width of the surface area</field>

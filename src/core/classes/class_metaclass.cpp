@@ -72,13 +72,13 @@ static ERROR SET_ClassName(extMetaClass *Self, CSTRING Value)
 }
 
 static const FieldDef CategoryTable[] = {
-   { "Command",  CCF_COMMAND },  { "Drawable",   CCF_DRAWABLE },
-   { "Effect",   CCF_EFFECT },   { "Filesystem", CCF_FILESYSTEM },
-   { "Graphics", CCF_GRAPHICS }, { "GUI",        CCF_GUI },
-   { "IO",       CCF_IO },       { "System",     CCF_SYSTEM },
-   { "Tool",     CCF_TOOL },     { "Data",       CCF_DATA },
-   { "Audio",    CCF_AUDIO },    { "Misc",       CCF_MISC },
-   { "Network",  CCF_NETWORK },  { "Multimedia", CCF_MULTIMEDIA },
+   { "Command",  CCF::COMMAND },  { "Drawable",   CCF::DRAWABLE },
+   { "Effect",   CCF::EFFECT },   { "Filesystem", CCF::FILESYSTEM },
+   { "Graphics", CCF::GRAPHICS }, { "GUI",        CCF::GUI },
+   { "IO",       CCF::IO },       { "System",     CCF::SYSTEM },
+   { "Tool",     CCF::TOOL },     { "Data",       CCF::DATA },
+   { "Audio",    CCF::AUDIO },    { "Misc",       CCF::MISC },
+   { "Network",  CCF::NETWORK },  { "Multimedia", CCF::MULTIMEDIA },
    { NULL, 0 }
 };
 
@@ -171,7 +171,7 @@ void init_metaclass(void)
    glMetaClass.Size               = sizeof(extMetaClass);
    glMetaClass.ClassID            = ID_METACLASS;
    glMetaClass.BaseClassID        = ID_METACLASS;
-   glMetaClass.Category           = CCF_SYSTEM;
+   glMetaClass.Category           = CCF::SYSTEM;
    glMetaClass.FieldLookup        = glMetaFieldsPreset;
    glMetaClass.OriginalFieldTotal = ARRAYSIZE(glMetaFields)-1;
    glMetaClass.Integral[0]        = 0xff;
@@ -354,7 +354,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
             if (AnalysePath(glClassBinPath, NULL) != ERR_Okay) flags |= FL::NEW;
 
             auto file = objFile::create::untracked(fl::Name("class_dict_output"), fl::Path(glClassBinPath), fl::Flags(flags),
-               fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE|PERMIT_OTHERS_READ));
+               fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE|PERMIT::OTHERS_READ));
 
             if (!file) return ERR_File;
             glClassFile = file;
@@ -710,7 +710,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    if (lock.granted()) {
       for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
-         if ((mem.Flags & MEM_OBJECT) and (object = (OBJECTPTR)mem.Address)) {
+         if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (object = (OBJECTPTR)mem.Address)) {
             if (Self->Class->ClassID IS object->Class->ClassID) {
                objlist.push_back(object->UID);
             }
@@ -728,7 +728,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    objlist.sort([](const OBJECTID &a, const OBJECTID &b) { return (a < b); });
 
    OBJECTID *result;
-   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM_NO_CLEAR, (APTR *)&result, NULL)) {
+   if (!AllocMemory(sizeof(OBJECTID) * objlist.size(), MEM::NO_CLEAR, (APTR *)&result, NULL)) {
       LONG i = 0;
       for (const auto & id : objlist) result[i++] = id;
       *Array = result;

@@ -91,7 +91,7 @@ static ERROR CLIP_Draw(extVectorClip *Self, struct acDraw *Args)
    }
 
    if (!Self->ClipData) {
-      if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &Self->ClipData)) {
+      if (!AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &Self->ClipData)) {
          Self->ClipSize = size;
       }
       else return ERR_AllocMemory;
@@ -143,7 +143,7 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->ClipUnits <= 0) or (Self->ClipUnits >= VUNIT_END)) {
+   if ((LONG(Self->ClipUnits) <= 0) or (LONG(Self->ClipUnits) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->ClipUnits);
       return ERR_OutOfRange;
    }
@@ -160,8 +160,8 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 
 static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
-   Self->ClipUnits  = VUNIT_BOUNDING_BOX;
-   Self->Visibility = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
+   Self->ClipUnits  = VUNIT::BOUNDING_BOX;
+   Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    new (&Self->ClipRenderer) agg::rendering_buffer;
    return ERR_Okay;
 }
@@ -201,13 +201,13 @@ that references it.  The alternative is `USERSPACE`, which positions the path re
 -END-
 *********************************************************************************************************************/
 
-static ERROR CLIP_GET_Units(extVectorClip *Self, LONG *Value)
+static ERROR CLIP_GET_Units(extVectorClip *Self, VUNIT *Value)
 {
    *Value = Self->ClipUnits;
    return ERR_Okay;
 }
 
-static ERROR CLIP_SET_Units(extVectorClip *Self, LONG Value)
+static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 {
    Self->ClipUnits = Value;
    return ERR_Okay;
@@ -224,8 +224,8 @@ static const ActionArray clClipActions[] = {
 };
 
 static const FieldDef clClipUnits[] = {
-   { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
-   { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
+   { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
+   { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
@@ -243,7 +243,7 @@ static ERROR init_clip(void)
       fl::Name("VectorClip"),
       fl::Actions(clClipActions),
       fl::Fields(clClipFields),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Size(sizeof(extVectorClip)),
       fl::Path(MOD_PATH));
 

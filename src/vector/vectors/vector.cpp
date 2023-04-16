@@ -181,7 +181,7 @@ Disable: Disabling a vector can be used to trigger style changes and prevent use
 static ERROR VECTOR_Disable(extVector *Self, APTR Void)
 {
    // It is up to the client to monitor the Disable action if any reaction is required.
-   Self->Flags |= VF_DISABLED;
+   Self->Flags |= VF::DISABLED;
    return ERR_Okay;
 }
 
@@ -201,7 +201,7 @@ FieldNotSet: The vector's scene graph is not associated with a Surface.
 static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
 {
    if ((Self->Scene) and (Self->Scene->SurfaceID)) {
-      if (Self->Dirty) gen_vector_tree(Self);
+      if (Self->dirty()) gen_vector_tree(Self);
 
 #if 0
       // Retrieve bounding box, post-transformations.
@@ -239,7 +239,7 @@ Enable: Reverses the effects of disabling the vector.
 static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 {
   // It is up to the client to subscribe to the Enable action if any activity needs to take place.
-  Self->Flags &= ~VF_DISABLED;
+  Self->Flags &= ~VF::DISABLED;
   return ERR_Okay;
 }
 
@@ -343,7 +343,7 @@ static ERROR VECTOR_FreeMatrix(extVector *Self, struct vecFreeMatrix *Args)
 
    FreeResource(Args->Matrix);
 
-   mark_dirty(Self, RC_TRANSFORM);
+   mark_dirty(Self, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -356,10 +356,10 @@ This method will return the boundary of a vector's path in terms of its top-left
 transformations and position information that applies to the vector will be taken into account when computing the
 boundary.
 
-If the `VBF_INCLUSIVE` flag is used, the result will include an analysis of all paths that belong to children of the
+If the `VBF::INCLUSIVE` flag is used, the result will include an analysis of all paths that belong to children of the
 target vector, including transforms.
 
-If the `VBF_NO_TRANSFORM` flag is used, the transformation step is not applied to the vector's path.
+If the `VBF::NO_TRANSFORM` flag is used, the transformation step is not applied to the vector's path.
 
 It is recommended that this method is not called until at least one rendering pass has been made, as some vector
 dimensions may not be computed before then.
@@ -389,13 +389,13 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
    if (Self->GeneratePath) { // Path generation must be supported by the vector.
-      if (Self->Dirty) gen_vector_tree(Self);
+      if (Self->dirty()) gen_vector_tree(Self);
 
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
       std::array<DOUBLE, 4> bounds = { DBL_MAX, DBL_MAX, -1000000, -1000000 };
 
-      if (Args->Flags & VBF_NO_TRANSFORM) {
+      if ((Args->Flags & VBF::NO_TRANSFORM) != VBF::NIL) {
          bounds[0] = Self->BX1 + Self->FinalX;
          bounds[1] = Self->BY1 + Self->FinalY;
          bounds[2] = Self->BX2 + Self->FinalX;
@@ -407,7 +407,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
          bounding_rect_single(path, 0, &bounds[0], &bounds[1], &bounds[2], &bounds[3]);
       }
 
-      if (Args->Flags & VBF_INCLUSIVE) calc_full_boundary((extVector *)Self->Child, bounds, true);
+      if ((Args->Flags & VBF::INCLUSIVE) != VBF::NIL) calc_full_boundary((extVector *)Self->Child, bounds, true);
 
       Args->X      = bounds[0];
       Args->Y      = bounds[1];
@@ -416,7 +416,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
       return ERR_Okay;
    }
    else if (Self->Class->ClassID IS ID_VECTORVIEWPORT) {
-      if (Self->Dirty) gen_vector_tree(Self);
+      if (Self->dirty()) gen_vector_tree(Self);
 
       auto view = (extVectorViewport *)Self;
       Args->X      = view->vpBX1;
@@ -436,7 +436,7 @@ Hide: Changes the vector's visibility setting to hidden.
 
 static ERROR VECTOR_Hide(extVector *Self, APTR Void)
 {
-   Self->Visibility = VIS_HIDDEN;
+   Self->Visibility = VIS::HIDDEN;
    return ERR_Okay;
 }
 
@@ -520,12 +520,12 @@ static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
    Self->InnerJoin     = agg::inner_miter; // AGG only
    Self->NumericID     = 0x7fffffff;
    Self->StrokeWidth   = 1.0; // SVG default is 1, note that an actual stroke colour needs to be defined for this value to actually matter.
-   Self->Visibility    = VIS_VISIBLE;
-   Self->FillRule      = VFR_NON_ZERO;
-   Self->ClipRule      = VFR_NON_ZERO;
-   Self->Dirty         = RC_ALL;
+   Self->Visibility    = VIS::VISIBLE;
+   Self->FillRule      = VFR::NON_ZERO;
+   Self->ClipRule      = VFR::NON_ZERO;
+   Self->Dirty         = RC::ALL;
    Self->TabOrder      = 255;
-   Self->ColourSpace   = VCS_INHERIT;
+   Self->ColourSpace   = VCS::INHERIT;
    return ERR_Okay;
 }
 
@@ -576,7 +576,7 @@ static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
    if (!Args) return ERR_NullArgs;
 
    VectorMatrix *transform;
-   if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &transform)) {
+   if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &transform)) {
       // Insert transform at the start of the list.
 
       transform->Vector = Self;
@@ -591,7 +591,7 @@ static ERROR VECTOR_NewMatrix(extVector *Self, struct vecNewMatrix *Args)
       Self->Matrices = transform;
       Args->Transform = transform;
 
-      mark_dirty(Self, RC_TRANSFORM);
+      mark_dirty(Self, RC::TRANSFORM);
       return ERR_Okay;
    }
    else return ERR_AllocMemory;
@@ -624,7 +624,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
@@ -761,7 +761,7 @@ Show: Changes the vector's visibility setting to visible.
 
 static ERROR VECTOR_Show(extVector *Self, APTR Void)
 {
-   Self->Visibility = VIS_VISIBLE;
+   Self->Visibility = VIS::VISIBLE;
    return ERR_Okay;
 }
 
@@ -782,14 +782,14 @@ ERROR callback(*Vector, LONG Event)
 ```
 
 -INPUT-
-int(FM) Mask: Combine FM flags to define the feedback events required by the client.  Set to 0xffffffff if all messages are desirable.
+int(FM) Mask: Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.
 ptr(func) Callback: The function that will receive feedback events.
 
 -ERRORS-
 Okay:
 NullArgs:
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedback *Args)
 {
@@ -797,7 +797,7 @@ static ERROR VECTOR_SubscribeFeedback(extVector *Self, struct vecSubscribeFeedba
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Args->Mask) {
+   if (Args->Mask != FM::NIL) {
       if (!Self->FeedbackSubscriptions) {
          Self->FeedbackSubscriptions = new (std::nothrow) std::vector<FeedbackSubscription>;
          if (!Self->FeedbackSubscriptions) return log.warning(ERR_AllocMemory);
@@ -839,7 +839,7 @@ ERROR callback(*Vector, *InputEvent)
 ```
 
 -INPUT-
-int(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
+flags(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
 ptr(func) Callback: Reference to a function that will receive input messages.
 
 -ERRORS-
@@ -857,7 +857,7 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Args->Mask) {
+   if (Args->Mask != JTYPE::NIL) {
       if ((!Self->Scene) or (!Self->Scene->SurfaceID)) return log.warning(ERR_FieldNotSet);
 
       if (!Self->InputSubscriptions) {
@@ -865,8 +865,8 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
          if (!Self->InputSubscriptions) return log.warning(ERR_AllocMemory);
       }
 
-      LONG mask = Args->Mask;
-      if (mask & JTYPE_FEEDBACK) mask |= JTYPE_MOVEMENT;
+      auto mask = Args->Mask;
+      if ((mask & JTYPE::FEEDBACK) != JTYPE::NIL) mask |= JTYPE::MOVEMENT;
 
       Self->InputMask |= mask;
       ((extVectorScene *)Self->Scene)->InputSubscriptions[Self] = Self->InputMask;
@@ -958,7 +958,7 @@ ptr(func) Callback: The function to call with each coordinate of the path.
 Okay:
 NullArgs:
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 {
@@ -966,7 +966,7 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
 
    if ((!Args) or (Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
@@ -1032,13 +1032,13 @@ terms of outcome, the ClipRule works similarly to #FillRule.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_ClipRule(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_ClipRule(extVector *Self, VFR *Value)
 {
    *Value = Self->ClipRule;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_ClipRule(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
 {
    Self->ClipRule = Value;
    return ERR_Okay;
@@ -1065,7 +1065,7 @@ It is a pre-requisite that the associated @VectorScene has been linked to a @Sur
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_SET_Cursor(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_Cursor(extVector *Self, PTC Value)
 {
    Self->Cursor = Value;
 
@@ -1088,9 +1088,9 @@ static ERROR VECTOR_SET_Cursor(extVector *Self, LONG Value)
          .X           = x,
          .Y           = y,
          .DeviceID    = 0,
-         .Type        = JET_ABS_X,
-         .Flags       = JTYPE_MOVEMENT,
-         .Mask        = JTYPE_MOVEMENT
+         .Type        = JET::ABS_X,
+         .Flags       = JTYPE::MOVEMENT,
+         .Mask        = JTYPE::MOVEMENT
       };
       scene_input_events(&event, 0);
    }
@@ -1368,13 +1368,13 @@ interpretation of "inside" is not so obvious.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillRule(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_FillRule(extVector *Self, VFR *Value)
 {
    *Value = Self->FillRule;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_FillRule(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 {
    Self->FillRule = Value;
    return ERR_Okay;
@@ -1428,25 +1428,25 @@ path.
 
 // See the AGG bezier_div demo to get a better understanding of what is affected by this field value.
 
-static ERROR VECTOR_GET_InnerJoin(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_InnerJoin(extVector *Self, VIJ *Value)
 {
-   if (Self->InnerJoin IS agg::inner_miter)      *Value = VIJ_MITER;
-   else if (Self->InnerJoin IS agg::inner_round) *Value = VIJ_ROUND;
-   else if (Self->InnerJoin IS agg::inner_bevel) *Value = VIJ_BEVEL;
-   else if (Self->InnerJoin IS agg::inner_jag)   *Value = VIJ_JAG;
-   else if (Self->InnerJoin IS agg::inner_inherit) *Value = VIJ_INHERIT;
-   else *Value = 0;
+   if (Self->InnerJoin IS agg::inner_miter)      *Value = VIJ::MITER;
+   else if (Self->InnerJoin IS agg::inner_round) *Value = VIJ::ROUND;
+   else if (Self->InnerJoin IS agg::inner_bevel) *Value = VIJ::BEVEL;
+   else if (Self->InnerJoin IS agg::inner_jag)   *Value = VIJ::JAG;
+   else if (Self->InnerJoin IS agg::inner_inherit) *Value = VIJ::INHERIT;
+   else *Value = VIJ::NIL;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_InnerJoin(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
 {
    switch(Value) {
-      case VIJ_MITER: Self->InnerJoin = agg::inner_miter; break;
-      case VIJ_ROUND: Self->InnerJoin = agg::inner_round; break;
-      case VIJ_BEVEL: Self->InnerJoin = agg::inner_bevel; break;
-      case VIJ_JAG:   Self->InnerJoin = agg::inner_jag; break;
-      case VIJ_INHERIT: Self->InnerJoin = agg::inner_inherit; break;
+      case VIJ::MITER: Self->InnerJoin = agg::inner_miter; break;
+      case VIJ::ROUND: Self->InnerJoin = agg::inner_round; break;
+      case VIJ::BEVEL: Self->InnerJoin = agg::inner_bevel; break;
+      case VIJ::JAG:   Self->InnerJoin = agg::inner_jag; break;
+      case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
       default: return ERR_Failed;
    }
    return ERR_Okay;
@@ -1466,23 +1466,23 @@ of a stroked path.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineCap(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_LineCap(extVector *Self, VLC *Value)
 {
-   if (Self->LineCap IS agg::butt_cap)         *Value = VLC_BUTT;
-   else if (Self->LineCap IS agg::square_cap)  *Value = VLC_SQUARE;
-   else if (Self->LineCap IS agg::round_cap)   *Value = VLC_ROUND;
-   else if (Self->LineCap IS agg::inherit_cap) *Value = VLC_INHERIT;
-   else *Value = 0;
+   if (Self->LineCap IS agg::butt_cap)         *Value = VLC::BUTT;
+   else if (Self->LineCap IS agg::square_cap)  *Value = VLC::SQUARE;
+   else if (Self->LineCap IS agg::round_cap)   *Value = VLC::ROUND;
+   else if (Self->LineCap IS agg::inherit_cap) *Value = VLC::INHERIT;
+   else *Value = VLC::NIL;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_LineCap(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_LineCap(extVector *Self, VLC Value)
 {
    switch(Value) {
-      case VLC_BUTT:    Self->LineCap = agg::butt_cap; break;
-      case VLC_SQUARE:  Self->LineCap = agg::square_cap; break;
-      case VLC_ROUND:   Self->LineCap = agg::round_cap; break;
-      case VLC_INHERIT: Self->LineCap = agg::inherit_cap; break;
+      case VLC::BUTT:    Self->LineCap = agg::butt_cap; break;
+      case VLC::SQUARE:  Self->LineCap = agg::square_cap; break;
+      case VLC::ROUND:   Self->LineCap = agg::round_cap; break;
+      case VLC::INHERIT: Self->LineCap = agg::inherit_cap; break;
       default: return ERR_Failed;
    }
    return ERR_Okay;
@@ -1498,28 +1498,28 @@ that are being stroked.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineJoin(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
 {
-   if (Self->LineJoin IS agg::miter_join)        *Value = VLJ_MITER;
-   else if (Self->LineJoin IS agg::round_join)   *Value = VLJ_ROUND;
-   else if (Self->LineJoin IS agg::bevel_join)   *Value = VLJ_BEVEL;
-   else if (Self->LineJoin IS agg::inherit_join) *Value = VLJ_INHERIT;
-   else if (Self->LineJoin IS agg::miter_join_revert) *Value = VLJ_MITER_REVERT;
-   else if (Self->LineJoin IS agg::miter_join_round)  *Value = VLJ_MITER_ROUND;
-   else *Value = 0;
+   if (Self->LineJoin IS agg::miter_join)        *Value = VLJ::MITER;
+   else if (Self->LineJoin IS agg::round_join)   *Value = VLJ::ROUND;
+   else if (Self->LineJoin IS agg::bevel_join)   *Value = VLJ::BEVEL;
+   else if (Self->LineJoin IS agg::inherit_join) *Value = VLJ::INHERIT;
+   else if (Self->LineJoin IS agg::miter_join_revert) *Value = VLJ::MITER_REVERT;
+   else if (Self->LineJoin IS agg::miter_join_round)  *Value = VLJ::MITER_ROUND;
+   else *Value = VLJ::NIL;
 
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_LineJoin(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
 {
    switch (Value) {
-      case VLJ_MITER:        Self->LineJoin = agg::miter_join; break;
-      case VLJ_ROUND:        Self->LineJoin = agg::round_join; break;
-      case VLJ_BEVEL:        Self->LineJoin = agg::bevel_join; break;
-      case VLJ_MITER_REVERT: Self->LineJoin = agg::miter_join_revert; break;
-      case VLJ_MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
-      case VLJ_INHERIT:      Self->LineJoin = agg::inherit_join; break;
+      case VLJ::MITER:        Self->LineJoin = agg::miter_join; break;
+      case VLJ::ROUND:        Self->LineJoin = agg::round_join; break;
+      case VLJ::BEVEL:        Self->LineJoin = agg::bevel_join; break;
+      case VLJ::MITER_REVERT: Self->LineJoin = agg::miter_join_revert; break;
+      case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
+      case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
       default: return ERR_Failed;
    }
    return ERR_Okay;
@@ -1653,13 +1653,13 @@ MorphFlags: Optional flags that affect morphing.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_MorphFlags(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_MorphFlags(extVector *Self, VMF *Value)
 {
    *Value = Self->MorphFlags;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_MorphFlags(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
 {
     Self->MorphFlags = Value;
     return ERR_Okay;
@@ -1894,7 +1894,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    if (!Self->GeneratePath) return log.warning(ERR_Mismatch); // Path generation must be supported by the vector.
 
-   if (Self->Dirty) gen_vector_tree(Self);
+   if (Self->dirty()) gen_vector_tree(Self);
 
    if (!Self->BasePath.total_vertices()) return ERR_NoData;
 
@@ -1907,7 +1907,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    for (ULONG i=0; i < base.total_vertices(); i++) {
-      LONG cmd = base.command(i);
+      auto cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;
 
@@ -1915,25 +1915,25 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
       // leaving out the Z.
 
       switch(cmd) {
-         case agg::path_cmd_stop: // PE_ClosePath
+         case agg::path_cmd_stop: // PE::ClosePath
             seq << 'Z';
             break;
 
-         case agg::path_cmd_move_to: // PE_Move
+         case agg::path_cmd_move_to: // PE::Move
             base.vertex(i, &x, &y);
             seq << 'M' << x << ',' << y;
             last_x = x;
             last_y = y;
             break;
 
-         case agg::path_cmd_line_to: // PE_Line
+         case agg::path_cmd_line_to: // PE::Line
             base.vertex(i, &x, &y);
             seq << 'L' << x << ',' << y;
             last_x = x;
             last_y = y;
             break;
 
-         case agg::path_cmd_curve3: // PE_QuadCurve
+         case agg::path_cmd_curve3: // PE::QuadCurve
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2); // End of line
             seq << "q" << x - last_x << ',' << y - last_y << ',' << x2 - last_x << ',' << y2 - last_y;
@@ -1942,7 +1942,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             i += 1;
             break;
 
-         case agg::path_cmd_curve4: // PE_Curve
+         case agg::path_cmd_curve4: // PE::Curve
             base.vertex(i, &x, &y);
             base.vertex(i+1, &x2, &y2);
             base.vertex(i+2, &x3, &y3); // End of line
@@ -1952,7 +1952,7 @@ static ERROR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
             i += 2;
             break;
 
-         case agg::path_cmd_end_poly: // PE_ClosePath
+         case agg::path_cmd_end_poly: // PE::ClosePath
             seq << 'Z';
             break;
 
@@ -2175,7 +2175,7 @@ Visibility: Controls the visibility of a vector and its children.
 //********************************************************************************************************************
 // For sending events to the client
 
-void send_feedback(extVector *Vector, LONG Event)
+void send_feedback(extVector *Vector, FM Event)
 {
    if (!Vector->initialised()) return;
    if (!Vector->FeedbackSubscriptions) return;
@@ -2183,19 +2183,19 @@ void send_feedback(extVector *Vector, LONG Event)
    for (auto it=Vector->FeedbackSubscriptions->begin(); it != Vector->FeedbackSubscriptions->end(); ) {
       ERROR result;
       auto &sub = *it;
-      if (sub.Mask & Event) {
+      if ((sub.Mask & Event) != FM::NIL) {
          sub.Mask &= ~Event; // Turned off to prevent recursion
 
          if (sub.Callback.Type IS CALL_STDC) {
             pf::SwitchContext ctx(sub.Callback.StdC.Context);
-            auto callback = (ERROR (*)(extVector *, LONG))sub.Callback.StdC.Routine;
+            auto callback = (ERROR (*)(extVector *, FM))sub.Callback.StdC.Routine;
             result = callback(Vector, Event);
          }
          else if (sub.Callback.Type IS CALL_SCRIPT) {
             // In this implementation the script function will receive all the events chained via the Next field
             ScriptArg args[] = {
                { "Vector", FDF_OBJECT, { .Address = Vector } },
-               { "Event",  FDF_LONG,   { .Long = Event } }
+               { "Event",  FDF_LONG,   { .Long = LONG(Event) } }
             };
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }
@@ -2222,48 +2222,48 @@ DOUBLE extVector::fixed_stroke_width()
 //********************************************************************************************************************
 
 static const FieldDef clMorphFlags[] = {
-   { "Stretch",     VMF_STRETCH },
-   { "AutoSpacing", VMF_AUTO_SPACING },
-   { "XMin",        VMF_X_MIN },
-   { "XMid",        VMF_X_MID },
-   { "XMax",        VMF_X_MAX },
-   { "YMin",        VMF_Y_MIN },
-   { "YMid",        VMF_Y_MID },
-   { "YMax",        VMF_Y_MAX },
+   { "Stretch",     VMF::STRETCH },
+   { "AutoSpacing", VMF::AUTO_SPACING },
+   { "XMin",        VMF::X_MIN },
+   { "XMid",        VMF::X_MID },
+   { "XMax",        VMF::X_MAX },
+   { "YMin",        VMF::Y_MIN },
+   { "YMid",        VMF::Y_MID },
+   { "YMax",        VMF::Y_MAX },
    { NULL, 0 }
 };
 
 static const FieldDef clLineJoin[] = {
-   { "Miter",       VLJ_MITER },
-   { "Round",       VLJ_ROUND },
-   { "Bevel",       VLJ_BEVEL },
-   { "MiterRevert", VLJ_MITER_REVERT },
-   { "MiterRound",  VLJ_MITER_ROUND },
-   { "Inherit",     VLJ_INHERIT },
+   { "Miter",       VLJ::MITER },
+   { "Round",       VLJ::ROUND },
+   { "Bevel",       VLJ::BEVEL },
+   { "MiterRevert", VLJ::MITER_REVERT },
+   { "MiterRound",  VLJ::MITER_ROUND },
+   { "Inherit",     VLJ::INHERIT },
    { NULL, 0 }
 };
 
 static const FieldDef clLineCap[] = {
-   { "Butt",    VLC_BUTT },
-   { "Square",  VLC_SQUARE },
-   { "Round",   VLC_ROUND },
-   { "Inherit", VLC_INHERIT },
+   { "Butt",    VLC::BUTT },
+   { "Square",  VLC::SQUARE },
+   { "Round",   VLC::ROUND },
+   { "Inherit", VLC::INHERIT },
    { NULL, 0 }
 };
 
 static const FieldDef clInnerJoin[] = {
-   { "Miter",   VIJ_MITER },
-   { "Round",   VIJ_ROUND },
-   { "Bevel",   VIJ_BEVEL },
-   { "Jag",     VIJ_JAG },
-   { "Inherit", VIJ_INHERIT },
+   { "Miter",   VIJ::MITER },
+   { "Round",   VIJ::ROUND },
+   { "Bevel",   VIJ::BEVEL },
+   { "Jag",     VIJ::JAG },
+   { "Inherit", VIJ::INHERIT },
    { NULL, 0 }
 };
 
 static const FieldDef clFillRule[] = {
-   { "EvenOdd", VFR_EVEN_ODD },
-   { "NonZero", VFR_NON_ZERO },
-   { "Inherit", VFR_INHERIT },
+   { "EvenOdd", VFR::EVEN_ODD },
+   { "NonZero", VFR::NON_ZERO },
+   { "Inherit", VFR::INHERIT },
    { NULL, 0 }
 };
 
@@ -2318,7 +2318,7 @@ static ERROR init_vector(void)
    clVector = objMetaClass::create::global(
       fl::ClassVersion(VER_VECTOR),
       fl::Name("Vector"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorActions),
       fl::Methods(clVectorMethods),
       fl::Fields(clVectorFields),

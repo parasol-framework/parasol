@@ -22,10 +22,10 @@
     <method>
       <name>Find</name>
       <comment>Searches for a specific text string.</comment>
-      <prototype>ERROR ssFind(OBJECTPTR Object, LONG * Pos, LONG Flags)</prototype>
+      <prototype>ERROR ssFind(OBJECTPTR Object, LONG * Pos, STF Flags)</prototype>
       <input>
         <param type="LONG *" name="Pos">The position to start searching from.  Set to -1 to start from the cursor position.  This parameter is updated with the byte position of the discovered string sequence.</param>
-        <param type="LONG" name="Flags" lookup="STF">Optional flags.</param>
+        <param type="STF" name="Flags" lookup="STF">Optional flags.</param>
       </input>
       <description>
 <p>Call Find to initiate a string search within the targeted <field>Scintilla</field> object.  The method will scan for the first instance of the <field>Text</field> string sequence and return its position in Pos.  The Flags parameter defines special options that affect the search process.</p>
@@ -71,7 +71,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="STF">INT</type>
+      <type lookup="STF">STF</type>
       <description>
 <p>Optional flags that affect the search process are specified here.</p>
 <types lookup="STF"/>

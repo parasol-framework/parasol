@@ -44,7 +44,7 @@
       <name>DeviceFlags</name>
       <comment>These read-only flags identify the type of device and its features.</comment>
       <access read="R">Read</access>
-      <type lookup="DEVICE">BIGINT</type>
+      <type lookup="DEVICE">DEVICE</type>
       <description>
 <types lookup="DEVICE"/>
       </description>

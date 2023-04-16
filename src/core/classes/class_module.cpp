@@ -703,7 +703,7 @@ APTR build_jump_table(const Function *FList)
    log.trace("%d functions have been detected in the function list.", size);
 
    void **functions;
-   if (!AllocMemory((size+1) * sizeof(APTR), MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&functions, NULL)) {
+   if (!AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, NULL)) {
       for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
       functions[size] = NULL;
       return functions;
@@ -856,7 +856,7 @@ extern "C" ERROR add_module_class(void)
       fl::BaseClassID(ID_MODULE),
       fl::ClassVersion(VER_MODULE),
       fl::Name("Module"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::FileExtension("*.mod|*.so|*.dll"),
       fl::FileDescription("System Module"),
       fl::Actions(glModuleActions),
@@ -870,7 +870,7 @@ extern "C" ERROR add_module_class(void)
       fl::ClassVersion(1.0),
       fl::Name("RootModule"),
       fl::Flags(CLF::NO_OWNERSHIP),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(glRootModuleActions),
       fl::Fields(glRootModuleFields),
       fl::Size(sizeof(RootModule)),

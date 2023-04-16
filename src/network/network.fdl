@@ -24,7 +24,7 @@ typedef LONG SOCKET_HANDLE;
 #endif
   ]])
 
-  enum("IPADDR", { start=0, comment="Address types for the IPAddress structure." }, "V4", "V6")
+  enum("IPADDR", { type="int", start=0, comment="Address types for the IPAddress structure." }, "V4", "V6")
 
   struct("IPAddress", { }, [[
     uint(4) Data        # 128-bit array for supporting both V4 and V6 IP addresses.
@@ -42,14 +42,14 @@ typedef LONG SOCKET_HANDLE;
   flags("NLF", { comment="Options for NetLookup" },
     "NO_CACHE: Contact the name service and do not use the local DNS cache.")
 
-  enum("NTC", { start=0, comment="NetSocket states" },
+  enum("NTC", { type="int", start=0, comment="NetSocket states" },
     "DISCONNECTED: There is no connection.",
     "CONNECTING: A connection is being established.",
     "CONNECTING_SSL: An SSL connection is being established.",
     "CONNECTED: There is an active connection at present."
   )
 
-  enum("NSL", { start=1, comment="Tags for SetSSL()." },
+  enum("NSL", { type="int", start=1, comment="Tags for SetSSL()." },
      "CONNECT: Initiate an SSL connection on this socket.")
 
   const("NETMSG", { restrict="c", comment="Internal identifiers for the NetMsg structure." }, {
@@ -198,7 +198,7 @@ typedef LONG SOCKET_HANDLE;
   })
 
   c_insert([[
-INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
+inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
    else return ERR_CreateObject;
 }

@@ -515,13 +515,13 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       Self->setStatement((CSTRING)Args->Buffer);
    }
-   else if (Args->Datatype IS DATA_XML) {
+   else if (Args->Datatype IS DATA::XML) {
       Self->setStatement((CSTRING)Args->Buffer);
    }
-   else if (Args->Datatype IS DATA_RECEIPT) {
+   else if (Args->Datatype IS DATA::RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
 
       log.branch("Incoming data receipt from #%d", Args->Object ? Args->Object->UID : 0);
@@ -698,7 +698,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          if (cache_ts != -1) {
             if ((cache_ts IS src_ts) or (error)) {
                log.msg("Using cache '%s'", Self->CacheFile);
-               if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR, &Self->String)) {
+               if (!AllocMemory(cache_size, MEM::STRING|MEM::NO_CLEAR, &Self->String)) {
                   LONG len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
@@ -709,7 +709,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
 
       if ((!error) and (!loaded_size)) {
-         if (!AllocMemory(src_size+1, MEM_STRING|MEM_NO_CLEAR, &Self->String)) {
+         if (!AllocMemory(src_size+1, MEM::STRING|MEM::NO_CLEAR, &Self->String)) {
             LONG len;
             if (!ReadFileToBuffer(Self->Path, Self->String, src_size, &len)) {
                Self->String[len] = 0;
@@ -738,13 +738,13 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    prvFluid *prv;
    if (!error) {
-      if (!AllocMemory(sizeof(prvFluid), MEM_DATA, &Self->ChildPrivate)) {
+      if (!AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate)) {
          prv = (prvFluid *)Self->ChildPrivate;
          new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
             if (!src_file.obj->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
-            src_file.obj->get(FID_Permissions, &prv->CachePermissions);
+            src_file.obj->get(FID_Permissions, (LONG *)&prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
@@ -836,7 +836,7 @@ static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
    if (prv) {
       LONG memsize = 1024 * 64;
       UBYTE *list;
-      if (!AllocMemory(memsize, MEM_DATA|MEM_NO_CLEAR, &list)) {
+      if (!AllocMemory(memsize, MEM::DATA|MEM::NO_CLEAR, &list)) {
          LONG total = 0;
          LONG size  = 0;
          lua_pushnil(prv->Lua);
@@ -1130,7 +1130,7 @@ ERROR create_fluid(void)
       fl::ClassID(ID_FLUID),
       fl::ClassVersion(VER_FLUID),
       fl::Name("Fluid"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.fluid|*.fb|*.lua"),
       fl::FileDescription("Fluid"),
       fl::Actions(clActions),

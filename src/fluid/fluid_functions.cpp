@@ -353,25 +353,25 @@ int fcmd_subscribe_event(lua_State *Lua)
       }
    }
 
-   LONG group_id = 0;
+   EVG group_id = EVG::NIL;
    if ((group_hash) and (subgroup_hash)) {
       switch (group_hash) {
-         case HASH_FILESYSTEM: group_id = EVG_FILESYSTEM; break;
-         case HASH_NETWORK:    group_id = EVG_NETWORK; break;
-         case HASH_USER:       group_id = EVG_USER; break;
-         case HASH_SYSTEM:     group_id = EVG_SYSTEM; break;
-         case HASH_GUI:        group_id = EVG_GUI; break;
-         case HASH_DISPLAY:    group_id = EVG_DISPLAY; break;
-         case HASH_IO:         group_id = EVG_IO; break;
-         case HASH_HARDWARE:   group_id = EVG_HARDWARE; break;
-         case HASH_AUDIO:      group_id = EVG_AUDIO; break;
-         case HASH_POWER:      group_id = EVG_POWER; break;
-         case HASH_CLASS:      group_id = EVG_CLASS; break;
-         case HASH_APP:        group_id = EVG_APP; break;
+         case HASH_FILESYSTEM: group_id = EVG::FILESYSTEM; break;
+         case HASH_NETWORK:    group_id = EVG::NETWORK; break;
+         case HASH_USER:       group_id = EVG::USER; break;
+         case HASH_SYSTEM:     group_id = EVG::SYSTEM; break;
+         case HASH_GUI:        group_id = EVG::GUI; break;
+         case HASH_DISPLAY:    group_id = EVG::DISPLAY; break;
+         case HASH_IO:         group_id = EVG::IO; break;
+         case HASH_HARDWARE:   group_id = EVG::HARDWARE; break;
+         case HASH_AUDIO:      group_id = EVG::AUDIO; break;
+         case HASH_POWER:      group_id = EVG::POWER; break;
+         case HASH_CLASS:      group_id = EVG::CLASS; break;
+         case HASH_APP:        group_id = EVG::APP; break;
       }
    }
 
-   if (!group_id) {
+   if (group_id IS EVG::NIL) {
       luaL_error(Lua, "Invalid group name '%s' in event string.", event);
       return 0;
    }
@@ -623,7 +623,7 @@ int fcmd_loadfile(lua_State *Lua)
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
          APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer)) {
+         if (!AllocMemory(SIZE_READ, MEM::NO_CLEAR, &buffer)) {
             struct code_reader_handle handle = { *file, buffer };
 
             // Check for the presence of a compiled header and skip it if present
@@ -657,7 +657,7 @@ int fcmd_loadfile(lua_State *Lua)
                   objFile::create cachefile = {
                      fl::Path(fbpath),
                      fl::Flags(FL::NEW|FL::WRITE),
-                     fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
+                     fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE)
                   };
 
                   if (cachefile.ok()) {

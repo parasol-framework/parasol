@@ -99,7 +99,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(struct NetClient), MEM_DATA, &client_ip) != ERR_Okay) {
+      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR_Okay) {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -117,7 +117,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       Self->LastClient = client_ip;
    }
 
-   if (!(Self->Flags & NSF_MULTI_CONNECT)) { // Check if the IP is already registered and alive
+   if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
       if (client_ip->Sockets) {
          // Check if the client is alive by writing to it.  If the client is dead, remove it and continue with the new connection.
 
@@ -143,14 +143,14 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
    if (Self->Feedback.Type IS CALL_STDC) {
       pf::SwitchContext context(Self->Feedback.StdC.Context);
-      auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
-      if (routine) routine(Self, client_socket, NTC_CONNECTED);
+      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Self->Feedback.StdC.Routine;
+      if (routine) routine(Self, client_socket, NTC::CONNECTED);
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       const ScriptArg args[] = {
          { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
          { "ClientSocket", FD_OBJECTPTR, { .Address = client_socket } },
-         { "State",        FD_LONG,      { .Long = NTC_CONNECTED } }
+         { "State",        FD_LONG,      { .Long = LONG(NTC::CONNECTED) } }
       };
 
       auto script = Self->Feedback.Script.Script;
@@ -218,14 +218,14 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
    if ((Signal) and (Socket->Feedback.Type)) {
       if (Socket->Feedback.Type IS CALL_STDC) {
          pf::SwitchContext context(Socket->Feedback.StdC.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Socket->Feedback.StdC.Routine;
-         if (routine) routine(Socket, ClientSocket, NTC_DISCONNECTED);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Socket->Feedback.StdC.Routine;
+         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED);
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
             { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
             { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } },
-            { "State",        FD_LONG,      { .Long = NTC_DISCONNECTED } }
+            { "State",        FD_LONG,      { .Long = LONG(NTC::DISCONNECTED) } }
          };
 
          auto script = Socket->Feedback.Script.Script;

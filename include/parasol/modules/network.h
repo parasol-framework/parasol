@@ -35,35 +35,54 @@ typedef LONG SOCKET_HANDLE;
 #endif
 // Address types for the IPAddress structure.
 
-#define IPADDR_V4 0
-#define IPADDR_V6 1
-
-struct IPAddress {
-   ULONG Data[4];    // 128-bit array for supporting both V4 and V6 IP addresses.
-   LONG  Type;       // Identifies the address Data value as a V4 or V6 address type.
-   LONG  Pad;        // Unused padding for 64-bit alignment
+enum class IPADDR : LONG {
+   NIL = 0,
+   V4 = 0,
+   V6 = 1,
 };
 
-#define NSF_SERVER 0x00000001
-#define NSF_SSL 0x00000002
-#define NSF_MULTI_CONNECT 0x00000004
-#define NSF_SYNCHRONOUS 0x00000008
-#define NSF_DEBUG 0x00000010
+struct IPAddress {
+   ULONG  Data[4];   // 128-bit array for supporting both V4 and V6 IP addresses.
+   IPADDR Type;      // Identifies the address Data value as a V4 or V6 address type.
+   LONG   Pad;       // Unused padding for 64-bit alignment
+};
+
+enum class NSF : ULONG {
+   NIL = 0,
+   SERVER = 0x00000001,
+   SSL = 0x00000002,
+   MULTI_CONNECT = 0x00000004,
+   SYNCHRONOUS = 0x00000008,
+   DEBUG = 0x00000010,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(NSF)
 
 // Options for NetLookup
 
-#define NLF_NO_CACHE 0x00000001
+enum class NLF : ULONG {
+   NIL = 0,
+   NO_CACHE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(NLF)
 
 // NetSocket states
 
-#define NTC_DISCONNECTED 0
-#define NTC_CONNECTING 1
-#define NTC_CONNECTING_SSL 2
-#define NTC_CONNECTED 3
+enum class NTC : LONG {
+   NIL = 0,
+   DISCONNECTED = 0,
+   CONNECTING = 1,
+   CONNECTING_SSL = 2,
+   CONNECTED = 3,
+};
 
 // Tags for SetSSL().
 
-#define NSL_CONNECT 1
+enum class NSL : LONG {
+   NIL = 0,
+   CONNECT = 1,
+};
 
 // Internal identifiers for the NetMsg structure.
 
@@ -110,7 +129,7 @@ struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct csWriteClientMsg { APTR Message; LONG Length;  };
 
 INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
-   struct csReadClientMsg args = { 0, 0, 0, 0 };
+   struct csReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
@@ -346,7 +365,7 @@ class objNetLookup : public BaseClass {
    using create = pf::Create<objNetLookup>;
 
    LARGE UserData;    // Optional user data storage
-   LONG  Flags;       // Optional flags
+   NLF   Flags;       // Optional flags
 
    // Action stubs
 
@@ -359,7 +378,7 @@ class objNetLookup : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const NLF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
@@ -413,7 +432,7 @@ INLINE ERROR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) {
 }
 
 INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
-   struct nsReadMsg args = { 0, 0, 0, 0 };
+   struct nsReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
@@ -438,10 +457,10 @@ class objNetSocket : public BaseClass {
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
    STRING Address;                // An IP address or domain name to connect to.
-   LONG   State;                  // The current connection state of the netsocket object.
+   NTC    State;                  // The current connection state of the netsocket object.
    ERROR  Error;                  // Information about the last error that occurred during a NetSocket operation
    LONG   Port;                   // The port number to use for initiating a connection.
-   LONG   Flags;                  // Optional flags.
+   NSF    Flags;                  // Optional flags.
    LONG   TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
    LONG   Backlog;                // The maximum number of connections that can be queued against the socket.
    LONG   ClientLimit;            // The maximum number of clients that can be connected to a server socket.
@@ -449,7 +468,7 @@ class objNetSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -508,7 +527,7 @@ class objNetSocket : public BaseClass {
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
-   inline ERROR setState(const LONG Value) {
+   inline ERROR setState(const NTC Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[4];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -520,7 +539,7 @@ class objNetSocket : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const NSF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
@@ -604,7 +623,7 @@ class objNetSocket : public BaseClass {
 #define SCV_KEYUSAGE_NO_CERTSIGN 32
 #define SCV_APPLICATION_VERIFICATION 50
 
-INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
+inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
    else return ERR_CreateObject;
 }

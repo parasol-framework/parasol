@@ -104,36 +104,6 @@ struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
 
-//********************************************************************************************************************
-// Private memory management structures.
-
-class PrivateAddress {
-public:
-   union {
-      APTR      Address;
-      OBJECTPTR Object;
-   };
-   MEMORYID MemoryID;   // Unique identifier
-   OBJECTID OwnerID;    // The object that allocated this block.
-   ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID = 0;
-   WORD     Flags;
-   volatile WORD AccessCount = 0; // Total number of locks
-
-   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, WORD aFlags) :
-      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
-
-   void clear() {
-      Address  = 0;
-      MemoryID = 0;
-      OwnerID  = 0;
-      Flags    = 0;
-      ThreadLockID = 0;
-   }
-};
-
-#define STAT_FOLDER 0x0001
-
 enum class RES    : LONG;
 enum class RP     : LONG;
 enum class IDTYPE : LONG;
@@ -150,12 +120,19 @@ enum class RSF    : ULONG;
 enum class LDF    : ULONG;
 enum class VOLUME : ULONG;
 enum class STR    : ULONG;
-enum class ALF    : ULONG;
 enum class SCF    : ULONG;
 enum class SBF    : ULONG;
 enum class SMF    : ULONG;
 enum class VLF    : ULONG;
 enum class MFF    : ULONG;
+enum class DEVICE : LARGE;
+enum class PERMIT : ULONG;
+enum class CCF    : ULONG;
+enum class MEM    : ULONG;
+enum class ALF    : UWORD;
+enum class EVG    : LONG;
+
+#define STAT_FOLDER 0x0001
 
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
@@ -200,6 +177,34 @@ enum {
 struct CaseInsensitiveMap {
    bool operator() (const std::string &lhs, const std::string &rhs) const {
       return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+//********************************************************************************************************************
+// Private memory management structures.
+
+class PrivateAddress {
+public:
+   union {
+      APTR      Address;
+      OBJECTPTR Object;
+   };
+   MEMORYID MemoryID;   // Unique identifier
+   OBJECTID OwnerID;    // The object that allocated this block.
+   ULONG    Size;       // 4GB max
+   volatile LONG ThreadLockID = 0;
+   MEM      Flags;
+   volatile WORD AccessCount = 0; // Total number of locks
+
+   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
+      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
+
+   void clear() {
+      Address  = 0;
+      MemoryID = 0;
+      OwnerID  = 0;
+      Flags    = MEM::NIL;
+      ThreadLockID = 0;
    }
 };
 
@@ -253,7 +258,7 @@ struct virtual_drive {
    ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
    ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
    ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERROR (*CreateFolder)(CSTRING, LONG);
+   ERROR (*CreateFolder)(CSTRING, PERMIT);
    ERROR (*SameFile)(CSTRING, CSTRING);
    ERROR (*ReadLink)(STRING, STRING *);
    ERROR (*CreateLink)(CSTRING, CSTRING);
@@ -402,7 +407,7 @@ class extFile : public objFile {
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
    LARGE  ProgressTime;
-   LONG   Permissions;
+   PERMIT Permissions;
    LONG   prvType;
    LONG   Handle;         // Native system file handle
    WORD   prvLineLen;
@@ -511,7 +516,7 @@ class extModule : public objModule {
 struct ClassRecord {
    CLASSID ClassID;
    CLASSID ParentID;
-   LONG Category;
+   CCF Category;
    std::string Name;
    std::string Path;
    std::string Match;
@@ -538,7 +543,7 @@ struct ClassRecord {
    inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
       ClassID  = pClassID;
       ParentID = 0;
-      Category = CCF_SYSTEM;
+      Category = CCF::SYSTEM;
       Name     = pName;
       Path     = "modules:core";
       if (pMatch) Match   = pMatch;
@@ -740,7 +745,8 @@ extern THREADVAR BYTE tlMainThread;
 extern THREADVAR WORD tlPreventSleep;
 extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
-extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
+extern THREADVAR LONG glForceUID, glForceGID;
+extern THREADVAR PERMIT glDefaultPermissions;
 
 //********************************************************************************************************************
 
@@ -926,40 +932,40 @@ ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
 ERROR pReleaseSemaphore(LONG, SMF);
 
-ERROR fs_closedir(struct DirInfo *);
+ERROR fs_closedir(DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
 ERROR fs_delete(STRING, FUNCTION *);
-ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
+ERROR fs_getinfo(CSTRING, FileInfo *, LONG);
 ERROR fs_getdeviceinfo(CSTRING, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
-ERROR fs_makedir(CSTRING, LONG);
-ERROR fs_opendir(struct DirInfo *);
+ERROR fs_makedir(CSTRING, PERMIT);
+ERROR fs_opendir(DirInfo *);
 ERROR fs_readlink(STRING, STRING *);
 ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
-ERROR fs_scandir(struct DirInfo *);
+ERROR fs_scandir(DirInfo *);
 ERROR fs_testpath(CSTRING, RSF, LOC *);
 ERROR fs_watch_path(class extFile *);
 
-const struct virtual_drive * get_fs(CSTRING Path);
-void free_storage_class(void);
+const virtual_drive * get_fs(CSTRING Path);
+void  free_storage_class(void);
 
-ERROR convert_zip_error(struct z_stream_s *, LONG);
-ERROR check_cache(OBJECTPTR, LARGE, LARGE);
-ERROR get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
-ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
-ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
-LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
-ERROR load_datatypes(void);
-ERROR RenameVolume(CSTRING, CSTRING);
-ERROR findfile(STRING);
-LONG  convert_fs_permissions(LONG);
-LONG  convert_permissions(LONG);
-void set_memory_manager(APTR, struct ResourceManager *);
-BYTE  strip_folder(STRING) __attribute__ ((unused));
-ERROR get_file_info(CSTRING, struct FileInfo *, LONG);
-ERROR convert_errno(LONG Error, ERROR Default);
-void free_file_cache(void);
+ERROR  convert_zip_error(struct z_stream_s *, LONG);
+ERROR  check_cache(OBJECTPTR, LARGE, LARGE);
+ERROR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
+ERROR  fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
+ERROR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
+PERMIT get_parent_permissions(CSTRING, LONG *, LONG *);
+ERROR  load_datatypes(void);
+ERROR  RenameVolume(CSTRING, CSTRING);
+ERROR  findfile(STRING);
+PERMIT convert_fs_permissions(LONG);
+LONG   convert_permissions(PERMIT);
+void   set_memory_manager(APTR, ResourceManager *);
+BYTE   strip_folder(STRING) __attribute__ ((unused));
+ERROR  get_file_info(CSTRING, FileInfo *, LONG);
+ERROR  convert_errno(LONG Error, ERROR Default);
+void   free_file_cache(void);
 
 EXPORT void Expunge(WORD);
 
@@ -968,39 +974,39 @@ extern void remove_archive(class extCompression *);
 
 void   print_diagnosis(LONG);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
-APTR   build_jump_table(const struct Function *);
-ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERROR  copy_field_to_buffer(OBJECTPTR, struct Field *, LONG, APTR, CSTRING, LONG *);
+APTR   build_jump_table(const Function *);
+ERROR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
+ERROR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
 ERROR  create_archive_volume(void);
-ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
+ERROR  delete_tree(STRING, LONG, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
-void   free_module_entry(struct RootModule *);
+void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
 ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
-void   local_free_args(APTR, const struct FunctionField *);
+void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-void   optimise_write_field(struct Field &);
+void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 void   remove_semaphores(void);
-ERROR  resolve_args(APTR, const struct FunctionField *);
+ERROR  resolve_args(APTR, const FunctionField *);
 void   scan_classes(void);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
 void   wake_sleepers(LONG, LONG);
-ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
+ERROR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
-ERROR  check_paths(CSTRING, LONG);
+ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #define REF_WAKELOCK           get_threadlock()

@@ -316,9 +316,9 @@ static ERROR ASSET_Seek(objFile *Self, struct acSeek *Args)
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR_ObjectCorrupt);
 
-   if (Args->Position IS POS_START) method = SEEK_SET;
-   else if (Args->Position IS POS_END) method = SEEK_END;
-   else if (Args->Position IS POS_CURRENT) method = SEEK_CUR;
+   if (Args->Position IS POS_START) method = SEEK::SET;
+   else if (Args->Position IS POS_END) method = SEEK::END;
+   else if (Args->Position IS POS_CURRENT) method = SEEK::CUR;
    else return log.warning(ERR_Args);
 
    off_t offset = AAsset_seek(prv->Asset, Args->Offset, method);
@@ -611,7 +611,7 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       return ERR_InvalidPath;
    }
 
-   if (AllocMemory(sizeof(DirInfo), MEM_DATA, &dirinfo, NULL)) {
+   if (AllocMemory(sizeof(DirInfo), MEM::DATA, &dirinfo, NULL)) {
       AAssetDir_close(dir);
       return ERR_AllocMemory;
    }
@@ -641,12 +641,12 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
          if ((Flags & RDF::FILE) != RDF::NIL) {
             LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
-            if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
+            if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
                entry->Flags = RDF::FILE;
 
                if (Flags & RDF::PERMISSIONS) {
                   entry->Flags |= RDF::PERMISSIONS;
-                  entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+                  entry->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
                }
 
                if ((Flags & RDF::SIZE) != RDF::NIL) {
@@ -671,12 +671,12 @@ static ERROR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       }
       else if ((Flags & RDF::FOLDER) != RDF::NIL) {
          LONG size = sizeof(FileInfo) + StrLength(filename) + 2;
-         if (!AllocMemory(size, MEM_DATA, &entry, NULL)) {
+         if (!AllocMemory(size, MEM::DATA, &entry, NULL)) {
             entry->Flags = RDF::FOLDER;
 
             if ((Flags & RDF::PERMISSIONS) != RDF::NIL) {
                entry->Flags |= RDF::PERMISSIONS;
-               entry->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+               entry->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
             }
 
             entry->Name = (STRING)(entry + 1);

@@ -612,7 +612,7 @@ call to ~ReleaseMemory() within the same code block.
 
 -INPUT-
 mem Memory:       The ID of the memory block that you want to access.
-int(MEM) Flags:   Set to MEM_READ, MEM_WRITE or MEM_READ_WRITE according to requirements.
+int(MEM) Flags:   Set to READ, WRITE or READ_WRITE according to requirements.
 int MilliSeconds: The millisecond interval to wait before a timeout occurs.  Do not set below 40ms for consistent operation.
 &ptr Result:      Must point to an APTR variable that will store the resolved address.
 
@@ -630,19 +630,19 @@ SystemLocked
 
 *********************************************************************************************************************/
 
-ERROR AccessMemory(MEMORYID MemoryID, LONG Flags, LONG MilliSeconds, APTR *Result)
+ERROR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!MemoryID) or (!Result)) return log.warning(ERR_NullArgs);
 
    if (MilliSeconds <= 0) {
-      log.warning("MemoryID: %d, Flags: $%x, TimeOut: %d - Invalid timeout", MemoryID, Flags, MilliSeconds);
+      log.warning("MemoryID: %d, Flags: $%x, TimeOut: %d - Invalid timeout", MemoryID, LONG(Flags), MilliSeconds);
       return ERR_Args;
    }
 
    // NB: Printing AccessMemory() calls is usually a waste of time unless the process is going to sleep.
-   //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, Flags, MilliSeconds);
+   //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, LONG(Flags), MilliSeconds);
 
    *Result = NULL;
    ThreadLock lock(TL_PRIVATE_MEM, 4000);
@@ -1156,14 +1156,14 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
             mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
          #endif
 
-         if (mem->second.Flags & MEM_DELETE) {
-            log.trace("Deleting marked private memory block #%d (MEM_DELETE)", MemoryID);
+         if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
+            log.trace("Deleting marked private memory block #%d (MEM::DELETE)", MemoryID);
             FreeResource(mem->second.Address);
             cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
             return ERR_Okay;
          }
-         else if (mem->second.Flags & MEM_EXCLUSIVE) {
-            mem->second.Flags &= ~MEM_EXCLUSIVE;
+         else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
+            mem->second.Flags &= ~MEM::EXCLUSIVE;
          }
 
          cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.

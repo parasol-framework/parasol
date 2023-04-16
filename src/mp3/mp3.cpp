@@ -330,7 +330,7 @@ static ERROR MP3_Init(objSound *Self, APTR Void)
    }
 
    prvMP3 *prv;
-   if (!AllocMemory(sizeof(prvMP3), MEM_DATA, &Self->ChildPrivate)) {
+   if (!AllocMemory(sizeof(prvMP3), MEM::DATA, &Self->ChildPrivate)) {
       prv = (prvMP3 *)Self->ChildPrivate;
       new (prv) prvMP3;
    }
@@ -555,10 +555,10 @@ static ERROR MP3_Seek(objSound *Self, struct acSeek *Args)
    auto prv = (prvMP3 *)Self->ChildPrivate;
 
    LARGE offset;
-   if (Args->Position IS SEEK_START)         offset = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_END)      offset = Self->Length - F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
-   else if (Args->Position IS SEEK_RELATIVE) offset = Self->Length * Args->Offset;
+   if (Args->Position IS SEEK::START)         offset = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::END)      offset = Self->Length - F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT)  offset = prv->ReadOffset + F2T(Args->Offset);
+   else if (Args->Position IS SEEK::RELATIVE) offset = Self->Length * Args->Offset;
    else return log.warning(ERR_Args);
 
    if (offset IS Self->Position) return ERR_Okay;
@@ -679,7 +679,7 @@ static LARGE calc_length(objSound *Self, LONG ReduceEnd)
    prv->File->get(FID_Size, &filesize);
 
    UBYTE *buffer;
-   if (!AllocMemory(SIZE_BUFFER, MEM_DATA|MEM_NO_CLEAR, &buffer, NULL)) {
+   if (!AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, &buffer, NULL)) {
       // Load MP3 data from the file
 
       prv->File->seekStart(prv->SeekOffset);
@@ -881,7 +881,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::FileExtension("*.mp3"),
       fl::FileDescription("MP3 Audio Stream"),
       fl::Name("MP3"),
-      fl::Category(CCF_AUDIO),
+      fl::Category(CCF::AUDIO),
       fl::Actions(clActions),
       fl::Path(MOD_PATH));
 

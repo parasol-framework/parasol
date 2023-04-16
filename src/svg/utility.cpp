@@ -78,12 +78,12 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
    switch (StrHash(Input)) {
-      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, VSF_GRAPHIC); break;
-      case SVF_SOURCEALPHA:     Effect->set(SourceField, VSF_ALPHA); break;
-      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, VSF_BKGD); break;
-      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, VSF_BKGD_ALPHA); break;
-      case SVF_FILLPAINT:       Effect->set(SourceField, VSF_FILL); break;
-      case SVF_STROKEPAINT:     Effect->set(SourceField, VSF_STROKE); break;
+      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, LONG(VSF::GRAPHIC)); break;
+      case SVF_SOURCEALPHA:     Effect->set(SourceField, LONG(VSF::ALPHA)); break;
+      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, LONG(VSF::BKGD)); break;
+      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, LONG(VSF::BKGD_ALPHA)); break;
+      case SVF_FILLPAINT:       Effect->set(SourceField, LONG(VSF::FILL)); break;
+      case SVF_STROKEPAINT:     Effect->set(SourceField, LONG(VSF::STROKE)); break;
       default:  {
          if (Self->Effects.contains(Input)) {
             Effect->set(RefField, Self->Effects[Input]);
@@ -345,11 +345,11 @@ template <class T> static inline void set_double(T Object, FIELD FieldID, const 
 //********************************************************************************************************************
 // This version forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
 
-INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, LONG Units)
+inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, VUNIT Units)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
-   if (Units IS VUNIT_BOUNDING_BOX) field |= TPERCENT;
+   if (Units IS VUNIT::BOUNDING_BOX) field |= TPERCENT;
    SetField(Object, field, num);
 }
 
@@ -502,7 +502,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());
          }
 
-         if (Self->Flags & SVF_AUTOSCALE) {
+         if ((Self->Flags & SVF::AUTOSCALE) != SVF::NIL) {
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             auto view = Self->Scene->Viewport;

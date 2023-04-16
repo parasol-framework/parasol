@@ -61,11 +61,11 @@
     <name>CopyArea</name>
     <category>Bitmap</category>
     <comment>Copies a rectangular area from one bitmap to another.</comment>
-    <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">The source bitmap.</param>
       <param type="objBitmap *" name="Dest">Pointer to the destination bitmap.</param>
-      <param type="LONG" name="Flags" lookup="BAF">Special flags.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
       <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
       <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
       <param type="LONG" name="Width">The width of the area.</param>
@@ -76,8 +76,8 @@
     <description>
 <p>This function copies rectangular areas from one bitmap to another.  It performs a straight region-copy only, using the fastest method available.  Bitmaps may be of a different type (e.g. bit depth), however this will result in performance penalties.  The copy process will respect the clipping region defined in both the source and destination bitmap objects.</p>
 <p>If the <code>TRANSPARENT</code> flag is set in the source object, all colours that match the ColourIndex field will be ignored in the copy operation.</p>
-<p>To enable dithering, pass <code>BAF_DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF_BLEND</code> (the source bitmap will also need to have the <code>BMF_ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
-<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF_LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
+<p>To enable dithering, pass <code>BAF::DITHER</code> in the Flags argument.  The drawing algorithm will use dithering if the source needs to be down-sampled to the target bitmap's bit depth.  To enable alpha blending, set <code>BAF::BLEND</code> (the source bitmap will also need to have the <code>BMF::ALPHA_CHANNEL</code> flag set to indicate that an alpha channel is available).</p>
+<p>The quality of 32-bit alpha blending can be improved by selecting the <code>BAF::LINEAR</code> flag.  This enables an additional computation whereby each RGB value is converted to linear sRGB colour space before performing the blend.  The discernible value of using this option largely depends on the level of opaqueness of either bitmap.  Note that this option is not usable if either bitmap is already in a linear colourspace (<code>ERR_InvalidState</code> will be returned if that is the case).</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -91,11 +91,11 @@
     <name>CopyRawBitmap</name>
     <category>Bitmap</category>
     <comment>Copies graphics data from an arbitrary surface to a bitmap.</comment>
-    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="struct BitmapSurfaceV2 *" name="Surface">Description of the surface source.</param>
       <param type="objBitmap *" name="Bitmap">Destination bitmap.</param>
-      <param type="LONG" name="Flags" lookup="CSRF">Optional flags.</param>
+      <param type="CSRF" name="Flags" lookup="CSRF">Optional flags.</param>
       <param type="LONG" name="X">Horizontal source coordinate.</param>
       <param type="LONG" name="Y">Vertical source coordinate.</param>
       <param type="LONG" name="Width">Source width.</param>
@@ -118,11 +118,11 @@
     <name>CopySurface</name>
     <category>Surfaces</category>
     <comment>Copies surface graphics data into any bitmap object</comment>
-    <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+    <prototype>ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object to copy from.</param>
       <param type="objBitmap *" name="Bitmap">Must reference a target Bitmap object.</param>
-      <param type="LONG" name="Flags" lookup="BDF">Optional flags.</param>
+      <param type="BDF" name="Flags" lookup="BDF">Optional flags.</param>
       <param type="LONG" name="X">The horizontal source coordinate.</param>
       <param type="LONG" name="Y">The vertical source coordinate.</param>
       <param type="LONG" name="Width">The width of the graphic that will be copied.</param>
@@ -177,7 +177,7 @@
     <name>DrawRectangle</name>
     <category>Bitmap</category>
     <comment>Draws rectangles, both filled and unfilled.</comment>
-    <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
+    <prototype>void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to the target <class name="Bitmap">Bitmap</class>.</param>
       <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
@@ -185,10 +185,10 @@
       <param type="LONG" name="Width">The width of the rectangle.</param>
       <param type="LONG" name="Height">The height of the rectangle.</param>
       <param type="ULONG" name="Colour">The colour value to use for the rectangle.</param>
-      <param type="LONG" name="Flags" lookup="BAF">Use BAF_FILL to fill the rectangle.  Use of BAF_BLEND will enable blending.</param>
+      <param type="BAF" name="Flags" lookup="BAF">Use FILL to fill the rectangle.  Use of BLEND will enable blending.</param>
     </input>
     <description>
-<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines <code>BAF_FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.  Blending is not enabled unless the <code>BAF_BLEND</code> flag is defined and an alpha value is present in the Colour.</p>
+<p>This function draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Flags parameter defines <code>BAF::FILL</code> then the rectangle will be filled, otherwise only the outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.  Blending is not enabled unless the <code>BAF::BLEND</code> flag is defined and an alpha value is present in the Colour.</p>
     </description>
   </function>
 
@@ -196,17 +196,17 @@
     <name>ExposeSurface</name>
     <category>Surfaces</category>
     <comment>Exposes the content of a surface to the display.</comment>
-    <prototype>ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags)</prototype>
+    <prototype>ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The ID of the surface object that will be exposed.</param>
       <param type="LONG" name="X">The horizontal coordinate of the area to expose.</param>
       <param type="LONG" name="Y">The vertical coordinate of the area to expose.</param>
       <param type="LONG" name="Width">The width of the expose area.</param>
       <param type="LONG" name="Height">The height of the expose area.</param>
-      <param type="LONG" name="Flags" lookup="EXF">Optional flags - EXF_CHILDREN will expose all intersecting child regions.</param>
+      <param type="EXF" name="Flags" lookup="EXF">Optional flags - using CHILDREN will expose all intersecting child regions.</param>
     </input>
     <description>
-<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF_CHILDREN</code> flag.</p>
+<p>This expose routine will expose all content within a defined surface area, copying it to the display.  This will include all child surfaces that intersect with the region being exposed if you set the <code>EXF::CHILDREN</code> flag.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -220,10 +220,10 @@
     <name>FlipBitmap</name>
     <category>Bitmap</category>
     <comment>Flips a bitmap around its horizontal or vertical axis.</comment>
-    <prototype>void gfxFlipBitmap(objBitmap * Bitmap, LONG Orientation)</prototype>
+    <prototype>void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation)</prototype>
     <input>
       <param type="objBitmap *" name="Bitmap">Pointer to a bitmap object.</param>
-      <param type="LONG" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.</param>
+      <param type="FLIP" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.  If set to neither, the function does nothing.</param>
     </input>
     <description>
 <p>The FlipBitmap() function is used to flip bitmap images on their horizontal or vertical axis.  The amount of time required to flip a bitmap is dependent on the area of the bitmap you are trying to flip over and its total number of colours.</p>
@@ -335,21 +335,21 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetDisplayType</name>
     <category>Display</category>
     <comment>Returns the type of display supported.</comment>
-    <prototype>LONG gfxGetDisplayType()</prototype>
+    <prototype>DT gfxGetDisplayType()</prototype>
     <description>
 <p>This function returns the type of display supported by the loaded Display module.  Current return values are:</p>
 <types lookup="DT"/>
     </description>
-    <result type="LONG" lookup="DT">Returns an integer indicating the display type.</result>
+    <result type="DT" lookup="DT">Returns an integer indicating the display type.</result>
   </function>
 
   <function>
     <name>GetInputTypeName</name>
     <category>Input</category>
     <comment>Returns the string name for an input type.</comment>
-    <prototype>CSTRING gfxGetInputTypeName(LONG Type)</prototype>
+    <prototype>CSTRING gfxGetInputTypeName(JET Type)</prototype>
     <input>
-      <param type="LONG" name="Type" lookup="JET">JET type integer.</param>
+      <param type="JET" name="Type" lookup="JET">JET type integer.</param>
     </input>
     <description>
 <p>This function converts JET integer constants to their string equivalent.</p>
@@ -416,10 +416,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>GetSurfaceFlags</name>
     <category>Surfaces</category>
     <comment>Retrieves the Flags field from a surface.</comment>
-    <prototype>ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags)</prototype>
+    <prototype>ERROR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">The surface to query.  If zero, the top-level surface is queried.</param>
-      <param type="LONG *" name="Flags">The flags value is returned here.</param>
+      <param type="RNF *" name="Flags" lookup="RNF">The flags value is returned here.</param>
     </input>
     <description>
 <p>This function returns the current Flags field from a surface.  It provides the same result as reading the field directly, however it is considered advantageous in circumstances where the overhead of locking a surface object for a read operation is undesirable.</p>
@@ -491,11 +491,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>LockBitmap</name>
     <category>Surfaces</category>
     <comment>Returns a bitmap that represents the video area covered by the surface object.</comment>
-    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info)</prototype>
+    <prototype>ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info)</prototype>
     <input>
       <param type="OBJECTID" name="Surface">Object ID of the surface object that you want to lock.</param>
       <param type="objBitmap **" name="Bitmap">The resulting bitmap will be returned in this parameter.</param>
-      <param type="LONG *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If LVF_EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
+      <param type="LVF *" name="Info" lookup="LVF">Special flags may be returned in this parameter.  If EXPOSE_CHANGES is returned, any changes must be exposed in order for them to be displayed to the user.</param>
     </input>
     <description>
 <p>Use the LockBitmap() function to gain direct access to the bitmap information of a surface object. Because the layering buffer will be inaccessible to the UI whilst you retain the lock, you must keep your access time to an absolute minimum or desktop performance may suffer.</p>
@@ -583,14 +583,14 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>RestoreCursor</name>
     <category>Cursor</category>
     <comment>Returns the pointer image to its original state.</comment>
-    <prototype>ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner)</prototype>
     <input>
-      <param type="LONG" name="Cursor" lookup="PTR">The cursor image that the pointer will be restored to (0 for the default).</param>
+      <param type="PTC" name="Cursor" lookup="PTC">The cursor image that the pointer will be restored to (0 for the default).</param>
       <param type="OBJECTID" name="Owner">The ownership ID that was given in the initial call to SetCursor().</param>
     </input>
     <description>
 <p>Use the RestoreCursor() function to undo an earlier call to <function module="Display">SetCursor</function>.  It is necessary to provide the same OwnerID that was used in the original call to <function module="Display">SetCursor</function>.</p>
-<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTR_NOCHANGE</code>.</p>
+<p>To release ownership of the cursor without changing the current cursor image, use a Cursor setting of <code>PTC::NOCHANGE</code>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -638,11 +638,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor image and can anchor the pointer to any surface.</comment>
-    <prototype>ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
-      <param type="LONG" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
-      <param type="LONG" name="Cursor" lookup="PTR">The ID of the cursor image that is to be set.</param>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should anchor itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="CRF" name="Flags" lookup="CRF">Optional flags that affect the cursor.</param>
+      <param type="PTC" name="Cursor" lookup="PTC">The ID of the cursor image that is to be set.</param>
       <param type="CSTRING" name="Name">The name of the cursor image that is to be set (if Cursor is zero).</param>
       <param type="OBJECTID" name="Owner">The object nominated as the owner of the anchor, and/or owner of the cursor image setting.</param>
     </input>
@@ -684,10 +684,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetCustomCursor</name>
     <category>Cursor</category>
     <comment>Sets the cursor to a customised bitmap image.</comment>
-    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
+    <prototype>ERROR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner)</prototype>
     <input>
-      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the CRF_RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
-      <param type="LONG" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
+      <param type="OBJECTID" name="Surface">Refers to the surface object that the pointer should restrict itself to, if the RESTRICT flag is used.  Otherwise, this parameter can be set to a surface that the new cursor image should be limited to.  The object referred to here must be publicly accessible to all tasks.</param>
+      <param type="CRF" name="Flags" lookup="CRF">Optional flags affecting the cursor are set here.</param>
       <param type="objBitmap *" name="Bitmap">The bitmap to set for the mouse cursor.</param>
       <param type="LONG" name="HotX">The horizontal position of the cursor hot-spot.</param>
       <param type="LONG" name="HotY">The vertical position of the cursor hot-spot.</param>
@@ -728,9 +728,9 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SetHostOption</name>
     <category>Display</category>
     <comment>Alter options associated with the host display system.</comment>
-    <prototype>ERROR gfxSetHostOption(LONG Option, LARGE Value)</prototype>
+    <prototype>ERROR gfxSetHostOption(HOST Option, LARGE Value)</prototype>
     <input>
-      <param type="LONG" name="Option" lookup="HOST">One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.</param>
+      <param type="HOST" name="Option" lookup="HOST">One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.</param>
       <param type="LARGE" name="Value">The value to be applied to the option.</param>
     </input>
     <description>
@@ -788,11 +788,11 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>SubscribeInput</name>
     <category>Input</category>
     <comment>Subscribe to incoming input messages for any active surface object.</comment>
-    <prototype>ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
+    <prototype>ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle)</prototype>
     <input>
       <param type="FUNCTION *" name="Callback">Reference to a callback function that will receive input messages.</param>
       <param type="OBJECTID" name="SurfaceFilter">Optional.  Only the input messages that match the given surface ID will be received.</param>
-      <param type="LONG" name="Mask" lookup="JTYPE">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
+      <param type="JTYPE" name="Mask" lookup="JTYPE">Combine JTYPE flags to define the input messages required by the client.  Set to 0xffffffff if all messages are desirable.</param>
       <param type="OBJECTID" name="DeviceFilter">Optional.  Only the input messages that match the given device ID will be received.  NOTE - Support not yet implemented, set to zero.</param>
       <param type="LONG *" name="Handle">A handle for the subscription is returned here.</param>
     </input>
@@ -804,7 +804,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <pre>ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    for (auto e=Events; e; e=e-&gt;Next) {
-      if ((e-&gt;Flags &amp; JTYPE_BUTTON) and (e-&gt;Value &gt; 0)) {
+      if (((e-&gt;Flags &amp; JTYPE::BUTTON) != JTYPE::NIL) and (e-&gt;Value &gt; 0)) {
          process_click(Self, e-&gt;RecipientID, e-&gt;X, e-&gt;Y);
       }
    }
@@ -812,21 +812,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
    return ERR_Okay;
 }
 </pre>
-<p>All processable events are referenced in the InputEvent structure in the Events parameter.  The structure format is as follows:</p>
-<fields>
-<fld type="*InputEvent" name="Next">The next input event in the list.</fld>
-<fld type="UWORD" name="Type">This value is set to a JET constant that describes the input event.</fld>
-<fld type="UWORD" name="Flags">Flags provide a broad description of the event type and can also provide more specific information relevant to the event (see JTYPE flags).</fld>
-<fld type="DOUBLE" name="Value">The value associated with the Type</fld>
-<fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</fld>
-<fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</fld>
-<fld type="DOUBLE" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</fld>
-<fld type="DOUBLE" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</fld>
-<fld type="DOUBLE" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</fld>
-<fld type="DOUBLE" name="OverY">Vertical pointer coordinate.</fld>
-<fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</fld>
-<fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</fld>
-</fields>
+<p>All processable events are referenced in the InputEvent structure in the Events parameter.</p>
 <p>JET constants are as follows and take note of <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> which are software generated and not a device event:</p>
 <types lookup="JET"/>
 <p>The JTYPE values for the Flags field are as follows.  Note that these flags also serve as input masks for the SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the original subscription call.</p>
@@ -910,10 +896,10 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     <name>WindowHook</name>
     <category>Surfaces</category>
     <comment>Adds a function hook for receiving window messages from a host desktop.</comment>
-    <prototype>ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback)</prototype>
+    <prototype>ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback)</prototype>
     <input>
       <param type="OBJECTID" name="SurfaceID">A hosted surface to be monitored.</param>
-      <param type="LONG" name="Event" lookup="WH">A window hook event.</param>
+      <param type="WH" name="Event" lookup="WH">A window hook event.</param>
       <param type="FUNCTION *" name="Callback">A function to callback when the event is triggered.</param>
     </input>
     <description>
@@ -1023,7 +1009,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="TEXT"/>
     </constants>
 
-    <constants lookup="DPMS" comment="Possible modes for the Display class' DPMS field.">
+    <constants lookup="DPMS" comment="Possible modes for the Display class' PowerMode field.">
       <const name="DEFAULT">Use the default DPMS mode as defined by the display driver.</const>
       <const name="OFF">Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).</const>
       <const name="STANDBY">Puts the display into standby (reduced power) mode.</const>
@@ -1085,13 +1071,18 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="EXPOSE_CHANGES"/>
     </constants>
 
+    <constants lookup="MON" comment="Flags for the Display class SetMonitor() method.">
+      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
+      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
+    </constants>
+
     <constants lookup="PF" comment="Flags for the Pointer class.">
       <const name="ANCHOR">Allow the pointer to be anchored.</const>
       <const name="UNUSED"/>
       <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
     </constants>
 
-    <constants lookup="RNF">
+    <constants lookup="RNF" comment="Switches for the Surface class' Flags field.">
       <const name="AFTER_COPY">Read-only.  Indicates that after-copy mode has been enabled.</const>
       <const name="ASPECT_RATIO">When resizing, enforce the aspect ratio as defined by MinWidth and MinHeight.</const>
       <const name="AUTO_QUIT">The surface object will send a quit message to its supporting process when and if the Close method is called.  This flag is typically used when a surface object represents a core window for an application.</const>
@@ -1138,7 +1129,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="COMPOSITE">Enables alpha channel blending (if display is hosted and 32-bit).</const>
       <const name="CUSTOM_WINDOW">The display has been created with a custom window reference.</const>
       <const name="DPMS_ENABLED">Power saving through DPMS is supported.</const>
-      <const name="FLIPPABLE">If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
+      <const name="FLIPPABLE">If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer.</const>
       <const name="GTF_ENABLED">GTF frequency timings are supported.</const>
       <const name="HOSTED">The display is a desktop hosted window.</const>
       <const name="MAXIMISE">Special win32 flag.</const>
@@ -1148,11 +1139,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <const name="READ_ONLY">Synonym for MAXIMISE | CUSTOM_WINDOW | FLIPPABLE | GTF_ENABLED | DPMS_ENABLED | POWERSAVE | HOSTED | MAXSIZE | REFRESH | BIT_6 | VISIBLE | NO_ACCELERATION</const>
       <const name="REFRESH">For GetDisplayInfo() only, used to indicate that a display change has recently occurred and cache refresh is required.</const>
       <const name="VISIBLE">Set if the screen is on display.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for the Display class SetMonitor() method.">
-      <const name="AUTO_DETECT">Monitor settings to be auto-detected on startup.</const>
-      <const name="BIT_6">The device is limited to 6-bit colour production in real terms.</const>
     </constants>
 
     <constants lookup="SWIN" comment="Options for the Surface WindowType field.">
@@ -1175,13 +1161,13 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="LineWidth" type="LONG">The distance between bitmap lines, measured in bytes.</field>
       <field name="BitsPerPixel" type="UBYTE">The number of bits per pixel (8, 15, 16, 24, 32).</field>
       <field name="BytesPerPixel" type="UBYTE">The number of bytes per pixel (1, 2, 3, 4).</field>
-      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF_TRANSLUCENT is used.</field>
+      <field name="Opacity" type="UBYTE">Opacity level of the source if CSRF::TRANSLUCENT is used.</field>
       <field name="Version" type="UBYTE">Version of this structure.</field>
-      <field name="Colour" type="LONG">Colour index to use if CSRF_TRANSPARENT is used.</field>
-      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.</field>
+      <field name="Colour" type="LONG">Colour index to use if CSRF::TRANSPARENT is used.</field>
+      <field name="Clip" type="struct ClipRectangle">A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.</field>
       <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
       <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
-      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.</field>
+      <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.</field>
       <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
     </struct>
 
@@ -1194,12 +1180,12 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 
     <struct name="DisplayInfo" typeName="DISPLAYINFO">
       <field name="Display" type="OBJECTID">Object ID related to the display</field>
-      <field name="Flags" type="LONG" lookup="SCR">Display flags</field>
+      <field name="Flags" type="SCR" lookup="SCR">Display flags</field>
       <field name="Width" type="WORD">Pixel width of the display</field>
       <field name="Height" type="WORD">Pixel height of the display</field>
       <field name="BitsPerPixel" type="WORD">Bits per pixel</field>
       <field name="BytesPerPixel" type="WORD">Bytes per pixel</field>
-      <field name="AccelFlags" type="LARGE" lookup="ACF">Flags describing supported hardware features.</field>
+      <field name="AccelFlags" type="ACF" lookup="ACF">Flags describing supported hardware features.</field>
       <field name="AmtColours" type="LONG">Total number of supported colours.</field>
       <field name="PixelFormat" type="struct PixelFormat">The colour format to use for each pixel.</field>
       <field name="MinRefresh" type="FLOAT">Minimum refresh rate</field>
@@ -1239,7 +1225,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
       <field name="ParentID" type="OBJECTID">Object that contains the surface area</field>
       <field name="BitmapID" type="OBJECTID">Surface bitmap buffer</field>
       <field name="DisplayID" type="OBJECTID">Refers to the display if this object is at root level</field>
-      <field name="Flags" type="LONG" lookup="RNF">Surface flags</field>
+      <field name="Flags" type="RNF" lookup="RNF">Surface flags</field>
       <field name="X" type="LONG">Horizontal coordinate</field>
       <field name="Y" type="LONG">Vertical coordinate</field>
       <field name="Width" type="LONG">Width of the surface area</field>

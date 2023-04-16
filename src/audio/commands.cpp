@@ -38,7 +38,7 @@ static void add_mix_cmd(objAudio *Audio, CMD Command, LONG Handle)
 
 static ERROR fade_in(extAudio *Audio, AudioChannel *channel)
 {
-   if ((!(Audio->Flags & ADF_VOL_RAMPING)) or (!(Audio->Flags & ADF_OVER_SAMPLING))) return ERR_Okay;
+   if (((Audio->Flags & ADF::VOL_RAMPING) IS ADF::NIL) or ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL)) return ERR_Okay;
 
    channel->LVolume = 0;
    channel->RVolume = 0;
@@ -50,7 +50,7 @@ static ERROR fade_in(extAudio *Audio, AudioChannel *channel)
 
 static ERROR fade_out(extAudio *Audio, LONG Handle)
 {
-   if (!(Audio->Flags & ADF_OVER_SAMPLING)) return ERR_Okay;
+   if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) return ERR_Okay;
 
    auto channel = Audio->GetChannel(Handle);
    auto shadow  = Audio->GetShadow(Handle);
@@ -184,7 +184,7 @@ static ERROR sndMixContinue(objAudio *Audio, LONG Handle)
 
    channel->State = CHS::PLAYING;
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) {
+   if ((Audio->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
       auto shadow = ((extAudio *)Audio)->GetShadow(Handle);
       shadow->State = CHS::PLAYING;
    }
@@ -623,7 +623,7 @@ ERROR sndMixSample(objAudio *Audio, LONG Handle, LONG SampleIndex)
    if ((s.LoopMode IS LOOP::AMIGA) and (channel->State IS CHS::FINISHED)) {
       // Set Amiga sample and start playing.  We won't do this with interpolated mixing, as this tends to cause clicks.
 
-      if (!(Audio->Flags & ADF_OVER_SAMPLING)) {
+      if ((Audio->Flags & ADF::OVER_SAMPLING) IS ADF::NIL) {
          channel->State = CHS::PLAYING;
          sndMixPlay(Audio, Handle, s.Loop1Start);
       }
@@ -668,7 +668,7 @@ ERROR sndMixStop(objAudio *Audio, LONG Handle)
    ((extAudio *)Audio)->finish(*channel, true);
    channel->State = CHS::STOPPED;
 
-   if (Audio->Flags & ADF_OVER_SAMPLING) {
+   if ((Audio->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
       auto shadow = ((extAudio *)Audio)->GetShadow(Handle);
       shadow->State = CHS::STOPPED;
    }

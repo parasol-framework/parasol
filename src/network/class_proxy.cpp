@@ -529,7 +529,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
                len = snprintf(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
                end = StrLength(server_buffer);
-               if (!AllocMemory(end + len + 2, MEM_STRING|MEM_NO_CLEAR, &newlist)) {
+               if (!AllocMemory(end + len + 2, MEM::STRING|MEM::NO_CLEAR, &newlist)) {
                   if (end > 0) {
                      CopyMemory(server_buffer, newlist, end);
                      newlist[end++] = ';';
@@ -577,7 +577,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
       objFile::create file = {
          fl::Path("user:config/network/proxies.cfg"),
-         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE),
+         fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE),
          fl::Flags(FL::NEW|FL::WRITE)
       };
 
@@ -893,7 +893,7 @@ ERROR init_proxy(void)
    clProxy = objMetaClass::create::global(
       fl::ClassVersion(VER_PROXY),
       fl::Name("Proxy"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clProxyActions),
       fl::Methods(clProxyMethods),
       fl::Fields(clProxyFields),

@@ -1,6 +1,6 @@
 -- These graphics constants are re-usable across all modules.
 
-enum("PTR", { start=0, comment="Predefined cursor styles" },
+enum("PTC", { type="int", start=0, comment="Predefined cursor styles" },
     "NO_CHANGE",
     "DEFAULT: The default cursor (usually an arrow pointing to the upper left).",
     "SIZE_BOTTOM_LEFT: Sizing cursor - for resizing the bottom left corner of any rectangular area.",
@@ -28,7 +28,7 @@ enum("PTR", { start=0, comment="Predefined cursor styles" },
     "DRAGGABLE: Used to indicate that a surface or object can be dragged by the user.",
     "END") -- Any new cursor images must be added to the CursorLookup array in pointer_class.c
 
-flags("DMF", { bits=32 },
+flags("DMF", { weak=true, bits=32 },
     "RELATIVE_X: The X field is relative to this object's parent.",
     "RELATIVE_Y: The Y field is relative to this object's parent.",
     "FIXED_X: The X field is a fixed coordinate.",
@@ -71,7 +71,7 @@ flags("DMF", { bits=32 },
     }
 )
 
-enum("DRL", { start=0, comment="Compass directions." },
+enum("DRL", { type="int", start=0, comment="Compass directions." },
     "NORTH|UP",
     "SOUTH|DOWN",
     "EAST|RIGHT",

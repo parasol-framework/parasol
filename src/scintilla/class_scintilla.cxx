@@ -119,7 +119,7 @@ extern OBJECTPTR clScintillaSearch;
 struct styledef {
    UBYTE Index;
    ULONG Colour;
-   ULONG FontStyle;
+   FTF FontStyle;
 };
 
 // This is bad - the fonts should be stored in the class.
@@ -128,31 +128,30 @@ static OBJECTPTR glFont = NULL, glBoldFont = NULL, glItalicFont = NULL, glBIFont
 
 static const struct {
    CSTRING File;
-   LONG Lexer;
+   SCLEX Lexer;
 } glLexers[] = {
-   { "*.asm|*.s",     SCLEX_ASM },
-   { "*.asp",         SCLEX_ASP },
-   { "*.bash",        SCLEX_BASH },
-   { "*.bat|*.dos",   SCLEX_BATCH },
-   { "*.c|*.cpp|*.cxx|*.h|*.hpp", SCLEX_CPP },
-   { "*.css",         SCLEX_CSS },
-   { "*.diff",        SCLEX_DIFF },
-   { "*.errorlist",   SCLEX_ERRORLIST },
-   { "*.lua|*.fluid", SCLEX_FLUID },
-   { "*.dmd",         SCLEX_HTML },
-   { "*.html",        SCLEX_HTML },
-   { "*.latex",       SCLEX_LATEX },
-   { "makefile|*.make", SCLEX_MAKEFILE },
-   { "*.pas",          SCLEX_PASCAL },
-   { "*.perl|*.pl",    SCLEX_PERL },
-   { "*.prop|*.cfg",   SCLEX_PROPERTIES },
-   { "*.py",           SCLEX_PYTHON },
-   { "*.ruby|*.rb",    SCLEX_RUBY },
-   { "*.sql",          SCLEX_SQL },
-   { "*.vb",           SCLEX_VB },
-   { "*.vbscript",     SCLEX_VBSCRIPT },
-   { "*.xml",          SCLEX_XML },
-   { NULL, 0 }
+   { "*.asm|*.s",     SCLEX::ASSEMBLER },
+   { "*.asp",         SCLEX::ASP },
+   { "*.bash",        SCLEX::BASH },
+   { "*.bat|*.dos",   SCLEX::BATCH },
+   { "*.c|*.cpp|*.cxx|*.h|*.hpp", SCLEX::CPP },
+   { "*.css",         SCLEX::CSS },
+   { "*.diff",        SCLEX::DIFF },
+   { "*.errorlist",   SCLEX::ERRORLIST },
+   { "*.lua|*.fluid", SCLEX::FLUID },
+   { "*.dmd",         SCLEX::HTML },
+   { "*.html",        SCLEX::HTML },
+   { "makefile|*.make", SCLEX::MAKEFILE },
+   { "*.pas",          SCLEX::PASCAL },
+   { "*.perl|*.pl",    SCLEX::PERL },
+   { "*.prop|*.cfg",   SCLEX::PROPERTIES },
+   { "*.py",           SCLEX::PYTHON },
+   { "*.ruby|*.rb",    SCLEX::RUBY },
+   { "*.sql",          SCLEX::SQL },
+   { "*.vb",           SCLEX::VB },
+   { "*.vbscript",     SCLEX::VBSCRIPT },
+   { "*.xml",          SCLEX::XML },
+   { NULL, SCLEX::NIL }
 };
 
 #define SCICOLOUR(red,green,blue) (((UBYTE)(blue))<<16)|(((UBYTE)(green))<<8)|((UBYTE)(red))
@@ -185,7 +184,7 @@ static ERROR SET_CursorColour(extScintilla *, RGB8 *);
 static ERROR SET_FileDrop(extScintilla *, FUNCTION *);
 static ERROR SET_FoldingMarkers(extScintilla *, LONG);
 static ERROR SET_LeftMargin(extScintilla *, LONG);
-static ERROR SET_Lexer(extScintilla *, LONG);
+static ERROR SET_Lexer(extScintilla *, SCLEX);
 static ERROR SET_LineHighlight(extScintilla *, RGB8 *);
 static ERROR SET_LineNumbers(extScintilla *, LONG);
 static ERROR SET_Path(extScintilla *, CSTRING);
@@ -211,7 +210,7 @@ static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
 static ERROR load_file(extScintilla *, CSTRING);
 static void calc_longest_line(extScintilla *);
 static void key_event(extScintilla *, evKey *, LONG);
-static void report_event(extScintilla *, LARGE Event);
+static void report_event(extScintilla *, SEF Event);
 static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
 extern ERROR init_search(void);
 
@@ -272,8 +271,8 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
 {
    auto Self = (extScintilla *)CurrentContext();
 
-   // There are two drag-drop cases - DATA_TEXT and DATA_FILE.  DATA_TEXT is something that we can handle ourselves,
-   // while DATA_FILE is handled via an external function provided by the user.  Refer to the DataFeed action for
+   // There are two drag-drop cases - DATA::TEXT and DATA::FILE.  DATA::TEXT is something that we can handle ourselves,
+   // while DATA::FILE is handled via an external function provided by the user.  Refer to the DataFeed action for
    // further code.
 
    if (!Args) return;
@@ -282,17 +281,17 @@ static void notify_dragdrop(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, s
 
    struct dcRequest request;
    request.Item          = Args->Item;
-   request.Preference[0] = DATA_FILE;
-   request.Preference[1] = DATA_TEXT;
+   request.Preference[0] = BYTE(DATA::FILE);
+   request.Preference[1] = BYTE(DATA::TEXT);
    request.Preference[2] = 0;
 
    struct acDataFeed dc;
    dc.Object   = Self;
-   dc.Datatype = DATA_REQUEST;
+   dc.Datatype = DATA::REQUEST;
    dc.Buffer   = &request;
    dc.Size     = sizeof(request);
    if (!Action(AC_DataFeed, Args->Source, &dc)) {
-      // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
+      // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
    }
 }
 
@@ -310,7 +309,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
       SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
    }
 
-   if ((Self->Visible) and (!(Self->Flags & SCF_DISABLED))) {
+   if ((Self->Visible) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL)) {
       Self->API->panGotFocus();
    }
    else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
@@ -392,7 +391,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, stru
    SCICALL(SCI_SETUNDOCOLLECTION, 0UL); // Turn off undo
 
    if (Args->Buffer) {
-      acDataFeed(Self, Self, DATA_TEXT, Args->Buffer, Args->Result);
+      acDataFeed(Self, Self, DATA::TEXT, Args->Buffer, Args->Result);
    }
    else { // We have to read the data from the file stream
    }
@@ -430,17 +429,17 @@ static ERROR SCINTILLA_Clipboard(extScintilla *Self, struct acClipboard *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR_NullArgs);
 
-   if (Args->Mode IS CLIPMODE_CUT) {
+   if (Args->Mode IS CLIPMODE::CUT) {
       Self->API->Cut();
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_COPY) {
+   else if (Args->Mode IS CLIPMODE::COPY) {
       Self->API->Copy();
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_PASTE) {
+   else if (Args->Mode IS CLIPMODE::PASTE) {
       Self->API->Paste();
       return ERR_Okay;
    }
@@ -455,7 +454,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Datatype IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       CSTRING str;
 
       // Incoming text is appended to the end of the document
@@ -465,7 +464,7 @@ static ERROR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
 
       SCICALL(SCI_APPENDTEXT, StrLength(str), str);
    }
-   else if (Args->Datatype IS DATA_RECEIPT) {
+   else if (Args->Datatype IS DATA::RECEIPT) {
       log.msg("Received item receipt from object %d.", Args->Object ? Args->Object->UID : 0);
 
       objXML::create xml = { fl::Statement((CSTRING)Args->Buffer) };
@@ -583,7 +582,7 @@ Disable: Disables the target #Surface.
 
 static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 {
-   Self->Flags |= SCF_DISABLED;
+   Self->Flags |= SCIF::DISABLED;
    QueueAction(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
@@ -608,7 +607,7 @@ Enable: Enables the target #Surface.
 
 static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 {
-   Self->Flags &= ~SCF_DISABLED;
+   Self->Flags &= ~SCIF::DISABLED;
    QueueAction(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
@@ -807,7 +806,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    objSurface *surface;
    if (!AccessObject(Self->SurfaceID, 3000, &surface)) {
-      surface->setFlags(surface->Flags|RNF_GRAB_FOCUS);
+      surface->setFlags(surface->Flags|RNF::GRAB_FOCUS);
 
       Self->Surface.X = surface->X;
       Self->Surface.Y = surface->Y;
@@ -830,7 +829,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
       callback = make_function_stdc(notify_show);
       SubscribeAction(surface, AC_Show, &callback);
 
-      if (surface->Flags & RNF_HAS_FOCUS) {
+      if (surface->hasFocus()) {
          auto callback = make_function_stdc(key_event);
          SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
       }
@@ -841,7 +840,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    {
       auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+      gfxSubscribeInput(&callback, Self->SurfaceID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
    }
 
    // TODO: Run the scrollbar script here
@@ -875,8 +874,8 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    if (Self->Visible IS -1) Self->Visible = TRUE;
 
-   if ((!(Self->Flags & SCF_DETECT_LEXER)) and (Self->Lexer)) {
-      Self->API->SetLexer(Self->Lexer);
+   if (((Self->Flags & SCIF::DETECT_LEXER) IS SCIF::NIL) and (Self->Lexer != SCLEX::NIL)) {
+      Self->API->SetLexer(LONG(Self->Lexer));
    }
 
    QueueAction(AC_Draw, Self->SurfaceID);
@@ -884,7 +883,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
 
-   if (Self->Flags & SCF_EXT_PAGE) {
+   if ((Self->Flags & SCIF::EXT_PAGE) != SCIF::NIL) {
       log.msg("Extended page mode.");
       SCICALL(SCI_SETENDATLASTLINE, 0UL); // Allow scrolling by an extra page at the end of the document
    }
@@ -1137,8 +1136,8 @@ static ERROR SCINTILLA_ReplaceLine(extScintilla *Self, struct sciReplaceLine *Ar
 ReplaceText: Replaces all text within an entire document or limited range.
 
 The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a
-given Start and End point.  The STF_CASE, STF_SCAN_SELECTION and STF_EXPRESSION are valid flag options for this method
-(see FindText for details).
+given Start and End point.  The `STF::CASE`, `STF::SCAN_SELECTION` and `STF::EXPRESSION` are valid flag options for
+this method (see FindText for details).
 
 -INPUT-
 cstr Find: The keyword string to find.
@@ -1161,11 +1160,11 @@ static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Ar
 
    if ((!Args) or (!Args->Find) or (!*Args->Find)) return log.warning(ERR_NullArgs);
 
-   log.branch("Text: '%.10s'... Between: %d - %d, Flags: $%.8x", Args->Find, Args->Start, Args->End, Args->Flags);
+   log.branch("Text: '%.10s'... Between: %d - %d, Flags: $%.8x", Args->Find, Args->Start, Args->End, LONG(Args->Flags));
 
    // Calculate the start and end positions
 
-   if (Args->Flags & STF_SCAN_SELECTION) {
+   if ((Args->Flags & STF::SCAN_SELECTION) != STF::NIL) {
       start = SCICALL(SCI_GETSELECTIONSTART);
       end   = SCICALL(SCI_GETSELECTIONEND);
    }
@@ -1189,8 +1188,8 @@ static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Ar
    LONG findlen = StrLength(Args->Find);
    LONG replacelen = StrLength(replace);
 
-   LONG flags = ((Args->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
-                ((Args->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
+   LONG flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
+                (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
@@ -1212,7 +1211,7 @@ static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Ar
 
          // Do the replace
 
-         if (Args->Flags & STF_EXPRESSION) {
+         if ((Args->Flags & STF::EXPRESSION) != STF::NIL) {
             LONG len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace);
             end = end + (len - findlen);
          }
@@ -1238,10 +1237,10 @@ Private
 
 static ERROR SCINTILLA_ReportEvent(extScintilla *Self, APTR Void)
 {
-   if (!Self->ReportEventFlags) return ERR_Okay;
+   if (Self->ReportEventFlags IS SEF::NIL) return ERR_Okay;
 
-   LARGE flags = Self->ReportEventFlags;
-   Self->ReportEventFlags = 0;
+   auto flags = Self->ReportEventFlags;
+   Self->ReportEventFlags = SEF::NIL;
    report_event(Self, flags);
    return ERR_Okay;
 }
@@ -1264,7 +1263,7 @@ static ERROR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *A
 
    ERROR error;
    APTR buffer;
-   if (!(AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &buffer))) {
+   if (!(AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &buffer))) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
       error = acWrite(Args->Dest, buffer, len, NULL);
       FreeResource(buffer);
@@ -1305,7 +1304,7 @@ static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
    log.branch("%s", Args->Face);
 
    if ((Self->Font = objFont::create::integral(fl::Face(Args->Face)))) {
-      Self->Flags &= ~FTF_KERNING;
+      Self->Font->Flags = Self->Font->Flags & (~FTF::KERNING);
       create_styled_fonts(Self);
       Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
       calc_longest_line(Self);
@@ -1652,13 +1651,13 @@ The lexer for document styling is defined here.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Lexer(extScintilla *Self, LONG Value)
+static ERROR SET_Lexer(extScintilla *Self, SCLEX Value)
 {
    Self->Lexer = Value;
    if (Self->initialised()) {
       pf::Log log;
-      log.branch("Changing lexer to %d", Value);
-      Self->API->SetLexer(Self->Lexer);
+      log.branch("Changing lexer to %d", LONG(Value));
+      Self->API->SetLexer(LONG(Self->Lexer));
    }
    return ERR_Okay;
 }
@@ -1816,7 +1815,7 @@ static ERROR SET_Modified(extScintilla *Self, LONG Value)
          SCICALL(SCI_SETSAVEPOINT); // Tell Scintilla that the document is unmodified
       }
 
-      report_event(Self, SEF_MODIFIED);
+      report_event(Self, SEF::MODIFIED);
    }
 
    return ERR_Okay;
@@ -1974,7 +1973,7 @@ static ERROR GET_String(extScintilla *Self, STRING *Value)
 
    if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
 
-   if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, &Self->StringBuffer)) {
+   if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->StringBuffer)) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
       *Value = Self->StringBuffer;
       return ERR_Okay;
@@ -2100,13 +2099,13 @@ static ERROR SET_Wordwrap(extScintilla *Self, LONG Value)
    return ERR_Okay;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static void create_styled_fonts(extScintilla *Self)
 {
    pf::Log log;
 
-   log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, Self->Font->Flags);
+   log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, LONG(Self->Font->Flags));
 
    if (!Self->Font) return;
 
@@ -2119,7 +2118,7 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold")))) {
-      if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+      if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 
    if ((Self->ItalicFont = objFont::create::integral(
@@ -2127,7 +2126,7 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("italics")))) {
-      if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+      if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 
    if ((Self->BIFont = objFont::create::integral(
@@ -2135,7 +2134,7 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold italics")))) {
-       if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+       if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 }
 
@@ -2164,8 +2163,8 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
 
    glBitmap = NULL;
 
-   if (Self->Flags & SCF_DISABLED) {
-      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF_FILL|BAF_BLEND);
+   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
+      gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
    }
 }
 
@@ -2240,7 +2239,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
       else if (!file->get(FID_Size, &size)) {
          if (size > 0) {
             if (size < 1024 * 1024 * 10) {
-               if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &str)) {
+               if (!AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &str)) {
                   if (!acRead(file, str, size, &len)) {
                      str[len] = 0;
                      SCICALL(SCI_SETTEXT, str);
@@ -2265,7 +2264,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
    }
    else error = ERR_File;
 
-   if ((!error) and (Self->Flags & SCF_DETECT_LEXER)) {
+   if ((!error) and ((Self->Flags & SCIF::DETECT_LEXER) != SCIF::NIL)) {
       LONG i = StrLength(Path);
       while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
       Path = Path + i;
@@ -2274,8 +2273,8 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
          if (!StrCompare(glLexers[i].File, Path, 0, STR::WILDCARD)) {
             pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
-            log.branch("Lexer for the loaded file is %d.", Self->Lexer);
-            Self->API->SetLexer(Self->Lexer);
+            log.branch("Lexer for the loaded file is %d.", LONG(Self->Lexer));
+            Self->API->SetLexer(LONG(Self->Lexer));
             break;
          }
       }
@@ -2291,53 +2290,52 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
 {
    pf::Log log;
 
-   if (Self->Flags & SCF_DISABLED) return;
-   if (!(Self->Flags & SCF_EDIT)) return;
+   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) return;
+   if ((Self->Flags & SCIF::EDIT) IS SCIF::NIL) return;
 
-   if (Event->Qualifiers & KQ_PRESSED) {
-      if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = TRUE;
-      else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = TRUE;
-      else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = TRUE;
-
-      LONG keyval = Event->Code;
+   if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
+      if ((Event->Code IS KEY::L_SHIFT) or (Event->Code IS KEY::R_SHIFT)) Self->KeyShift = TRUE;
+      else if ((Event->Code IS KEY::L_ALT) or (Event->Code IS KEY::R_ALT)) Self->KeyAlt = TRUE;
+      else if ((Event->Code IS KEY::L_CONTROL) or (Event->Code IS KEY::R_CONTROL)) Self->KeyCtrl = TRUE;
 
       char string[8];
       string[0] = 0;
 
-      if (!(Event->Qualifiers & KQ_NOT_PRINTABLE)) {
+      if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) {
          WORD out = UTF8WriteValue(Event->Unicode, string, sizeof(string)-1);
          if (out >= 0) string[out] = 0;
       }
 
       StrCopy(string, (STRING)Self->API->lastkeytrans, sizeof(Self->API->lastkeytrans));
 
-      switch (keyval) {
+      LONG keyval;
+      switch (Event->Code) {
          // Handle known non-printable character keys first
-         case K_TAB:       keyval = SCK_TAB; break;
-         case K_DOWN:      keyval = SCK_DOWN; break;
-         case K_UP:        keyval = SCK_UP; break;
-         case K_LEFT:      keyval = SCK_LEFT; break;
-         case K_RIGHT:     keyval = SCK_RIGHT; break;
-         case K_HOME:      keyval = SCK_HOME; break;
-         case K_END:       keyval = SCK_END; break;
-         case K_PAGE_UP:   keyval = SCK_PRIOR; break;
-         case K_PAGE_DOWN: keyval = SCK_NEXT; break;
-         case K_DELETE:    keyval = SCK_DELETE; break;
-         case K_INSERT:    keyval = SCK_INSERT; break;
-         case K_ENTER:
-         case K_NP_ENTER:  keyval = SCK_RETURN; break;
-         case K_ESCAPE:    keyval = SCK_ESCAPE; break;
-         case K_BACKSPACE: keyval = SCK_BACK; break;
+         case KEY::TAB:       keyval = SCK_TAB; break;
+         case KEY::DOWN:      keyval = SCK_DOWN; break;
+         case KEY::UP:        keyval = SCK_UP; break;
+         case KEY::LEFT:      keyval = SCK_LEFT; break;
+         case KEY::RIGHT:     keyval = SCK_RIGHT; break;
+         case KEY::HOME:      keyval = SCK_HOME; break;
+         case KEY::END:       keyval = SCK_END; break;
+         case KEY::PAGE_UP:   keyval = SCK_PRIOR; break;
+         case KEY::PAGE_DOWN: keyval = SCK_NEXT; break;
+         case KEY::DELETE:    keyval = SCK_DELETE; break;
+         case KEY::INSERT:    keyval = SCK_INSERT; break;
+         case KEY::ENTER:
+         case KEY::NP_ENTER:  keyval = SCK_RETURN; break;
+         case KEY::ESCAPE:    keyval = SCK_ESCAPE; break;
+         case KEY::BACKSPACE: keyval = SCK_BACK; break;
          default:
-            if (Event->Qualifiers & KQ_NOT_PRINTABLE) {
+            if ((Event->Qualifiers & KQ::NOT_PRINTABLE) != KQ::NIL) {
                // Unhandled non-printable characters are ignored
                keyval = 0;
             }
-            else if ((keyval >= K_A) and (keyval <= K_Z)) {
-               keyval = keyval - K_A + (LONG)'a';
+            else if ((LONG(Event->Code) >= LONG(KEY::A)) and (LONG(Event->Code) <= LONG(KEY::Z))) {
+               keyval = LONG(Event->Code) - LONG(KEY::A) + LONG('a');
             }
-            else if((keyval >= K_ZERO) and (keyval <= K_NINE)) {
-               keyval = keyval - K_ZERO + (LONG)'0';
+            else if ((LONG(Event->Code) >= LONG(KEY::ZERO)) and (LONG(Event->Code) <= LONG(KEY::NINE))) {
+               keyval = LONG(Event->Code) - LONG(KEY::ZERO) + LONG('0');
             }
             else {
                // Call KeyDefault(), which will pull the key value from the lastkeytrans buffer
@@ -2348,14 +2346,14 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
       }
 
       if (keyval) {
-         log.traceBranch("Keypress: %d", keyval);
+         log.traceBranch("Keypress: %d", LONG(keyval));
          Self->API->panKeyDown(keyval, Event->Qualifiers);
       }
    }
-   else if (Event->Qualifiers & KQ_RELEASED) {
-      if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = FALSE;
-      else if ((Event->Code IS K_L_ALT) or (Event->Code IS K_R_ALT)) Self->KeyAlt = FALSE;
-      else if ((Event->Code IS K_L_CONTROL) or (Event->Code IS K_R_CONTROL)) Self->KeyCtrl = FALSE;
+   else if ((Event->Qualifiers & KQ::RELEASED) != KQ::NIL) {
+      if ((Event->Code IS KEY::L_SHIFT) or (Event->Code IS KEY::R_SHIFT)) Self->KeyShift = FALSE;
+      else if ((Event->Code IS KEY::L_ALT) or (Event->Code IS KEY::R_ALT)) Self->KeyAlt = FALSE;
+      else if ((Event->Code IS KEY::L_CONTROL) or (Event->Code IS KEY::R_CONTROL)) Self->KeyCtrl = FALSE;
    }
 }
 
@@ -2366,15 +2364,15 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
    auto Self = (extScintilla *)CurrentContext();
 
    for (auto event=Events; event; event=event->Next) {
-      if (Self->Flags & SCF_DISABLED) continue;
+      if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) continue;
 
-      if (event->Flags & JTYPE_BUTTON) {
+      if ((event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          if (event->Value > 0) {
             Self->API->panMousePress(event->Type, event->X, event->Y);
          }
          else Self->API->panMouseRelease(event->Type, event->X, event->Y);
       }
-      else if (event->Flags & JTYPE_MOVEMENT) {
+      else if ((event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
          Self->API->panMouseMove(event->X, event->Y);
       }
    }
@@ -2384,13 +2382,13 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 
 //*****************************************************************************
 
-static void report_event(extScintilla *Self, LARGE Event)
+static void report_event(extScintilla *Self, SEF Event)
 {
-   if (Event & Self->EventFlags) {
+   if ((Event & Self->EventFlags) != SEF::NIL) {
       if (Self->EventCallback.Type) {
           if (Self->EventCallback.Type IS CALL_STDC) {
             pf::SwitchContext ctx(Self->EventCallback.StdC.Context);
-            auto routine = (void (*)(extScintilla *, LARGE)) Self->EventCallback.StdC.Routine;
+            auto routine = (void (*)(extScintilla *, SEF)) Self->EventCallback.StdC.Routine;
             routine(Self, Event);
          }
          else if (Self->EventCallback.Type IS CALL_SCRIPT) {
@@ -2402,8 +2400,8 @@ static void report_event(extScintilla *Self, LARGE Event)
             args[0].Address = Self;
 
             args[1].Name = "EventFlags";
-            args[1].Type = FD_LARGE;
-            args[1].Large = Event;
+            args[1].Type = FD_LONG;
+            args[1].Long = LARGE(Event);
 
             exec.ProcedureID = Self->EventCallback.Script.ProcedureID;
             exec.Args      = args;
@@ -2496,9 +2494,9 @@ static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "EventFlags",     FDF_LARGE|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
    { "Font",           FDF_INTEGRAL|FDF_R, NULL, NULL, ID_FONT },
    { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "EventFlags",     FDF_LONG|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
    { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, ID_SURFACE },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clScintillaFlags },
    { "Focus",          FDF_OBJECTID|FDF_RI },
@@ -2540,7 +2538,7 @@ static ERROR create_scintilla(void)
    clScintilla = objMetaClass::create::global(
       fl::ClassVersion(VER_SCINTILLA),
       fl::Name("Scintilla"),
-      fl::Category(CCF_TOOL),
+      fl::Category(CCF::TOOL),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clScintillaActions),
       fl::Methods(clScintillaMethods),

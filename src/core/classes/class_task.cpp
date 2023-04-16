@@ -1292,7 +1292,7 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
    if (glCurrentTask != Self) return ERR_Failed;
 
    if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Env, NULL) != ERR_Okay) {
+      if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -1422,7 +1422,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
       // Allocate the message block for this Task
 
-      if (!AllocMemory(sizeof(MessageHeader), MEM_DATA, (void **)&msgblock, &glTaskMessageMID)) {
+      if (!AllocMemory(sizeof(MessageHeader), MEM::DATA, (void **)&msgblock, &glTaskMessageMID)) {
          Self->MessageMID = glTaskMessageMID;
          ReleaseMemory(glTaskMessageMID);
       }
@@ -1436,7 +1436,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          LONG len = StrLength(buffer);
          while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
+         if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
             for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
             Self->ProcessPath[i] = 0;
          }
@@ -1444,7 +1444,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
       if ((len = winGetCurrentDirectory(sizeof(buffer), buffer))) {
          if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-         if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
+         if (!AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = buffer[i];
             if (Self->Path[i-1] != '\\') Self->Path[i++] = '\\';
             Self->Path[i] = 0;
@@ -1473,7 +1473,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
 
             for (len=0; buffer[len]; len++);
             while ((len > 1) and (buffer[len-1] != '/') and (buffer[len-1] != '\\') and (buffer[len-1] != ':')) len--;
-            if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
+            if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->ProcessPath, NULL)) {
                for (i=0; i < len; i++) Self->ProcessPath[i] = buffer[i];
                Self->ProcessPath[i] = 0;
             }
@@ -1483,7 +1483,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
             if (getcwd(buffer, sizeof(buffer))) {
                if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
                for (len=0; buffer[len]; len++);
-               if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path, NULL)) {
+               if (!AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path, NULL)) {
                   for (i=0; buffer[i]; i++) Self->Path[i] = buffer[i];
                   Self->Path[i++] = '/';
                   Self->Path[i] = 0;
@@ -1989,7 +1989,7 @@ static ERROR SET_LaunchPath(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->LaunchPath, NULL)) {
+      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->LaunchPath, NULL)) {
          CopyMemory(Value, Self->LaunchPath, i+1);
       }
       else return log.warning(ERR_AllocMemory);
@@ -2026,7 +2026,7 @@ static ERROR SET_Location(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Location, NULL)) {
+      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Location, NULL)) {
          while ((*Value) and (*Value <= 0x20)) Value++;
          if (*Value IS '"') {
             Value++;
@@ -2156,7 +2156,7 @@ static ERROR SET_Path(extTask *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       LONG len = StrLength(Value);
       while ((len > 1) and (Value[len-1] != '/') and (Value[len-1] != '\\') and (Value[len-1] != ':')) len--;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (void **)&new_path, NULL)) {
+      if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (void **)&new_path, NULL)) {
          CopyMemory(Value, new_path, len);
          new_path[len] = 0;
 
@@ -2357,7 +2357,7 @@ extern "C" ERROR add_task_class(void)
    glTaskClass = objMetaClass::create::global(
       fl::ClassVersion(VER_TASK),
       fl::Name("Task"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::FileExtension("*.exe|*.bat|*.com"),
       fl::FileDescription("Executable File"),
       fl::FileHeader("[0:$4d5a]|[0:$7f454c46]"),

@@ -36,14 +36,14 @@ static ERROR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
    // the start of the content area because leading spaces may be important for content processing (e.g. for <pre> tags)
 
    CSTRING str = State.Pos;
-   if (!(Self->Flags & XMF_ALL_CONTENT)) {
+   if ((Self->Flags & XMF::ALL_CONTENT) IS XMF::NIL) {
       while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
       if (*str != '<') str = State.Pos;
    }
 
    // If the STRIP_CONTENT flag is set, skip over the content and return a NODATA error code.
 
-   if (Self->Flags & XMF_STRIP_CONTENT) {
+   if ((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) {
       while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
       State.Pos = str;
       return ERR_NoData;
@@ -86,7 +86,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    CSTRING str = State.Pos + 1;
 
-   if (!(Self->Flags & XMF_INCLUDE_COMMENTS)) {
+   if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
       // Comments will be stripped - check if this is a comment and skip it if this is the case.
       if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
          LONG i;
@@ -137,7 +137,7 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       // CDATA counts as content and therefore can be stripped out
 
-      if ((Self->Flags & XMF_STRIP_CONTENT) or (!len)) {
+      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (!len)) {
          State.Pos = str + len + 3;
          return ERR_NothingDone;
       }
@@ -152,19 +152,19 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       auto &cdata_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, {
          { "", std::string(str, len) }
       }));
-      cdata_tag.Flags |= XTF_CDATA;
+      cdata_tag.Flags |= XTF::CDATA;
       State.Pos = str + len + 3;
       return ERR_Okay;
    }
 
    if ((State.Pos[1] IS '?') or (State.Pos[1] IS '!')) {
-      if (Self->Flags & XMF_PARSE_ENTITY) {
+      if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
          if (!StrCompare("!DOCTYPE", State.Pos+1, 7)) {
             parse_doctype(Self, State.Pos+7);
          }
       }
 
-      if ((Self->Flags & XMF_STRIP_HEADERS) ) {
+      if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {
          if (*str IS '>') str++;
          State.Pos = str;
          return ERR_NothingDone;
@@ -178,8 +178,8 @@ static ERROR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    // Extract all attributes within the tag
 
    str = State.Pos+1;
-   if (*str IS '?') tag.Flags |= XTF_INSTRUCTION; // Detect <?xml ?> style instruction elements.
-   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag.Flags |= XTF_NOTATION;
+   if (*str IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
+   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
 
    while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    while ((*str) and (*str != '>')) {
@@ -333,11 +333,11 @@ static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 
    // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR_InvalidData.
 
-   if (Self->Flags & XMF_WELL_FORMED) {
+   if ((Self->Flags & XMF::WELL_FORMED) != XMF::NIL) {
       if (state.Balance != 0) return log.warning(ERR_UnbalancedXML);
    }
 
-   if (!(Self->Flags & XMF_NO_ESCAPE)) {
+   if ((Self->Flags & XMF::NO_ESCAPE) IS XMF::NIL) {
       log.trace("Unescaping XML.");
       unescape_all(Self, Tags);
    }
@@ -351,14 +351,14 @@ static ERROR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 //********************************************************************************************************************
 // Serialise XML data into string form.
 
-void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, LONG Flags)
+void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
       if (!Tag.Attribs[0].Value.empty()) {
-         if (Tag.Flags & XTF_CDATA) {
-            if (!(Flags & XMF_STRIP_CDATA)) Buffer << "<![CDATA[";
+         if ((Tag.Flags & XTF::CDATA) != XTF::NIL) {
+            if ((Flags & XMF::STRIP_CDATA) IS XMF::NIL) Buffer << "<![CDATA[";
             Buffer << Tag.Attribs[0].Value;
-            if (!(Flags & XMF_STRIP_CDATA)) Buffer << "]]>";
+            if ((Flags & XMF::STRIP_CDATA) IS XMF::NIL) Buffer << "]]>";
          }
          else {
             auto &str = Tag.Attribs[0].Value;
@@ -390,13 +390,13 @@ void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, LONG Flags)
          insert_space = true;
       }
 
-      if (Tag.Flags & XTF_INSTRUCTION) {
+      if ((Tag.Flags & XTF::INSTRUCTION) != XTF::NIL) {
          Buffer << "?>";
-         if (Flags & XMF_READABLE) Buffer << '\n';
+         if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
-      else if (Tag.Flags & XTF_NOTATION) {
+      else if ((Tag.Flags & XTF::NOTATION) != XTF::NIL) {
          Buffer << '>';
-         if (Flags & XMF_READABLE) Buffer << '\n';
+         if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
       else if (!Tag.Children.empty()) {
          Buffer << '>';
@@ -409,11 +409,11 @@ void serialise_xml(XMLTag &Tag, std::stringstream &Buffer, LONG Flags)
          Buffer << "</";
          output_attribvalue(Tag.Attribs[0].Name, Buffer);
          Buffer << '>';
-         if (Flags & XMF_READABLE) Buffer << '\n';
+         if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
       else {
          Buffer << "/>";
-         if (Flags & XMF_READABLE) Buffer << '\n';
+         if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
    }
 }
@@ -489,7 +489,7 @@ static ERROR parse_source(extXML *Self)
    if (Self->Source) {
       char *buffer;
       LARGE size = 64 * 1024;
-      if (!AllocMemory(size+1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
+      if (!AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer)) {
          LONG pos = 0;
          Self->ParseError = ERR_Okay;
          acSeekStart(Self->Source, 0);

@@ -17,9 +17,9 @@ public:
    double mOpacity;
    bool mDirty;
    bool mApplyTransform;
-   UBYTE mVisible;
-   UBYTE mOverflowX;
-   UBYTE mOverflowY;
+   VIS mVisible;
+   VOF mOverflowX;
+   VOF mOverflowY;
    extVectorClip *mClipMask;
    agg::trans_affine mTransform;
    bool mLinearRGB;
@@ -33,9 +33,9 @@ public:
       mOpacity(1.0),
       mDirty(false),
       mApplyTransform(false),
-      mVisible(VIS_VISIBLE),
-      mOverflowX(VOF_VISIBLE),
-      mOverflowY(VOF_VISIBLE),
+      mVisible(VIS::VISIBLE),
+      mOverflowX(VOF::VISIBLE),
+      mOverflowY(VOF::VISIBLE),
       mClipMask(NULL),
       mLinearRGB(false),
       mBackgroundActive(false)
@@ -249,7 +249,7 @@ private:
 static bool check_dirty(extVector *Shape) {
    while (Shape) {
       if (Shape->Class->BaseClassID != ID_VECTOR) return true;
-      if (Shape->Dirty) return true;
+      if (Shape->dirty()) return true;
 
       if (Shape->Child) {
          if (check_dirty((extVector *)Shape->Child)) return true;
@@ -296,28 +296,28 @@ void setRasterClip(agg::rasterizer_scanline_aa<> &Raster, LONG X, LONG Y, LONG W
 
 //********************************************************************************************************************
 
-void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
+void set_filter(agg::image_filter_lut &Filter, VSM Method)
 {
    switch(Method) {
-      case VSM_AUTO:
-      case VSM_NEIGHBOUR: // There is a 'span_image_filter_rgb_nn' class but no equivalent image_filter_neighbour() routine?
-      case VSM_BILINEAR:  Filter.calculate(agg::image_filter_bilinear(), true); break;
-      case VSM_BICUBIC:   Filter.calculate(agg::image_filter_bicubic(), true); break;
-      case VSM_SPLINE16:  Filter.calculate(agg::image_filter_spline16(), true); break;
-      case VSM_KAISER:    Filter.calculate(agg::image_filter_kaiser(), true); break;
-      case VSM_QUADRIC:   Filter.calculate(agg::image_filter_quadric(), true); break;
-      case VSM_GAUSSIAN:  Filter.calculate(agg::image_filter_gaussian(), true); break;
-      case VSM_BESSEL:    Filter.calculate(agg::image_filter_bessel(), true); break;
-      case VSM_MITCHELL:  Filter.calculate(agg::image_filter_mitchell(), true); break;
-      case VSM_SINC3:     Filter.calculate(agg::image_filter_sinc(3.0), true); break;
-      case VSM_LANCZOS3:  Filter.calculate(agg::image_filter_lanczos(3.0), true); break;
-      case VSM_BLACKMAN3: Filter.calculate(agg::image_filter_blackman(3.0), true); break;
-      case VSM_SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
-      case VSM_LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
-      case VSM_BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
+      case VSM::AUTO:
+      case VSM::NEIGHBOUR: // There is a 'span_image_filter_rgb_nn' class but no equivalent image_filter_neighbour() routine?
+      case VSM::BILINEAR:  Filter.calculate(agg::image_filter_bilinear(), true); break;
+      case VSM::BICUBIC:   Filter.calculate(agg::image_filter_bicubic(), true); break;
+      case VSM::SPLINE16:  Filter.calculate(agg::image_filter_spline16(), true); break;
+      case VSM::KAISER:    Filter.calculate(agg::image_filter_kaiser(), true); break;
+      case VSM::QUADRIC:   Filter.calculate(agg::image_filter_quadric(), true); break;
+      case VSM::GAUSSIAN:  Filter.calculate(agg::image_filter_gaussian(), true); break;
+      case VSM::BESSEL:    Filter.calculate(agg::image_filter_bessel(), true); break;
+      case VSM::MITCHELL:  Filter.calculate(agg::image_filter_mitchell(), true); break;
+      case VSM::SINC3:     Filter.calculate(agg::image_filter_sinc(3.0), true); break;
+      case VSM::LANCZOS3:  Filter.calculate(agg::image_filter_lanczos(3.0), true); break;
+      case VSM::BLACKMAN3: Filter.calculate(agg::image_filter_blackman(3.0), true); break;
+      case VSM::SINC8:     Filter.calculate(agg::image_filter_sinc(8.0), true); break;
+      case VSM::LANCZOS8:  Filter.calculate(agg::image_filter_lanczos(8.0), true); break;
+      case VSM::BLACKMAN8: Filter.calculate(agg::image_filter_blackman(8.0), true); break;
       default: {
          pf::Log log;
-         log.warning("Unrecognised sampling method %d", Method);
+         log.warning("Unrecognised sampling method %d", LONG(Method));
          Filter.calculate(agg::image_filter_bicubic(), true);
          break;
       }
@@ -327,8 +327,8 @@ void set_filter(agg::image_filter_lut &Filter, UBYTE Method)
 //********************************************************************************************************************
 // A generic drawing function for VMImage and VMPattern, this is used to fill vectors with bitmap images.
 
-static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
-   objBitmap *SrcBitmap, LONG SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
+static void drawBitmap(VSM SampleMethod, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster,
+   objBitmap *SrcBitmap, VSPREAD SpreadMethod, DOUBLE Opacity, agg::trans_affine *Transform = NULL, DOUBLE XOffset = 0, DOUBLE YOffset = 0)
 {
    agg::pixfmt_psl pixels(*SrcBitmap);
 
@@ -337,22 +337,22 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
       agg::image_filter_lut filter;
       set_filter(filter, SampleMethod);  // Set the interpolation filter to use.
 
-      if (SpreadMethod IS VSPREAD_REFLECT_X) {
+      if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_reflect_x, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
-      else if (SpreadMethod IS VSPREAD_REFLECT_Y) {
+      else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
          agg::span_reflect_y source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_reflect_y, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
-      else if (SpreadMethod IS VSPREAD_REPEAT) {
+      else if (SpreadMethod IS VSPREAD::REPEAT) {
          agg::span_repeat_rkl source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_repeat_rkl, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
       }
-      else { // VSPREAD_PAD and VSPREAD_CLIP modes.
+      else { // VSPREAD::PAD and VSPREAD::CLIP modes.
          agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          agg::span_image_filter_rgba<agg::span_once<agg::pixfmt_psl>, agg::span_interpolator_linear<>> spangen(source, interpolator, filter);
          drawBitmapRender(RenderBase, Raster, spangen, Opacity);
@@ -366,19 +366,19 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
          YOffset += Transform->ty;
       }
 
-      if (SpreadMethod IS VSPREAD_REFLECT_X) {
+      if (SpreadMethod IS VSPREAD::REFLECT_X) {
          agg::span_reflect_x source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
-      else if (SpreadMethod IS VSPREAD_REFLECT_Y) {
+      else if (SpreadMethod IS VSPREAD::REFLECT_Y) {
          agg::span_reflect_y source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
-      else if (SpreadMethod IS VSPREAD_REPEAT) {
+      else if (SpreadMethod IS VSPREAD::REPEAT) {
          agg::span_repeat_rkl source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
-      else { // VSPREAD_PAD and VSPREAD_CLIP modes.
+      else { // VSPREAD::PAD and VSPREAD::CLIP modes.
          agg::span_once<agg::pixfmt_psl> source(pixels, XOffset, YOffset);
          drawBitmapRender(RenderBase, Raster, source, Opacity);
       }
@@ -395,16 +395,16 @@ static void drawBitmap(LONG SampleMethod, agg::renderer_base<agg::pixfmt_psl> &R
 // vector's dimensions.
 
 static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
-   LONG SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
+   VSM SampleMethod, const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    extVectorPattern &Pattern, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster)
 {
-   const DOUBLE c_width  = (Pattern.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
-   const DOUBLE c_height = (Pattern.Units IS VUNIT_USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
-   const DOUBLE x_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Bounds[0];
-   const DOUBLE y_offset = (Pattern.Units IS VUNIT_USERSPACE) ? 0 : Bounds[1];
+   const DOUBLE c_width  = (Pattern.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
+   const DOUBLE c_height = (Pattern.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
+   const DOUBLE x_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds[0];
+   const DOUBLE y_offset = (Pattern.Units IS VUNIT::USERSPACE) ? 0 : Bounds[1];
 
-   if (Pattern.Units IS VUNIT_USERSPACE) { // Use fixed coordinates specified in the pattern.
+   if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.
       DOUBLE dwidth, dheight;
       if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
       else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = Pattern.Width;
@@ -417,7 +417,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth = dwidth;
          Pattern.Scene->PageHeight = dheight;
-         mark_dirty(Pattern.Scene->Viewport, RC_ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
       }
    }
    else {
@@ -443,7 +443,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
       if ((dwidth != Pattern.Scene->PageWidth) or (dheight != Pattern.Scene->PageHeight)) {
          Pattern.Scene->PageWidth  = dwidth;
          Pattern.Scene->PageHeight = dheight;
-         mark_dirty(Pattern.Scene->Viewport, RC_ALL);
+         mark_dirty(Pattern.Scene->Viewport, RC::ALL);
       }
    }
 
@@ -469,7 +469,7 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    }
    else transform.translate(dx, dy);
 
-   if (Pattern.Units != VUNIT_USERSPACE) transform *= Transform;
+   if (Pattern.Units != VUNIT::USERSPACE) transform *= Transform;
 
    transform.invert(); // Required
 
@@ -621,18 +621,18 @@ void draw_brush(const objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl>
 // Path: The original vector path without transforms.
 // Transform: Transforms to be applied to the path and to align the image.
 
-static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, LONG SampleMethod,
+static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, VSM SampleMethod,
    const agg::trans_affine &Transform, DOUBLE ViewWidth, DOUBLE ViewHeight,
    objVectorImage &Image, agg::renderer_base<agg::pixfmt_psl> &RenderBase,
    agg::rasterizer_scanline_aa<> &Raster, DOUBLE Alpha = 1.0)
 {
-   const DOUBLE c_width  = (Image.Units IS VUNIT_USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
-   const DOUBLE c_height = (Image.Units IS VUNIT_USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
+   const DOUBLE c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
+   const DOUBLE c_height = (Image.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
    const DOUBLE dx = Bounds[0] + ((Image.Dimensions & DMF_RELATIVE_X) ? (c_width * Image.X) : Image.X);
    const DOUBLE dy = Bounds[1] + ((Image.Dimensions & DMF_RELATIVE_Y) ? (c_height * Image.Y) : Image.Y);
 
    agg::trans_affine transform;
-   if (Image.SpreadMethod IS VSPREAD_PAD) { // In pad mode, stretch the image to fit the boundary
+   if (Image.SpreadMethod IS VSPREAD::PAD) { // In pad mode, stretch the image to fit the boundary
       transform.scale((Bounds[2] - Bounds[0]) / Image.Bitmap->Width, (Bounds[3] - Bounds[1]) / Image.Bitmap->Height);
    }
 
@@ -664,24 +664,24 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    interpolator_type   span_interpolator(transform);
    span_allocator_type span_allocator;
 
-   const DOUBLE c_width = Gradient.Units IS VUNIT_USERSPACE ? ViewWidth : Bounds[2] - Bounds[0];
-   const DOUBLE c_height = Gradient.Units IS VUNIT_USERSPACE ? ViewHeight : Bounds[3] - Bounds[1];
-   const DOUBLE x_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Bounds[0];
-   const DOUBLE y_offset = Gradient.Units IS VUNIT_USERSPACE ? 0 : Bounds[1];
+   const DOUBLE c_width = Gradient.Units IS VUNIT::USERSPACE ? ViewWidth : Bounds[2] - Bounds[0];
+   const DOUBLE c_height = Gradient.Units IS VUNIT::USERSPACE ? ViewHeight : Bounds[3] - Bounds[1];
+   const DOUBLE x_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds[0];
+   const DOUBLE y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds[1];
 
-   if (Gradient.Type IS VGT_LINEAR) {
+   if (Gradient.Type IS VGT::LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
 
-      if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = x_offset + (c_width * Gradient.X1);
+      if ((Gradient.Flags & VGF::RELATIVE_X1) != VGF::NIL) ax1 = x_offset + (c_width * Gradient.X1);
       else ax1 = x_offset + Gradient.X1;
 
-      if (Gradient.Flags & VGF_RELATIVE_X2) ax2 = x_offset + (c_width * Gradient.X2);
+      if ((Gradient.Flags & VGF::RELATIVE_X2) != VGF::NIL) ax2 = x_offset + (c_width * Gradient.X2);
       else ax2 = x_offset + Gradient.X2;
 
-      if (Gradient.Flags & VGF_RELATIVE_Y1) ay1 = y_offset + (c_height * Gradient.Y1);
+      if ((Gradient.Flags & VGF::RELATIVE_Y1) != VGF::NIL) ay1 = y_offset + (c_height * Gradient.Y1);
       else ay1 = y_offset + Gradient.Y1;
 
-      if (Gradient.Flags & VGF_RELATIVE_Y2) ay2 = y_offset + (c_height * Gradient.Y2);
+      if ((Gradient.Flags & VGF::RELATIVE_Y2) != VGF::NIL) ay2 = y_offset + (c_height * Gradient.Y2);
       else ay2 = y_offset + Gradient.Y2;
 
       // Calculate the gradient's transition from the point at (x1,y1) to (x2,y2)
@@ -706,34 +706,34 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
       agg::render_scanlines(Raster, scanline, solidgrad);
    }
-   else if (Gradient.Type IS VGT_RADIAL) {
+   else if (Gradient.Type IS VGT::RADIAL) {
       DOUBLE cx, cy, fx, fy;
 
-      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
-      if (Gradient.Flags & VGF_RELATIVE_FX) fx = x_offset + (c_width * Gradient.FX);
-      else if (Gradient.Flags & VGF_FIXED_FX) fx = x_offset + Gradient.FX;
+      if ((Gradient.Flags & VGF::RELATIVE_FX) != VGF::NIL) fx = x_offset + (c_width * Gradient.FX);
+      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) fx = x_offset + Gradient.FX;
       else fx = x_offset + cx;
 
-      if (Gradient.Flags & VGF_RELATIVE_FY) fy = y_offset + (c_height * Gradient.FY);
-      else if (Gradient.Flags & VGF_FIXED_FY) fy = y_offset + Gradient.FY;
+      if ((Gradient.Flags & VGF::RELATIVE_FY) != VGF::NIL) fy = y_offset + (c_height * Gradient.FY);
+      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) fy = y_offset + Gradient.FY;
       else fy = y_offset + cy;
 
       if ((cx IS fx) and (cy IS fy)) {
          // Standard radial gradient, where the focal point is the same as the gradient center
 
          DOUBLE length = Gradient.Radius;
-         if (Gradient.Units IS VUNIT_USERSPACE) { // Coordinates are relative to the viewport
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) { // Gradient is a ratio of the viewport's dimensions
+         if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
                length = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
          }
          else { // Coordinates are relative to the bounding box
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -774,18 +774,20 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
          // be placed outside of the radius.
 
          DOUBLE fix_radius = Gradient.Radius;
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+            fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
+         }
          DOUBLE length = fix_radius;
 
-         if (Gradient.Units IS VUNIT_USERSPACE) {
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if (Gradient.Units IS VUNIT::USERSPACE) {
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
                const DOUBLE scale = length * Gradient.Radius;
                transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
          else { // Bounding box
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -815,27 +817,27 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
    }
-   else if (Gradient.Type IS VGT_DIAMOND) {
+   else if (Gradient.Type IS VGT::DIAMOND) {
       DOUBLE cx, cy;
 
-      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
-      if (Gradient.Units IS VUNIT_USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+      if (Gradient.Units IS VUNIT::USERSPACE) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             const DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Align to vector's bounding box
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -863,27 +865,27 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
-   else if (Gradient.Type IS VGT_CONIC) {
+   else if (Gradient.Type IS VGT::CONIC) {
       DOUBLE cx, cy;
 
-      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
-      if (Gradient.Units IS VUNIT_USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+      if (Gradient.Units IS VUNIT::USERSPACE) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             const DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Bounding box
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -911,8 +913,8 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
-   else if (Gradient.Type IS VGT_CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
-      if (Gradient.Units != VUNIT_BOUNDING_BOX) return;
+   else if (Gradient.Type IS VGT::CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
+      if (Gradient.Units != VUNIT::BOUNDING_BOX) return;
 
       auto x1 = (Gradient.X1 >= 0) ? Gradient.X1 : 0;
       auto x2 = (Gradient.X2 <= 512) ? Gradient.X2 : 512;
@@ -979,7 +981,7 @@ public:
 
          // Visually debug input boundaries
          //for (auto const &bounds : Scene->InputBoundaries) {
-         //   gfxDrawRectangle(Bitmap, bounds.BX1, bounds.BY1, bounds.BX2-bounds.BX1, bounds.BY2-bounds.BY1, 0xff00ff, FALSE);
+         //   gfxDrawRectangle(Bitmap, bounds.BX1, bounds.BY1, bounds.BX2-bounds.BX1, bounds.BY2-bounds.BY1, 0xff00ff, BAF::NIL);
          //}
       }
    }
@@ -1002,13 +1004,13 @@ private:
       // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
       // an image/gradient fill are independent of the path.
 
-      if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
-      else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+      if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+      else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
          auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
 
-         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
+         if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(colour);
 
@@ -1033,19 +1035,19 @@ private:
       }
 
       if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT_USERSPACE, State),
+         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
       }
 
       if (Vector.FillGradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT_USERSPACE, State),
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT::USERSPACE, State),
                view_width(), view_height(), *((extVectorGradient *)Vector.FillGradient), table, mRenderBase, Raster, 0);
          }
       }
 
       if (Vector.FillPattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units IS VUNIT_USERSPACE, State),
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *Vector.FillPattern, mRenderBase, Raster);
       }
    }
@@ -1053,17 +1055,17 @@ private:
    void render_stroke(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
       if (Vector.Scene->Gamma != 1.0) Raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
 
-      if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
-      else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+      if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+      else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.StrokeGradient)->Units IS VUNIT_USERSPACE, State),
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.StrokeGradient)->Units IS VUNIT::USERSPACE, State),
                view_width(), view_height(), *((extVectorGradient *)Vector.StrokeGradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
       else if (Vector.StrokePattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units IS VUNIT_USERSPACE, State),
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units IS VUNIT::USERSPACE, State),
             view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
       }
       else if (Vector.StrokeImage) {
@@ -1076,7 +1078,7 @@ private:
          draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
       }
       else {
-         if ((Vector.PathQuality IS RQ_CRISP) or (Vector.PathQuality IS RQ_FAST)) {
+         if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
             renderer.color(agg::rgba(Vector.StrokeColour, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
@@ -1114,9 +1116,9 @@ private:
          }
          else if (!shape->Scene) continue;
 
-         if (shape->Dirty) {
+         if (shape->dirty()) {
             gen_vector_path(shape);
-            shape->Dirty = 0;
+            shape->Dirty = RC::NIL;
          }
          else log.trace("%s: #%d, Dirty: NO, ParentView: #%d", shape->Class->ClassName, shape->UID, shape->ParentView ? shape->ParentView->UID : 0);
 
@@ -1124,10 +1126,10 @@ private:
 
          {
             bool visible = true;
-            if (shape->Visibility IS VIS_INHERIT) {
-               if (ParentState.mVisible != VIS_VISIBLE) visible = false;
+            if (shape->Visibility IS VIS::INHERIT) {
+               if (ParentState.mVisible != VIS::VISIBLE) visible = false;
             }
-            else if (shape->Visibility != VIS_VISIBLE) visible = false;
+            else if (shape->Visibility != VIS::VISIBLE) visible = false;
 
             if (!visible) {
                log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
@@ -1144,7 +1146,7 @@ private:
             objBitmap *bmp;
             if (!render_filter(filter, mView, shape, mBitmap, &bmp)) {
                bmp->Opacity = (filter->Opacity < 1.0) ? (255.0 * filter->Opacity) : 255;
-               gfxCopyArea(bmp, mBitmap, BAF_BLEND|BAF_COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
+               gfxCopyArea(bmp, mBitmap, BAF::BLEND|BAF::COPY, 0, 0, bmp->Width, bmp->Height, 0, 0);
             }
             continue;
          }
@@ -1153,9 +1155,9 @@ private:
             log.traceBranch("%s: #%d, Matrices: %p", get_name(shape), shape->UID, shape->Matrices);
          #endif
 
-         if (mBitmap->ColourSpace IS CS_LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
-         else if (shape->ColourSpace IS VCS_LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
-         else if (shape->ColourSpace IS VCS_SRGB) state.mLinearRGB = false;
+         if (mBitmap->ColourSpace IS CS::LINEAR_RGB) state.mLinearRGB = true; // The target bitmap's colour space has priority if linear.
+         else if (shape->ColourSpace IS VCS::LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
+         else if (shape->ColourSpace IS VCS::SRGB) state.mLinearRGB = false;
 
          if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
          if (shape->InnerJoin != agg::inner_inherit) state.mInnerJoin = shape->InnerJoin;
@@ -1179,7 +1181,7 @@ private:
                   fl::Width(mBitmap->Width),
                   fl::Height(mBitmap->Height),
                   fl::BitsPerPixel(32),
-                  fl::Flags(BMF_ALPHA_CHANNEL),
+                  fl::Flags(BMF::ALPHA_CHANNEL),
                   fl::ColourSpace(mBitmap->ColourSpace)))) {
                bmpSave = mBitmap;
                mBitmap = bmpBkgd;
@@ -1193,18 +1195,18 @@ private:
             if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
                auto view = (extVectorViewport *)shape;
 
-               if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
-               if (view->vpOverflowY != VOF_INHERIT) state.mOverflowY = view->vpOverflowY;
+               if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
+               if (view->vpOverflowY != VOF::INHERIT) state.mOverflowY = view->vpOverflowY;
 
                auto save_clip = state.mClip;
                DOUBLE x1 = state.mClip.x1, y1 = state.mClip.y1, x2 = state.mClip.x2, y2 = state.mClip.y2;
 
-               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
+               if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
                   if (view->vpBX1 > state.mClip.x1) state.mClip.x1 = view->vpBX1;
                   if (view->vpBX2 < state.mClip.x2) state.mClip.x2 = view->vpBX2;
                }
 
-               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
+               if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
                   if (view->vpBY1 > state.mClip.y1) state.mClip.y1 = view->vpBY1;
                   if (view->vpBY2 < state.mClip.y2) state.mClip.y2 = view->vpBY2;
                }
@@ -1233,7 +1235,7 @@ private:
 
                   // For vectors that read user input, we record the collision box for the cursor.
 
-                  if ((shape->InputSubscriptions) or ((shape->Cursor) and (shape->Cursor != PTR_DEFAULT))) {
+                  if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
                      if (view->vpBX1 > x1) x1 = view->vpBX1;
                      if (view->vpBX2 < x2) x2 = view->vpBX2;
                      if (view->vpBY1 > y1) y1 = view->vpBY1;
@@ -1241,7 +1243,7 @@ private:
                      Scene->InputBoundaries.emplace_back(shape->UID, view->Cursor, x1, y1, x2, y2, view->vpBX1, view->vpBY1);
                   }
 
-                  if (Scene->Flags & VPF_OUTLINE_VIEWPORTS) { // Debug option: Draw the viewport's path with a green outline
+                  if ((Scene->Flags & VPF::OUTLINE_VIEWPORTS) != VPF::NIL) { // Debug option: Draw the viewport's path with a green outline
                      agg::renderer_scanline_bin_solid renderer(mRenderBase);
                      renderer.color(agg::rgba(0, 1, 0));
                      agg::rasterizer_scanline_aa stroke_raster;
@@ -1408,7 +1410,7 @@ private:
 
             mBitmap = bmpSave;
             mFormat.setBitmap(*mBitmap);
-            drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD_CLIP, 1.0);
+            drawBitmap(shape->Scene->SampleMethod, mRenderBase, raster, bmpBkgd, VSPREAD::CLIP, 1.0);
             FreeResource(bmpBkgd);
          }
       }
@@ -1448,14 +1450,14 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*FillStyle;
-         draw_image(bounds, mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
+         draw_image(bounds, mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, image, mRenderer, mRaster);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORGRADIENT) {
          extVectorGradient &gradient = (extVectorGradient &)*FillStyle;
          draw_gradient(bounds, &mPath, transform, Bitmap->Width, Bitmap->Height, gradient, &gradient.Colours->table, mRenderer, mRaster, 0);
       }
       else if (FillStyle->Class->ClassID IS ID_VECTORPATTERN) {
-         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*FillStyle, mRenderer, mRaster);
       }
       else log.warning("The FillStyle is not supported.");
    }
@@ -1473,7 +1475,7 @@ void SimpleVector::DrawPath(objBitmap *Bitmap, DOUBLE StrokeWidth, OBJECTPTR Str
          agg::conv_stroke<agg::path_storage> stroke_path(mPath);
          mRaster.reset();
          mRaster.add_path(stroke_path);
-         draw_pattern(bounds, &mPath, VSM_AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
+         draw_pattern(bounds, &mPath, VSM::AUTO, transform, Bitmap->Width, Bitmap->Height, (extVectorPattern &)*StrokeStyle, mRenderer, mRaster);
       }
       else if (StrokeStyle->Class->ClassID IS ID_VECTORIMAGE) {
          objVectorImage &image = (objVectorImage &)*StrokeStyle;

@@ -490,7 +490,7 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
       Self->Data = Args->Data;
       return ERR_Okay;
    }
-   else if (!AllocMemory(Args->Size, MEM_DATA, &Self->Data, NULL)) {
+   else if (!AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL)) {
       Self->DataSize = Args->Size;
       CopyMemory(Args->Data, Self->Data, Args->Size);
       return ERR_Okay;
@@ -644,7 +644,7 @@ extern "C" ERROR add_thread_class(void)
    glThreadClass = objMetaClass::create::global(
       fl::ClassVersion(VER_THREAD),
       fl::Name("Thread"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clThreadActions),
       fl::Methods(clThreadMethods),
       fl::Fields(clFields),

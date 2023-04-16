@@ -40,7 +40,7 @@ bool Scintilla::Window::HasFocus()
    log.branch();
 
    if (!gfxGetSurfaceInfo(getSurfaceID(this), &info)) {
-      if (info->Flags & RNF_HAS_FOCUS) return 1;
+      if (info->hasFocus()) return 1;
    }
 
    return 0;
@@ -183,19 +183,19 @@ void Scintilla::Window::SetFont(Scintilla::Font &)
 void Scintilla::Window::SetCursor(Cursor curs)
 {
    objSurface *surface;
-   LONG cursorid;
+   PTC cursorid;
 
    if (curs IS cursorLast) return;
 
    switch (curs) {
-      case cursorText:  cursorid = PTR_TEXT; break;
-      case cursorArrow: cursorid = PTR_DEFAULT; break;
-      case cursorUp:    cursorid = PTR_SIZE_TOP; break;
-      case cursorWait:  cursorid = PTR_SLEEP; break;
-      case cursorHoriz: cursorid = PTR_SPLIT_HORIZONTAL; break;
-      case cursorVert:  cursorid = PTR_SPLIT_VERTICAL; break;
-      case cursorHand:  cursorid = PTR_HAND; break;
-      default:          cursorid = PTR_DEFAULT; break;
+      case cursorText:  cursorid = PTC::TEXT; break;
+      case cursorArrow: cursorid = PTC::DEFAULT; break;
+      case cursorUp:    cursorid = PTC::SIZE_TOP; break;
+      case cursorWait:  cursorid = PTC::SLEEP; break;
+      case cursorHoriz: cursorid = PTC::SPLIT_HORIZONTAL; break;
+      case cursorVert:  cursorid = PTC::SPLIT_VERTICAL; break;
+      case cursorHand:  cursorid = PTC::HAND; break;
+      default:          cursorid = PTC::DEFAULT; break;
    }
 
    if (wid) {

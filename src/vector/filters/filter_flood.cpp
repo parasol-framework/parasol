@@ -30,7 +30,7 @@ class extFloodFX : public extFilterEffect {
 static ERROR FLOODFX_NewObject(extFloodFX *Self, APTR Void)
 {
    Self->Opacity = 1.0;
-   Self->SourceType = VSF_NONE;
+   Self->SourceType = VSF::NONE;
    return ERR_Okay;
 }
 
@@ -175,7 +175,7 @@ ERROR init_floodfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_FLOODFX),
       fl::Name("FloodFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clFloodFXActions),
       fl::Fields(clFloodFXFields),
       fl::Size(sizeof(extFloodFX)),

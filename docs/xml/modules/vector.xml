@@ -64,7 +64,7 @@
   <function>
     <name>ArcTo</name>
     <comment>Alter a path by setting an arc-to command at the current vertex position.</comment>
-    <prototype>void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)</prototype>
+    <prototype>void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="RX">The horizontal radius of the arc.</param>
@@ -72,7 +72,7 @@
       <param type="DOUBLE" name="Angle">The angle of the arc, expressed in radians.</param>
       <param type="DOUBLE" name="X">The horizontal end point for the arc command.</param>
       <param type="DOUBLE" name="Y">The vertical end point for the arc command.</param>
-      <param type="LONG" name="Flags" lookup="ARC">Optional flags.</param>
+      <param type="ARC" name="Flags" lookup="ARC">Optional flags.</param>
     </input>
     <description>
 <p>This function will set an arc-to command at the current vertex.  It then increments the vertex position for the next path command.</p>
@@ -836,16 +836,16 @@ Z: Close Path
     </struct>
 
     <struct name="MergeSource" comment="Input source declaration for MergeFX">
-      <field name="SourceType" type="LONG" lookup="VSF">The type of the required source.</field>
+      <field name="SourceType" type="VSF" lookup="VSF">The type of the required source.</field>
       <field name="Effect" type="objFilterEffect *">Effect pointer if the SourceType is REFERENCE.</field>
     </struct>
 
     <struct name="PathCommand" comment="Base structure for path commands.">
-      <field name="Type" type="UBYTE">The command type (PE value)</field>
+      <field name="Type" type="PE" lookup="PE">The command type (PE value)</field>
       <field name="Curved" type="UBYTE">Private</field>
       <field name="LargeArc" type="UBYTE">Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.</field>
       <field name="Sweep" type="UBYTE">Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.</field>
-      <field name="Pad" type="LONG">Private</field>
+      <field name="Pad1" type="UBYTE">Private</field>
       <field name="X" type="DOUBLE">The targeted X coordinate (absolute or relative) for the command</field>
       <field name="Y" type="DOUBLE">The targeted Y coordinate (absolute or relative) for the command</field>
       <field name="AbsX" type="DOUBLE">Private</field>

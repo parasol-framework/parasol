@@ -34,7 +34,7 @@
    method     = 'get',
    outputFile = 'temp:index.html',
    stateChanged = function(HTTP, State)
-      if (State == HGS_COMPLETED) then print(content) end
+      if (State == HGS::COMPLETED) then print(content) end
    end
 })
 
@@ -69,7 +69,7 @@ http.acActivate()
       <description>
 <p>This action starts an HTTP operation against a target server.  Based on the desired <field>Method</field>, an HTTP request will be sent to the target server and the action will immediately return whilst the HTTP object will wait for a response from the server.  If the server fails to respond within the time period indicated by the <field>ConnectTimeout</field>, the HTTP object will be deactivated (for further details, refer to the <action>Deactivate</action> action).</p>
 <p>Successful interpretation of the HTTP request at the server will result in a response being received, followed by file data (if applicable). The HTTP response code will be stored in the <field>Status</field> field.  The HTTP object will automatically parse the response data and store the received values in the HTTP object as variable fields.  It is possible to be alerted to the complete receipt of a response by listening to the #State field, or waiting for the Deactivate action to kick in.</p>
-<p>Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by the <field>OutputObject</field> field through data feeds.  It can be written to the target object if the <field>ObjectMode</field> is set to READ_WRITE.  Finally it can be received through C style callbacks if the <field>Incoming</field> field is set.</p>
+<p>Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by the <field>OutputObject</field> field through data feeds.  It can be written to the target object if the <field>ObjectMode</field> is set to <code>READ_WRITE</code>.  Finally it can be received through C style callbacks if the <field>Incoming</field> field is set.</p>
 <p>On completion of an HTTP request, the <action>Deactivate</action> action is called, regardless of the level of success.</p>
       </description>
       <result>
@@ -157,7 +157,7 @@ http.acActivate()
       <name>CurrentState</name>
       <comment>Indicates the current state of an HTTP object during its interaction with an HTTP server.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="HGS">INT</type>
+      <type lookup="HGS">HGS</type>
       <description>
 <p>The CurrentState is a readable field that tracks the current state of the client in its relationship with the target HTTP server.  The default state is <code>READING_HEADER</code>.  Changes to the state can be monitored through the <field>StateChanged</field> field.</p>
 <p>On completion of an HTTP request, the state will be changed to either <code>COMPLETED</code> or <code>TERMINATED</code>.</p>
@@ -172,7 +172,7 @@ http.acActivate()
       <type>DOUBLE</type>
       <description>
 <p>A timeout for send and receive operations is required to prevent prolonged waiting during data transfer operations. This is essential when interacting with servers that stream data with indeterminate content lengths.  It should be noted that a timeout does not necessarily indicate failure if the content is being streamed from the server (<field>ContentLength</field> is set to -1).</p>
-<p>In the event of a timeout, the HTTP object will be deactivated and the <field>Error</field> field will be updated to a value of ERR_TimeOut.</p>
+<p>In the event of a timeout, the HTTP object will be deactivated and the <field>Error</field> field will be updated to a value of <code>ERR_TimeOut</code>.</p>
 <p>The timeout value is measured in seconds.</p>
       </description>
     </field>
@@ -181,7 +181,7 @@ http.acActivate()
       <name>Datatype</name>
       <comment>The default datatype format to use when passing data to a target object.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="DATA">INT</type>
+      <type lookup="DATA">DATA</type>
       <description>
 <p>When streaming downloaded content to an object, the default datatype is RAW (binary mode).  An alternative is to send the data as TEXT or XML by changing the Datatype field value.</p>
 <p>The receiving object can identify the data as HTTP information by checking the class ID of the sender.</p>
@@ -195,7 +195,7 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>ERROR</type>
       <description>
-<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (ERR_Okay). It should be noted that certain error codes may not necessarily indicate failure - for instance, an ERR_TimeOut error may be received on termination of streamed content.  For genuine HTML error codes, see the <field>Status</field> field.</p>
+<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (ERR_Okay). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR_TimeOut</code> error may be received on termination of streamed content.  For genuine HTML error codes, see the <field>Status</field> field.</p>
       </description>
     </field>
 
@@ -203,7 +203,7 @@ http.acActivate()
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="HTF">INT</type>
+      <type lookup="HTF">HTF</type>
       <description>
 <types lookup="HTF"/>
       </description>
@@ -226,7 +226,7 @@ http.acActivate()
       <type>FUNCTION</type>
       <description>
 <p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERROR Function(*HTTP, APTR Data, LONG Length)</code>.</p>
-<p>If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
+<p>If an error code of <code>ERR_Terminate</code> is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>
 
@@ -278,7 +278,7 @@ http.acActivate()
       <name>Method</name>
       <comment>The HTTP instruction to execute is defined here (defaults to GET).</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="HTM">INT</type>
+      <type lookup="HTM">HTM</type>
       <description>
 <types lookup="HTM"/>
       </description>
@@ -288,9 +288,9 @@ http.acActivate()
       <name>ObjectMode</name>
       <comment>The access mode used when passing data to a targeted object.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="HOM">INT</type>
+      <type lookup="HOM">HOM</type>
       <description>
-<p>This field is relevant when the <field>OutputObject</field> field has been set for receiving incoming data. The method of communication used against the target object can be defined through the ObjectMode. The default setting is DATA_FEED, which passes data through the data feed system (see also the <field>Datatype</field> to define the type of data being sent to the object).  The alternative method is READ_WRITE, which uses the Write action to send data to the targeted object.</p>
+<p>This field is relevant when the <field>OutputObject</field> field has been set for receiving incoming data. The method of communication used against the target object can be defined through the ObjectMode. The default setting is DATA::FEED, which passes data through the data feed system (see also the <field>Datatype</field> to define the type of data being sent to the object).  The alternative method is <code>READ_WRITE</code>, which uses the Write action to send data to the targeted object.</p>
 <types lookup="HOM"/>
       </description>
     </field>
@@ -303,7 +303,7 @@ http.acActivate()
       <description>
 <p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERROR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
 <p>Outgoing content is placed in the Buffer address and must not exceed the indicated BufferSize.  The total number of bytes placed in the Buffer must be indicated in the Result parameter before the callback routine returns.</p>
-<p>If an error code of ERR_Terminate is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use ERR_TimeOut if data cannot be returned in a reasonable time frame.  All other error codes apart from ERR_Okay indicate failure.</p>
+<p>If an error code of <code>ERR_Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR_TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR_Okay</code> indicate failure.</p>
       </description>
     </field>
 
@@ -417,7 +417,7 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an HTTP object.  The format for the routine is <code>ERROR Function(*HTTP, LONG State)</code>.</p>
+<p>Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an HTTP object.  The format for the routine is <code>ERROR Function(*HTTP, HGS State)</code>.</p>
 <p>If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>
@@ -426,7 +426,7 @@ http.acActivate()
       <name>Status</name>
       <comment>Indicates the HTTP status code returned on completion of an HTTP request.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="HTS">INT</type>
+      <type lookup="HTS">HTS</type>
       <description>
 <types lookup="HTS"/>
       </description>

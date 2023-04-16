@@ -190,8 +190,8 @@ class extVectorText : public extVector {
    LONG  txLineLimit, txCharLimit;
    LONG  txTotalRotate, txTotalDX, txTotalDY;
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
-   LONG  txAlignFlags;
-   LONG  txFlags; // VTF flags
+   ALIGN txAlignFlags;
+   VTXF  txFlags;
    char  txFontStyle[20];
    UBYTE txRelativeFontSize;
    bool txXRelative:1;
@@ -209,7 +209,7 @@ static void generate_text_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
 static void reset_font(extVectorText *);
 static ERROR text_input_events(extVector *, const InputEvent *);
-static ERROR text_focus_event(extVector *, LONG);
+static ERROR text_focus_event(extVector *, FM);
 
 //********************************************************************************************************************
 
@@ -270,7 +270,7 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
    else if ((size_t)Args->Line < Self->txLines.size()) Self->txLines.erase(Self->txLines.begin() + Args->Line);
    else return ERR_Args;
 
-   mark_dirty(Self, RC_BASE_PATH);
+   mark_dirty(Self, RC::BASE_PATH);
 
    if (Self->txCursor.row() IS Args->Line) {
       Self->txCursor.move(Self, Self->txCursor.row(), 0);
@@ -279,7 +279,7 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
       Self->txCursor.move(Self, Self->txLines.size()-1, Self->txCursor.column());
    }
 
-   Self->txFlags &= ~VTXF_AREA_SELECTED;
+   Self->txFlags &= ~VTXF::AREA_SELECTED;
 
    return ERR_Okay;
 }
@@ -303,7 +303,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
       pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
       if (focus.granted()) {
          auto callback = make_function_stdc(text_focus_event);
-         vecSubscribeFeedback(*focus, 0, &callback);
+         vecSubscribeFeedback(*focus, FM::NIL, &callback);
       }
    }
 
@@ -314,7 +314,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 
 static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 {
-   if (Self->txFlags & VTXF_EDITABLE) {
+   if ((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) {
       if (!Self->txFocusID) {
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
@@ -323,7 +323,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
          pf::ScopedObjectLock<> focus(Self->txFocusID, 5000);
          if (focus.granted()) {
             auto callback = make_function_stdc(text_focus_event);
-            vecSubscribeFeedback(*focus, FM_HAS_FOCUS|FM_CHILD_HAS_FOCUS|FM_LOST_FOCUS, &callback);
+            vecSubscribeFeedback(*focus, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &callback);
          }
       }
 
@@ -335,7 +335,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
             fl::Closed(false),
             fl::Stroke("rgb(255,0,0,255)"),
             fl::StrokeWidth(1.25),
-            fl::Visibility(VIS_HIDDEN)))) {
+            fl::Visibility(VIS::HIDDEN)))) {
       }
       else return ERR_CreateObject;
 
@@ -343,7 +343,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 
       if (Self->ParentView) {
          auto callback = make_function_stdc(text_input_events);
-         vecSubscribeInput(Self->ParentView, JTYPE_BUTTON, &callback);
+         vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, &callback);
       }
    }
 
@@ -377,20 +377,20 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
 Align: Defines the alignment of the text string.
 
 This field specifies the horizontal alignment of the text string.  The standard alignment flags are supported in the
-form of `ALIGN_LEFT`, `ALIGN_HORIZONTAL` and `ALIGN_RIGHT`.
+form of `ALIGN::LEFT`, `ALIGN::HORIZONTAL` and `ALIGN::RIGHT`.
 
 In addition, the SVG equivalent values of `start`, `middle` and `end` are supported and map directly to the formerly
 mentioned align flags.
 
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Align(extVectorText *Self, LONG *Value)
+static ERROR TEXT_GET_Align(extVectorText *Self, ALIGN *Value)
 {
    *Value = Self->txAlignFlags;
    return ERR_Okay;
 }
 
-static ERROR TEXT_SET_Align(extVectorText *Self, LONG Value)
+static ERROR TEXT_SET_Align(extVectorText *Self, ALIGN Value)
 {
    Self->txAlignFlags = Value;
    return ERR_Okay;
@@ -501,7 +501,7 @@ static ERROR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
    if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDX)) {
+      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX)) {
          CopyMemory(Values, Self->txDX, Elements * sizeof(DOUBLE));
          Self->txTotalDX = Elements;
          reset_path(Self);
@@ -532,7 +532,7 @@ static ERROR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
    if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txDY)) {
+      if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY)) {
          CopyMemory(Values, Self->txDY, Elements * sizeof(DOUBLE));
          Self->txTotalDY = Elements;
          reset_path(Self);
@@ -578,13 +578,13 @@ TextFlags: Private.  Optional flags.
 -END-
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Flags(extVectorText *Self, LONG *Value)
+static ERROR TEXT_GET_Flags(extVectorText *Self, VTXF *Value)
 {
    *Value = Self->txFlags;
    return ERR_Okay;
 }
 
-static ERROR TEXT_SET_Flags(extVectorText *Self, LONG Value)
+static ERROR TEXT_SET_Flags(extVectorText *Self, VTXF Value)
 {
    Self->txFlags = Value;
    return ERR_Okay;
@@ -920,7 +920,7 @@ static ERROR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
    if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
 
-   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM_DATA, &Self->txRotate)) {
+   if (!AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate)) {
       CopyMemory(Values, Self->txRotate, Elements * sizeof(DOUBLE));
       Self->txTotalRotate = Elements;
       reset_path(Self);
@@ -1134,7 +1134,7 @@ static void generate_text(extVectorText *Vector)
    auto &lines = Vector->txLines;
    if (lines.empty()) return;
 
-   if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
+   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
       generate_text_bitmap(Vector);
       return;
    }
@@ -1146,14 +1146,14 @@ static void generate_text(extVectorText *Vector)
    DOUBLE start_x, start_y, end_vx, end_vy;
    DOUBLE path_scale = 1.0;
    if (morph) {
-      if (Vector->MorphFlags & VMF_STRETCH) {
+      if ((Vector->MorphFlags & VMF::STRETCH) != VMF::NIL) {
          // In stretch mode, the standard morphing algorithm is used (see gen_vector_path())
          morph = NULL;
       }
       else {
-         if (morph->Dirty) { // Regenerate the target path if necessary
+         if (morph->dirty()) { // Regenerate the target path if necessary
             gen_vector_path(morph);
-            morph->Dirty = 0;
+            morph->Dirty = RC::NIL;
          }
 
          if (!morph->BasePath.total_vertices()) morph = NULL;
@@ -1532,13 +1532,13 @@ static void generate_text_bitmap(extVectorText *Vector)
             fl::Width(longest_line_width),
             fl::Height(dy),
             fl::BitsPerPixel(32),
-            fl::Flags(BMF_ALPHA_CHANNEL)))) return;
+            fl::Flags(BMF::ALPHA_CHANNEL)))) return;
 
       if (!(Vector->txBitmapImage = objVectorImage::create::integral(
             fl::Bitmap(Vector->txAlphaBitmap),
-            fl::SpreadMethod(VSPREAD_CLIP),
-            fl::Units(VUNIT_BOUNDING_BOX),
-            fl::AspectRatio(ARF_X_MIN|ARF_Y_MIN)))) return;
+            fl::SpreadMethod(VSPREAD::CLIP),
+            fl::Units(VUNIT::BOUNDING_BOX),
+            fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN)))) return;
    }
    else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);
 
@@ -1547,7 +1547,7 @@ static void generate_text_bitmap(extVectorText *Vector)
 
    Vector->txFont->Bitmap = Vector->txAlphaBitmap;
 
-   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF_FILL);
+   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF::FILL);
 
    if (Vector->txInlineSize) Vector->txFont->WrapEdge = Vector->txInlineSize;
 
@@ -1745,10 +1745,10 @@ extern void get_text_xy(extVectorText *Vector)
       else y *= Vector->Scene->PageHeight;
    }
 
-   if (Vector->txAlignFlags & ALIGN_RIGHT) x -= Vector->txWidth;
-   else if (Vector->txAlignFlags & ALIGN_HORIZONTAL) x -= Vector->txWidth * 0.5;
+   if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
+   else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;
 
-   if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
+   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
       // Bitmap fonts need an adjustment because the Y coordinate corresponds to the base-line.
       y -= Vector->txFont->Height + Vector->txFont->Leading;
    }
@@ -1796,7 +1796,7 @@ static void reset_font(extVectorText *Vector)
          else font->setStyle(Vector->txFontStyle);
 
          CSTRING location;
-         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
+         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF::PREFER_SCALED, &location)) {
             font->setPath(location);
             FreeResource(location);
          }
@@ -1821,10 +1821,10 @@ static void reset_font(extVectorText *Vector)
 
 static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+   if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
       pf::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
-      Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
+      Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS::VISIBLE : VIS::HIDDEN);
       acDraw(Self);
       return ERR_Okay;
    }
@@ -1863,12 +1863,12 @@ static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG 
 
 //********************************************************************************************************************
 
-static ERROR text_focus_event(extVector *Vector, LONG Event)
+static ERROR text_focus_event(extVector *Vector, FM Event)
 {
    auto Self = (extVectorText *)CurrentContext();
 
-   if (Event & FM_HAS_FOCUS) {
-      if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+   if ((Event & FM::HAS_FOCUS) != FM::NIL) {
+      if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
          acMoveToFront(Self->txCursor.vector);
 
          if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
@@ -1883,19 +1883,19 @@ static ERROR text_focus_event(extVector *Vector, LONG Event)
          }
 
          Self->txCursor.resetFlash();
-         Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+         Self->txCursor.vector->setVisibility(VIS::VISIBLE);
          acDraw(Self);
       }
    }
-   else if (Event & (FM_LOST_FOCUS|FM_CHILD_HAS_FOCUS)) {
-      if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS_HIDDEN);
+   else if ((Event & (FM::LOST_FOCUS|FM::CHILD_HAS_FOCUS)) != FM::NIL) {
+      if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS::HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
       if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
       // When a simple input line loses the focus, all selections are deselected
 
       if (Self->txLineLimit IS 1) {
-         if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
+         if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) Self->txFlags &= ~VTXF::AREA_SELECTED;
       }
 
       acDraw(Self);
@@ -1913,7 +1913,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
    pf::Log log(__FUNCTION__);
 
    while (Events) {
-      if ((Events->Type IS JET_LMB) and (!(Events->Flags & JTYPE_REPEATED)) and (Events->Value IS 1)) {
+      if ((Events->Type IS JET::LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
          // Determine the nearest cursor position to the clicked point.
 
          agg::trans_affine transform;
@@ -1978,63 +1978,66 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 
 static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 {
-   if (!(Event->Qualifiers & KQ_PRESSED)) return;
+   if ((Event->Qualifiers & KQ::PRESSED) IS KQ::NIL) return;
 
    pf::Log log(__FUNCTION__);
 
-   log.trace("$%.8x, Value: %d", Event->Qualifiers, Event->Code);
+   log.trace("$%.8x, Value: %d", LONG(Event->Qualifiers), LONG(Event->Code));
 
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
-   Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+   Self->txCursor.vector->setVisibility(VIS::VISIBLE);
 
-   if ((!(Self->txFlags & VTXF_NO_SYS_KEYS)) and (Event->Qualifiers & KQ_CTRL)) {
+   if (((Self->txFlags & VTXF::NO_SYS_KEYS) IS VTXF::NIL) and ((Event->Qualifiers & KQ::CTRL) != KQ::NIL)) {
       switch(Event->Code) {
-         case K_C: // Copy
-            acClipboard(Self, CLIPMODE_COPY);
+         case KEY::C: // Copy
+            acClipboard(Self, CLIPMODE::COPY);
             return;
 
-         case K_X: // Cut
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
-            acClipboard(Self, CLIPMODE_CUT);
+         case KEY::X: // Cut
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
+            acClipboard(Self, CLIPMODE::CUT);
             return;
 
-         case K_V: // Paste
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
-            acClipboard(Self, CLIPMODE_PASTE);
+         case KEY::V: // Paste
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
+            acClipboard(Self, CLIPMODE::PASTE);
             return;
 
-         case K_K: // Delete line
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+         case KEY::K: // Delete line
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             vtDeleteLine(Self, Self->txCursor.row());
             return;
 
-         case K_Z: // Undo
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+         case KEY::Z: // Undo
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
 
-         case K_Y: // Redo
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+         case KEY::Y: // Redo
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
+
+         default:
+            break;
       }
    }
 
-   if (!(Event->Qualifiers & KQ_NOT_PRINTABLE)) { // and (!(Flags & KQ_INSTRUCTIONKEYS))
+   if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) { // and (!(Flags & KQ::INSTRUCTIONKEYS))
       // Printable character handling
 
-      if (!(Self->txFlags & VTXF_EDITABLE)) {
+      if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) {
          log.trace("Object does not have the EDIT flag set.");
          return;
       }
 
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
 
       insert_char(Self, Event->Unicode, Self->txCursor.column());
       return;
    }
 
    switch(Event->Code) {
-   case K_BACKSPACE:
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+   case KEY::BACKSPACE:
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else if (Self->txCursor.column() > 0) {
          if ((size_t)Self->txCursor.column() > Self->txLines[Self->txCursor.row()].length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txLines[Self->txCursor.row()].lastChar()-1);
@@ -2057,20 +2060,20 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       else; // Do nothing, cursor at (0,0)
 
-      mark_dirty(Self, RC_BASE_PATH);
+      mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
       break;
 
-   case K_CLEAR:
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+   case KEY::CLEAR:
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else {
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
          vtDeleteLine(Self, Self->txCursor.row());
       }
       break;
 
-   case K_DELETE:
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+   case KEY::DELETE:
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else if ((size_t)Self->txCursor.column() < Self->txLines[Self->txCursor.row()].length()) {
          auto offset = Self->txLines[Self->txCursor.row()].utf8CharOffset(Self->txCursor.column());
          Self->txLines[Self->txCursor.row()].replace(offset, Self->txLines[Self->txCursor.row()].charLength(offset), "");
@@ -2079,22 +2082,22 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txLines[Self->txCursor.row()] += Self->txLines[Self->txCursor.row()+1];
          Self->txLines.erase(Self->txLines.begin() + Self->txCursor.row() + 1);
       }
-      mark_dirty(Self, RC_BASE_PATH);
+      mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
       break;
 
-   case K_END:
+   case KEY::END:
       Self->txCursor.move(Self, Self->txCursor.row(), Self->txLines[Self->txCursor.row()].length());
       break;
 
-   case K_TAB:
+   case KEY::TAB:
       break;
 
-   case K_ENTER:
-   case K_NP_ENTER: {
+   case KEY::ENTER:
+   case KEY::NP_ENTER: {
       if ((Self->txLineLimit) and (Self->txLines.size() >= (size_t)Self->txLineLimit)) break;
 
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       if (Self->txLines.empty()) Self->txLines.resize(1);
 
       auto row    = Self->txCursor.row();
@@ -2104,30 +2107,30 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
       if (!offset) Self->txLines[row].clear();
       else Self->txLines[row].replace(offset, Self->txLines[row].length() - offset, "");
-      mark_dirty(Self, RC_BASE_PATH);
+      mark_dirty(Self, RC::BASE_PATH);
       acDraw(Self);
       break;
    }
 
-   case K_HOME:
+   case KEY::HOME:
       Self->txCursor.move(Self, Self->txCursor.row(), 0);
       break;
 
-   case K_INSERT:
-      if (Self->txFlags & VTXF_OVERWRITE) Self->txFlags &= ~VTXF_OVERWRITE;
-      else Self->txFlags |= VTXF_OVERWRITE;
+   case KEY::INSERT:
+      if ((Self->txFlags & VTXF::OVERWRITE) != VTXF::NIL) Self->txFlags &= ~VTXF::OVERWRITE;
+      else Self->txFlags |= VTXF::OVERWRITE;
       break;
 
-   case K_LEFT:
+   case KEY::LEFT:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (Self->txCursor.column() > 0) Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()-1);
       else if (Self->txCursor.row() > 0) Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()-1].utf8Length());
       break;
 
-   case K_RIGHT:
+   case KEY::RIGHT:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (!Self->txLines.empty()) {
          if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
@@ -2138,12 +2141,12 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       }
       break;
 
-   case K_DOWN:
-   case K_UP:
+   case KEY::DOWN:
+   case KEY::UP:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
-      if (((Event->Code IS K_UP) and (Self->txCursor.row() > 0)) or
-          ((Event->Code IS K_DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
+      Self->txCursor.vector->setVisibility(VIS::VISIBLE);
+      if (((Event->Code IS KEY::UP) and (Self->txCursor.row() > 0)) or
+          ((Event->Code IS KEY::DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
          LONG end_column;
 
          // Determine the current true position of the current cursor column, in UTF-8.  Then determine the cursor
@@ -2166,10 +2169,10 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
             for (++i; (Self->txLines[Self->txCursor.row()][i] & 0xc0) == 0x80; i++);
          }
 
-         Self->txFlags &= ~VTXF_AREA_SELECTED;
+         Self->txFlags &= ~VTXF::AREA_SELECTED;
 
          LONG new_row;
-         if (Event->Code IS K_UP) new_row = Self->txCursor.row() - 1;
+         if (Event->Code IS KEY::UP) new_row = Self->txCursor.row() - 1;
          else new_row = Self->txCursor.row() + 1;
 
          LONG new_column;
@@ -2185,6 +2188,9 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          acDraw(Self);
       }
       break;
+
+   default:
+      break;
    }
 }
 
@@ -2192,7 +2198,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
 static void delete_selection(extVectorText *Self)
 {
-   Self->txFlags &= ~VTXF_AREA_SELECTED;
+   Self->txFlags &= ~VTXF::AREA_SELECTED;
 
    LONG row, column, end_row, end_column;
    Self->txCursor.selectedArea(Self, &row, &column, &end_row, &end_column);
@@ -2213,7 +2219,7 @@ static void delete_selection(extVectorText *Self)
       if (end_column > 0) Self->txLines[row].replace(0, end_column, "");
    }
 
-   mark_dirty(Self, RC_BASE_PATH);
+   mark_dirty(Self, RC::BASE_PATH);
 }
 
 //********************************************************************************************************************
@@ -2221,7 +2227,7 @@ static void delete_selection(extVectorText *Self)
 
 void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool ValidateWidth)
 {
-   Vector->txFlags &= ~VTXF_AREA_SELECTED;
+   Vector->txFlags &= ~VTXF::AREA_SELECTED;
 
    if (Row < 0) Row = 0;
    else if ((size_t)Row >= Vector->txLines.size()) Row = (LONG)Vector->txLines.size() - 1;
@@ -2249,7 +2255,7 @@ void TextCursor::resetVector(extVectorText *Vector)
 
       if (!line.chars.empty()) {
          auto col = mColumn;
-         if ((size_t)col > line.chars.size()) col = line.chars.size();
+         if ((size_t)col >= line.chars.size()) col = line.chars.size() - 1;
          Vector->txCursor.vector->Points[0].X = line.chars[col].x1 + 0.5;
          Vector->txCursor.vector->Points[0].Y = line.chars[col].y1;
          Vector->txCursor.vector->Points[1].X = line.chars[col].x2 + 0.5;
@@ -2314,7 +2320,7 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 {
    if ((!Self) or (!Unicode)) return;
 
-   mark_dirty(Self, RC_BASE_PATH);
+   mark_dirty(Self, RC::BASE_PATH);
 
    char buffer[6];
    LONG charlen = UTF8WriteValue(Unicode, buffer, 6);
@@ -2331,7 +2337,7 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
    else {
       auto offset = Self->txLines[Self->txCursor.row()].utf8CharOffset(Column);
 
-      if ((Self->txFlags & VTXF_OVERWRITE) and ((size_t)offset < Self->txLines[Self->txCursor.row()].length())) {
+      if (((Self->txFlags & VTXF::OVERWRITE) != VTXF::NIL) and ((size_t)offset < Self->txLines[Self->txCursor.row()].length())) {
          Self->txLines[Self->txCursor.row()].replace(offset, Self->txLines[Self->txCursor.row()].charLength(offset), "");
       }
 
@@ -2352,37 +2358,37 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 #include "text_def.cpp"
 
 static const FieldDef clTextFlags[] = {
-   { "Underline",   VTXF_UNDERLINE },
-   { "Overline",    VTXF_OVERLINE },
-   { "LineThrough", VTXF_LINE_THROUGH },
-   { "Blink",       VTXF_BLINK },
-   { "Editable",    VTXF_EDITABLE },
+   { "Underline",   VTXF::UNDERLINE },
+   { "Overline",    VTXF::OVERLINE },
+   { "LineThrough", VTXF::LINE_THROUGH },
+   { "Blink",       VTXF::BLINK },
+   { "Editable",    VTXF::EDITABLE },
    { NULL, 0 }
 };
 
 static const FieldDef clTextAlign[] = {
-   { "Left",       ALIGN_LEFT },
-   { "Horizontal", ALIGN_HORIZONTAL },
-   { "Right",      ALIGN_RIGHT },
+   { "Left",       ALIGN::LEFT },
+   { "Horizontal", ALIGN::HORIZONTAL },
+   { "Right",      ALIGN::RIGHT },
    // SVG synonyms
-   { "Start",      ALIGN_LEFT },
-   { "Middle",     ALIGN_HORIZONTAL },
-   { "End",        ALIGN_RIGHT },
+   { "Start",      ALIGN::LEFT },
+   { "Middle",     ALIGN::HORIZONTAL },
+   { "End",        ALIGN::RIGHT },
    { NULL, 0 }
 };
 
 static const FieldDef clTextStretch[] = {
-   { "Normal",         VTS_NORMAL },
-   { "Wider",          VTS_WIDER },
-   { "Narrower",       VTS_NARROWER },
-   { "UltraCondensed", VTS_ULTRA_CONDENSED },
-   { "ExtraCondensed", VTS_EXTRA_CONDENSED },
-   { "Condensed",      VTS_CONDENSED },
-   { "SemiCondensed",  VTS_SEMI_CONDENSED },
-   { "Expanded",       VTS_EXPANDED },
-   { "SemiExpanded",   VTS_SEMI_EXPANDED },
-   { "ExtraExpanded",  VTS_EXTRA_EXPANDED },
-   { "UltraExpanded",  VTS_ULTRA_EXPANDED },
+   { "Normal",         VTS::NORMAL },
+   { "Wider",          VTS::WIDER },
+   { "Narrower",       VTS::NARROWER },
+   { "UltraCondensed", VTS::ULTRA_CONDENSED },
+   { "ExtraCondensed", VTS::EXTRA_CONDENSED },
+   { "Condensed",      VTS::CONDENSED },
+   { "SemiCondensed",  VTS::SEMI_CONDENSED },
+   { "Expanded",       VTS::EXPANDED },
+   { "SemiExpanded",   VTS::SEMI_EXPANDED },
+   { "ExtraExpanded",  VTS::EXTRA_EXPANDED },
+   { "UltraExpanded",  VTS::ULTRA_EXPANDED },
    { NULL, 0 }
 };
 
@@ -2438,7 +2444,7 @@ static ERROR init_text(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORTEXT),
       fl::Name("VectorText"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorTextActions),
       fl::Methods(clVectorTextMethods),
       fl::Fields(clTextFields),

@@ -15,7 +15,7 @@ static ERROR RSVG_Activate(extPicture *Self, APTR Void)
       if (InitObject(bmp) != ERR_Okay) return ERR_Init;
    }
 
-   gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF_FILL); // Black background
+   gfxDrawRectangle(bmp, 0, 0, bmp->Width, bmp->Height, 0, BAF::FILL); // Black background
    svgRender(prv->SVG, bmp, 0, 0, bmp->Width, bmp->Height);
    return ERR_Okay;
 }
@@ -39,7 +39,7 @@ static ERROR RSVG_Init(extPicture *Self, APTR Void)
 
    Self->get(FID_Path, &path);
 
-   if ((!path) or (Self->Flags & PCF_NEW)) {
+   if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       return ERR_NoSupport; // Creating new SVG's is not supported in this module.
    }
 
@@ -55,10 +55,10 @@ static ERROR RSVG_Init(extPicture *Self, APTR Void)
 
    log.trace("File \"%s\" is in SVG format.", path);
 
-   Self->Flags |= PCF_SCALABLE;
+   Self->Flags |= PCF::SCALABLE;
 
-   if (!AllocMemory(sizeof(prvSVG), MEM_DATA, &Self->ChildPrivate)) {
-      if (Self->Flags & PCF_LAZY) return ERR_Okay;
+   if (!AllocMemory(sizeof(prvSVG), MEM::DATA, &Self->ChildPrivate)) {
+      if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR_Okay;
       return acActivate(Self);
    }
    else return ERR_AllocMemory;
@@ -91,8 +91,8 @@ static ERROR RSVG_Query(extPicture *Self, APTR Void)
    objVectorScene *scene;
    ERROR error;
    if ((!(error = prv->SVG->getPtr(FID_Scene, &scene))) and (scene)) {
-      if (Self->Flags & PCF_FORCE_ALPHA_32) {
-         bmp->Flags |= BMF_ALPHA_CHANNEL;
+      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
+         bmp->Flags |= BMF::ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
          bmp->BytesPerPixel = 4;
       }
@@ -171,7 +171,7 @@ static ERROR RSVG_Resize(extPicture *Self, struct acResize *Args)
             scene->setPageWidth(Self->Bitmap->Width);
             scene->setPageHeight(Self->Bitmap->Height);
 
-            gfxDrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, TRUE);
+            gfxDrawRectangle(Self->Bitmap, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, BAF::FILL);
             acDraw(prv->SVG);
          }
          else return ERR_GetField;
@@ -202,7 +202,7 @@ static ERROR init_rsvg(void)
       fl::BaseClassID(ID_PICTURE),
       fl::ClassID(ID_RSVG),
       fl::Name("RSVG"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.svg|*.svgz"),
       fl::FileDescription("SVG image"),
       fl::Actions(clActions),

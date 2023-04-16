@@ -46,7 +46,7 @@ static void * test_locking(struct thread_info *info)
       if (!glMemoryID) break;
       //LogF("~","Attempt %d.%d: Acquiring the memory.", info->index, i);
 
-      if (!(error = AccessMemory(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
+      if (!(error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory))) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
@@ -92,7 +92,7 @@ static void * test_allocation(struct thread_info *info)
    LONG i, j, start;
    start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
-      AllocMemory(1024, MEM_DATA|MEM_NO_CLEAR, &memory[i], NULL);
+      AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], NULL);
       if (rand() % 10 > 7) {
          for (j=start; j < i; j++) {
             FreeResource(memory[j]);
@@ -137,7 +137,7 @@ void program(void)
       }
    }
 
-   AllocMemory(10000, MEM_DATA, NULL, (MEMORYID *)&glMemoryID);
+   AllocMemory(10000, MEM::DATA, NULL, (MEMORYID *)&glMemoryID);
 
    print("Spawning %d threads...\n", glTotalThreads);
 

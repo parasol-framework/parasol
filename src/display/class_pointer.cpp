@@ -49,15 +49,15 @@ static void process_ptr_wheel(extPointer *, struct dcDeviceInput *);
 
 //********************************************************************************************************************
 
-inline void add_input(CSTRING Debug, InputEvent &input, LONG Flags, OBJECTID RecipientID, OBJECTID OverID,
+inline void add_input(CSTRING Debug, InputEvent &input, JTYPE Flags, OBJECTID RecipientID, OBJECTID OverID,
    DOUBLE AbsX, DOUBLE AbsY, DOUBLE OverX, DOUBLE OverY)
 {
    //pf::Log log(__FUNCTION__);
    //log.trace("Type: %s, Value: %.2f, Recipient: %d, Over: %d %.2fx%.2f, Abs: %.2fx%.2f %s",
-   //   (input->Type < JET_END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
+   //   (input->Type < JET::END) ? glInputNames[input->Type] : (CSTRING)"", input->Value, RecipientID, OverID, OverX, OverY, AbsX, AbsY, Debug);
 
-   input.Mask        = glInputType[input.Type].Mask;
-   input.Flags       = glInputType[input.Type].Flags | Flags;
+   input.Mask        = glInputType[LONG(input.Type)].Mask;
+   input.Flags       = glInputType[LONG(input.Type)].Flags | Flags;
    input.RecipientID = RecipientID;
    input.OverID      = OverID;
    input.AbsX        = AbsX;
@@ -110,7 +110,7 @@ static ERROR PTR_UngrabX11Pointer(extPointer *Self, APTR Void)
 -ACTION-
 DataFeed: This action can be used to send fake input to a pointer object.
 
-Fake input can be sent to a pointer object with the `DATA_DEVICE_INPUT` data type, as if the user was using the mouse.
+Fake input can be sent to a pointer object with the `DATA::DEVICE_INPUT` data type, as if the user was using the mouse.
 The data will be interpreted no differently to genuine user input from hardware.
 
 Note that if a button click is used in a device input message, the client must follow up with the equivalent release
@@ -126,21 +126,21 @@ static ERROR PTR_DataFeed(extPointer *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Datatype IS DATA_DEVICE_INPUT) {
+   if (Args->Datatype IS DATA::DEVICE_INPUT) {
       if (auto input = (struct dcDeviceInput *)Args->Buffer) {
          for (LONG i=0; i < ARRAYSIZE(Self->Buttons); i++) {
             if ((Self->Buttons[i].LastClicked) and (CheckObjectExists(Self->Buttons[i].LastClicked) != ERR_Okay)) Self->Buttons[i].LastClicked = 0;
          }
 
          for (LONG i=sizeof(struct dcDeviceInput); i <= Args->Size; i+=sizeof(struct dcDeviceInput), input++) {
-            if ((input->Type < 1) or (input->Type >= JET_END)) continue;
+            if ((LONG(input->Type) < 1) or (LONG(input->Type) >= LONG(JET::END))) continue;
 
-            input->Flags = glInputType[input->Type].Flags;
+            input->Flags = glInputType[LONG(input->Type)].Flags;
 
-            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET_END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
+            //log.traceBranch("Incoming Input: %s, Value: %.2f, Flags: $%.8x, Time: %" PF64, (input->Type < JET::END) ? glInputNames[input->Type] : (STRING)"", input->Value, input->Flags, input->Timestamp);
 
-            if (input->Type IS JET_WHEEL) process_ptr_wheel(Self, input);
-            else if (input->Flags & JTYPE_BUTTON) process_ptr_button(Self, input);
+            if (input->Type IS JET::WHEEL) process_ptr_wheel(Self, input);
+            else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) process_ptr_button(Self, input);
             else process_ptr_movement(Self, input);
          }
       }
@@ -168,10 +168,10 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 
    if (!userinput.Timestamp) userinput.Timestamp = PreciseTime();
 
-   LONG uiflags = 0;
+   auto uiflags = JTYPE::NIL;
 
-   if ((userinput.Type >= JET_BUTTON_1) and (userinput.Type <= JET_BUTTON_10)) {
-      bi = userinput.Type - JET_BUTTON_1;
+   if ((userinput.Type >= JET::BUTTON_1) and (userinput.Type <= JET::BUTTON_10)) {
+      bi = LONG(userinput.Type) - LONG(JET::BUTTON_1);
       buttonflag = Self->ButtonOrderFlags[bi];
    }
    else {
@@ -191,21 +191,21 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
       // Restore the cursor to its default state if cursor release flags have been met
 
       if ((Self->CursorRelease & buttonflag) and (Self->CursorOwnerID)) {
-         gfxRestoreCursor(PTR_DEFAULT, 0);
+         gfxRestoreCursor(PTC::DEFAULT, 0);
       }
 
       if (Self->Buttons[bi].LastClicked) {
          LONG absx, absy;
          if (!get_surface_abs(Self->Buttons[bi].LastClicked, &absx, &absy, 0, 0)) {
-            uiflags |= Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
+            uiflags |= Self->DragSourceID ? JTYPE::DRAG_ITEM : JTYPE::NIL;
 
             if ((std::abs(Self->X - Self->LastReleaseX) > Self->ClickSlop) or
                 (std::abs(Self->Y - Self->LastReleaseY) > Self->ClickSlop)) {
-               uiflags |= JTYPE_DRAGGED;
+               uiflags |= JTYPE::DRAGGED;
             }
 
             if (Self->Buttons[bi].DblClick) {
-               if (!(uiflags & JTYPE_DRAGGED)) uiflags |= JTYPE_DBL_CLICK;
+               if ((uiflags & JTYPE::DRAGGED) IS JTYPE::NIL) uiflags |= JTYPE::DBL_CLICK;
             }
 
             add_input("ButtonRelease-LastClicked", userinput, uiflags, Self->Buttons[bi].LastClicked, Self->OverObjectID,
@@ -261,7 +261,7 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
          if (((DOUBLE)(userinput.Timestamp - Self->Buttons[bi].LastClickTime)) / 1000000.0 < Self->DoubleClick) {
             log.trace("Double click detected (under %.2fs)", Self->DoubleClick);
             Self->Buttons[bi].DblClick = TRUE;
-            uiflags |= JTYPE_DBL_CLICK;
+            uiflags |= JTYPE::DBL_CLICK;
          }
          else Self->Buttons[bi].DblClick = FALSE;
 
@@ -313,9 +313,9 @@ static void process_ptr_button(extPointer *Self, struct dcDeviceInput *Input)
 static void process_ptr_wheel(extPointer *Self, struct dcDeviceInput *Input)
 {
    InputEvent msg;
-   msg.Type        = JET_WHEEL;
-   msg.Flags       = JTYPE_ANALOG|JTYPE_EXT_MOVEMENT | Input->Flags;
-   msg.Mask        = JTYPE_EXT_MOVEMENT;
+   msg.Type        = JET::WHEEL;
+   msg.Flags       = JTYPE::ANALOG|JTYPE::EXT_MOVEMENT | Input->Flags;
+   msg.Mask        = JTYPE::EXT_MOVEMENT;
    msg.Value       = Input->Value;
    msg.Timestamp   = Input->Timestamp;
    msg.DeviceID    = Input->DeviceID;
@@ -369,12 +369,12 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
    // All X/Y movement passed through the pointer object must be expressed in absolute coordinates.
 
-   if ((userinput.Type IS JET_DIGITAL_X) or (userinput.Type IS JET_ANALOG_X)) {
-      userinput.Type  = JET_ABS_X;
+   if ((userinput.Type IS JET::DIGITAL_X) or (userinput.Type IS JET::ANALOG_X)) {
+      userinput.Type  = JET::ABS_X;
       userinput.Value += Self->X;
    }
-   else if ((userinput.Type IS JET_DIGITAL_Y) or (userinput.Type IS JET_ANALOG_Y)) {
-      userinput.Type = JET_ABS_Y;
+   else if ((userinput.Type IS JET::DIGITAL_Y) or (userinput.Type IS JET::ANALOG_Y)) {
+      userinput.Type = JET::ABS_Y;
       userinput.Value += Self->Y;
    }
 
@@ -382,8 +382,9 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    DOUBLE current_x = Self->X;
    DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
-      case JET_ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
-      case JET_ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
+      case JET::ABS_X: current_x = userinput.Value; if (current_x != Self->X) moved = true; break;
+      case JET::ABS_Y: current_y = userinput.Value; if (current_y != Self->Y) moved = true; break;
+      default: break;
    }
 
    if (!moved) {
@@ -415,7 +416,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          // environments we cannot maintain a true anchor since the pointer is out of our control, but we still must
          // perform the necessary notification.
 
-         add_input("Movement-Anchored", userinput, 0, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
+         add_input("Movement-Anchored", userinput, JTYPE::NIL, Self->AnchorID, Self->AnchorID, current_x, current_y, xchange, ychange);
       }
       else {
          struct acMoveToPoint moveto = { Self->X, Self->Y, 0, MTF::X|MTF::Y };
@@ -449,7 +450,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
 
          LONG absx, absy;
          if (!get_surface_abs(Self->Buttons[0].LastClicked, &absx, &absy, 0, 0)) {
-            LONG uiflags = Self->DragSourceID ? JTYPE_DRAG_ITEM : 0;
+            auto uiflags = Self->DragSourceID ? JTYPE::DRAG_ITEM : JTYPE::NIL;
 
             // Send the movement message to the last clicked object
 
@@ -461,10 +462,10 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
             // The surface directly under the pointer also needs notification - important for the view to highlight
             // folders during drag and drop for example.
 
-            // JTYPE_SECONDARY indicates to the receiver of the input message that it is not the primary recipient.
+            // JTYPE::SECONDARY indicates to the receiver of the input message that it is not the primary recipient.
 
             if (Self->Buttons[0].LastClicked != Self->OverObjectID) {
-               add_input("Movement-LastClicked", userinput, uiflags|JTYPE_SECONDARY, Self->OverObjectID, Self->OverObjectID,
+               add_input("Movement-LastClicked", userinput, uiflags|JTYPE::SECONDARY, Self->OverObjectID, Self->OverObjectID,
                   Self->X, Self->Y, Self->OverX, Self->OverY);
             }
 
@@ -476,7 +477,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       }
       else {
          if (Self->OverObjectID) {
-            add_input("OverObject", userinput, 0, Self->OverObjectID, Self->OverObjectID,
+            add_input("OverObject", userinput, JTYPE::NIL, Self->OverObjectID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
 
@@ -484,7 +485,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          // pointer has moved for one final time.
 
          if ((Self->LastSurfaceID) and (Self->LastSurfaceID != Self->OverObjectID)) {
-            add_input("Movement-PrevSurface", userinput, 0, Self->LastSurfaceID, Self->OverObjectID,
+            add_input("Movement-PrevSurface", userinput, JTYPE::NIL, Self->LastSurfaceID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
       }
@@ -495,7 +496,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    // If a release object has been specified and the cursor is not positioned over it, call the RestoreCursor method.
 
    if ((Self->CursorReleaseID) and (Self->CursorReleaseID != Self->OverObjectID)) {
-      gfxRestoreCursor(PTR_DEFAULT, 0);
+      gfxRestoreCursor(PTC::DEFAULT, 0);
    }
 }
 
@@ -544,7 +545,7 @@ static ERROR PTR_Hide(extPointer *Self, APTR Void)
       winShowCursor(0);
    #endif
 
-   Self->Flags &= ~PF_VISIBLE;
+   Self->Flags &= ~PF::VISIBLE;
    return ERR_Okay;
 }
 
@@ -575,7 +576,7 @@ static ERROR PTR_Init(extPointer *Self, APTR Void)
          fl::Height(MAX_CURSOR_HEIGHT),
          fl::BitsPerPixel(32),
          fl::BytesPerPixel(4),
-         fl::Flags(BMF_ALPHA_CHANNEL)))) {
+         fl::Flags(BMF::ALPHA_CHANNEL)))) {
    }
    else log.warning(ERR_NewObject);
 
@@ -681,7 +682,7 @@ static ERROR PTR_MoveToPoint(extPointer *Self, struct acMoveToPoint *Args)
 
 static ERROR PTR_NewObject(extPointer *Self, APTR Void)
 {
-   Self->CursorID = PTR_DEFAULT;
+   Self->CursorID = PTC::DEFAULT;
    Self->ClickSlop = 2;
    set_pointer_defaults(Self);
    return ERR_Okay;
@@ -772,7 +773,7 @@ static ERROR PTR_Show(extPointer *Self, APTR Void)
       winShowCursor(1);
    #endif
 
-   Self->Flags |= PF_VISIBLE;
+   Self->Flags |= PF::VISIBLE;
    return ERR_Okay;
 }
 
@@ -796,7 +797,7 @@ anchor.
 -FIELD-
 Bitmap: Refers to bitmap in which custom cursor images can be drawn.
 
-The pointer graphic can be changed to a custom image if the `PTR_CUSTOM` #CursorID type is defined and an image is
+The pointer graphic can be changed to a custom image if the `PTC::CUSTOM` #CursorID type is defined and an image is
 drawn to the @Bitmap object referenced by this field.
 
 -FIELD-
@@ -1097,7 +1098,7 @@ static bool get_over_object(extPointer *Self)
    OBJECTID li_objectid = glSurfaces[i].SurfaceID;
    DOUBLE li_left       = glSurfaces[i].Left;
    DOUBLE li_top        = glSurfaces[i].Top;
-   LONG cursor_image    = glSurfaces[i].Cursor; // Preferred cursor ID
+   auto cursor_image    = PTC(glSurfaces[i].Cursor); // Preferred cursor ID
 
    if (Self->OverObjectID != li_objectid) {
       pf::Log log(__FUNCTION__);
@@ -1117,15 +1118,15 @@ static bool get_over_object(extPointer *Self)
          .X           = Self->X - li_left,
          .Y           = Self->Y - li_top,
          .DeviceID    = Self->UID,
-         .Type        = JET_LEFT_SURFACE,
-         .Flags       = JTYPE_FEEDBACK,
-         .Mask        = JTYPE_FEEDBACK
+         .Type        = JET::LEFT_SURFACE,
+         .Flags       = JTYPE::FEEDBACK,
+         .Mask        = JTYPE::FEEDBACK
       };
 
       const std::lock_guard<std::recursive_mutex> lock(glInputLock);
       glInputEvents.push_back(input);
 
-      input.Type        = JET_ENTERED_SURFACE;
+      input.Type        = JET::ENTERED_SURFACE;
       input.Value       = li_objectid;
       input.RecipientID = li_objectid; // Recipient is the surface we are entering
       glInputEvents.push_back(input);
@@ -1138,12 +1139,12 @@ static bool get_over_object(extPointer *Self)
 
    //drwReleaseList(ARF_READ);
 
-   if (cursor_image) {
-      if (cursor_image != Self->CursorID) gfxSetCursor(0, 0, cursor_image, NULL, 0);
+   if (cursor_image != PTC::NIL) {
+      if (cursor_image != Self->CursorID) gfxSetCursor(0, CRF::NIL, cursor_image, NULL, 0);
    }
-   else if ((Self->CursorID != PTR_DEFAULT) and (!Self->CursorOwnerID)) {
+   else if ((Self->CursorID != PTC::DEFAULT) and (!Self->CursorOwnerID)) {
       // Restore the pointer to the default image if the cursor isn't locked
-      gfxSetCursor(0, 0, PTR_DEFAULT, NULL, 0);
+      gfxSetCursor(0, CRF::NIL, PTC::DEFAULT, NULL, 0);
    }
 
    return changed;
@@ -1159,7 +1160,7 @@ static LONG examine_chain(extPointer *Self, LONG Index, SURFACELIST &List, LONG 
    auto x = Self->X;
    auto y = Self->Y;
    for (auto i=End-1; i >= 0; i--) {
-      if ((List[i].ParentID IS objectid) and (List[i].Flags & RNF_VISIBLE)) {
+      if ((List[i].ParentID IS objectid) and (List[i].visible())) {
          if ((x >= List[i].Left) and (x < List[i].Right) and (y >= List[i].Top) and (y < List[i].Bottom)) {
             LONG new_end;
             for (new_end=i+1; List[new_end].Level > List[i].Level; new_end++); // Recalculate the end (optimisation)
@@ -1202,9 +1203,9 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
                input.Y = Self->OverY;
             }
 
-            input.Type        = JET_BUTTON_1 + i;
-            input.Mask        = JTYPE_BUTTON|JTYPE_REPEATED;
-            input.Flags       = JTYPE_BUTTON|JTYPE_REPEATED;
+            input.Type        = JET(LONG(JET::BUTTON_1) + i);
+            input.Mask        = JTYPE::BUTTON|JTYPE::REPEATED;
+            input.Flags       = JTYPE::BUTTON|JTYPE::REPEATED;
             input.Value       = 1.0; // Self->Buttons[i].LastValue
             input.Timestamp   = time;
             input.DeviceID    = 0;
@@ -1229,30 +1230,30 @@ static ERROR repeat_timer(extPointer *Self, LARGE Elapsed, LARGE Unused)
 
 FieldDef CursorLookup[] = {
    { "None",            0 },
-   { "Default",         PTR_DEFAULT },             // Values start from 1 and go up
-   { "SizeBottomLeft",  PTR_SIZE_BOTTOM_LEFT },
-   { "SizeBottomRight", PTR_SIZE_BOTTOM_RIGHT },
-   { "SizeTopLeft",     PTR_SIZE_TOP_LEFT },
-   { "SizeTopRight",    PTR_SIZE_TOP_RIGHT },
-   { "SizeLeft",        PTR_SIZE_LEFT },
-   { "SizeRight",       PTR_SIZE_RIGHT },
-   { "SizeTop",         PTR_SIZE_TOP },
-   { "SizeBottom",      PTR_SIZE_BOTTOM },
-   { "Crosshair",       PTR_CROSSHAIR },
-   { "Sleep",           PTR_SLEEP },
-   { "Sizing",          PTR_SIZING },
-   { "SplitVertical",   PTR_SPLIT_VERTICAL },
-   { "SplitHorizontal", PTR_SPLIT_HORIZONTAL },
-   { "Magnifier",       PTR_MAGNIFIER },
-   { "Hand",            PTR_HAND },
-   { "HandLeft",        PTR_HAND_LEFT },
-   { "HandRight",       PTR_HAND_RIGHT },
-   { "Text",            PTR_TEXT },
-   { "Paintbrush",      PTR_PAINTBRUSH },
-   { "Stop",            PTR_STOP },
-   { "Invisible",       PTR_INVISIBLE },
-   { "Custom",          PTR_CUSTOM },
-   { "Dragable",        PTR_DRAGGABLE },
+   { "Default",         PTC::DEFAULT },             // Values start from 1 and go up
+   { "SizeBottomLeft",  PTC::SIZE_BOTTOM_LEFT },
+   { "SizeBottomRight", PTC::SIZE_BOTTOM_RIGHT },
+   { "SizeTopLeft",     PTC::SIZE_TOP_LEFT },
+   { "SizeTopRight",    PTC::SIZE_TOP_RIGHT },
+   { "SizeLeft",        PTC::SIZE_LEFT },
+   { "SizeRight",       PTC::SIZE_RIGHT },
+   { "SizeTop",         PTC::SIZE_TOP },
+   { "SizeBottom",      PTC::SIZE_BOTTOM },
+   { "Crosshair",       PTC::CROSSHAIR },
+   { "Sleep",           PTC::SLEEP },
+   { "Sizing",          PTC::SIZING },
+   { "SplitVertical",   PTC::SPLIT_VERTICAL },
+   { "SplitHorizontal", PTC::SPLIT_HORIZONTAL },
+   { "Magnifier",       PTC::MAGNIFIER },
+   { "Hand",            PTC::HAND },
+   { "HandLeft",        PTC::HAND_LEFT },
+   { "HandRight",       PTC::HAND_RIGHT },
+   { "Text",            PTC::TEXT },
+   { "Paintbrush",      PTC::PAINTBRUSH },
+   { "Stop",            PTC::STOP },
+   { "Invisible",       PTC::INVISIBLE },
+   { "Custom",          PTC::CUSTOM },
+   { "Dragable",        PTC::DRAGGABLE },
    { NULL, 0 }
 };
 
@@ -1272,7 +1273,7 @@ static const ActionArray clPointerActions[] = {
 };
 
 static const FieldDef clPointerFlags[] = {
-   { "Visible",  PF_VISIBLE },
+   { "Visible",  PF::VISIBLE },
    { NULL, 0 }
 };
 
@@ -1330,7 +1331,7 @@ ERROR create_pointer_class(void)
       fl::BaseClassID(ID_POINTER),
       fl::ClassVersion(VER_POINTER),
       fl::Name("Pointer"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clPointerActions),
       fl::Methods(clPointerMethods),
       fl::Fields(clPointerFields),

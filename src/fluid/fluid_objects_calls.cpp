@@ -282,7 +282,7 @@ ERROR build_args(lua_State *Lua, const FunctionField *args, LONG ArgsSize, BYTE 
             if ((type IS LUA_TSTRING) or (type IS LUA_TFUNCTION)) {
                FUNCTION *func;
 
-               if (!AllocMemory(sizeof(FUNCTION), MEM_DATA, &func)) {
+               if (!AllocMemory(sizeof(FUNCTION), MEM::DATA, &func)) {
                   if (type IS LUA_TSTRING) {
                      lua_getglobal(Lua, lua_tostring(Lua, n));
                      *func = make_function_script(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));

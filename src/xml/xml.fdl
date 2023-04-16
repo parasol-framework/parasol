@@ -29,7 +29,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (GetXMLString only)" })
 
-  enum("XMI", { start=0, comment="Tag insertion options." },
+  enum("XMI", { type="int", start=0, comment="Tag insertion options." },
     "PREV|PREVIOUS: Insert as the previous tag of the target.",
     "CHILD: Insert as the first child of the target.",
     "NEXT: Insert as the next tag of the target.",
@@ -62,11 +62,11 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
   ]],
   [[
    XMLTag(LONG pID, LONG pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(0)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
       { }
 
    XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(0), Attribs(pAttribs)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -146,7 +146,7 @@ inline void xmlNewAttrib(XMLTag *Tag, const std::string Name, const std::string 
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, LONG Where, T Statement, XMLTag **Result) {
+template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
    auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
    if (!error) {

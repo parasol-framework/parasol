@@ -26,33 +26,33 @@
 #define COL_RED            0xb00000
 
 static const struct styledef std_styles[] = {
-   { STYLE_DEFAULT,    COL_BLACK, 0 },
-   { STYLE_LINENUMBER, COL_BLACK, 0 },
-   { STYLE_BRACELIGHT, COL_BRIGHTRED, FTF_BOLD },
-   { STYLE_BRACEBAD,   COL_BRIGHTRED, FTF_BOLD|FTF_ITALIC }  // Somebody set us up the bomb
+   { STYLE_DEFAULT,    COL_BLACK, FTF::NIL },
+   { STYLE_LINENUMBER, COL_BLACK, FTF::NIL },
+   { STYLE_BRACELIGHT, COL_BRIGHTRED, FTF::BOLD },
+   { STYLE_BRACEBAD,   COL_BRIGHTRED, FTF::BOLD|FTF::ITALIC }  // Somebody set us up the bomb
 };
 
 static const struct styledef c_styles[] = {
-   { SCE_C_DEFAULT,                COL_BLACK, 0 },          // What you say?
-   { SCE_C_COMMENT,                COL_GREY, 0 },           // Standard C comment
-   { SCE_C_COMMENTLINE,            COL_GREY, 0 },           // // style comment
-   { SCE_C_COMMENTDOC,             COL_LIGHTSLATEGREY, 0 }, // Double-star comments
-   { SCE_C_NUMBER,                 COL_BLUE, 0 },           // Any number or float
-   { SCE_C_WORD,                   COL_FIREBRICK, 0 },
-   { SCE_C_STRING,                 COL_RED, 0 },          // Strings "..."
-   { SCE_C_CHARACTER,              COL_RED, 0 },          // Characters ' '
-   { SCE_C_UUID,                   COL_BRIGHTRED, 0 },    // \n, \r
-   { SCE_C_PREPROCESSOR,           COL_FORESTGREEN, 0 },  // #include, #define etc
-   { SCE_C_OPERATOR,               COL_BLACK, 0 },        // + - *
-   { SCE_C_IDENTIFIER,             COL_BLACK, 0 },        // The default colour
-   { SCE_C_STRINGEOL,              COL_BRIGHTRED, 0 },
-   { SCE_C_VERBATIM,               COL_BRIGHTRED, 0 },
-   { SCE_C_REGEX,                  COL_BLUE, 0 },
-   { SCE_C_COMMENTLINEDOC,         COL_GREY, 0 }, // // style comment
-   { SCE_C_WORD2,                  COL_BRIGHTRED, 0 },
-   { SCE_C_COMMENTDOCKEYWORD,      COL_GREY, 0 },
-   { SCE_C_COMMENTDOCKEYWORDERROR, COL_GREY, 0 },
-   { SCE_C_GLOBALCLASS,            COL_RED, 0 }
+   { SCE_C_DEFAULT,                COL_BLACK, FTF::NIL },          // What you say?
+   { SCE_C_COMMENT,                COL_GREY, FTF::NIL },           // Standard C comment
+   { SCE_C_COMMENTLINE,            COL_GREY, FTF::NIL },           // // style comment
+   { SCE_C_COMMENTDOC,             COL_LIGHTSLATEGREY, FTF::NIL }, // Double-star comments
+   { SCE_C_NUMBER,                 COL_BLUE, FTF::NIL },           // Any number or float
+   { SCE_C_WORD,                   COL_FIREBRICK, FTF::NIL },
+   { SCE_C_STRING,                 COL_RED, FTF::NIL },          // Strings "..."
+   { SCE_C_CHARACTER,              COL_RED, FTF::NIL },          // Characters ' '
+   { SCE_C_UUID,                   COL_BRIGHTRED, FTF::NIL },    // \n, \r
+   { SCE_C_PREPROCESSOR,           COL_FORESTGREEN, FTF::NIL },  // #include, #define etc
+   { SCE_C_OPERATOR,               COL_BLACK, FTF::NIL },        // + - *
+   { SCE_C_IDENTIFIER,             COL_BLACK, FTF::NIL },        // The default colour
+   { SCE_C_STRINGEOL,              COL_BRIGHTRED, FTF::NIL },
+   { SCE_C_VERBATIM,               COL_BRIGHTRED, FTF::NIL },
+   { SCE_C_REGEX,                  COL_BLUE, FTF::NIL },
+   { SCE_C_COMMENTLINEDOC,         COL_GREY, FTF::NIL }, // // style comment
+   { SCE_C_WORD2,                  COL_BRIGHTRED, FTF::NIL },
+   { SCE_C_COMMENTDOCKEYWORD,      COL_GREY, FTF::NIL },
+   { SCE_C_COMMENTDOCKEYWORDERROR, COL_GREY, FTF::NIL },
+   { SCE_C_GLOBALCLASS,            COL_RED, FTF::NIL }
 };
 
 void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
@@ -72,8 +72,8 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
          WndProc(SCI_STYLESETBACK, index, SCICOLOUR(255, 255, 200));
       }
 
-      if (Def[i].FontStyle & FTF_BOLD) WndProc(SCI_STYLESETBOLD, index, 1);
-      if (Def[i].FontStyle & FTF_ITALIC) WndProc(SCI_STYLESETITALIC, index, 1);
+      if ((Def[i].FontStyle & FTF::BOLD) != FTF::NIL) WndProc(SCI_STYLESETBOLD, index, 1);
+      if ((Def[i].FontStyle & FTF::ITALIC) != FTF::NIL) WndProc(SCI_STYLESETITALIC, index, 1);
    }
 
    WndProc(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->BkgdColour.Red, scintilla->BkgdColour.Green, scintilla->BkgdColour.Blue));
@@ -224,7 +224,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
    lines = SendScintilla(SCI_GETLINECOUNT);
 
-   if (scintilla->Flags & SCF_EXT_PAGE) {
+   if ((scintilla->Flags & SCIF::EXT_PAGE) != SCIF::NIL) {
       // Scintilla's nMax variable caters for all the lines, plus the height of the viewing area.
 
       scroll.ViewSize = nPage * vs.lineHeight;
@@ -326,14 +326,14 @@ void ScintillaParasol::Paste()
 
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
-      struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
+      struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
       if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
          objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {
             LONG len, size;
             if ((!file->get(FID_Size, &size)) and (size > 0)) {
                STRING buffer;
-               if (!AllocMemory(size, MEM_STRING, &buffer)) {
+               if (!AllocMemory(size, MEM::STRING, &buffer)) {
                   if (!file->read(buffer, size, &len)) {
                      pdoc->BeginUndoAction();
 
@@ -411,7 +411,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
          if (SendScintilla(SCI_GETLEXER) IS SCLEX_CPP) braceMatch();
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
-         scintilla->ReportEventFlags |= SEF_CURSOR_POS;
+         scintilla->ReportEventFlags |= SEF::CURSOR_POS;
          QueueAction(MT_SciReportEvent, scintilla->UID);
       }
    }
@@ -436,7 +436,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
       log.trace("[MODIFYATTEMPTRO]");
 
-      scintilla->ReportEventFlags |= SEF_FAIL_RO;
+      scintilla->ReportEventFlags |= SEF::FAIL_RO;
       QueueAction(MT_SciReportEvent, scintilla->UID);
    }
    else if (code IS SCN_CHARADDED) {
@@ -474,7 +474,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
          }
       }
 
-      scintilla->ReportEventFlags |= SEF_NEW_CHAR;
+      scintilla->ReportEventFlags |= SEF::NEW_CHAR;
       QueueAction(MT_SciReportEvent, scintilla->UID);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
@@ -836,13 +836,13 @@ void ScintillaParasol::panIdleEvent()
 
 //********************************************************************************************************************
 
-void ScintillaParasol::panKeyDown(int Key, LONG Flags)
+void ScintillaParasol::panKeyDown(int Key, KQ Flags)
 {
    bool consumed;
 
    // After we call KeyDown(), Scintilla will call KeyDefault()
 
-   KeyDown(Key, Flags & KQ_SHIFT, Flags & KQ_CTRL, Flags & KQ_ALT, &consumed);
+   KeyDown(Key, (Flags & KQ::SHIFT) != KQ::NIL, (Flags & KQ::CTRL) != KQ::NIL, (Flags & KQ::ALT) != KQ::NIL, &consumed);
 }
 
 //********************************************************************************************************************
@@ -856,20 +856,20 @@ int ScintillaParasol::KeyDefault(int key, int modifiers)
 
 //********************************************************************************************************************
 
-void ScintillaParasol::panMousePress(int Button, double x, double y)
+void ScintillaParasol::panMousePress(JET Button, double x, double y)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("%.0fx%.0f", x, y);
 
-   if (Button IS JET_LMB) {
+   if (Button IS JET::LMB) {
       // This disables the current selection (effectively eliminating the potential for drag and drop).
 
       SetEmptySelection(CurrentPosition());
       Scintilla::Point point((int)x, (int)y);
       ButtonDown(point, (PreciseTime()/1000LL), scintilla->KeyShift, scintilla->KeyCtrl, scintilla->KeyAlt);
    }
-   else if (Button IS JET_RMB) {
+   else if (Button IS JET::RMB) {
 
 
 
@@ -887,14 +887,14 @@ void ScintillaParasol::panMouseMove(double x, double y)
 
 //********************************************************************************************************************
 
-void ScintillaParasol::panMouseRelease(int Button, double x, double y)
+void ScintillaParasol::panMouseRelease(JET Button, double x, double y)
 {
    pf::Log log(__FUNCTION__);
    Scintilla::Point point((int)x, (int)y);
 
    log.trace("%.0fx%.0f", x, y);
 
-   if (Button IS JET_LMB) {
+   if (Button IS JET::LMB) {
       ButtonUp(point, (PreciseTime()/1000LL), scintilla->KeyCtrl);
    }
 }

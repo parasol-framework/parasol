@@ -128,6 +128,11 @@ static const struct FieldDef clSurfaceCursor[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clSurfaceType[] = {
+   { "Root", 0x00000001 },
+   { NULL, 0 }
+};
+
 FDEF maInheritedFocus[] = { { "FocusID", FD_OBJECTID }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maExpose[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maInvalidateRegion[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };

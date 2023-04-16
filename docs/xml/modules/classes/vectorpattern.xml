@@ -89,7 +89,7 @@
       <name>SpreadMethod</name>
       <comment>The behaviour to use when the pattern bounds do not match the vector path.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VSPREAD">INT</type>
+      <type lookup="VSPREAD">VSPREAD</type>
       <description>
 <p>Indicates what happens if the pattern starts or ends inside the bounds of the target vector.  The default value is PAD.</p>
 <types lookup="VSPREAD"/>
@@ -110,7 +110,7 @@
       <name>Units</name>
       <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VUNIT">INT</type>
+      <type lookup="VUNIT">VUNIT</type>
       <description>
 <p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE, which allows the pattern image to be persistently cached.</p>
 <types lookup="VUNIT"/>

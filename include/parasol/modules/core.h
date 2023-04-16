@@ -37,54 +37,89 @@ class objCompressedStream;
 
 #endif
 
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
+// used as an approximation of std::underlying_type<T>
+template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
+
+#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
+inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+#endif
 // Clipboard modes
 
-#define CLIPMODE_CUT 0x00000001
-#define CLIPMODE_COPY 0x00000002
-#define CLIPMODE_PASTE 0x00000004
+enum class CLIPMODE : ULONG {
+   NIL = 0,
+   CUT = 0x00000001,
+   COPY = 0x00000002,
+   PASTE = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLIPMODE)
 
 // Seek positions
 
-#define SEEK_START 0
-#define SEEK_CURRENT 1
-#define SEEK_END 2
-#define SEEK_RELATIVE 3
+enum class SEEK : LONG {
+   NIL = 0,
+   START = 0,
+   CURRENT = 1,
+   END = 2,
+   RELATIVE = 3,
+};
 
-#define DEVICE_COMPACT_DISC 0x00000001
-#define DEVICE_HARD_DISK 0x00000002
-#define DEVICE_FLOPPY_DISK 0x00000004
-#define DEVICE_READ 0x00000008
-#define DEVICE_WRITE 0x00000010
-#define DEVICE_REMOVEABLE 0x00000020
-#define DEVICE_REMOVABLE 0x00000020
-#define DEVICE_SOFTWARE 0x00000040
-#define DEVICE_NETWORK 0x00000080
-#define DEVICE_TAPE 0x00000100
-#define DEVICE_PRINTER 0x00000200
-#define DEVICE_SCANNER 0x00000400
-#define DEVICE_TEMPORARY 0x00000800
-#define DEVICE_MEMORY 0x00001000
-#define DEVICE_MODEM 0x00002000
-#define DEVICE_USB 0x00004000
-#define DEVICE_PRINTER_3D 0x00008000
-#define DEVICE_SCANNER_3D 0x00010000
+enum class DEVICE : LARGE {
+   NIL = 0,
+   COMPACT_DISC = 0x00000001,
+   HARD_DISK = 0x00000002,
+   FLOPPY_DISK = 0x00000004,
+   READ = 0x00000008,
+   WRITE = 0x00000010,
+   REMOVEABLE = 0x00000020,
+   REMOVABLE = 0x00000020,
+   SOFTWARE = 0x00000040,
+   NETWORK = 0x00000080,
+   TAPE = 0x00000100,
+   PRINTER = 0x00000200,
+   SCANNER = 0x00000400,
+   TEMPORARY = 0x00000800,
+   MEMORY = 0x00001000,
+   MODEM = 0x00002000,
+   USB = 0x00004000,
+   PRINTER_3D = 0x00008000,
+   SCANNER_3D = 0x00010000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DEVICE)
 
 // Class categories
 
-#define CCF_COMMAND 0x00000001
-#define CCF_DRAWABLE 0x00000002
-#define CCF_EFFECT 0x00000004
-#define CCF_FILESYSTEM 0x00000008
-#define CCF_GRAPHICS 0x00000010
-#define CCF_GUI 0x00000020
-#define CCF_IO 0x00000040
-#define CCF_SYSTEM 0x00000080
-#define CCF_TOOL 0x00000100
-#define CCF_AUDIO 0x00000200
-#define CCF_DATA 0x00000400
-#define CCF_MISC 0x00000800
-#define CCF_NETWORK 0x00001000
-#define CCF_MULTIMEDIA 0x00002000
+enum class CCF : ULONG {
+   NIL = 0,
+   COMMAND = 0x00000001,
+   DRAWABLE = 0x00000002,
+   EFFECT = 0x00000004,
+   FILESYSTEM = 0x00000008,
+   GRAPHICS = 0x00000010,
+   GUI = 0x00000020,
+   IO = 0x00000040,
+   SYSTEM = 0x00000080,
+   TOOL = 0x00000100,
+   AUDIO = 0x00000200,
+   DATA = 0x00000400,
+   MISC = 0x00000800,
+   NETWORK = 0x00001000,
+   MULTIMEDIA = 0x00002000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CCF)
 
 // Action identifiers.
 
@@ -144,194 +179,223 @@ class objCompressedStream;
 
 // Permission flags
 
-#define PERMIT_READ 0x00000001
-#define PERMIT_USER_READ 0x00000001
-#define PERMIT_WRITE 0x00000002
-#define PERMIT_USER_WRITE 0x00000002
-#define PERMIT_EXEC 0x00000004
-#define PERMIT_USER_EXEC 0x00000004
-#define PERMIT_DELETE 0x00000008
-#define PERMIT_USER 0x0000000f
-#define PERMIT_GROUP_READ 0x00000010
-#define PERMIT_GROUP_WRITE 0x00000020
-#define PERMIT_GROUP_EXEC 0x00000040
-#define PERMIT_GROUP_DELETE 0x00000080
-#define PERMIT_GROUP 0x000000f0
-#define PERMIT_OTHERS_READ 0x00000100
-#define PERMIT_EVERYONE_READ 0x00000111
-#define PERMIT_ALL_READ 0x00000111
-#define PERMIT_OTHERS_WRITE 0x00000200
-#define PERMIT_ALL_WRITE 0x00000222
-#define PERMIT_EVERYONE_WRITE 0x00000222
-#define PERMIT_EVERYONE_READWRITE 0x00000333
-#define PERMIT_OTHERS_EXEC 0x00000400
-#define PERMIT_ALL_EXEC 0x00000444
-#define PERMIT_EVERYONE_EXEC 0x00000444
-#define PERMIT_OTHERS_DELETE 0x00000800
-#define PERMIT_EVERYONE_DELETE 0x00000888
-#define PERMIT_ALL_DELETE 0x00000888
-#define PERMIT_OTHERS 0x00000f00
-#define PERMIT_EVERYONE_ACCESS 0x00000fff
-#define PERMIT_HIDDEN 0x00001000
-#define PERMIT_ARCHIVE 0x00002000
-#define PERMIT_PASSWORD 0x00004000
-#define PERMIT_USERID 0x00008000
-#define PERMIT_GROUPID 0x00010000
-#define PERMIT_INHERIT 0x00020000
-#define PERMIT_OFFLINE 0x00040000
-#define PERMIT_NETWORK 0x00080000
+enum class PERMIT : ULONG {
+   NIL = 0,
+   READ = 0x00000001,
+   USER_READ = 0x00000001,
+   WRITE = 0x00000002,
+   USER_WRITE = 0x00000002,
+   EXEC = 0x00000004,
+   USER_EXEC = 0x00000004,
+   DELETE = 0x00000008,
+   USER = 0x0000000f,
+   GROUP_READ = 0x00000010,
+   GROUP_WRITE = 0x00000020,
+   GROUP_EXEC = 0x00000040,
+   GROUP_DELETE = 0x00000080,
+   GROUP = 0x000000f0,
+   OTHERS_READ = 0x00000100,
+   EVERYONE_READ = 0x00000111,
+   ALL_READ = 0x00000111,
+   OTHERS_WRITE = 0x00000200,
+   ALL_WRITE = 0x00000222,
+   EVERYONE_WRITE = 0x00000222,
+   EVERYONE_READWRITE = 0x00000333,
+   OTHERS_EXEC = 0x00000400,
+   ALL_EXEC = 0x00000444,
+   EVERYONE_EXEC = 0x00000444,
+   OTHERS_DELETE = 0x00000800,
+   EVERYONE_DELETE = 0x00000888,
+   ALL_DELETE = 0x00000888,
+   OTHERS = 0x00000f00,
+   EVERYONE_ACCESS = 0x00000fff,
+   HIDDEN = 0x00001000,
+   ARCHIVE = 0x00002000,
+   PASSWORD = 0x00004000,
+   USERID = 0x00008000,
+   GROUPID = 0x00010000,
+   INHERIT = 0x00020000,
+   OFFLINE = 0x00040000,
+   NETWORK = 0x00080000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PERMIT)
 
 // Special qualifier flags
 
-#define KQ_L_SHIFT 0x00000001
-#define KQ_R_SHIFT 0x00000002
-#define KQ_SHIFT 0x00000003
-#define KQ_CAPS_LOCK 0x00000004
-#define KQ_L_CONTROL 0x00000008
-#define KQ_L_CTRL 0x00000008
-#define KQ_R_CTRL 0x00000010
-#define KQ_R_CONTROL 0x00000010
-#define KQ_CTRL 0x00000018
-#define KQ_CONTROL 0x00000018
-#define KQ_L_ALT 0x00000020
-#define KQ_ALTGR 0x00000040
-#define KQ_R_ALT 0x00000040
-#define KQ_ALT 0x00000060
-#define KQ_INSTRUCTION_KEYS 0x00000078
-#define KQ_L_COMMAND 0x00000080
-#define KQ_R_COMMAND 0x00000100
-#define KQ_COMMAND 0x00000180
-#define KQ_QUALIFIERS 0x000001fb
-#define KQ_NUM_PAD 0x00000200
-#define KQ_REPEAT 0x00000400
-#define KQ_RELEASED 0x00000800
-#define KQ_PRESSED 0x00001000
-#define KQ_NOT_PRINTABLE 0x00002000
-#define KQ_INFO 0x00003c04
-#define KQ_SCR_LOCK 0x00004000
-#define KQ_NUM_LOCK 0x00008000
-#define KQ_DEAD_KEY 0x00010000
-#define KQ_WIN_CONTROL 0x00020000
+enum class KQ : ULONG {
+   NIL = 0,
+   L_SHIFT = 0x00000001,
+   R_SHIFT = 0x00000002,
+   SHIFT = 0x00000003,
+   CAPS_LOCK = 0x00000004,
+   L_CONTROL = 0x00000008,
+   L_CTRL = 0x00000008,
+   R_CTRL = 0x00000010,
+   R_CONTROL = 0x00000010,
+   CTRL = 0x00000018,
+   CONTROL = 0x00000018,
+   L_ALT = 0x00000020,
+   ALTGR = 0x00000040,
+   R_ALT = 0x00000040,
+   ALT = 0x00000060,
+   INSTRUCTION_KEYS = 0x00000078,
+   L_COMMAND = 0x00000080,
+   R_COMMAND = 0x00000100,
+   COMMAND = 0x00000180,
+   QUALIFIERS = 0x000001fb,
+   NUM_PAD = 0x00000200,
+   REPEAT = 0x00000400,
+   RELEASED = 0x00000800,
+   PRESSED = 0x00001000,
+   NOT_PRINTABLE = 0x00002000,
+   INFO = 0x00003c04,
+   SCR_LOCK = 0x00004000,
+   NUM_LOCK = 0x00008000,
+   DEAD_KEY = 0x00010000,
+   WIN_CONTROL = 0x00020000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(KQ)
 
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
-#define MEM_DATA 0x00000000
-#define MEM_MANAGED 0x00000001
-#define MEM_VIDEO 0x00000002
-#define MEM_TEXTURE 0x00000004
-#define MEM_AUDIO 0x00000008
-#define MEM_CODE 0x00000010
-#define MEM_NO_POOL 0x00000020
-#define MEM_TMP_LOCK 0x00000040
-#define MEM_UNTRACKED 0x00000080
-#define MEM_STRING 0x00000100
-#define MEM_OBJECT 0x00000200
-#define MEM_NO_LOCK 0x00000400
-#define MEM_EXCLUSIVE 0x00000800
-#define MEM_DELETE 0x00001000
-#define MEM_NO_BLOCKING 0x00002000
-#define MEM_NO_BLOCK 0x00002000
-#define MEM_READ 0x00010000
-#define MEM_WRITE 0x00020000
-#define MEM_READ_WRITE 0x00030000
-#define MEM_NO_CLEAR 0x00040000
-#define MEM_HIDDEN 0x00100000
-#define MEM_CALLER 0x00800000
+enum class MEM : ULONG {
+   NIL = 0,
+   DATA = 0x00000000,
+   MANAGED = 0x00000001,
+   VIDEO = 0x00000002,
+   TEXTURE = 0x00000004,
+   AUDIO = 0x00000008,
+   CODE = 0x00000010,
+   NO_POOL = 0x00000020,
+   TMP_LOCK = 0x00000040,
+   UNTRACKED = 0x00000080,
+   STRING = 0x00000100,
+   OBJECT = 0x00000200,
+   NO_LOCK = 0x00000400,
+   EXCLUSIVE = 0x00000800,
+   DELETE = 0x00001000,
+   NO_BLOCKING = 0x00002000,
+   NO_BLOCK = 0x00002000,
+   READ = 0x00010000,
+   WRITE = 0x00020000,
+   READ_WRITE = 0x00030000,
+   NO_CLEAR = 0x00040000,
+   HIDDEN = 0x00100000,
+   CALLER = 0x00800000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MEM)
 
 // Event categories.
 
-#define EVG_FILESYSTEM 1
-#define EVG_NETWORK 2
-#define EVG_SYSTEM 3
-#define EVG_GUI 4
-#define EVG_DISPLAY 5
-#define EVG_IO 6
-#define EVG_HARDWARE 7
-#define EVG_AUDIO 8
-#define EVG_USER 9
-#define EVG_POWER 10
-#define EVG_CLASS 11
-#define EVG_APP 12
-#define EVG_ANDROID 13
-#define EVG_END 14
+enum class EVG : LONG {
+   NIL = 0,
+   FILESYSTEM = 1,
+   NETWORK = 2,
+   SYSTEM = 3,
+   GUI = 4,
+   DISPLAY = 5,
+   IO = 6,
+   HARDWARE = 7,
+   AUDIO = 8,
+   USER = 9,
+   POWER = 10,
+   CLASS = 11,
+   APP = 12,
+   ANDROID = 13,
+   END = 14,
+};
 
 // Data codes
 
-#define DATA_TEXT 1
-#define DATA_RAW 2
-#define DATA_DEVICE_INPUT 3
-#define DATA_XML 4
-#define DATA_AUDIO 5
-#define DATA_RECORD 6
-#define DATA_IMAGE 7
-#define DATA_REQUEST 8
-#define DATA_RECEIPT 9
-#define DATA_FILE 10
-#define DATA_CONTENT 11
-#define DATA_INPUT_READY 12
+enum class DATA : LONG {
+   NIL = 0,
+   TEXT = 1,
+   RAW = 2,
+   DEVICE_INPUT = 3,
+   XML = 4,
+   AUDIO = 5,
+   RECORD = 6,
+   IMAGE = 7,
+   REQUEST = 8,
+   RECEIPT = 9,
+   FILE = 10,
+   CONTENT = 11,
+   INPUT_READY = 12,
+};
 
 // JTYPE flags are used to categorise input types.
 
-#define JTYPE_SECONDARY 0x0001
-#define JTYPE_ANCHORED 0x0002
-#define JTYPE_DRAGGED 0x0004
-#define JTYPE_FEEDBACK 0x0008
-#define JTYPE_DIGITAL 0x0010
-#define JTYPE_ANALOG 0x0020
-#define JTYPE_EXT_MOVEMENT 0x0040
-#define JTYPE_BUTTON 0x0080
-#define JTYPE_MOVEMENT 0x0100
-#define JTYPE_DBL_CLICK 0x0200
-#define JTYPE_REPEATED 0x0400
-#define JTYPE_DRAG_ITEM 0x0800
+enum class JTYPE : ULONG {
+   NIL = 0,
+   SECONDARY = 0x00000001,
+   ANCHORED = 0x00000002,
+   DRAGGED = 0x00000004,
+   FEEDBACK = 0x00000008,
+   DIGITAL = 0x00000010,
+   ANALOG = 0x00000020,
+   EXT_MOVEMENT = 0x00000040,
+   BUTTON = 0x00000080,
+   MOVEMENT = 0x00000100,
+   DBL_CLICK = 0x00000200,
+   REPEATED = 0x00000400,
+   DRAG_ITEM = 0x00000800,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(JTYPE)
 
 // JET constants are documented in GetInputEvent()
 
-#define JET_DIGITAL_X 1
-#define JET_DIGITAL_Y 2
-#define JET_BUTTON_1 3
-#define JET_LMB 3
-#define JET_BUTTON_2 4
-#define JET_RMB 4
-#define JET_BUTTON_3 5
-#define JET_MMB 5
-#define JET_BUTTON_4 6
-#define JET_BUTTON_5 7
-#define JET_BUTTON_6 8
-#define JET_BUTTON_7 9
-#define JET_BUTTON_8 10
-#define JET_BUTTON_9 11
-#define JET_BUTTON_10 12
-#define JET_TRIGGER_LEFT 13
-#define JET_TRIGGER_RIGHT 14
-#define JET_BUTTON_START 15
-#define JET_BUTTON_SELECT 16
-#define JET_LEFT_BUMPER_1 17
-#define JET_LEFT_BUMPER_2 18
-#define JET_RIGHT_BUMPER_1 19
-#define JET_RIGHT_BUMPER_2 20
-#define JET_ANALOG_X 21
-#define JET_ANALOG_Y 22
-#define JET_ANALOG_Z 23
-#define JET_ANALOG2_X 24
-#define JET_ANALOG2_Y 25
-#define JET_ANALOG2_Z 26
-#define JET_WHEEL 27
-#define JET_WHEEL_TILT 28
-#define JET_PEN_TILT_VERTICAL 29
-#define JET_PEN_TILT_HORIZONTAL 30
-#define JET_ABS_X 31
-#define JET_ABS_Y 32
-#define JET_ENTERED_SURFACE 33
-#define JET_ENTERED 33
-#define JET_LEFT_SURFACE 34
-#define JET_LEFT 34
-#define JET_PRESSURE 35
-#define JET_DEVICE_TILT_X 36
-#define JET_DEVICE_TILT_Y 37
-#define JET_DEVICE_TILT_Z 38
-#define JET_DISPLAY_EDGE 39
-#define JET_END 40
+enum class JET : LONG {
+   NIL = 0,
+   DIGITAL_X = 1,
+   DIGITAL_Y = 2,
+   BUTTON_1 = 3,
+   LMB = 3,
+   BUTTON_2 = 4,
+   RMB = 4,
+   BUTTON_3 = 5,
+   MMB = 5,
+   BUTTON_4 = 6,
+   BUTTON_5 = 7,
+   BUTTON_6 = 8,
+   BUTTON_7 = 9,
+   BUTTON_8 = 10,
+   BUTTON_9 = 11,
+   BUTTON_10 = 12,
+   TRIGGER_LEFT = 13,
+   TRIGGER_RIGHT = 14,
+   BUTTON_START = 15,
+   BUTTON_SELECT = 16,
+   LEFT_BUMPER_1 = 17,
+   LEFT_BUMPER_2 = 18,
+   RIGHT_BUMPER_1 = 19,
+   RIGHT_BUMPER_2 = 20,
+   ANALOG_X = 21,
+   ANALOG_Y = 22,
+   ANALOG_Z = 23,
+   ANALOG2_X = 24,
+   ANALOG2_Y = 25,
+   ANALOG2_Z = 26,
+   WHEEL = 27,
+   WHEEL_TILT = 28,
+   PEN_TILT_VERTICAL = 29,
+   PEN_TILT_HORIZONTAL = 30,
+   ABS_X = 31,
+   ABS_Y = 32,
+   ENTERED_SURFACE = 33,
+   ENTERED = 33,
+   LEFT_SURFACE = 34,
+   LEFT = 34,
+   PRESSURE = 35,
+   DEVICE_TILT_X = 36,
+   DEVICE_TILT_Y = 37,
+   DEVICE_TILT_Z = 38,
+   DISPLAY_EDGE = 39,
+   END = 40,
+};
 
 // Field descriptors.
 
@@ -402,14 +466,14 @@ struct InputEvent {
    LARGE    Timestamp;                // PreciseTime() of the recorded input
    OBJECTID RecipientID;              // Surface that the input message is being conveyed to
    OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
-   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor
-   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor
+   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
+   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
    DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
    OBJECTID DeviceID;                 // The hardware device that this event originated from
-   UWORD    Type;                     // JET constant
-   UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;                     // Mask to use for checking against subscribers
+   JET      Type;                     // JET constant that describes the event
+   JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
+   JTYPE    Mask;                     // Mask to use for checking against subscribers
 };
 
 struct dcRequest {
@@ -433,9 +497,8 @@ struct dcDeviceInput {
    DOUBLE   Value;     // The value associated with the Type
    LARGE    Timestamp; // PreciseTime() of the recorded input
    OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-   LONG     Flags;     // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Type;      // JET constant
-   UWORD    Unused;    // Unused value for 32-bit padding
+   JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
+   JET      Type;      // JET constant
 };
 
 struct DateTime {
@@ -450,32 +513,35 @@ struct DateTime {
 
 // Predefined cursor styles
 
-#define PTR_NO_CHANGE 0
-#define PTR_DEFAULT 1
-#define PTR_SIZE_BOTTOM_LEFT 2
-#define PTR_SIZE_BOTTOM_RIGHT 3
-#define PTR_SIZE_TOP_LEFT 4
-#define PTR_SIZE_TOP_RIGHT 5
-#define PTR_SIZE_LEFT 6
-#define PTR_SIZE_RIGHT 7
-#define PTR_SIZE_TOP 8
-#define PTR_SIZE_BOTTOM 9
-#define PTR_CROSSHAIR 10
-#define PTR_SLEEP 11
-#define PTR_SIZING 12
-#define PTR_SPLIT_VERTICAL 13
-#define PTR_SPLIT_HORIZONTAL 14
-#define PTR_MAGNIFIER 15
-#define PTR_HAND 16
-#define PTR_HAND_LEFT 17
-#define PTR_HAND_RIGHT 18
-#define PTR_TEXT 19
-#define PTR_PAINTBRUSH 20
-#define PTR_STOP 21
-#define PTR_INVISIBLE 22
-#define PTR_CUSTOM 23
-#define PTR_DRAGGABLE 24
-#define PTR_END 25
+enum class PTC : LONG {
+   NIL = 0,
+   NO_CHANGE = 0,
+   DEFAULT = 1,
+   SIZE_BOTTOM_LEFT = 2,
+   SIZE_BOTTOM_RIGHT = 3,
+   SIZE_TOP_LEFT = 4,
+   SIZE_TOP_RIGHT = 5,
+   SIZE_LEFT = 6,
+   SIZE_RIGHT = 7,
+   SIZE_TOP = 8,
+   SIZE_BOTTOM = 9,
+   CROSSHAIR = 10,
+   SLEEP = 11,
+   SIZING = 12,
+   SPLIT_VERTICAL = 13,
+   SPLIT_HORIZONTAL = 14,
+   MAGNIFIER = 15,
+   HAND = 16,
+   HAND_LEFT = 17,
+   HAND_RIGHT = 18,
+   TEXT = 19,
+   PAINTBRUSH = 20,
+   STOP = 21,
+   INVISIBLE = 22,
+   CUSTOM = 23,
+   DRAGGABLE = 24,
+   END = 25,
+};
 
 #define DMF_RELATIVE_X 0x00000001
 #define DMF_RELATIVE_Y 0x00000002
@@ -519,63 +585,86 @@ struct DateTime {
 
 // Compass directions.
 
-#define DRL_NORTH 0
-#define DRL_UP 0
-#define DRL_SOUTH 1
-#define DRL_DOWN 1
-#define DRL_EAST 2
-#define DRL_RIGHT 2
-#define DRL_WEST 3
-#define DRL_LEFT 3
-#define DRL_NORTH_EAST 4
-#define DRL_NORTH_WEST 5
-#define DRL_SOUTH_EAST 6
-#define DRL_SOUTH_WEST 7
+enum class DRL : LONG {
+   NIL = 0,
+   NORTH = 0,
+   UP = 0,
+   SOUTH = 1,
+   DOWN = 1,
+   EAST = 2,
+   RIGHT = 2,
+   WEST = 3,
+   LEFT = 3,
+   NORTH_EAST = 4,
+   NORTH_WEST = 5,
+   SOUTH_EAST = 6,
+   SOUTH_WEST = 7,
+};
 
 // Generic flags for controlling movement.
 
-#define MOVE_DOWN 0x00000001
-#define MOVE_UP 0x00000002
-#define MOVE_LEFT 0x00000004
-#define MOVE_RIGHT 0x00000008
-#define MOVE_ALL 0x0000000f
+enum class MOVE : ULONG {
+   NIL = 0,
+   DOWN = 0x00000001,
+   UP = 0x00000002,
+   LEFT = 0x00000004,
+   RIGHT = 0x00000008,
+   ALL = 0x0000000f,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MOVE)
 
 // Edge flags
 
-#define EDGE_TOP 0x00000001
-#define EDGE_LEFT 0x00000002
-#define EDGE_RIGHT 0x00000004
-#define EDGE_BOTTOM 0x00000008
-#define EDGE_TOP_LEFT 0x00000010
-#define EDGE_TOP_RIGHT 0x00000020
-#define EDGE_BOTTOM_LEFT 0x00000040
-#define EDGE_BOTTOM_RIGHT 0x00000080
-#define EDGE_ALL 0x000000ff
+enum class EDGE : ULONG {
+   NIL = 0,
+   TOP = 0x00000001,
+   LEFT = 0x00000002,
+   RIGHT = 0x00000004,
+   BOTTOM = 0x00000008,
+   TOP_LEFT = 0x00000010,
+   TOP_RIGHT = 0x00000020,
+   BOTTOM_LEFT = 0x00000040,
+   BOTTOM_RIGHT = 0x00000080,
+   ALL = 0x000000ff,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(EDGE)
 
 // Universal values for alignment of graphics and text
 
-#define ALIGN_LEFT 0x00000001
-#define ALIGN_RIGHT 0x00000002
-#define ALIGN_HORIZONTAL 0x00000004
-#define ALIGN_VERTICAL 0x00000008
-#define ALIGN_MIDDLE 0x0000000c
-#define ALIGN_CENTER 0x0000000c
-#define ALIGN_TOP 0x00000010
-#define ALIGN_BOTTOM 0x00000020
+enum class ALIGN : ULONG {
+   NIL = 0,
+   LEFT = 0x00000001,
+   RIGHT = 0x00000002,
+   HORIZONTAL = 0x00000004,
+   VERTICAL = 0x00000008,
+   MIDDLE = 0x0000000c,
+   CENTER = 0x0000000c,
+   TOP = 0x00000010,
+   BOTTOM = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ALIGN)
 
 // Universal values for alignment of graphic layouts in documents.
 
-#define LAYOUT_SQUARE 0x00000000
-#define LAYOUT_TIGHT 0x00000001
-#define LAYOUT_LEFT 0x00000002
-#define LAYOUT_RIGHT 0x00000004
-#define LAYOUT_WIDE 0x00000006
-#define LAYOUT_BACKGROUND 0x00000008
-#define LAYOUT_FOREGROUND 0x00000010
-#define LAYOUT_EMBEDDED 0x00000020
-#define LAYOUT_LOCK 0x00000040
-#define LAYOUT_IGNORE_CURSOR 0x00000080
-#define LAYOUT_TILE 0x00000100
+enum class LAYOUT : ULONG {
+   NIL = 0,
+   SQUARE = 0x00000000,
+   TIGHT = 0x00000001,
+   LEFT = 0x00000002,
+   RIGHT = 0x00000004,
+   WIDE = 0x00000006,
+   BACKGROUND = 0x00000008,
+   FOREGROUND = 0x00000010,
+   EMBEDDED = 0x00000020,
+   LOCK = 0x00000040,
+   IGNORE_CURSOR = 0x00000080,
+   TILE = 0x00000100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(LAYOUT)
 
 struct HSV {
    DOUBLE Hue;           // Between 0 and 359.999
@@ -652,22 +741,6 @@ struct Edges {
    LONG Bottom;  // Bottom coordinate
 };
 
-#ifndef DEFINE_ENUM_FLAG_OPERATORS
-template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
-// used as an approximation of std::underlying_type<T>
-template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
-
-#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
-inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
-inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
-#endif
 // Script flags
 
 enum class SCF : ULONG {
@@ -680,10 +753,10 @@ DEFINE_ENUM_FLAG_OPERATORS(SCF)
 
 enum class STR : ULONG {
    NIL = 0,
-   MATCH_CASE = 0x0001,
-   CASE = 0x0001,
-   MATCH_LEN = 0x0002,
-   WILDCARD = 0x0004,
+   MATCH_CASE = 0x00000001,
+   CASE = 0x00000001,
+   MATCH_LEN = 0x00000002,
+   WILDCARD = 0x00000004,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(STR)
@@ -711,7 +784,7 @@ enum class PMF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(PMF)
 
-enum class ALF : ULONG {
+enum class ALF : UWORD {
    NIL = 0,
    SHARED = 0x0001,
    RECURSIVE = 0x0002,
@@ -734,15 +807,15 @@ DEFINE_ENUM_FLAG_OPERATORS(SMF)
 
 enum class RFD : ULONG {
    NIL = 0,
-   WRITE = 0x0001,
-   EXCEPT = 0x0002,
-   READ = 0x0004,
-   REMOVE = 0x0008,
-   STOP_RECURSE = 0x0010,
-   ALLOW_RECURSION = 0x0020,
-   SOCKET = 0x0040,
-   RECALL = 0x0080,
-   ALWAYS_CALL = 0x0100,
+   WRITE = 0x00000001,
+   EXCEPT = 0x00000002,
+   READ = 0x00000004,
+   REMOVE = 0x00000008,
+   STOP_RECURSE = 0x00000010,
+   ALLOW_RECURSION = 0x00000020,
+   SOCKET = 0x00000040,
+   RECALL = 0x00000080,
+   ALWAYS_CALL = 0x00000100,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(RFD)
@@ -1316,159 +1389,162 @@ DEFINE_ENUM_FLAG_OPERATORS(CNF)
 
 // Raw key codes
 
-#define K_A 1
-#define K_B 2
-#define K_C 3
-#define K_D 4
-#define K_E 5
-#define K_F 6
-#define K_G 7
-#define K_H 8
-#define K_I 9
-#define K_J 10
-#define K_K 11
-#define K_L 12
-#define K_M 13
-#define K_N 14
-#define K_O 15
-#define K_P 16
-#define K_Q 17
-#define K_R 18
-#define K_S 19
-#define K_T 20
-#define K_U 21
-#define K_V 22
-#define K_W 23
-#define K_X 24
-#define K_Y 25
-#define K_Z 26
-#define K_ONE 27
-#define K_TWO 28
-#define K_THREE 29
-#define K_FOUR 30
-#define K_FIVE 31
-#define K_SIX 32
-#define K_SEVEN 33
-#define K_EIGHT 34
-#define K_NINE 35
-#define K_ZERO 36
-#define K_REVERSE_QUOTE 37
-#define K_MINUS 38
-#define K_EQUALS 39
-#define K_L_SQUARE 40
-#define K_R_SQUARE 41
-#define K_SEMI_COLON 42
-#define K_APOSTROPHE 43
-#define K_COMMA 44
-#define K_DOT 45
-#define K_PERIOD 45
-#define K_SLASH 46
-#define K_BACK_SLASH 47
-#define K_SPACE 48
-#define K_NP_0 49
-#define K_NP_1 50
-#define K_NP_2 51
-#define K_NP_3 52
-#define K_NP_4 53
-#define K_NP_5 54
-#define K_NP_6 55
-#define K_NP_7 56
-#define K_NP_8 57
-#define K_NP_9 58
-#define K_NP_MULTIPLY 59
-#define K_NP_PLUS 60
-#define K_NP_BAR 61
-#define K_NP_SEPARATOR 61
-#define K_NP_MINUS 62
-#define K_NP_DECIMAL 63
-#define K_NP_DOT 63
-#define K_NP_DIVIDE 64
-#define K_L_CONTROL 65
-#define K_R_CONTROL 66
-#define K_HELP 67
-#define K_L_SHIFT 68
-#define K_R_SHIFT 69
-#define K_CAPS_LOCK 70
-#define K_PRINT 71
-#define K_L_ALT 72
-#define K_R_ALT 73
-#define K_L_COMMAND 74
-#define K_R_COMMAND 75
-#define K_F1 76
-#define K_F2 77
-#define K_F3 78
-#define K_F4 79
-#define K_F5 80
-#define K_F6 81
-#define K_F7 82
-#define K_F8 83
-#define K_F9 84
-#define K_F10 85
-#define K_F11 86
-#define K_F12 87
-#define K_F13 88
-#define K_F14 89
-#define K_F15 90
-#define K_F16 91
-#define K_F17 92
-#define K_MACRO 93
-#define K_NP_PLUS_MINUS 94
-#define K_LESS_GREATER 95
-#define K_UP 96
-#define K_DOWN 97
-#define K_RIGHT 98
-#define K_LEFT 99
-#define K_SCR_LOCK 100
-#define K_PAUSE 101
-#define K_WAKE 102
-#define K_SLEEP 103
-#define K_POWER 104
-#define K_BACKSPACE 105
-#define K_TAB 106
-#define K_ENTER 107
-#define K_ESCAPE 108
-#define K_DELETE 109
-#define K_CLEAR 110
-#define K_HOME 111
-#define K_PAGE_UP 112
-#define K_PAGE_DOWN 113
-#define K_END 114
-#define K_SELECT 115
-#define K_EXECUTE 116
-#define K_INSERT 117
-#define K_UNDO 118
-#define K_REDO 119
-#define K_MENU 120
-#define K_FIND 121
-#define K_CANCEL 122
-#define K_BREAK 123
-#define K_NUM_LOCK 124
-#define K_PRT_SCR 125
-#define K_NP_ENTER 126
-#define K_SYSRQ 127
-#define K_F18 128
-#define K_F19 129
-#define K_F20 130
-#define K_WIN_CONTROL 131
-#define K_VOLUME_UP 132
-#define K_VOLUME_DOWN 133
-#define K_BACK 134
-#define K_CALL 135
-#define K_END_CALL 136
-#define K_CAMERA 137
-#define K_AT 138
-#define K_PLUS 139
-#define K_LENS_FOCUS 140
-#define K_STOP 141
-#define K_NEXT 142
-#define K_PREVIOUS 143
-#define K_FORWARD 144
-#define K_REWIND 145
-#define K_MUTE 146
-#define K_STAR 147
-#define K_POUND 148
-#define K_PLAY 149
-#define K_LIST_END 150
+enum class KEY : LONG {
+   NIL = 0,
+   A = 1,
+   B = 2,
+   C = 3,
+   D = 4,
+   E = 5,
+   F = 6,
+   G = 7,
+   H = 8,
+   I = 9,
+   J = 10,
+   K = 11,
+   L = 12,
+   M = 13,
+   N = 14,
+   O = 15,
+   P = 16,
+   Q = 17,
+   R = 18,
+   S = 19,
+   T = 20,
+   U = 21,
+   V = 22,
+   W = 23,
+   X = 24,
+   Y = 25,
+   Z = 26,
+   ONE = 27,
+   TWO = 28,
+   THREE = 29,
+   FOUR = 30,
+   FIVE = 31,
+   SIX = 32,
+   SEVEN = 33,
+   EIGHT = 34,
+   NINE = 35,
+   ZERO = 36,
+   REVERSE_QUOTE = 37,
+   MINUS = 38,
+   EQUALS = 39,
+   L_SQUARE = 40,
+   R_SQUARE = 41,
+   SEMI_COLON = 42,
+   APOSTROPHE = 43,
+   COMMA = 44,
+   DOT = 45,
+   PERIOD = 45,
+   SLASH = 46,
+   BACK_SLASH = 47,
+   SPACE = 48,
+   NP_0 = 49,
+   NP_1 = 50,
+   NP_2 = 51,
+   NP_3 = 52,
+   NP_4 = 53,
+   NP_5 = 54,
+   NP_6 = 55,
+   NP_7 = 56,
+   NP_8 = 57,
+   NP_9 = 58,
+   NP_MULTIPLY = 59,
+   NP_PLUS = 60,
+   NP_BAR = 61,
+   NP_SEPARATOR = 61,
+   NP_MINUS = 62,
+   NP_DECIMAL = 63,
+   NP_DOT = 63,
+   NP_DIVIDE = 64,
+   L_CONTROL = 65,
+   R_CONTROL = 66,
+   HELP = 67,
+   L_SHIFT = 68,
+   R_SHIFT = 69,
+   CAPS_LOCK = 70,
+   PRINT = 71,
+   L_ALT = 72,
+   R_ALT = 73,
+   L_COMMAND = 74,
+   R_COMMAND = 75,
+   F1 = 76,
+   F2 = 77,
+   F3 = 78,
+   F4 = 79,
+   F5 = 80,
+   F6 = 81,
+   F7 = 82,
+   F8 = 83,
+   F9 = 84,
+   F10 = 85,
+   F11 = 86,
+   F12 = 87,
+   F13 = 88,
+   F14 = 89,
+   F15 = 90,
+   F16 = 91,
+   F17 = 92,
+   MACRO = 93,
+   NP_PLUS_MINUS = 94,
+   LESS_GREATER = 95,
+   UP = 96,
+   DOWN = 97,
+   RIGHT = 98,
+   LEFT = 99,
+   SCR_LOCK = 100,
+   PAUSE = 101,
+   WAKE = 102,
+   SLEEP = 103,
+   POWER = 104,
+   BACKSPACE = 105,
+   TAB = 106,
+   ENTER = 107,
+   ESCAPE = 108,
+   DELETE = 109,
+   CLEAR = 110,
+   HOME = 111,
+   PAGE_UP = 112,
+   PAGE_DOWN = 113,
+   END = 114,
+   SELECT = 115,
+   EXECUTE = 116,
+   INSERT = 117,
+   UNDO = 118,
+   REDO = 119,
+   MENU = 120,
+   FIND = 121,
+   CANCEL = 122,
+   BREAK = 123,
+   NUM_LOCK = 124,
+   PRT_SCR = 125,
+   NP_ENTER = 126,
+   SYSRQ = 127,
+   F18 = 128,
+   F19 = 129,
+   F20 = 130,
+   WIN_CONTROL = 131,
+   VOLUME_UP = 132,
+   VOLUME_DOWN = 133,
+   BACK = 134,
+   CALL = 135,
+   END_CALL = 136,
+   CAMERA = 137,
+   AT = 138,
+   PLUS = 139,
+   LENS_FOCUS = 140,
+   STOP = 141,
+   NEXT = 142,
+   PREVIOUS = 143,
+   FORWARD = 144,
+   REWIND = 145,
+   MUTE = 146,
+   STAR = 147,
+   POUND = 148,
+   PLAY = 149,
+   LIST_END = 150,
+};
 
 
 #ifndef __GNUC__
@@ -1890,9 +1966,9 @@ typedef struct MemInfo {
    APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
    LONG     Size;        // The size of the memory block.
-   WORD     AccessCount; // Total number of active locks on this block.
-   WORD     Flags;       // The type of memory.
+   MEM      Flags;       // The type of memory.
    MEMORYID MemoryID;    // The unique ID for this block.
+   WORD     AccessCount; // Total number of active locks on this block.
 } MEMINFO;
 
 struct ActionEntry {
@@ -1936,7 +2012,7 @@ struct CompressedItem {
    LARGE   CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-   LONG    Permissions;             // Original permissions - see PERMIT flags.
+   PERMIT  Permissions;             // Original permissions - see PERMIT flags.
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
    LONG    OthersID;                // Original others ID
@@ -1952,7 +2028,7 @@ struct FileInfo {
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
    RDF    Flags;              // Additional flags to describe the file.
-   LONG   Permissions;        // Standard permission flags.
+   PERMIT Permissions;        // Standard permission flags.
    LONG   UserID;             // User  ID (Unix systems only).
    LONG   GroupID;            // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
@@ -2012,13 +2088,13 @@ struct ScriptArg { // For use with scExec
 
 extern struct CoreBase *CoreBase;
 struct CoreBase {
-   ERROR (*_AccessMemory)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    CSTRING (*_ResolveClassID)(CLASSID ID);
    LONG (*_AllocateID)(IDTYPE Type);
-   ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
+   ERROR (*_AllocMemory)(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
    ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
@@ -2073,14 +2149,14 @@ struct CoreBase {
    void (*_UnsubscribeEvent)(APTR Event);
    ERROR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
-   LARGE (*_GetEventID)(LONG Group, CSTRING SubGroup, CSTRING Event);
+   LARGE (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
    ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
    ERROR (*_SysUnlock)(LONG Index);
-   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
+   ERROR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERROR (*_DeleteVolume)(CSTRING Name);
@@ -2129,19 +2205,19 @@ struct CoreBase {
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
    STT (*_StrDatatype)(CSTRING String);
    void (*_UnloadFile)(struct CacheFile * Cache);
-   void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
+   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
 };
 
 #ifndef PRV_CORE_MODULE
-inline ERROR AccessMemory(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
+inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
 inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
 inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
@@ -2196,14 +2272,14 @@ inline ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase-
 inline void UnsubscribeEvent(APTR Event) { return CoreBase->_UnsubscribeEvent(Event); }
 inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
-inline LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
+inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
 inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
 inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
-inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
+inline ERROR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
@@ -2252,7 +2328,7 @@ inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * Objec
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
-inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
+inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 #endif
@@ -2315,7 +2391,7 @@ inline ERROR FreeResource(const void *Address) {
    return FreeResource(((LONG *)Address)[-2]);
 }
 
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -2395,7 +2471,7 @@ inline STRING StrClone(CSTRING String)
 
    LONG len = strlen(String);
    STRING newstr;
-   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }
@@ -2847,7 +2923,11 @@ class Create {
                      if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
-               else { error = log.warning(ERR_UnsupportedField); return; }
+               else {
+                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  error = log.warning(ERR_UnsupportedField);
+                  return;
+               }
             }
 
             if ((error = InitObject(obj))) {
@@ -2882,10 +2962,10 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase
 
 // Action and Notification Structures
 
-struct acClipboard     { LONG Mode; };
+struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { OBJECTPTR Object; LONG Datatype; const void *Buffer; LONG Size; };
+struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
 struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
@@ -2902,7 +2982,7 @@ struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class;
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
 struct acUndo          { LONG Steps; };
@@ -2933,7 +3013,7 @@ inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
@@ -2948,7 +3028,7 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
    return Action(AC_Draw, Object, &args);
 }
 
-inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, LONG Datatype, const void *Buffer, LONG Size) {
+inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
 }
@@ -3028,7 +3108,7 @@ inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
@@ -3065,9 +3145,9 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
 inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
@@ -3093,7 +3173,7 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
 
 INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
+   struct mcFindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
    ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
    if (Field) *Field = args.Field;
    if (Source) *Source = args.Source;
@@ -3121,7 +3201,7 @@ class objMetaClass : public BaseClass {
    CLASSID ClassID;                     // Specifies the ID of a class object.
    CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
    LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
-   LONG    Category;                    // The system category that a class belongs to.
+   CCF     Category;                    // The system category that a class belongs to.
 
    // Customised field setting
 
@@ -3191,7 +3271,7 @@ class objMetaClass : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCategory(const LONG Value) {
+   inline ERROR setCategory(const CCF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Category = Value;
       return ERR_Okay;
@@ -3231,10 +3311,10 @@ class objStorageDevice : public BaseClass {
 
    using create = pf::Create<objStorageDevice>;
 
-   LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
-   LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
-   LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
-   LARGE BytesUsed;      // Total amount of storage space in use.
+   DEVICE DeviceFlags;    // These read-only flags identify the type of device and its features.
+   LARGE  DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
+   LARGE  BytesFree;      // Total amount of storage space that is available, measured in bytes.
+   LARGE  BytesUsed;      // Total amount of storage space in use.
 
    // Customised field setting
 
@@ -3302,7 +3382,7 @@ INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
 INLINE ERROR flNext(APTR Ob, objFile ** File) {
-   struct flNext args = { 0 };
+   struct flNext args = { (objFile *)0 };
    ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
    return(error);
@@ -3330,7 +3410,7 @@ class objFile : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -3357,13 +3437,13 @@ class objFile : public BaseClass {
       return Action(AC_Rename, this, &args);
    }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
@@ -3490,7 +3570,7 @@ struct cfgMergeFile { CSTRING Path;  };
 struct cfgMerge { OBJECTPTR Source;  };
 
 INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
-   struct cfgReadValue args = { Group, Key, 0 };
+   struct cfgReadValue args = { Group, Key, (CSTRING)0 };
    ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
@@ -3517,7 +3597,7 @@ INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) {
 }
 
 INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) {
-   struct cfgGetGroupFromIndex args = { Index, 0 };
+   struct cfgGetGroupFromIndex args = { Index, (CSTRING)0 };
    ERROR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
    if (Group) *Group = args.Group;
    return(error);
@@ -3621,7 +3701,7 @@ class objConfig : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -3709,14 +3789,14 @@ INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
 }
 
 INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) {
-   struct scCallback args = { ProcedureID, Args, TotalArgs, 0 };
+   struct scCallback args = { ProcedureID, Args, TotalArgs, (LONG)0 };
    ERROR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
    if (Error) *Error = args.Error;
    return(error);
 }
 
 INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
-   struct scGetProcedureID args = { Procedure, 0 };
+   struct scGetProcedureID args = { Procedure, (LARGE)0 };
    ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
    if (ProcedureID) *ProcedureID = args.ProcedureID;
    return(error);
@@ -3758,7 +3838,7 @@ class objScript : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -3875,7 +3955,7 @@ INLINE ERROR taskAddArgument(APTR Ob, CSTRING Argument) {
 #define taskQuit(obj) Action(MT_TaskQuit,(obj),0)
 
 INLINE ERROR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) {
-   struct taskGetEnv args = { Name, 0 };
+   struct taskGetEnv args = { Name, (CSTRING)0 };
    ERROR error = Action(MT_TaskGetEnv, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
@@ -4110,7 +4190,7 @@ class objThread : public BaseClass {
 struct modResolveSymbol { CSTRING Name; APTR Address;  };
 
 INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
-   struct modResolveSymbol args = { Name, 0 };
+   struct modResolveSymbol args = { Name, (APTR)0 };
    ERROR error = Action(MT_ModResolveSymbol, (OBJECTPTR)Ob, &args);
    if (Address) *Address = args.Address;
    return(error);
@@ -4310,7 +4390,7 @@ struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
 struct cmpFind { CSTRING Path; STR Flags; struct CompressedItem * Item;  };
 
 INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) {
-   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, 0 };
+   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpCompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -4322,7 +4402,7 @@ INLINE ERROR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) {
 }
 
 INLINE ERROR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) {
-   struct cmpDecompressBuffer args = { Input, Output, OutputSize, 0 };
+   struct cmpDecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpDecompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -4373,7 +4453,7 @@ INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callbac
 }
 
 INLINE ERROR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) {
-   struct cmpFind args = { Path, Flags, 0 };
+   struct cmpFind args = { Path, Flags, (struct CompressedItem *)0 };
    ERROR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);
@@ -4392,7 +4472,7 @@ class objCompression : public BaseClass {
    LONG     CompressionLevel; // The compression level to use when compressing data.
    CMF      Flags;           // Optional flags.
    LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
-   LONG     Permissions;     // Default permissions for decompressed files are defined here.
+   PERMIT   Permissions;     // Default permissions for decompressed files are defined here.
    LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
    LONG     WindowBits;      // Special option for certain compression formats.
 
@@ -4425,7 +4505,7 @@ class objCompression : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setPermissions(const LONG Value) {
+   inline ERROR setPermissions(const PERMIT Value) {
       this->Permissions = Value;
       return ERR_Okay;
    }
@@ -4505,16 +4585,16 @@ class objCompressedStream : public BaseClass {
 // Note that the length of the data is only needed when messaging between processes, so we can skip it for these
 // direct-access data channel macros.
 
-#define acDataContent(a,b)  acDataFeed((a),0,DATA_CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA_XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA_TEXT,(b),0)
+#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
+#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
+#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
 
 inline ERROR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
    struct acCustom args = { Number, String };
    return ActionMsg(AC_Custom, ObjectID, &args);
 }
 
-inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, LONG Datatype, const APTR Data, LONG Size) {
+inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
    struct acDataFeed channel = { Sender, Datatype, Data, Size };
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }
@@ -4643,34 +4723,34 @@ struct rkEvent {
    // Data follows
 };
 
-#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
+#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG::DISPLAY, "resolution", "change")
 
-#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
+#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG::GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
-#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG::FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG::FILESYSTEM, "volume", "deleted")
 
-#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
-#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
+#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG::SYSTEM, "task", "created")
+#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG::SYSTEM, "task", "removed")
 
-#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG_POWER, "state", "suspending")
-#define EVID_POWER_STATE_RESUMED        GetEventID(EVG_POWER, "state", "resumed")
-#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG_POWER, "display", "standby")
-#define EVID_POWER_BATTERY_LOW          GetEventID(EVG_POWER, "battery", "low")
-#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG_POWER, "battery", "critical")
-#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG_POWER, "cputemp", "high")
-#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
-#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
-#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
+#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG::POWER, "state", "suspending")
+#define EVID_POWER_STATE_RESUMED        GetEventID(EVG::POWER, "state", "resumed")
+#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG::POWER, "display", "standby")
+#define EVID_POWER_BATTERY_LOW          GetEventID(EVG::POWER, "battery", "low")
+#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG::POWER, "battery", "critical")
+#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG::POWER, "cputemp", "high")
+#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG::POWER, "cputemp", "critical")
+#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG::POWER, "screensaver", "on")
+#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG::POWER, "screensaver", "off")
 
-#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
-#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")
+#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG::IO, "keymap", "change")
+#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG::IO, "keyboard", "keypress")
 
-#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG_AUDIO, "volume", "master")
-#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG_AUDIO, "volume", "linein")
-#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG_AUDIO, "volume", "mic")
-#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG_AUDIO, "volume", "muted") // All volumes have been muted
-#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG_AUDIO, "volume", "unmuted") // All volumes have been unmuted
+#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG::AUDIO, "volume", "master")
+#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG::AUDIO, "volume", "linein")
+#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG::AUDIO, "volume", "mic")
+#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG::AUDIO, "volume", "muted") // All volumes have been muted
+#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG::AUDIO, "volume", "unmuted") // All volumes have been unmuted
 
 // Event structures.
 
@@ -4685,7 +4765,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

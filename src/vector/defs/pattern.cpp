@@ -41,7 +41,7 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
    else if (!(Self->Bitmap = objBitmap::create::integral(
       fl::Width(Self->Scene->PageWidth),
       fl::Height(Self->Scene->PageHeight),
-      fl::Flags(BMF_ALPHA_CHANNEL),
+      fl::Flags(BMF::ALPHA_CHANNEL),
       fl::BitsPerPixel(32)))) return ERR_CreateObject;
 
    ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
@@ -74,12 +74,12 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
@@ -107,9 +107,9 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
    if (!NewObject(ID_VECTORSCENE, NF::INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
-         Self->SpreadMethod = VSPREAD_REPEAT;
-         Self->Units        = VUNIT_BOUNDING_BOX;
-         Self->ContentUnits = VUNIT_USERSPACE;
+         Self->SpreadMethod = VSPREAD::REPEAT;
+         Self->Units        = VUNIT::BOUNDING_BOX;
+         Self->ContentUnits = VUNIT::USERSPACE;
          Self->Opacity      = 1.0;
          return ERR_Okay;
       }
@@ -206,7 +206,7 @@ static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Va
       auto hook = &Self->Matrices;
       while (Value) {
          VectorMatrix *matrix;
-         if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix)) {
+         if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
             matrix->Vector = NULL;
             matrix->Next   = NULL;
             matrix->ScaleX = Value->ScaleX;
@@ -282,7 +282,7 @@ static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
-      if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix)) {
+      if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
          matrix->Vector = NULL;
          matrix->Next   = Self->Matrices;
          matrix->ScaleX = 1.0;
@@ -445,17 +445,17 @@ static const FieldDef clPatternDimensions[] = {
 };
 
 static const FieldDef clPatternUnits[] = {
-   { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
-   { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
+   { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
+   { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
 static const FieldDef clPatternSpread[] = {
-   { "Pad",      VSPREAD_PAD },
-   { "Reflect",  VSPREAD_REFLECT },
-   { "Repeat",   VSPREAD_REPEAT },
-   { "ReflectX", VSPREAD_REFLECT_X },
-   { "ReflectY", VSPREAD_REFLECT_Y },
+   { "Pad",      VSPREAD::PAD },
+   { "Reflect",  VSPREAD::REFLECT },
+   { "Repeat",   VSPREAD::REPEAT },
+   { "ReflectX", VSPREAD::REFLECT_X },
+   { "ReflectY", VSPREAD::REFLECT_Y },
    { NULL, 0 }
 };
 
@@ -484,7 +484,7 @@ ERROR init_pattern(void) // The pattern is a definition type for creating patter
    clVectorPattern = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORPATTERN),
       fl::Name("VectorPattern"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clPatternActions),
       fl::Fields(clPatternFields),

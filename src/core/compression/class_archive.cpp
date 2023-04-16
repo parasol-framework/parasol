@@ -209,7 +209,7 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
    if ((Self->Flags & (FL::NEW|FL::WRITE)) != FL::NIL) return log.warning(ERR_ReadOnly);
 
    ERROR error = ERR_Search;
-   if (!AllocMemory(sizeof(prvFileArchive), MEM_DATA, &Self->ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileArchive), MEM::DATA, &Self->ChildPrivate, NULL)) {
       auto prv = (prvFileArchive *)Self->ChildPrivate;
       new (prv) prvFileArchive;
 
@@ -275,18 +275,18 @@ static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 
    auto &item = prv->Info;
    if (item.Flags & ZIP_SECURITY) {
-      LONG permissions = 0;
-      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      PERMIT permissions = PERMIT::NIL;
+      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-      if (item.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (item.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (item.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (item.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+      if (item.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+      if (item.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
 
       Self->Permissions = permissions;
    }
@@ -401,11 +401,11 @@ static ERROR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
    Log log;
    LARGE pos;
 
-   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, Args->Position);
+   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, LONG(Args->Position));
 
-   if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_END) pos = Self->Size - F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) pos = Self->Position + F2T(Args->Offset);
+   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::END) pos = Self->Size - F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->Position + F2T(Args->Offset);
    else return log.warning(ERR_Args);
 
    if (pos < 0) return log.warning(ERR_OutOfRange);
@@ -509,7 +509,7 @@ static ERROR scan_folder(DirInfo *Dir)
 
          if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
             Dir->Info->Flags |= RDF::PERMISSIONS;
-            Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+            Dir->Info->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
          }
 
          if ((Dir->prvFlags & RDF::SIZE) != RDF::NIL) {
@@ -551,7 +551,7 @@ static ERROR scan_folder(DirInfo *Dir)
 
          if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
             Dir->Info->Flags |= RDF::PERMISSIONS;
-            Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+            Dir->Info->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
          }
 
          ((ArchiveDriver *)Dir->Driver)->Index = it;

@@ -197,7 +197,7 @@ static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args
 
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
 
-   if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger)) {
+   if (!AllocMemory(sizeof(DocTrigger), MEM::DATA|MEM::NO_CLEAR, &trigger)) {
       trigger->Function = *Args->Function;
       trigger->Next = Self->Triggers[Args->Trigger];
       Self->Triggers[Args->Trigger] = trigger;
@@ -329,14 +329,14 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
    if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
 
-   if ((Args->Mode IS CLIPMODE_CUT) or (Args->Mode IS CLIPMODE_COPY)) {
-      if (Args->Mode IS CLIPMODE_CUT) log.branch("Operation: Cut");
+   if ((Args->Mode IS CLIPMODE::CUT) or (Args->Mode IS CLIPMODE::COPY)) {
+      if (Args->Mode IS CLIPMODE::CUT) log.branch("Operation: Cut");
       else log.branch("Operation: Copy");
 
       // Calculate the length of the highlighted document
 
       if (Self->SelectEnd != Self->SelectStart) {
-         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
+         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM::STRING|MEM::NO_CLEAR, &buffer)) {
             // Copy the selected area into the buffer
 
             LONG i = Self->SelectStart;
@@ -355,7 +355,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
             if (clipboard.ok()) {
                if (!clipAddText(*clipboard, buffer)) {
                   // Delete the highlighted document if the CUT mode was used
-                  if (Args->Mode IS CLIPMODE_CUT) {
+                  if (Args->Mode IS CLIPMODE::CUT) {
                      //delete_selection(Self);
                   }
                }
@@ -369,7 +369,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_PASTE) {
+   else if (Args->Mode IS CLIPMODE::PASTE) {
       log.branch("Operation: Paste");
 
       if (!(Self->Flags & DCF_EDIT)) {
@@ -379,7 +379,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
-         struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
+         struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
          if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
             objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
@@ -829,7 +829,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
       drwAddCallback(surface, (APTR)&draw_document);
       auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+      gfxSubscribeInput(&callback, Self->PageID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
       Self->PageID = surface->UID;
    }
    else return ERR_CreateObject;
@@ -1014,20 +1014,20 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!error) {
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer) != ERR_Okay) {
+         if (AllocMemory(Self->BufferSize, MEM::NO_CLEAR, &Self->Buffer) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->Temp) {
          Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp) != ERR_Okay) {
+         if (AllocMemory(Self->TempSize, MEM::NO_CLEAR, &Self->Temp) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg) != ERR_Okay) {
+         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM::NO_CLEAR, &Self->VArg) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
@@ -1208,7 +1208,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
    if (Args->Format IS DATA_TEXT) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output)) {
+      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
          LONG j = 0;
          LONG i = Args->Start;
          while (i < Args->End) {
@@ -1232,7 +1232,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    }
    else if (Args->Format IS DATA_RAW) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output)) {
+      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
          CopyMemory(Self->Stream + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;

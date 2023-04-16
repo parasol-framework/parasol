@@ -422,7 +422,7 @@ gui.columnView = function(Options)
 
             col.resizeVP = View.banner.viewport.new('VectorViewport', {
                x = x + col.width - (MARGIN * 0.5), y = 0,
-               width = MARGIN, height = '100%', cursor = PTR_SPLIT_HORIZONTAL
+               width = MARGIN, height = '100%', cursor = PTC_SPLIT_HORIZONTAL
             })
 
             col.resizeVP.dragCallback = function(SizeVP, X, Y)

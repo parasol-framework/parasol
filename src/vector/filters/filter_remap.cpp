@@ -139,12 +139,12 @@ class extRemapFX : public extFilterEffect {
 
    extRemapFX() : Red("Red"), Green("Green"), Blue("Blue"), Alpha("Alpha") { }
 
-   Component * getComponent(LONG Component) {
+   Component * getComponent(CMP Component) {
       switch(Component) {
-         case CMP_RED:   return &Red;
-         case CMP_GREEN: return &Green;
-         case CMP_BLUE:  return &Blue;
-         case CMP_ALPHA: return &Alpha;
+         case CMP::RED:   return &Red;
+         case CMP::GREEN: return &Green;
+         case CMP::BLUE:  return &Blue;
+         case CMP::ALPHA: return &Alpha;
          default: return NULL;
       }
    }
@@ -179,7 +179,7 @@ static ERROR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
       auto dp = (ULONG *)dest;
       auto sp = in;
 
-      if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) {
+      if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
          for (LONG x=0; x < width; x++) {
             if (auto a = sp[A]) {
                UBYTE out[4];
@@ -512,7 +512,7 @@ ERROR init_remapfx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_REMAPFX),
       fl::Name("RemapFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clRemapFXActions),
       fl::Methods(clRemapFXMethods),
       fl::Fields(clRemapFXFields),

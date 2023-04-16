@@ -429,7 +429,7 @@ static ERROR init_ellipse(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORELLIPSE),
       fl::Name("VectorEllipse"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clEllipseActions),
       fl::Fields(clEllipseFields),
       fl::Size(sizeof(extVectorEllipse)),

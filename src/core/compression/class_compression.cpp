@@ -502,7 +502,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -754,7 +754,7 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -1135,7 +1135,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    // Search for the file(s) in our archive that match the given name and extract them to the destination folder.
 
-   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
+   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, LONG(Self->Permissions));
 
    std::string destpath(Args->Dest);
 
@@ -1207,7 +1207,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
          // Seek to the start of the compressed data
 
-         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
+         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
          }
@@ -1215,7 +1215,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          UWORD namelen, extralen;
          if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
          if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
-         if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
+         if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
          }
@@ -1282,22 +1282,22 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          else {
             // Create the destination file or folder
 
-            LONG permissions;
+            PERMIT permissions;
 
             if ((Self->Flags & CMF::APPLY_SECURITY) != CMF::NIL) {
                if (zf.Flags & ZIP_SECURITY) {
-                  permissions = 0;
-                  if (zf.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-                  if (zf.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-                  if (zf.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+                  permissions = PERMIT::NIL;
+                  if (zf.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+                  if (zf.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+                  if (zf.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-                  if (zf.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-                  if (zf.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-                  if (zf.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+                  if (zf.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+                  if (zf.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+                  if (zf.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-                  if (zf.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-                  if (zf.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-                  if (zf.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+                  if (zf.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+                  if (zf.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+                  if (zf.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
                }
                else permissions = Self->Permissions;
             }
@@ -1481,7 +1481,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
    if (Self->isSubClass()) return ERR_NoSupport; // Object belongs to a Compression sub-class
 
-   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
+   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, LONG(Self->Permissions));
 
    bool inflate_end = false;
    Self->FileIndex = 0;
@@ -1517,14 +1517,14 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
       // Seek to the start of the compressed data
 
-      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
+      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
 
       UWORD namelen, extralen;
       if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
       if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
-      if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
+      if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
 
@@ -1882,10 +1882,10 @@ static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
 
    new (Self) extCompression;
 
-   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Output, NULL)) {
-      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Input, NULL)) {
+   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL)) {
+      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL)) {
          Self->CompressionLevel = 60; // 60% compression by default
-         Self->Permissions      = 0; // Inherit permissions by default. PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
+         Self->Permissions      = PERMIT::NIL; // Inherit permissions by default. PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
          Self->MinOutputSize    = (32 * 1024) + 2048; // Has to at least match the minimum 'window size' of each compression block, plus extra in case of overflow.  Min window size is typically 16k
          Self->WindowBits = MAX_WBITS; // If negative then you get raw compression when dealing with buffers and stream data, i.e. no header information
          return ERR_Okay;
@@ -2059,27 +2059,27 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 #include "compression_func.cpp"
 
 static const FieldDef clPermissionFlags[] = {
-   { "Read",         PERMIT_READ },
-   { "Write",        PERMIT_WRITE },
-   { "Exec",         PERMIT_EXEC },
-   { "Executable",   PERMIT_EXEC },
-   { "Delete",       PERMIT_DELETE },
-   { "Hidden",       PERMIT_HIDDEN },
-   { "Archive",      PERMIT_ARCHIVE },
-   { "Password",     PERMIT_PASSWORD },
-   { "UserID",       PERMIT_USERID },
-   { "GroupID",      PERMIT_GROUPID },
-   { "OthersRead",   PERMIT_OTHERS_READ },
-   { "OthersWrite",  PERMIT_OTHERS_WRITE },
-   { "OthersExec",   PERMIT_OTHERS_EXEC },
-   { "OthersDelete", PERMIT_OTHERS_DELETE },
-   { "GroupRead",    PERMIT_GROUP_READ },
-   { "GroupWrite",   PERMIT_GROUP_WRITE },
-   { "GroupExec",    PERMIT_GROUP_EXEC },
-   { "GroupDelete",  PERMIT_GROUP_DELETE },
-   { "AllRead",      PERMIT_ALL_READ },
-   { "AllWrite",     PERMIT_ALL_WRITE },
-   { "AllExec",      PERMIT_ALL_EXEC },
+   { "Read",         PERMIT::READ },
+   { "Write",        PERMIT::WRITE },
+   { "Exec",         PERMIT::EXEC },
+   { "Executable",   PERMIT::EXEC },
+   { "Delete",       PERMIT::DELETE },
+   { "Hidden",       PERMIT::HIDDEN },
+   { "Archive",      PERMIT::ARCHIVE },
+   { "Password",     PERMIT::PASSWORD },
+   { "UserID",       PERMIT::USERID },
+   { "GroupID",      PERMIT::GROUPID },
+   { "OthersRead",   PERMIT::OTHERS_READ },
+   { "OthersWrite",  PERMIT::OTHERS_WRITE },
+   { "OthersExec",   PERMIT::OTHERS_EXEC },
+   { "OthersDelete", PERMIT::OTHERS_DELETE },
+   { "GroupRead",    PERMIT::GROUP_READ },
+   { "GroupWrite",   PERMIT::GROUP_WRITE },
+   { "GroupExec",    PERMIT::GROUP_EXEC },
+   { "GroupDelete",  PERMIT::GROUP_DELETE },
+   { "AllRead",      PERMIT::ALL_READ },
+   { "AllWrite",     PERMIT::ALL_WRITE },
+   { "AllExec",      PERMIT::ALL_EXEC },
    { NULL, 0 }
 };
 
@@ -2116,7 +2116,7 @@ extern "C" ERROR add_compression_class(void)
       fl::FileExtension("*.zip"),
       fl::FileDescription("ZIP File"),
       fl::FileHeader("[0:$504b0304]"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Actions(clCompressionActions),
       fl::Methods(clCompressionMethods),
       fl::Fields(clFields),

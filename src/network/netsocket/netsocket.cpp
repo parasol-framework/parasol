@@ -38,8 +38,8 @@ on which to listen for new clients.  If multiple connections from a single clien
 When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, LONG State)`
 
 The NetSocket parameter refers to the original NetSocket object, @ClientSocket applies if a client connection is
-involved and the State value will be set to `NTC_CONNECTED`.  If a client disconnects, the #Feedback function will be
-called in the same manner but with a State value of `NTC_DISCONNECTED`.
+involved and the State value will be set to `NTC::CONNECTED`.  If a client disconnects, the #Feedback function will be
+called in the same manner but with a State value of `NTC::DISCONNECTED`.
 
 Information on all active connections can be read from the #Clients field.  This contains a linked list of IP
 addresses and their connections to the server port.
@@ -103,9 +103,9 @@ This method is non-blocking.  It will return immediately and the connection will
 to the connection request or an error occurs.  Client code should subscribe to the #State field to respond to changes to
 the connection state.
 
-Pre-Condition: Must be in a connection state of `NTC_DISCONNECTED`
+Pre-Condition: Must be in a connection state of `NTC::DISCONNECTED`
 
-Post-Condition: If this method returns `ERR_Okay`, will be in state `NTC_CONNECTING`.
+Post-Condition: If this method returns `ERR_Okay`, will be in state `NTC::CONNECTING`.
 
 -INPUT-
 cstr Address: String containing either a domain name (e.g. "www.google.com") or an IP address (e.g. "123.123.123.123")
@@ -114,7 +114,7 @@ int Port: Remote port to connect to.
 -ERRORS-
 Okay: The NetSocket connecting process was successfully started.
 Args: Address was NULL, or Port was not in the required range.
-InvalidState: The NetSocket was not in the state NTC_DISCONNECTED.
+InvalidState: The NetSocket was not in the state NTC::DISCONNECTED.
 HostNotFound: Host name resolution failed.
 Failed: The connect failed for some other reason.
 -END-
@@ -130,11 +130,11 @@ static ERROR NETSOCKET_Connect(extNetSocket *Self, struct nsConnect *Args)
 
    if ((!Args) or (!Args->Address) or (Args->Port <= 0) or (Args->Port >= 65536)) return log.warning(ERR_Args);
 
-   if (Self->Flags & NSF_SERVER) return ERR_Failed;
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) return ERR_Failed;
 
    if (!Self->SocketHandle) return log.warning(ERR_NotInitialised);
 
-   if (Self->State != NTC_DISCONNECTED) {
+   if (Self->State != NTC::DISCONNECTED) {
       log.warning("Attempt to connect when socket is not in disconnected state");
       return ERR_InvalidState;
    }
@@ -211,11 +211,11 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
       else {
          log.warning("Connect() failed: %s", strerror(errno));
          Socket->Error = ERR_Failed;
-         Socket->setState(NTC_DISCONNECTED);
+         Socket->setState(NTC::DISCONNECTED);
          return;
       }
 
-      Socket->setState( NTC_CONNECTING);
+      Socket->setState( NTC::CONNECTING);
       RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
 
       // The write queue will be signalled once the connection process is completed.
@@ -225,7 +225,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
    else {
       log.trace("connect() successful.");
 
-      Socket->setState(NTC_CONNECTED);
+      Socket->setState(NTC::CONNECTED);
       RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
    }
 
@@ -235,7 +235,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERROR Error, const std::
       return;
    }
 
-   Socket->setState(NTC_CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
+   Socket->setState(NTC::CONNECTING); // Connection isn't complete yet - see win32_netresponse() code for NTE_CONNECT
 #endif
 }
 
@@ -422,7 +422,7 @@ static ERROR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct nsGetLocalIP
       Args->Address->Data[1] = 0;
       Args->Address->Data[2] = 0;
       Args->Address->Data[3] = 0;
-      Args->Address->Type = IPADDR_V4;
+      Args->Address->Type = IPADDR::V4;
       return ERR_Okay;
    }
    else return log.warning(ERR_Failed);
@@ -439,11 +439,11 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
    if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR_Okay; // The socket has been pre-configured by the developer
 
 #ifdef ENABLE_SSL
-   // Initialise the SSL structures (do not perform any connection yet).  Notice how the NSF_SSL flag is used to check
+   // Initialise the SSL structures (do not perform any connection yet).  Notice how the NSF::SSL flag is used to check
    // for an SSL request - however after this point any SSL checks must be made on the presence of a value in the SSL
    // field.
 
-   if (Self->Flags & NSF_SSL) {
+   if ((Self->Flags & NSF::SSL) != NSF::NIL) {
       if ((error = sslInit()) != ERR_Okay) return error;
       if ((error = sslSetup(Self)) != ERR_Okay) return error;
    }
@@ -492,7 +492,7 @@ static ERROR NETSOCKET_Init(extNetSocket *Self, APTR Void)
 
 #endif
 
-   if (Self->Flags & NSF_SERVER) {
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       if (!Self->Port) return log.warning(ERR_FieldNotSet);
 
       if (Self->IPV6) {
@@ -572,7 +572,7 @@ static ERROR NETSOCKET_NewObject(extNetSocket *Self, APTR Void)
    Self->SocketHandle = NOHANDLE;
    Self->Error        = ERR_Okay;
    Self->Backlog      = 10;
-   Self->State        = NTC_DISCONNECTED;
+   Self->State        = NTC::DISCONNECTED;
    Self->MsgLimit     = 1024768;
    Self->ClientLimit  = 1024;
    #ifdef _WIN32
@@ -605,7 +605,7 @@ static ERROR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
-   if (Self->Flags & NSF_SERVER) {
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       log.warning("DEPRECATED: Read from the ClientSocket instead.");
       return ERR_NoSupport;
    }
@@ -669,7 +669,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
    Args->Progress = 0;
 
    NetQueue *queue;
-   if (Self->Flags & NSF_SERVER) {
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       return log.warning(ERR_NoSupport);
    }
 
@@ -677,7 +677,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer) != ERR_Okay) {
+      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -717,7 +717,7 @@ static ERROR NETSOCKET_ReadMsg(extNetSocket *Self, struct nsReadMsg *Args)
             if (total_length > queue->Length) {
                log.trace("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer)) {
+               if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
@@ -801,12 +801,12 @@ static ERROR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 
    Args->Result = 0;
 
-   if (Self->Flags & NSF_SERVER) {
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       log.warning("DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
       return ERR_NoSupport;
    }
 
-   if ((Self->SocketHandle IS NOHANDLE) or (Self->State != NTC_CONNECTED)) { // Queue the write prior to server connection
+   if ((Self->SocketHandle IS NOHANDLE) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
       log.trace("Writing %d bytes to server (queued for connection).", Args->Length);
       write_queue(Self, &Self->WriteQueue, Args->Buffer, Args->Length);
       return ERR_Okay;
@@ -931,7 +931,7 @@ Error: Information about the last error that occurred during a NetSocket operati
 
 This field describes the last error that occurred during a NetSocket operation:
 
-In the case where a NetSocket object enters the `NTC_DISCONNECTED` state from the `NTC_CONNECTED` state, this field
+In the case where a NetSocket object enters the `NTC::DISCONNECTED` state from the `NTC::CONNECTED` state, this field
 can be used to determine how a TCP connection was closed.
 
 <types type="Error">
@@ -1055,7 +1055,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 {
    pf::Log log;
 
-   if (Self->Flags & NSF_SERVER) {
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       return log.warning(ERR_NoSupport);
    }
    else {
@@ -1067,7 +1067,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       }
 
       if (Self->initialised()) {
-         if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC_CONNECTED)) {
+         if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
             #ifdef __linux__
@@ -1077,7 +1077,7 @@ static ERROR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
                Self->WriteSocket = &client_server_outgoing;
             #endif
          }
-         else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC_CONNECTED).", Self->State);
+         else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC::CONNECTED).", Self->State);
       }
    }
 
@@ -1139,15 +1139,15 @@ State: The current connection state of the netsocket object.
 
 *********************************************************************************************************************/
 
-static ERROR SET_State(extNetSocket *Self, LONG Value)
+static ERROR SET_State(extNetSocket *Self, NTC Value)
 {
    pf::Log log;
 
    if (Value != Self->State) {
-      if (Self->Flags & NSF_DEBUG) log.msg("State changed from %d to %d", Self->State, Value);
+      if ((Self->Flags & NSF::DEBUG) != NSF::NIL) log.msg("State changed from %d to %d", LONG(Self->State), LONG(Value));
 
       #ifdef ENABLE_SSL
-      if ((Self->State IS NTC_CONNECTING_SSL) and (Value IS NTC_CONNECTED)) {
+      if ((Self->State IS NTC::CONNECTING_SSL) and (Value IS NTC::CONNECTED)) {
          // SSL connection has just been established
 
          if (SSL_get_verify_result(Self->SSL) != X509_V_OK) { // Handle the failed verification
@@ -1160,11 +1160,11 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
       Self->State = Value;
 
       if (Self->Feedback.Type) {
-         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", Self->State, Self->Feedback.StdC.Context);
+         log.traceBranch("Reporting state change to subscriber, operation %d, context %p.", LONG(Self->State), Self->Feedback.StdC.Context);
 
          if (Self->Feedback.Type IS CALL_STDC) {
             pf::SwitchContext context(Self->Feedback.StdC.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, LONG))Self->Feedback.StdC.Routine;
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC))Self->Feedback.StdC.Routine;
             if (routine) routine(Self, NULL, Self->State);
          }
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
@@ -1172,14 +1172,14 @@ static ERROR SET_State(extNetSocket *Self, LONG Value)
                const ScriptArg args[] = {
                   { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
                   { "ClientSocket", FD_OBJECTPTR, { .Address = NULL } },
-                  { "State",        FD_LONG,      { .Long = Self->State } }
+                  { "State",        FD_LONG,      { .Long = LONG(Self->State) } }
                };
                scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
          }
       }
 
-      if ((Self->State IS NTC_CONNECTED) and ((Self->WriteQueue.Buffer) or (Self->Outgoing.Type != CALL_NONE))) {
+      if ((Self->State IS NTC::CONNECTED) and ((Self->WriteQueue.Buffer) or (Self->Outgoing.Type != CALL_NONE))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
@@ -1225,7 +1225,7 @@ connection is not encrypted, a value of zero is returned to indicate that the co
 static ERROR GET_ValidCert(extNetSocket *Self, LONG *Value)
 {
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC_CONNECTED)) {
+   if ((Self->SSL) and (Self->State IS NTC::CONNECTED)) {
       *Value = SSL_get_verify_result(Self->SSL);
    }
    else *Value = 0;
@@ -1264,9 +1264,9 @@ static void free_socket(extNetSocket *Self)
    if (Self->ReadQueue.Buffer) { FreeResource(Self->ReadQueue.Buffer); Self->ReadQueue.Buffer = NULL; }
 
    if (!Self->terminating()) {
-      if (Self->State != NTC_DISCONNECTED) {
+      if (Self->State != NTC::DISCONNECTED) {
          log.traceBranch("Changing state to disconnected.");
-         Self->setState(NTC_DISCONNECTED);
+         Self->setState(NTC::DISCONNECTED);
       }
    }
 
@@ -1314,7 +1314,7 @@ static ERROR write_queue(extNetSocket *Self, NetQueue *Queue, CPTR Message, LONG
       }
       else return ERR_ReallocMemory;
    }
-   else if (!AllocMemory(Length, MEM_NO_CLEAR, &Queue->Buffer)) {
+   else if (!AllocMemory(Length, MEM::NO_CLEAR, &Queue->Buffer)) {
       log.trace("Allocated new buffer of %d bytes.", Length);
       Queue->Index = 0;
       Queue->Length = Length;
@@ -1407,7 +1407,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
    }
    else if (Message IS NTE_CLOSE) {
       log.msg("Socket closed by server, error %d.", Error);
-      if (Socket->State != NTC_DISCONNECTED) Socket->setState(NTC_DISCONNECTED);
+      if (Socket->State != NTC::DISCONNECTED) Socket->setState(NTC::DISCONNECTED);
       free_socket(Socket);
    }
    else if (Message IS NTE_ACCEPT) {
@@ -1423,19 +1423,19 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
                log.traceBranch("Attempting SSL handshake.");
                sslConnect(Socket);
 
-               if (Socket->State IS NTC_CONNECTING_SSL) {
+               if (Socket->State IS NTC::CONNECTING_SSL) {
                   //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, &client_server_incoming, Socket);
                }
             }
-            else Socket->setState(NTC_CONNECTED);
+            else Socket->setState(NTC::CONNECTED);
          #else
-            Socket->setState(NTC_CONNECTED);
+            Socket->setState(NTC::CONNECTED);
          #endif
       }
       else {
          log.msg("Connection state changed, error: %s", GetErrorMsg(Error));
          Socket->Error = Error;
-         Socket->setState(NTC_DISCONNECTED);
+         Socket->setState(NTC::DISCONNECTED);
       }
    }
 
@@ -1516,7 +1516,7 @@ static ERROR init_netsocket(void)
    clNetSocket = objMetaClass::create::global(
       fl::ClassVersion(VER_NETSOCKET),
       fl::Name("NetSocket"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clNetSocketActions),
       fl::Methods(clNetSocketMethods),
       fl::Fields(clSocketFields),

@@ -82,7 +82,7 @@
       <name>MixType</name>
       <comment>If a secondary mix input is required for the effect, specify it here.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VSF">INT</type>
+      <type lookup="VSF">VSF</type>
       <description>
 <p>Some effects support a secondary mix input for compositing, such as the <class name="CompositeFX">CompositeFX</class> class.  If the mixing source is a reference to another effect, set the <field>Mix</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
 <types lookup="VSF"/>
@@ -107,7 +107,7 @@
       <name>SourceType</name>
       <comment>Specifies an input source for the effect algorithm, if required.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VSF">INT</type>
+      <type lookup="VSF">VSF</type>
       <description>
 <p>If an effect requires an input source for processing, it must be specified here.  If the source is a reference to another effect, set the <field>Input</field> field instead and this field will be set to <code>REFERENCE</code> automatically.</p>
 <types lookup="VSF"/>

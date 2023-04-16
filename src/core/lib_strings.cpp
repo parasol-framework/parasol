@@ -421,7 +421,7 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, SBF Flags)
 
    if ((Size) and (Total > 0)) {
       CSTRING *array;
-      if (!AllocMemory(Size + 1 + ((Total + 1) * sizeof(STRING)), MEM_DATA, (APTR *)&array, NULL)) {
+      if (!AllocMemory(Size + 1 + ((Total + 1) * sizeof(STRING)), MEM::DATA, (APTR *)&array, NULL)) {
          // Build the array
 
          STRING str = (STRING)(array + Total + 1);

@@ -55,7 +55,7 @@
       <name>Align</name>
       <comment>Sets the position of a font string to an abstract alignment.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="ALIGN">INT</type>
+      <type lookup="ALIGN">ALIGN</type>
       <description>
 <p>Use this field to set the alignment of a font string within its surface area.  This is an abstract means of positioning in comparison to setting the X and Y fields directly.</p>
 <types lookup="ALIGN"/>
@@ -201,7 +201,7 @@ Charter:120%::255,128,255
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="FTF">INT</type>
+      <type lookup="FTF">FTF</type>
       <description>
 <types lookup="FTF"/>
       </description>

@@ -13,7 +13,7 @@ static DOUBLE fntSetDefaultSize(DOUBLE Size);
 static APTR fntFreetypeHandle();
 static ERROR fntInstallFont(CSTRING Files);
 static ERROR fntRemoveFont(CSTRING Name);
-static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path);
+static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
 
 #ifdef  __cplusplus
 }

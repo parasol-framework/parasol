@@ -61,7 +61,7 @@
       <name>Init</name>
       <comment>Initialises a bitmap.</comment>
       <description>
-<p>This action will initialise a bitmap object so that it is ready for use.  If the bitmap <field>Data</field> field has not been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is dependent on the bitmap <field>DataFlags</field> field.  If you have not specified a memory type, you will get a default of MEM_DATA.  For a display compatible bitmap use MEM_VIDEO.  If you just want to store a bitmap in fast writeable memory, use MEM_TEXTURE.</p>
+<p>This action will initialise a bitmap object so that it is ready for use.  If the bitmap <field>Data</field> field has not been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is dependent on the bitmap <field>DataFlags</field> field.  If you have not specified a memory type, you will get a default of <code>MEM::DATA</code>.  For a display compatible bitmap use <code>MEM::VIDEO</code>.  If you just want to store a bitmap in fast writeable memory, use <code>MEM::TEXTURE</code>.</p>
 <p>This action will not work unless you have defined the <field>Width</field> and <field>Height</field> fields of the bitmap at a minimum.</p>
       </description>
     </action>
@@ -133,7 +133,7 @@
       <description>
 <p>A bitmap can be compressed with the CompressBitmap method to save memory when the bitmap is not in use.  This is useful if a large bitmap needs to be stored in memory and it is anticipated that the bitmap will be used infrequently.</p>
 <p>Once a bitmap is compressed, its image data is invalid.  Any attempt to access the bitmap's image data will likely result in a memory access fault.  The image data will remain invalid until the <method>Decompress</method> method is called to restore the bitmap to its original state.</p>
-<p>The <code>BMF_COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
+<p>The <code>BMF::COMPRESSED</code> bit will be set in the <field>Flags</field> field after a successful call to this function to indicate that the bitmap is compressed.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -149,7 +149,7 @@
       <comment>Convert a bitmap's colour space to linear RGB.</comment>
       <prototype>ERROR bmpConvertToLinear(OBJECTPTR Object)</prototype>
       <description>
-<p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF_ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
+<p>Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <field>ColourSpace</field> will be set to <code>LINEAR_RGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>LINEAR_RGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
@@ -166,7 +166,7 @@
       <comment>Convert a bitmap's colour space to standard RGB.</comment>
       <prototype>ERROR bmpConvertToRGB(OBJECTPTR Object)</prototype>
       <description>
-<p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF_ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
+<p>Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the <code>BMF::ALPHA_CHANNEL</code> flag is enabled on the bitmap, pixels with an alpha value of 0 are ignored.</p>
 <p>The <field>ColourSpace</field> will be set to <code>SRGB</code> on completion.  This method returns immediately if the <field>ColourSpace</field> is already set to <code>SRGB</code>.</p>
 <p>For the sake of efficiency, lookup tables are used to quickly perform the conversion process.</p>
       </description>
@@ -181,10 +181,10 @@
     <method>
       <name>CopyArea</name>
       <comment>Copies a rectangular area from one bitmap to another.</comment>
-      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
+      <prototype>ERROR bmpCopyArea(OBJECTPTR Object, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)</prototype>
       <input>
         <param type="objBitmap *" name="DestBitmap">The target bitmap.</param>
-        <param type="LONG" name="Flags" lookup="BAF">Optional flags.</param>
+        <param type="BAF" name="Flags" lookup="BAF">Optional flags.</param>
         <param type="LONG" name="X">The horizontal position of the area to be copied.</param>
         <param type="LONG" name="Y">The vertical position of the area to be copied.</param>
         <param type="LONG" name="Width">The width of the area.</param>
@@ -237,14 +237,14 @@
     <method>
       <name>DrawRectangle</name>
       <comment>Draws rectangles, both filled and unfilled.</comment>
-      <prototype>ERROR bmpDrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags)</prototype>
+      <prototype>ERROR bmpDrawRectangle(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags)</prototype>
       <input>
         <param type="LONG" name="X">The left-most coordinate of the rectangle.</param>
         <param type="LONG" name="Y">The top-most coordinate of the rectangle.</param>
         <param type="LONG" name="Width">The width of the rectangle.</param>
         <param type="LONG" name="Height">The height of the rectangle.</param>
         <param type="ULONG" name="Colour">The colour index to use for the rectangle.</param>
-        <param type="LONG" name="Flags" lookup="BAF">Supports BAF_FILL and BAF_BLEND.</param>
+        <param type="BAF" name="Flags" lookup="BAF">Supports FILL and BLEND.</param>
       </input>
       <description>
 <p>This method draws both filled and unfilled rectangles.  The rectangle is drawn to the target bitmap at position (X, Y) with dimensions determined by the specified Width and Height.  If the Fill argument is set to TRUE then the rectangle will be filled, otherwise the rectangle's outline will be drawn.  The colour of the rectangle is determined by the pixel value in the Colour argument.</p>
@@ -258,9 +258,9 @@
     <method>
       <name>Flip</name>
       <comment>Flips a bitmap around the horizontal or vertical axis.</comment>
-      <prototype>ERROR bmpFlip(OBJECTPTR Object, LONG Orientation)</prototype>
+      <prototype>ERROR bmpFlip(OBJECTPTR Object, FLIP Orientation)</prototype>
       <input>
-        <param type="LONG" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.</param>
+        <param type="FLIP" name="Orientation" lookup="FLIP">Set to either FLIP_HORIZONTAL or FLIP_VERTICAL.</param>
       </input>
       <description>
 <p>This method is used to flip bitmap images on their horizontal or vertical axis.</p>
@@ -500,7 +500,7 @@ unpackAlpha(Colour)
       <name>ColourSpace</name>
       <comment>Defines the colour space for RGB values.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="CS">INT</type>
+      <type lookup="CS">CS</type>
       <description>
 <types lookup="CS"/>
       </description>
@@ -520,10 +520,11 @@ unpackAlpha(Colour)
       <name>DataFlags</name>
       <comment>Defines the memory flags to use in allocating a bitmap's data area.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type>INT</type>
+      <type lookup="MEM">MEM</type>
       <description>
-<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the <code>MEM_DATA</code>, <code>MEM_VIDEO</code> and <code>MEM_TEXTURE</code> memory flags.</p>
+<p>This field determines the type of memory that will be allocated for the <field>Data</field> field during the initialisation process. This field accepts the <code>MEM::DATA</code>, <code>MEM::VIDEO</code> and <code>MEM::TEXTURE</code> memory flags.</p>
 <p>Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the bitmap <field>Data</field> field directly with these bitmap types.  To circumvent this problem please use the <action>Lock</action> action to enable read access when you require it.</p>
+<types lookup="MEM"/>
       </description>
     </field>
 
@@ -568,7 +569,7 @@ unpackAlpha(Colour)
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="BMF">INT</type>
+      <type lookup="BMF">BMF</type>
       <description>
 <types lookup="BMF"/>
       </description>
@@ -722,7 +723,7 @@ unpackAlpha(Colour)
       <name>Type</name>
       <comment>Defines the data type of the bitmap.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="BMP">INT</type>
+      <type lookup="BMP">BMP</type>
       <description>
 <p>This field defines the graphics data type - either PLANAR (required for 1-bit bitmaps) or CHUNKY (the default).</p>
 <types lookup="BMP"/>

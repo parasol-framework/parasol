@@ -3,10 +3,10 @@ static ERROR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG 
 {
    switch (Attrib) {
       case SVF_COLOR_INTERPOLATION:
-         if (!StrMatch("auto", Value)) Gradient->setColourSpace(VCS_LINEAR_RGB);
-         else if (!StrMatch("sRGB", Value)) Gradient->setColourSpace(VCS_SRGB);
-         else if (!StrMatch("linearRGB", Value)) Gradient->setColourSpace(VCS_LINEAR_RGB);
-         else if (!StrMatch("inherit", Value)) Gradient->setColourSpace(VCS_INHERIT);
+         if (!StrMatch("auto", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
+         else if (!StrMatch("sRGB", Value)) Gradient->setColourSpace(VCS::SRGB);
+         else if (!StrMatch("linearRGB", Value)) Gradient->setColourSpace(VCS::LINEAR_RGB);
+         else if (!StrMatch("inherit", Value)) Gradient->setColourSpace(VCS::INHERIT);
          return ERR_Okay;
 
       case SVF_XLINK_HREF: add_inherit(Self, Gradient, Value); break;
@@ -87,7 +87,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
       SetOwner(gradient, Self->Scene);
       gradient->setFields(
          fl::Name("SVGLinearGrad"),
-         fl::Type(VGT_LINEAR),
+         fl::Type(VGT::LINEAR),
          fl::X1(0.0),
          fl::Y1(0.0),
          fl::X2(PERCENT(1.0)),
@@ -95,10 +95,10 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -117,16 +117,16 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
             case SVF_Y2: set_double_units(gradient, FID_Y2, val, gradient->Units); break;
 
             case SVF_COLOR_INTERPOLATION:
-               if (!StrMatch("auto", val)) gradient->setColourSpace(VCS_LINEAR_RGB);
-               else if (!StrMatch("sRGB", val)) gradient->setColourSpace(VCS_SRGB);
-               else if (!StrMatch("linearRGB", val)) gradient->setColourSpace(VCS_LINEAR_RGB);
-               else if (!StrMatch("inherit", val)) gradient->setColourSpace(VCS_INHERIT);
+               if (!StrMatch("auto", val)) gradient->setColourSpace(VCS::LINEAR_RGB);
+               else if (!StrMatch("sRGB", val)) gradient->setColourSpace(VCS::SRGB);
+               else if (!StrMatch("linearRGB", val)) gradient->setColourSpace(VCS::LINEAR_RGB);
+               else if (!StrMatch("inherit", val)) gradient->setColourSpace(VCS::INHERIT);
                break;
 
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -164,15 +164,15 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
 
-      gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT_RADIAL),
+      gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT::RADIAL),
          fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -193,9 +193,9 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
             case SVF_ID: id = val; break;
             case SVF_SPREADMETHOD:
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
 
             default: {
@@ -230,15 +230,15 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
 
-      gradient->setFields(fl::Name("SVGDiamondGrad"), fl::Type(VGT_DIAMOND),
+      gradient->setFields(fl::Name("SVGDiamondGrad"), fl::Type(VGT::DIAMOND),
          fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -257,9 +257,9 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -295,14 +295,14 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
 
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
-      gradient->setFields(fl::Name("SVGContourGrad"), fl::Type(VGT_CONTOUR));
+      gradient->setFields(fl::Name("SVGContourGrad"), fl::Type(VGT::CONTOUR));
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -320,9 +320,9 @@ static ERROR xtag_contourgradient(extSVG *Self, const XMLTag &Tag)
             case SVF_X1: set_double_units(gradient, FID_X1, val, gradient->Units); break;
             case SVF_X2: set_double_units(gradient, FID_X2, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;
@@ -357,17 +357,17 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
    if (!NewObject(ID_VECTORGRADIENT, &gradient)) {
       SetOwner(gradient, Self->Scene);
 
-      gradient->setFields(fl::Name("SVGConicGrad"), fl::Type(VGT_CONIC),
+      gradient->setFields(fl::Name("SVGConicGrad"), fl::Type(VGT::CONIC),
          fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
 
       std::string id;
 
       // Determine the user coordinate system first.
 
-      gradient->Units = VUNIT_BOUNDING_BOX;
+      gradient->Units = VUNIT::BOUNDING_BOX;
       for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
          if (!StrMatch("gradientUnits", Tag.Attribs[a].Name)) {
-            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT_USERSPACE;
+            if (!StrMatch("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
@@ -381,17 +381,17 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
          auto attrib = StrHash(Tag.Attribs[a].Name);
          switch(attrib) {
             case SVF_GRADIENTUNITS:
-               if (!StrMatch("userSpaceOnUse", val)) gradient->setUnits(VUNIT_USERSPACE);
-               else if (!StrMatch("objectBoundingBox", val)) gradient->setUnits(VUNIT_BOUNDING_BOX);
+               if (!StrMatch("userSpaceOnUse", val)) gradient->setUnits(VUNIT::USERSPACE);
+               else if (!StrMatch("objectBoundingBox", val)) gradient->setUnits(VUNIT::BOUNDING_BOX);
                break;
             case SVF_GRADIENTTRANSFORM: gradient->setTransform(val); break;
             case SVF_CX: set_double_units(gradient, FID_CenterX, val, gradient->Units); break;
             case SVF_CY: set_double_units(gradient, FID_CenterY, val, gradient->Units); break;
             case SVF_R:  set_double_units(gradient, FID_Radius, val, gradient->Units); break;
             case SVF_SPREADMETHOD: {
-               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD_PAD);
-               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD_REFLECT);
-               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD_REPEAT);
+               if (!StrMatch("pad", val))          gradient->setSpreadMethod(VSPREAD::PAD);
+               else if (!StrMatch("reflect", val)) gradient->setSpreadMethod(VSPREAD::REFLECT);
+               else if (!StrMatch("repeat", val))  gradient->setSpreadMethod(VSPREAD::REPEAT);
                break;
             }
             case SVF_ID: id = val; break;

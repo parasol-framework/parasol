@@ -124,17 +124,17 @@ large: The EventID is returned as a 64-bit integer.
 
 *********************************************************************************************************************/
 
-LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
+LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Group) return 0;
+   if (Group IS EVG::NIL) return 0;
 
-   LARGE event_id = ((LARGE)(Group & 0xff))<<58;
+   LARGE event_id = ((LARGE)(LONG(Group) & 0xff))<<58;
    if ((SubGroup) and (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
    if ((Event) and (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
 
-   log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", Group, SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
+   log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", LONG(Group), SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
 
    return event_id;
 }

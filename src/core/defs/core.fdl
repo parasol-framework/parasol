@@ -10,15 +10,13 @@ module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
 
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
-  loadFile(glPath .. 'common.fdl')
-  loadFile(glPath .. 'common-graphics.fdl')
-
   c_insert([[
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
 // used as an approximation of std::underlying_type<T>
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
 
@@ -32,16 +30,19 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #endif
   ]])
 
-  flags("SCF", { strict=true, comment="Script flags" },
+  loadFile(glPath .. 'common.fdl')
+  loadFile(glPath .. 'common-graphics.fdl')
+
+  flags("SCF", { comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
      "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
 
-  flags("STR", { strict=true, bits=16 },
+  flags("STR", { bits=32 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
      "MATCH_LEN: The strings must be of equal length to be matched.",
      "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
 
-  flags("MSF", { strict=true, comment="Message flags." },
+  flags("MSF", { comment="Message flags." },
      "WAIT: Wait before inserting the message if the queue is at maximum capacity.",
      "UPDATE: If the Type parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.",
      "NO_DUPLICATE: If the Type parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with ERR_Okay.",
@@ -49,18 +50,18 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "ADDRESS: Internal flag that changes the behaviour of the input parameters so that queues can be processed by address rather than ID.",
      "MESSAGE_ID: The Type parameter refers to a unique message ID rather than a message type for this call.")
 
-  flags("PMF", { strict=true, comment="Flags for ProcessMessages" },
+  flags("PMF", { comment="Flags for ProcessMessages" },
      "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
-  flags("ALF", { strict=true, bits=16 },
+  flags("ALF", { bits=16 },
      "SHARED: The lock will be shared between foreign processes.",
      "RECURSIVE: Set if support for recursive locking within the same thread is required.")
 
-  flags("SMF", { strict=true, comment="Flags for semaphores" },
+  flags("SMF", { comment="Flags for semaphores" },
      "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
      "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
 
-  flags("RFD", { strict=true, bits=16, comment="Flags for RegisterFD()" },
+  flags("RFD", { bits=32, comment="Flags for RegisterFD()" },
      "WRITE: Activate the callback if there is room to write to the FD's buffer.",
      "EXCEPT: Activate the callback if error conditions are pending.",
      "READ: Activate the callback if there is data available to read.",
@@ -71,14 +72,14 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "RECALL: Set if the subscriber needs to manually check for incoming/outgoing data.  This is supported as a one-off check, so the flag will be disabled automatically when the subscriber is called.",
      "ALWAYS_CALL: Always call this FD's handler prior to the process going to sleep.")
 
-  flags("SBF", { strict=true, comment="Flags for StrBuildArray()" },
+  flags("SBF", { comment="Flags for StrBuildArray()" },
     "NO_DUPLICATES: Sort the resulting list and remove duplicated strings.",
     "SORT: Sort the resulting list.",
     "CASE: Use case-sensitivity when comparing strings in the list.",
     "DESC: Sort in descending order.",
     "CSV: The list is in CSV format and the Size and Total parameters should be ignored. Note that the source string will be modified in this mode.")
 
-  flags("TSF", { strict=true, comment="Task flags" },
+  flags("TSF", { comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
     "WAIT: This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.",
     "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
@@ -101,22 +102,22 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",    "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
     "UNDO")
 
-  flags("MHF", { strict=true, comment="Internal options for requesting function tables from modules." },
+  flags("MHF", { comment="Internal options for requesting function tables from modules." },
     "STATIC: Keep the module code in memory",
     "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)")
 
-  flags("STP", { strict=true, comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
+  flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
-  flags("MTF", { strict=true, comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
+  flags("MTF", { comment="MoveToPoint flags" }, "X", "Y", "Z", "ANIM", "RELATIVE")
 
-  flags("VLF", { strict=true, comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
+  flags("VLF", { comment="VlogF flags" }, "BRANCH", "ERROR", "WARNING", "CRITICAL", "INFO", "API", "EXTAPI", "DEBUG", "TRACE", "FUNCTION")
 
-  flags("MOF", { strict=true, comment="Module flags" },
+  flags("MOF", { comment="Module flags" },
     "LINK_LIBRARY: Module refers to a symbolic link library (e.g. libz DLL or SO)",
     "STATIC: This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.",
     "SYSTEM_PROBE: Indicates that the module is being probed.  Do not use outside of the core library.")
 
-  flags("THF", { strict=true, comment="Thread flags" },
+  flags("THF", { comment="Thread flags" },
     "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.")
 
   enum("FDT", { type="int", start=0, comment="Flags for the SetDate() file method." },
@@ -125,16 +126,16 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ACCESSED: The date on which the file was last accessed by a user or application.",
     "ARCHIVED: The date on which the file was most recently archived.  Not supported by most filesystems.")
 
-  flags("VOLUME", { strict=true, comment="Options for SetVolume()" },
+  flags("VOLUME", { comment="Options for SetVolume()" },
     "REPLACE: If the volume already exists, all paths that are attached to it will be replaced with the new path setting.",
     "PRIORITY: If the volume already exists, the path will be inserted at the beginning of the path list so that it has priority over the others.",
     "HIDDEN: Hides the volume so that it will not show up when reading the root folder.",
     "SYSTEM: Identifies the volume as being created by the system, is immutable and persistent between sessions.")
 
-  flags("FDL", { strict=true, comment="Options for the File Delete() method." },
+  flags("FDL", { comment="Options for the File Delete() method." },
     "FEEDBACK: Automatically manage user feedback for deleting files by presenting dialog boxes.")
 
-  flags("CMF", { strict=true, comment="Compression flags" },
+  flags("CMF", { comment="Compression flags" },
     "PASSWORD: A password has been set on the object.",
     "NEW: Force the creation of a new file archive.  Any existing file data at the target location will be destroyed.",
     "CREATE_FILE: Create a new archive only if the source file does not already exist.",
@@ -142,7 +143,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "NO_LINKS: Treat symbolic links as normal files/folders.",
     "APPLY_SECURITY: When decompressing, apply individual file permissions if they are available in the compression file.")
 
-  flags("RSF", { strict=true, comment="Flags for ResolvePath()"},
+  flags("RSF", { comment="Flags for ResolvePath()"},
     "NO_FILE_CHECK: Do not test for the existence of the targeted file or folder during the resolution process.",
     "CHECK_VIRTUAL: If the volume referenced by Path is traced to another volume that is reserved by a virtual file system driver, ERR_VirtualVolume is returned. The volume is still resolved as far as possible and the resulting path will be returned by this function.",
     "APPROXIMATE: Ignores file extensions for the purpose of file name matching.",
@@ -152,7 +153,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   -- NB: The MFF flags are duplicated in the FileSystem's Win32 code if you're going to change these
 
-  flags("MFF", { strict=true, comment="Flags for the File Watch() method." },
+  flags("MFF", { comment="Flags for the File Watch() method." },
     "READ: File was accessed (read).",
     "MODIFY|WRITE: File modified via write or truncation.",
     "CREATE: New file/link created or renamed in folder.",
@@ -173,7 +174,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "HEX: The string represents a hexadecimal number.",
     "STRING: The string represents plain-text.")
 
-  flags("OPF", { strict=true },
+  flags("OPF", { },
     "DEPRECATED",
     "CORE_VERSION",
     "OPTIONS",
@@ -198,7 +199,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ANDROID_CLASS",      -- For Android.
     "ANDROID_ASSETMGR")   -- For Android.  Permanent pointer to the AssetManager
 
-  flags("RDF", { strict=true, comment="Flags for the OpenDir() function." },
+  flags("RDF", { comment="Flags for the OpenDir() function." },
     "SIZE: Retrieve the byte size of each file.",
     "DATE|TIME: Retrieve the date stamp of each file.",
     "PERMISSIONS: Get permission/security information.",
@@ -216,7 +217,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "OPENDIR: Internal option.",
     { READ_ALL = "SIZE|DATE|PERMISSIONS|FILES|FOLDERS" })
 
-  flags("FL", { strict=true, comment="File flags" },
+  flags("FL", { comment="File flags" },
     "WRITE: Prepares a file for writing data, starting at byte position 0.  To start writing from the end of a file, use the Seek action after the file has been initialised.",
     "NEW: Required when creating a new file.  If a file with the same name exists, its contents will be destroyed. If however the existing file is locked, the initalisation process will fail.",
     "READ: Required if the file needs to be opened for read access.",
@@ -237,7 +238,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "VOLUME: The path refers to a volume name.",
     "FILE: The path refers to a file.")
 
-  flags("LDF", { strict=true, comment="Flags for LoadFile()" },
+  flags("LDF", { comment="Flags for LoadFile()" },
     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
 
   enum("FBK", { type="int", start=1, comment="Flags for file feedback." },
@@ -281,10 +282,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ZLIB: The 'zlib' format",
     "DEFLATE: The 'deflate' format")
 
-  flags("FOF", { strict=true, comment="Flags that can be passed to FindObject()" },
+  flags("FOF", { comment="Flags that can be passed to FindObject()" },
     "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.")
 
-  flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
+  flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
@@ -386,11 +387,11 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
 
-  flags("CLF", { strict=true, comment="Flags for the MetaClass." },
+  flags("CLF", { comment="Flags for the MetaClass." },
     "PROMOTE_INTEGRAL: Promote class support for any integral object defined in the class definition structure.",
     "NO_OWNERSHIP: Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).")
 
-  flags("CNF", { strict=true, comment="Flags for the Config class." },
+  flags("CNF", { comment="Flags for the Config class." },
     "STRIP_QUOTES: Removes quotes from key values that are quote-encapsulated.",
     "AUTO_SAVE: When the configuration object is freed, automatically save the configuration data back to the original file source.",
     "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
@@ -399,7 +400,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 -- Please note that when the user is using an international keyboard, the name of the key will not
 -- actually match what the symbol represents for some key types.
 
-  const("K", { comment="Raw key codes" }, {
+  const("KEY", { type="int", comment="Raw key codes" }, {
     A = 1,
     B = 2,
     C = 3,
@@ -823,7 +824,7 @@ struct FieldValue {
      obj Object
   ]])
 
-  struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM_MANAGED flag.", restrict="c" }, [[
+  struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM::MANAGED flag.", restrict="c" }, [[
      cstr Name            # The name of the resource.
      fptr(error ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
@@ -996,9 +997,9 @@ struct FieldValue {
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
     int  Size          # The size of the memory block.
-    short AccessCount  # Total number of active locks on this block.
-    short Flags        # The type of memory.
+    int(MEM) Flags     # The type of memory.
     mem  MemoryID      # The unique ID for this block.
+    short AccessCount  # Total number of active locks on this block.
   ]])
 
   struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
@@ -1304,7 +1305,7 @@ inline ERROR FreeResource(const void *Address) {
    return FreeResource(((LONG *)Address)[-2]);
 }
 
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -1384,7 +1385,7 @@ inline STRING StrClone(CSTRING String)
 
    LONG len = strlen(String);
    STRING newstr;
-   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }
@@ -1836,7 +1837,11 @@ class Create {
                      if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
-               else { error = log.warning(ERR_UnsupportedField); return; }
+               else {
+                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  error = log.warning(ERR_UnsupportedField);
+                  return;
+               }
             }
 
             if ((error = InitObject(obj))) {
@@ -1871,10 +1876,10 @@ inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase
 
 // Action and Notification Structures
 
-struct acClipboard     { LONG Mode; };
+struct acClipboard     { CLIPMODE Mode; };
 struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { OBJECTPTR Object; LONG Datatype; const void *Buffer; LONG Size; };
+struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
 struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
@@ -1891,7 +1896,7 @@ struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class;
 struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
 struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
 struct acUndo          { LONG Steps; };
@@ -1922,7 +1927,7 @@ inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
@@ -1937,7 +1942,7 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
    return Action(AC_Draw, Object, &args);
 }
 
-inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, LONG Datatype, const void *Buffer, LONG Size) {
+inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
 }
@@ -2017,7 +2022,7 @@ inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
@@ -2054,9 +2059,9 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
 inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
@@ -2387,16 +2392,16 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 // Note that the length of the data is only needed when messaging between processes, so we can skip it for these
 // direct-access data channel macros.
 
-#define acDataContent(a,b)  acDataFeed((a),0,DATA_CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA_XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA_TEXT,(b),0)
+#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
+#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
+#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
 
 inline ERROR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
    struct acCustom args = { Number, String };
    return ActionMsg(AC_Custom, ObjectID, &args);
 }
 
-inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, LONG Datatype, const APTR Data, LONG Size) {
+inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
    struct acDataFeed channel = { Sender, Datatype, Data, Size };
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }
@@ -2525,34 +2530,34 @@ struct rkEvent {
    // Data follows
 };
 
-#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
+#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG::DISPLAY, "resolution", "change")
 
-#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
+#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG::GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
-#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG::FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG::FILESYSTEM, "volume", "deleted")
 
-#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
-#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
+#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG::SYSTEM, "task", "created")
+#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG::SYSTEM, "task", "removed")
 
-#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG_POWER, "state", "suspending")
-#define EVID_POWER_STATE_RESUMED        GetEventID(EVG_POWER, "state", "resumed")
-#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG_POWER, "display", "standby")
-#define EVID_POWER_BATTERY_LOW          GetEventID(EVG_POWER, "battery", "low")
-#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG_POWER, "battery", "critical")
-#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG_POWER, "cputemp", "high")
-#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
-#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
-#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
+#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG::POWER, "state", "suspending")
+#define EVID_POWER_STATE_RESUMED        GetEventID(EVG::POWER, "state", "resumed")
+#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG::POWER, "display", "standby")
+#define EVID_POWER_BATTERY_LOW          GetEventID(EVG::POWER, "battery", "low")
+#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG::POWER, "battery", "critical")
+#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG::POWER, "cputemp", "high")
+#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG::POWER, "cputemp", "critical")
+#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG::POWER, "screensaver", "on")
+#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG::POWER, "screensaver", "off")
 
-#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
-#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")
+#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG::IO, "keymap", "change")
+#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG::IO, "keyboard", "keypress")
 
-#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG_AUDIO, "volume", "master")
-#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG_AUDIO, "volume", "linein")
-#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG_AUDIO, "volume", "mic")
-#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG_AUDIO, "volume", "muted") // All volumes have been muted
-#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG_AUDIO, "volume", "unmuted") // All volumes have been unmuted
+#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG::AUDIO, "volume", "master")
+#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG::AUDIO, "volume", "linein")
+#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG::AUDIO, "volume", "mic")
+#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG::AUDIO, "volume", "muted") // All volumes have been muted
+#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG::AUDIO, "volume", "unmuted") // All volumes have been unmuted
 
 // Event structures.
 
@@ -2567,7 +2572,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

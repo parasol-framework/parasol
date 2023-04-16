@@ -16,51 +16,69 @@ class objScintillaSearch;
 
 // Scintilla Lexers.  These codes originate from the Scintilla library.
 
-#define SCLEX_ERRORLIST 10
-#define SCLEX_MAKEFILE 11
-#define SCLEX_BATCH 12
-#define SCLEX_FLUID 15
-#define SCLEX_DIFF 16
-#define SCLEX_PASCAL 18
-#define SCLEX_RUBY 22
-#define SCLEX_VBSCRIPT 28
-#define SCLEX_ASP 29
-#define SCLEX_PYTHON 2
-#define SCLEX_ASSEMBLER 34
-#define SCLEX_CSS 38
-#define SCLEX_CPP 3
-#define SCLEX_HTML 4
-#define SCLEX_XML 5
-#define SCLEX_BASH 62
-#define SCLEX_PHPSCRIPT 69
-#define SCLEX_PERL 6
-#define SCLEX_REBOL 71
-#define SCLEX_SQL 7
-#define SCLEX_VB 8
-#define SCLEX_PROPERTIES 9
+enum class SCLEX : LONG {
+   NIL = 0,
+   ERRORLIST = 10,
+   MAKEFILE = 11,
+   BATCH = 12,
+   FLUID = 15,
+   DIFF = 16,
+   PASCAL = 18,
+   RUBY = 22,
+   VBSCRIPT = 28,
+   ASP = 29,
+   PYTHON = 2,
+   ASSEMBLER = 34,
+   CSS = 38,
+   CPP = 3,
+   HTML = 4,
+   XML = 5,
+   BASH = 62,
+   PHPSCRIPT = 69,
+   PERL = 6,
+   REBOL = 71,
+   SQL = 7,
+   VB = 8,
+   PROPERTIES = 9,
+};
 
 // Optional flags.
 
-#define SCF_DISABLED 0x00000001
-#define SCF_DETECT_LEXER 0x00000002
-#define SCF_EDIT 0x00000004
-#define SCF_EXT_PAGE 0x00000008
+enum class SCIF : ULONG {
+   NIL = 0,
+   DISABLED = 0x00000001,
+   DETECT_LEXER = 0x00000002,
+   EDIT = 0x00000004,
+   EXT_PAGE = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SCIF)
 
 // Flags for EventCallback and EventFlags
 
-#define SEF_MODIFIED 0x00000001
-#define SEF_CURSOR_POS 0x00000002
-#define SEF_FAIL_RO 0x00000004
-#define SEF_NEW_CHAR 0x00000008
+enum class SEF : ULONG {
+   NIL = 0,
+   MODIFIED = 0x00000001,
+   CURSOR_POS = 0x00000002,
+   FAIL_RO = 0x00000004,
+   NEW_CHAR = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SEF)
 
 // Scintilla search flags.
 
-#define STF_CASE 0x00000001
-#define STF_MOVE_CURSOR 0x00000002
-#define STF_SCAN_SELECTION 0x00000004
-#define STF_BACKWARDS 0x00000008
-#define STF_EXPRESSION 0x00000010
-#define STF_WRAP 0x00000020
+enum class STF : ULONG {
+   NIL = 0,
+   CASE = 0x00000001,
+   MOVE_CURSOR = 0x00000002,
+   SCAN_SELECTION = 0x00000004,
+   BACKWARDS = 0x00000008,
+   EXPRESSION = 0x00000010,
+   WRAP = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(STF)
 
 // Scintilla class definition
 
@@ -81,7 +99,7 @@ class objScintillaSearch;
 #define MT_SciReportEvent -11
 
 struct sciSetFont { CSTRING Face;  };
-struct sciReplaceText { CSTRING Find; CSTRING Replace; LONG Flags; LONG Start; LONG End;  };
+struct sciReplaceText { CSTRING Find; CSTRING Replace; STF Flags; LONG Start; LONG End;  };
 struct sciDeleteLine { LONG Line;  };
 struct sciSelectRange { LONG Start; LONG End;  };
 struct sciInsertText { CSTRING String; LONG Pos;  };
@@ -95,7 +113,7 @@ INLINE ERROR sciSetFont(APTR Ob, CSTRING Face) {
    return(Action(MT_SciSetFont, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, LONG Flags, LONG Start, LONG End) {
+INLINE ERROR sciReplaceText(APTR Ob, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End) {
    struct sciReplaceText args = { Find, Replace, Flags, Start, End };
    return(Action(MT_SciReplaceText, (OBJECTPTR)Ob, &args));
 }
@@ -133,7 +151,7 @@ INLINE ERROR sciGotoLine(APTR Ob, LONG Line) {
 #define sciTrimWhitespace(obj) Action(MT_SciTrimWhitespace,(obj),0)
 
 INLINE ERROR sciGetPos(APTR Ob, LONG Line, LONG Column, LONG * Pos) {
-   struct sciGetPos args = { Line, Column, 0 };
+   struct sciGetPos args = { Line, Column, (LONG)0 };
    ERROR error = Action(MT_SciGetPos, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
@@ -149,11 +167,11 @@ class objScintilla : public BaseClass {
 
    using create = pf::Create<objScintilla>;
 
-   LARGE     EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    objFont * Font;               // Refers to the font that is used for drawing text in the document.
    CSTRING   Path;               // Identifies the location of a text file to load.
+   SEF       EventFlags;         // Specifies events that need to be reported from the Scintilla object.
    OBJECTID  SurfaceID;          // Refers to the @Surface targeted by the Scintilla object.
-   LONG      Flags;              // Optional flags.
+   SCIF      Flags;              // Optional flags.
    OBJECTID  FocusID;            // Defines the object that is monitored for user focus changes.
    LONG      Visible;            // If TRUE, indicates the Scintilla object is visible in the target #Surface.
    LONG      LeftMargin;         // The amount of white-space at the left side of the page.
@@ -166,17 +184,17 @@ class objScintilla : public BaseClass {
    struct RGB8 TextColour;       // Defines the default colour of foreground text.  Supports alpha blending.
    LONG      CursorRow;          // The current row of the text cursor.
    LONG      CursorCol;          // The current column of the text cursor.
-   LONG      Lexer;              // The lexer for document styling is defined here.
+   SCLEX     Lexer;              // The lexer for document styling is defined here.
    LONG      Modified;           // Returns TRUE if the document has been modified and not saved.
 
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR clipboard(LONG Mode) {
+   inline ERROR clipboard(CLIPMODE Mode) {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }
-   inline ERROR dataFeed(OBJECTPTR Object, LONG Datatype, const void *Buffer, LONG Size) {
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
       struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
@@ -210,15 +228,15 @@ class objScintilla : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setEventFlags(const LARGE Value) {
-      this->EventFlags = Value;
-      return ERR_Okay;
-   }
-
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setEventFlags(const SEF Value) {
+      this->EventFlags = Value;
+      return ERR_Okay;
    }
 
    inline ERROR setSurface(const OBJECTID Value) {
@@ -227,7 +245,7 @@ class objScintilla : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const SCIF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -303,7 +321,7 @@ class objScintilla : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setLexer(const LONG Value) {
+   inline ERROR setLexer(const SCLEX Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -401,24 +419,24 @@ class objScintilla : public BaseClass {
 
 struct ssNext { LONG Pos;  };
 struct ssPrev { LONG Pos;  };
-struct ssFind { LONG Pos; LONG Flags;  };
+struct ssFind { LONG Pos; STF Flags;  };
 
 INLINE ERROR ssNext(APTR Ob, LONG * Pos) {
-   struct ssNext args = { 0 };
+   struct ssNext args = { (LONG)0 };
    ERROR error = Action(MT_SsNext, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
 INLINE ERROR ssPrev(APTR Ob, LONG * Pos) {
-   struct ssPrev args = { 0 };
+   struct ssPrev args = { (LONG)0 };
    ERROR error = Action(MT_SsPrev, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
 }
 
-INLINE ERROR ssFind(APTR Ob, LONG * Pos, LONG Flags) {
-   struct ssFind args = { 0, Flags };
+INLINE ERROR ssFind(APTR Ob, LONG * Pos, STF Flags) {
+   struct ssFind args = { (LONG)0, Flags };
    ERROR error = Action(MT_SsFind, (OBJECTPTR)Ob, &args);
    if (Pos) *Pos = args.Pos;
    return(error);
@@ -434,7 +452,7 @@ class objScintillaSearch : public BaseClass {
 
    objScintilla * Scintilla;    // Targets a Scintilla object for searching.
    CSTRING Text;                // The string sequence to search for.
-   LONG    Flags;               // Optional flags.
+   STF     Flags;               // Optional flags.
    LONG    Start;               // Start of the current/most recent selection
    LONG    End;                 // End of the current/most recent selection
 
@@ -452,7 +470,7 @@ class objScintillaSearch : public BaseClass {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const STF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }

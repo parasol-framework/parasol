@@ -46,321 +46,446 @@ class objVectorViewport;
 
 // Options for drawing arcs.
 
-#define ARC_LARGE 0x00000001
-#define ARC_SWEEP 0x00000002
+enum class ARC : ULONG {
+   NIL = 0,
+   LARGE = 0x00000001,
+   SWEEP = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ARC)
 
 // Optional flags and indicators for the Vector class.
 
-#define VF_DISABLED 0x00000001
-#define VF_HAS_FOCUS 0x00000002
+enum class VF : ULONG {
+   NIL = 0,
+   DISABLED = 0x00000001,
+   HAS_FOCUS = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VF)
 
 // Light source identifiers.
 
-#define LS_DISTANT 0
-#define LS_SPOT 1
-#define LS_POINT 2
+enum class LS : LONG {
+   NIL = 0,
+   DISTANT = 0,
+   SPOT = 1,
+   POINT = 2,
+};
 
 // Lighting algorithm for the LightingFX class.
 
-#define LT_DIFFUSE 0
-#define LT_SPECULAR 1
+enum class LT : LONG {
+   NIL = 0,
+   DIFFUSE = 0,
+   SPECULAR = 1,
+};
 
-#define VUNIT_UNDEFINED 0
-#define VUNIT_BOUNDING_BOX 1
-#define VUNIT_USERSPACE 2
-#define VUNIT_END 3
+enum class VUNIT : LONG {
+   NIL = 0,
+   UNDEFINED = 0,
+   BOUNDING_BOX = 1,
+   USERSPACE = 2,
+   END = 3,
+};
 
 // Spread method options define the method to use for tiling filled graphics.
 
-#define VSPREAD_UNDEFINED 0
-#define VSPREAD_PAD 1
-#define VSPREAD_REFLECT 2
-#define VSPREAD_REPEAT 3
-#define VSPREAD_REFLECT_X 4
-#define VSPREAD_REFLECT_Y 5
-#define VSPREAD_CLIP 6
-#define VSPREAD_END 7
+enum class VSPREAD : LONG {
+   NIL = 0,
+   UNDEFINED = 0,
+   PAD = 1,
+   REFLECT = 2,
+   REPEAT = 3,
+   REFLECT_X = 4,
+   REFLECT_Y = 5,
+   CLIP = 6,
+   END = 7,
+};
 
-#define EM_DUPLICATE 1
-#define EM_WRAP 2
-#define EM_NONE 3
+enum class EM : LONG {
+   NIL = 0,
+   DUPLICATE = 1,
+   WRAP = 2,
+   NONE = 3,
+};
 
-#define PE_Move 1
-#define PE_MoveRel 2
-#define PE_Line 3
-#define PE_LineRel 4
-#define PE_HLine 5
-#define PE_HLineRel 6
-#define PE_VLine 7
-#define PE_VLineRel 8
-#define PE_Curve 9
-#define PE_CurveRel 10
-#define PE_Smooth 11
-#define PE_SmoothRel 12
-#define PE_QuadCurve 13
-#define PE_QuadCurveRel 14
-#define PE_QuadSmooth 15
-#define PE_QuadSmoothRel 16
-#define PE_Arc 17
-#define PE_ArcRel 18
-#define PE_ClosePath 19
+enum class PE : LONG {
+   NIL = 0,
+   Move = 1,
+   MoveRel = 2,
+   Line = 3,
+   LineRel = 4,
+   HLine = 5,
+   HLineRel = 6,
+   VLine = 7,
+   VLineRel = 8,
+   Curve = 9,
+   CurveRel = 10,
+   Smooth = 11,
+   SmoothRel = 12,
+   QuadCurve = 13,
+   QuadCurveRel = 14,
+   QuadSmooth = 15,
+   QuadSmoothRel = 16,
+   Arc = 17,
+   ArcRel = 18,
+   ClosePath = 19,
+};
 
 // Vector fill rules for the FillRule field in the Vector class.
 
-#define VFR_NON_ZERO 1
-#define VFR_EVEN_ODD 2
-#define VFR_INHERIT 3
-#define VFR_END 4
+enum class VFR : LONG {
+   NIL = 0,
+   NON_ZERO = 1,
+   EVEN_ODD = 2,
+   INHERIT = 3,
+   END = 4,
+};
 
 // Options for the Vector class' Visibility field.
 
-#define VIS_HIDDEN 0
-#define VIS_VISIBLE 1
-#define VIS_COLLAPSE 2
-#define VIS_INHERIT 3
-
-// Component selection for RemapFX methods.
-
-#define CMP_ALL -1
-#define CMP_RED 0
-#define CMP_GREEN 1
-#define CMP_BLUE 2
-#define CMP_ALPHA 3
-
-// Options for the look of line joins.
-
-#define VLJ_MITER 0
-#define VLJ_MITER_REVERT 1
-#define VLJ_ROUND 2
-#define VLJ_BEVEL 3
-#define VLJ_MITER_ROUND 4
-#define VLJ_INHERIT 5
-
-// Line-cap options.
-
-#define VLC_BUTT 1
-#define VLC_SQUARE 2
-#define VLC_ROUND 3
-#define VLC_INHERIT 4
-
-// Inner join options for angled lines.
-
-#define VIJ_BEVEL 1
-#define VIJ_MITER 2
-#define VIJ_JAG 3
-#define VIJ_ROUND 4
-#define VIJ_INHERIT 5
-
-// VectorGradient options.
-
-#define VGT_LINEAR 0
-#define VGT_RADIAL 1
-#define VGT_CONIC 2
-#define VGT_DIAMOND 3
-#define VGT_CONTOUR 4
-
-// Options for stretching text in VectorText.
-
-#define VTS_INHERIT 0
-#define VTS_NORMAL 1
-#define VTS_WIDER 2
-#define VTS_NARROWER 3
-#define VTS_ULTRA_CONDENSED 4
-#define VTS_EXTRA_CONDENSED 5
-#define VTS_CONDENSED 6
-#define VTS_SEMI_CONDENSED 7
-#define VTS_EXPANDED 8
-#define VTS_SEMI_EXPANDED 9
-#define VTS_ULTRA_EXPANDED 10
-#define VTS_EXTRA_EXPANDED 11
-
-// MorphologyFX options.
-
-#define MOP_ERODE 0
-#define MOP_DILATE 1
-
-// Operators for CompositionFX.
-
-#define OP_OVER 0
-#define OP_IN 1
-#define OP_OUT 2
-#define OP_ATOP 3
-#define OP_XOR 4
-#define OP_ARITHMETIC 5
-#define OP_SCREEN 6
-#define OP_MULTIPLY 7
-#define OP_LIGHTEN 8
-#define OP_DARKEN 9
-#define OP_INVERT_RGB 10
-#define OP_INVERT 11
-#define OP_CONTRAST 12
-#define OP_DODGE 13
-#define OP_BURN 14
-#define OP_HARD_LIGHT 15
-#define OP_SOFT_LIGHT 16
-#define OP_DIFFERENCE 17
-#define OP_EXCLUSION 18
-#define OP_PLUS 19
-#define OP_MINUS 20
-#define OP_SUBTRACT 20
-#define OP_OVERLAY 21
+enum class VIS : LONG {
+   NIL = 0,
+   HIDDEN = 0,
+   VISIBLE = 1,
+   COLLAPSE = 2,
+   INHERIT = 3,
+};
 
 // Viewport overflow options.
 
-#define VOF_VISIBLE 0
-#define VOF_HIDDEN 1
-#define VOF_SCROLL 2
-#define VOF_INHERIT 3
+enum class VOF : LONG {
+   NIL = 0,
+   VISIBLE = 0,
+   HIDDEN = 1,
+   SCROLL = 2,
+   INHERIT = 3,
+};
+
+// Component selection for RemapFX methods.
+
+enum class CMP : LONG {
+   NIL = 0,
+   ALL = -1,
+   RED = 0,
+   GREEN = 1,
+   BLUE = 2,
+   ALPHA = 3,
+};
+
+// Options for the look of line joins.
+
+enum class VLJ : LONG {
+   NIL = 0,
+   MITER = 0,
+   MITER_REVERT = 1,
+   ROUND = 2,
+   BEVEL = 3,
+   MITER_ROUND = 4,
+   INHERIT = 5,
+};
+
+// Line-cap options.
+
+enum class VLC : LONG {
+   NIL = 0,
+   BUTT = 1,
+   SQUARE = 2,
+   ROUND = 3,
+   INHERIT = 4,
+};
+
+// Inner join options for angled lines.
+
+enum class VIJ : LONG {
+   NIL = 0,
+   BEVEL = 1,
+   MITER = 2,
+   JAG = 3,
+   ROUND = 4,
+   INHERIT = 5,
+};
+
+// VectorGradient options.
+
+enum class VGT : LONG {
+   NIL = 0,
+   LINEAR = 0,
+   RADIAL = 1,
+   CONIC = 2,
+   DIAMOND = 3,
+   CONTOUR = 4,
+};
+
+// Options for stretching text in VectorText.
+
+enum class VTS : LONG {
+   NIL = 0,
+   INHERIT = 0,
+   NORMAL = 1,
+   WIDER = 2,
+   NARROWER = 3,
+   ULTRA_CONDENSED = 4,
+   EXTRA_CONDENSED = 5,
+   CONDENSED = 6,
+   SEMI_CONDENSED = 7,
+   EXPANDED = 8,
+   SEMI_EXPANDED = 9,
+   ULTRA_EXPANDED = 10,
+   EXTRA_EXPANDED = 11,
+};
+
+// MorphologyFX options.
+
+enum class MOP : LONG {
+   NIL = 0,
+   ERODE = 0,
+   DILATE = 1,
+};
+
+// Operators for CompositionFX.
+
+enum class OP : LONG {
+   NIL = 0,
+   OVER = 0,
+   IN = 1,
+   OUT = 2,
+   ATOP = 3,
+   XOR = 4,
+   ARITHMETIC = 5,
+   SCREEN = 6,
+   MULTIPLY = 7,
+   LIGHTEN = 8,
+   DARKEN = 9,
+   INVERT_RGB = 10,
+   INVERT = 11,
+   CONTRAST = 12,
+   DODGE = 13,
+   BURN = 14,
+   HARD_LIGHT = 15,
+   SOFT_LIGHT = 16,
+   DIFFERENCE = 17,
+   EXCLUSION = 18,
+   PLUS = 19,
+   MINUS = 20,
+   SUBTRACT = 20,
+   OVERLAY = 21,
+};
 
 // VectorText flags.
 
-#define VTXF_UNDERLINE 0x00000001
-#define VTXF_OVERLINE 0x00000002
-#define VTXF_LINE_THROUGH 0x00000004
-#define VTXF_BLINK 0x00000008
-#define VTXF_EDIT 0x00000010
-#define VTXF_EDITABLE 0x00000010
-#define VTXF_AREA_SELECTED 0x00000020
-#define VTXF_NO_SYS_KEYS 0x00000040
-#define VTXF_OVERWRITE 0x00000080
+enum class VTXF : ULONG {
+   NIL = 0,
+   UNDERLINE = 0x00000001,
+   OVERLINE = 0x00000002,
+   LINE_THROUGH = 0x00000004,
+   BLINK = 0x00000008,
+   EDIT = 0x00000010,
+   EDITABLE = 0x00000010,
+   AREA_SELECTED = 0x00000020,
+   NO_SYS_KEYS = 0x00000040,
+   OVERWRITE = 0x00000080,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VTXF)
 
 // Morph flags
 
-#define VMF_STRETCH 0x00000001
-#define VMF_AUTO_SPACING 0x00000002
-#define VMF_X_MIN 0x00000004
-#define VMF_X_MID 0x00000008
-#define VMF_X_MAX 0x00000010
-#define VMF_Y_MIN 0x00000020
-#define VMF_Y_MID 0x00000040
-#define VMF_Y_MAX 0x00000080
+enum class VMF : ULONG {
+   NIL = 0,
+   STRETCH = 0x00000001,
+   AUTO_SPACING = 0x00000002,
+   X_MIN = 0x00000004,
+   X_MID = 0x00000008,
+   X_MAX = 0x00000010,
+   Y_MIN = 0x00000020,
+   Y_MID = 0x00000040,
+   Y_MAX = 0x00000080,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VMF)
 
 // Colour space options.
 
-#define VCS_INHERIT 0
-#define VCS_SRGB 1
-#define VCS_LINEAR_RGB 2
+enum class VCS : LONG {
+   NIL = 0,
+   INHERIT = 0,
+   SRGB = 1,
+   LINEAR_RGB = 2,
+};
 
 // Filter source types - these are used internally
 
-#define VSF_IGNORE 0
-#define VSF_NONE 0
-#define VSF_GRAPHIC 1
-#define VSF_ALPHA 2
-#define VSF_BKGD 3
-#define VSF_BKGD_ALPHA 4
-#define VSF_FILL 5
-#define VSF_STROKE 6
-#define VSF_REFERENCE 7
-#define VSF_PREVIOUS 8
+enum class VSF : LONG {
+   NIL = 0,
+   IGNORE = 0,
+   NONE = 0,
+   GRAPHIC = 1,
+   ALPHA = 2,
+   BKGD = 3,
+   BKGD_ALPHA = 4,
+   FILL = 5,
+   STROKE = 6,
+   REFERENCE = 7,
+   PREVIOUS = 8,
+};
 
 // Wave options.
 
-#define WVC_NONE 1
-#define WVC_TOP 2
-#define WVC_BOTTOM 3
+enum class WVC : LONG {
+   NIL = 0,
+   NONE = 1,
+   TOP = 2,
+   BOTTOM = 3,
+};
 
 // Wave style options.
 
-#define WVS_CURVED 1
-#define WVS_ANGLED 2
-#define WVS_SAWTOOTH 3
+enum class WVS : LONG {
+   NIL = 0,
+   CURVED = 1,
+   ANGLED = 2,
+   SAWTOOTH = 3,
+};
 
 // Colour modes for ColourFX.
 
-#define CM_NONE 0
-#define CM_MATRIX 1
-#define CM_SATURATE 2
-#define CM_HUE_ROTATE 3
-#define CM_LUMINANCE_ALPHA 4
-#define CM_CONTRAST 5
-#define CM_BRIGHTNESS 6
-#define CM_HUE 7
-#define CM_DESATURATE 8
-#define CM_COLOURISE 9
+enum class CM : LONG {
+   NIL = 0,
+   NONE = 0,
+   MATRIX = 1,
+   SATURATE = 2,
+   HUE_ROTATE = 3,
+   LUMINANCE_ALPHA = 4,
+   CONTRAST = 5,
+   BRIGHTNESS = 6,
+   HUE = 7,
+   DESATURATE = 8,
+   COLOURISE = 9,
+};
 
 // Gradient flags
 
-#define VGF_RELATIVE_X1 0x00000001
-#define VGF_RELATIVE_Y1 0x00000002
-#define VGF_RELATIVE_X2 0x00000004
-#define VGF_RELATIVE_Y2 0x00000008
-#define VGF_RELATIVE_CX 0x00000010
-#define VGF_RELATIVE_CY 0x00000020
-#define VGF_RELATIVE_FX 0x00000040
-#define VGF_RELATIVE_FY 0x00000080
-#define VGF_RELATIVE_RADIUS 0x00000100
-#define VGF_FIXED_X1 0x00000200
-#define VGF_FIXED_Y1 0x00000400
-#define VGF_FIXED_X2 0x00000800
-#define VGF_FIXED_Y2 0x00001000
-#define VGF_FIXED_CX 0x00002000
-#define VGF_FIXED_CY 0x00004000
-#define VGF_FIXED_FX 0x00008000
-#define VGF_FIXED_FY 0x00010000
-#define VGF_FIXED_RADIUS 0x00020000
+enum class VGF : ULONG {
+   NIL = 0,
+   RELATIVE_X1 = 0x00000001,
+   RELATIVE_Y1 = 0x00000002,
+   RELATIVE_X2 = 0x00000004,
+   RELATIVE_Y2 = 0x00000008,
+   RELATIVE_CX = 0x00000010,
+   RELATIVE_CY = 0x00000020,
+   RELATIVE_FX = 0x00000040,
+   RELATIVE_FY = 0x00000080,
+   RELATIVE_RADIUS = 0x00000100,
+   FIXED_X1 = 0x00000200,
+   FIXED_Y1 = 0x00000400,
+   FIXED_X2 = 0x00000800,
+   FIXED_Y2 = 0x00001000,
+   FIXED_CX = 0x00002000,
+   FIXED_CY = 0x00004000,
+   FIXED_FX = 0x00008000,
+   FIXED_FY = 0x00010000,
+   FIXED_RADIUS = 0x00020000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VGF)
 
 // Optional flags for the VectorScene object.
 
-#define VPF_BITMAP_SIZED 0x00000001
-#define VPF_RENDER_TIME 0x00000002
-#define VPF_RESIZE 0x00000004
-#define VPF_OUTLINE_VIEWPORTS 0x00000008
+enum class VPF : ULONG {
+   NIL = 0,
+   BITMAP_SIZED = 0x00000001,
+   RENDER_TIME = 0x00000002,
+   RESIZE = 0x00000004,
+   OUTLINE_VIEWPORTS = 0x00000008,
+};
 
-#define TB_TURBULENCE 0
-#define TB_NOISE 1
+DEFINE_ENUM_FLAG_OPERATORS(VPF)
 
-#define VSM_AUTO 0
-#define VSM_NEIGHBOUR 1
-#define VSM_BILINEAR 2
-#define VSM_BICUBIC 3
-#define VSM_SPLINE16 4
-#define VSM_KAISER 5
-#define VSM_QUADRIC 6
-#define VSM_GAUSSIAN 7
-#define VSM_BESSEL 8
-#define VSM_MITCHELL 9
-#define VSM_SINC3 10
-#define VSM_LANCZOS3 11
-#define VSM_BLACKMAN3 12
-#define VSM_SINC8 13
-#define VSM_LANCZOS8 14
-#define VSM_BLACKMAN8 15
+enum class TB : LONG {
+   NIL = 0,
+   TURBULENCE = 0,
+   NOISE = 1,
+};
 
-#define RQ_AUTO 0
-#define RQ_FAST 1
-#define RQ_CRISP 2
-#define RQ_PRECISE 3
-#define RQ_BEST 4
+enum class VSM : LONG {
+   NIL = 0,
+   AUTO = 0,
+   NEIGHBOUR = 1,
+   BILINEAR = 2,
+   BICUBIC = 3,
+   SPLINE16 = 4,
+   KAISER = 5,
+   QUADRIC = 6,
+   GAUSSIAN = 7,
+   BESSEL = 8,
+   MITCHELL = 9,
+   SINC3 = 10,
+   LANCZOS3 = 11,
+   BLACKMAN3 = 12,
+   SINC8 = 13,
+   LANCZOS8 = 14,
+   BLACKMAN8 = 15,
+};
 
-#define RC_FINAL_PATH 0x00000001
-#define RC_BASE_PATH 0x00000002
-#define RC_TRANSFORM 0x00000004
-#define RC_ALL 0x00000007
+enum class RQ : LONG {
+   NIL = 0,
+   AUTO = 0,
+   FAST = 1,
+   CRISP = 2,
+   PRECISE = 3,
+   BEST = 4,
+};
+
+enum class RC : UBYTE {
+   NIL = 0,
+   FINAL_PATH = 0x00000001,
+   BASE_PATH = 0x00000002,
+   TRANSFORM = 0x00000004,
+   ALL = 0x00000007,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RC)
 
 // Aspect ratios control alignment, scaling and clipping.
 
-#define ARF_X_MIN 0x00000001
-#define ARF_X_MID 0x00000002
-#define ARF_X_MAX 0x00000004
-#define ARF_Y_MIN 0x00000008
-#define ARF_Y_MID 0x00000010
-#define ARF_Y_MAX 0x00000020
-#define ARF_MEET 0x00000040
-#define ARF_SLICE 0x00000080
-#define ARF_NONE 0x00000100
+enum class ARF : ULONG {
+   NIL = 0,
+   X_MIN = 0x00000001,
+   X_MID = 0x00000002,
+   X_MAX = 0x00000004,
+   Y_MIN = 0x00000008,
+   Y_MID = 0x00000010,
+   Y_MAX = 0x00000020,
+   MEET = 0x00000040,
+   SLICE = 0x00000080,
+   NONE = 0x00000100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ARF)
 
 // Options for vecGetBoundary().
 
-#define VBF_INCLUSIVE 0x00000001
-#define VBF_NO_TRANSFORM 0x00000002
+enum class VBF : ULONG {
+   NIL = 0,
+   INCLUSIVE = 0x00000001,
+   NO_TRANSFORM = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VBF)
 
 // Mask for controlling feedback events that are received.
 
-#define FM_PATH_CHANGED 0x00000001
-#define FM_HAS_FOCUS 0x00000002
-#define FM_CHILD_HAS_FOCUS 0x00000004
-#define FM_LOST_FOCUS 0x00000008
+enum class FM : ULONG {
+   NIL = 0,
+   PATH_CHANGED = 0x00000001,
+   HAS_FOCUS = 0x00000002,
+   CHILD_HAS_FOCUS = 0x00000004,
+   LOST_FOCUS = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FM)
 
 struct GradientStop {
    DOUBLE Offset;    // An offset in the range of 0 - 1.0
@@ -380,20 +505,20 @@ struct VectorPoint {
 };
 
 struct PathCommand {
-   UBYTE  Type;       // The command type (PE value)
-   UBYTE  Curved;     // Private
-   UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
-   UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
-   LONG   Pad;        // Private
-   DOUBLE X;          // The targeted X coordinate (absolute or relative) for the command
-   DOUBLE Y;          // The targeted Y coordinate (absolute or relative) for the command
-   DOUBLE AbsX;       // Private
-   DOUBLE AbsY;       // Private
-   DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
-   DOUBLE Y2;         // The Y2 coordinate for curve commands, or RY for arcs
-   DOUBLE X3;         // The X3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Y3;         // The Y3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Angle;      // Arc angle
+   PE     Type;     // The command type (PE value)
+   UBYTE  Curved;   // Private
+   UBYTE  LargeArc; // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+   UBYTE  Sweep;    // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+   UBYTE  Pad1;     // Private
+   DOUBLE X;        // The targeted X coordinate (absolute or relative) for the command
+   DOUBLE Y;        // The targeted Y coordinate (absolute or relative) for the command
+   DOUBLE AbsX;     // Private
+   DOUBLE AbsY;     // Private
+   DOUBLE X2;       // The X2 coordinate for curve commands, or RX for arcs
+   DOUBLE Y2;       // The Y2 coordinate for curve commands, or RY for arcs
+   DOUBLE X3;       // The X3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Y3;       // The Y3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Angle;    // Arc angle
 };
 
 struct VectorMatrix {
@@ -468,14 +593,14 @@ INLINE ERROR scAddDef(APTR Ob, CSTRING Name, OBJECTPTR Def) {
 }
 
 INLINE ERROR scSearchByID(APTR Ob, LONG ID, OBJECTPTR * Result) {
-   struct scSearchByID args = { ID, 0 };
+   struct scSearchByID args = { ID, (OBJECTPTR)0 };
    ERROR error = Action(MT_ScSearchByID, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
-   struct scFindDef args = { Name, 0 };
+   struct scFindDef args = { Name, (OBJECTPTR)0 };
    ERROR error = Action(MT_ScFindDef, (OBJECTPTR)Ob, &args);
    if (Def) *Def = args.Def;
    return(error);
@@ -497,10 +622,10 @@ class objVectorScene : public BaseClass {
    objVectorViewport * Viewport;  // References the first object in the scene, which must be a VectorViewport object.
    objBitmap * Bitmap;            // Target bitmap for drawing vectors.
    OBJECTID SurfaceID;            // May refer to a Surface object for enabling automatic rendering.
-   LONG     Flags;                // Optional flags.
+   VPF      Flags;                // Optional flags.
    LONG     PageWidth;            // The width of the page that contains the vector.
    LONG     PageHeight;           // The height of the page that contains the vector.
-   LONG     SampleMethod;         // The sampling method to use when interpolating images and patterns.
+   VSM      SampleMethod;         // The sampling method to use when interpolating images and patterns.
 
    // Action stubs
 
@@ -549,7 +674,7 @@ class objVectorScene : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const VPF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
@@ -566,7 +691,7 @@ class objVectorScene : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setSampleMethod(const LONG Value) {
+   inline ERROR setSampleMethod(const VSM Value) {
       this->SampleMethod = Value;
       return ERR_Okay;
    }
@@ -584,14 +709,14 @@ class objVectorImage : public BaseClass {
 
    using create = pf::Create<objVectorImage>;
 
-   DOUBLE X;                // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
-   DOUBLE Y;                // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
+   DOUBLE  X;               // Apply a horizontal offset to the image, the origin of which is determined by the #Units value.
+   DOUBLE  Y;               // Apply a vertical offset to the image, the origin of which is determined by the #Units value.
    objPicture * Picture;    // Refers to a @Picture from which the source #Bitmap is acquired.
    objBitmap * Bitmap;      // Reference to a source bitmap for the rendering algorithm.
-   LONG   Units;            // Declares the coordinate system to use for the #X and #Y values.
-   LONG   Dimensions;       // Dimension flags define whether individual dimension fields contain fixed or relative values.
-   LONG   SpreadMethod;     // Defines the drawing mode.
-   LONG   AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
+   VUNIT   Units;           // Declares the coordinate system to use for the #X and #Y values.
+   LONG    Dimensions;      // Dimension flags define whether individual dimension fields contain fixed or relative values.
+   VSPREAD SpreadMethod;    // Defines the drawing mode.
+   ARF     AspectRatio;     // Flags that affect the aspect ratio of the image within its target vector.
 
    // Customised field setting
 
@@ -617,7 +742,7 @@ class objVectorImage : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       this->Units = Value;
       return ERR_Okay;
    }
@@ -627,12 +752,12 @@ class objVectorImage : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setSpreadMethod(const LONG Value) {
+   inline ERROR setSpreadMethod(const VSPREAD Value) {
       this->SpreadMethod = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setAspectRatio(const LONG Value) {
+   inline ERROR setAspectRatio(const ARF Value) {
       this->AspectRatio = Value;
       return ERR_Okay;
    }
@@ -650,17 +775,17 @@ class objVectorPattern : public BaseClass {
 
    using create = pf::Create<objVectorPattern>;
 
-   DOUBLE X;                      // X coordinate for the pattern.
-   DOUBLE Y;                      // Y coordinate for the pattern.
-   DOUBLE Width;                  // Width of the pattern tile.
-   DOUBLE Height;                 // Height of the pattern tile.
-   DOUBLE Opacity;                // The opacity of the pattern.
+   DOUBLE  X;                     // X coordinate for the pattern.
+   DOUBLE  Y;                     // Y coordinate for the pattern.
+   DOUBLE  Width;                 // Width of the pattern tile.
+   DOUBLE  Height;                // Height of the pattern tile.
+   DOUBLE  Opacity;               // The opacity of the pattern.
    objVectorScene * Scene;        // Refers to the internal @VectorScene that will contain the rendered pattern.
    objVectorPattern * Inherit;    // Inherit attributes from a VectorPattern referenced here.
-   LONG   SpreadMethod;           // The behaviour to use when the pattern bounds do not match the vector path.
-   LONG   Units;                  // Defines the coordinate system for fields X, Y, Width and Height.
-   LONG   ContentUnits;           // Private. Not yet implemented.
-   LONG   Dimensions;             // Dimension flags are stored here.
+   VSPREAD SpreadMethod;          // The behaviour to use when the pattern bounds do not match the vector path.
+   VUNIT   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT   ContentUnits;          // Private. Not yet implemented.
+   LONG    Dimensions;            // Dimension flags are stored here.
 
    // Customised field setting
 
@@ -704,17 +829,17 @@ class objVectorPattern : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setSpreadMethod(const LONG Value) {
+   inline ERROR setSpreadMethod(const VSPREAD Value) {
       this->SpreadMethod = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       this->Units = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setContentUnits(const LONG Value) {
+   inline ERROR setContentUnits(const VUNIT Value) {
       this->ContentUnits = Value;
       return ERR_Okay;
    }
@@ -744,22 +869,22 @@ class objVectorGradient : public BaseClass {
 
    using create = pf::Create<objVectorGradient>;
 
-   DOUBLE X1;                      // Initial X coordinate for the gradient.
-   DOUBLE Y1;                      // Initial Y coordinate for the gradient.
-   DOUBLE X2;                      // Final X coordinate for the gradient.
-   DOUBLE Y2;                      // Final Y coordinate for the gradient.
-   DOUBLE CenterX;                 // The horizontal center point of the gradient.
-   DOUBLE CenterY;                 // The vertical center point of the gradient.
-   DOUBLE FX;                      // The horizontal focal point for radial gradients.
-   DOUBLE FY;                      // The vertical focal point for radial gradients.
-   DOUBLE Radius;                  // The radius of the gradient.
+   DOUBLE  X1;                     // Initial X coordinate for the gradient.
+   DOUBLE  Y1;                     // Initial Y coordinate for the gradient.
+   DOUBLE  X2;                     // Final X coordinate for the gradient.
+   DOUBLE  Y2;                     // Final Y coordinate for the gradient.
+   DOUBLE  CenterX;                // The horizontal center point of the gradient.
+   DOUBLE  CenterY;                // The vertical center point of the gradient.
+   DOUBLE  FX;                     // The horizontal focal point for radial gradients.
+   DOUBLE  FY;                     // The vertical focal point for radial gradients.
+   DOUBLE  Radius;                 // The radius of the gradient.
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
-   LONG   SpreadMethod;            // The behaviour to use when the gradient bounds do not match the vector path.
-   LONG   Units;                   // Defines the coordinate system for fields X1, Y1, X2 and Y2.
-   LONG   Type;                    // Specifies the type of gradient (e.g. RADIAL, LINEAR)
-   LONG   Flags;                   // Dimension flags are stored here.
-   LONG   ColourSpace;             // Defines the colour space to use when interpolating gradient colours.
-   LONG   TotalStops;              // Total number of stops defined in the Stops array.
+   VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
+   VUNIT   Units;                  // Defines the coordinate system for fields X1, Y1, X2 and Y2.
+   VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
+   VGF     Flags;                  // Dimension flags are stored here.
+   VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
+   LONG    TotalStops;             // Total number of stops defined in the Stops array.
 
    // Action stubs
 
@@ -836,29 +961,29 @@ class objVectorGradient : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setSpreadMethod(const LONG Value) {
+   inline ERROR setSpreadMethod(const VSPREAD Value) {
       this->SpreadMethod = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Units = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setType(const LONG Value) {
+   inline ERROR setType(const VGT Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Type = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const VGF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const VCS Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->ColourSpace = Value;
       return ERR_Okay;
@@ -917,8 +1042,8 @@ class objFilterEffect : public BaseClass {
    DOUBLE Width;              // Primitive width of the effect area.
    DOUBLE Height;             // Primitive height of the effect area.
    LONG   Dimensions;         // Dimension flags are stored here.
-   LONG   SourceType;         // Specifies an input source for the effect algorithm, if required.
-   LONG   MixType;            // If a secondary mix input is required for the effect, specify it here.
+   VSF    SourceType;         // Specifies an input source for the effect algorithm, if required.
+   VSF    MixType;            // If a secondary mix input is required for the effect, specify it here.
 
    // Action stubs
 
@@ -983,12 +1108,12 @@ class objFilterEffect : public BaseClass {
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setSourceType(const LONG Value) {
+   inline ERROR setSourceType(const VSF Value) {
       this->SourceType = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setMixType(const LONG Value) {
+   inline ERROR setMixType(const VSF Value) {
       this->MixType = Value;
       return ERR_Okay;
    }
@@ -996,9 +1121,9 @@ class objFilterEffect : public BaseClass {
 };
 
 struct MergeSource {
-   LONG SourceType;             // The type of the required source.
+   VSF SourceType;              // The type of the required source.
    objFilterEffect * Effect;    // Effect pointer if the SourceType is REFERENCE.
-  MergeSource(LONG pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
+  MergeSource(VSF pType, objFilterEffect *pEffect = NULL) : SourceType(pType), Effect(pEffect) { };
 };
 
 // ImageFX class definition
@@ -1185,45 +1310,45 @@ class objOffsetFX : public objFilterEffect {
 #define MT_RFSelectInvert -25
 #define MT_RFSelectMask -26
 
-struct rfSelectGamma { LONG Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
-struct rfSelectTable { LONG Component; DOUBLE * Values; LONG Size;  };
-struct rfSelectLinear { LONG Component; DOUBLE Slope; DOUBLE Intercept;  };
-struct rfSelectIdentity { LONG Component;  };
-struct rfSelectDiscrete { LONG Component; DOUBLE * Values; LONG Size;  };
-struct rfSelectInvert { LONG Component;  };
-struct rfSelectMask { LONG Component; LONG Mask;  };
+struct rfSelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
+struct rfSelectTable { CMP Component; DOUBLE * Values; LONG Size;  };
+struct rfSelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept;  };
+struct rfSelectIdentity { CMP Component;  };
+struct rfSelectDiscrete { CMP Component; DOUBLE * Values; LONG Size;  };
+struct rfSelectInvert { CMP Component;  };
+struct rfSelectMask { CMP Component; LONG Mask;  };
 
-INLINE ERROR rfSelectGamma(APTR Ob, LONG Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
+INLINE ERROR rfSelectGamma(APTR Ob, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
    struct rfSelectGamma args = { Component, Amplitude, Offset, Exponent };
    return(Action(MT_RFSelectGamma, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectTable(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
+INLINE ERROR rfSelectTable(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) {
    struct rfSelectTable args = { Component, Values, Size };
    return(Action(MT_RFSelectTable, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectLinear(APTR Ob, LONG Component, DOUBLE Slope, DOUBLE Intercept) {
+INLINE ERROR rfSelectLinear(APTR Ob, CMP Component, DOUBLE Slope, DOUBLE Intercept) {
    struct rfSelectLinear args = { Component, Slope, Intercept };
    return(Action(MT_RFSelectLinear, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectIdentity(APTR Ob, LONG Component) {
+INLINE ERROR rfSelectIdentity(APTR Ob, CMP Component) {
    struct rfSelectIdentity args = { Component };
    return(Action(MT_RFSelectIdentity, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectDiscrete(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
+INLINE ERROR rfSelectDiscrete(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) {
    struct rfSelectDiscrete args = { Component, Values, Size };
    return(Action(MT_RFSelectDiscrete, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectInvert(APTR Ob, LONG Component) {
+INLINE ERROR rfSelectInvert(APTR Ob, CMP Component) {
    struct rfSelectInvert args = { Component };
    return(Action(MT_RFSelectInvert, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectMask(APTR Ob, LONG Component, LONG Mask) {
+INLINE ERROR rfSelectMask(APTR Ob, CMP Component, LONG Mask) {
    struct rfSelectMask args = { Component, Mask };
    return(Action(MT_RFSelectMask, (OBJECTPTR)Ob, &args));
 }
@@ -1268,10 +1393,10 @@ class objVectorFilter : public BaseClass {
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
    LONG   ResX;                  // Width of the intermediate images, measured in pixels.
    LONG   ResY;                  // Height of the intermediate images, measured in pixels.
-   LONG   Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
-   LONG   PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
+   VUNIT  Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
+   VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
    LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
-   LONG   ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
+   VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
 
    // Action stubs
 
@@ -1332,17 +1457,17 @@ class objVectorFilter : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setUnits(const LONG Value) {
+   inline ERROR setUnits(const VUNIT Value) {
       this->Units = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setPrimitiveUnits(const LONG Value) {
+   inline ERROR setPrimitiveUnits(const VUNIT Value) {
       this->PrimitiveUnits = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const VCS Value) {
       this->ColourSpace = Value;
       return ERR_Okay;
    }
@@ -1368,11 +1493,11 @@ class objVectorFilter : public BaseClass {
 
 struct vecPush { LONG Position;  };
 struct vecTracePath { FUNCTION * Callback;  };
-struct vecGetBoundary { LONG Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
+struct vecGetBoundary { VBF Flags; DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height;  };
 struct vecPointInPath { DOUBLE X; DOUBLE Y;  };
-struct vecSubscribeInput { LONG Mask; FUNCTION * Callback;  };
+struct vecSubscribeInput { JTYPE Mask; FUNCTION * Callback;  };
 struct vecSubscribeKeyboard { FUNCTION * Callback;  };
-struct vecSubscribeFeedback { LONG Mask; FUNCTION * Callback;  };
+struct vecSubscribeFeedback { FM Mask; FUNCTION * Callback;  };
 struct vecNewMatrix { struct VectorMatrix * Transform;  };
 struct vecFreeMatrix { struct VectorMatrix * Matrix;  };
 
@@ -1386,8 +1511,8 @@ INLINE ERROR vecTracePath(APTR Ob, FUNCTION * Callback) {
    return(Action(MT_VecTracePath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecGetBoundary(APTR Ob, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) {
-   struct vecGetBoundary args = { Flags, 0, 0, 0, 0 };
+INLINE ERROR vecGetBoundary(APTR Ob, VBF Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) {
+   struct vecGetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
    ERROR error = Action(MT_VecGetBoundary, (OBJECTPTR)Ob, &args);
    if (X) *X = args.X;
    if (Y) *Y = args.Y;
@@ -1401,7 +1526,7 @@ INLINE ERROR vecPointInPath(APTR Ob, DOUBLE X, DOUBLE Y) {
    return(Action(MT_VecPointInPath, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecSubscribeInput(APTR Ob, LONG Mask, FUNCTION * Callback) {
+INLINE ERROR vecSubscribeInput(APTR Ob, JTYPE Mask, FUNCTION * Callback) {
    struct vecSubscribeInput args = { Mask, Callback };
    return(Action(MT_VecSubscribeInput, (OBJECTPTR)Ob, &args));
 }
@@ -1411,7 +1536,7 @@ INLINE ERROR vecSubscribeKeyboard(APTR Ob, FUNCTION * Callback) {
    return(Action(MT_VecSubscribeKeyboard, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR vecSubscribeFeedback(APTR Ob, LONG Mask, FUNCTION * Callback) {
+INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) {
    struct vecSubscribeFeedback args = { Mask, Callback };
    return(Action(MT_VecSubscribeFeedback, (OBJECTPTR)Ob, &args));
 }
@@ -1419,7 +1544,7 @@ INLINE ERROR vecSubscribeFeedback(APTR Ob, LONG Mask, FUNCTION * Callback) {
 #define vecDebug(obj) Action(MT_VecDebug,(obj),0)
 
 INLINE ERROR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform) {
-   struct vecNewMatrix args = { 0 };
+   struct vecNewMatrix args = { (struct VectorMatrix *)0 };
    ERROR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);
@@ -1450,11 +1575,11 @@ class objVector : public BaseClass {
    DOUBLE    MiterLimit;              // Imposes a limit on the ratio of the miter length to the StrokeWidth.
    DOUBLE    InnerMiterLimit;         // Private. No internal documentation exists for this feature.
    DOUBLE    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
-   LONG      Visibility;              // Controls the visibility of a vector and its children.
-   LONG      Flags;                   // Optional flags.
-   LONG      Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
-   LONG      PathQuality;             // Defines the quality of a path when it is rendered.
-   LONG      ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
+   VIS       Visibility;              // Controls the visibility of a vector and its children.
+   VF        Flags;                   // Optional flags.
+   PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
+   RQ        PathQuality;             // Defines the quality of a path when it is rendered.
+   VCS       ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
 
    // Action stubs
 
@@ -1520,29 +1645,29 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setVisibility(const LONG Value) {
+   inline ERROR setVisibility(const VIS Value) {
       this->Visibility = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const VF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setCursor(const LONG Value) {
+   inline ERROR setCursor(const PTC Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[41];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPathQuality(const LONG Value) {
+   inline ERROR setPathQuality(const RQ Value) {
       this->PathQuality = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setColourSpace(const LONG Value) {
+   inline ERROR setColourSpace(const VCS Value) {
       this->ColourSpace = Value;
       return ERR_Okay;
    }
@@ -1710,7 +1835,7 @@ INLINE ERROR vpSetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LON
 }
 
 INLINE ERROR vpGetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) {
-   struct vpGetCommand args = { Index, 0 };
+   struct vpGetCommand args = { Index, (struct PathCommand *)0 };
    ERROR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
    if (Command) *Command = args.Command;
    return(error);
@@ -1861,7 +1986,7 @@ struct VectorBase {
    void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_MoveTo)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_LineTo)(APTR Path, DOUBLE X, DOUBLE Y);
-   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
    void (*_Curve3)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
    void (*_Smooth3)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_Curve4)(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
@@ -1890,7 +2015,7 @@ inline ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * R
 inline void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
 inline void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
 inline void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
-inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
+inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
 inline void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
 inline void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
 inline void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }
@@ -2396,4 +2521,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_XCHANNELSELECTOR 0x57175337
 #define SVF_YCHANNELSELECTOR 0x634c7918
 #define SVF_ZOOMANDPAN 0xc606dfdc
+#define SVF_EXPANDED 0xd353d90e
+#define SVF_SEMI_EXPANDED 0xa6ff90c9
+#define SVF_EXTRA_EXPANDED 0x8c599b5f
+#define SVF_ULTRA_EXPANDED 0x87e8c363
 

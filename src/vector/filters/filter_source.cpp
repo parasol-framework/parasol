@@ -30,7 +30,7 @@ class extSourceFX : public extFilterEffect {
    objVector *Source;     // The vector branch to render as source graphic.
    objVectorScene *Scene; // Internal scene for rendering.
    UBYTE *BitmapData;
-   LONG AspectRatio;      // Aspect ratio flags.
+   ARF  AspectRatio;      // Aspect ratio flags.
    LONG DataSize;
    bool Render;           // Must be true if the bitmap cache needs to be rendered.
 };
@@ -63,7 +63,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
    DOUBLE img_width = filter->TargetWidth;
    DOUBLE img_height = filter->TargetHeight;
 
-   if (filter->PrimitiveUnits IS VUNIT_BOUNDING_BOX) {
+   if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
       if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
       if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * filter->BoundWidth;
@@ -115,7 +115,7 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       }
 
       if (!cache->Data) {
-         if (!AllocMemory(cache->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Self->BitmapData)) {
+         if (!AllocMemory(cache->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Self->BitmapData)) {
             Self->DataSize = cache->LineWidth * canvas_height;
          }
          else return ERR_AllocMemory;
@@ -142,10 +142,10 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
       filter->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
-      mark_dirty(Self->Scene->Viewport, RC_TRANSFORM);
+      mark_dirty(Self->Scene->Viewport, RC::TRANSFORM);
 
       Self->Scene->Bitmap = cache;
-      gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF_FILL);
+      gfxDrawRectangle(cache, 0, 0, cache->Width, cache->Height, 0x00000000, BAF::FILL);
       acDraw(Self->Scene);
 
       filter->Disabled = false;
@@ -153,10 +153,10 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       Self->Source->Parent = save_parent;
       Self->Source->Next   = save_next;
       ((extVectorViewport *)Self->Scene->Viewport)->Matrices = NULL;
-      mark_dirty(Self->Source, RC_ALL);
+      mark_dirty(Self->Source, RC::ALL);
    }
 
-   gfxCopyArea(Self->Bitmap, Self->Target, 0, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
+   gfxCopyArea(Self->Bitmap, Self->Target, BAF::NIL, 0, 0, Self->Bitmap->Width, Self->Bitmap->Height, 0, 0);
 
    Self->Render = false;
    return ERR_Okay;
@@ -190,8 +190,8 @@ static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 
 static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
 {
-   Self->AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
-   Self->SourceType  = VSF_NONE;
+   Self->AspectRatio = ARF::X_MID|ARF::Y_MID|ARF::MEET;
+   Self->SourceType  = VSF::NONE;
    Self->Render      = true;
 
    if ((Self->Scene = objVectorScene::create::integral(fl::Name("fx_src_scene"), fl::PageWidth(1), fl::PageHeight(1)))) {
@@ -200,7 +200,7 @@ static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
                fl::Width(1),
                fl::Height(1),
                fl::BitsPerPixel(32),
-               fl::Flags(BMF_ALPHA_CHANNEL|BMF_NO_DATA)))) {
+               fl::Flags(BMF::ALPHA_CHANNEL|BMF::NO_DATA)))) {
             return ERR_Okay;
          }
          else return ERR_CreateObject;
@@ -218,13 +218,13 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_GET_AspectRatio(extSourceFX *Self, LONG *Value)
+static ERROR SOURCEFX_GET_AspectRatio(extSourceFX *Self, ARF *Value)
 {
    *Value = Self->AspectRatio;
    return ERR_Okay;
 }
 
-static ERROR SOURCEFX_SET_AspectRatio(extSourceFX *Self, LONG Value)
+static ERROR SOURCEFX_SET_AspectRatio(extSourceFX *Self, ARF Value)
 {
    Self->AspectRatio = Value;
    Self->Render = true;
@@ -324,7 +324,7 @@ ERROR init_sourcefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_SOURCEFX),
       fl::Name("SourceFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clSourceFXActions),
       fl::Fields(clSourceFXFields),
       fl::Size(sizeof(extSourceFX)),

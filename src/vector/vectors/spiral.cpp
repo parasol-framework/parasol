@@ -364,7 +364,7 @@ static ERROR init_spiral(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORSPIRAL),
       fl::Name("VectorSpiral"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorSpiralActions),
       fl::Fields(clVectorSpiralFields),
       fl::Size(sizeof(extVectorSpiral)),

@@ -13,13 +13,18 @@ class objSound;
 
 // Optional flags for the Audio object.
 
-#define ADF_OVER_SAMPLING 0x00000001
-#define ADF_FILTER_LOW 0x00000002
-#define ADF_FILTER_HIGH 0x00000004
-#define ADF_STEREO 0x00000008
-#define ADF_VOL_RAMPING 0x00000010
-#define ADF_AUTO_SAVE 0x00000020
-#define ADF_SYSTEM_WIDE 0x00000040
+enum class ADF : ULONG {
+   NIL = 0,
+   OVER_SAMPLING = 0x00000001,
+   FILTER_LOW = 0x00000002,
+   FILTER_HIGH = 0x00000004,
+   STEREO = 0x00000008,
+   VOL_RAMPING = 0x00000010,
+   AUTO_SAVE = 0x00000020,
+   SYSTEM_WIDE = 0x00000040,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ADF)
 
 // Volume control flags
 
@@ -74,12 +79,15 @@ DEFINE_ENUM_FLAG_OPERATORS(SDF)
 
 // These audio bit formats are supported by AddSample and AddStream.
 
-#define SFM_BIG_ENDIAN 0x80000000
-#define SFM_U8_BIT_MONO 1
-#define SFM_S16_BIT_MONO 2
-#define SFM_U8_BIT_STEREO 3
-#define SFM_S16_BIT_STEREO 4
-#define SFM_END 5
+enum class SFM : ULONG {
+   NIL = 0,
+   F_BIG_ENDIAN = 0x80000000,
+   U8_BIT_MONO = 1,
+   S16_BIT_MONO = 2,
+   U8_BIT_STEREO = 3,
+   S16_BIT_STEREO = 4,
+   END = 5,
+};
 
 // Loop modes for the AudioLoop structure.
 
@@ -163,15 +171,15 @@ struct AudioLoop {
 
 struct sndOpenChannels { LONG Total; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
-struct sndAddSample { FUNCTION OnStop; LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
 struct sndSetSampleLength { LONG Sample; LARGE Length;  };
-struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; LONG SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
 INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
-   struct sndOpenChannels args = { Total, 0 };
+   struct sndOpenChannels args = { Total, (LONG)0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -182,8 +190,8 @@ INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) {
    return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, 0 };
+INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -199,8 +207,8 @@ INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, 0 };
+INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -227,7 +235,7 @@ class objAudio : public BaseClass {
    LONG OutputRate;    // Determines the frequency to use for the output of audio data.
    LONG InputRate;     // Determines the frequency to use when recording audio data.
    LONG Quality;       // Determines the quality of the audio mixing.
-   LONG Flags;         // Special audio flags can be set here.
+   ADF  Flags;         // Special audio flags can be set here.
    LONG BitDepth;      // The bit depth affects the overall quality of audio input and output.
    LONG Periods;       // Defines the number of periods that make up the internal audio buffer.
    LONG PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
@@ -263,7 +271,7 @@ class objAudio : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const ADF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -376,13 +384,13 @@ class objSound : public BaseClass {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);

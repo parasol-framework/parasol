@@ -63,10 +63,10 @@ struct svgState {
    DOUBLE  FillOpacity;
    DOUBLE  Opacity;
    LONG    FontWeight;
-   LONG    PathQuality;
+   RQ      PathQuality;
 
    svgState() : Fill("rgb(0,0,0)"), FontFamily("Open Sans"), StrokeWidth(0), FillOpacity(-1), Opacity(-1),
-      FontWeight(0), PathQuality(RQ_AUTO) { }
+      FontWeight(0), PathQuality(RQ::AUTO) { }
 };
 
 #include <parasol/modules/svg.h>

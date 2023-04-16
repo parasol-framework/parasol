@@ -14,16 +14,21 @@ class objPicture;
 
 // Flags for the Picture class.
 
-#define PCF_RESIZE_X 0x00000001
-#define PCF_NO_PALETTE 0x00000002
-#define PCF_SCALABLE 0x00000004
-#define PCF_RESIZE_Y 0x00000008
-#define PCF_RESIZE 0x00000009
-#define PCF_NEW 0x00000010
-#define PCF_MASK 0x00000020
-#define PCF_ALPHA 0x00000040
-#define PCF_LAZY 0x00000080
-#define PCF_FORCE_ALPHA_32 0x00000100
+enum class PCF : ULONG {
+   NIL = 0,
+   RESIZE_X = 0x00000001,
+   NO_PALETTE = 0x00000002,
+   SCALABLE = 0x00000004,
+   RESIZE_Y = 0x00000008,
+   RESIZE = 0x00000009,
+   NEW = 0x00000010,
+   MASK = 0x00000020,
+   ALPHA = 0x00000040,
+   LAZY = 0x00000080,
+   FORCE_ALPHA_32 = 0x00000100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PCF)
 
 // Picture class definition
 
@@ -38,7 +43,7 @@ class objPicture : public BaseClass {
 
    objBitmap * Bitmap;    // Represents a picture's image data.
    objBitmap * Mask;      // Refers to a Bitmap that imposes a mask on the image.
-   LONG Flags;            // Optional initialisation flags.
+   PCF  Flags;            // Optional initialisation flags.
    LONG DisplayHeight;    // The preferred height to use when displaying the image.
    LONG DisplayWidth;     // The preferred width to use when displaying the image.
    LONG Quality;          // Defines the quality level to use when saving the image.
@@ -74,13 +79,13 @@ class objPicture : public BaseClass {
       struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
@@ -107,7 +112,7 @@ class objPicture : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const PCF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }

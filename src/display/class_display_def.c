@@ -30,7 +30,7 @@ static const struct FieldDef clDisplayDisplayType[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clDisplayDPMS[] = {
+static const struct FieldDef clDisplayPowerMode[] = {
    { "Default", 0x00000000 },
    { "Off", 0x00000001 },
    { "Suspend", 0x00000002 },

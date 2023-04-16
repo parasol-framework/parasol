@@ -35,9 +35,10 @@ X11Globals glX11;
 _XDisplay *XDisplay = 0;
 struct XRandRBase *XRandRBase = 0;
 bool glX11ShmImage = false;
-UBYTE KeyHeld[K_LIST_END];
+UBYTE KeyHeld[LONG(KEY::LIST_END)];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
-LONG glKeyFlags = 0, glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
+KQ glKeyFlags = KQ::NIL;
+LONG glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
 Atom atomSurfaceID = 0, XWADeleteWindow = 0;
 GC glXGC = 0, glClipXGC = 0;
 XWindowAttributes glRootWindow;
@@ -53,30 +54,30 @@ APTR glDGAVideo = NULL;
 HINSTANCE glInstance = 0;
 
 WinCursor winCursors[24] = {
-   { 0, PTR_DEFAULT,           },  // NOTE: Refer to the microsoft.c file if you change anything here
-   { 0, PTR_SIZE_BOTTOM_LEFT,  },
-   { 0, PTR_SIZE_BOTTOM_RIGHT, },
-   { 0, PTR_SIZE_TOP_LEFT,     },
-   { 0, PTR_SIZE_TOP_RIGHT,    },
-   { 0, PTR_SIZE_LEFT,         },
-   { 0, PTR_SIZE_RIGHT,        },
-   { 0, PTR_SIZE_TOP,          },
-   { 0, PTR_SIZE_BOTTOM,       },
-   { 0, PTR_CROSSHAIR,         },
-   { 0, PTR_SLEEP,             },
-   { 0, PTR_SIZING,            },
-   { 0, PTR_SPLIT_VERTICAL,    },
-   { 0, PTR_SPLIT_HORIZONTAL,  },
-   { 0, PTR_MAGNIFIER,         },
-   { 0, PTR_HAND,              },
-   { 0, PTR_HAND_LEFT,         },
-   { 0, PTR_HAND_RIGHT,        },
-   { 0, PTR_TEXT,              },
-   { 0, PTR_PAINTBRUSH,        },
-   { 0, PTR_STOP,              },
-   { 0, PTR_INVISIBLE,         },
-   { 0, PTR_INVISIBLE,         },
-   { 0, PTR_DRAGGABLE,         }
+   { 0, PTC::DEFAULT,           },  // NOTE: Refer to the microsoft.c file if you change anything here
+   { 0, PTC::SIZE_BOTTOM_LEFT,  },
+   { 0, PTC::SIZE_BOTTOM_RIGHT, },
+   { 0, PTC::SIZE_TOP_LEFT,     },
+   { 0, PTC::SIZE_TOP_RIGHT,    },
+   { 0, PTC::SIZE_LEFT,         },
+   { 0, PTC::SIZE_RIGHT,        },
+   { 0, PTC::SIZE_TOP,          },
+   { 0, PTC::SIZE_BOTTOM,       },
+   { 0, PTC::CROSSHAIR,         },
+   { 0, PTC::SLEEP,             },
+   { 0, PTC::SIZING,            },
+   { 0, PTC::SPLIT_VERTICAL,    },
+   { 0, PTC::SPLIT_HORIZONTAL,  },
+   { 0, PTC::MAGNIFIER,         },
+   { 0, PTC::HAND,              },
+   { 0, PTC::HAND_LEFT,         },
+   { 0, PTC::HAND_RIGHT,        },
+   { 0, PTC::TEXT,              },
+   { 0, PTC::PAINTBRUSH,        },
+   { 0, PTC::STOP,              },
+   { 0, PTC::INVISIBLE,         },
+   { 0, PTC::INVISIBLE,         },
+   { 0, PTC::DRAGGABLE,         }
 };
 #endif
 
@@ -93,50 +94,50 @@ static void android_term_window(LONG);
 //********************************************************************************************************************
 // Note: These values are used as the input masks
 
-const InputType glInputType[JET_END] = {
-   { 0, 0 },                                         // UNUSED
-   { JTYPE_DIGITAL|JTYPE_MOVEMENT, JTYPE_MOVEMENT }, // JET_DIGITAL_X
-   { JTYPE_DIGITAL|JTYPE_MOVEMENT, JTYPE_MOVEMENT }, // JET_DIGITAL_Y
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_1
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_2
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_3
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_4
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_5
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_6
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_7
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_8
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_9
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_10
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_TRIGGER_LEFT
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_TRIGGER_RIGHT
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_START
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_BUTTON_SELECT
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_LEFT_BUMPER_1
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_LEFT_BUMPER_2
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_RIGHT_BUMPER_1
-   { JTYPE_BUTTON,                 JTYPE_BUTTON },   // JET_RIGHT_BUMPER_2
-   { JTYPE_ANALOG|JTYPE_MOVEMENT,  JTYPE_MOVEMENT }, // JET_ANALOG_X
-   { JTYPE_ANALOG|JTYPE_MOVEMENT,  JTYPE_MOVEMENT }, // JET_ANALOG_Y
-   { JTYPE_ANALOG|JTYPE_MOVEMENT,  JTYPE_MOVEMENT }, // JET_ANALOG_Z
-   { JTYPE_ANALOG|JTYPE_MOVEMENT,  JTYPE_MOVEMENT }, // JET_ANALOG2_X
-   { JTYPE_ANALOG|JTYPE_MOVEMENT,  JTYPE_MOVEMENT }, // JET_ANALOG2_Y
-   { JTYPE_ANALOG|JTYPE_MOVEMENT,  JTYPE_MOVEMENT }, // JET_ANALOG2_Z
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_WHEEL
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_WHEEL_TILT
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_PEN_TILT_VERTICAL
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_PEN_TILT_HORIZONTAL
-   { JTYPE_MOVEMENT,               JTYPE_MOVEMENT },    // JET_ABS_X
-   { JTYPE_MOVEMENT,               JTYPE_MOVEMENT },    // JET_ABS_Y
-   { JTYPE_FEEDBACK,               JTYPE_FEEDBACK },    // JET_ENTER_SURFACE
-   { JTYPE_FEEDBACK,               JTYPE_FEEDBACK },    // JET_LEAVE_SURFACE
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_PRESSURE
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_X
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_Y
-   { JTYPE_EXT_MOVEMENT,           JTYPE_EXT_MOVEMENT }, // JET_DEVICE_TILT_Z
-   { JTYPE_FEEDBACK,               JTYPE_FEEDBACK }     // JET_DISPLAY_EDGE
+const InputType glInputType[LONG(JET::END)] = {
+   { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
+   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_X
+   { JTYPE::DIGITAL|JTYPE::MOVEMENT, JTYPE::MOVEMENT }, // JET::DIGITAL_Y
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_3
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_4
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_5
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_6
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_7
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_8
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_9
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_10
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_LEFT
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::TRIGGER_RIGHT
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_START
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_SELECT
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_1
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::LEFT_BUMPER_2
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_1
+   { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::RIGHT_BUMPER_2
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_X
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Y
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG_Z
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_X
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Y
+   { JTYPE::ANALOG|JTYPE::MOVEMENT,  JTYPE::MOVEMENT }, // JET::ANALOG2_Z
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::WHEEL_TILT
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_VERTICAL
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PEN_TILT_HORIZONTAL
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_X
+   { JTYPE::MOVEMENT,               JTYPE::MOVEMENT },    // JET::ABS_Y
+   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET::ENTER_SURFACE
+   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK },    // JET::LEAVE_SURFACE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::PRESSURE
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_X
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Y
+   { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }, // JET::DEVICE_TILT_Z
+   { JTYPE::FEEDBACK,               JTYPE::FEEDBACK }     // JET::DISPLAY_EDGE
 };
 
-const CSTRING glInputNames[JET_END] = {
+const CSTRING glInputNames[LONG(JET::END)] = {
    "",
    "DIGITAL_X",
    "DIGITAL_Y",
@@ -211,12 +212,12 @@ bool glSixBitDisplay = false;
 static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = NULL;
-static BYTE glDisplayType = DT_NATIVE;
+static auto glDisplayType = DT::NATIVE;
 DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
 LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
-LONG glpWindowType = SWIN_HOST;
+SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
 
@@ -500,12 +501,12 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          GET_VDensity(display, &Info->VDensity);
 
          #ifdef __xwindows__
-            Info->AccelFlags = -1;
+            Info->AccelFlags = ACF(-1);
             if (glDGAAvailable IS TRUE) {
-               Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when X11DGA is active (it does not provide blitter syncing)
+               Info->AccelFlags &= ~ACF::VIDEO_BLIT; // Turn off video blitting when X11DGA is active (it does not provide blitter syncing)
             }
          #else
-            Info->AccelFlags = -1;
+            Info->AccelFlags = ACF(-1);
          #endif
 
          Info->PixelFormat.RedShift   = display->Bitmap->ColourFormat->RedShift;
@@ -529,13 +530,13 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    else {
       // If no display is specified, return default display settings for the main monitor and availability flags.
 
-      Info->Flags = 0;
+      Info->Flags = SCR::NIL;
 
 #ifdef __xwindows__
       if ((glHeadless) or (!XDisplay)) {
          Info->Width         = 1024;
          Info->Height        = 768;
-         Info->AccelFlags    = 0;
+         Info->AccelFlags    = ACF::NIL;
          Info->VDensity      = 96;
          Info->HDensity      = 96;
          Info->BitsPerPixel  = 32;
@@ -547,13 +548,13 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
          Info->Width  = glRootWindow.width;
          Info->Height = glRootWindow.height;
-         Info->AccelFlags = -1;
+         Info->AccelFlags = ACF(-1);
          #warning TODO: Get display density
          Info->VDensity = 96;
          Info->HDensity = 96;
 
          if (glDGAAvailable IS TRUE) {
-            Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when DGA is active
+            Info->AccelFlags &= ~ACF::VIDEO_BLIT; // Turn off video blitting when DGA is active
          }
 
          Info->BitsPerPixel = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
@@ -593,7 +594,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       Info->Height        = height;
       Info->BitsPerPixel  = bits;
       Info->BytesPerPixel = bytes;
-      Info->AccelFlags    = 0xffffffffffffffffLL;
+      Info->AccelFlags    = ACF(-1);
       Info->HDensity      = hdpi;
       Info->VDensity      = vdpi;
       if (Info->HDensity < 96) Info->HDensity = 96;
@@ -614,8 +615,8 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
             glDisplayInfo.Height        = ANativeWindow_getHeight(window);
             glDisplayInfo.BitsPerPixel  = 16;
             glDisplayInfo.BytesPerPixel = 2;
-            glDisplayInfo.AccelFlags    = ACF_VIDEO_BLIT;
-            glDisplayInfo.Flags         = SCR_MAXSIZE;  // Indicates that the width and height are the display's maximum.
+            glDisplayInfo.AccelFlags    = ACF::VIDEO_BLIT;
+            glDisplayInfo.Flags         = SCR::MAXSIZE;  // Indicates that the width and height are the display's maximum.
 
             AConfiguration *config;
             if (!adGetConfig(&config)) {
@@ -667,7 +668,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->Height        = 768;
          Info->BitsPerPixel  = 32;
          Info->BytesPerPixel = 4;
-         Info->AccelFlags = ACF_SOFTWARE_BLIT;
+         Info->AccelFlags = ACF::SOFTWARE_BLIT;
          Info->HDensity = 96;
          Info->VDensity = 96;
       }
@@ -913,7 +914,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (config.ok()) {
       cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
 
-      if ((glDisplayType IS DT_X11) or (glDisplayType IS DT_WINDOWS)) {
+      if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINDOWS)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
          if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
             cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
@@ -1306,3 +1307,4 @@ static STRUCTS glStructures = {
 };
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, &glStructures)
+

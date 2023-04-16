@@ -290,7 +290,7 @@
     </constants>
 
     <constants lookup="SFM" comment="These audio bit formats are supported by AddSample and AddStream.">
-      <const name="BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
+      <const name="F_BIG_ENDIAN">Combine this flag with any audio format to declare it as big endian.</const>
       <const name="S16_BIT_MONO">16-bit mono signed sample.</const>
       <const name="S16_BIT_STEREO">16-bit stereo signed sample.</const>
       <const name="U8_BIT_MONO">8-bit mono unsigned sample.</const>

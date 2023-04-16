@@ -29,9 +29,9 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
-     XNextEvent(XDisplay, &xevent);
-     //log.trace("Event %d", xevent.type);
-     switch (xevent.type) {
+      XNextEvent(XDisplay, &xevent);
+      //log.trace("Event %d", xevent.type);
+      switch (xevent.type) {
          case ButtonPress:      handle_button_press(&xevent); break;
          case ButtonRelease:    handle_button_release(&xevent); break;
          case ConfigureNotify:  handle_configure_notify(&xevent.xconfigure); break;
@@ -66,7 +66,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             if ((Atom)xevent.xclient.data.l[0] == XWADeleteWindow) {
                if (auto display_id = get_display(xevent.xany.window)) {
                   auto surface_id = GetOwnerID(display_id);
-                  const WindowHook hook(surface_id, WH_CLOSE);
+                  const WindowHook hook(surface_id, WH::CLOSE);
 
                   if (glWindowHooks.contains(hook)) {
                      auto func = &glWindowHooks[hook];
@@ -161,43 +161,43 @@ void handle_button_press(XEvent *xevent)
       if (xevent->xbutton.button IS 4) value = -9;
       else value = 9;
 
-      input.Type      = JET_WHEEL;
-      input.Flags     = JTYPE_EXT_MOVEMENT|JTYPE_DIGITAL;
+      input.Type      = JET::WHEEL;
+      input.Flags     = JTYPE::EXT_MOVEMENT|JTYPE::DIGITAL;
       input.Value     = value;
       input.Timestamp = PreciseTime();
 
       feed.Object   = NULL;
-      feed.Datatype = DATA_DEVICE_INPUT;
+      feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       ActionMsg(AC_DataFeed, glPointerID, &feed);
       return;
    }
 
-   input.Type = 0;
+   input.Type = JET::NIL;
 
    if ((pointer = gfxAccessPointer())) {
       if (xevent->xbutton.button IS 1) {
-         input.Type  = JET_BUTTON_1;
+         input.Type  = JET::BUTTON_1;
          input.Value = 1;
       }
       else if (xevent->xbutton.button IS 2) {
-         input.Type  = JET_BUTTON_3;
+         input.Type  = JET::BUTTON_3;
          input.Value = 1;
       }
       else if (xevent->xbutton.button IS 3) {
-         input.Type  = JET_BUTTON_2;
+         input.Type  = JET::BUTTON_2;
          input.Value = 1;
       }
       ReleaseObject(pointer);
    }
 
-   if (input.Type) {
-      input.Flags = glInputType[input.Type].Flags;
+   if (input.Type != JET::NIL) {
+      input.Flags = glInputType[LONG(input.Type)].Flags;
       input.Timestamp = PreciseTime();
 
       feed.Object   = NULL;
-      feed.Datatype = DATA_DEVICE_INPUT;
+      feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
       if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
@@ -223,26 +223,26 @@ void handle_button_release(XEvent *xevent)
    struct dcDeviceInput input;
    struct acDataFeed feed;
    feed.Object   = NULL;
-   feed.Datatype = DATA_DEVICE_INPUT;
+   feed.Datatype = DATA::DEVICE_INPUT;
    feed.Buffer   = &input;
    feed.Size     = sizeof(input);
-   input.Type  = 0;
-   input.Flags = 0;
+   input.Type  = JET::NIL;
+   input.Flags = JTYPE::NIL;
    input.Value = 0;
    input.Timestamp = PreciseTime();
 
    objPointer *pointer;
    if ((pointer = gfxAccessPointer())) {
       if (xevent->xbutton.button IS 1) {
-         input.Type  = JET_BUTTON_1;
+         input.Type  = JET::BUTTON_1;
          input.Value = 0;
       }
       else if (xevent->xbutton.button IS 2) {
-         input.Type  = JET_BUTTON_3;
+         input.Type  = JET::BUTTON_3;
          input.Value = 0;
       }
       else if (xevent->xbutton.button IS 3) {
-         input.Type  = JET_BUTTON_2;
+         input.Type  = JET::BUTTON_2;
          input.Value = 0;
       }
       ReleaseObject(pointer);
@@ -337,7 +337,7 @@ void handle_exposure(XExposeEvent *event)
 
       XEvent xevent;
       while (XCheckWindowEvent(XDisplay, event->window, ExposureMask, &xevent) IS True);
-      struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF_CHILDREN };
+      struct drwExpose region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
       QueueAction(MT_DrwExpose, surface_id, &region); // Redraw everything
    }
    else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
@@ -346,192 +346,192 @@ void handle_exposure(XExposeEvent *event)
 //********************************************************************************************************************
 // XK symbols are defined in X11/keysymdef.h
 
-LONG xkeysym_to_pkey(KeySym KSym)
+KEY xkeysym_to_pkey(KeySym KSym)
 {
    switch(KSym) {
-      case XK_A: return K_A;
-      case XK_B: return K_B;
-      case XK_C: return K_C;
-      case XK_D: return K_D;
-      case XK_E: return K_E;
-      case XK_F: return K_F;
-      case XK_G: return K_G;
-      case XK_H: return K_H;
-      case XK_I: return K_I;
-      case XK_J: return K_J;
-      case XK_K: return K_K;
-      case XK_L: return K_L;
-      case XK_M: return K_M;
-      case XK_N: return K_N;
-      case XK_O: return K_O;
-      case XK_P: return K_P;
-      case XK_Q: return K_Q;
-      case XK_R: return K_R;
-      case XK_S: return K_S;
-      case XK_T: return K_T;
-      case XK_U: return K_U;
-      case XK_V: return K_V;
-      case XK_W: return K_W;
-      case XK_X: return K_X;
-      case XK_Y: return K_Y;
-      case XK_Z: return K_Z;
-      case XK_a: return K_A;
-      case XK_b: return K_B;
-      case XK_c: return K_C;
-      case XK_d: return K_D;
-      case XK_e: return K_E;
-      case XK_f: return K_F;
-      case XK_g: return K_G;
-      case XK_h: return K_H;
-      case XK_i: return K_I;
-      case XK_j: return K_J;
-      case XK_k: return K_K;
-      case XK_l: return K_L;
-      case XK_m: return K_M;
-      case XK_n: return K_N;
-      case XK_o: return K_O;
-      case XK_p: return K_P;
-      case XK_q: return K_Q;
-      case XK_r: return K_R;
-      case XK_s: return K_S;
-      case XK_t: return K_T;
-      case XK_u: return K_U;
-      case XK_v: return K_V;
-      case XK_w: return K_W;
-      case XK_x: return K_X;
-      case XK_y: return K_Y;
-      case XK_z: return K_Z;
+      case XK_A: return KEY::A;
+      case XK_B: return KEY::B;
+      case XK_C: return KEY::C;
+      case XK_D: return KEY::D;
+      case XK_E: return KEY::E;
+      case XK_F: return KEY::F;
+      case XK_G: return KEY::G;
+      case XK_H: return KEY::H;
+      case XK_I: return KEY::I;
+      case XK_J: return KEY::J;
+      case XK_K: return KEY::K;
+      case XK_L: return KEY::L;
+      case XK_M: return KEY::M;
+      case XK_N: return KEY::N;
+      case XK_O: return KEY::O;
+      case XK_P: return KEY::P;
+      case XK_Q: return KEY::Q;
+      case XK_R: return KEY::R;
+      case XK_S: return KEY::S;
+      case XK_T: return KEY::T;
+      case XK_U: return KEY::U;
+      case XK_V: return KEY::V;
+      case XK_W: return KEY::W;
+      case XK_X: return KEY::X;
+      case XK_Y: return KEY::Y;
+      case XK_Z: return KEY::Z;
+      case XK_a: return KEY::A;
+      case XK_b: return KEY::B;
+      case XK_c: return KEY::C;
+      case XK_d: return KEY::D;
+      case XK_e: return KEY::E;
+      case XK_f: return KEY::F;
+      case XK_g: return KEY::G;
+      case XK_h: return KEY::H;
+      case XK_i: return KEY::I;
+      case XK_j: return KEY::J;
+      case XK_k: return KEY::K;
+      case XK_l: return KEY::L;
+      case XK_m: return KEY::M;
+      case XK_n: return KEY::N;
+      case XK_o: return KEY::O;
+      case XK_p: return KEY::P;
+      case XK_q: return KEY::Q;
+      case XK_r: return KEY::R;
+      case XK_s: return KEY::S;
+      case XK_t: return KEY::T;
+      case XK_u: return KEY::U;
+      case XK_v: return KEY::V;
+      case XK_w: return KEY::W;
+      case XK_x: return KEY::X;
+      case XK_y: return KEY::Y;
+      case XK_z: return KEY::Z;
 
-      case XK_bracketleft:  return K_L_SQUARE;
-      case XK_backslash:    return K_BACK_SLASH;
-      case XK_bracketright: return K_R_SQUARE;
-      case XK_asciicircum:  return K_SIX; // US conversion
-      case XK_underscore:   return K_MINUS; // US conversion
-      case XK_grave:        return K_REVERSE_QUOTE;
-      case XK_space:        return K_SPACE;
-      case XK_exclam:       return K_ONE; // US conversion
-      case XK_quotedbl:     return K_APOSTROPHE; // US conversion
-      case XK_numbersign:   return K_THREE; // US conversion
-      case XK_dollar:       return K_FOUR; // US conversion
-      case XK_percent:      return K_FIVE; // US conversion
-      case XK_ampersand:    return K_SEVEN; // US conversion
-      case XK_apostrophe:   return K_APOSTROPHE;
-      case XK_parenleft:    return K_NINE; // US conversion
-      case XK_parenright:   return K_ZERO; // US conversion
-      case XK_asterisk:     return K_EIGHT; // US conversion
-      case XK_plus:         return K_EQUALS; // US conversion
-      case XK_comma:        return K_COMMA;
-      case XK_minus:        return K_MINUS;
-      case XK_period:       return K_PERIOD;
-      case XK_slash:        return K_SLASH;
-      case XK_0:            return K_ZERO;
-      case XK_1:            return K_ONE;
-      case XK_2:            return K_TWO;
-      case XK_3:            return K_THREE;
-      case XK_4:            return K_FOUR;
-      case XK_5:            return K_FIVE;
-      case XK_6:            return K_SIX;
-      case XK_7:            return K_SEVEN;
-      case XK_8:            return K_EIGHT;
-      case XK_9:            return K_NINE;
-      case XK_KP_0:         return K_NP_0;
-      case XK_KP_1:         return K_NP_1;
-      case XK_KP_2:         return K_NP_2;
-      case XK_KP_3:         return K_NP_3;
-      case XK_KP_4:         return K_NP_4;
-      case XK_KP_5:         return K_NP_5;
-      case XK_KP_6:         return K_NP_6;
-      case XK_KP_7:         return K_NP_7;
-      case XK_KP_8:         return K_NP_8;
-      case XK_KP_9:         return K_NP_9;
-      case XK_colon:        return K_SEMI_COLON; // US conversion
-      case XK_semicolon:    return K_SEMI_COLON;
-      case XK_less:         return K_COMMA; // US conversion
-      case XK_equal:        return K_EQUALS;
-      case XK_greater:      return K_PERIOD; // US conversion
-      case XK_question:     return K_SLASH; // US conversion
-      case XK_at:           return K_AT;
-      case XK_KP_Multiply:  return K_NP_MULTIPLY;
-      case XK_KP_Add:       return K_NP_PLUS;
-      case XK_KP_Separator: return K_NP_BAR;
-      case XK_KP_Subtract:  return K_NP_MINUS;
-      case XK_KP_Decimal:   return K_NP_DOT;
-      case XK_KP_Divide:    return K_NP_DIVIDE;
-      case XK_KP_Enter:     return K_NP_ENTER;
+      case XK_bracketleft:  return KEY::L_SQUARE;
+      case XK_backslash:    return KEY::BACK_SLASH;
+      case XK_bracketright: return KEY::R_SQUARE;
+      case XK_asciicircum:  return KEY::SIX; // US conversion
+      case XK_underscore:   return KEY::MINUS; // US conversion
+      case XK_grave:        return KEY::REVERSE_QUOTE;
+      case XK_space:        return KEY::SPACE;
+      case XK_exclam:       return KEY::ONE; // US conversion
+      case XK_quotedbl:     return KEY::APOSTROPHE; // US conversion
+      case XK_numbersign:   return KEY::THREE; // US conversion
+      case XK_dollar:       return KEY::FOUR; // US conversion
+      case XK_percent:      return KEY::FIVE; // US conversion
+      case XK_ampersand:    return KEY::SEVEN; // US conversion
+      case XK_apostrophe:   return KEY::APOSTROPHE;
+      case XK_parenleft:    return KEY::NINE; // US conversion
+      case XK_parenright:   return KEY::ZERO; // US conversion
+      case XK_asterisk:     return KEY::EIGHT; // US conversion
+      case XK_plus:         return KEY::EQUALS; // US conversion
+      case XK_comma:        return KEY::COMMA;
+      case XK_minus:        return KEY::MINUS;
+      case XK_period:       return KEY::PERIOD;
+      case XK_slash:        return KEY::SLASH;
+      case XK_0:            return KEY::ZERO;
+      case XK_1:            return KEY::ONE;
+      case XK_2:            return KEY::TWO;
+      case XK_3:            return KEY::THREE;
+      case XK_4:            return KEY::FOUR;
+      case XK_5:            return KEY::FIVE;
+      case XK_6:            return KEY::SIX;
+      case XK_7:            return KEY::SEVEN;
+      case XK_8:            return KEY::EIGHT;
+      case XK_9:            return KEY::NINE;
+      case XK_KP_0:         return KEY::NP_0;
+      case XK_KP_1:         return KEY::NP_1;
+      case XK_KP_2:         return KEY::NP_2;
+      case XK_KP_3:         return KEY::NP_3;
+      case XK_KP_4:         return KEY::NP_4;
+      case XK_KP_5:         return KEY::NP_5;
+      case XK_KP_6:         return KEY::NP_6;
+      case XK_KP_7:         return KEY::NP_7;
+      case XK_KP_8:         return KEY::NP_8;
+      case XK_KP_9:         return KEY::NP_9;
+      case XK_colon:        return KEY::SEMI_COLON; // US conversion
+      case XK_semicolon:    return KEY::SEMI_COLON;
+      case XK_less:         return KEY::COMMA; // US conversion
+      case XK_equal:        return KEY::EQUALS;
+      case XK_greater:      return KEY::PERIOD; // US conversion
+      case XK_question:     return KEY::SLASH; // US conversion
+      case XK_at:           return KEY::AT;
+      case XK_KP_Multiply:  return KEY::NP_MULTIPLY;
+      case XK_KP_Add:       return KEY::NP_PLUS;
+      case XK_KP_Separator: return KEY::NP_BAR;
+      case XK_KP_Subtract:  return KEY::NP_MINUS;
+      case XK_KP_Decimal:   return KEY::NP_DOT;
+      case XK_KP_Divide:    return KEY::NP_DIVIDE;
+      case XK_KP_Enter:     return KEY::NP_ENTER;
 
-      case XK_Shift_L:      return K_L_SHIFT;
-      case XK_Shift_R:      return K_R_SHIFT;
-      case XK_Control_L:    return K_L_CONTROL;
-      case XK_Control_R:    return K_R_CONTROL;
-      case XK_Caps_Lock:    return K_CAPS_LOCK;
-      //case XK_Shift_Lock:   return K_SHIFT_LOCK;
+      case XK_Shift_L:      return KEY::L_SHIFT;
+      case XK_Shift_R:      return KEY::R_SHIFT;
+      case XK_Control_L:    return KEY::L_CONTROL;
+      case XK_Control_R:    return KEY::R_CONTROL;
+      case XK_Caps_Lock:    return KEY::CAPS_LOCK;
+      //case XK_Shift_Lock:   return KEY::SHIFT_LOCK;
 
-      case XK_Meta_L:       return K_L_COMMAND;
-      case XK_Meta_R:       return K_R_COMMAND;
-      case XK_Alt_L:        return K_L_ALT;
-      case XK_Alt_R:        return K_R_ALT;
-      //case XK_Super_L:      return K_;
-      //case XK_Super_R:      return K_;
-      //case XK_Hyper_L:      return K_;
-      //case XK_Hyper_R:      return K_;
+      case XK_Meta_L:       return KEY::L_COMMAND;
+      case XK_Meta_R:       return KEY::R_COMMAND;
+      case XK_Alt_L:        return KEY::L_ALT;
+      case XK_Alt_R:        return KEY::R_ALT;
+      //case XK_Super_L:      return KEY::;
+      //case XK_Super_R:      return KEY::;
+      //case XK_Hyper_L:      return KEY::;
+      //case XK_Hyper_R:      return KEY::;
 
-      case XK_BackSpace:    return K_BACKSPACE;
-      case XK_Tab:          return K_TAB;
-      case XK_Linefeed:     return K_ENTER;
-      case XK_Clear:        return K_CLEAR;
-      case XK_Return:       return K_ENTER;
-      case XK_Pause:        return K_PAUSE;
-      case XK_Scroll_Lock:  return K_SCR_LOCK;
-      case XK_Sys_Req:      return K_SYSRQ;
-      case XK_Escape:       return K_ESCAPE;
-      case XK_Delete:       return K_DELETE;
+      case XK_BackSpace:    return KEY::BACKSPACE;
+      case XK_Tab:          return KEY::TAB;
+      case XK_Linefeed:     return KEY::ENTER;
+      case XK_Clear:        return KEY::CLEAR;
+      case XK_Return:       return KEY::ENTER;
+      case XK_Pause:        return KEY::PAUSE;
+      case XK_Scroll_Lock:  return KEY::SCR_LOCK;
+      case XK_Sys_Req:      return KEY::SYSRQ;
+      case XK_Escape:       return KEY::ESCAPE;
+      case XK_Delete:       return KEY::DELETE;
 
-      case XK_Home:         return K_HOME;
-      case XK_Left:         return K_LEFT;
-      case XK_Up:           return K_UP;
-      case XK_Right:        return K_RIGHT;
-      case XK_Down:         return K_DOWN;
-      case XK_Page_Up:      return K_PAGE_UP;
-      case XK_Page_Down:    return K_PAGE_DOWN;
-      case XK_End:          return K_END;
+      case XK_Home:         return KEY::HOME;
+      case XK_Left:         return KEY::LEFT;
+      case XK_Up:           return KEY::UP;
+      case XK_Right:        return KEY::RIGHT;
+      case XK_Down:         return KEY::DOWN;
+      case XK_Page_Up:      return KEY::PAGE_UP;
+      case XK_Page_Down:    return KEY::PAGE_DOWN;
+      case XK_End:          return KEY::END;
 
-      case XK_Select:        return K_SELECT;
-      //case XK_3270_PrintScreen: return K_PRT_SCR;
-      case XK_Print:         return K_PRINT;
-      case XK_Execute:       return K_EXECUTE;
-      case XK_Insert:        return K_INSERT;
-      case XK_Undo:          return K_UNDO;
-      case XK_Redo:          return K_REDO;
-      case XK_Menu:          return K_MENU;
-      case XK_Find:          return K_FIND;
-      case XK_Cancel:        return K_CANCEL;
-      case XK_Help:          return K_HELP;
-      case XK_Break:         return K_BREAK;
-      case XK_Num_Lock:      return K_NUM_LOCK;
-      //case XK_Mode_switch:   return K_;  /* Character set switch */
-      //case XK_script_switch: return K_;  /* Alias for mode_switch */
+      case XK_Select:        return KEY::SELECT;
+      //case XK_3270_PrintScreen: return KEY::PRT_SCR;
+      case XK_Print:         return KEY::PRINT;
+      case XK_Execute:       return KEY::EXECUTE;
+      case XK_Insert:        return KEY::INSERT;
+      case XK_Undo:          return KEY::UNDO;
+      case XK_Redo:          return KEY::REDO;
+      case XK_Menu:          return KEY::MENU;
+      case XK_Find:          return KEY::FIND;
+      case XK_Cancel:        return KEY::CANCEL;
+      case XK_Help:          return KEY::HELP;
+      case XK_Break:         return KEY::BREAK;
+      case XK_Num_Lock:      return KEY::NUM_LOCK;
+      //case XK_Mode_switch:   return KEY::;  /* Character set switch */
+      //case XK_script_switch: return KEY::;  /* Alias for mode_switch */
 
-      case XK_F1:           return K_F1;
-      case XK_F2:           return K_F2;
-      case XK_F3:           return K_F3;
-      case XK_F4:           return K_F4;
-      case XK_F5:           return K_F5;
-      case XK_F6:           return K_F6;
-      case XK_F7:           return K_F7;
-      case XK_F8:           return K_F8;
-      case XK_F9:           return K_F9;
-      case XK_F10:          return K_F10;
-      case XK_F11:          return K_F11;
-      case XK_F12:          return K_F12;
-      case XK_F13:          return K_F13;
-      case XK_F14:          return K_F14;
-      case XK_F15:          return K_F15;
-      case XK_F16:          return K_F16;
-      case XK_F17:          return K_F17;
-      case XK_F18:          return K_F18;
-      case XK_F19:          return K_F19;
-      case XK_F20:          return K_F20;
-      default: return 0;
+      case XK_F1:           return KEY::F1;
+      case XK_F2:           return KEY::F2;
+      case XK_F3:           return KEY::F3;
+      case XK_F4:           return KEY::F4;
+      case XK_F5:           return KEY::F5;
+      case XK_F6:           return KEY::F6;
+      case XK_F7:           return KEY::F7;
+      case XK_F8:           return KEY::F8;
+      case XK_F9:           return KEY::F9;
+      case XK_F10:          return KEY::F10;
+      case XK_F11:          return KEY::F11;
+      case XK_F12:          return KEY::F12;
+      case XK_F13:          return KEY::F13;
+      case XK_F14:          return KEY::F14;
+      case XK_F15:          return KEY::F15;
+      case XK_F16:          return KEY::F16;
+      case XK_F17:          return KEY::F17;
+      case XK_F18:          return KEY::F18;
+      case XK_F19:          return KEY::F19;
+      case XK_F20:          return KEY::F20;
+      default: return KEY::NIL;
    }
 }
 
@@ -564,30 +564,30 @@ void handle_key_press(XEvent *xevent)
 
    log.traceBranch("XCode: $%x, XSym: $%x, ModSym: $%x, XState: $%x", xevent->xkey.keycode, (int)sym, (int)mod_sym, xevent->xkey.state);
 
-   LONG value = xkeysym_to_pkey(sym);
-   LONG flags = KQ_PRESSED;
+   auto value = xkeysym_to_pkey(sym);
+   auto flags = KQ::PRESSED;
 
-   if (xevent->xkey.state & LockMask) flags |= KQ_CAPS_LOCK;
-   if (((value >= K_NP_0) and (value <= K_NP_DIVIDE)) or (value IS K_NP_ENTER)) {
-      flags |= KQ_NUM_PAD;
+   if (xevent->xkey.state & LockMask) flags |= KQ::CAPS_LOCK;
+   if (((LONG(value) >= LONG(KEY::NP_0)) and (LONG(value) <= LONG(KEY::NP_DIVIDE))) or (value IS KEY::NP_ENTER)) {
+      flags |= KQ::NUM_PAD;
    }
 
-   if ((value) and (value < ARRAYSIZE(KeyHeld))) {
-      if (KeyHeld[value]) flags |= KQ_REPEAT;
-      else KeyHeld[value] = 1;
+   if ((value != KEY::NIL) and (LONG(value) < ARRAYSIZE(KeyHeld))) {
+      if (KeyHeld[LONG(value)]) flags |= KQ::REPEAT;
+      else KeyHeld[LONG(value)] = 1;
 
-      if (value IS K_L_COMMAND)      glKeyFlags |= KQ_L_COMMAND;
-      else if (value IS K_R_COMMAND) glKeyFlags |= KQ_R_COMMAND;
-      else if (value IS K_L_SHIFT)   glKeyFlags |= KQ_L_SHIFT;
-      else if (value IS K_R_SHIFT)   glKeyFlags |= KQ_R_SHIFT;
-      else if (value IS K_L_CONTROL) glKeyFlags |= KQ_L_CONTROL;
-      else if (value IS K_R_CONTROL) glKeyFlags |= KQ_R_CONTROL;
-      else if (value IS K_L_ALT)     glKeyFlags |= KQ_L_ALT;
-      else if (value IS K_R_ALT)     glKeyFlags |= KQ_R_ALT;
+      if (value IS KEY::L_COMMAND)      glKeyFlags |= KQ::L_COMMAND;
+      else if (value IS KEY::R_COMMAND) glKeyFlags |= KQ::R_COMMAND;
+      else if (value IS KEY::L_SHIFT)   glKeyFlags |= KQ::L_SHIFT;
+      else if (value IS KEY::R_SHIFT)   glKeyFlags |= KQ::R_SHIFT;
+      else if (value IS KEY::L_CONTROL) glKeyFlags |= KQ::L_CONTROL;
+      else if (value IS KEY::R_CONTROL) glKeyFlags |= KQ::R_CONTROL;
+      else if (value IS KEY::L_ALT)     glKeyFlags |= KQ::L_ALT;
+      else if (value IS KEY::R_ALT)     glKeyFlags |= KQ::R_ALT;
    }
 
-   if ((value) or (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+   if ((value != KEY::NIL) or (unicode != 0xffffffff)) {
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ::NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
@@ -639,24 +639,24 @@ void handle_key_release(XEvent *xevent)
 
    KeySym sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, 0);
 
-   LONG value = xkeysym_to_pkey(sym);
-   LONG flags = KQ_RELEASED;
+   auto value = xkeysym_to_pkey(sym);
+   auto flags = KQ::RELEASED;
 
-   if ((value) and (value < ARRAYSIZE(KeyHeld))) {
-      KeyHeld[value] = 0;
+   if ((value != KEY::NIL) and (LONG(value) < ARRAYSIZE(KeyHeld))) {
+      KeyHeld[LONG(value)] = 0;
 
-      if (value IS K_L_COMMAND)      glKeyFlags &= ~KQ_L_COMMAND;
-      else if (value IS K_R_COMMAND) glKeyFlags &= ~KQ_R_COMMAND;
-      else if (value IS K_L_SHIFT)   glKeyFlags &= ~KQ_L_SHIFT;
-      else if (value IS K_R_SHIFT)   glKeyFlags &= ~KQ_R_SHIFT;
-      else if (value IS K_L_CONTROL) glKeyFlags &= ~KQ_L_CONTROL;
-      else if (value IS K_R_CONTROL) glKeyFlags &= ~KQ_R_CONTROL;
-      else if (value IS K_L_ALT)     glKeyFlags &= ~KQ_L_ALT;
-      else if (value IS K_R_ALT)     glKeyFlags &= ~KQ_R_ALT;
+      if (value IS KEY::L_COMMAND)      glKeyFlags &= ~KQ::L_COMMAND;
+      else if (value IS KEY::R_COMMAND) glKeyFlags &= ~KQ::R_COMMAND;
+      else if (value IS KEY::L_SHIFT)   glKeyFlags &= ~KQ::L_SHIFT;
+      else if (value IS KEY::R_SHIFT)   glKeyFlags &= ~KQ::R_SHIFT;
+      else if (value IS KEY::L_CONTROL) glKeyFlags &= ~KQ::L_CONTROL;
+      else if (value IS KEY::R_CONTROL) glKeyFlags &= ~KQ::R_CONTROL;
+      else if (value IS KEY::L_ALT)     glKeyFlags &= ~KQ::L_ALT;
+      else if (value IS KEY::R_ALT)     glKeyFlags &= ~KQ::R_ALT;
    }
 
-  if ((value) or (unicode != 0xffffffff)) {
-     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ_NOT_PRINTABLE;
+  if ((value != KEY::NIL) or (unicode != 0xffffffff)) {
+     if ((unicode < 0x20) or (unicode IS 127)) flags |= KQ::NOT_PRINTABLE;
       evKey key = {
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
@@ -709,15 +709,15 @@ void process_movement(Window Window, LONG X, LONG Y)
       struct acDataFeed feed;
       struct dcDeviceInput input[2];
       feed.Object   = NULL;
-      feed.Datatype = DATA_DEVICE_INPUT;
+      feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);
-      input[0].Type      = JET_ABS_X;
-      input[0].Flags     = 0;
+      input[0].Type      = JET::ABS_X;
+      input[0].Flags     = JTYPE::NIL;
       input[0].Value     = X;
       input[0].Timestamp = PreciseTime();
-      input[1].Type      = JET_ABS_Y;
-      input[1].Flags     = 0;
+      input[1].Type      = JET::ABS_Y;
+      input[1].Flags     = JTYPE::NIL;
       input[1].Value     = Y;
       input[1].Timestamp = input[0].Timestamp;
       Action(AC_DataFeed, pointer, &feed);
@@ -725,3 +725,4 @@ void process_movement(Window Window, LONG X, LONG Y)
       ReleaseObject(pointer);
    }
 }
+

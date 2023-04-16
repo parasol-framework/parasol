@@ -57,7 +57,7 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
 
    // Read the JPEG file
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
+   acSeek(Self->prvFile, 0.0, SEEK::START);
 
    auto bmp = Self->Bitmap;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
@@ -65,14 +65,14 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
    jpeg_stdio_src(&cinfo, Self->prvFile);
    jpeg_read_header(&cinfo, TRUE);
 
-   if (!bmp->Width)          bmp->Width          = cinfo.image_width;
-   if (!bmp->Height)         bmp->Height         = cinfo.image_height;
-   if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;
-   if (!Self->DisplayHeight) Self->DisplayHeight = bmp->Height;
-   if (!bmp->Type)           bmp->Type           = BMP_CHUNKY;
-   if (!bmp->BitsPerPixel)   bmp->BitsPerPixel   = 32;
+   if (!bmp->Width)           bmp->Width          = cinfo.image_width;
+   if (!bmp->Height)          bmp->Height         = cinfo.image_height;
+   if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
+   if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
+   if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
+   if (!bmp->BitsPerPixel)    bmp->BitsPerPixel   = 32;
 
-   if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
+   if (((Self->Flags & PCF::NO_PALETTE) != PCF::NIL) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
    }
 
@@ -87,8 +87,8 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
       return ERR_Query;
    }
 
-   if (Self->Flags & PCF_RESIZE_X) cinfo.output_width = bmp->Width;
-   if (Self->Flags & PCF_RESIZE_Y) cinfo.output_height = bmp->Height;
+   if ((Self->Flags & PCF::RESIZE_X) != PCF::NIL) cinfo.output_width = bmp->Width;
+   if ((Self->Flags & PCF::RESIZE_Y) != PCF::NIL) cinfo.output_height = bmp->Height;
 
    if (bmp->BitsPerPixel >= 24) {
       decompress_jpeg(Self, bmp, &cinfo);
@@ -99,7 +99,7 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
       objBitmap::create tmp = { fl::Width(bmp->Width), fl::Height(bmp->Height), fl::BitsPerPixel(24) };
       if (tmp.ok()) {
          decompress_jpeg(Self, *tmp, &cinfo);
-         gfxCopyArea(*tmp, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+         gfxCopyArea(*tmp, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
       }
    }
 
@@ -170,7 +170,7 @@ static ERROR JPEG_Init(extPicture *Self, APTR Void)
 
    Self->get(FID_Location, &path);
 
-   if ((!path) or (Self->Flags & PCF_NEW)) {
+   if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
       // programmer is required to specify the dimensions and colours of the Bitmap so that we can initialise it.
 
@@ -189,7 +189,7 @@ static ERROR JPEG_Init(extPicture *Self, APTR Void)
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
-         if (!(Self->Flags & PCF_LAZY)) acActivate(Self);
+         if ((Self->Flags & PCF::LAZY) IS PCF::NIL) acActivate(Self);
          return ERR_Okay;
       }
       else log.msg("The file is not a JPEG picture.");
@@ -217,19 +217,19 @@ static ERROR JPEG_Query(extPicture *Self, APTR Void)
       }
    }
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
-   if (!AllocMemory(sizeof(struct jpeg_decompress_struct), MEM_DATA, &cinfo)) {
+   acSeek(Self->prvFile, 0.0, SEEK::START);
+   if (!AllocMemory(sizeof(struct jpeg_decompress_struct), MEM::DATA, &cinfo)) {
       auto bmp = Self->Bitmap;
       cinfo->err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
       jpeg_create_decompress(cinfo);
       jpeg_stdio_src(cinfo, Self->prvFile);
       jpeg_read_header(cinfo, FALSE);
 
-      if (!bmp->Width)          bmp->Width          = cinfo->image_width;
-      if (!bmp->Height)         bmp->Height         = cinfo->image_height;
-      if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;
-      if (!Self->DisplayHeight) Self->DisplayHeight = bmp->Height;
-      if (!bmp->Type)           bmp->Type           = BMP_CHUNKY;
+      if (!bmp->Width)           bmp->Width          = cinfo->image_width;
+      if (!bmp->Height)          bmp->Height         = cinfo->image_height;
+      if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
+      if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
+      if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
       if (!bmp->BitsPerPixel) {
          bmp->BitsPerPixel = 24;
          bmp->BytesPerPixel = 3;
@@ -335,7 +335,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       fl::BaseClassID(ID_PICTURE),
       fl::ClassID(ID_JPEG),
       fl::Name("JPEG"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),
       fl::FileDescription("JPEG Picture"),
       fl::FileHeader("[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]"),

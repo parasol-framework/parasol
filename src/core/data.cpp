@@ -171,7 +171,8 @@ struct FileMonitor *glFileMonitor = NULL;
 #endif
 
 THREADVAR char tlFieldName[10]; // $12345678\0
-THREADVAR LONG glForceUID = -1, glForceGID = -1, glDefaultPermissions = 0;
+THREADVAR LONG glForceUID = -1, glForceGID = -1;
+THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
 THREADVAR WORD tlDepth     = 0;
 THREADVAR WORD tlLogStatus = 1;
 THREADVAR BYTE tlMainThread = FALSE; // Will be set to TRUE on open, any other threads will remain FALSE.
@@ -187,7 +188,7 @@ OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
-THREADVAR struct Message *tlCurrentMsg   = 0;
+THREADVAR struct Message *tlCurrentMsg = 0;
 
 ERROR (*glMessageHandler)(struct Message *) = 0;
 void (*glVideoRecovery)(void) = 0;

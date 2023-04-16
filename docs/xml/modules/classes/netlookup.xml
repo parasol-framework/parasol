@@ -136,7 +136,7 @@
       <name>Flags</name>
       <comment>Optional flags</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="NLF">INT</type>
+      <type lookup="NLF">NLF</type>
       <description>
 <types lookup="NLF"/>
       </description>

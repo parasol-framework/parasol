@@ -72,7 +72,7 @@ static LONG mixmf16Stereo(APTR Src, LONG SrcPos, LONG TotalSamples, LONG nextSam
    return SrcPos;
 }
 
-static MixRoutine MixMonoFloat[SFM_END] = { NULL, &mixmf8Mono, &mixmf16Mono, &mixmf8Stereo, &mixmf16Stereo };
+static MixRoutine MixMonoFloat[LONG(SFM::END)] = { NULL, &mixmf8Mono, &mixmf16Mono, &mixmf8Stereo, &mixmf16Stereo };
 
 //********************************************************************************************************************
 // Mix 8-bit mono samples.
@@ -154,7 +154,7 @@ static LONG mixsf16Stereo(APTR Src, LONG SrcPos, LONG TotalSamples, int nextSamp
    return SrcPos;
 }
 
-static MixRoutine MixStereoFloat[SFM_END] = { NULL, &mixsf8Mono, &mixsf16Mono, &mixsf8Stereo, &mixsf16Stereo };
+static MixRoutine MixStereoFloat[LONG(SFM::END)] = { NULL, &mixsf8Mono, &mixsf16Mono, &mixsf8Stereo, &mixsf16Stereo };
 
 //********************************************************************************************************************
 // Mix interploated 8-bit mono samples.
@@ -286,7 +286,7 @@ static LONG mixmi16Stereo(APTR Src, LONG SrcPos, LONG TotalSamples, LONG nextSam
    return SrcPos;
 }
 
-static MixRoutine MixMonoFloatInterp[SFM_END] = { NULL, &mixmi8Mono, &mixmi16Mono, &mixmi8Stereo, &mixmi16Stereo };
+static MixRoutine MixMonoFloatInterp[LONG(SFM::END)] = { NULL, &mixmi8Mono, &mixmi16Mono, &mixmi8Stereo, &mixmi16Stereo };
 
 //********************************************************************************************************************
 // Mix interploated 8-bit mono samples.
@@ -439,4 +439,4 @@ static LONG mixsi16Stereo(APTR Src, LONG SrcPos, LONG TotalSamples, LONG nextSam
    return SrcPos;
 }
 
-static MixRoutine MixStereoFloatInterp[SFM_END] = { NULL, &mixsi8Mono, &mixsi16Mono, &mixsi8Stereo, &mixsi16Stereo };
+static MixRoutine MixStereoFloatInterp[LONG(SFM::END)] = { NULL, &mixsi8Mono, &mixsi16Mono, &mixsi8Stereo, &mixsi16Stereo };

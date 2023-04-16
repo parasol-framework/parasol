@@ -329,7 +329,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
          len = StrLength(Value);
 
-         if (!AllocMemory(i + len + 1, MEM_STRING|MEM_NO_CLEAR, &newpath)) {
+         if (!AllocMemory(i + len + 1, MEM::STRING|MEM::NO_CLEAR, &newpath)) {
             CopyMemory(Self->Path, newpath, i);
             CopyMemory(Value, newpath+i, len+1);
          }
@@ -443,7 +443,7 @@ static ERROR SET_Origin(extDocument *Self, STRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path)) {
+      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path)) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
       }

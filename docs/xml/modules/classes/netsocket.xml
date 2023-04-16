@@ -27,7 +27,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <header>Server-Client Connections</header>
 <p>To accept incoming client connections, create a NetSocket object with the SERVER flag set and define the <field>Port</field> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
 <p>When a new connection is detected, the <field>Feedback</field> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
-<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC_CONNECTED</code>.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with a State value of <code>NTC_DISCONNECTED</code>.</p>
+<p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <field>Feedback</field> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
 <p>Information on all active connections can be read from the <field>Clients</field> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
 <p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
 <p>All data that is received from client sockets will be passed to the <field>Incoming</field> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
@@ -87,14 +87,14 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
 <p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <field>State</field> field to respond to changes to the connection state.</p>
-<p>Pre-Condition: Must be in a connection state of <code>NTC_DISCONNECTED</code></p>
-<p>Post-Condition: If this method returns <code>ERR_Okay</code>, will be in state <code>NTC_CONNECTING</code>.</p>
+<p>Pre-Condition: Must be in a connection state of <code>NTC::DISCONNECTED</code></p>
+<p>Post-Condition: If this method returns <code>ERR_Okay</code>, will be in state <code>NTC::CONNECTING</code>.</p>
       </description>
       <result>
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
         <error code="Failed">The connect failed for some other reason.</error>
         <error code="Args">Address was NULL, or Port was not in the required range.</error>
-        <error code="InvalidState">The NetSocket was not in the state NTC_DISCONNECTED.</error>
+        <error code="InvalidState">The NetSocket was not in the state NTC::DISCONNECTED.</error>
         <error code="HostNotFound">Host name resolution failed.</error>
       </result>
     </method>
@@ -237,7 +237,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type>ERROR</type>
       <description>
 <p>This field describes the last error that occurred during a NetSocket operation:</p>
-<p>In the case where a NetSocket object enters the <code>NTC_DISCONNECTED</code> state from the <code>NTC_CONNECTED</code> state, this field can be used to determine how a TCP connection was closed.</p>
+<p>In the case where a NetSocket object enters the <code>NTC::DISCONNECTED</code> state from the <code>NTC::CONNECTED</code> state, this field can be used to determine how a TCP connection was closed.</p>
 <types type="Error">
 <type name="ERR_Okay">The connection was closed gracefully.  All data sent by the peer has been received.</type>
 <type name="ERR_Disconnected">The connection was broken in a non-graceful fashion. Data may be lost.</type>
@@ -266,7 +266,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="NSF">INT</type>
+      <type lookup="NSF">NSF</type>
       <description>
 <types lookup="NSF"/>
       </description>
@@ -333,7 +333,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>State</name>
       <comment>The current connection state of the netsocket object.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="NTC">INT</type>
+      <type lookup="NTC">NTC</type>
       <description>
 <types lookup="NTC"/>
       </description>
@@ -392,7 +392,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   <structs>
     <struct name="IPAddress">
       <field name="Data" type="ULONG" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
-      <field name="Type" type="LONG" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
+      <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="LONG">Unused padding for 64-bit alignment</field>
     </struct>
 

@@ -90,7 +90,7 @@
       <name>Category</name>
       <comment>The system category that a class belongs to.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="CCF">INT</type>
+      <type lookup="CCF">CCF</type>
       <description>
 <p>When designing a new class it is recommended that a suitable category is chosen and declared in this field. It is acceptable for a class to be a member of multiple categories by combining category flags together.</p>
 <types lookup="CCF"/>

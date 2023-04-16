@@ -167,16 +167,16 @@
     <method>
       <name>ReplaceText</name>
       <comment>Replaces all text within an entire document or limited range.</comment>
-      <prototype>ERROR sciReplaceText(OBJECTPTR Object, CSTRING Find, CSTRING Replace, LONG Flags, LONG Start, LONG End)</prototype>
+      <prototype>ERROR sciReplaceText(OBJECTPTR Object, CSTRING Find, CSTRING Replace, STF Flags, LONG Start, LONG End)</prototype>
       <input>
         <param type="CSTRING" name="Find">The keyword string to find.</param>
         <param type="CSTRING" name="Replace">The string that will replace the keyword.</param>
-        <param type="LONG" name="Flags" lookup="STF">Optional flags.</param>
+        <param type="STF" name="Flags" lookup="STF">Optional flags.</param>
         <param type="LONG" name="Start">The start of the search - set to zero if covering the entire document.  If -1, starts from the current cursor position.</param>
         <param type="LONG" name="End">The end of the search - set to -1 if covering the entire document.</param>
       </input>
       <description>
-<p>The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a given Start and End point.  The STF_CASE, STF_SCAN_SELECTION and STF_EXPRESSION are valid flag options for this method (see FindText for details).</p>
+<p>The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a given Start and End point.  The <code>STF::CASE</code>, <code>STF::SCAN_SELECTION</code> and <code>STF::EXPRESSION</code> are valid flag options for this method (see FindText for details).</p>
       </description>
     </method>
 
@@ -283,7 +283,7 @@
       <name>EventFlags</name>
       <comment>Specifies events that need to be reported from the Scintilla object.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="SEF">BIGINT</type>
+      <type lookup="SEF">SEF</type>
       <description>
 <p>To receive event notifications, set <field>EventCallback</field> with a function reference and the EventFlags field with a mask that indicates the events that need to be received.</p>
 <types lookup="SEF"/>
@@ -305,9 +305,9 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="SCF">INT</type>
+      <type lookup="SCIF">SCIF</type>
       <description>
-<types lookup="SCF"/>
+<types lookup="SCIF"/>
       </description>
     </field>
 
@@ -350,7 +350,7 @@
       <name>Lexer</name>
       <comment>The lexer for document styling is defined here.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="SCLEX">INT</type>
+      <type lookup="SCLEX">SCLEX</type>
       <description>
 <p>The lexer for document styling is defined here.</p>
 <types lookup="SCLEX"/>
@@ -498,7 +498,7 @@
 
   </fields>
   <types>
-    <constants lookup="SCF" comment="Optional flags.">
+    <constants lookup="SCIF" comment="Optional flags.">
       <const name="DETECT_LEXER">Automatic lexer detection will occur on initialisation and at any time that a source file is loaded.</const>
       <const name="DISABLED">Read-only.  This flag is set if the Scintilla object has been deactivated with the Disable action.</const>
       <const name="EDIT">Must be defined if the document is to be editable via user input.</const>

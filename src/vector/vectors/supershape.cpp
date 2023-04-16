@@ -621,7 +621,7 @@ static ERROR init_supershape(void)
       fl::BaseClassID(ID_VECTOR),
       fl::ClassID(ID_VECTORSHAPE),
       fl::Name("VectorShape"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorShapeActions),
       fl::Fields(clVectorShapeFields),
       fl::Size(sizeof(extVectorShape)),

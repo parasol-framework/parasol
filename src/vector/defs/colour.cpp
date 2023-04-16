@@ -56,7 +56,7 @@ ERROR init_colour(void)
    clVectorColour = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORCOLOUR),
       fl::Name("VectorColour"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourActions),
       fl::Fields(clColourFields),
       fl::Size(sizeof(objVectorColour)),

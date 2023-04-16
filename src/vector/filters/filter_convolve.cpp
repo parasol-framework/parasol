@@ -72,13 +72,13 @@ class extConvolveFX : public extFilterEffect {
    DOUBLE Bias;
    LONG TargetX, TargetY;
    LONG MatrixColumns, MatrixRows;
-   LONG EdgeMode;
+   EM   EdgeMode;
    LONG MatrixSize;
    bool PreserveAlpha;
    DOUBLE Matrix[MAX_DIM * MAX_DIM];
 
    extConvolveFX() : UnitX(1), UnitY(1), Divisor(0), Bias(0), TargetX(-1), TargetY(-1),
-      MatrixColumns(3), MatrixRows(3), EdgeMode(EM_DUPLICATE), MatrixSize(9), PreserveAlpha(false) { }
+      MatrixColumns(3), MatrixRows(3), EdgeMode(EM::DUPLICATE), MatrixSize(9), PreserveAlpha(false) { }
 
    inline UBYTE * getPixel(objBitmap *Bitmap, LONG X, LONG Y) const {
       if ((X >= Bitmap->Clip.Left) and (X < Bitmap->Clip.Right) and
@@ -89,14 +89,14 @@ class extConvolveFX : public extFilterEffect {
       switch (EdgeMode) {
          default: return NULL;
 
-         case EM_DUPLICATE:
+         case EM::DUPLICATE:
             if (X < Bitmap->Clip.Left) X = Bitmap->Clip.Left;
             else if (X >= Bitmap->Clip.Right) X = Bitmap->Clip.Right - 1;
             if (Y < Bitmap->Clip.Top) Y = Bitmap->Clip.Top;
             else if (Y >= Bitmap->Clip.Bottom) Y = Bitmap->Clip.Bottom - 1;
             return Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2);
 
-         case EM_WRAP:
+         case EM::WRAP:
             while (X < Bitmap->Clip.Left) X += Bitmap->Clip.Right - Bitmap->Clip.Left;
             X %= Bitmap->Clip.Right - Bitmap->Clip.Left;
             while (Y < Bitmap->Clip.Top) Y += Bitmap->Clip.Bottom - Bitmap->Clip.Top;
@@ -217,7 +217,7 @@ static ERROR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) return ERR_Failed;
 
-   if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) bmpConvertToLinear(inBmp);
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToLinear(inBmp);
    //bmpPremultiply(inBmp);
 
    if ((canvas_width > Self->MatrixColumns*3) and (canvas_height > Self->MatrixRows*3)) {
@@ -245,7 +245,7 @@ static ERROR CONVOLVEFX_Draw(extConvolveFX *Self, struct acDraw *Args)
    delete [] output;
 
    //bmpDemultiply(inBmp);
-   if (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) bmpConvertToRGB(inBmp);
+   if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) bmpConvertToRGB(inBmp);
 
    return ERR_Okay;
 }
@@ -368,13 +368,13 @@ when the #Matrix is positioned at or near the edge of the input image.
 
 *********************************************************************************************************************/
 
-static ERROR CONVOLVEFX_GET_EdgeMode(extConvolveFX *Self, LONG *Value)
+static ERROR CONVOLVEFX_GET_EdgeMode(extConvolveFX *Self, EM *Value)
 {
    *Value = Self->EdgeMode;
    return ERR_Okay;
 }
 
-static ERROR CONVOLVEFX_SET_EdgeMode(extConvolveFX *Self, LONG Value)
+static ERROR CONVOLVEFX_SET_EdgeMode(extConvolveFX *Self, EM Value)
 {
    Self->EdgeMode = Value;
    return ERR_Okay;
@@ -623,9 +623,9 @@ static ERROR CONVOLVEFX_GET_XMLDef(extConvolveFX *Self, STRING *Value)
 #include "filter_convolve_def.c"
 
 static const FieldDef clEdgeMode[] = {
-   { "Duplicate", EM_DUPLICATE },
-   { "Wrap",      EM_WRAP },
-   { "None",      EM_NONE },
+   { "Duplicate", EM::DUPLICATE },
+   { "Wrap",      EM::WRAP },
+   { "None",      EM::NONE },
    { NULL, 0 }
 };
 
@@ -653,7 +653,7 @@ ERROR init_convolvefx(void)
       fl::BaseClassID(ID_FILTEREFFECT),
       fl::ClassID(ID_CONVOLVEFX),
       fl::Name("ConvolveFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clConvolveFXActions),
       fl::Fields(clConvolveFXFields),
       fl::Size(sizeof(extConvolveFX)),

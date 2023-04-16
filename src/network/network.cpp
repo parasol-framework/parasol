@@ -387,7 +387,7 @@ static CSTRING netAddressToStr(IPAddress *Address)
 
    if (!Address) return NULL;
 
-   if (Address->Type != IPADDR_V4) {
+   if (Address->Type != IPADDR::V4) {
       log.warning("Only IPv4 Addresses are supported currently");
       return NULL;
    }
@@ -448,7 +448,7 @@ static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
-   Address->Type = IPADDR_V4;
+   Address->Type = IPADDR::V4;
 
    return ERR_Okay;
 }
@@ -573,8 +573,8 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
       pf::Log log(__FUNCTION__);
       log.traceBranch("Command: %d", tagid);
 
-      switch(tagid) {
-         case NSL_CONNECT:
+      switch(NSL(tagid)) {
+         case NSL::CONNECT:
             value = va_arg(list, LONG);
             if (value) { // Initiate an SSL connection on this socket
                if ((error = sslSetup(Socket)) IS ERR_Okay) {
@@ -590,6 +590,8 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
             else { // Disconnect SSL (i.e. go back to unencrypted mode)
                sslDisconnect(Socket);
             }
+            break;
+         default:
             break;
       }
    }

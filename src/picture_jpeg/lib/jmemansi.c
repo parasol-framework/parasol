@@ -15,7 +15,7 @@ extern struct CoreBase *CoreBase;
 APTR jpeg_get_small(j_common_ptr cinfo, LONG sizeofobject)
 {
    APTR result;
-   if (AllocMemory(sizeofobject, MEM_DATA, &result) IS ERR_Okay) return result;
+   if (AllocMemory(sizeofobject, MEM::DATA, &result) IS ERR_Okay) return result;
    else return NULL;
 }
 
@@ -27,7 +27,7 @@ void jpeg_free_small(j_common_ptr cinfo, void * object, LONG sizeofobject)
 APTR jpeg_get_large(j_common_ptr cinfo, LONG sizeofobject)
 {
    APTR result;
-   if (AllocMemory(sizeofobject, MEM_DATA, &result) IS ERR_Okay) return result;
+   if (AllocMemory(sizeofobject, MEM::DATA, &result) IS ERR_Okay) return result;
    else return NULL;
 }
 
@@ -62,7 +62,7 @@ void read_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * b
    struct acSeek seek;
 
    seek.Offset   = file_offset;
-   seek.Position = SEEK_START;
+   seek.Position = SEEK::START;
    if (Action(AC_Seek, info->temp_file, &seek) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
    read.Buffer = buffer_address;
@@ -72,7 +72,7 @@ void read_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * b
 
 void write_backing_store(j_common_ptr cinfo, backing_store_ptr info, void FAR * buffer_address, long file_offset, long byte_count)
 {
-   struct acSeek seek = { .Offset = (DOUBLE)file_offset, .Position = SEEK_START };
+   struct acSeek seek = { .Offset = (DOUBLE)file_offset, .Position = SEEK::START };
    if (Action(AC_Seek, info->temp_file, &seek) != ERR_Okay) ERREXIT(cinfo, JERR_TFILE_SEEK);
 
    const long CHUNK = 1024LL * 1024LL;

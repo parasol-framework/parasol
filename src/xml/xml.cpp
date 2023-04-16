@@ -238,7 +238,7 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if ((Args->Datatype IS DATA_XML) or (Args->Datatype IS DATA_TEXT)) {
+   if ((Args->Datatype IS DATA::XML) or (Args->Datatype IS DATA::TEXT)) {
       if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
       TAGS tags;
@@ -317,17 +317,17 @@ static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
    pf::Log log;
 
    if (!Args) return ERR_NullArgs;
-   if (Self->Flags & XMF_DEBUG) log.msg("XPath: %s", Args->XPath);
+   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR_NoData;
 
    if (!Self->findTag(Args->XPath, Args->Callback)) {
-      if (Self->Flags & XMF_DEBUG) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
+      if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
       Args->Result = Self->Cursor->ID;
       return ERR_Okay;
    }
    else if (Args->Callback) return ERR_Okay;
    else {
-      if (Self->Flags & XMF_DEBUG) log.msg("Failed to find tag through XPath.");
+      if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("Failed to find tag through XPath.");
       return ERR_Search;
    }
 }
@@ -386,7 +386,7 @@ static ERROR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
       }
    }
 
-   if (Self->Flags & XMF_DEBUG) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
+   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
    return ERR_NotFound;
 }
 
@@ -514,7 +514,7 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
          }
          else if (extract IS 2) {
             STRING str;
-            ERROR error = xmlGetString(Self, Self->Cursor->Children[0].ID, XMF_INCLUDE_SIBLINGS, &str);
+            ERROR error = xmlGetString(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (!error) {
                StrCopy(str, Args->Buffer, Args->Size);
                FreeResource(str);
@@ -624,7 +624,7 @@ static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
    auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
    if (!tag) return log.warning(ERR_NotFound);
 
-   if (Args->Flags & XMF_INCLUDE_SIBLINGS) {
+   if ((Args->Flags & XMF::INCLUDE_SIBLINGS) != XMF::NIL) {
       if (auto parent = Self->getTag(tag->ParentID)) {
          auto it = parent->Children.begin();
          for (; it != parent->Children.end(); it++) {
@@ -704,7 +704,7 @@ static ERROR XML_Init(extXML *Self, APTR Void)
       return Self->ParseError;
    }
    else if ((Self->Path) or (Self->Source)) {
-      if (Self->Flags & XMF_NEW) {
+      if ((Self->Flags & XMF::NEW) != XMF::NIL) {
          return ERR_Okay;
       }
       else if (parse_source(Self)) {
@@ -717,7 +717,7 @@ static ERROR XML_Init(extXML *Self, APTR Void)
       // NOTE: We do not fail if no data has been loaded into the XML object, the developer may be creating an XML data
       // structure from scratch, or could intend to send us information later.
 
-      if (!(Self->Flags & XMF_NEW)) log.msg("Warning: No content given.");
+      if ((Self->Flags & XMF::NEW) IS XMF::NIL) log.msg("Warning: No content given.");
       return ERR_Okay;
    }
 }
@@ -730,14 +730,14 @@ InsertContent: Inserts XML content into the XML tree.
 The InsertContent method will insert content strings into any position within the XML tree.  A content string
 must be provided in the Content parameter and the target insertion point is specified in the Index parameter.
 An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be
-inserted as a child of the target by using a Where value of `XMI_CHILD`.  To insert behind or after the target, use
-`XMI_PREV` or `XMI_NEXT`.
+inserted as a child of the target by using a Where value of `XMI::CHILD`.  To insert behind or after the target, use
+`XMI::PREV` or `XMI::NEXT`.
 
 To modify existing content, call #SetAttrib() instead.
 
 -INPUT-
 int Index: Identifies the target XML tag.
-int(XMI) Where: Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.
+int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.
 cstr Content: The content to insert.
 &int Result: The index of the new tag is returned here.
 
@@ -754,7 +754,7 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if (Self->Flags & XMF_DEBUG) log.branch("Index: %d, Insert: %d", Args->Index, Args->Where);
+   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, LONG(Args->Where));
 
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR_NotFound);
@@ -763,15 +763,15 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
    output_attribvalue(std::string(Args->Content), buffer);
    XMLTag content(glTagID++, 0, { { "", buffer.str() } });
 
-   if (Args->Where IS XMI_NEXT) {
+   if (Args->Where IS XMI::NEXT) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) tags->insert(it, content);
       else return log.warning(ERR_NotFound);
    }
-   else if (Args->Where IS XMI_CHILD) {
+   else if (Args->Where IS XMI::CHILD) {
       src->Children.insert(src->Children.begin(), content);
    }
-   else if (Args->Where IS XMI_PREV) {
+   else if (Args->Where IS XMI::PREV) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) {
         if (it IS tags->begin()) tags->insert(it, content);
@@ -794,12 +794,12 @@ InsertXML: Inserts an XML statement in the XML tree.
 The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index
 parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags
-can be inserted as a child of the target by using a Insert value of `XMI_CHILD`.  Use `XMI_CHILD_END` to insert at the end
-of the child list.  To insert behind or after the target, use `XMI_PREV` or `XMI_NEXT`.
+can be inserted as a child of the target by using a Insert value of `XMI::CHILD`.  Use `XMI::CHILD_END` to insert at the end
+of the child list.  To insert behind or after the target, use `XMI::PREV` or `XMI::NEXT`.
 
 -INPUT-
 int Index: The new data will target the tag specified here.
-int(XMI) Where: Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD or XMI_CHILD_END for a child insert.
+int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD or CHILD_END for a child insert.
 cstr XML: An XML statement to parse.
 &int Result: The resulting tag index.
 
@@ -818,7 +818,7 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if (Self->Flags & XMF_DEBUG) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, Args->Where, Args->XML);
+   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, LONG(Args->Where), Args->XML);
 
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR_NotFound);
@@ -829,12 +829,12 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
    if (insert.empty()) return ERR_NoData;
    auto result = insert[0].ID;
 
-   if (Args->Where IS XMI_NEXT) {
+   if (Args->Where IS XMI::NEXT) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) tags->insert(it, insert.begin(), insert.end());
       else return log.warning(ERR_NotFound);
    }
-   else if (Args->Where IS XMI_PREV) {
+   else if (Args->Where IS XMI::PREV) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) {
         if (it IS tags->begin()) tags->insert(it, insert.begin(), insert.end());
@@ -842,10 +842,10 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
       }
       else return log.warning(ERR_NotFound);
    }
-   else if (Args->Where IS XMI_CHILD) {
+   else if (Args->Where IS XMI::CHILD) {
       src->Children.insert(src->Children.begin(), insert.begin(), insert.end());
    }
-   else if (Args->Where IS XMI_CHILD_END) {
+   else if (Args->Where IS XMI::CHILD_END) {
       src->Children.insert(src->Children.end(), insert.begin(), insert.end());
    }
    else return log.warning(ERR_Args);
@@ -863,12 +863,12 @@ InsertXPath: Inserts an XML statement in an XML tree.
 The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid
 XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The
-new tags can be inserted as a child of the target by using an Insert value of `XMI_CHILD` or `XMI_CHILD_END`.  To insert
-behind or after the target, use `XMI_PREV` or `XMI_NEXT`.
+new tags can be inserted as a child of the target by using an Insert value of `XMI::CHILD` or `XMI::CHILD_END`.  To insert
+behind or after the target, use `XMI::PREV` or `XMI::NEXT`.
 
 -INPUT-
 cstr XPath: An XPath string that refers to the target insertion point.
-int(XMI) Where: Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.
+int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.
 cstr XML: The statement to process.
 &int Result: The index of the new tag is returned here.
 
@@ -886,7 +886,7 @@ ERROR XML_InsertXPath(extXML *Self, struct xmlInsertXPath *Args)
    if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-   log.branch("Insert: %d, XPath: %s", Args->Where, Args->XPath);
+   log.branch("Insert: %d, XPath: %s", LONG(Args->Where), Args->XPath);
 
    if (!Self->findTag(Args->XPath)) {
       ERROR error;
@@ -910,14 +910,14 @@ tags from one index to another.  The client must supply the index of the tag tha
 target tag.  All child tags of the source will be included in the move.
 
 An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be
-inserted as a child of the destination by using a Where of `XMI_CHILD`.  To insert behind or after the target, use
-`XMI_PREV` or `XMI_NEXT`.
+inserted as a child of the destination by using a Where of `XMI::CHILD`.  To insert behind or after the target, use
+`XMI::PREV` or `XMI::NEXT`.
 
 -INPUT-
 int Index: Index of the source tag to be moved.
 int Total: The total number of sibling tags to be moved from the source index.  Minimum value of 1.
 int DestIndex: The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.
-int(XMI) Where: Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.
+int(XMI) Where: Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.
 
 -ERRORS-
 Okay: Tags were moved successfully.
@@ -960,7 +960,7 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
    if (!dest) return log.warning(ERR_NotFound);
 
    switch (Args->Where) {
-      case XMI_PREV: {
+      case XMI::PREV: {
          CURSOR it;
          if (auto target = Self->getInsert(dest, it)) {
             target->insert(it, copy.begin(), copy.end());
@@ -969,7 +969,7 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
          break;
       }
 
-      case XMI_NEXT: {
+      case XMI::NEXT: {
          CURSOR it;
          if (auto target = Self->getInsert(dest, it)) {
             target->insert(it + 1, copy.begin(), copy.end());
@@ -978,11 +978,11 @@ static ERROR XML_MoveTags(extXML *Self, struct xmlMoveTags *Args)
          break;
       }
 
-      case XMI_CHILD:
+      case XMI::CHILD:
          dest->Children.insert(dest->Children.begin(), copy.begin(), copy.end());
          break;
 
-      case XMI_CHILD_END:
+      case XMI::CHILD_END:
          dest->Children.insert(dest->Children.end(), copy.begin(), copy.end());
          break;
 
@@ -1040,7 +1040,7 @@ static ERROR XML_RemoveTag(extXML *Self, struct xmlRemoveTag *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if (Self->Flags & XMF_LOCK_REMOVE) return log.warning(ERR_ReadOnly);
+   if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR_ReadOnly);
 
    LONG count = Args->Total;
    if (count < 1) count = 1;
@@ -1105,7 +1105,7 @@ static ERROR XML_RemoveXPath(extXML *Self, struct xmlRemoveXPath *Args)
 
    if (Self->Tags.empty()) return ERR_NoData;
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if (Self->Flags & XMF_LOCK_REMOVE) return log.warning(ERR_ReadOnly);
+   if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR_ReadOnly);
 
    auto limit = Args->Limit;
    if (limit < 0) limit = 0x7fffffff;
@@ -1176,7 +1176,7 @@ static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 
    ERROR error;
    STRING str;
-   if (!(error = xmlGetString(Self, 0, XMF_READABLE|XMF_INCLUDE_SIBLINGS, &str))) {
+   if (!(error = xmlGetString(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str))) {
       struct acWrite write = { str, StrLength(str) };
       if (Action(AC_Write, Args->Dest, &write) != ERR_Okay) error = ERR_Write;
       FreeResource(str);
@@ -1438,7 +1438,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
 
          if (!tag) break;
 
-         if (Args->Flags & XSF_CHECK_SORT) { // Give precedence for a 'sort' attribute in the XML tag
+         if ((Args->Flags & XSF::CHECK_SORT) != XSF::NIL) { // Give precedence for a 'sort' attribute in the XML tag
             auto attrib = tag->Attribs.begin()+1;
             for (; attrib != tag->Attribs.end(); attrib++) {
                if (!StrMatch("sort", attrib->Name)) {
@@ -1472,7 +1472,7 @@ static ERROR XML_SortXML(extXML *Self, struct xmlSort *Args)
       list.emplace_back(&scan, sortval);
    }
 
-   if (Args->Flags & XSF_DESC) {
+   if ((Args->Flags & XSF::DESC) != XSF::NIL) {
       std::sort(list.begin(), list.end(), [](const ListSort &A, const ListSort &B) -> bool {
          return A.Value > B.Value;
       });
@@ -1737,7 +1737,7 @@ static ERROR add_xml_class(void)
       fl::Name("XML"),
       fl::FileExtension("*.xml"),
       fl::FileDescription("XML File"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clXMLActions),
       fl::Methods(clXMLMethods),
