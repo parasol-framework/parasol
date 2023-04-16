@@ -1,5 +1,5 @@
 
-static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, LONG Relative)
+static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, bool Relative)
 {
    if (Relative) xmlNewAttrib(*Tag, Attrib, std::to_string(Value * 100.0) + "%");
    else xmlNewAttrib(*Tag, Attrib, std::to_string(Value));
@@ -89,20 +89,20 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
             else if ((gradient->Type IS VGT::RADIAL) or (gradient->Type IS VGT::DIAMOND) or (gradient->Type IS VGT::CONIC)) {
-               if ((!error) and (gradient->Flags & (VGF_FIXED_CX|VGF_RELATIVE_CX)))
-                  set_dimension(tag, "cx", gradient->CenterX, gradient->Flags & VGF_RELATIVE_CX);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_CX|VGF::RELATIVE_CX)) != VGF::NIL))
+                  set_dimension(tag, "cx", gradient->CenterX, (gradient->Flags & VGF::RELATIVE_CX) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_CY|VGF_RELATIVE_CY)))
-                  set_dimension(tag, "cy", gradient->CenterY, gradient->Flags & VGF_RELATIVE_CY);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_CY|VGF::RELATIVE_CY)) != VGF::NIL))
+                  set_dimension(tag, "cy", gradient->CenterY, (gradient->Flags & VGF::RELATIVE_CY) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_FX|VGF_RELATIVE_FX)))
-                  set_dimension(tag, "fx", gradient->FX, gradient->Flags & VGF_RELATIVE_FX);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_FX|VGF::RELATIVE_FX)) != VGF::NIL))
+                  set_dimension(tag, "fx", gradient->FX, (gradient->Flags & VGF::RELATIVE_FX) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_FY|VGF_RELATIVE_FY)))
-                  set_dimension(tag, "fy", gradient->FY, gradient->Flags & VGF_RELATIVE_FY);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_FY|VGF::RELATIVE_FY)) != VGF::NIL))
+                  set_dimension(tag, "fy", gradient->FY, (gradient->Flags & VGF::RELATIVE_FY) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_RADIUS|VGF_RELATIVE_RADIUS)))
-                  set_dimension(tag, "r", gradient->Radius, gradient->Flags & VGF_RELATIVE_RADIUS);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_RADIUS|VGF::RELATIVE_RADIUS)) != VGF::NIL))
+                  set_dimension(tag, "r", gradient->Radius, (gradient->Flags & VGF::RELATIVE_RADIUS) != VGF::NIL);
             }
 
             VectorMatrix *transform;

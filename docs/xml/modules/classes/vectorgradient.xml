@@ -81,7 +81,7 @@
       <name>Flags</name>
       <comment>Dimension flags are stored here.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="VGF">INT</type>
+      <type lookup="VGF">VGF</type>
       <description>
 <p>Dimension flags that indicate whether field values are fixed or relative are defined here.</p>
 <types lookup="VGF"/>

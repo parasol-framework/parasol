@@ -672,16 +672,16 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    if (Gradient.Type IS VGT::LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
 
-      if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = x_offset + (c_width * Gradient.X1);
+      if ((Gradient.Flags & VGF::RELATIVE_X1) != VGF::NIL) ax1 = x_offset + (c_width * Gradient.X1);
       else ax1 = x_offset + Gradient.X1;
 
-      if (Gradient.Flags & VGF_RELATIVE_X2) ax2 = x_offset + (c_width * Gradient.X2);
+      if ((Gradient.Flags & VGF::RELATIVE_X2) != VGF::NIL) ax2 = x_offset + (c_width * Gradient.X2);
       else ax2 = x_offset + Gradient.X2;
 
-      if (Gradient.Flags & VGF_RELATIVE_Y1) ay1 = y_offset + (c_height * Gradient.Y1);
+      if ((Gradient.Flags & VGF::RELATIVE_Y1) != VGF::NIL) ay1 = y_offset + (c_height * Gradient.Y1);
       else ay1 = y_offset + Gradient.Y1;
 
-      if (Gradient.Flags & VGF_RELATIVE_Y2) ay2 = y_offset + (c_height * Gradient.Y2);
+      if ((Gradient.Flags & VGF::RELATIVE_Y2) != VGF::NIL) ay2 = y_offset + (c_height * Gradient.Y2);
       else ay2 = y_offset + Gradient.Y2;
 
       // Calculate the gradient's transition from the point at (x1,y1) to (x2,y2)
@@ -709,18 +709,18 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    else if (Gradient.Type IS VGT::RADIAL) {
       DOUBLE cx, cy, fx, fy;
 
-      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
-      if (Gradient.Flags & VGF_RELATIVE_FX) fx = x_offset + (c_width * Gradient.FX);
-      else if (Gradient.Flags & VGF_FIXED_FX) fx = x_offset + Gradient.FX;
+      if ((Gradient.Flags & VGF::RELATIVE_FX) != VGF::NIL) fx = x_offset + (c_width * Gradient.FX);
+      else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) fx = x_offset + Gradient.FX;
       else fx = x_offset + cx;
 
-      if (Gradient.Flags & VGF_RELATIVE_FY) fy = y_offset + (c_height * Gradient.FY);
-      else if (Gradient.Flags & VGF_FIXED_FY) fy = y_offset + Gradient.FY;
+      if ((Gradient.Flags & VGF::RELATIVE_FY) != VGF::NIL) fy = y_offset + (c_height * Gradient.FY);
+      else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) fy = y_offset + Gradient.FY;
       else fy = y_offset + cy;
 
       if ((cx IS fx) and (cy IS fy)) {
@@ -728,12 +728,12 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
          DOUBLE length = Gradient.Radius;
          if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) { // Gradient is a ratio of the viewport's dimensions
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
                length = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
          }
          else { // Coordinates are relative to the bounding box
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -774,18 +774,20 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
          // be placed outside of the radius.
 
          DOUBLE fix_radius = Gradient.Radius;
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+            fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
+         }
          DOUBLE length = fix_radius;
 
          if (Gradient.Units IS VUNIT::USERSPACE) {
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
                const DOUBLE scale = length * Gradient.Radius;
                transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
          else { // Bounding box
-            if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -818,24 +820,24 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    else if (Gradient.Type IS VGT::DIAMOND) {
       DOUBLE cx, cy;
 
-      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
       if (Gradient.Units IS VUNIT::USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             const DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Align to vector's bounding box
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -866,24 +868,24 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    else if (Gradient.Type IS VGT::CONIC) {
       DOUBLE cx, cy;
 
-      if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if (Gradient.Flags & VGF_RELATIVE_CY) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
       if (Gradient.Units IS VUNIT::USERSPACE) {
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             const DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Bounding box
-         if (Gradient.Flags & VGF_RELATIVE_RADIUS) {
+         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 

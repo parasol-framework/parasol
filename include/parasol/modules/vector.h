@@ -367,24 +367,29 @@ enum class CM : LONG {
 
 // Gradient flags
 
-#define VGF_RELATIVE_X1 0x00000001
-#define VGF_RELATIVE_Y1 0x00000002
-#define VGF_RELATIVE_X2 0x00000004
-#define VGF_RELATIVE_Y2 0x00000008
-#define VGF_RELATIVE_CX 0x00000010
-#define VGF_RELATIVE_CY 0x00000020
-#define VGF_RELATIVE_FX 0x00000040
-#define VGF_RELATIVE_FY 0x00000080
-#define VGF_RELATIVE_RADIUS 0x00000100
-#define VGF_FIXED_X1 0x00000200
-#define VGF_FIXED_Y1 0x00000400
-#define VGF_FIXED_X2 0x00000800
-#define VGF_FIXED_Y2 0x00001000
-#define VGF_FIXED_CX 0x00002000
-#define VGF_FIXED_CY 0x00004000
-#define VGF_FIXED_FX 0x00008000
-#define VGF_FIXED_FY 0x00010000
-#define VGF_FIXED_RADIUS 0x00020000
+enum class VGF : ULONG {
+   NIL = 0,
+   RELATIVE_X1 = 0x00000001,
+   RELATIVE_Y1 = 0x00000002,
+   RELATIVE_X2 = 0x00000004,
+   RELATIVE_Y2 = 0x00000008,
+   RELATIVE_CX = 0x00000010,
+   RELATIVE_CY = 0x00000020,
+   RELATIVE_FX = 0x00000040,
+   RELATIVE_FY = 0x00000080,
+   RELATIVE_RADIUS = 0x00000100,
+   FIXED_X1 = 0x00000200,
+   FIXED_Y1 = 0x00000400,
+   FIXED_X2 = 0x00000800,
+   FIXED_Y2 = 0x00001000,
+   FIXED_CX = 0x00002000,
+   FIXED_CY = 0x00004000,
+   FIXED_FX = 0x00008000,
+   FIXED_FY = 0x00010000,
+   FIXED_RADIUS = 0x00020000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VGF)
 
 // Optional flags for the VectorScene object.
 
@@ -877,7 +882,7 @@ class objVectorGradient : public BaseClass {
    VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
    VUNIT   Units;                  // Defines the coordinate system for fields X1, Y1, X2 and Y2.
    VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
-   LONG    Flags;                  // Dimension flags are stored here.
+   VGF     Flags;                  // Dimension flags are stored here.
    VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
    LONG    TotalStops;             // Total number of stops defined in the Stops array.
 
@@ -973,7 +978,7 @@ class objVectorGradient : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const VGF Value) {
       this->Flags = Value;
       return ERR_Okay;
    }

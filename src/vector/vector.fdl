@@ -204,7 +204,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "DESATURATE: Desaturate the input completely so that it is rendered in greyscale.",
     "COLOURISE: Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.")
 
-  flags("VGF", { comment="Gradient flags" },
+  flags("VGF", { strict=true, comment="Gradient flags" },
     "RELATIVE_X1: X1 is relative",
     "RELATIVE_Y1: Y1 is relative",
     "RELATIVE_X2: X2 is relative",
