@@ -301,7 +301,7 @@ class extVector : public objVector {
    JTYPE  InputMask;
    LONG   NumericID;
    LONG   PathLength;
-   UBYTE  MorphFlags;
+   VMF    MorphFlags;
    UBYTE  FillRule;
    UBYTE  ClipRule;
    UBYTE  Dirty;
@@ -367,7 +367,7 @@ class extVectorViewport : public extVector {
    DOUBLE vpAlignX, vpAlignY;
    extVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
-   LONG  vpAspectRatio;
+   ARF   vpAspectRatio;
    UBYTE vpDragging:1;
    UBYTE vpOverflowX, vpOverflowY;
 };
@@ -465,7 +465,7 @@ extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
-extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
+extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
 extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(extVector *);
@@ -898,7 +898,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
 extern void get_text_xy(extVectorText *);
-extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
 extern ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
 extern void  vecClosePath(class SimpleVector *);
 extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);

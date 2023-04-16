@@ -191,7 +191,7 @@ class extVectorText : public extVector {
    LONG  txTotalRotate, txTotalDX, txTotalDY;
    LONG  txWeight; // 100 - 300 (Light), 400 (Normal), 700 (Bold), 900 (Boldest)
    ALIGN txAlignFlags;
-   LONG  txFlags; // VTF flags
+   VTXF  txFlags;
    char  txFontStyle[20];
    UBYTE txRelativeFontSize;
    bool txXRelative:1;
@@ -279,7 +279,7 @@ static ERROR VECTORTEXT_DeleteLine(extVectorText *Self, struct vtDeleteLine *Arg
       Self->txCursor.move(Self, Self->txLines.size()-1, Self->txCursor.column());
    }
 
-   Self->txFlags &= ~VTXF_AREA_SELECTED;
+   Self->txFlags &= ~VTXF::AREA_SELECTED;
 
    return ERR_Okay;
 }
@@ -314,7 +314,7 @@ static ERROR VECTORTEXT_Free(extVectorText *Self, APTR Void)
 
 static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 {
-   if (Self->txFlags & VTXF_EDITABLE) {
+   if ((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) {
       if (!Self->txFocusID) {
          if (Self->ParentView) Self->txFocusID = Self->ParentView->UID;
       }
@@ -578,13 +578,13 @@ TextFlags: Private.  Optional flags.
 -END-
 *********************************************************************************************************************/
 
-static ERROR TEXT_GET_Flags(extVectorText *Self, LONG *Value)
+static ERROR TEXT_GET_Flags(extVectorText *Self, VTXF *Value)
 {
    *Value = Self->txFlags;
    return ERR_Okay;
 }
 
-static ERROR TEXT_SET_Flags(extVectorText *Self, LONG Value)
+static ERROR TEXT_SET_Flags(extVectorText *Self, VTXF Value)
 {
    Self->txFlags = Value;
    return ERR_Okay;
@@ -1146,7 +1146,7 @@ static void generate_text(extVectorText *Vector)
    DOUBLE start_x, start_y, end_vx, end_vy;
    DOUBLE path_scale = 1.0;
    if (morph) {
-      if (Vector->MorphFlags & VMF_STRETCH) {
+      if ((Vector->MorphFlags & VMF::STRETCH) != VMF::NIL) {
          // In stretch mode, the standard morphing algorithm is used (see gen_vector_path())
          morph = NULL;
       }
@@ -1538,7 +1538,7 @@ static void generate_text_bitmap(extVectorText *Vector)
             fl::Bitmap(Vector->txAlphaBitmap),
             fl::SpreadMethod(VSPREAD_CLIP),
             fl::Units(VUNIT_BOUNDING_BOX),
-            fl::AspectRatio(ARF_X_MIN|ARF_Y_MIN)))) return;
+            fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN)))) return;
    }
    else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);
 
@@ -1821,7 +1821,7 @@ static void reset_font(extVectorText *Vector)
 
 static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
 {
-   if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+   if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
       pf::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
       Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
@@ -1868,7 +1868,7 @@ static ERROR text_focus_event(extVector *Vector, FM Event)
    auto Self = (extVectorText *)CurrentContext();
 
    if ((Event & FM::HAS_FOCUS) != FM::NIL) {
-      if ((Self->txFlags & VTXF_EDITABLE) and (Self->txCursor.vector)) {
+      if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
          acMoveToFront(Self->txCursor.vector);
 
          if (Self->txCursor.timer) UpdateTimer(Self->txCursor.timer, 1.0);
@@ -1895,7 +1895,7 @@ static ERROR text_focus_event(extVector *Vector, FM Event)
       // When a simple input line loses the focus, all selections are deselected
 
       if (Self->txLineLimit IS 1) {
-         if (Self->txFlags & VTXF_AREA_SELECTED) Self->txFlags &= ~VTXF_AREA_SELECTED;
+         if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) Self->txFlags &= ~VTXF::AREA_SELECTED;
       }
 
       acDraw(Self);
@@ -1987,33 +1987,33 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
    Self->txCursor.vector->setVisibility(VIS_VISIBLE);
 
-   if ((!(Self->txFlags & VTXF_NO_SYS_KEYS)) and ((Event->Qualifiers & KQ::CTRL) != KQ::NIL)) {
+   if (((Self->txFlags & VTXF::NO_SYS_KEYS) IS VTXF::NIL) and ((Event->Qualifiers & KQ::CTRL) != KQ::NIL)) {
       switch(Event->Code) {
          case K_C: // Copy
             acClipboard(Self, CLIPMODE::COPY);
             return;
 
          case K_X: // Cut
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             acClipboard(Self, CLIPMODE::CUT);
             return;
 
          case K_V: // Paste
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             acClipboard(Self, CLIPMODE::PASTE);
             return;
 
          case K_K: // Delete line
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             vtDeleteLine(Self, Self->txCursor.row());
             return;
 
          case K_Z: // Undo
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
 
          case K_Y: // Redo
-            if (!(Self->txFlags & VTXF_EDITABLE)) return;
+            if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
       }
    }
@@ -2021,12 +2021,12 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) { // and (!(Flags & KQ::INSTRUCTIONKEYS))
       // Printable character handling
 
-      if (!(Self->txFlags & VTXF_EDITABLE)) {
+      if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) {
          log.trace("Object does not have the EDIT flag set.");
          return;
       }
 
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
 
       insert_char(Self, Event->Unicode, Self->txCursor.column());
       return;
@@ -2034,7 +2034,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
    switch(Event->Code) {
    case K_BACKSPACE:
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else if (Self->txCursor.column() > 0) {
          if ((size_t)Self->txCursor.column() > Self->txLines[Self->txCursor.row()].length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txLines[Self->txCursor.row()].lastChar()-1);
@@ -2062,7 +2062,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       break;
 
    case K_CLEAR:
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else {
          Self->txCursor.move(Self, Self->txCursor.row(), 0);
          vtDeleteLine(Self, Self->txCursor.row());
@@ -2070,7 +2070,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       break;
 
    case K_DELETE:
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       else if ((size_t)Self->txCursor.column() < Self->txLines[Self->txCursor.row()].length()) {
          auto offset = Self->txLines[Self->txCursor.row()].utf8CharOffset(Self->txCursor.column());
          Self->txLines[Self->txCursor.row()].replace(offset, Self->txLines[Self->txCursor.row()].charLength(offset), "");
@@ -2094,7 +2094,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    case K_NP_ENTER: {
       if ((Self->txLineLimit) and (Self->txLines.size() >= (size_t)Self->txLineLimit)) break;
 
-      if (Self->txFlags & VTXF_AREA_SELECTED) delete_selection(Self);
+      if ((Self->txFlags & VTXF::AREA_SELECTED) != VTXF::NIL) delete_selection(Self);
       if (Self->txLines.empty()) Self->txLines.resize(1);
 
       auto row    = Self->txCursor.row();
@@ -2114,8 +2114,8 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
       break;
 
    case K_INSERT:
-      if (Self->txFlags & VTXF_OVERWRITE) Self->txFlags &= ~VTXF_OVERWRITE;
-      else Self->txFlags |= VTXF_OVERWRITE;
+      if ((Self->txFlags & VTXF::OVERWRITE) != VTXF::NIL) Self->txFlags &= ~VTXF::OVERWRITE;
+      else Self->txFlags |= VTXF::OVERWRITE;
       break;
 
    case K_LEFT:
@@ -2166,7 +2166,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
             for (++i; (Self->txLines[Self->txCursor.row()][i] & 0xc0) == 0x80; i++);
          }
 
-         Self->txFlags &= ~VTXF_AREA_SELECTED;
+         Self->txFlags &= ~VTXF::AREA_SELECTED;
 
          LONG new_row;
          if (Event->Code IS K_UP) new_row = Self->txCursor.row() - 1;
@@ -2192,7 +2192,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
 static void delete_selection(extVectorText *Self)
 {
-   Self->txFlags &= ~VTXF_AREA_SELECTED;
+   Self->txFlags &= ~VTXF::AREA_SELECTED;
 
    LONG row, column, end_row, end_column;
    Self->txCursor.selectedArea(Self, &row, &column, &end_row, &end_column);
@@ -2221,7 +2221,7 @@ static void delete_selection(extVectorText *Self)
 
 void TextCursor::move(extVectorText *Vector, LONG Row, LONG Column, bool ValidateWidth)
 {
-   Vector->txFlags &= ~VTXF_AREA_SELECTED;
+   Vector->txFlags &= ~VTXF::AREA_SELECTED;
 
    if (Row < 0) Row = 0;
    else if ((size_t)Row >= Vector->txLines.size()) Row = (LONG)Vector->txLines.size() - 1;
@@ -2331,7 +2331,7 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
    else {
       auto offset = Self->txLines[Self->txCursor.row()].utf8CharOffset(Column);
 
-      if ((Self->txFlags & VTXF_OVERWRITE) and ((size_t)offset < Self->txLines[Self->txCursor.row()].length())) {
+      if (((Self->txFlags & VTXF::OVERWRITE) != VTXF::NIL) and ((size_t)offset < Self->txLines[Self->txCursor.row()].length())) {
          Self->txLines[Self->txCursor.row()].replace(offset, Self->txLines[Self->txCursor.row()].charLength(offset), "");
       }
 
@@ -2352,11 +2352,11 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 #include "text_def.cpp"
 
 static const FieldDef clTextFlags[] = {
-   { "Underline",   VTXF_UNDERLINE },
-   { "Overline",    VTXF_OVERLINE },
-   { "LineThrough", VTXF_LINE_THROUGH },
-   { "Blink",       VTXF_BLINK },
-   { "Editable",    VTXF_EDITABLE },
+   { "Underline",   VTXF::UNDERLINE },
+   { "Overline",    VTXF::OVERLINE },
+   { "LineThrough", VTXF::LINE_THROUGH },
+   { "Blink",       VTXF::BLINK },
+   { "Editable",    VTXF::EDITABLE },
    { NULL, 0 }
 };
 

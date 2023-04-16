@@ -182,7 +182,7 @@ static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveTo
 
 static ERROR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
 {
-   Self->vpAspectRatio = ARF_MEET|ARF_X_MID|ARF_Y_MID;
+   Self->vpAspectRatio = ARF::MEET|ARF::X_MID|ARF::Y_MID;
    Self->vpOverflowX   = VOF_VISIBLE;
    Self->vpOverflowY   = VOF_VISIBLE;
 
@@ -286,13 +286,13 @@ area.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_AspectRatio(extVectorViewport *Self, LONG *Value)
+static ERROR VIEW_GET_AspectRatio(extVectorViewport *Self, ARF *Value)
 {
    *Value = Self->vpAspectRatio;
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_AspectRatio(extVectorViewport *Self, LONG Value)
+static ERROR VIEW_SET_AspectRatio(extVectorViewport *Self, ARF Value)
 {
    Self->vpAspectRatio = Value;
    return ERR_Okay;

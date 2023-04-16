@@ -181,7 +181,7 @@ Disable: Disabling a vector can be used to trigger style changes and prevent use
 static ERROR VECTOR_Disable(extVector *Self, APTR Void)
 {
    // It is up to the client to monitor the Disable action if any reaction is required.
-   Self->Flags |= VF_DISABLED;
+   Self->Flags |= VF::DISABLED;
    return ERR_Okay;
 }
 
@@ -239,7 +239,7 @@ Enable: Reverses the effects of disabling the vector.
 static ERROR VECTOR_Enable(extVector *Self, APTR Void)
 {
   // It is up to the client to subscribe to the Enable action if any activity needs to take place.
-  Self->Flags &= ~VF_DISABLED;
+  Self->Flags &= ~VF::DISABLED;
   return ERR_Okay;
 }
 
@@ -1653,13 +1653,13 @@ MorphFlags: Optional flags that affect morphing.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_MorphFlags(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_MorphFlags(extVector *Self, VMF *Value)
 {
    *Value = Self->MorphFlags;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_MorphFlags(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_MorphFlags(extVector *Self, VMF Value)
 {
     Self->MorphFlags = Value;
     return ERR_Okay;
@@ -2222,14 +2222,14 @@ DOUBLE extVector::fixed_stroke_width()
 //********************************************************************************************************************
 
 static const FieldDef clMorphFlags[] = {
-   { "Stretch",     VMF_STRETCH },
-   { "AutoSpacing", VMF_AUTO_SPACING },
-   { "XMin",        VMF_X_MIN },
-   { "XMid",        VMF_X_MID },
-   { "XMax",        VMF_X_MAX },
-   { "YMin",        VMF_Y_MIN },
-   { "YMid",        VMF_Y_MID },
-   { "YMax",        VMF_Y_MAX },
+   { "Stretch",     VMF::STRETCH },
+   { "AutoSpacing", VMF::AUTO_SPACING },
+   { "XMin",        VMF::X_MIN },
+   { "XMid",        VMF::X_MID },
+   { "XMax",        VMF::X_MAX },
+   { "YMin",        VMF::Y_MIN },
+   { "YMid",        VMF::Y_MID },
+   { "YMax",        VMF::Y_MAX },
    { NULL, 0 }
 };
 

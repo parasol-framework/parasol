@@ -394,7 +394,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="VF">INT</type>
+      <type lookup="VF">VF</type>
       <description>
 <types lookup="VF"/>
       </description>

@@ -64,7 +64,7 @@
   <function>
     <name>ArcTo</name>
     <comment>Alter a path by setting an arc-to command at the current vertex position.</comment>
-    <prototype>void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)</prototype>
+    <prototype>void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)</prototype>
     <input>
       <param type="APTR" name="Path">The vector path to modify.</param>
       <param type="DOUBLE" name="RX">The horizontal radius of the arc.</param>
@@ -72,7 +72,7 @@
       <param type="DOUBLE" name="Angle">The angle of the arc, expressed in radians.</param>
       <param type="DOUBLE" name="X">The horizontal end point for the arc command.</param>
       <param type="DOUBLE" name="Y">The vertical end point for the arc command.</param>
-      <param type="LONG" name="Flags" lookup="ARC">Optional flags.</param>
+      <param type="ARC" name="Flags" lookup="ARC">Optional flags.</param>
     </input>
     <description>
 <p>This function will set an arc-to command at the current vertex.  It then increments the vertex position for the next path command.</p>

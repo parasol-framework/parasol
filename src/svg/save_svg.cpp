@@ -337,7 +337,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
 
    OBJECTPTR shape;
    if ((!error) and (!Vector->getPtr(FID_Morph, &shape)) and (shape)) {
-      LONG morph_flags;
+      VMF morph_flags;
 
       XMLTag *morph_tag;
       error = xmlInsertXML(XML, TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
@@ -350,21 +350,21 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
          xmlNewAttrib(morph_tag, "xlink:href", shape_ref);
       }
 
-      if (!error) error = Vector->get(FID_MorphFlags, &morph_flags);
+      if (!error) error = Vector->get(FID_MorphFlags, (LONG *)&morph_flags);
 
-      if ((!error) and (morph_flags & VMF_STRETCH)) xmlNewAttrib(morph_tag, "method", "stretch");
-      if ((!error) and (morph_flags & VMF_AUTO_SPACING)) xmlNewAttrib(morph_tag, "spacing", "auto");
+      if ((!error) and ((morph_flags & VMF::STRETCH) != VMF::NIL)) xmlNewAttrib(morph_tag, "method", "stretch");
+      if ((!error) and ((morph_flags & VMF::AUTO_SPACING) != VMF::NIL)) xmlNewAttrib(morph_tag, "spacing", "auto");
 
-      if ((!error) and (morph_flags & (VMF_X_MIN|VMF_X_MID|VMF_X_MAX|VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
+      if ((!error) and ((morph_flags & (VMF::X_MIN|VMF::X_MID|VMF::X_MAX|VMF::Y_MIN|VMF::Y_MID|VMF::Y_MAX)) != VMF::NIL)) {
          char align[40];
          WORD apos = 0;
-         if (morph_flags & VMF_X_MIN) apos = StrCopy("xMin ", align, sizeof(align));
-         else if (morph_flags & VMF_X_MID) apos = StrCopy("xMid ", align, sizeof(align));
-         else if (morph_flags & VMF_X_MAX) apos = StrCopy("xMax ", align, sizeof(align));
+         if ((morph_flags & VMF::X_MIN) != VMF::NIL) apos = StrCopy("xMin ", align, sizeof(align));
+         else if ((morph_flags & VMF::X_MID) != VMF::NIL) apos = StrCopy("xMid ", align, sizeof(align));
+         else if ((morph_flags & VMF::X_MAX) != VMF::NIL) apos = StrCopy("xMax ", align, sizeof(align));
 
-         if (morph_flags & VMF_Y_MIN) StrCopy("yMin", align+apos, sizeof(align));
-         else if (morph_flags & VMF_Y_MID) StrCopy("yMid", align+apos, sizeof(align));
-         else if (morph_flags & VMF_Y_MAX) StrCopy("yMax", align+apos, sizeof(align));
+         if ((morph_flags & VMF::Y_MIN) != VMF::NIL) StrCopy("yMin", align+apos, sizeof(align));
+         else if ((morph_flags & VMF::Y_MID) != VMF::NIL) StrCopy("yMid", align+apos, sizeof(align));
+         else if ((morph_flags & VMF::Y_MAX) != VMF::NIL) StrCopy("yMax", align+apos, sizeof(align));
 
          xmlNewAttrib(morph_tag, "align", align);
       }

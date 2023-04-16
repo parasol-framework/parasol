@@ -268,7 +268,7 @@ void gen_vector_path(extVector *Vector)
          Vector->GeneratePath(Vector);
 
          if ((Vector->Morph) and (Vector->Morph->Class->BaseClassID IS ID_VECTOR)) {
-            if ((Vector->Class->ClassID IS ID_VECTORTEXT) and (!(Vector->MorphFlags & VMF_STRETCH))) {
+            if ((Vector->Class->ClassID IS ID_VECTORTEXT) and ((Vector->MorphFlags & VMF::STRETCH) IS VMF::NIL)) {
                // Do nothing for VectorText because it applies morph and transition effects during base path generation.
             }
             else {
@@ -279,17 +279,17 @@ void gen_vector_path(extVector *Vector)
                if (morph->BasePath.total_vertices()) {
                   DOUBLE bx1, bx2, by1, by2;
 
-                  if (Vector->MorphFlags & VMF_Y_MID) {
+                  if ((Vector->MorphFlags & VMF::Y_MID) != VMF::NIL) {
                      bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                      Vector->BasePath.translate(0, -by1 - ((by2 - by1) * 0.5));
                   }
-                  else if (Vector->MorphFlags & VMF_Y_MIN) {
+                  else if ((Vector->MorphFlags & VMF::Y_MIN) != VMF::NIL) {
                      if (Vector->Class->ClassID != ID_VECTORTEXT) {
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1 -(by2 - by1));
                      }
                   }
-                  else { // VMF_Y_MAX
+                  else { // VMF::Y_MAX
                      if (Vector->Class->ClassID IS ID_VECTORTEXT) { // Only VectorText needs to be reset for yMax
                         bounding_rect_single(Vector->BasePath, 0, &bx1, &by1, &bx2, &by2);
                         Vector->BasePath.translate(0, -by1);

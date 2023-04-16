@@ -1199,12 +1199,12 @@ private:
                auto save_clip = state.mClip;
                DOUBLE x1 = state.mClip.x1, y1 = state.mClip.y1, x2 = state.mClip.x2, y2 = state.mClip.y2;
 
-               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
+               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
                   if (view->vpBX1 > state.mClip.x1) state.mClip.x1 = view->vpBX1;
                   if (view->vpBX2 < state.mClip.x2) state.mClip.x2 = view->vpBX2;
                }
 
-               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or (view->vpAspectRatio & ARF_SLICE)) {
+               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
                   if (view->vpBY1 > state.mClip.y1) state.mClip.y1 = view->vpBY1;
                   if (view->vpBY2 < state.mClip.y2) state.mClip.y2 = view->vpBY2;
                }

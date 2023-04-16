@@ -39,15 +39,15 @@ static CSTRING get_effect_name(UBYTE Effect)
 //********************************************************************************************************************
 
 const FieldDef clAspectRatio[] = {
-   { "XMin",  ARF_X_MIN },
-   { "XMid",  ARF_X_MID },
-   { "XMax",  ARF_X_MAX },
-   { "YMin",  ARF_Y_MIN },
-   { "YMid",  ARF_Y_MID },
-   { "YMax",  ARF_Y_MAX },
-   { "Meet",  ARF_MEET },
-   { "Slice", ARF_SLICE },
-   { "None",  ARF_NONE },
+   { "XMin",  ARF::X_MIN },
+   { "XMid",  ARF::X_MID },
+   { "XMax",  ARF::X_MAX },
+   { "YMin",  ARF::Y_MIN },
+   { "YMid",  ARF::Y_MID },
+   { "YMax",  ARF::Y_MAX },
+   { "Meet",  ARF::MEET },
+   { "Slice", ARF::SLICE },
+   { "None",  ARF::NONE },
    { NULL, 0 }
 };
 
@@ -210,7 +210,7 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
 // Source* defines size of the source area and Target* defines the size of the projection to the display.
 
-void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
+void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    DOUBLE TargetWidth, DOUBLE TargetHeight,
    DOUBLE SourceWidth, DOUBLE SourceHeight,
    DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
@@ -228,34 +228,34 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    if (SourceWidth <= 0.000001) SourceWidth = TargetWidth;
    if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
 
-   if (AspectRatio & (ARF_MEET|ARF_SLICE)) {
+   if ((AspectRatio & (ARF::MEET|ARF::SLICE)) != ARF::NIL) {
       DOUBLE xScale = TargetWidth / SourceWidth;
       DOUBLE yScale = TargetHeight / SourceHeight;
 
       // MEET: Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the
       // viewport and do not exceed it.  SLICE: Choose the larger scale, expanding beyond the boundary on one axis.
 
-      if (AspectRatio & ARF_MEET) {
+      if ((AspectRatio & ARF::MEET) != ARF::NIL) {
          if (yScale > xScale) yScale = xScale;
          else if (xScale > yScale) xScale = yScale;
       }
-      else if (AspectRatio & ARF_SLICE) {
+      else if ((AspectRatio & ARF::SLICE) != ARF::NIL) {
          // Choose the larger of the two scaling factors.
          if (yScale < xScale) yScale = xScale;
          else if (xScale < yScale) xScale = yScale;
       }
 
       *XScale = xScale;
-      if (AspectRatio & ARF_X_MIN) *X = 0;
-      else if (AspectRatio & ARF_X_MID) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
-      else if (AspectRatio & ARF_X_MAX) *X = TargetWidth - (SourceWidth * xScale);
+      if ((AspectRatio & ARF::X_MIN) != ARF::NIL) *X = 0;
+      else if ((AspectRatio & ARF::X_MID) != ARF::NIL) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
+      else if ((AspectRatio & ARF::X_MAX) != ARF::NIL) *X = TargetWidth - (SourceWidth * xScale);
 
       *YScale = yScale;
-      if (AspectRatio & ARF_Y_MIN) *Y = 0;
-      else if (AspectRatio & ARF_Y_MID) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
-      else if (AspectRatio & ARF_Y_MAX) *Y = TargetHeight - (SourceHeight * yScale);
+      if ((AspectRatio & ARF::Y_MIN) != ARF::NIL) *Y = 0;
+      else if ((AspectRatio & ARF::Y_MID) != ARF::NIL) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
+      else if ((AspectRatio & ARF::Y_MAX) != ARF::NIL) *Y = TargetHeight - (SourceHeight * yScale);
    }
-   else { // ARF_NONE
+   else { // ARF::NONE
       *X = 0;
       if ((TargetWidth >= 1.0) and (SourceWidth >= 1.0)) *XScale = TargetWidth / SourceWidth;
       else *XScale = 1.0;
@@ -266,7 +266,7 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    }
 
    log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
-      AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
+      LONG(AspectRatio), TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
 //********************************************************************************************************************

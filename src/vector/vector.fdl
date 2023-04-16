@@ -7,11 +7,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
-  flags("ARC", { comment="Options for drawing arcs." },
+  flags("ARC", { strict=true, comment="Options for drawing arcs." },
     "LARGE",
     "SWEEP")
 
-  flags("VF", { comment="Optional flags and indicators for the Vector class." },
+  flags("VF", { strict=true, comment="Optional flags and indicators for the Vector class." },
      "DISABLED: The vector is disabled and user input should be ignored.",
      "HAS_FOCUS: The vector holds the user's input focus.")
 
@@ -146,7 +146,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "SCROLL: All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).",
     "INHERIT: The overflow state is inherited from the parent.")
 
-  flags("VTXF", { comment="VectorText flags." },
+  flags("VTXF", { strict=true, comment="VectorText flags." },
     "UNDERLINE: Enable underlining of the text.",
     "OVERLINE: Enable overlining of the text.",
     "LINE_THROUGH: Enable a strike-through line in the text.",
@@ -156,7 +156,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
     "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).")
 
-  flags("VMF", { comment="Morph flags", bits=8 },
+  flags("VMF", { strict=true, comment="Morph flags", bits=8 },
     "STRETCH: Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",
     "AUTO_SPACING: Applicable when used on VectorText, auto-spacing allows the spacing between glyphs to be shrunk or expanded along the target path so that they can produce a better fit.  The default is for the glyphs to conform to their original spacing requirements.",
     "X_MIN: Align the source so that it is morphed along the left of the target path.",
@@ -265,7 +265,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
     { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
 
-  flags("ARF", { comment="Aspect ratios control alignment, scaling and clipping." },
+  flags("ARF", { strict=true, comment="Aspect ratios control alignment, scaling and clipping." },
     "X_MIN: Align to the left.",
     "X_MID: Align to the horizontal center.",
     "X_MAX: Align to the right.",

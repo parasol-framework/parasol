@@ -30,7 +30,7 @@ class extSourceFX : public extFilterEffect {
    objVector *Source;     // The vector branch to render as source graphic.
    objVectorScene *Scene; // Internal scene for rendering.
    UBYTE *BitmapData;
-   LONG AspectRatio;      // Aspect ratio flags.
+   ARF  AspectRatio;      // Aspect ratio flags.
    LONG DataSize;
    bool Render;           // Must be true if the bitmap cache needs to be rendered.
 };
@@ -190,7 +190,7 @@ static ERROR SOURCEFX_Init(extSourceFX *Self, APTR Void)
 
 static ERROR SOURCEFX_NewObject(extSourceFX *Self, APTR Void)
 {
-   Self->AspectRatio = ARF_X_MID|ARF_Y_MID|ARF_MEET;
+   Self->AspectRatio = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->SourceType  = VSF_NONE;
    Self->Render      = true;
 
@@ -218,13 +218,13 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR SOURCEFX_GET_AspectRatio(extSourceFX *Self, LONG *Value)
+static ERROR SOURCEFX_GET_AspectRatio(extSourceFX *Self, ARF *Value)
 {
    *Value = Self->AspectRatio;
    return ERR_Okay;
 }
 
-static ERROR SOURCEFX_SET_AspectRatio(extSourceFX *Self, LONG Value)
+static ERROR SOURCEFX_SET_AspectRatio(extSourceFX *Self, ARF Value)
 {
    Self->AspectRatio = Value;
    Self->Render = true;

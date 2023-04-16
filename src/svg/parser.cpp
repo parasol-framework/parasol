@@ -1,26 +1,26 @@
 
 //********************************************************************************************************************
 
-static LONG parse_aspect_ratio(const std::string Value)
+static ARF parse_aspect_ratio(const std::string Value)
 {
    CSTRING v = Value.c_str();
    while ((*v) and (*v <= 0x20)) v++;
 
-   if (!StrMatch("none", v)) return ARF_NONE;
+   if (!StrMatch("none", v)) return ARF::NONE;
    else {
-      LONG flags = 0;
-      if (!StrCompare("xMin", v, 4)) { flags |= ARF_X_MIN; v += 4; }
-      else if (!StrCompare("xMid", v, 4)) { flags |= ARF_X_MID; v += 4; }
-      else if (!StrCompare("xMax", v, 4)) { flags |= ARF_X_MAX; v += 4; }
+      ARF flags = ARF::NIL;
+      if (!StrCompare("xMin", v, 4)) { flags |= ARF::X_MIN; v += 4; }
+      else if (!StrCompare("xMid", v, 4)) { flags |= ARF::X_MID; v += 4; }
+      else if (!StrCompare("xMax", v, 4)) { flags |= ARF::X_MAX; v += 4; }
 
-      if (!StrCompare("yMin", v, 4)) { flags |= ARF_Y_MIN; v += 4; }
-      else if (!StrCompare("yMid", v, 4)) { flags |= ARF_Y_MID; v += 4; }
-      else if (!StrCompare("yMax", v, 4)) { flags |= ARF_Y_MAX; v += 4; }
+      if (!StrCompare("yMin", v, 4)) { flags |= ARF::Y_MIN; v += 4; }
+      else if (!StrCompare("yMid", v, 4)) { flags |= ARF::Y_MID; v += 4; }
+      else if (!StrCompare("yMax", v, 4)) { flags |= ARF::Y_MAX; v += 4; }
 
       while ((*v) and (*v <= 0x20)) v++;
 
-      if (!StrCompare("meet", v, 4)) { flags |= ARF_MEET; }
-      else if (!StrCompare("slice", v, 5)) { flags |= ARF_SLICE; }
+      if (!StrCompare("meet", v, 4)) { flags |= ARF::MEET; }
+      else if (!StrCompare("slice", v, 5)) { flags |= ARF::SLICE; }
       return flags;
    }
 }
@@ -1081,7 +1081,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState &State, objVect
          case SVF_Y: set_double(fx, FID_Y, val); break;
          case SVF_WIDTH: set_double(fx, FID_Width, val); break;
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
-         case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, parse_aspect_ratio(val)); break;
+         case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); break;
          case SVF_XLINK_HREF: ref = val; break;
          case SVF_EXTERNALRESOURCESREQUIRED: required = StrMatch("true", val) IS ERR_Okay; break;
          case SVF_RESULT: parse_result(Self, fx, val); break;
@@ -1161,7 +1161,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
             break;
          }
 
-         case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, parse_aspect_ratio(val)); break;
+         case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); break;
 
          case SVF_XLINK_HREF: path = val; break;
 
@@ -1703,7 +1703,7 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
 static ERROR xtag_image(extSVG *Self, objXML *XML, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector **Vector)
 {
    pf::Log log(__FUNCTION__);
-   LONG ratio = 0;
+   ARF ratio = ARF::NIL;
    bool width_set = false;
    bool height_set = false;
    svgState state = State;
@@ -1897,7 +1897,8 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR P
    std::string offset;
    std::string ref;
    std::string transition;
-   LONG flags = 0;
+   VMF flags = VMF::NIL;
+   ARF align = ARF::NIL;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
 
@@ -1907,17 +1908,17 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR P
          case SVF_TRANSITION:  transition = val; break;
          case SVF_STARTOFFSET: offset = val; break;
          case SVF_METHOD:
-            if (!StrMatch("align", val)) flags &= ~VMF_STRETCH;
-            else if (!StrMatch("stretch", val)) flags |= VMF_STRETCH;
+            if (!StrMatch("align", val)) flags &= ~VMF::STRETCH;
+            else if (!StrMatch("stretch", val)) flags |= VMF::STRETCH;
             break;
 
          case SVF_SPACING:
-            if (!StrMatch("auto", val)) flags |= VMF_AUTO_SPACING;
-            else if (!StrMatch("exact", val)) flags &= ~VMF_AUTO_SPACING;
+            if (!StrMatch("auto", val)) flags |= VMF::AUTO_SPACING;
+            else if (!StrMatch("exact", val)) flags &= ~VMF::AUTO_SPACING;
             break;
 
          case SVF_ALIGN:
-            flags |= parse_aspect_ratio(val);
+            align |= parse_aspect_ratio(val);
             break;
       }
    }
@@ -1964,9 +1965,9 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR P
          log.warning("Invalid reference '%s', '%s' is not recognised by <morph>.", ref.c_str(), tagref.name());
    }
 
-   if (!(flags & (VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
-      if (Parent->Class->ClassID IS ID_VECTORTEXT) flags |= VMF_Y_MIN;
-      else flags |= VMF_Y_MID;
+   if ((flags & (VMF::Y_MIN|VMF::Y_MID|VMF::Y_MAX)) IS VMF::NIL) {
+      if (Parent->Class->ClassID IS ID_VECTORTEXT) flags |= VMF::Y_MIN;
+      else flags |= VMF::Y_MID;
    }
 
    if (class_id) {
@@ -1975,7 +1976,7 @@ static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR P
       process_shape(Self, class_id, XML, state, tagref, Self->Scene, &shape);
       Parent->set(FID_Morph, shape);
       if (transvector) Parent->set(FID_Transition, transvector);
-      Parent->set(FID_MorphFlags, flags);
+      Parent->set(FID_MorphFlags, LONG(flags));
       scAddDef(Self->Scene, uri.c_str(), shape);
    }
 }
@@ -2198,7 +2199,7 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState &State, const XMLTag &T
             break;
 
          case SVF_PRESERVEASPECTRATIO:
-            viewport->set(FID_AspectRatio, parse_aspect_ratio(val));
+            viewport->set(FID_AspectRatio, LONG(parse_aspect_ratio(val)));
             break;
 
          case SVF_ID:
@@ -2851,7 +2852,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
             case SVF_TEXTLENGTH: Vector->set(FID_TextLength, StrValue); return ERR_Okay;
             // TextPath only
             //case SVF_STARTOFFSET: Vector->set(FID_StartOffset, StrValue); return ERR_Okay;
-            //case SVF_METHOD: // The default is align.  For 'stretch' mode, set VMF_STRETCH in MorphFlags
+            //case SVF_METHOD: // The default is align.  For 'stretch' mode, set VMF::STRETCH in MorphFlags
             //                      Vector->set(FID_MorphFlags, StrValue); return ERR_Okay;
             //case SVF_SPACING:     Vector->set(FID_Spacing, StrValue); return ERR_Okay;
             //case SVF_XLINK_HREF:  // Used for drawing text along a path.
@@ -2863,10 +2864,10 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
             case SVF_WORD_SPACING:   Vector->set(FID_WordSpacing, StrValue); return ERR_Okay;
             case SVF_TEXT_DECORATION:
                switch(StrHash(StrValue)) {
-                  case SVF_UNDERLINE:    Vector->set(FID_Flags, VTXF_UNDERLINE); return ERR_Okay;
-                  case SVF_OVERLINE:     Vector->set(FID_Flags, VTXF_OVERLINE); return ERR_Okay;
-                  case SVF_LINETHROUGH:  Vector->set(FID_Flags, VTXF_LINE_THROUGH); return ERR_Okay;
-                  case SVF_BLINK:        Vector->set(FID_Flags, VTXF_BLINK); return ERR_Okay;
+                  case SVF_UNDERLINE:    Vector->set(FID_Flags, LONG(VTXF::UNDERLINE)); return ERR_Okay;
+                  case SVF_OVERLINE:     Vector->set(FID_Flags, LONG(VTXF::OVERLINE)); return ERR_Okay;
+                  case SVF_LINETHROUGH:  Vector->set(FID_Flags, LONG(VTXF::LINE_THROUGH)); return ERR_Okay;
+                  case SVF_BLINK:        Vector->set(FID_Flags, LONG(VTXF::BLINK)); return ERR_Okay;
                   case SVF_INHERIT:      return ERR_Okay;
                   default: log.warning("No support for text-decoration value '%s'", StrValue.c_str());
                }

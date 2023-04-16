@@ -116,9 +116,9 @@ int(ARC) Flags: Optional flags.
 
 *********************************************************************************************************************/
 
-void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
+void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)
 {
-   Vector->mPath.arc_to(RX, RY, Angle, (Flags & ARC_LARGE) ? 1 : 0, (Flags & ARC_SWEEP) ? 1 : 0, X, Y);
+   Vector->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
 }
 
 /*********************************************************************************************************************

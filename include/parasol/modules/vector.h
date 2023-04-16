@@ -46,13 +46,23 @@ class objVectorViewport;
 
 // Options for drawing arcs.
 
-#define ARC_LARGE 0x00000001
-#define ARC_SWEEP 0x00000002
+enum class ARC : ULONG {
+   NIL = 0,
+   LARGE = 0x00000001,
+   SWEEP = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ARC)
 
 // Optional flags and indicators for the Vector class.
 
-#define VF_DISABLED 0x00000001
-#define VF_HAS_FOCUS 0x00000002
+enum class VF : ULONG {
+   NIL = 0,
+   DISABLED = 0x00000001,
+   HAS_FOCUS = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VF)
 
 // Light source identifiers.
 
@@ -214,26 +224,36 @@ class objVectorViewport;
 
 // VectorText flags.
 
-#define VTXF_UNDERLINE 0x00000001
-#define VTXF_OVERLINE 0x00000002
-#define VTXF_LINE_THROUGH 0x00000004
-#define VTXF_BLINK 0x00000008
-#define VTXF_EDIT 0x00000010
-#define VTXF_EDITABLE 0x00000010
-#define VTXF_AREA_SELECTED 0x00000020
-#define VTXF_NO_SYS_KEYS 0x00000040
-#define VTXF_OVERWRITE 0x00000080
+enum class VTXF : ULONG {
+   NIL = 0,
+   UNDERLINE = 0x00000001,
+   OVERLINE = 0x00000002,
+   LINE_THROUGH = 0x00000004,
+   BLINK = 0x00000008,
+   EDIT = 0x00000010,
+   EDITABLE = 0x00000010,
+   AREA_SELECTED = 0x00000020,
+   NO_SYS_KEYS = 0x00000040,
+   OVERWRITE = 0x00000080,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VTXF)
 
 // Morph flags
 
-#define VMF_STRETCH 0x00000001
-#define VMF_AUTO_SPACING 0x00000002
-#define VMF_X_MIN 0x00000004
-#define VMF_X_MID 0x00000008
-#define VMF_X_MAX 0x00000010
-#define VMF_Y_MIN 0x00000020
-#define VMF_Y_MID 0x00000040
-#define VMF_Y_MAX 0x00000080
+enum class VMF : ULONG {
+   NIL = 0,
+   STRETCH = 0x00000001,
+   AUTO_SPACING = 0x00000002,
+   X_MIN = 0x00000004,
+   X_MID = 0x00000008,
+   X_MAX = 0x00000010,
+   Y_MIN = 0x00000020,
+   Y_MID = 0x00000040,
+   Y_MAX = 0x00000080,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VMF)
 
 // Colour space options.
 
@@ -343,15 +363,20 @@ enum class VCS : LONG {
 
 // Aspect ratios control alignment, scaling and clipping.
 
-#define ARF_X_MIN 0x00000001
-#define ARF_X_MID 0x00000002
-#define ARF_X_MAX 0x00000004
-#define ARF_Y_MIN 0x00000008
-#define ARF_Y_MID 0x00000010
-#define ARF_Y_MAX 0x00000020
-#define ARF_MEET 0x00000040
-#define ARF_SLICE 0x00000080
-#define ARF_NONE 0x00000100
+enum class ARF : ULONG {
+   NIL = 0,
+   X_MIN = 0x00000001,
+   X_MID = 0x00000002,
+   X_MAX = 0x00000004,
+   Y_MIN = 0x00000008,
+   Y_MID = 0x00000010,
+   Y_MAX = 0x00000020,
+   MEET = 0x00000040,
+   SLICE = 0x00000080,
+   NONE = 0x00000100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ARF)
 
 // Options for vecGetBoundary().
 
@@ -476,14 +501,14 @@ INLINE ERROR scAddDef(APTR Ob, CSTRING Name, OBJECTPTR Def) {
 }
 
 INLINE ERROR scSearchByID(APTR Ob, LONG ID, OBJECTPTR * Result) {
-   struct scSearchByID args = { ID, 0 };
+   struct scSearchByID args = { ID, (OBJECTPTR)0 };
    ERROR error = Action(MT_ScSearchByID, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }
 
 INLINE ERROR scFindDef(APTR Ob, CSTRING Name, OBJECTPTR * Def) {
-   struct scFindDef args = { Name, 0 };
+   struct scFindDef args = { Name, (OBJECTPTR)0 };
    ERROR error = Action(MT_ScFindDef, (OBJECTPTR)Ob, &args);
    if (Def) *Def = args.Def;
    return(error);
@@ -599,7 +624,7 @@ class objVectorImage : public BaseClass {
    LONG   Units;            // Declares the coordinate system to use for the #X and #Y values.
    LONG   Dimensions;       // Dimension flags define whether individual dimension fields contain fixed or relative values.
    LONG   SpreadMethod;     // Defines the drawing mode.
-   LONG   AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
+   ARF    AspectRatio;      // Flags that affect the aspect ratio of the image within its target vector.
 
    // Customised field setting
 
@@ -640,7 +665,7 @@ class objVectorImage : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setAspectRatio(const LONG Value) {
+   inline ERROR setAspectRatio(const ARF Value) {
       this->AspectRatio = Value;
       return ERR_Okay;
    }
@@ -1395,7 +1420,7 @@ INLINE ERROR vecTracePath(APTR Ob, FUNCTION * Callback) {
 }
 
 INLINE ERROR vecGetBoundary(APTR Ob, LONG Flags, DOUBLE * X, DOUBLE * Y, DOUBLE * Width, DOUBLE * Height) {
-   struct vecGetBoundary args = { Flags, 0, 0, 0, 0 };
+   struct vecGetBoundary args = { Flags, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0, (DOUBLE)0 };
    ERROR error = Action(MT_VecGetBoundary, (OBJECTPTR)Ob, &args);
    if (X) *X = args.X;
    if (Y) *Y = args.Y;
@@ -1427,7 +1452,7 @@ INLINE ERROR vecSubscribeFeedback(APTR Ob, FM Mask, FUNCTION * Callback) {
 #define vecDebug(obj) Action(MT_VecDebug,(obj),0)
 
 INLINE ERROR vecNewMatrix(APTR Ob, struct VectorMatrix ** Transform) {
-   struct vecNewMatrix args = { 0 };
+   struct vecNewMatrix args = { (struct VectorMatrix *)0 };
    ERROR error = Action(MT_VecNewMatrix, (OBJECTPTR)Ob, &args);
    if (Transform) *Transform = args.Transform;
    return(error);
@@ -1459,7 +1484,7 @@ class objVector : public BaseClass {
    DOUBLE    InnerMiterLimit;         // Private. No internal documentation exists for this feature.
    DOUBLE    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
    LONG      Visibility;              // Controls the visibility of a vector and its children.
-   LONG      Flags;                   // Optional flags.
+   VF        Flags;                   // Optional flags.
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;             // Defines the quality of a path when it is rendered.
    VCS       ColourSpace;             // Defines the colour space to use when blending the vector with a target bitmap's content.
@@ -1533,7 +1558,7 @@ class objVector : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const VF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;
@@ -1718,7 +1743,7 @@ INLINE ERROR vpSetCommand(APTR Ob, LONG Index, struct PathCommand * Command, LON
 }
 
 INLINE ERROR vpGetCommand(APTR Ob, LONG Index, struct PathCommand ** Command) {
-   struct vpGetCommand args = { Index, 0 };
+   struct vpGetCommand args = { Index, (struct PathCommand *)0 };
    ERROR error = Action(MT_VPGetCommand, (OBJECTPTR)Ob, &args);
    if (Command) *Command = args.Command;
    return(error);
@@ -1869,7 +1894,7 @@ struct VectorBase {
    void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_MoveTo)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_LineTo)(APTR Path, DOUBLE X, DOUBLE Y);
-   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+   void (*_ArcTo)(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
    void (*_Curve3)(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
    void (*_Smooth3)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_Curve4)(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
@@ -1898,7 +1923,7 @@ inline ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * R
 inline void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
 inline void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
 inline void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
-inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
+inline void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags) { return VectorBase->_ArcTo(Path,RX,RY,Angle,X,Y,Flags); }
 inline void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve3(Path,CtrlX,CtrlY,X,Y); }
 inline void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_Smooth3(Path,X,Y); }
 inline void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y) { return VectorBase->_Curve4(Path,CtrlX1,CtrlY1,CtrlX2,CtrlY2,X,Y); }

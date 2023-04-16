@@ -32,7 +32,7 @@ class extImageFX : public extFilterEffect {
 
    objBitmap *Bitmap;    // Bitmap containing source image data.
    objPicture *Picture;  // Origin picture if loading a source file.
-   LONG AspectRatio;     // Aspect ratio flags.
+   ARF  AspectRatio;     // Aspect ratio flags.
    LONG ResampleMethod;  // Resample method.
 };
 
@@ -176,7 +176,7 @@ static ERROR IMAGEFX_NewChild(extImageFX *Self, struct acNewChild *Args)
 
 static ERROR IMAGEFX_NewObject(extImageFX *Self, APTR Void)
 {
-   Self->AspectRatio    = ARF_X_MID|ARF_Y_MID|ARF_MEET;
+   Self->AspectRatio    = ARF::X_MID|ARF::Y_MID|ARF::MEET;
    Self->ResampleMethod = VSM_BILINEAR;
    Self->SourceType     = VSF_PREVIOUS;
    return ERR_Okay;
@@ -190,13 +190,13 @@ Lookup: ARF
 
 *********************************************************************************************************************/
 
-static ERROR IMAGEFX_GET_AspectRatio(extImageFX *Self, LONG *Value)
+static ERROR IMAGEFX_GET_AspectRatio(extImageFX *Self, ARF *Value)
 {
    *Value = Self->AspectRatio;
    return ERR_Okay;
 }
 
-static ERROR IMAGEFX_SET_AspectRatio(extImageFX *Self, LONG Value)
+static ERROR IMAGEFX_SET_AspectRatio(extImageFX *Self, ARF Value)
 {
    Self->AspectRatio = Value;
    return ERR_Okay;
