@@ -156,7 +156,7 @@ static ERROR set_channel_volume(extAudio *Self, AudioChannel *Channel)
    // Start volume ramping if necessary
 
    Channel->Flags &= ~CHF::VOL_RAMP;
-   if ((Self->Flags & ADF_OVER_SAMPLING) and (Self->Flags & ADF_VOL_RAMPING)) {
+   if (((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) and ((Self->Flags & ADF::VOL_RAMPING) != ADF::NIL)) {
       if ((Channel->LVolume != leftvol) or (Channel->LVolumeTarget != leftvol)) {
          Channel->Flags |= CHF::VOL_RAMP;
          Channel->LVolumeTarget = leftvol;
@@ -426,7 +426,7 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
 
    switch (lp_type) {
       default:
-         if (Self->Flags & ADF_OVER_SAMPLING) {
+         if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
             if ((Channel.Position + 1) < sample.SampleLength) {
                num = (sample.SampleLength - 1) - Channel.Position;
             }
@@ -439,7 +439,7 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
          break;
 
       case LTYPE::UNIDIRECTIONAL:
-         if (Self->Flags & ADF_OVER_SAMPLING) {
+         if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
             if ((Channel.Position + 1) < lp_end) num = (lp_end - 1) - Channel.Position;
             else { // The last sample of the loop
                *NextOffset = lp_start - Channel.Position;
@@ -451,7 +451,7 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
 
       case LTYPE::BIDIRECTIONAL:
          if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) { // Backwards
-            if (Self->Flags & ADF_OVER_SAMPLING) {
+            if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
                if (Channel.Position IS (lp_end-1)) { // First sample of the loop backwards
                   *NextOffset = 0;
                   num = 1;
@@ -462,7 +462,7 @@ static LONG samples_until_end(extAudio *Self, AudioChannel &Channel, LONG *NextO
             break;
          }
          else { // Forward
-            if (Self->Flags & ADF_OVER_SAMPLING) {
+            if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
                if ((Channel.Position + 1) < lp_end) num = (lp_end - 1) - Channel.Position;
                else { // The last sample of the loop
                   *NextOffset = 0;
@@ -665,7 +665,7 @@ static ERROR mix_data(extAudio *Self, LONG Elements, APTR Dest)
 
       // Do optional post-processing
 
-      if (Self->Flags & (ADF_FILTER_LOW|ADF_FILTER_HIGH)) {
+      if ((Self->Flags & (ADF::FILTER_LOW|ADF::FILTER_HIGH)) != ADF::NIL) {
          if (Self->Stereo) filter_float_stereo(Self, (FLOAT *)Self->MixBuffer, window);
          else filter_float_mono(Self, (FLOAT *)Self->MixBuffer, window);
       }
@@ -846,7 +846,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 static void filter_float_mono(extAudio *Self, FLOAT *Data, LONG TotalSamples)
 {
    static FLOAT d1l=0, d2l=0;
-   if (Self->Flags & ADF_FILTER_LOW) {
+   if ((Self->Flags & ADF::FILTER_LOW) != ADF::NIL) {
       while (TotalSamples > 0) {
          FLOAT s = (d1l + 2.0f * Data[0]) * (1.0f / 3.0f);
          d1l = Data[0];
@@ -854,7 +854,7 @@ static void filter_float_mono(extAudio *Self, FLOAT *Data, LONG TotalSamples)
          TotalSamples--;
       }
    }
-   else if (Self->Flags & ADF_FILTER_HIGH) {
+   else if ((Self->Flags & ADF::FILTER_HIGH) != ADF::NIL) {
       while (TotalSamples > 0) {
          FLOAT s = (d1l + 3.0f * d2l + 4.0f * Data[0]) * (1.0f / 8.0f);
          d1l = d2l;
@@ -872,7 +872,7 @@ static void filter_float_stereo(extAudio *Self, FLOAT *Data, LONG TotalSamples)
 {
    static DOUBLE d1l = 0, d1r = 0, d2l = 0, d2r = 0;
 
-   if (Self->Flags & ADF_FILTER_LOW) {
+   if ((Self->Flags & ADF::FILTER_LOW) != ADF::NIL) {
       while (TotalSamples > 0) {
          FLOAT s = (d1l + 2.0 * Data[0]) * (1.0 / 3.0);
          d1l = Data[0];
@@ -885,7 +885,7 @@ static void filter_float_stereo(extAudio *Self, FLOAT *Data, LONG TotalSamples)
          TotalSamples--;
       }
    }
-   else if (Self->Flags & ADF_FILTER_HIGH) {
+   else if ((Self->Flags & ADF::FILTER_HIGH) != ADF::NIL) {
       while (TotalSamples > 0) {
          FLOAT s = (d1l + 3.0 * d2l + 4.0 * Data[0]) * (1.0 / 8.0);
          d1l = d2l;

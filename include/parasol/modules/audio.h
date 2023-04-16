@@ -13,13 +13,18 @@ class objSound;
 
 // Optional flags for the Audio object.
 
-#define ADF_OVER_SAMPLING 0x00000001
-#define ADF_FILTER_LOW 0x00000002
-#define ADF_FILTER_HIGH 0x00000004
-#define ADF_STEREO 0x00000008
-#define ADF_VOL_RAMPING 0x00000010
-#define ADF_AUTO_SAVE 0x00000020
-#define ADF_SYSTEM_WIDE 0x00000040
+enum class ADF : ULONG {
+   NIL = 0,
+   OVER_SAMPLING = 0x00000001,
+   FILTER_LOW = 0x00000002,
+   FILTER_HIGH = 0x00000004,
+   STEREO = 0x00000008,
+   VOL_RAMPING = 0x00000010,
+   AUTO_SAVE = 0x00000020,
+   SYSTEM_WIDE = 0x00000040,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ADF)
 
 // Volume control flags
 
@@ -230,7 +235,7 @@ class objAudio : public BaseClass {
    LONG OutputRate;    // Determines the frequency to use for the output of audio data.
    LONG InputRate;     // Determines the frequency to use when recording audio data.
    LONG Quality;       // Determines the quality of the audio mixing.
-   LONG Flags;         // Special audio flags can be set here.
+   ADF  Flags;         // Special audio flags can be set here.
    LONG BitDepth;      // The bit depth affects the overall quality of audio input and output.
    LONG Periods;       // Defines the number of periods that make up the internal audio buffer.
    LONG PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
@@ -266,7 +271,7 @@ class objAudio : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const ADF Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Flags = Value;
       return ERR_Okay;

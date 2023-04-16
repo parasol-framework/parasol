@@ -271,7 +271,7 @@
       <name>Flags</name>
       <comment>Special audio flags can be set here.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="ADF">INT</type>
+      <type lookup="ADF">ADF</type>
       <description>
 <p>The audio class supports a number of special flags that affect internal behaviour.  The following table illustrates the publicly available flags:</p>
 <types lookup="ADF"/>

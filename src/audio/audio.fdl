@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, function()
-  flags("ADF", { comment="Optional flags for the Audio object." },
+  flags("ADF", { strict=true, comment="Optional flags for the Audio object." },
     "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
     "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
     "FILTER_HIGH: Enable a high level of output filtering to minimise distortion.",

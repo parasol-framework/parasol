@@ -83,7 +83,7 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    if (!AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer)) {
       // Pick the correct mixing routines
 
-      if (Self->Flags & ADF_OVER_SAMPLING) {
+      if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
          if (Self->Stereo) Self->MixRoutines = MixStereoFloatInterp;
          else Self->MixRoutines = MixMonoFloatInterp;
       }
@@ -456,7 +456,7 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 
 static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
-   if (Self->Flags & ADF_AUTO_SAVE) Self->saveSettings();
+   if ((Self->Flags & ADF::AUTO_SAVE) != ADF::NIL) Self->saveSettings();
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
 
@@ -504,7 +504,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->InputRate   = 44100;        // Input rate for recording
    Self->Quality     = 80;
    Self->BitDepth    = 16;
-   Self->Flags       = ADF_OVER_SAMPLING|ADF_FILTER_HIGH|ADF_VOL_RAMPING|ADF_STEREO;
+   Self->Flags       = ADF::OVER_SAMPLING|ADF::FILTER_HIGH|ADF::VOL_RAMPING|ADF::STEREO;
    Self->Periods     = 4;
    Self->PeriodSize  = 2048;
    Self->Device      = "default";
@@ -512,7 +512,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 
    const SystemState *state = GetSystemState();
    if ((!StrMatch(state->Platform, "Native")) or (!StrMatch(state->Platform, "Linux"))) {
-      Self->Flags |= ADF_SYSTEM_WIDE;
+      Self->Flags |= ADF::SYSTEM_WIDE;
    }
 
    Self->Samples.reserve(32);
@@ -583,7 +583,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 
    Self->Sets[index].Channel.resize(Args->Total);
 
-   if (Self->Flags & ADF_OVER_SAMPLING) Self->Sets[index].Shadow.resize(Args->Total);
+   if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) Self->Sets[index].Shadow.resize(Args->Total);
    else Self->Sets[index].Shadow.clear();
 
    Self->Sets[index].UpdateRate = 125;  // Default mixer update rate of 125ms
@@ -667,15 +667,15 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       config->write("AUDIO", "Periods", Self->Periods);
       config->write("AUDIO", "PeriodSize", Self->PeriodSize);
 
-      if (Self->Flags & ADF_STEREO) config->write("AUDIO", "Stereo", "TRUE");
+      if ((Self->Flags & ADF::STEREO) != ADF::NIL) config->write("AUDIO", "Stereo", "TRUE");
       else config->write("AUDIO", "Stereo", "FALSE");
 
 #ifdef __linux__
       if (!Self->Device.empty()) config->write("AUDIO", "Device", Self->Device);
       else config->write("AUDIO", "Device", "default");
 
-      if ((!Self->Volumes.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         for (LONG i=0; i < (LONG)Self->Volumes.size(); i++) {
+      if ((!Self->Volumes.empty()) and ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL)) {
+         for (unsigned i=0; i < Self->Volumes.size(); i++) {
             std::ostringstream out;
             if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) out << "1,[";
             else out << "0,[";
@@ -1239,7 +1239,7 @@ Quality: Determines the quality of the audio mixing.
 
 Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and
 100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following
-flags being automatically adjusted in the audio object: `ADF_FILTER_LOW`, `ADF_FILTER_HIGH` and `ADF_OVER_SAMPLING`.
+flags being automatically adjusted in the audio object: `ADF::FILTER_LOW`, `ADF::FILTER_HIGH` and `ADF::OVER_SAMPLING`.
 
 In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is
 of low quality.
@@ -1250,12 +1250,12 @@ static ERROR SET_Quality(extAudio *Self, LONG Value)
 {
    Self->Quality = Value;
 
-   Self->Flags &= ~(ADF_FILTER_LOW|ADF_FILTER_HIGH|ADF_OVER_SAMPLING);
+   Self->Flags &= ~(ADF::FILTER_LOW|ADF::FILTER_HIGH|ADF::OVER_SAMPLING);
 
    if (Self->Quality < 10) return ERR_Okay;
-   else if (Self->Quality < 33) Self->Flags |= ADF_FILTER_LOW;
-   else if (Self->Quality < 66) Self->Flags |= ADF_FILTER_HIGH;
-   else Self->Flags |= ADF_OVER_SAMPLING|ADF_FILTER_HIGH;
+   else if (Self->Quality < 33) Self->Flags |= ADF::FILTER_LOW;
+   else if (Self->Quality < 66) Self->Flags |= ADF::FILTER_HIGH;
+   else Self->Flags |= ADF::OVER_SAMPLING|ADF::FILTER_HIGH;
 
    return ERR_Okay;
 }
@@ -1271,15 +1271,15 @@ Stereo: Set to TRUE for stereo output and FALSE for mono output.
 
 static ERROR GET_Stereo(extAudio *Self, LONG *Value)
 {
-   if (Self->Flags & ADF_STEREO) *Value = TRUE;
+   if ((Self->Flags & ADF::STEREO) != ADF::NIL) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
 
 static ERROR SET_Stereo(extAudio *Self, LONG Value)
 {
-   if (Value IS TRUE) Self->Flags |= ADF_STEREO;
-   else Self->Flags &= ~ADF_STEREO;
+   if (Value IS TRUE) Self->Flags |= ADF::STEREO;
+   else Self->Flags &= ~ADF::STEREO;
    return ERR_Okay;
 }
 
@@ -1306,9 +1306,9 @@ static void load_config(extAudio *Self)
       if (config->read("AUDIO", "Device", Self->Device)) Self->Device = "default";
 
       std::string str;
-      Self->Flags |= ADF_STEREO;
+      Self->Flags |= ADF::STEREO;
       if (!config->read("AUDIO", "Stereo", str)) {
-         if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF_STEREO;
+         if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF::STEREO;
       }
 
       if ((Self->BitDepth != 8) and (Self->BitDepth != 16) and (Self->BitDepth != 24)) Self->BitDepth = 16;
