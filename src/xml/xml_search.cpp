@@ -63,7 +63,7 @@ ERROR extXML::find_tag(CSTRING XPath)
    auto cmpflags = STR::MATCH_LEN;
    LONG subscript = 0;
 
-   if (this->Flags & XMF_DEBUG) log.branch("XPath: %s, TagName: %s", XPath, tagname.c_str());
+   if ((this->Flags & XMF::DEBUG) != XMF::NIL) log.branch("XPath: %s, TagName: %s", XPath, tagname.c_str());
 
    char endchar;
    if ((XPath[pos] IS '[') or (XPath[pos] IS '(')) {

@@ -188,7 +188,7 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
    }
 
    Self->get(FID_Path, &location);
-   if ((!location) or (Self->Flags & XMF_NEW)) {
+   if ((!location) or ((Self->Flags & XMF::NEW) != XMF::NIL)) {
       // If no location has been specified, assume that the JSON source is being
       // created from scratch (e.g. to save to disk).
 

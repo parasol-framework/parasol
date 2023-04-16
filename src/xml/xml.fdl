@@ -9,11 +9,11 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     UPDATE      = "-3: As for XMS_UPDATE_ONLY, but if the attribute does not exist, it will be created."
   })
 
-  flags("XSF", { comment="Options for the Sort method." },
+  flags("XSF", { strict=true, comment="Options for the Sort method." },
     "DESC: Sort in descending order.",
     "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.")
 
-  flags("XMF", { comment="Standard flags for the XML class." },
+  flags("XMF", { strict=true, comment="Standard flags for the XML class." },
     "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.",
     "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
     "STRIP_CONTENT: Strip all content from incoming XML data.",
@@ -29,14 +29,14 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (GetXMLString only)" })
 
-  enum("XMI", { start=0, comment="Tag insertion options." },
+  enum("XMI", { type="int", start=0, comment="Tag insertion options." },
     "PREV|PREVIOUS: Insert as the previous tag of the target.",
     "CHILD: Insert as the first child of the target.",
     "NEXT: Insert as the next tag of the target.",
     "CHILD_END: Insert as the last child of the target.",
     "END: Private")
 
-  flags("XTF", { comment="Standard flags for XMLTag." },
+  flags("XTF", { strict=true, comment="Standard flags for XMLTag." },
     "CDATA: Tag represents CDATA.",
     "INSTRUCTION: Tag represents an instruction of the format <?xml?>.",
     "NOTATION: Tag represents a notation of the format <!XML>.")
@@ -62,11 +62,11 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
   ]],
   [[
    XMLTag(LONG pID, LONG pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(0)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
       { }
 
    XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(0), Attribs(pAttribs)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -146,7 +146,7 @@ inline void xmlNewAttrib(XMLTag *Tag, const std::string Name, const std::string 
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, LONG Where, T Statement, XMLTag **Result) {
+template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
    auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
    if (!error) {

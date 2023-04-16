@@ -185,10 +185,10 @@
     <method>
       <name>GetString</name>
       <comment>Retrieves data from an XML object in standard XML string format.</comment>
-      <prototype>ERROR xmlGetString(OBJECTPTR Object, LONG Index, LONG Flags, STRING * Result)</prototype>
+      <prototype>ERROR xmlGetString(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Index to a source tag for pulling data out of the XML object.  Zero will always refer to the first tag.</param>
-        <param type="LONG" name="Flags" lookup="XMF">Special flags that affect the construction of the XML string.</param>
+        <param type="XMF" name="Flags" lookup="XMF">Special flags that affect the construction of the XML string.</param>
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
@@ -224,15 +224,15 @@
     <method>
       <name>InsertContent</name>
       <comment>Inserts XML content into the XML tree.</comment>
-      <prototype>ERROR xmlInsertContent(OBJECTPTR Object, LONG Index, LONG Where, CSTRING Content, LONG * Result)</prototype>
+      <prototype>ERROR xmlInsertContent(OBJECTPTR Object, LONG Index, XMI Where, CSTRING Content, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">Identifies the target XML tag.</param>
-        <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
         <param type="CSTRING" name="Content">The content to insert.</param>
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertContent method will insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of <code>XMI_CHILD</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
+<p>The InsertContent method will insert content strings into any position within the XML tree.  A content string must be provided in the Content parameter and the target insertion point is specified in the Index parameter. An insertion point relative to the target index must be specified in the Where parameter.  The new tags can be inserted as a child of the target by using a Where value of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
 <p>To modify existing content, call <method>SetAttrib</method> instead.</p>
       </description>
       <result>
@@ -245,15 +245,15 @@
     <method>
       <name>InsertXML</name>
       <comment>Inserts an XML statement in the XML tree.</comment>
-      <prototype>ERROR xmlInsertXML(OBJECTPTR Object, LONG Index, LONG Where, CSTRING XML, LONG * Result)</prototype>
+      <prototype>ERROR xmlInsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">The new data will target the tag specified here.</param>
-        <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD or XMI_CHILD_END for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD or CHILD_END for a child insert.</param>
         <param type="CSTRING" name="XML">An XML statement to parse.</param>
         <param type="LONG *" name="Result">The resulting tag index.</param>
       </input>
       <description>
-<p>The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using a Insert value of <code>XMI_CHILD</code>.  Use <code>XMI_CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
+<p>The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using a Insert value of <code>XMI::CHILD</code>.  Use <code>XMI::CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">The statement was added successfully.</error>
@@ -267,15 +267,15 @@
     <method>
       <name>InsertXPath</name>
       <comment>Inserts an XML statement in an XML tree.</comment>
-      <prototype>ERROR xmlInsertXPath(OBJECTPTR Object, CSTRING XPath, LONG Where, CSTRING XML, LONG * Result)</prototype>
+      <prototype>ERROR xmlInsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="CSTRING" name="XPath">An XPath string that refers to the target insertion point.</param>
-        <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
         <param type="CSTRING" name="XML">The statement to process.</param>
         <param type="LONG *" name="Result">The index of the new tag is returned here.</param>
       </input>
       <description>
-<p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI_CHILD</code> or <code>XMI_CHILD_END</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
+<p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid XPath location string.  An insertion point relative to the XPath target must be specified in the Insert parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI::CHILD</code> or <code>XMI::CHILD_END</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -287,16 +287,16 @@
     <method>
       <name>MoveTags</name>
       <comment>Move an XML tag group to a new position in the XML tree.</comment>
-      <prototype>ERROR xmlMoveTags(OBJECTPTR Object, LONG Index, LONG Total, LONG DestIndex, LONG Where)</prototype>
+      <prototype>ERROR xmlMoveTags(OBJECTPTR Object, LONG Index, LONG Total, LONG DestIndex, XMI Where)</prototype>
       <input>
         <param type="LONG" name="Index">Index of the source tag to be moved.</param>
         <param type="LONG" name="Total">The total number of sibling tags to be moved from the source index.  Minimum value of 1.</param>
         <param type="LONG" name="DestIndex">The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.</param>
-        <param type="LONG" name="Where" lookup="XMI">Use XMI_PREV or XMI_NEXT to insert behind or ahead of the target tag.  Use XMI_CHILD for a child insert.</param>
+        <param type="XMI" name="Where" lookup="XMI">Use PREV or NEXT to insert behind or ahead of the target tag.  Use CHILD for a child insert.</param>
       </input>
       <description>
 <p>This method is used to move XML tags within the XML tree structure.  It supports the movement of single and groups of tags from one index to another.  The client must supply the index of the tag that will be moved and the index of the target tag.  All child tags of the source will be included in the move.</p>
-<p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of <code>XMI_CHILD</code>.  To insert behind or after the target, use <code>XMI_PREV</code> or <code>XMI_NEXT</code>.</p>
+<p>An insertion point relative to the target index must be specified in the Where parameter.  The source tag can be inserted as a child of the destination by using a Where of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
         <error code="Okay">Tags were moved successfully.</error>
@@ -376,11 +376,11 @@
     <method>
       <name>Sort</name>
       <comment>Sorts XML tags to your specifications.</comment>
-      <prototype>ERROR xmlSort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, LONG Flags)</prototype>
+      <prototype>ERROR xmlSort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>
       <input>
         <param type="CSTRING" name="XPath">Sort everything under the specified tag, or NULL to sort the entire top level.</param>
         <param type="CSTRING" name="Sort">Pointer to a sorting instruction string.</param>
-        <param type="LONG" name="Flags" lookup="XSF">Optional flags.</param>
+        <param type="XSF" name="Flags" lookup="XSF">Optional flags.</param>
       </input>
       <description>
 <p>The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An XPath is required that refers to the tag containing each item that will be sorted.  To sort the root level, use an XPath of NULL.</p>
@@ -402,7 +402,7 @@
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="XMF">INT</type>
+      <type lookup="XMF">XMF</type>
       <description>
 <types lookup="XMF"/>
       </description>
@@ -529,7 +529,7 @@
       <field name="ID" type="LONG">Unique ID assigned to the tag on creation</field>
       <field name="ParentID" type="LONG">Unique ID of the parent tag</field>
       <field name="LineNo" type="LONG">Line number on which this tag was encountered</field>
-      <field name="Flags" type="LONG" lookup="XTF">Optional flags</field>
+      <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
       <field name="Attribs" type="pf::vector&lt;XMLAttrib&gt;">Array of attributes for this tag</field>
       <field name="Children" type="pf::vector&lt;XMLTag&gt;">Array of child tags</field>
     </struct>

@@ -256,14 +256,14 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       else return log.warning(ERR_GetField);
    }
    else {
-      objXML::create xml = { fl::Flags(XMF_NEW|XMF_READABLE) };
+      objXML::create xml = { fl::Flags(XMF::NEW|XMF::READABLE) };
 
       if (xml.ok()) {
-         ERROR error = xmlInsertXML(*xml, 0, 0, header, NULL);
+         ERROR error = xmlInsertXML(*xml, 0, XMI::NIL, header, NULL);
          LONG index = xml->Tags.back().ID;
 
          XMLTag *tag;
-         if (!(error = xmlInsertXML(*xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
+         if (!(error = xmlInsertXML(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
