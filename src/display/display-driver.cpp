@@ -35,7 +35,7 @@ X11Globals glX11;
 _XDisplay *XDisplay = 0;
 struct XRandRBase *XRandRBase = 0;
 bool glX11ShmImage = false;
-UBYTE KeyHeld[K_LIST_END];
+UBYTE KeyHeld[LONG(KEY::LIST_END)];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 KQ glKeyFlags = KQ::NIL;
 LONG glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;

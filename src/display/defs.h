@@ -608,7 +608,7 @@ extern X11Globals glX11;
 extern _XDisplay *XDisplay;
 extern struct XRandRBase *XRandRBase;
 extern bool glX11ShmImage;
-extern UBYTE KeyHeld[K_LIST_END];
+extern UBYTE KeyHeld[LONG(KEY::LIST_END)];
 extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
 extern KQ glKeyFlags;
 extern LONG glXFD, glDGAPixelsPerLine, glDGABankSize;
