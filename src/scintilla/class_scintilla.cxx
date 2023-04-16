@@ -128,31 +128,30 @@ static OBJECTPTR glFont = NULL, glBoldFont = NULL, glItalicFont = NULL, glBIFont
 
 static const struct {
    CSTRING File;
-   LONG Lexer;
+   SCLEX Lexer;
 } glLexers[] = {
-   { "*.asm|*.s",     SCLEX_ASM },
-   { "*.asp",         SCLEX_ASP },
-   { "*.bash",        SCLEX_BASH },
-   { "*.bat|*.dos",   SCLEX_BATCH },
-   { "*.c|*.cpp|*.cxx|*.h|*.hpp", SCLEX_CPP },
-   { "*.css",         SCLEX_CSS },
-   { "*.diff",        SCLEX_DIFF },
-   { "*.errorlist",   SCLEX_ERRORLIST },
-   { "*.lua|*.fluid", SCLEX_FLUID },
-   { "*.dmd",         SCLEX_HTML },
-   { "*.html",        SCLEX_HTML },
-   { "*.latex",       SCLEX_LATEX },
-   { "makefile|*.make", SCLEX_MAKEFILE },
-   { "*.pas",          SCLEX_PASCAL },
-   { "*.perl|*.pl",    SCLEX_PERL },
-   { "*.prop|*.cfg",   SCLEX_PROPERTIES },
-   { "*.py",           SCLEX_PYTHON },
-   { "*.ruby|*.rb",    SCLEX_RUBY },
-   { "*.sql",          SCLEX_SQL },
-   { "*.vb",           SCLEX_VB },
-   { "*.vbscript",     SCLEX_VBSCRIPT },
-   { "*.xml",          SCLEX_XML },
-   { NULL, 0 }
+   { "*.asm|*.s",     SCLEX::ASSEMBLER },
+   { "*.asp",         SCLEX::ASP },
+   { "*.bash",        SCLEX::BASH },
+   { "*.bat|*.dos",   SCLEX::BATCH },
+   { "*.c|*.cpp|*.cxx|*.h|*.hpp", SCLEX::CPP },
+   { "*.css",         SCLEX::CSS },
+   { "*.diff",        SCLEX::DIFF },
+   { "*.errorlist",   SCLEX::ERRORLIST },
+   { "*.lua|*.fluid", SCLEX::FLUID },
+   { "*.dmd",         SCLEX::HTML },
+   { "*.html",        SCLEX::HTML },
+   { "makefile|*.make", SCLEX::MAKEFILE },
+   { "*.pas",          SCLEX::PASCAL },
+   { "*.perl|*.pl",    SCLEX::PERL },
+   { "*.prop|*.cfg",   SCLEX::PROPERTIES },
+   { "*.py",           SCLEX::PYTHON },
+   { "*.ruby|*.rb",    SCLEX::RUBY },
+   { "*.sql",          SCLEX::SQL },
+   { "*.vb",           SCLEX::VB },
+   { "*.vbscript",     SCLEX::VBSCRIPT },
+   { "*.xml",          SCLEX::XML },
+   { NULL, SCLEX::NIL }
 };
 
 #define SCICOLOUR(red,green,blue) (((UBYTE)(blue))<<16)|(((UBYTE)(green))<<8)|((UBYTE)(red))
@@ -185,7 +184,7 @@ static ERROR SET_CursorColour(extScintilla *, RGB8 *);
 static ERROR SET_FileDrop(extScintilla *, FUNCTION *);
 static ERROR SET_FoldingMarkers(extScintilla *, LONG);
 static ERROR SET_LeftMargin(extScintilla *, LONG);
-static ERROR SET_Lexer(extScintilla *, LONG);
+static ERROR SET_Lexer(extScintilla *, SCLEX);
 static ERROR SET_LineHighlight(extScintilla *, RGB8 *);
 static ERROR SET_LineNumbers(extScintilla *, LONG);
 static ERROR SET_Path(extScintilla *, CSTRING);
@@ -211,7 +210,7 @@ static void draw_scintilla(extScintilla *, objSurface *, objBitmap *);
 static ERROR load_file(extScintilla *, CSTRING);
 static void calc_longest_line(extScintilla *);
 static void key_event(extScintilla *, evKey *, LONG);
-static void report_event(extScintilla *, LARGE Event);
+static void report_event(extScintilla *, SEF Event);
 static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime);
 extern ERROR init_search(void);
 
@@ -310,7 +309,7 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
       SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
    }
 
-   if ((Self->Visible) and (!(Self->Flags & SCF_DISABLED))) {
+   if ((Self->Visible) and ((Self->Flags & SCIF::DISABLED) IS SCIF::NIL)) {
       Self->API->panGotFocus();
    }
    else log.msg("(Focus) Cannot receive focus, surface not visible or disabled.");
@@ -583,7 +582,7 @@ Disable: Disables the target #Surface.
 
 static ERROR SCINTILLA_Disable(extScintilla *Self, APTR Void)
 {
-   Self->Flags |= SCF_DISABLED;
+   Self->Flags |= SCIF::DISABLED;
    QueueAction(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
@@ -608,7 +607,7 @@ Enable: Enables the target #Surface.
 
 static ERROR SCINTILLA_Enable(extScintilla *Self, APTR Void)
 {
-   Self->Flags &= ~SCF_DISABLED;
+   Self->Flags &= ~SCIF::DISABLED;
    QueueAction(AC_Draw, Self->SurfaceID);
    return ERR_Okay;
 }
@@ -875,8 +874,8 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
 
    if (Self->Visible IS -1) Self->Visible = TRUE;
 
-   if ((!(Self->Flags & SCF_DETECT_LEXER)) and (Self->Lexer)) {
-      Self->API->SetLexer(Self->Lexer);
+   if (((Self->Flags & SCIF::DETECT_LEXER) IS SCIF::NIL) and (Self->Lexer != SCLEX::NIL)) {
+      Self->API->SetLexer(LONG(Self->Lexer));
    }
 
    QueueAction(AC_Draw, Self->SurfaceID);
@@ -884,7 +883,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    if (Self->LongestWidth) SCICALL(SCI_SETSCROLLWIDTH, Self->LongestWidth);
    else SCICALL(SCI_SETSCROLLWIDTH, 1UL);
 
-   if (Self->Flags & SCF_EXT_PAGE) {
+   if ((Self->Flags & SCIF::EXT_PAGE) != SCIF::NIL) {
       log.msg("Extended page mode.");
       SCICALL(SCI_SETENDATLASTLINE, 0UL); // Allow scrolling by an extra page at the end of the document
    }
@@ -1137,8 +1136,8 @@ static ERROR SCINTILLA_ReplaceLine(extScintilla *Self, struct sciReplaceLine *Ar
 ReplaceText: Replaces all text within an entire document or limited range.
 
 The ReplaceText method will replace all instances of the Find string with the content of the Replace string, between a
-given Start and End point.  The STF_CASE, STF_SCAN_SELECTION and STF_EXPRESSION are valid flag options for this method
-(see FindText for details).
+given Start and End point.  The `STF::CASE`, `STF::SCAN_SELECTION` and `STF::EXPRESSION` are valid flag options for
+this method (see FindText for details).
 
 -INPUT-
 cstr Find: The keyword string to find.
@@ -1161,11 +1160,11 @@ static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Ar
 
    if ((!Args) or (!Args->Find) or (!*Args->Find)) return log.warning(ERR_NullArgs);
 
-   log.branch("Text: '%.10s'... Between: %d - %d, Flags: $%.8x", Args->Find, Args->Start, Args->End, Args->Flags);
+   log.branch("Text: '%.10s'... Between: %d - %d, Flags: $%.8x", Args->Find, Args->Start, Args->End, LONG(Args->Flags));
 
    // Calculate the start and end positions
 
-   if (Args->Flags & STF_SCAN_SELECTION) {
+   if ((Args->Flags & STF::SCAN_SELECTION) != STF::NIL) {
       start = SCICALL(SCI_GETSELECTIONSTART);
       end   = SCICALL(SCI_GETSELECTIONEND);
    }
@@ -1189,8 +1188,8 @@ static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Ar
    LONG findlen = StrLength(Args->Find);
    LONG replacelen = StrLength(replace);
 
-   LONG flags = ((Args->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
-                ((Args->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
+   LONG flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
+                (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
@@ -1212,7 +1211,7 @@ static ERROR SCINTILLA_ReplaceText(extScintilla *Self, struct sciReplaceText *Ar
 
          // Do the replace
 
-         if (Args->Flags & STF_EXPRESSION) {
+         if ((Args->Flags & STF::EXPRESSION) != STF::NIL) {
             LONG len = SCICALL(SCI_REPLACETARGETRE, (long unsigned int)-1, replace);
             end = end + (len - findlen);
          }
@@ -1238,10 +1237,10 @@ Private
 
 static ERROR SCINTILLA_ReportEvent(extScintilla *Self, APTR Void)
 {
-   if (!Self->ReportEventFlags) return ERR_Okay;
+   if (Self->ReportEventFlags IS SEF::NIL) return ERR_Okay;
 
-   LARGE flags = Self->ReportEventFlags;
-   Self->ReportEventFlags = 0;
+   auto flags = Self->ReportEventFlags;
+   Self->ReportEventFlags = SEF::NIL;
    report_event(Self, flags);
    return ERR_Okay;
 }
@@ -1652,13 +1651,13 @@ The lexer for document styling is defined here.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Lexer(extScintilla *Self, LONG Value)
+static ERROR SET_Lexer(extScintilla *Self, SCLEX Value)
 {
    Self->Lexer = Value;
    if (Self->initialised()) {
       pf::Log log;
-      log.branch("Changing lexer to %d", Value);
-      Self->API->SetLexer(Self->Lexer);
+      log.branch("Changing lexer to %d", LONG(Value));
+      Self->API->SetLexer(LONG(Self->Lexer));
    }
    return ERR_Okay;
 }
@@ -1816,7 +1815,7 @@ static ERROR SET_Modified(extScintilla *Self, LONG Value)
          SCICALL(SCI_SETSAVEPOINT); // Tell Scintilla that the document is unmodified
       }
 
-      report_event(Self, SEF_MODIFIED);
+      report_event(Self, SEF::MODIFIED);
    }
 
    return ERR_Okay;
@@ -2100,7 +2099,7 @@ static ERROR SET_Wordwrap(extScintilla *Self, LONG Value)
    return ERR_Okay;
 }
 
-//*****************************************************************************
+//********************************************************************************************************************
 
 static void create_styled_fonts(extScintilla *Self)
 {
@@ -2164,7 +2163,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
 
    glBitmap = NULL;
 
-   if (Self->Flags & SCF_DISABLED) {
+   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
       gfxDrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
    }
 }
@@ -2265,7 +2264,7 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
    }
    else error = ERR_File;
 
-   if ((!error) and (Self->Flags & SCF_DETECT_LEXER)) {
+   if ((!error) and ((Self->Flags & SCIF::DETECT_LEXER) != SCIF::NIL)) {
       LONG i = StrLength(Path);
       while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
       Path = Path + i;
@@ -2274,8 +2273,8 @@ static ERROR load_file(extScintilla *Self, CSTRING Path)
          if (!StrCompare(glLexers[i].File, Path, 0, STR::WILDCARD)) {
             pf::Log log;
             Self->Lexer = glLexers[i].Lexer;
-            log.branch("Lexer for the loaded file is %d.", Self->Lexer);
-            Self->API->SetLexer(Self->Lexer);
+            log.branch("Lexer for the loaded file is %d.", LONG(Self->Lexer));
+            Self->API->SetLexer(LONG(Self->Lexer));
             break;
          }
       }
@@ -2291,8 +2290,8 @@ static void key_event(extScintilla *Self, evKey *Event, LONG Size)
 {
    pf::Log log;
 
-   if (Self->Flags & SCF_DISABLED) return;
-   if (!(Self->Flags & SCF_EDIT)) return;
+   if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) return;
+   if ((Self->Flags & SCIF::EDIT) IS SCIF::NIL) return;
 
    if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
       if ((Event->Code IS K_L_SHIFT) or (Event->Code IS K_R_SHIFT)) Self->KeyShift = TRUE;
@@ -2366,7 +2365,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
    auto Self = (extScintilla *)CurrentContext();
 
    for (auto event=Events; event; event=event->Next) {
-      if (Self->Flags & SCF_DISABLED) continue;
+      if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) continue;
 
       if ((event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          if (event->Value > 0) {
@@ -2384,13 +2383,13 @@ static ERROR consume_input_events(const InputEvent *Events, LONG TotalEvents)
 
 //*****************************************************************************
 
-static void report_event(extScintilla *Self, LARGE Event)
+static void report_event(extScintilla *Self, SEF Event)
 {
-   if (Event & Self->EventFlags) {
+   if ((Event & Self->EventFlags) != SEF::NIL) {
       if (Self->EventCallback.Type) {
           if (Self->EventCallback.Type IS CALL_STDC) {
             pf::SwitchContext ctx(Self->EventCallback.StdC.Context);
-            auto routine = (void (*)(extScintilla *, LARGE)) Self->EventCallback.StdC.Routine;
+            auto routine = (void (*)(extScintilla *, SEF)) Self->EventCallback.StdC.Routine;
             routine(Self, Event);
          }
          else if (Self->EventCallback.Type IS CALL_SCRIPT) {
@@ -2402,8 +2401,8 @@ static void report_event(extScintilla *Self, LARGE Event)
             args[0].Address = Self;
 
             args[1].Name = "EventFlags";
-            args[1].Type = FD_LARGE;
-            args[1].Large = Event;
+            args[1].Type = FD_LONG;
+            args[1].Long = LARGE(Event);
 
             exec.ProcedureID = Self->EventCallback.Script.ProcedureID;
             exec.Args      = args;
@@ -2496,7 +2495,7 @@ static ERROR idle_timer(extScintilla *Self, LARGE Elapsed, LARGE CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "EventFlags",     FDF_LARGE|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
+   { "EventFlags",     FDF_LONG|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
    { "Font",           FDF_INTEGRAL|FDF_R, NULL, NULL, ID_FONT },
    { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
    { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, ID_SURFACE },

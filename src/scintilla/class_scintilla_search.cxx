@@ -79,21 +79,21 @@ Search: The string sequence was not found.
 static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 {
    pf::Log log;
-   LONG start, end, flags, pos, startLine, endLine, i, targstart, targend;
+   LONG start, end, pos, startLine, endLine, i, targstart, targend;
 
    if (!Self->Text) return log.warning(ERR_FieldNotSet);
 
-   log.msg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, Self->Flags);
+   log.msg("Text: '%.10s'... From: %d, Flags: $%.8x", Self->Text, Args->Pos, LONG(Self->Flags));
 
-   flags = ((Args->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
-           ((Args->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
+   auto flags = (((Args->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
+                 (((Args->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
-   if (Self->Flags & STF_SCAN_SELECTION) {
+   if ((Self->Flags & STF::SCAN_SELECTION) != STF::NIL) {
       Self->Start = SCICALL(SCI_GETSELECTIONSTART);
       Self->End   = SCICALL(SCI_GETSELECTIONEND);
-      if (Self->Flags & STF_BACKWARDS) {
+      if ((Self->Flags & STF::BACKWARDS) != STF::NIL) {
          start = Self->End;
          end = Self->Start;
       }
@@ -106,11 +106,11 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
       if (Args->Pos < 0) start = SCICALL(SCI_GETCURRENTPOS);
       else start = Args->Pos;
 
-      if (!(Self->Flags & STF_BACKWARDS)) end = SCICALL(SCI_GETLENGTH);
+      if ((Self->Flags & STF::BACKWARDS) IS STF::NIL) end = SCICALL(SCI_GETLENGTH);
       else end = 0;
 
       if (start IS end) {
-         if (Self->Flags & STF_WRAP) start = 0;
+         if ((Self->Flags & STF::WRAP) != STF::NIL) start = 0;
          else return ERR_Search;
       }
    }
@@ -121,8 +121,8 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
 
    // If not found and wraparound is wanted, try again
 
-   if ((pos IS -1) and (Self->Flags & STF_WRAP) and (!(Self->Flags & STF_SCAN_SELECTION))) {
-      if (!(Self->Flags & STF_BACKWARDS)) {
+   if ((pos IS -1) and ((Self->Flags & STF::WRAP) != STF::NIL) and ((Self->Flags & STF::SCAN_SELECTION) IS STF::NIL)) {
+      if ((Self->Flags & STF::BACKWARDS) IS STF::NIL) {
          start = 0;
          end = SCICALL(SCI_GETLENGTH);
       }
@@ -147,12 +147,12 @@ static ERROR SEARCH_Find(objScintillaSearch *Self, struct ssFind *Args)
       SCICALL(SCI_ENSUREVISIBLEENFORCEPOLICY,i);
    }
 
-   if (Self->Flags & STF_MOVE_CURSOR) {
+   if ((Self->Flags & STF::MOVE_CURSOR) != STF::NIL) {
       // Move cursor to the discovered text
    }
    else {
       // Set the selection
-      if (Self->Flags & STF_BACKWARDS) SCICALL(SCI_SETSEL, targend, targstart);
+      if ((Self->Flags & STF::BACKWARDS) != STF::NIL) SCICALL(SCI_SETSEL, targend, targstart);
       else SCICALL(SCI_SETSEL, targstart, targend);
    }
 
@@ -217,14 +217,14 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 
    log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, Self->Flags, Self->Start, Self->End);
 
-   LONG flags = ((Self->Flags & STF_CASE) ? SCFIND_MATCHCASE : 0) |
-                ((Self->Flags & STF_EXPRESSION) ? SCFIND_REGEXP : 0);
+   LONG flags = (((Self->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
+                (((Self->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
 
    SCICALL(SCI_SETSEARCHFLAGS, flags);
 
    LONG start, end, i;
-   if (Self->Flags & STF_SCAN_SELECTION) {
-      if (Self->Flags & STF_BACKWARDS) {
+   if ((Self->Flags & STF::SCAN_SELECTION) != STF::NIL) {
+      if ((Self->Flags & STF::BACKWARDS) != STF::NIL) {
          start = SCICALL(SCI_GETCURRENTPOS);
          end = Self->Start;
       }
@@ -235,11 +235,11 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
    }
    else {
       start = SCICALL(SCI_GETCURRENTPOS);
-      if (!(Self->Flags & STF_BACKWARDS)) end = SCICALL(SCI_GETLENGTH);
+      if ((Self->Flags & STF::BACKWARDS) IS STF::NIL) end = SCICALL(SCI_GETLENGTH);
       else end = 0;
 
       if (start IS end) {
-         if (Self->Flags & STF_WRAP) start = 0;
+         if ((Self->Flags & STF::WRAP) != STF::NIL) start = 0;
          else return ERR_Search;
       }
    }
@@ -252,9 +252,9 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 
    // If not found and wraparound is wanted, try again
 
-   if ((pos IS -1) and (Self->Flags & STF_WRAP)) {
+   if ((pos IS -1) and ((Self->Flags & STF::WRAP) != STF::NIL)) {
       log.trace("Wrap-around");
-      if (Self->Flags & STF_SCAN_SELECTION) {
+      if ((Self->Flags & STF::SCAN_SELECTION) != STF::NIL) {
          start = Self->Start;
          end   = Self->End;
       }
@@ -263,7 +263,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
          end = SCICALL(SCI_GETLENGTH);
       }
 
-      if (Self->Flags & STF_BACKWARDS) {
+      if ((Self->Flags & STF::BACKWARDS) != STF::NIL) {
          auto tmp = start;
          start = end;
          end   = tmp;
@@ -285,10 +285,10 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
       SCICALL(SCI_ENSUREVISIBLEENFORCEPOLICY,i);
    }
 
-   if (Self->Flags & STF_MOVE_CURSOR) { // Move cursor to the discovered text
+   if ((Self->Flags & STF::MOVE_CURSOR) != STF::NIL) { // Move cursor to the discovered text
    }
    else { // Set the selection
-      if (Self->Flags & STF_BACKWARDS) SCICALL(SCI_SETSEL, targend, targstart);
+      if ((Self->Flags & STF::BACKWARDS) != STF::NIL) SCICALL(SCI_SETSEL, targend, targstart);
       else SCICALL(SCI_SETSEL, targstart, targend);
    }
 
@@ -319,11 +319,11 @@ static ERROR SEARCH_Prev(objScintillaSearch *Self, struct ssPrev *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   // Temporarily set the STF_BACKWARDS flag
+   // Temporarily set the STF::BACKWARDS flag
 
-   LONG flags = Self->Flags;
-   if (Self->Flags & STF_BACKWARDS) Self->Flags &= ~STF_BACKWARDS;
-   else Self->Flags |= STF_BACKWARDS;
+   auto flags = Self->Flags;
+   if ((Self->Flags & STF::BACKWARDS) != STF::NIL) Self->Flags &= ~STF::BACKWARDS;
+   else Self->Flags |= STF::BACKWARDS;
 
    SEARCH_Next(Self, (struct ssNext *)Args);
 
@@ -384,12 +384,12 @@ static const MethodEntry clMethods[] = {
 //********************************************************************************************************************
 
 static const FieldDef clFlags[] = {
-   { "Case",          STF_CASE },
-   { "MoveCursor",    STF_MOVE_CURSOR },
-   { "ScanSelection", STF_SCAN_SELECTION },
-   { "Backwards",     STF_BACKWARDS },
-   { "Expression",    STF_EXPRESSION },
-   { "Wrap",          STF_WRAP },
+   { "Case",          STF::CASE },
+   { "MoveCursor",    STF::MOVE_CURSOR },
+   { "ScanSelection", STF::SCAN_SELECTION },
+   { "Backwards",     STF::BACKWARDS },
+   { "Expression",    STF::EXPRESSION },
+   { "Wrap",          STF::WRAP },
    { NULL, 0 }
 };
 

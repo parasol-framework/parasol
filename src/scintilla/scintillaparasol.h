@@ -21,7 +21,7 @@ class extScintilla : public objScintilla {
    LONG   TabWidth;
    LONG   InputHandle;
    TIMER  TimerID;
-   LARGE  ReportEventFlags;    // For delayed event reporting.
+   SEF    ReportEventFlags;    // For delayed event reporting.
    UWORD  KeyAlt:1;
    UWORD  KeyCtrl:1;
    UWORD  KeyShift:1;

@@ -224,7 +224,7 @@ bool ScintillaParasol::ModifyScrollBars(int nMax, int nPage)
 
    lines = SendScintilla(SCI_GETLINECOUNT);
 
-   if (scintilla->Flags & SCF_EXT_PAGE) {
+   if ((scintilla->Flags & SCIF::EXT_PAGE) != SCIF::NIL) {
       // Scintilla's nMax variable caters for all the lines, plus the height of the viewing area.
 
       scroll.ViewSize = nPage * vs.lineHeight;
@@ -411,7 +411,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
          if (SendScintilla(SCI_GETLEXER) IS SCLEX_CPP) braceMatch();
 
          // Event report has to be delayed, as we otherwise get interference in the drawing process.
-         scintilla->ReportEventFlags |= SEF_CURSOR_POS;
+         scintilla->ReportEventFlags |= SEF::CURSOR_POS;
          QueueAction(MT_SciReportEvent, scintilla->UID);
       }
    }
@@ -436,7 +436,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
 
       log.trace("[MODIFYATTEMPTRO]");
 
-      scintilla->ReportEventFlags |= SEF_FAIL_RO;
+      scintilla->ReportEventFlags |= SEF::FAIL_RO;
       QueueAction(MT_SciReportEvent, scintilla->UID);
    }
    else if (code IS SCN_CHARADDED) {
@@ -474,7 +474,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
          }
       }
 
-      scintilla->ReportEventFlags |= SEF_NEW_CHAR;
+      scintilla->ReportEventFlags |= SEF::NEW_CHAR;
       QueueAction(MT_SciReportEvent, scintilla->UID);
    }
    else if (code IS SCN_SAVEPOINTREACHED) {
