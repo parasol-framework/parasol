@@ -79,7 +79,7 @@ static Cursor get_x11_cursor(PTC CursorID)
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
    }
 
-   log.warning("Cursor #%d is not a recognised cursor ID.", CursorID);
+   log.warning("Cursor #%d is not a recognised cursor ID.", LONG(CursorID));
    return XCursors[0].XCursor;
 }
 

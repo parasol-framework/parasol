@@ -328,7 +328,7 @@ next_card:
 
    // Set number of channels
 
-   ULONG channels = (Self->Flags & ADF_STEREO) ? 2 : 1;
+   ULONG channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
       return ERR_Failed;
@@ -414,7 +414,7 @@ next_card:
          snd_pcm_hw_params_dump(hwparams, log);
       #endif
 
-      if (Self->Flags & ADF_SYSTEM_WIDE) {
+      if ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL) {
          log.msg("Applying user configured volumes.");
 
          auto oldctl = Self->Volumes;
