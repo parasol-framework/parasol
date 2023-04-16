@@ -436,7 +436,7 @@ Hide: Changes the vector's visibility setting to hidden.
 
 static ERROR VECTOR_Hide(extVector *Self, APTR Void)
 {
-   Self->Visibility = VIS_HIDDEN;
+   Self->Visibility = VIS::HIDDEN;
    return ERR_Okay;
 }
 
@@ -520,9 +520,9 @@ static ERROR VECTOR_NewObject(extVector *Self, APTR Void)
    Self->InnerJoin     = agg::inner_miter; // AGG only
    Self->NumericID     = 0x7fffffff;
    Self->StrokeWidth   = 1.0; // SVG default is 1, note that an actual stroke colour needs to be defined for this value to actually matter.
-   Self->Visibility    = VIS_VISIBLE;
-   Self->FillRule      = VFR_NON_ZERO;
-   Self->ClipRule      = VFR_NON_ZERO;
+   Self->Visibility    = VIS::VISIBLE;
+   Self->FillRule      = VFR::NON_ZERO;
+   Self->ClipRule      = VFR::NON_ZERO;
    Self->Dirty         = RC::ALL;
    Self->TabOrder      = 255;
    Self->ColourSpace   = VCS::INHERIT;
@@ -761,7 +761,7 @@ Show: Changes the vector's visibility setting to visible.
 
 static ERROR VECTOR_Show(extVector *Self, APTR Void)
 {
-   Self->Visibility = VIS_VISIBLE;
+   Self->Visibility = VIS::VISIBLE;
    return ERR_Okay;
 }
 
@@ -1032,13 +1032,13 @@ terms of outcome, the ClipRule works similarly to #FillRule.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_ClipRule(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_ClipRule(extVector *Self, VFR *Value)
 {
    *Value = Self->ClipRule;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_ClipRule(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_ClipRule(extVector *Self, VFR Value)
 {
    Self->ClipRule = Value;
    return ERR_Okay;
@@ -1368,13 +1368,13 @@ interpretation of "inside" is not so obvious.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_FillRule(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_FillRule(extVector *Self, VFR *Value)
 {
    *Value = Self->FillRule;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_FillRule(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_FillRule(extVector *Self, VFR Value)
 {
    Self->FillRule = Value;
    return ERR_Okay;
@@ -1428,25 +1428,25 @@ path.
 
 // See the AGG bezier_div demo to get a better understanding of what is affected by this field value.
 
-static ERROR VECTOR_GET_InnerJoin(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_InnerJoin(extVector *Self, VIJ *Value)
 {
-   if (Self->InnerJoin IS agg::inner_miter)      *Value = VIJ_MITER;
-   else if (Self->InnerJoin IS agg::inner_round) *Value = VIJ_ROUND;
-   else if (Self->InnerJoin IS agg::inner_bevel) *Value = VIJ_BEVEL;
-   else if (Self->InnerJoin IS agg::inner_jag)   *Value = VIJ_JAG;
-   else if (Self->InnerJoin IS agg::inner_inherit) *Value = VIJ_INHERIT;
-   else *Value = 0;
+   if (Self->InnerJoin IS agg::inner_miter)      *Value = VIJ::MITER;
+   else if (Self->InnerJoin IS agg::inner_round) *Value = VIJ::ROUND;
+   else if (Self->InnerJoin IS agg::inner_bevel) *Value = VIJ::BEVEL;
+   else if (Self->InnerJoin IS agg::inner_jag)   *Value = VIJ::JAG;
+   else if (Self->InnerJoin IS agg::inner_inherit) *Value = VIJ::INHERIT;
+   else *Value = VIJ::NIL;
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_InnerJoin(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_InnerJoin(extVector *Self, VIJ Value)
 {
    switch(Value) {
-      case VIJ_MITER: Self->InnerJoin = agg::inner_miter; break;
-      case VIJ_ROUND: Self->InnerJoin = agg::inner_round; break;
-      case VIJ_BEVEL: Self->InnerJoin = agg::inner_bevel; break;
-      case VIJ_JAG:   Self->InnerJoin = agg::inner_jag; break;
-      case VIJ_INHERIT: Self->InnerJoin = agg::inner_inherit; break;
+      case VIJ::MITER: Self->InnerJoin = agg::inner_miter; break;
+      case VIJ::ROUND: Self->InnerJoin = agg::inner_round; break;
+      case VIJ::BEVEL: Self->InnerJoin = agg::inner_bevel; break;
+      case VIJ::JAG:   Self->InnerJoin = agg::inner_jag; break;
+      case VIJ::INHERIT: Self->InnerJoin = agg::inner_inherit; break;
       default: return ERR_Failed;
    }
    return ERR_Okay;
@@ -1498,28 +1498,28 @@ that are being stroked.
 
 *********************************************************************************************************************/
 
-static ERROR VECTOR_GET_LineJoin(extVector *Self, LONG *Value)
+static ERROR VECTOR_GET_LineJoin(extVector *Self, VLJ *Value)
 {
-   if (Self->LineJoin IS agg::miter_join)        *Value = VLJ_MITER;
-   else if (Self->LineJoin IS agg::round_join)   *Value = VLJ_ROUND;
-   else if (Self->LineJoin IS agg::bevel_join)   *Value = VLJ_BEVEL;
-   else if (Self->LineJoin IS agg::inherit_join) *Value = VLJ_INHERIT;
-   else if (Self->LineJoin IS agg::miter_join_revert) *Value = VLJ_MITER_REVERT;
-   else if (Self->LineJoin IS agg::miter_join_round)  *Value = VLJ_MITER_ROUND;
-   else *Value = 0;
+   if (Self->LineJoin IS agg::miter_join)        *Value = VLJ::MITER;
+   else if (Self->LineJoin IS agg::round_join)   *Value = VLJ::ROUND;
+   else if (Self->LineJoin IS agg::bevel_join)   *Value = VLJ::BEVEL;
+   else if (Self->LineJoin IS agg::inherit_join) *Value = VLJ::INHERIT;
+   else if (Self->LineJoin IS agg::miter_join_revert) *Value = VLJ::MITER_REVERT;
+   else if (Self->LineJoin IS agg::miter_join_round)  *Value = VLJ::MITER_ROUND;
+   else *Value = VLJ::NIL;
 
    return ERR_Okay;
 }
 
-static ERROR VECTOR_SET_LineJoin(extVector *Self, LONG Value)
+static ERROR VECTOR_SET_LineJoin(extVector *Self, VLJ Value)
 {
    switch (Value) {
-      case VLJ_MITER:        Self->LineJoin = agg::miter_join; break;
-      case VLJ_ROUND:        Self->LineJoin = agg::round_join; break;
-      case VLJ_BEVEL:        Self->LineJoin = agg::bevel_join; break;
-      case VLJ_MITER_REVERT: Self->LineJoin = agg::miter_join_revert; break;
-      case VLJ_MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
-      case VLJ_INHERIT:      Self->LineJoin = agg::inherit_join; break;
+      case VLJ::MITER:        Self->LineJoin = agg::miter_join; break;
+      case VLJ::ROUND:        Self->LineJoin = agg::round_join; break;
+      case VLJ::BEVEL:        Self->LineJoin = agg::bevel_join; break;
+      case VLJ::MITER_REVERT: Self->LineJoin = agg::miter_join_revert; break;
+      case VLJ::MITER_ROUND:  Self->LineJoin = agg::miter_join_round; break;
+      case VLJ::INHERIT:      Self->LineJoin = agg::inherit_join; break;
       default: return ERR_Failed;
    }
    return ERR_Okay;
@@ -2234,12 +2234,12 @@ static const FieldDef clMorphFlags[] = {
 };
 
 static const FieldDef clLineJoin[] = {
-   { "Miter",       VLJ_MITER },
-   { "Round",       VLJ_ROUND },
-   { "Bevel",       VLJ_BEVEL },
-   { "MiterRevert", VLJ_MITER_REVERT },
-   { "MiterRound",  VLJ_MITER_ROUND },
-   { "Inherit",     VLJ_INHERIT },
+   { "Miter",       VLJ::MITER },
+   { "Round",       VLJ::ROUND },
+   { "Bevel",       VLJ::BEVEL },
+   { "MiterRevert", VLJ::MITER_REVERT },
+   { "MiterRound",  VLJ::MITER_ROUND },
+   { "Inherit",     VLJ::INHERIT },
    { NULL, 0 }
 };
 
@@ -2252,18 +2252,18 @@ static const FieldDef clLineCap[] = {
 };
 
 static const FieldDef clInnerJoin[] = {
-   { "Miter",   VIJ_MITER },
-   { "Round",   VIJ_ROUND },
-   { "Bevel",   VIJ_BEVEL },
-   { "Jag",     VIJ_JAG },
-   { "Inherit", VIJ_INHERIT },
+   { "Miter",   VIJ::MITER },
+   { "Round",   VIJ::ROUND },
+   { "Bevel",   VIJ::BEVEL },
+   { "Jag",     VIJ::JAG },
+   { "Inherit", VIJ::INHERIT },
    { NULL, 0 }
 };
 
 static const FieldDef clFillRule[] = {
-   { "EvenOdd", VFR_EVEN_ODD },
-   { "NonZero", VFR_NON_ZERO },
-   { "Inherit", VFR_INHERIT },
+   { "EvenOdd", VFR::EVEN_ODD },
+   { "NonZero", VFR::NON_ZERO },
+   { "Inherit", VFR::INHERIT },
    { NULL, 0 }
 };
 

@@ -232,7 +232,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
       return ERR_Continue;
    }
    else {
-      log.warning("Effect source %d is not supported.", SourceType);
+      log.warning("Effect source %d is not supported.", LONG(SourceType));
       return ERR_Failed;
    }
 

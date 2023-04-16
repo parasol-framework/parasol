@@ -67,7 +67,7 @@ static ERROR drag_callback(extVectorViewport *Viewport, const InputEvent *Events
       }
       else if ((event->Type IS JET::LMB) and ((event->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
          if (event->Value > 0) {
-            if (Viewport->Visibility != VIS_VISIBLE) continue;
+            if (Viewport->Visibility != VIS::VISIBLE) continue;
             Viewport->vpDragging = 1;
             glAnchorX = event->AbsX;
             glAnchorY = event->AbsY;
@@ -183,8 +183,8 @@ static ERROR VECTORVIEWPORT_MoveToPoint(extVectorViewport *Self, struct acMoveTo
 static ERROR VECTORVIEWPORT_NewObject(extVectorViewport *Self, APTR Void)
 {
    Self->vpAspectRatio = ARF::MEET|ARF::X_MID|ARF::Y_MID;
-   Self->vpOverflowX   = VOF_VISIBLE;
-   Self->vpOverflowY   = VOF_VISIBLE;
+   Self->vpOverflowX   = VOF::VISIBLE;
+   Self->vpOverflowY   = VOF::VISIBLE;
 
    // NB: vpTargetWidth and vpTargetHeight are not set to a default because we need to know if the client has
    // intentionally avoided setting the viewport and/or viewbox dimensions (which typically means that the viewport
@@ -453,13 +453,13 @@ If the viewport's #AspectRatio is set to `SLICE` then it will have priority over
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_Overflow(extVectorViewport *Self, LONG *Value)
+static ERROR VIEW_GET_Overflow(extVectorViewport *Self, VOF *Value)
 {
    *Value = Self->vpOverflowX;
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_Overflow(extVectorViewport *Self, LONG Value)
+static ERROR VIEW_SET_Overflow(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowX = Value;
    Self->vpOverflowY = Value;
@@ -478,13 +478,13 @@ This option controls the x axis only.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_OverflowX(extVectorViewport *Self, LONG *Value)
+static ERROR VIEW_GET_OverflowX(extVectorViewport *Self, VOF *Value)
 {
    *Value = Self->vpOverflowX;
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_OverflowX(extVectorViewport *Self, LONG Value)
+static ERROR VIEW_SET_OverflowX(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowX = Value;
    return ERR_Okay;
@@ -502,13 +502,13 @@ This option controls the y axis only.
 
 *********************************************************************************************************************/
 
-static ERROR VIEW_GET_OverflowY(extVectorViewport *Self, LONG *Value)
+static ERROR VIEW_GET_OverflowY(extVectorViewport *Self, VOF *Value)
 {
    *Value = Self->vpOverflowY;
    return ERR_Okay;
 }
 
-static ERROR VIEW_SET_OverflowY(extVectorViewport *Self, LONG Value)
+static ERROR VIEW_SET_OverflowY(extVectorViewport *Self, VOF Value)
 {
    Self->vpOverflowY = Value;
    return ERR_Okay;
@@ -934,10 +934,10 @@ static const FieldDef clViewDimensions[] = {
 };
 
 static const FieldDef clViewOverflow[] = {
-   { "Hidden",  VOF_HIDDEN },
-   { "Visible", VOF_VISIBLE },
-   { "Scroll",  VOF_SCROLL },
-   { "Inherit", VOF_INHERIT },
+   { "Hidden",  VOF::HIDDEN },
+   { "Visible", VOF::VISIBLE },
+   { "Scroll",  VOF::SCROLL },
+   { "Inherit", VOF::INHERIT },
    { NULL, 0 }
 };
 

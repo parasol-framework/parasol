@@ -17,8 +17,8 @@ P'(x,y) <- P(x + Scale * (XC(x,y) - 0.5), y + Scale * (YC(x,y) - 0.5))
 
 where `P(x,y)` is the Input image, and `P'(x,y)` is the Target.  `XC(x,y)` and `YC(x,y)` are the component values
 of the channel designated by the #XChannel and #YChannel.  For example, to use the red component of Mix to control
-displacement in `X` and the green component to control displacement in `Y`, set #XChannel to `CMP_RED`
-and #YChannel to `CMP_GREEN`.
+displacement in `X` and the green component to control displacement in `Y`, set #XChannel to `CMP::RED`
+and #YChannel to `CMP::GREEN`.
 
 The displacement map defines the inverse of the mapping performed.
 
@@ -50,7 +50,7 @@ class extDisplacementFX : public extFilterEffect {
    using create = pf::Create<extDisplacementFX>;
 
    DOUBLE Scale;
-   LONG XChannel, YChannel;
+   CMP XChannel, YChannel;
 };
 
 /*********************************************************************************************************************
@@ -113,8 +113,8 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
       sy = scale * DOUBLE(mix_height) * (1.0 / 255.0);
    }
 
-   const UBYTE x_type = RGBA[Self->XChannel];
-   const UBYTE y_type = RGBA[Self->YChannel];
+   const UBYTE x_type = RGBA[LONG(Self->XChannel)];
+   const UBYTE y_type = RGBA[LONG(Self->YChannel)];
 
    //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX);
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
@@ -148,8 +148,8 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
 static ERROR DISPLACEMENTFX_NewObject(extDisplacementFX *Self, APTR Void)
 {
    Self->Scale = 0; // SVG default requires this is 0, which makes the displacment algorithm ineffective.
-   Self->XChannel = CMP_ALPHA;
-   Self->YChannel = CMP_ALPHA;
+   Self->XChannel = CMP::ALPHA;
+   Self->YChannel = CMP::ALPHA;
    return ERR_Okay;
 }
 
@@ -183,13 +183,13 @@ Lookup: CMP
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_XChannel(extDisplacementFX *Self, LONG *Value)
+static ERROR DISPLACEMENTFX_GET_XChannel(extDisplacementFX *Self, CMP *Value)
 {
    *Value = Self->XChannel;
    return ERR_Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_XChannel(extDisplacementFX *Self, LONG Value)
+static ERROR DISPLACEMENTFX_SET_XChannel(extDisplacementFX *Self, CMP Value)
 {
    Self->XChannel = Value;
    return ERR_Okay;
@@ -203,13 +203,13 @@ Lookup: CMP
 
 *********************************************************************************************************************/
 
-static ERROR DISPLACEMENTFX_GET_YChannel(extDisplacementFX *Self, LONG *Value)
+static ERROR DISPLACEMENTFX_GET_YChannel(extDisplacementFX *Self, CMP *Value)
 {
    *Value = Self->YChannel;
    return ERR_Okay;
 }
 
-static ERROR DISPLACEMENTFX_SET_YChannel(extDisplacementFX *Self, LONG Value)
+static ERROR DISPLACEMENTFX_SET_YChannel(extDisplacementFX *Self, CMP Value)
 {
    Self->YChannel = Value;
    return ERR_Okay;
@@ -238,10 +238,10 @@ static ERROR DISPLACEMENTFX_GET_XMLDef(extDisplacementFX *Self, STRING *Value)
 #include "filter_displacement_def.c"
 
 static const FieldDef clChannel[] = {
-   { "Red",   CMP_RED },
-   { "Green", CMP_GREEN },
-   { "Blue",  CMP_BLUE },
-   { "Alpha", CMP_ALPHA },
+   { "Red",   CMP::RED },
+   { "Green", CMP::GREEN },
+   { "Blue",  CMP::BLUE },
+   { "Alpha", CMP::ALPHA },
    { NULL, 0 }
 };
 

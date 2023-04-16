@@ -49,28 +49,34 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "Curve", "CurveRel", "Smooth", "SmoothRel", "QuadCurve", "QuadCurveRel", "QuadSmooth", "QuadSmoothRel",
     "Arc", "ArcRel", "ClosePath")
 
-  enum("VFR", { start=1, comment="Vector fill rules for the FillRule field in the Vector class." },
+  enum("VFR", { type="int", start=1, comment="Vector fill rules for the FillRule field in the Vector class." },
     "NON_ZERO: This is the default.  This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and then examining the places where a segment of the shape crosses the ray. Starting with a count of zero, add one each time a path segment crosses the ray from left to right and subtract one each time a path segment crosses the ray from right to left. After counting the crossings, if the result is zero then the point is outside the path. Otherwise, it is inside.",
     "EVEN_ODD: This rule determines the 'insideness' of a point on the canvas by drawing a ray from that point to infinity in any direction and counting the number of path segments from the given shape that the ray crosses. If this number is odd, the point is inside; if even, the point is outside.",
     "INHERIT: The rule is inherited from the parent vector(s).",
     "END: Private")
 
-  enum("VIS", { start=0, comment="Options for the Vector class' Visibility field." },
+  enum("VIS", { type="int", start=0, comment="Options for the Vector class' Visibility field." },
     "HIDDEN: Hide the vector and its children.",
     "VISIBLE: The default.  Ensures that the vector is visible.",
     "COLLAPSE: Hide the vector and its children.  Do not use - provided for SVG compatibility only.",
     "INHERIT: Inherit the visibility state from the parent.")
 
+  enum("VOF", { type="int", comment="Viewport overflow options." },
+    "VISIBLE: The content is not clipped to the viewport's boundary.  This is the default.",
+    "HIDDEN: All content is clipped to within the viewport's boundary.",
+    "SCROLL: All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).",
+    "INHERIT: The overflow state is inherited from the parent.")
+
   -- NB: There is a code dependency on the CMP order for RGBA being maintained at 0, 1, 2, 3.
 
-  enum("CMP", { start=-1, comment="Component selection for RemapFX methods." },
+  enum("CMP", { type="int", start=-1, comment="Component selection for RemapFX methods." },
     "ALL: All colour channels.",
     "RED: The red colour channel.",
     "GREEN: The green colour channel.",
     "BLUE: The blue colour channel.",
     "ALPHA: The alpha channel.")
 
-  enum("VLJ", { start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
+  enum("VLJ", { type="int", start=0, comment="Options for the look of line joins." }, // Match to agg::line_join_e
     "MITER: The default.  The join will form a pointed edge.",
     "MITER_REVERT",
     "ROUND: The join is rounded.",
@@ -84,7 +90,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "ROUND: The line cap is a half-circle and the line's end-point forms the center point.",
     "INHERIT: The cap type is inherited from the parent (defaults to butt if unspecified).")
 
-  enum("VIJ", { start=1, comment="Inner join options for angled lines." },  // Match to agg::inner_join_e
+  enum("VIJ", { type="int", start=1, comment="Inner join options for angled lines." },  // Match to agg::inner_join_e
     "BEVEL: Blunts the edge of the join.",
     "MITER: Forms a sharp point at the join.  Typically not the best looking option.",
     "JAG: A special non-SVG option.",
@@ -139,12 +145,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "PLUS: Add the input and mix colour values together.",
     "MINUS|SUBTRACT: The input colour value is subtracted from the mix.",
     "OVERLAY: Combines the multiply and screen blend modes, with the mix determining tonal strength.")
-
-  enum("VOF", { comment="Viewport overflow options." },
-    "VISIBLE: The content is not clipped to the viewport's boundary.  This is the default.",
-    "HIDDEN: All content is clipped to within the viewport's boundary.",
-    "SCROLL: All content is clipped to within the viewport's boundary.  A mechanism to scroll the viewport's content may be provided to the user (SVG capability not currently implemented).",
-    "INHERIT: The overflow state is inherited from the parent.")
 
   flags("VTXF", { strict=true, comment="VectorText flags." },
     "UNDERLINE: Enable underlining of the text.",

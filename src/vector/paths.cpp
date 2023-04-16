@@ -226,7 +226,7 @@ void gen_vector_path(extVector *Vector)
       // pre-transformed and drawn in order to speed things up.
 
       if (((Vector->Transform.shx) or (Vector->Transform.shy)) and
-          ((view->vpOverflowX != VIS_VISIBLE) or (view->vpOverflowY != VIS_VISIBLE))) {
+          ((view->vpOverflowX != VOF::VISIBLE) or (view->vpOverflowY != VOF::VISIBLE))) {
          log.trace("A clip path will be created for viewport #%d.", Vector->UID);
          if (!view->vpClipMask) {
             view->vpClipMask = extVectorClip::create::integral(fl::Owner(Vector->UID));

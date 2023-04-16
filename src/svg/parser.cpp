@@ -674,19 +674,19 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_XCHANNELSELECTOR:
             switch(val[0]) {
-               case 'r': case 'R': fx->set(FID_XChannel, CMP_RED); break;
-               case 'g': case 'G': fx->set(FID_XChannel, CMP_GREEN); break;
-               case 'b': case 'B': fx->set(FID_XChannel, CMP_BLUE); break;
-               case 'a': case 'A': fx->set(FID_XChannel, CMP_ALPHA); break;
+               case 'r': case 'R': fx->set(FID_XChannel, LONG(CMP::RED)); break;
+               case 'g': case 'G': fx->set(FID_XChannel, LONG(CMP::GREEN)); break;
+               case 'b': case 'B': fx->set(FID_XChannel, LONG(CMP::BLUE)); break;
+               case 'a': case 'A': fx->set(FID_XChannel, LONG(CMP::ALPHA)); break;
             }
             break;
 
          case SVF_YCHANNELSELECTOR:
             switch(val[0]) {
-               case 'r': case 'R': fx->set(FID_YChannel, CMP_RED); break;
-               case 'g': case 'G': fx->set(FID_YChannel, CMP_GREEN); break;
-               case 'b': case 'B': fx->set(FID_YChannel, CMP_BLUE); break;
-               case 'a': case 'A': fx->set(FID_YChannel, CMP_ALPHA); break;
+               case 'r': case 'R': fx->set(FID_YChannel, LONG(CMP::RED)); break;
+               case 'g': case 'G': fx->set(FID_YChannel, LONG(CMP::GREEN)); break;
+               case 'b': case 'B': fx->set(FID_YChannel, LONG(CMP::BLUE)); break;
+               case 'a': case 'A': fx->set(FID_YChannel, LONG(CMP::ALPHA)); break;
             }
             break;
 
@@ -737,12 +737,12 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
 
    for (auto &child : Tag.Children) {
       if (!StrCompare("feFunc?", child.name(), 0, STR::WILDCARD)) {
-         LONG cmp = 0;
+         CMP cmp = CMP::NIL;
          switch(child.name()[6]) {
-            case 'R': cmp = CMP_RED; break;
-            case 'G': cmp = CMP_GREEN; break;
-            case 'B': cmp = CMP_BLUE; break;
-            case 'A': cmp = CMP_ALPHA; break;
+            case 'R': cmp = CMP::RED; break;
+            case 'G': cmp = CMP::GREEN; break;
+            case 'B': cmp = CMP::BLUE; break;
+            case 'A': cmp = CMP::ALPHA; break;
             default:
                log.warning("Invalid feComponentTransfer element %s", child.name());
                return ERR_Failed;
@@ -2190,12 +2190,12 @@ static void xtag_svg(extSVG *Self, objXML *XML, svgState &State, const XMLTag &T
 
          case SVF_WIDTH:
             set_double(viewport, FID_Width, val);
-            viewport->set(FID_OverflowX, VOF_HIDDEN);
+            viewport->set(FID_OverflowX, LONG(VOF::HIDDEN));
             break;
 
          case SVF_HEIGHT:
             set_double(viewport, FID_Height, val);
-            viewport->set(FID_OverflowY, VOF_HIDDEN);
+            viewport->set(FID_OverflowY, LONG(VOF::HIDDEN));
             break;
 
          case SVF_PRESERVEASPECTRATIO:
@@ -2968,23 +2968,23 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
 
       case SVF_STROKE_LINEJOIN: {
          switch(StrHash(StrValue)) {
-            case SVF_MITER: Vector->set(FID_LineJoin, VLJ_MITER); break;
-            case SVF_ROUND: Vector->set(FID_LineJoin, VLJ_ROUND); break;
-            case SVF_BEVEL: Vector->set(FID_LineJoin, VLJ_BEVEL); break;
-            case SVF_INHERIT: Vector->set(FID_LineJoin, VLJ_INHERIT); break;
-            case SVF_MITER_REVERT: Vector->set(FID_LineJoin, VLJ_MITER_REVERT); break; // Special AGG only join type
-            case SVF_MITER_ROUND: Vector->set(FID_LineJoin, VLJ_MITER_ROUND); break; // Special AGG only join type
+            case SVF_MITER: Vector->set(FID_LineJoin, LONG(VLJ::MITER)); break;
+            case SVF_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::ROUND)); break;
+            case SVF_BEVEL: Vector->set(FID_LineJoin, LONG(VLJ::BEVEL)); break;
+            case SVF_INHERIT: Vector->set(FID_LineJoin, LONG(VLJ::INHERIT)); break;
+            case SVF_MITER_REVERT: Vector->set(FID_LineJoin, LONG(VLJ::MITER_REVERT)); break; // Special AGG only join type
+            case SVF_MITER_ROUND: Vector->set(FID_LineJoin, LONG(VLJ::MITER_ROUND)); break; // Special AGG only join type
          }
          break;
       }
 
       case SVF_STROKE_INNERJOIN: // AGG ONLY
          switch(StrHash(StrValue)) {
-            case SVF_MITER:   Vector->set(FID_InnerJoin, VIJ_MITER);  break;
-            case SVF_ROUND:   Vector->set(FID_InnerJoin, VIJ_ROUND); break;
-            case SVF_BEVEL:   Vector->set(FID_InnerJoin, VIJ_BEVEL); break;
-            case SVF_INHERIT: Vector->set(FID_InnerJoin, VIJ_INHERIT); break;
-            case SVF_JAG:     Vector->set(FID_InnerJoin, VIJ_JAG); break;
+            case SVF_MITER:   Vector->set(FID_InnerJoin, LONG(VIJ::MITER));  break;
+            case SVF_ROUND:   Vector->set(FID_InnerJoin, LONG(VIJ::ROUND)); break;
+            case SVF_BEVEL:   Vector->set(FID_InnerJoin, LONG(VIJ::BEVEL)); break;
+            case SVF_INHERIT: Vector->set(FID_InnerJoin, LONG(VIJ::INHERIT)); break;
+            case SVF_JAG:     Vector->set(FID_InnerJoin, LONG(VIJ::JAG)); break;
          }
 
       case SVF_STROKE_LINECAP:
@@ -2997,24 +2997,24 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
          break;
 
       case SVF_VISIBILITY:
-         if (!StrMatch("visible", StrValue))       Vector->set(FID_Visibility, VIS_VISIBLE);
-         else if (!StrMatch("hidden", StrValue))   Vector->set(FID_Visibility, VIS_HIDDEN);
-         else if (!StrMatch("collapse", StrValue)) Vector->set(FID_Visibility, VIS_COLLAPSE); // Same effect as hidden, kept for SVG compatibility
-         else if (!StrMatch("inherit", StrValue))  Vector->set(FID_Visibility, VIS_INHERIT);
+         if (!StrMatch("visible", StrValue))       Vector->set(FID_Visibility, LONG(VIS::VISIBLE));
+         else if (!StrMatch("hidden", StrValue))   Vector->set(FID_Visibility, LONG(VIS::HIDDEN));
+         else if (!StrMatch("collapse", StrValue)) Vector->set(FID_Visibility, LONG(VIS::COLLAPSE)); // Same effect as hidden, kept for SVG compatibility
+         else if (!StrMatch("inherit", StrValue))  Vector->set(FID_Visibility, LONG(VIS::INHERIT));
          else log.warning("Unsupported visibility value '%s'", StrValue.c_str());
          break;
 
       case SVF_FILL_RULE:
-         if (!StrMatch("nonzero", StrValue)) Vector->set(FID_FillRule, VFR_NON_ZERO);
-         else if (!StrMatch("evenodd", StrValue)) Vector->set(FID_FillRule, VFR_EVEN_ODD);
-         else if (!StrMatch("inherit", StrValue)) Vector->set(FID_FillRule, VFR_INHERIT);
+         if (!StrMatch("nonzero", StrValue)) Vector->set(FID_FillRule, LONG(VFR::NON_ZERO));
+         else if (!StrMatch("evenodd", StrValue)) Vector->set(FID_FillRule, LONG(VFR::EVEN_ODD));
+         else if (!StrMatch("inherit", StrValue)) Vector->set(FID_FillRule, LONG(VFR::INHERIT));
          else log.warning("Unsupported fill-rule value '%s'", StrValue.c_str());
          break;
 
       case SVF_CLIP_RULE:
-         if (!StrMatch("nonzero", StrValue)) Vector->set(FID_ClipRule, VFR_NON_ZERO);
-         else if (!StrMatch("evenodd", StrValue)) Vector->set(FID_ClipRule, VFR_EVEN_ODD);
-         else if (!StrMatch("inherit", StrValue)) Vector->set(FID_ClipRule, VFR_INHERIT);
+         if (!StrMatch("nonzero", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::NON_ZERO));
+         else if (!StrMatch("evenodd", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::EVEN_ODD));
+         else if (!StrMatch("inherit", StrValue)) Vector->set(FID_ClipRule, LONG(VFR::INHERIT));
          else log.warning("Unsupported clip-rule value '%s'", StrValue.c_str());
          break;
 

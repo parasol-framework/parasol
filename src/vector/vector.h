@@ -302,9 +302,9 @@ class extVector : public objVector {
    LONG   NumericID;
    LONG   PathLength;
    VMF    MorphFlags;
+   VFR    FillRule;
+   VFR    ClipRule;
    RC     Dirty;
-   UBYTE  FillRule;
-   UBYTE  ClipRule;
    UBYTE  TabOrder;
    UBYTE  EnableBkgd:1;
    UBYTE  DisableFillColour:1;
@@ -369,8 +369,8 @@ class extVectorViewport : public extVector {
    extVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
    ARF   vpAspectRatio;
+   VOF   vpOverflowX, vpOverflowY;
    UBYTE vpDragging:1;
-   UBYTE vpOverflowX, vpOverflowY;
 };
 
 //********************************************************************************************************************
@@ -881,12 +881,12 @@ void configure_stroke(extVector &Vector, T &Stroke)
       if (Vector.Class->ClassID IS ID_VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
-               case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;
-               case VLJ_BEVEL:        Stroke.line_cap(agg::square_cap); break;
-               case VLJ_MITER_REVERT: Stroke.line_cap(agg::square_cap); break;
-               case VLJ_ROUND:        Stroke.line_cap(agg::round_cap); break;
-               case VLJ_MITER_ROUND:  Stroke.line_cap(agg::round_cap); break;
-               case VLJ_INHERIT: break;
+               case agg::miter_join:        Stroke.line_cap(agg::square_cap); break;
+               case agg::bevel_join:        Stroke.line_cap(agg::square_cap); break;
+               case agg::miter_join_revert: Stroke.line_cap(agg::square_cap); break;
+               case agg::round_join:        Stroke.line_cap(agg::round_cap); break;
+               case agg::miter_join_round:  Stroke.line_cap(agg::round_cap); break;
+               case agg::inherit_join:      break;
             }
          }
       }

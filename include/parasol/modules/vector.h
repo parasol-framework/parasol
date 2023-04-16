@@ -135,34 +135,56 @@ enum class PE : LONG {
 
 // Vector fill rules for the FillRule field in the Vector class.
 
-#define VFR_NON_ZERO 1
-#define VFR_EVEN_ODD 2
-#define VFR_INHERIT 3
-#define VFR_END 4
+enum class VFR : LONG {
+   NIL = 0,
+   NON_ZERO = 1,
+   EVEN_ODD = 2,
+   INHERIT = 3,
+   END = 4,
+};
 
 // Options for the Vector class' Visibility field.
 
-#define VIS_HIDDEN 0
-#define VIS_VISIBLE 1
-#define VIS_COLLAPSE 2
-#define VIS_INHERIT 3
+enum class VIS : LONG {
+   NIL = 0,
+   HIDDEN = 0,
+   VISIBLE = 1,
+   COLLAPSE = 2,
+   INHERIT = 3,
+};
+
+// Viewport overflow options.
+
+enum class VOF : LONG {
+   NIL = 0,
+   VISIBLE = 0,
+   HIDDEN = 1,
+   SCROLL = 2,
+   INHERIT = 3,
+};
 
 // Component selection for RemapFX methods.
 
-#define CMP_ALL -1
-#define CMP_RED 0
-#define CMP_GREEN 1
-#define CMP_BLUE 2
-#define CMP_ALPHA 3
+enum class CMP : LONG {
+   NIL = 0,
+   ALL = -1,
+   RED = 0,
+   GREEN = 1,
+   BLUE = 2,
+   ALPHA = 3,
+};
 
 // Options for the look of line joins.
 
-#define VLJ_MITER 0
-#define VLJ_MITER_REVERT 1
-#define VLJ_ROUND 2
-#define VLJ_BEVEL 3
-#define VLJ_MITER_ROUND 4
-#define VLJ_INHERIT 5
+enum class VLJ : LONG {
+   NIL = 0,
+   MITER = 0,
+   MITER_REVERT = 1,
+   ROUND = 2,
+   BEVEL = 3,
+   MITER_ROUND = 4,
+   INHERIT = 5,
+};
 
 // Line-cap options.
 
@@ -173,11 +195,14 @@ enum class PE : LONG {
 
 // Inner join options for angled lines.
 
-#define VIJ_BEVEL 1
-#define VIJ_MITER 2
-#define VIJ_JAG 3
-#define VIJ_ROUND 4
-#define VIJ_INHERIT 5
+enum class VIJ : LONG {
+   NIL = 0,
+   BEVEL = 1,
+   MITER = 2,
+   JAG = 3,
+   ROUND = 4,
+   INHERIT = 5,
+};
 
 // VectorGradient options.
 
@@ -232,13 +257,6 @@ enum class PE : LONG {
 #define OP_MINUS 20
 #define OP_SUBTRACT 20
 #define OP_OVERLAY 21
-
-// Viewport overflow options.
-
-#define VOF_VISIBLE 0
-#define VOF_HIDDEN 1
-#define VOF_SCROLL 2
-#define VOF_INHERIT 3
 
 // VectorText flags.
 
@@ -1254,45 +1272,45 @@ class objOffsetFX : public objFilterEffect {
 #define MT_RFSelectInvert -25
 #define MT_RFSelectMask -26
 
-struct rfSelectGamma { LONG Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
-struct rfSelectTable { LONG Component; DOUBLE * Values; LONG Size;  };
-struct rfSelectLinear { LONG Component; DOUBLE Slope; DOUBLE Intercept;  };
-struct rfSelectIdentity { LONG Component;  };
-struct rfSelectDiscrete { LONG Component; DOUBLE * Values; LONG Size;  };
-struct rfSelectInvert { LONG Component;  };
-struct rfSelectMask { LONG Component; LONG Mask;  };
+struct rfSelectGamma { CMP Component; DOUBLE Amplitude; DOUBLE Offset; DOUBLE Exponent;  };
+struct rfSelectTable { CMP Component; DOUBLE * Values; LONG Size;  };
+struct rfSelectLinear { CMP Component; DOUBLE Slope; DOUBLE Intercept;  };
+struct rfSelectIdentity { CMP Component;  };
+struct rfSelectDiscrete { CMP Component; DOUBLE * Values; LONG Size;  };
+struct rfSelectInvert { CMP Component;  };
+struct rfSelectMask { CMP Component; LONG Mask;  };
 
-INLINE ERROR rfSelectGamma(APTR Ob, LONG Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
+INLINE ERROR rfSelectGamma(APTR Ob, CMP Component, DOUBLE Amplitude, DOUBLE Offset, DOUBLE Exponent) {
    struct rfSelectGamma args = { Component, Amplitude, Offset, Exponent };
    return(Action(MT_RFSelectGamma, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectTable(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
+INLINE ERROR rfSelectTable(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) {
    struct rfSelectTable args = { Component, Values, Size };
    return(Action(MT_RFSelectTable, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectLinear(APTR Ob, LONG Component, DOUBLE Slope, DOUBLE Intercept) {
+INLINE ERROR rfSelectLinear(APTR Ob, CMP Component, DOUBLE Slope, DOUBLE Intercept) {
    struct rfSelectLinear args = { Component, Slope, Intercept };
    return(Action(MT_RFSelectLinear, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectIdentity(APTR Ob, LONG Component) {
+INLINE ERROR rfSelectIdentity(APTR Ob, CMP Component) {
    struct rfSelectIdentity args = { Component };
    return(Action(MT_RFSelectIdentity, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectDiscrete(APTR Ob, LONG Component, DOUBLE * Values, LONG Size) {
+INLINE ERROR rfSelectDiscrete(APTR Ob, CMP Component, DOUBLE * Values, LONG Size) {
    struct rfSelectDiscrete args = { Component, Values, Size };
    return(Action(MT_RFSelectDiscrete, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectInvert(APTR Ob, LONG Component) {
+INLINE ERROR rfSelectInvert(APTR Ob, CMP Component) {
    struct rfSelectInvert args = { Component };
    return(Action(MT_RFSelectInvert, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR rfSelectMask(APTR Ob, LONG Component, LONG Mask) {
+INLINE ERROR rfSelectMask(APTR Ob, CMP Component, LONG Mask) {
    struct rfSelectMask args = { Component, Mask };
    return(Action(MT_RFSelectMask, (OBJECTPTR)Ob, &args));
 }
@@ -1519,7 +1537,7 @@ class objVector : public BaseClass {
    DOUBLE    MiterLimit;              // Imposes a limit on the ratio of the miter length to the StrokeWidth.
    DOUBLE    InnerMiterLimit;         // Private. No internal documentation exists for this feature.
    DOUBLE    DashOffset;              // The distance into the dash pattern to start the dash.  Can be a negative number.
-   LONG      Visibility;              // Controls the visibility of a vector and its children.
+   VIS       Visibility;              // Controls the visibility of a vector and its children.
    VF        Flags;                   // Optional flags.
    PTC       Cursor;                  // The mouse cursor to display when the pointer is within the vector's boundary.
    LONG      PathQuality;             // Defines the quality of a path when it is rendered.
@@ -1589,7 +1607,7 @@ class objVector : public BaseClass {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setVisibility(const LONG Value) {
+   inline ERROR setVisibility(const VIS Value) {
       this->Visibility = Value;
       return ERR_Okay;
    }

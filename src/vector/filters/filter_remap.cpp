@@ -139,12 +139,12 @@ class extRemapFX : public extFilterEffect {
 
    extRemapFX() : Red("Red"), Green("Green"), Blue("Blue"), Alpha("Alpha") { }
 
-   Component * getComponent(LONG Component) {
+   Component * getComponent(CMP Component) {
       switch(Component) {
-         case CMP_RED:   return &Red;
-         case CMP_GREEN: return &Green;
-         case CMP_BLUE:  return &Blue;
-         case CMP_ALPHA: return &Alpha;
+         case CMP::RED:   return &Red;
+         case CMP::GREEN: return &Green;
+         case CMP::BLUE:  return &Blue;
+         case CMP::ALPHA: return &Alpha;
          default: return NULL;
       }
    }

@@ -161,7 +161,7 @@ static ERROR CLIP_Init(extVectorClip *Self, APTR Void)
 static ERROR CLIP_NewObject(extVectorClip *Self, APTR Void)
 {
    Self->ClipUnits  = VUNIT::BOUNDING_BOX;
-   Self->Visibility = VIS_HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
+   Self->Visibility = VIS::HIDDEN; // Because the content of the clip object must be ignored by the core vector drawing routine.
    new (&Self->ClipRenderer) agg::rendering_buffer;
    return ERR_Okay;
 }

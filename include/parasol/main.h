@@ -259,7 +259,6 @@ constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHand
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
 constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
-constexpr FieldValue Visibility(LONG Value) { return FieldValue(FID_Visibility, Value); }
 constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
 constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
@@ -291,6 +290,7 @@ template <class T> FieldValue ColourSpace(T Value) { return FieldValue(FID_Colou
 template <class T> FieldValue Flags(T Value) { return FieldValue(FID_Flags, LONG(Value)); }
 template <class T> FieldValue Units(T Value) { return FieldValue(FID_Units, LONG(Value)); }
 template <class T> FieldValue SpreadMethod(T Value) { return FieldValue(FID_SpreadMethod, LONG(Value)); }
+template <class T> FieldValue Visibility(T Value) { return FieldValue(FID_Visibility, LONG(Value)); }
 
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");

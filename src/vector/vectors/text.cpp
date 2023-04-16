@@ -335,7 +335,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
             fl::Closed(false),
             fl::Stroke("rgb(255,0,0,255)"),
             fl::StrokeWidth(1.25),
-            fl::Visibility(VIS_HIDDEN)))) {
+            fl::Visibility(VIS::HIDDEN)))) {
       }
       else return ERR_CreateObject;
 
@@ -1824,7 +1824,7 @@ static ERROR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
    if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
       pf::Log log(__FUNCTION__);
       Self->txCursor.flash ^= 1;
-      Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS_VISIBLE : VIS_HIDDEN);
+      Self->txCursor.vector->setVisibility(Self->txCursor.flash ? VIS::VISIBLE : VIS::HIDDEN);
       acDraw(Self);
       return ERR_Okay;
    }
@@ -1883,12 +1883,12 @@ static ERROR text_focus_event(extVector *Vector, FM Event)
          }
 
          Self->txCursor.resetFlash();
-         Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+         Self->txCursor.vector->setVisibility(VIS::VISIBLE);
          acDraw(Self);
       }
    }
    else if ((Event & (FM::LOST_FOCUS|FM::CHILD_HAS_FOCUS)) != FM::NIL) {
-      if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS_HIDDEN);
+      if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS::HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
       if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
 
@@ -1985,7 +1985,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    log.trace("$%.8x, Value: %d", LONG(Event->Qualifiers), Event->Code);
 
    Self->txCursor.resetFlash(); // Reset the flashing cursor to make it visible
-   Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+   Self->txCursor.vector->setVisibility(VIS::VISIBLE);
 
    if (((Self->txFlags & VTXF::NO_SYS_KEYS) IS VTXF::NIL) and ((Event->Qualifiers & KQ::CTRL) != KQ::NIL)) {
       switch(Event->Code) {
@@ -2120,14 +2120,14 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
 
    case K_LEFT:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (Self->txCursor.column() > 0) Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()-1);
       else if (Self->txCursor.row() > 0) Self->txCursor.move(Self, Self->txCursor.row()-1, Self->txLines[Self->txCursor.row()-1].utf8Length());
       break;
 
    case K_RIGHT:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (!Self->txLines.empty()) {
          if (Self->txCursor.column() < Self->txLines[Self->txCursor.row()].utf8Length()) {
             Self->txCursor.move(Self, Self->txCursor.row(), Self->txCursor.column()+1);
@@ -2141,7 +2141,7 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
    case K_DOWN:
    case K_UP:
       Self->txCursor.resetFlash();
-      Self->txCursor.vector->setVisibility(VIS_VISIBLE);
+      Self->txCursor.vector->setVisibility(VIS::VISIBLE);
       if (((Event->Code IS K_UP) and (Self->txCursor.row() > 0)) or
           ((Event->Code IS K_DOWN) and ((size_t)Self->txCursor.row() < Self->txLines.size()-1))) {
          LONG end_column;

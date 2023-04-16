@@ -248,28 +248,28 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       xmlNewAttrib(tag, "stroke-color", buffer);
    }
 
-   LONG line_join;
-   if ((!error) and (!Vector->get(FID_LineJoin, &line_join))) {
+   VLJ line_join;
+   if ((!error) and (!Vector->get(FID_LineJoin, (LONG *)&line_join))) {
       switch (line_join) {
          default:
-         case VLJ_MITER:        break; // Default
-         case VLJ_MITER_REVERT: xmlNewAttrib(tag, "stroke-linejoin", "miter-revert"); break; // Parasol
-         case VLJ_ROUND:        xmlNewAttrib(tag, "stroke-linejoin", "round"); break;
-         case VLJ_BEVEL:        xmlNewAttrib(tag, "stroke-linejoin", "bevel"); break;
-         case VLJ_MITER_ROUND:  xmlNewAttrib(tag, "stroke-linejoin", "arcs"); break; // (SVG2) Not sure if compliant
-         case VLJ_INHERIT:      xmlNewAttrib(tag, "stroke-linejoin", "inherit"); break;
+         case VLJ::MITER:        break; // Default
+         case VLJ::MITER_REVERT: xmlNewAttrib(tag, "stroke-linejoin", "miter-revert"); break; // Parasol
+         case VLJ::ROUND:        xmlNewAttrib(tag, "stroke-linejoin", "round"); break;
+         case VLJ::BEVEL:        xmlNewAttrib(tag, "stroke-linejoin", "bevel"); break;
+         case VLJ::MITER_ROUND:  xmlNewAttrib(tag, "stroke-linejoin", "arcs"); break; // (SVG2) Not sure if compliant
+         case VLJ::INHERIT:      xmlNewAttrib(tag, "stroke-linejoin", "inherit"); break;
       } // "miter-clip" SVG2
    }
 
-   LONG inner_join;
-   if ((!error) and (!Vector->get(FID_InnerJoin, &inner_join))) { // Parasol only
+   VIJ inner_join;
+   if ((!error) and (!Vector->get(FID_InnerJoin, (LONG *)&inner_join))) { // Parasol only
       switch (inner_join) {
          default:
-         case VIJ_MITER:   break; // Default
-         case VIJ_BEVEL:   xmlNewAttrib(tag, "stroke-innerjoin", "bevel"); break;
-         case VIJ_JAG:     xmlNewAttrib(tag, "stroke-innerjoin", "jag"); break;
-         case VIJ_ROUND:   xmlNewAttrib(tag, "stroke-innerjoin", "round"); break;
-         case VIJ_INHERIT: xmlNewAttrib(tag, "stroke-innerjoin", "inherit"); break;
+         case VIJ::MITER:   break; // Default
+         case VIJ::BEVEL:   xmlNewAttrib(tag, "stroke-innerjoin", "bevel"); break;
+         case VIJ::JAG:     xmlNewAttrib(tag, "stroke-innerjoin", "jag"); break;
+         case VIJ::ROUND:   xmlNewAttrib(tag, "stroke-innerjoin", "round"); break;
+         case VIJ::INHERIT: xmlNewAttrib(tag, "stroke-innerjoin", "inherit"); break;
       }
    }
 
@@ -301,9 +301,9 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       }
    }
 
-   if (Vector->Visibility IS VIS_HIDDEN)        xmlNewAttrib(tag, "visibility", "hidden");
-   else if (Vector->Visibility IS VIS_COLLAPSE) xmlNewAttrib(tag, "visibility", "collapse");
-   else if (Vector->Visibility IS VIS_INHERIT)  xmlNewAttrib(tag, "visibility", "inherit");
+   if (Vector->Visibility IS VIS::HIDDEN)        xmlNewAttrib(tag, "visibility", "hidden");
+   else if (Vector->Visibility IS VIS::COLLAPSE) xmlNewAttrib(tag, "visibility", "collapse");
+   else if (Vector->Visibility IS VIS::INHERIT)  xmlNewAttrib(tag, "visibility", "inherit");
 
    STRING stroke_width;
    if ((!error) and (!Vector->get(FID_StrokeWidth, &stroke_width))) {
@@ -321,9 +321,9 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       xmlNewAttrib(tag, "fill", buffer);
    }
 
-   LONG fill_rule;
-   if ((!error) and (!Vector->get(FID_FillRule, &fill_rule))) {
-      if (fill_rule IS VFR_EVEN_ODD) xmlNewAttrib(tag, "fill-rule", "evenodd");
+   VFR fill_rule;
+   if ((!error) and (!Vector->get(FID_FillRule, (LONG *)&fill_rule))) {
+      if (fill_rule IS VFR::EVEN_ODD) xmlNewAttrib(tag, "fill-rule", "evenodd");
    }
 
    if ((!error) and (!(error = Vector->get(FID_ID, &str))) and (str)) xmlNewAttrib(tag, "id", str);

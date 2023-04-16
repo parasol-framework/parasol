@@ -17,9 +17,9 @@ public:
    double mOpacity;
    bool mDirty;
    bool mApplyTransform;
-   UBYTE mVisible;
-   UBYTE mOverflowX;
-   UBYTE mOverflowY;
+   VIS mVisible;
+   VOF mOverflowX;
+   VOF mOverflowY;
    extVectorClip *mClipMask;
    agg::trans_affine mTransform;
    bool mLinearRGB;
@@ -33,9 +33,9 @@ public:
       mOpacity(1.0),
       mDirty(false),
       mApplyTransform(false),
-      mVisible(VIS_VISIBLE),
-      mOverflowX(VOF_VISIBLE),
-      mOverflowY(VOF_VISIBLE),
+      mVisible(VIS::VISIBLE),
+      mOverflowX(VOF::VISIBLE),
+      mOverflowY(VOF::VISIBLE),
       mClipMask(NULL),
       mLinearRGB(false),
       mBackgroundActive(false)
@@ -1002,8 +1002,8 @@ private:
       // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
       // an image/gradient fill are independent of the path.
 
-      if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
-      else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+      if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+      else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
          auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
@@ -1053,8 +1053,8 @@ private:
    void render_stroke(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
       if (Vector.Scene->Gamma != 1.0) Raster.gamma(agg::gamma_power(Vector.Scene->Gamma));
 
-      if (Vector.FillRule IS VFR_NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
-      else if (Vector.FillRule IS VFR_EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+      if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
+      else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
       if (Vector.StrokeGradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
@@ -1124,10 +1124,10 @@ private:
 
          {
             bool visible = true;
-            if (shape->Visibility IS VIS_INHERIT) {
-               if (ParentState.mVisible != VIS_VISIBLE) visible = false;
+            if (shape->Visibility IS VIS::INHERIT) {
+               if (ParentState.mVisible != VIS::VISIBLE) visible = false;
             }
-            else if (shape->Visibility != VIS_VISIBLE) visible = false;
+            else if (shape->Visibility != VIS::VISIBLE) visible = false;
 
             if (!visible) {
                log.trace("%s: #%d, Not Visible", get_name(shape), shape->UID);
@@ -1193,18 +1193,18 @@ private:
             if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
                auto view = (extVectorViewport *)shape;
 
-               if (view->vpOverflowX != VOF_INHERIT) state.mOverflowX = view->vpOverflowX;
-               if (view->vpOverflowY != VOF_INHERIT) state.mOverflowY = view->vpOverflowY;
+               if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
+               if (view->vpOverflowY != VOF::INHERIT) state.mOverflowY = view->vpOverflowY;
 
                auto save_clip = state.mClip;
                DOUBLE x1 = state.mClip.x1, y1 = state.mClip.y1, x2 = state.mClip.x2, y2 = state.mClip.y2;
 
-               if ((state.mOverflowX IS VOF_HIDDEN) or (state.mOverflowX IS VOF_SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
+               if ((state.mOverflowX IS VOF::HIDDEN) or (state.mOverflowX IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
                   if (view->vpBX1 > state.mClip.x1) state.mClip.x1 = view->vpBX1;
                   if (view->vpBX2 < state.mClip.x2) state.mClip.x2 = view->vpBX2;
                }
 
-               if ((state.mOverflowY IS VOF_HIDDEN) or (state.mOverflowY IS VOF_SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
+               if ((state.mOverflowY IS VOF::HIDDEN) or (state.mOverflowY IS VOF::SCROLL) or ((view->vpAspectRatio & ARF::SLICE) != ARF::NIL)) {
                   if (view->vpBY1 > state.mClip.y1) state.mClip.y1 = view->vpBY1;
                   if (view->vpBY2 < state.mClip.y2) state.mClip.y2 = view->vpBY2;
                }
