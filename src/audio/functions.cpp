@@ -710,7 +710,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
 
    DOUBLE stereo_mul = 1.0;
    if (!Self->Stereo) {
-      if ((sample.SampleType IS SFM_U8_BIT_STEREO) or (sample.SampleType IS SFM_S16_BIT_STEREO)) {
+      if ((sample.SampleType IS SFM::U8_BIT_STEREO) or (sample.SampleType IS SFM::S16_BIT_STEREO)) {
          stereo_mul = 0.5;
       }
    }
@@ -722,9 +722,9 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
    DOUBLE conversion;
    LONG sample_size;
    switch (sample.SampleType) {
-      case SFM_S16_BIT_STEREO: sample_size = sizeof(WORD) * 2; conversion = 1.0 / 32767.0; break;
-      case SFM_S16_BIT_MONO:   sample_size = sizeof(WORD); conversion = 1.0 / 32767.0; break;
-      case SFM_U8_BIT_STEREO:  sample_size = sizeof(BYTE) * 2; conversion = 1.0 / 127.0; break;
+      case SFM::S16_BIT_STEREO: sample_size = sizeof(WORD) * 2; conversion = 1.0 / 32767.0; break;
+      case SFM::S16_BIT_MONO:   sample_size = sizeof(WORD); conversion = 1.0 / 32767.0; break;
+      case SFM::U8_BIT_STEREO:  sample_size = sizeof(BYTE) * 2; conversion = 1.0 / 127.0; break;
       default:                 sample_size = sizeof(BYTE); conversion = 1.0 / 127.0; break;
    }
 
@@ -759,7 +759,7 @@ static void mix_channel(extAudio *Self, AudioChannel &Channel, LONG TotalSamples
          LONG mix_pos = Channel.PositionLow;
          UBYTE *MixSample = sample.Data + (sample_size * Channel.Position); // source of sample data to mix into destination
 
-         auto mix_routine = Self->MixRoutines[sample.SampleType];
+         auto mix_routine = Self->MixRoutines[LONG(sample.SampleType)];
 
          if ((Channel.Flags & CHF::BACKWARD) != CHF::NIL) MixStep = -step;
          else MixStep = step;

@@ -141,7 +141,7 @@ of the possible variations there are a number of sample formats, as illustrated 
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with `SFM_BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with `SFM::BIG_ENDIAN`.
 
 It is also possible to supply loop information with the sample data.  This is achieved by configuring the &AudioLoop
 structure:
@@ -191,7 +191,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
-   LONG shift = sample_shift(Args->SampleFormat);
+   auto shift = sample_shift(Args->SampleFormat);
 
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
@@ -216,7 +216,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
       sample.Loop2Type = LTYPE::NIL;
    }
 
-   if ((!sample.SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
+   if ((sample.SampleType IS SFM::NIL) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample.Data = NULL;
    }
    else if (!AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data)) {
@@ -251,7 +251,7 @@ variations there are a number of sample formats, as illustrated in the following
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with the flag `SFM_BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with the flag `SFM::BIG_ENDIAN`.
 
 It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping
 formats via the &AudioLoop structure:
@@ -291,7 +291,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->SampleFormat)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->SampleFormat IS SFM::NIL)) return log.warning(ERR_NullArgs);
    if (!Args->Callback.Type) return log.warning(ERR_NullArgs);
 
    log.branch("Length: %d", Args->SampleLength);
@@ -305,7 +305,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
-   LONG shift = sample_shift(Args->SampleFormat);
+   auto shift = sample_shift(Args->SampleFormat);
 
    LONG buffer_len;
    if (Args->SampleLength > 0) {

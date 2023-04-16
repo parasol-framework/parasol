@@ -41,7 +41,7 @@ http = obj.new('http', {
    method     = 'get',
    outputFile = 'temp:index.html',
    stateChanged = function(HTTP, State)
-      if (State == HGS_COMPLETED) then print(content) end
+      if (State == HGS::COMPLETED) then print(content) end
    end
 })
 
@@ -141,7 +141,7 @@ class extHTTP : public objHTTP {
    STRING AuthOpaque;
    STRING AuthPath;
    STRING ContentType;
-   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF_RECVBUFFER is defined
+   UBYTE  *RecvBuffer;      // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
    UBYTE  *WriteBuffer;
    LONG   WriteSize;
    LONG   WriteOffset;
@@ -193,46 +193,46 @@ static ERROR HTTP_Write(extHTTP *, struct acWrite *);
 //********************************************************************************************************************
 
 static const FieldDef clStatus[] = {
-   { "Continue",                 HTS_CONTINUE },
-   { "Switching Protocols",      HTS_SWITCH_PROTOCOLS },
-   { "Okay",                     HTS_OKAY },
-   { "Created",                  HTS_CREATED },
-   { "Accepted",                 HTS_ACCEPTED },
-   { "Unverified Content",       HTS_UNVERIFIED_CONTENT },
-   { "No Content",               HTS_NO_CONTENT },
-   { "Reset Content",            HTS_RESET_CONTENT },
-   { "Partial Content",          HTS_PARTIAL_CONTENT },
-   { "Multiple Choices",         HTS_MULTIPLE_CHOICES },
-   { "Moved Permanently",        HTS_MOVED_PERMANENTLY },
-   { "Found",                    HTS_FOUND },
-   { "See Other",                HTS_SEE_OTHER },
-   { "Not Modified",             HTS_NOT_MODIFIED },
-   { "Use Proxy",                HTS_USE_PROXY },
-   { "Temporary Redirect",       HTS_TEMP_REDIRECT },
-   { "Bad Request",              HTS_BAD_REQUEST },
-   { "Unauthorised",             HTS_UNAUTHORISED },
-   { "Payment Required",         HTS_PAYMENT_REQUIRED },
-   { "Forbidden",                HTS_FORBIDDEN },
-   { "Not Found",                HTS_NOT_FOUND },
-   { "Method Not Allowed",       HTS_METHOD_NOT_ALLOWED },
-   { "Not Acceptable",           HTS_NOT_ACCEPTABLE },
-   { "Proxy Authentication Required", HTS_PROXY_AUTHENTICATION },
-   { "Request Timeout",          HTS_REQUEST_TIMEOUT },
-   { "Conflict",                 HTS_CONFLICT },
-   { "Gone",                     HTS_GONE },
-   { "Length Required",          HTS_LENGTH_REQUIRED },
-   { "Precondition Failed",      HTS_PRECONDITION_FAILED },
-   { "Request Entity Too Large", HTS_ENTITY_TOO_LARGE },
-   { "Request-URI Too Long",     HTS_URI_TOO_LONG },
-   { "Unsupported Media Type",   HTS_UNSUPPORTED_MEDIA },
-   { "Out of Range",             HTS_OUT_OF_RANGE },
-   { "Expectation Failed",       HTS_EXPECTATION_FAILED },
-   { "Internal Server Error",    HTS_SERVER_ERROR },
-   { "Not Implemented",          HTS_NOT_IMPLEMENTED },
-   { "Bad Gateway",              HTS_BAD_GATEWAY },
-   { "Service Unavailable",      HTS_SERVICE_UNAVAILABLE },
-   { "Gateway Timeout",          HTS_GATEWAY_TIMEOUT },
-   { "HTTP Version Unsupported", HTS_VERSION_UNSUPPORTED },
+   { "Continue",                 HTS::CONTINUE },
+   { "Switching Protocols",      HTS::SWITCH_PROTOCOLS },
+   { "Okay",                     HTS::OKAY },
+   { "Created",                  HTS::CREATED },
+   { "Accepted",                 HTS::ACCEPTED },
+   { "Unverified Content",       HTS::UNVERIFIED_CONTENT },
+   { "No Content",               HTS::NO_CONTENT },
+   { "Reset Content",            HTS::RESET_CONTENT },
+   { "Partial Content",          HTS::PARTIAL_CONTENT },
+   { "Multiple Choices",         HTS::MULTIPLE_CHOICES },
+   { "Moved Permanently",        HTS::MOVED_PERMANENTLY },
+   { "Found",                    HTS::FOUND },
+   { "See Other",                HTS::SEE_OTHER },
+   { "Not Modified",             HTS::NOT_MODIFIED },
+   { "Use Proxy",                HTS::USE_PROXY },
+   { "Temporary Redirect",       HTS::TEMP_REDIRECT },
+   { "Bad Request",              HTS::BAD_REQUEST },
+   { "Unauthorised",             HTS::UNAUTHORISED },
+   { "Payment Required",         HTS::PAYMENT_REQUIRED },
+   { "Forbidden",                HTS::FORBIDDEN },
+   { "Not Found",                HTS::NOT_FOUND },
+   { "Method Not Allowed",       HTS::METHOD_NOT_ALLOWED },
+   { "Not Acceptable",           HTS::NOT_ACCEPTABLE },
+   { "Proxy Authentication Required", HTS::PROXY_AUTHENTICATION },
+   { "Request Timeout",          HTS::REQUEST_TIMEOUT },
+   { "Conflict",                 HTS::CONFLICT },
+   { "Gone",                     HTS::GONE },
+   { "Length Required",          HTS::LENGTH_REQUIRED },
+   { "Precondition Failed",      HTS::PRECONDITION_FAILED },
+   { "Request Entity Too Large", HTS::ENTITY_TOO_LARGE },
+   { "Request-URI Too Long",     HTS::URI_TOO_LONG },
+   { "Unsupported Media Type",   HTS::UNSUPPORTED_MEDIA },
+   { "Out of Range",             HTS::OUT_OF_RANGE },
+   { "Expectation Failed",       HTS::EXPECTATION_FAILED },
+   { "Internal Server Error",    HTS::SERVER_ERROR },
+   { "Not Implemented",          HTS::NOT_IMPLEMENTED },
+   { "Bad Gateway",              HTS::BAD_GATEWAY },
+   { "Service Unavailable",      HTS::SERVICE_UNAVAILABLE },
+   { "Gateway Timeout",          HTS::GATEWAY_TIMEOUT },
+   { "HTTP Version Unsupported", HTS::VERSION_UNSUPPORTED },
    { NULL, 0 }
 };
 
@@ -264,7 +264,7 @@ static ERROR socket_outgoing(objNetSocket *);
       }
       else {
          log.msg("No username and password provided, deactivating...");
-         Self->setCurrentState(HGS_TERMINATED);
+         Self->setCurrentState(HGS::TERMINATED);
       }
    }
 */
@@ -344,7 +344,7 @@ the Deactivate action to kick in.
 
 Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by
 the #OutputObject field through data feeds.  It can be written to the target object if the #ObjectMode is set to
-READ_WRITE.  Finally it can be received through C style callbacks if the #Incoming field is set.
+`READ_WRITE`.  Finally it can be received through C style callbacks if the #Incoming field is set.
 
 On completion of an HTTP request, the #Deactivate() action is called, regardless of the level of success.
 
@@ -366,7 +366,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
-   log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, (Self->Flags & HTF_SSL) ? 1 : 0);
+   log.branch("Host: %s, Port: %d, Path: %s, Proxy: %s, SSL: %d", Self->Host, Self->Port, Self->Path, Self->ProxyServer, ((Self->Flags & HTF::SSL) != HTF::NIL) ? 1 : 0);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -374,11 +374,11 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    Self->ResponseIndex = 0;
    Self->SearchIndex   = 0;
    Self->Index         = 0;
-   Self->CurrentState  = 0;
-   Self->Status        = 0;
+   Self->CurrentState  = HGS::NIL;
+   Self->Status        = HTS::NIL;
    Self->TotalSent     = 0;
    Self->Tunneling     = FALSE;
-   Self->Flags        &= ~(HTF_MOVED|HTF_REDIRECTED);
+   Self->Flags        &= ~(HTF::MOVED|HTF::REDIRECTED);
 
    if ((Self->Socket) and (Self->Socket->State IS NTC::DISCONNECTED)) {
       Self->Socket->set(FID_Feedback, (APTR)NULL);
@@ -399,7 +399,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
    std::ostringstream cmd;
 
-   if ((Self->ProxyServer) and (Self->Flags & HTF_SSL) and (!Self->Socket)) {
+   if ((Self->ProxyServer) and ((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Socket)) {
       // SSL tunnelling is required.  Send a CONNECT request to the proxy and
       // then we will follow this up with the actual HTTP requests.
 
@@ -416,7 +416,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
       //set auth "Proxy-Authorization: Basic [base64::encode $opts(proxyUser):$opts(proxyPass)]"
    }
    else {
-      if (Self->Method IS HTM_COPY) {
+      if (Self->Method IS HTM::COPY) {
          // Copies a source (indicated by Path) to a Destination.  The Destination is referenced as an variable field.
 
          if (Self->Args->contains("Destination")) {
@@ -435,20 +435,20 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             return Self->Error;
          }
       }
-      else if (Self->Method IS HTM_DELETE) {
+      else if (Self->Method IS HTM::DELETE) {
          set_http_method(Self, "DELETE", cmd);
       }
-      else if (Self->Method IS HTM_GET) {
+      else if (Self->Method IS HTM::GET) {
          set_http_method(Self, "GET", cmd);
          if (Self->Index) cmd << "Range: bytes=" << Self->Index << "-" << CRLF;
       }
-      else if (Self->Method IS HTM_LOCK) {
+      else if (Self->Method IS HTM::LOCK) {
 
       }
-      else if (Self->Method IS HTM_MK_COL) {
+      else if (Self->Method IS HTM::MK_COL) {
          set_http_method(Self, "MKCOL", cmd);
       }
-      else if (Self->Method IS HTM_MOVE) {
+      else if (Self->Method IS HTM::MOVE) {
          // Moves a source (indicated by Path) to a Destination.  The Destination is referenced as a variable field.
 
          if (Self->Args->contains("Destination")) {
@@ -461,7 +461,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             return Self->Error;
          }
       }
-      else if (Self->Method IS HTM_OPTIONS) {
+      else if (Self->Method IS HTM::OPTIONS) {
          if ((!Self->Path) or ((Self->Path[0] IS '*') and (!Self->Path[1]))) {
             cmd << "OPTIONS * HTTP/1.1" << CRLF;
             cmd << "Host: " << Self->Host << CRLF;
@@ -469,15 +469,15 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          }
          else set_http_method(Self, "OPTIONS", cmd);
       }
-      else if ((Self->Method IS HTM_POST) or (Self->Method IS HTM_PUT)) {
+      else if ((Self->Method IS HTM::POST) or (Self->Method IS HTM::PUT)) {
          log.trace("POST/PUT request being processed.");
 
          Self->Chunked = FALSE;
 
-         if ((!(Self->Flags & HTF_NO_HEAD)) and ((Self->SecurePath) or (Self->CurrentState IS HGS_AUTHENTICATING))) {
+         if (((Self->Flags & HTF::NO_HEAD) IS HTF::NIL) and ((Self->SecurePath) or (Self->CurrentState IS HGS::AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
             set_http_method(Self, "HEAD", cmd);
-            Self->setCurrentState(HGS_AUTHENTICATING);
+            Self->setCurrentState(HGS::AUTHENTICATING);
          }
          else {
             // You can post data from a file source or an object.  In the case of an object it is possible to preset
@@ -532,7 +532,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                return Self->Error;
             }
 
-            set_http_method(Self, (Self->Method IS HTM_POST) ? "POST" : "PUT", cmd);
+            set_http_method(Self, (Self->Method IS HTM::POST) ? "POST" : "PUT", cmd);
 
             if (Self->ContentLength >= 0) {
                cmd << "Content-length: " << Self->ContentLength << CRLF;
@@ -543,7 +543,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                // Using chunked encoding for post/put will help the server manage streaming
                // uploads, and may even be of help when the content length is known.
 
-               if (!(Self->Flags & HTF_RAW)) {
+               if ((Self->Flags & HTF::RAW) IS HTF::NIL) {
                   cmd << "Transfer-Encoding: chunked" << CRLF;
                   Self->Chunked = TRUE;
                }
@@ -553,17 +553,17 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                log.trace("User content type: %s", Self->ContentType);
                cmd << "Content-type: " << Self->ContentType << CRLF;
             }
-            else if (Self->Method IS HTM_POST) {
+            else if (Self->Method IS HTM::POST) {
                cmd << "Content-type: application/x-www-form-urlencoded" << CRLF;
             }
             else cmd << "Content-type: application/binary" << CRLF;
          }
       }
-      else if (Self->Method IS HTM_UNLOCK) {
+      else if (Self->Method IS HTM::UNLOCK) {
 
       }
       else {
-         log.warning("HTTP method no. %d not understood.", Self->Method);
+         log.warning("HTTP method no. %d not understood.", LONG(Self->Method));
          SET_ERROR(Self, ERR_Failed);
          return Self->Error;
       }
@@ -618,14 +618,14 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
 
       // Add any custom headers
 
-      if ((Self->CurrentState != HGS_AUTHENTICATING) and (Self->Headers)) {
+      if ((Self->CurrentState != HGS::AUTHENTICATING) and (Self->Headers)) {
          for (const auto& [k, v] : Self->Headers[0]) {
             log.trace("Custom header: %s: %s", k.c_str(), v.c_str());
             cmd << k << ": " << v << CRLF;
          }
       }
 
-      if (Self->Flags & HTF_DEBUG) log.msg("HTTP REQUEST HEADER\n%s", cmd.str().c_str());
+      if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("HTTP REQUEST HEADER\n%s", cmd.str().c_str());
    }
 
    cmd << CRLF; // Terminating line feed
@@ -633,7 +633,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
 
-      auto flags = ((Self->Flags & HTF_SSL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
+      auto flags = (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
 
       if (!(Self->Socket = objNetSocket::create::integral(
             fl::UserData(Self),
@@ -652,8 +652,8 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
    }
 
    if (!Self->Tunneling) {
-      if (Self->CurrentState != HGS_AUTHENTICATING) {
-         if ((Self->Method IS HTM_PUT) or (Self->Method IS HTM_POST)) {
+      if (Self->CurrentState != HGS::AUTHENTICATING) {
+         if ((Self->Method IS HTM::PUT) or (Self->Method IS HTM::POST)) {
             Self->Socket->setOutgoing(make_function_stdc(socket_outgoing));
          }
          else Self->Socket->set(FID_Outgoing, (APTR)NULL);
@@ -715,7 +715,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
 
    log.branch("Closing connection to server & signalling children.");
 
-   if (Self->CurrentState < HGS_COMPLETED) Self->setCurrentState(HGS_TERMINATED);
+   if (Self->CurrentState < HGS::COMPLETED) Self->setCurrentState(HGS::TERMINATED);
 
    // Closing files is important for dropping the file locks
 
@@ -732,7 +732,7 @@ static ERROR HTTP_Deactivate(extHTTP *Self, APTR Void)
       // (for example due to a timeout, or an early call to Deactivate).  This prevents any more incoming data from the
       // server being processed when we don't want it.
 
-      if ((Self->Socket->State IS NTC::DISCONNECTED) or (Self->CurrentState IS HGS_TERMINATED)) {
+      if ((Self->Socket->State IS NTC::DISCONNECTED) or (Self->CurrentState IS HGS::TERMINATED)) {
          log.msg("Terminating socket (disconnected).");
          Self->Socket->set(FID_Feedback, (APTR)NULL);
          FreeResource(Self->Socket);
@@ -759,8 +759,8 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
-   if (Self->flInput)     { FreeResource(Self->flInput);           Self->flInput = NULL; }
-   if (Self->flOutput)    { FreeResource(Self->flOutput);          Self->flOutput = NULL; }
+   if (Self->flInput)     { FreeResource(Self->flInput);     Self->flInput = NULL; }
+   if (Self->flOutput)    { FreeResource(Self->flOutput);    Self->flOutput = NULL; }
    if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = NULL; }
    if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = NULL; }
@@ -996,7 +996,7 @@ noted that a timeout does not necessarily indicate failure if the content is bei
 (#ContentLength is set to -1).
 
 In the event of a timeout, the HTTP object will be deactivated and the #Error field will be updated to a value
-of ERR_TimeOut.
+of `ERR_TimeOut`.
 
 The timeout value is measured in seconds.
 
@@ -1013,7 +1013,7 @@ Error: The error code received for the most recently executed HTTP command.
 
 On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful
 then the value will be zero (ERR_Okay). It should be noted that certain error codes may not necessarily indicate
-failure - for instance, an ERR_TimeOut error may be received on termination of streamed content.  For genuine HTML
+failure - for instance, an `ERR_TimeOut` error may be received on termination of streamed content.  For genuine HTML
 error codes, see the #Status field.
 
 -FIELD-
@@ -1042,7 +1042,7 @@ Incoming: A callback routine can be defined here for incoming data.
 Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the
 callback routine is `ERROR Function(*HTTP, APTR Data, LONG Length)`.
 
-If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be
+If an error code of `ERR_Terminate` is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
 
 *********************************************************************************************************************/
@@ -1165,7 +1165,7 @@ static ERROR GET_Location(extHTTP *Self, STRING *Value)
       if (Self->Port IS 80) snprintf(Self->URI, len, "http://%s/%s", Self->Host, Self->Path); // http
       else if (Self->Port IS 443) {
          snprintf(Self->URI, len, "https://%s/%s", Self->Host, Self->Path); // https
-         Self->Flags |= HTF_SSL;
+         Self->Flags |= HTF::SSL;
       }
       else if (Self->Port IS 21) snprintf(Self->URI, len, "ftp://%s/%s", Self->Host, Self->Path); // ftp
       else snprintf(Self->URI, len, "http://%s:%d/%s", Self->Host, Self->Port, Self->Path);
@@ -1204,7 +1204,7 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
    else if (!StrCompare("https://", str, 8)) {
       str += 8;
       Self->Port = 443;
-      Self->Flags |= HTF_SSL;
+      Self->Flags |= HTF::SSL;
    }
 
    if (Self->Host) { FreeResource(Self->Host); Self->Host = NULL; }
@@ -1228,10 +1228,9 @@ static ERROR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      LONG i = StrToInt(str);
-      if (i) {
+      if (auto i = StrToInt(str)) {
          Self->Port = i;
-         if (Self->Port IS 443) Self->Flags |= HTF_SSL;
+         if (Self->Port IS 443) Self->Flags |= HTF::SSL;
       }
    }
 
@@ -1252,7 +1251,7 @@ Method: The HTTP instruction to execute is defined here (defaults to GET).
 
 *********************************************************************************************************************/
 
-static ERROR SET_Method(extHTTP *Self, LONG Value)
+static ERROR SET_Method(extHTTP *Self, HTM Value)
 {
    // Changing/Setting the method results in a reset of the variable fields
    if (Self->Args) { delete Self->Args; Self->Args = NULL; }
@@ -1269,7 +1268,7 @@ ObjectMode: The access mode used when passing data to a targeted object.
 This field is relevant when the #OutputObject field has been set for receiving incoming data. The method of
 communication used against the target object can be defined through the ObjectMode. The default setting is
 DATA::FEED, which passes data through the data feed system (see also the #Datatype to define the type of data being
-sent to the object).  The alternative method is READ_WRITE, which uses the Write action to send data to the targeted
+sent to the object).  The alternative method is `READ_WRITE`, which uses the Write action to send data to the targeted
 object.
 
 -FIELD-
@@ -1511,15 +1510,15 @@ On completion of an HTTP request, the state will be changed to either `COMPLETED
 
 *********************************************************************************************************************/
 
-static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
+static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
 {
    pf::Log log;
 
-   if ((Value < 0) or (Value >= HGS_END)) return log.warning(ERR_OutOfRange);
+   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR_OutOfRange);
 
-   if (Self->Flags & HTF_DEBUG) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[Value].Name, clHTTPCurrentState[Self->CurrentState].Name);
+   if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
 
-   if ((Value >= HGS_COMPLETED) and (Self->CurrentState < HGS_COMPLETED)) {
+   if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
       Self->CurrentState = Value;
       if (Self->Socket) QueueAction(AC_Deactivate, Self->UID);
    }
@@ -1528,13 +1527,13 @@ static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
    if (Self->StateChanged.Type != CALL_NONE) {
       ERROR error;
       if (Self->StateChanged.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extHTTP *, LONG))Self->StateChanged.StdC.Routine;
+         auto routine = (ERROR (*)(extHTTP *, HGS))Self->StateChanged.StdC.Routine;
          error = routine(Self, Self->CurrentState);
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
             { "HTTP", FD_OBJECTID, { .Long = Self->UID } },
-            { "State", FD_LONG, { .Long = Self->CurrentState } }
+            { "State", FD_LONG, { .Long = LONG(Self->CurrentState) } }
          };
 
          auto script = Self->StateChanged.Script.Script;
@@ -1545,14 +1544,14 @@ static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
       if (error > ERR_ExceptionThreshold) SET_ERROR(Self, error);
 
       if (error IS ERR_Terminate) {
-         if (Self->CurrentState IS HGS_SENDING_CONTENT) {
+         if (Self->CurrentState IS HGS::SENDING_CONTENT) {
             // Stop sending and expect a response from the server.  If the client doesn't care about the response
             // then a subsequent ERR_Terminate code can be returned on notification of this state change.
-            SET_CurrentState(Self, HGS_SEND_COMPLETE);
+            SET_CurrentState(Self, HGS::SEND_COMPLETE);
          }
-         else if ((Self->CurrentState != HGS_TERMINATED) and (Self->CurrentState != HGS_COMPLETED)) {
-            log.branch("State changing to HGS_COMPLETED (ERR_Terminate received).");
-            SET_CurrentState(Self, HGS_COMPLETED);
+         else if ((Self->CurrentState != HGS::TERMINATED) and (Self->CurrentState != HGS::COMPLETED)) {
+            log.branch("State changing to HGS::COMPLETED (ERR_Terminate received).");
+            SET_CurrentState(Self, HGS::COMPLETED);
          }
       }
    }
@@ -1566,7 +1565,7 @@ static ERROR SET_CurrentState(extHTTP *Self, LONG Value)
 StateChanged: A callback routine can be defined here for monitoring changes to the HTTP state.
 
 Define a callback routine in StateChanged in order to receive notifications of any change to the #State of an
-HTTP object.  The format for the routine is `ERROR Function(*HTTP, LONG State)`.
+HTTP object.  The format for the routine is `ERROR Function(*HTTP, HGS State)`.
 
 If an error code of ERR_Terminate is returned by the callback routine, the currently executing HTTP request will be
 cancelled.

@@ -195,18 +195,18 @@ void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 //********************************************************************************************************************
 // Stubs.
 
-static LONG sample_format(extSound *Self) __attribute__((unused));
-static LONG sample_format(extSound *Self)
+static SFM sample_format(extSound *Self) __attribute__((unused));
+static SFM sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
-      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM_U8_BIT_STEREO;
-      else return SFM_U8_BIT_MONO;
+      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM::U8_BIT_STEREO;
+      else return SFM::U8_BIT_MONO;
    }
    else if (Self->BitsPerSample IS 16) {
-      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM_S16_BIT_STEREO;
-      else return SFM_S16_BIT_MONO;
+      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM::S16_BIT_STEREO;
+      else return SFM::S16_BIT_MONO;
    }
-   return 0;
+   return SFM::NIL;
 }
 
 static ERROR snd_init_audio(extSound *Self) __attribute__((unused));
@@ -331,12 +331,12 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       LONG sampleformat = 0;
       if (Self->BitsPerSample IS 8) {
-         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM_U8_BIT_STEREO;
-         else sampleformat = SFM_U8_BIT_MONO;
+         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM::U8_BIT_STEREO;
+         else sampleformat = SFM::U8_BIT_MONO;
       }
       else if (Self->BitsPerSample IS 16) {
-         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM_S16_BIT_STEREO;
-         else sampleformat = SFM_S16_BIT_MONO;
+         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM::S16_BIT_STEREO;
+         else sampleformat = SFM::S16_BIT_MONO;
       }
 
       if (!sampleformat) return log.warning(ERR_InvalidData);

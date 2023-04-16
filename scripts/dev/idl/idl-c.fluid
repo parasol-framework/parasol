@@ -536,6 +536,12 @@ function const(Prefix, Options, ...)
       table.insert(out, '')
    end
 
+   if (Options.type) then -- Strong typing enabled, convert via cType()
+      Options.type = cType({ type=Options.type }, Prefix)
+      table.insert(out, string.format('enum class %s : ' .. Options.type.type .. ' {', Prefix))
+      table.insert(out, '   NIL = 0,')
+   end
+
    local list = { }
    for k,va in ipairs({...}) do
       if (type(va) == 'string') then
@@ -566,13 +572,23 @@ function const(Prefix, Options, ...)
             end
             if (val == nil) then val = v.value end
 
-            table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+            if (Options.type) then
+               table.insert(out, '   ' .. v.name .. ' = ' .. val .. ',')
+            else
+               table.insert(out, '#define ' .. Prefix .. '_' .. v.name .. ' ' .. val)
+            end
+
             table.insert(list, { name=v.name, value=val, comment=comment })
          end
       else
          error('Invalid const type for "' .. Prefix .. '", expected string, got "' .. type(va) .. '"')
       end
    end
+
+   if (Options.type) then
+      table.insert(out, '};')
+   end
+
    table.insert(out, '')
 
    if (glRestrict == nil) then
@@ -581,7 +597,8 @@ function const(Prefix, Options, ...)
 
    glCustomTypes[Prefix] = {
       prefix=Prefix, grouping='constants', list=list, comment=Options.comment,
-      restrict=nz(glRestrict, Options.restrict)
+      restrict=nz(glRestrict, Options.restrict),
+      type=Options.type -- Promotes strong-typing to other C++ definitions
    }
 end
 

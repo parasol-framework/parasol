@@ -623,7 +623,7 @@ class objNetSocket : public BaseClass {
 #define SCV_KEYUSAGE_NO_CERTSIGN 32
 #define SCV_APPLICATION_VERIFICATION 50
 
-INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
+inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
    else return ERR_CreateObject;
 }

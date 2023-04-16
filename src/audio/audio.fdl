@@ -40,7 +40,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     { NOTE = "0x80000000: Internal. Used for managing playback." }
   )
 
-  const("SFM", { strict=true, comment="These audio bit formats are supported by AddSample and AddStream." }, {
+  const("SFM", { type="uint", comment="These audio bit formats are supported by AddSample and AddStream." }, {
     U8_BIT_MONO    = "1: 8-bit mono unsigned sample.",
     S16_BIT_MONO   = "2: 16-bit mono signed sample.",
     U8_BIT_STEREO  = "3: 8-bit stereo unsigned sample.",

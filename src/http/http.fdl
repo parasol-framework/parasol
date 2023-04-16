@@ -7,11 +7,11 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
 
   c_include("<parasol/modules/network.h>")
 
-  enum("HOM", { start=0, comment="Output mode." },
+  enum("HOM", { type="int", start=0, comment="Output mode." },
     "DATA_FEED",
     "READ_WRITE|READ|WRITE")
 
-  enum("HGS", { start=0, comment="Options for defining an HTTP object's state." },
+  enum("HGS", { type="int", start=0, comment="Options for defining an HTTP object's state." },
    "READING_HEADER: The default state - this value will be indicated when no data is being written to the server and the client is waiting for a complete header from the server.",
    "AUTHENTICATING: If authentication is requested from the server, the HTTP object will enter this state.",
    "AUTHENTICATED: Following successful authentication, this state value will be set.",
@@ -23,7 +23,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
    "TERMINATED: If an HTTP command failes to complete normally - for instance if the connection is broken before completion - then the state is set to TERMINATED.",
    "END: Private")
 
-  enum("HTM", { start=0, comment="The HTTP Method to use when the object is activated." },
+  enum("HTM", { type="int", start=0, comment="The HTTP Method to use when the object is activated." },
     "GET: Retrieves files from the HTTP server.  The Path field will indicate which file to retrieve.",
     "POST: Sends information to the HTTP server.",
     "PUT: Uploads a file to the HTTP server.  The data will be drawn from a source defined in the File or Object fields.",
@@ -39,7 +39,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
     "COPY", "LOCK", "MOVE", "NOTIFY", "OPTIONS", "POLL", "PROP_FIND", "PROP_PATCH", "SEARCH", "SUBSCRIBE", "UNLOCK",
     "UNSUBSCRIBE")
 
-  const("HTS", { comment="HTTP status codes" }, {
+  const("HTS", { type="int", comment="HTTP status codes" }, {
     CONTINUE             = 100,
     SWITCH_PROTOCOLS     = 101,
     OKAY                 = 200,
@@ -82,7 +82,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
     VERSION_UNSUPPORTED  = 505
   })
 
-  flags("HTF", { comment="HTTP flags" },
+  flags("HTF", { strict=true, comment="HTTP flags" },
     "RESUME: Enables resuming when downloading content.  Only applies when a file is being targeted and the file already exists.",
     "MESSAGE: When activating child objects, send delayed messages to postpone execution rather than making direct calls.",
     "MOVED: Read-only.  Indicates that the HTTP source was moved (HTS_MovedPermanently).",

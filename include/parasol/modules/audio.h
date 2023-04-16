@@ -74,12 +74,15 @@ DEFINE_ENUM_FLAG_OPERATORS(SDF)
 
 // These audio bit formats are supported by AddSample and AddStream.
 
-#define SFM_BIG_ENDIAN 0x80000000
-#define SFM_U8_BIT_MONO 1
-#define SFM_S16_BIT_MONO 2
-#define SFM_U8_BIT_STEREO 3
-#define SFM_S16_BIT_STEREO 4
-#define SFM_END 5
+enum class SFM : ULONG {
+   NIL = 0,
+   BIG_ENDIAN = 0x80000000,
+   U8_BIT_MONO = 1,
+   S16_BIT_MONO = 2,
+   U8_BIT_STEREO = 3,
+   S16_BIT_STEREO = 4,
+   END = 5,
+};
 
 // Loop modes for the AudioLoop structure.
 
@@ -163,15 +166,15 @@ struct AudioLoop {
 
 struct sndOpenChannels { LONG Total; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
-struct sndAddSample { FUNCTION OnStop; LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
 struct sndSetSampleLength { LONG Sample; LARGE Length;  };
-struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; LONG SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
 INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
-   struct sndOpenChannels args = { Total, 0 };
+   struct sndOpenChannels args = { Total, (LONG)0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -182,8 +185,8 @@ INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) {
    return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, 0 };
+INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -199,8 +202,8 @@ INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, 0 };
+INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
