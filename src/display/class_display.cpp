@@ -2410,12 +2410,12 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
          XDestroyWindow(XDisplay, Self->XWindowHandle);
          Self->WindowHandle = NULL;
 
-         Self->Flags ^= SCR::BORDERLESS;
+         Self->Flags = Self->Flags ^ SCR::BORDERLESS;
 
          swa.bit_gravity = CenterGravity;
          swa.win_gravity = CenterGravity;
          swa.cursor      = C_Default;
-         swa.override_redirect = (Self->Flags & SCR::BORDERLESS) ? 1 : 0;
+         swa.override_redirect = ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0;
          swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                            |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 

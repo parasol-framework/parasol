@@ -141,7 +141,7 @@ of the possible variations there are a number of sample formats, as illustrated 
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with `SFM::BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with `SFM::F_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the sample data.  This is achieved by configuring the &AudioLoop
 structure:
@@ -251,7 +251,7 @@ variations there are a number of sample formats, as illustrated in the following
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with the flag `SFM::BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with the flag `SFM::F_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping
 formats via the &AudioLoop structure:

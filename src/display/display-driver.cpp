@@ -501,9 +501,9 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          GET_VDensity(display, &Info->VDensity);
 
          #ifdef __xwindows__
-            Info->AccelFlags = -1;
+            Info->AccelFlags = ACF(-1);
             if (glDGAAvailable IS TRUE) {
-               Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when X11DGA is active (it does not provide blitter syncing)
+               Info->AccelFlags &= ~ACF::VIDEO_BLIT; // Turn off video blitting when X11DGA is active (it does not provide blitter syncing)
             }
          #else
             Info->AccelFlags = ACF(-1);
@@ -548,13 +548,13 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
          Info->Width  = glRootWindow.width;
          Info->Height = glRootWindow.height;
-         Info->AccelFlags = -1;
+         Info->AccelFlags = ACF(-1);
          #warning TODO: Get display density
          Info->VDensity = 96;
          Info->HDensity = 96;
 
          if (glDGAAvailable IS TRUE) {
-            Info->AccelFlags &= ~ACF_VIDEO_BLIT; // Turn off video blitting when DGA is active
+            Info->AccelFlags &= ~ACF::VIDEO_BLIT; // Turn off video blitting when DGA is active
          }
 
          Info->BitsPerPixel = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
@@ -615,7 +615,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
             glDisplayInfo.Height        = ANativeWindow_getHeight(window);
             glDisplayInfo.BitsPerPixel  = 16;
             glDisplayInfo.BytesPerPixel = 2;
-            glDisplayInfo.AccelFlags    = ACF_VIDEO_BLIT;
+            glDisplayInfo.AccelFlags    = ACF::VIDEO_BLIT;
             glDisplayInfo.Flags         = SCR::MAXSIZE;  // Indicates that the width and height are the display's maximum.
 
             AConfiguration *config;
@@ -668,7 +668,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
          Info->Height        = 768;
          Info->BitsPerPixel  = 32;
          Info->BytesPerPixel = 4;
-         Info->AccelFlags = ACF_SOFTWARE_BLIT;
+         Info->AccelFlags = ACF::SOFTWARE_BLIT;
          Info->HDensity = 96;
          Info->VDensity = 96;
       }

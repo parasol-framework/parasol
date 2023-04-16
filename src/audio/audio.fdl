@@ -46,7 +46,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     U8_BIT_STEREO  = "3: 8-bit stereo unsigned sample.",
     S16_BIT_STEREO = "4: 16-bit stereo signed sample.",
     END            = "5: Private.",
-    BIG_ENDIAN     = "0x80000000: Combine this flag with any audio format to declare it as big endian."
+    F_BIG_ENDIAN   = "0x80000000: Combine this flag with any audio format to declare it as big endian."
   })
 
   enum("LOOP", { type='short', start=1, comment="Loop modes for the AudioLoop structure." },

@@ -215,7 +215,7 @@ static ERROR SEARCH_Next(objScintillaSearch *Self, struct ssNext *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, Self->Flags, Self->Start, Self->End);
+   log.branch("Text: '%.10s', Flags: $%.8x, Section %d to %d", Self->Text, LONG(Self->Flags), Self->Start, Self->End);
 
    LONG flags = (((Self->Flags & STF::CASE) != STF::NIL) ? SCFIND_MATCHCASE : 0) |
                 (((Self->Flags & STF::EXPRESSION) != STF::NIL) ? SCFIND_REGEXP : 0);
