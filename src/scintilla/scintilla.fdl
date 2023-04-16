@@ -71,7 +71,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
   })
 
   class("Scintilla", { src={ "class_scintilla.cxx" }, output="class_scintilla_def.cxx" }, [[
-    large(SEF) EventFlags      # SEF flags.  Indicates the events that will be reported.
+    int(SEF) EventFlags        # SEF flags.  Indicates the events that will be reported.
     obj(Font) Font             # Font to use for the text
     cstr Path                  # Source text file
     oid Surface                # The object that should be rendered to
