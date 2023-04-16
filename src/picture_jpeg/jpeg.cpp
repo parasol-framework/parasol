@@ -72,7 +72,7 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
    if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
    if (!bmp->BitsPerPixel)    bmp->BitsPerPixel   = 32;
 
-   if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
+   if (((Self->Flags & PCF::NO_PALETTE) != PCF::NIL) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
    }
 
@@ -87,8 +87,8 @@ static ERROR JPEG_Activate(extPicture *Self, APTR Void)
       return ERR_Query;
    }
 
-   if (Self->Flags & PCF_RESIZE_X) cinfo.output_width = bmp->Width;
-   if (Self->Flags & PCF_RESIZE_Y) cinfo.output_height = bmp->Height;
+   if ((Self->Flags & PCF::RESIZE_X) != PCF::NIL) cinfo.output_width = bmp->Width;
+   if ((Self->Flags & PCF::RESIZE_Y) != PCF::NIL) cinfo.output_height = bmp->Height;
 
    if (bmp->BitsPerPixel >= 24) {
       decompress_jpeg(Self, bmp, &cinfo);
@@ -170,7 +170,7 @@ static ERROR JPEG_Init(extPicture *Self, APTR Void)
 
    Self->get(FID_Location, &path);
 
-   if ((!path) or (Self->Flags & PCF_NEW)) {
+   if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
       // programmer is required to specify the dimensions and colours of the Bitmap so that we can initialise it.
 
@@ -189,7 +189,7 @@ static ERROR JPEG_Init(extPicture *Self, APTR Void)
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
-         if (!(Self->Flags & PCF_LAZY)) acActivate(Self);
+         if ((Self->Flags & PCF::LAZY) IS PCF::NIL) acActivate(Self);
          return ERR_Okay;
       }
       else log.msg("The file is not a JPEG picture.");

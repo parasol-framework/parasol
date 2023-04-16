@@ -774,7 +774,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
       fl::Width(Bitmap->Clip.Right - Bitmap->Clip.Left),
       fl::Height(Bitmap->Clip.Bottom - Bitmap->Clip.Top),
       fl::BitsPerPixel(32),
-      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Flags(PCF::FORCE_ALPHA_32|PCF::NEW),
       fl::Path(path),
       fl::ColourSpace(Bitmap->ColourSpace) };
 
@@ -794,7 +794,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
       fl::Width(Width),
       fl::Height(Height),
       fl::BitsPerPixel(BPP),
-      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Flags(PCF::FORCE_ALPHA_32|PCF::NEW),
       fl::Path(path)
    };
 

@@ -1622,7 +1622,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
          fl::Owner(Self->Scene->UID),
          fl::Path(Path),
          fl::BitsPerPixel(32),
-         fl::Flags(PCF_FORCE_ALPHA_32)))) error = ERR_CreateObject;
+         fl::Flags(PCF::FORCE_ALPHA_32)))) error = ERR_CreateObject;
    }
 
    if (file) {

@@ -39,7 +39,7 @@ static ERROR RSVG_Init(extPicture *Self, APTR Void)
 
    Self->get(FID_Path, &path);
 
-   if ((!path) or (Self->Flags & PCF_NEW)) {
+   if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       return ERR_NoSupport; // Creating new SVG's is not supported in this module.
    }
 
@@ -55,10 +55,10 @@ static ERROR RSVG_Init(extPicture *Self, APTR Void)
 
    log.trace("File \"%s\" is in SVG format.", path);
 
-   Self->Flags |= PCF_SCALABLE;
+   Self->Flags |= PCF::SCALABLE;
 
    if (!AllocMemory(sizeof(prvSVG), MEM::DATA, &Self->ChildPrivate)) {
-      if (Self->Flags & PCF_LAZY) return ERR_Okay;
+      if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR_Okay;
       return acActivate(Self);
    }
    else return ERR_AllocMemory;
@@ -91,7 +91,7 @@ static ERROR RSVG_Query(extPicture *Self, APTR Void)
    objVectorScene *scene;
    ERROR error;
    if ((!(error = prv->SVG->getPtr(FID_Scene, &scene))) and (scene)) {
-      if (Self->Flags & PCF_FORCE_ALPHA_32) {
+      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          bmp->Flags |= BMF::ALPHA_CHANNEL;
          bmp->BitsPerPixel  = 32;
          bmp->BytesPerPixel = 4;

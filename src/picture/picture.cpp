@@ -196,7 +196,7 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
    // If the picture supports an alpha channel, initialise an alpha based Mask object for the Picture.
 
    if (color_type & PNG_COLOR_MASK_ALPHA) {
-      if (Self->Flags & PCF_FORCE_ALPHA_32) {
+      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          // Upgrade the image to 32-bit and store the alpha channel in the alpha byte of the pixel data.
 
          bmp->BitsPerPixel  = 32;
@@ -207,7 +207,7 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
          if ((Self->Mask = objBitmap::create::integral(
                fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
                fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
-            Self->Flags |= PCF_MASK|PCF_ALPHA;
+            Self->Flags |= PCF::MASK|PCF::ALPHA;
          }
          else goto exit;
       }
@@ -281,7 +281,7 @@ static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
       else bmp->BitsPerPixel = 24;
    }
 
-   if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
+   if (((Self->Flags & PCF::NO_PALETTE) != PCF::NIL) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
    }
 
@@ -360,32 +360,32 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((!Self->prvPath) or (Self->Flags & PCF_NEW)) {
+   if ((!Self->prvPath) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no path has been specified, assume that the picture is being created from scratch (e.g. to save an
       // image to disk).  The programmer is required to specify the dimensions and colours of the Bitmap so that we can
       // initialise it.
 
-      if (Self->Flags & PCF_FORCE_ALPHA_32) {
+      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          Self->Bitmap->BitsPerPixel  = 32;
          Self->Bitmap->BytesPerPixel = 4;
          Self->Bitmap->Flags |= BMF::ALPHA_CHANNEL;
       }
 
-      Self->Flags &= ~(PCF_RESIZE_X|PCF_RESIZE_Y|PCF_LAZY|PCF_SCALABLE); // Turn off irrelevant flags that don't match these
+      Self->Flags &= ~(PCF::RESIZE_X|PCF::RESIZE_Y|PCF::LAZY|PCF::SCALABLE); // Turn off irrelevant flags that don't match these
 
       if (!Self->Bitmap->Width) Self->Bitmap->Width = Self->DisplayWidth;
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
          if (!InitObject(Self->Bitmap)) {
-            if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
+            if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
 
-            if (Self->Flags & (PCF_ALPHA|PCF_MASK)) {
+            if ((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) {
                if ((Self->Mask = objBitmap::create::integral(fl::Width(Self->Bitmap->Width),
                      fl::Height(Self->Bitmap->Height),
                      fl::Flags(BMF::MASK),
-                     fl::BitsPerPixel((Self->Flags & PCF_ALPHA) ? 8 : 1)))) {
-                  Self->Flags |= PCF_MASK;
+                     fl::BitsPerPixel(((Self->Flags & PCF::ALPHA) != PCF::NIL) ? 8 : 1)))) {
+                  Self->Flags |= PCF::MASK;
                }
                else return log.warning(ERR_Init);
             }
@@ -417,7 +417,7 @@ static ERROR PICTURE_Init(extPicture *Self, APTR Void)
 
             if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
                 (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
-               if (Self->Flags & PCF_LAZY) return ERR_Okay;
+               if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR_Okay;
                return acActivate(Self);
             }
             else return ERR_NoSupport;
@@ -500,7 +500,7 @@ static ERROR PICTURE_Query(extPicture *Self, APTR Void)
 
    if (!Self->DisplayWidth)  Self->DisplayWidth  = width;
    if (!Self->DisplayHeight) Self->DisplayHeight = height;
-   if (color_type & PNG_COLOR_MASK_ALPHA) Self->Flags |= PCF_ALPHA;
+   if (color_type & PNG_COLOR_MASK_ALPHA) Self->Flags |= PCF::ALPHA;
 
    if (!Bitmap->BitsPerPixel) {
       if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_PALETTE)) {
@@ -602,9 +602,9 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       goto exit;
    }
 
-   if ((Self->Flags & (PCF_ALPHA|PCF_MASK)) and (!Self->Mask)) {
+   if (((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) and (!Self->Mask)) {
       log.warning("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
-      Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
+      Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
    }
 
    if (bmp->AmtColours > 256) {
@@ -612,7 +612,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          log.trace("Saving as 32-bit alpha.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
-      else if (Self->Flags & PCF_ALPHA) {
+      else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          log.trace("Saving with alpha-mask.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
@@ -665,7 +665,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    // Write the image data to the PNG file
 
    if ((bmp->BitsPerPixel IS 8) or (bmp->BitsPerPixel IS 24)) {
-      if (Self->Flags & PCF_ALPHA) {
+      if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UBYTE *data = bmp->Data;
@@ -710,7 +710,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
             data += bmp->LineWidth;
          }
       }
-      else if (Self->Flags & PCF_ALPHA) {
+      else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          UBYTE row[bmp->Width * 4];
 
          row_pointers = row;
@@ -749,7 +749,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       }
    }
    else if (bmp->BytesPerPixel IS 2) {
-      if (Self->Flags & PCF_ALPHA) {
+      if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UWORD *data = (UWORD *)bmp->Data;
@@ -1207,7 +1207,7 @@ static ERROR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, i
    }
    if ((error = AllocMemory(rowsize, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR_Okay) return error;
 
-   if (Self->Flags & PCF_RESIZE) {
+   if ((Self->Flags & PCF::RESIZE) != PCF::NIL) {
       DOUBLE fx, fy;
       LONG isrcy, isrcx, ify;
 

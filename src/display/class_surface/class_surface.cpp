@@ -2177,7 +2177,7 @@ static ERROR SURFACE_SaveImage(extSurface *Self, struct acSaveImage *Args)
 
    objPicture *picture;
    if (!NewObject(class_id, &picture)) {
-      picture->setFlags(PCF_NEW);
+      picture->setFlags(PCF::NEW);
       picture->Bitmap->setWidth(Self->Width);
       picture->Bitmap->setHeight(Self->Height);
 

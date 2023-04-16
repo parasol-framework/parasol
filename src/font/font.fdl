@@ -34,7 +34,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2023", version=1.0 }, funct
     short Reserved2         # Do not use.
   ]])
 
-  const("FSS", { type="int", comment="Options for the StringSize() function." }, {
+  const("FSS", { comment="Options for the StringSize() function." }, {
     ALL  = "-1: Process all characters.",
     LINE = "-2: Terminate operation at the first line feed or word-wrap."
   })

@@ -161,7 +161,7 @@
       <name>Flags</name>
       <comment>Optional initialisation flags.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="PCF">INT</type>
+      <type lookup="PCF">PCF</type>
       <description>
 <types lookup="PCF"/>
       </description>
