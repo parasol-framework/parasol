@@ -25,20 +25,20 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
     "CIE_LCH: Polar L*CHab colour space defined by CIE 15.")
 
-  flags("EXF", { strict=true, comment="Optional flags for the ExposeSurface() function." },
+  flags("EXF", { comment="Optional flags for the ExposeSurface() function." },
     "CHILDREN: If set, all child surfaces that intersect with exposed region will be included in the expose operation.",
     "REDRAW_VOLATILE: Redraw every volatile object that intersects with the expose region, including internal volatile children.",
     "REDRAW_VOLATILE_OVERLAP: Only redraw volatile objects that obscure the expose region from a position outside of the target surface and its children.  Useful if no redrawing has occurred in the surface, but the surface has moved to a new position and the parents need to be redrawn.",
     "ABSOLUTE_COORDS|ABSOLUTE: The supplied coordinates for exposure are absolute (relative to the display).",
     "CURSOR_SPLIT: Internal flag used to reduce screen flickering when a software cursor is in use.")
 
-  flags("RT", { strict=true },
+  flags("RT", { },
      "ROOT: Can be used by window surfaces to identify themselves as a root layer.")
 
-  flags("LVF", { strict=true, comment="drwLockBitmap() result flags" },
+  flags("LVF", { comment="drwLockBitmap() result flags" },
      "EXPOSE_CHANGES")
 
-  flags("IRF", { strict=true, comment="Flags for RedrawSurface()." },
+  flags("IRF", { comment="Flags for RedrawSurface()." },
     "IGNORE_NV_CHILDREN: Do not draw child surfaces unless they are volatile.",
     "IGNORE_CHILDREN: Do not draw child surfaces (this includes volatile children).",
     "SINGLE_BITMAP: Only draw children and/or siblings when they share our bitmap space.",
@@ -46,11 +46,11 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).",
     "REDRAWS_CHILDREN: Private.")
 
-  flags("BDF", { strict=true, comment="CopySurface() flags" },
+  flags("BDF", { comment="CopySurface() flags" },
     "REDRAW: Redraw the surface before performing the copy operation.",
     "DITHER: Allow the use of dithering to improve image quality at a cost of speed.")
 
-  flags("DSF", { strict=true },
+  flags("DSF", { },
     "NO_DRAW: Drawing and exposures are disabled",
     "NO_EXPOSE: Drawing is enabled, exposures are disabled")
 
@@ -60,7 +60,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "ICON_TRAY: Create a borderless (custom) window with icon tray representation.",
     "NONE: Create a borderless (custom) window with no UI representation.")
 
-  flags("RNF", { strict=true, comment="Switches for the Surface class' Flags field." },
+  flags("RNF", { comment="Switches for the Surface class' Flags field." },
     "TRANSPARENT: Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.",
     "STICK_TO_BACK: Enable if the surface object must stick to the back of its container.",
     "STICK_TO_FRONT: Enable if the surface object must stick to the front of its container.",
@@ -99,16 +99,16 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "TRANSPARENT: Defines an RGB colour that is to be used as transparent."
   )
 
-  flags("PF", { strict=true, comment="Flags for the Pointer class." },
+  flags("PF", { comment="Flags for the Pointer class." },
      "UNUSED",  -- TBD
      "VISIBLE: Indicates that the pointer is currently visible.  Read-only.",
      "ANCHOR: Allow the pointer to be anchored.")
 
-  flags("ACF", { strict=true, comment="Acceleration flags for GetDisplayInfo()." },
+  flags("ACF", { comment="Acceleration flags for GetDisplayInfo()." },
      "VIDEO_BLIT: Video blitting is supported for this display.",
      "SOFTWARE_BLIT: Software blitting is used (or forced) for this display.")
 
-  flags("CRF", { strict=true, comment="Flags for the SetCursor() function." },
+  flags("CRF", { comment="Flags for the SetCursor() function." },
      "LMB: Release the cursor after the left mouse button is held and released.",
      "MMB: Release the cursor after the middle mouse button is held and released.",
      "RMB: Release the cursor after the right mouse button is held and released.",
@@ -117,7 +117,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
      "NO_BUTTONS: Set the cursor only on the condition that the user is not holding down any buttons.  ERR_NothingDone is returned if the user has a button held down."
   )
 
-  flags("BAF", { strict=true, comment="Instructions for basic graphics operations." },
+  flags("BAF", { comment="Instructions for basic graphics operations." },
     { DITHER = "0x1: Perform dithering if the colour formats differ between the source and destination." },
     { BLEND  = "0x2: Enable alpha blending to the destination if the source supports an alpha channel." },
     { FILL   = "0x1: For primitive operations such as DrawRectangle(), this will fill the shape with a solid colour or texture." },
@@ -125,7 +125,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { LINEAR = "0x8: Use linear interpolation to improve the quality of alpha blending." }
   )
 
-  flags("CSRF", { strict=true, comment="Flags for CopySurface()." },
+  flags("CSRF", { comment="Flags for CopySurface()." },
     "TRANSPARENT: Enable transparent copying, whereby colours matching the source's Colour field will be ignored.",
     "ALPHA: Enable alpha blending if the source is in 32-bit colour format with an alpha channel.",
     "TRANSLUCENT: Perform a translucent copy operation, using the strength value specified in the Surface Opacity field.",
@@ -137,7 +137,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
-  flags("BMF", { strict=true, comment="Bitmap flags" },
+  flags("BMF", { comment="Bitmap flags" },
     "BLANK_PALETTE: Forces a blank/black palette on initialisation.",
     "COMPRESSED: The bitmap data is compressed.",
     "NO_DATA: Do not allocate memory in the Data field on initialisation.",
@@ -161,7 +161,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "HORIZONTAL: Flip the bitmap from top to bottom.",
     "VERTICAL: Flip the bitmap from left to right.")
 
-  flags("SCR", { strict=true, comment="Display flags." },
+  flags("SCR", { comment="Display flags." },
     "VISIBLE: Set if the screen is on display.",
     "AUTO_SAVE: Saves settings to the global display state when the object is freed.",
     "BUFFER: Set if you would like a complementing buffer in video RAM.",
@@ -181,11 +181,11 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { READ_ONLY       = "MAXIMISE|CUSTOM_WINDOW|FLIPPABLE|GTF_ENABLED|DPMS_ENABLED|POWERSAVE|HOSTED|MAXSIZE|REFRESH|BIT_6|VISIBLE|NO_ACCELERATION" }
   )
 
-  flags("MON", { strict=true, comment="Flags for the Display class SetMonitor() method." },
+  flags("MON", { comment="Flags for the Display class SetMonitor() method." },
      "AUTO_DETECT: Monitor settings to be auto-detected on startup.",
      "BIT_6: The device is limited to 6-bit colour production in real terms.")
 
-  flags("GMF", { strict=true, comment="Flags for gamma operations." },
+  flags("GMF", { comment="Flags for gamma operations." },
      "SAVE: Save the provided settings permanently.")
 
   enum("DT", { type="int", start=1, comment="Flags for GetDisplayType()." },
@@ -204,7 +204,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
 
   -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
 
-  flags('CLIPTYPE', { strict=true, comment='Clipboard types' },
+  flags('CLIPTYPE', { comment='Clipboard types' },
     'DATA: Raw information that is uncategorised can be defined as a data clip.',
     'AUDIO: An audio clip that is recognised by the Sound class (such as wav\'s and mp3\'s).',
     'IMAGE: Images that are recognised by the Picture class may be stored as this type (such as jpeg\'s and png files).',
@@ -212,12 +212,12 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     'OBJECT: An object that has been deserialised into binary form.',
     'TEXT: Plain text files such as ASCII and UTF-8 must be identified through this clip type.')
 
-  flags('CPF', { strict=true, comment='Clipboard flags' },
+  flags('CPF', { comment='Clipboard flags' },
     'DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.',
     'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.',
     'HISTORY_BUFFER: Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.')
 
-  flags('CEF', { strict=true },
+  flags('CEF', { },
     'DELETE: Requests that the original file source is deleted if a successful paste operation takes place.',
     'EXTEND: Instead of replacing existing clipboard data, add the new data to the group.')
 

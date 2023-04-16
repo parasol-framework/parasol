@@ -1,7 +1,7 @@
 --$FLUID:Include
 
 module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, function()
-  flags("ADF", { strict=true, comment="Optional flags for the Audio object." },
+  flags("ADF", { comment="Optional flags for the Audio object." },
     "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
     "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
     "FILTER_HIGH: Enable a high level of output filtering to minimise distortion.",
@@ -10,7 +10,7 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     "AUTO_SAVE: Save configuration information on exit.",
     "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
 
-  flags("VCF", { strict=true, comment="Volume control flags" },
+  flags("VCF", { comment="Volume control flags" },
     { PLAYBACK = "0x00000001: The mixer supports audio output." },
     { CAPTURE  = "0x00000010: The mixer supports audio input." },
     { JOINED   = "0x00000100: The mixer channels are joined (e.g. left and right speakers cannot be adjusted separately)." },
@@ -19,19 +19,19 @@ module({ name="Audio", copyright="Paul Manias © 2002-2023", version=1.0 }, func
     { SYNC     = "0x00100000: The mixer is synchronised." }
   )
 
-  flags("CHF", { strict=true, comment="Optional flags for the AudioChannel structure." },
+  flags("CHF", { comment="Optional flags for the AudioChannel structure." },
     "MUTE: Channel is muted.",
     "BACKWARD: Play channel backwards.",
     "VOL_RAMP: Volume ramping is enabled.",
     "CHANGED: Sample change")
 
-  flags("SVF", { strict=true, comment="Flags for the SetVolume() method." },
+  flags("SVF", { comment="Flags for the SetVolume() method." },
     { MUTE    = "0x00000100: Mute the audio for this channel." },
     { UNMUTE  = "0x00001000: Unmute the audio for this channel." },
     { CAPTURE = "0x00010000: Set input, not output." }
   )
 
-  flags("SDF", { strict=true, type='int', comment="Sound flags" },
+  flags("SDF", { type='int', comment="Sound flags" },
     "LOOP: Enables sample looping. The LoopStart and LoopEnd fields determine where the looping area lies within the sample data.",
     "NEW: Create the sample from scratch (e.g. for audio recording purposes).",
     "STEREO: Indicates that the sound has multiple audio channels.",

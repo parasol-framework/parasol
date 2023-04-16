@@ -9,11 +9,11 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     UPDATE      = "-3: As for XMS_UPDATE_ONLY, but if the attribute does not exist, it will be created."
   })
 
-  flags("XSF", { strict=true, comment="Options for the Sort method." },
+  flags("XSF", { comment="Options for the Sort method." },
     "DESC: Sort in descending order.",
     "CHECK_SORT: Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the Attrib field.")
 
-  flags("XMF", { strict=true, comment="Standard flags for the XML class." },
+  flags("XMF", { comment="Standard flags for the XML class." },
     "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.",
     "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
     "STRIP_CONTENT: Strip all content from incoming XML data.",
@@ -36,7 +36,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "CHILD_END: Insert as the last child of the target.",
     "END: Private")
 
-  flags("XTF", { strict=true, comment="Standard flags for XMLTag." },
+  flags("XTF", { comment="Standard flags for XMLTag." },
     "CDATA: Tag represents CDATA.",
     "INSTRUCTION: Tag represents an instruction of the format <?xml?>.",
     "NOTATION: Tag represents a notation of the format <!XML>.")

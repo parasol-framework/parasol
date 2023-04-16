@@ -357,7 +357,7 @@
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and 100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following flags being automatically adjusted in the audio object: <code>ADF_FILTER_LOW</code>, <code>ADF_FILTER_HIGH</code> and <code>ADF_OVER_SAMPLING</code>.</p>
+<p>Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and 100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following flags being automatically adjusted in the audio object: <code>ADF::FILTER_LOW</code>, <code>ADF::FILTER_HIGH</code> and <code>ADF::OVER_SAMPLING</code>.</p>
 <p>In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is of low quality.</p>
       </description>
     </field>

@@ -82,7 +82,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
     VERSION_UNSUPPORTED  = 505
   })
 
-  flags("HTF", { strict=true, comment="HTTP flags" },
+  flags("HTF", { comment="HTTP flags" },
     "RESUME: Enables resuming when downloading content.  Only applies when a file is being targeted and the file already exists.",
     "MESSAGE: When activating child objects, send delayed messages to postpone execution rather than making direct calls.",
     "MOVED: Read-only.  Indicates that the HTTP source was moved (HTS_MovedPermanently).",

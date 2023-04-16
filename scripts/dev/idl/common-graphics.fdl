@@ -28,7 +28,7 @@ enum("PTC", { type="int", start=0, comment="Predefined cursor styles" },
     "DRAGGABLE: Used to indicate that a surface or object can be dragged by the user.",
     "END") -- Any new cursor images must be added to the CursorLookup array in pointer_class.c
 
-flags("DMF", { bits=32 },
+flags("DMF", { weak=true, bits=32 },
     "RELATIVE_X: The X field is relative to this object's parent.",
     "RELATIVE_Y: The Y field is relative to this object's parent.",
     "FIXED_X: The X field is a fixed coordinate.",
@@ -81,17 +81,17 @@ enum("DRL", { type="int", start=0, comment="Compass directions." },
     "SOUTH_EAST",
     "SOUTH_WEST")
 
-flags("MOVE", { strict=true, comment="Generic flags for controlling movement." },
+flags("MOVE", { comment="Generic flags for controlling movement." },
     "DOWN",
     "UP",
     "LEFT",
     "RIGHT",
     { ALL = "DOWN|UP|LEFT|RIGHT" })
 
-flags("EDGE", { strict=true, comment="Edge flags" },
+flags("EDGE", { comment="Edge flags" },
     "TOP", "LEFT", "RIGHT", "BOTTOM", "TOP_LEFT", "TOP_RIGHT", "BOTTOM_LEFT", "BOTTOM_RIGHT", { ALL = 0xff })
 
-flags("ALIGN", { strict=true, comment="Universal values for alignment of graphics and text" },
+flags("ALIGN", { comment="Universal values for alignment of graphics and text" },
     "LEFT: Align to left",
     "RIGHT: Align to right",
     "HORIZONTAL: Align to horizontal center",
@@ -101,7 +101,7 @@ flags("ALIGN", { strict=true, comment="Universal values for alignment of graphic
     { CENTER = "HORIZONTAL|VERTICAL" },
     { MIDDLE = "HORIZONTAL|VERTICAL" })
 
-flags("LAYOUT", { strict=true, comment="Universal values for alignment of graphic layouts in documents." },
+flags("LAYOUT", { comment="Universal values for alignment of graphic layouts in documents." },
     "TIGHT: Text wraps to the shape of the image (alpha blended/masked images only)",
     "LEFT: The text boundary is extended to the left edge of the page.",
     "RIGHT: The text boundary is extended to the right edge of the page.",

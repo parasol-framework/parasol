@@ -392,7 +392,7 @@ function flags(Prefix, Options, ...)
    end
 
    local function outputFlagDef(Options, Prefix, flag_name, val)
-      if (Options.strict) then
+      if (not Options.weak) then
          if (Options.bits == 16) then
             table.insert(sortedFlags, { value = val, define = string.format('   %s = 0x%.4x,', flag_name, val) } )
          else
@@ -408,7 +408,7 @@ function flags(Prefix, Options, ...)
       end
    end
 
-   if (Options.strict) then
+   if (not Options.weak) then
       local type_size = 'ULONG'
       if (Options.bits == 64) then
          type_size = 'LARGE'
@@ -479,7 +479,7 @@ function flags(Prefix, Options, ...)
       table.insert(out, flag.define)
    end
 
-   if (Options.strict) then
+   if (not Options.weak) then
       table.insert(out, '};')
       table.insert(out, '')
       table.insert(out, 'DEFINE_ENUM_FLAG_OPERATORS(' .. Prefix .. ')')
@@ -496,7 +496,7 @@ function flags(Prefix, Options, ...)
       restrict=glRestrict
    }
 
-   if (Options.strict) then -- Promote strong-typing to other C++ definitions
+   if (not Options.weak) then -- Promote strong-typing to other C++ definitions
       glCustomTypes[Prefix].type = 'int'
    end
 end

@@ -33,7 +33,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
     REBOL      = "71: Rebol"
   })
 
-  flags("SCIF", { strict=true, comment="Optional flags." },
+  flags("SCIF", { comment="Optional flags." },
      "DISABLED: Read-only.  This flag is set if the Scintilla object has been deactivated with the Disable action.",
      "DETECT_LEXER: Automatic lexer detection will occur on initialisation and at any time that a source file is loaded.",
      "EDIT: Must be defined if the document is to be editable via user input.",
@@ -42,13 +42,13 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
    -- AREA_SELECTED
    -- SYS_KEYS Support CTRL-C, CTRL-V etc?
 
-  flags("SEF", { strict=true, comment="Flags for EventCallback and EventFlags" },
+  flags("SEF", { comment="Flags for EventCallback and EventFlags" },
      "MODIFIED: The content has changed to a modified state, i.e. the user has made an edit.  The modified state will remain until the content is saved.",
      "CURSOR_POS: The cursor position has changed.",
      "FAIL_RO: User attempt to edit read-only content.",
      "NEW_CHAR: At least one new character has been inserted.")
 
-  flags("STF", { strict=true, comment="Scintilla search flags." },
+  flags("STF", { comment="Scintilla search flags." },
     "CASE: Case sensitive search.",
     "MOVE_CURSOR: The cursor is moved to the discovered string.  If not set, the string is auto-selected.",
     "SCAN_SELECTION: Limit search to within the user's current selection.",

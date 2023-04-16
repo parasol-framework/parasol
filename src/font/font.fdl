@@ -7,7 +7,7 @@ module({ name="Font", copyright="Paul Manias © 1998-2023", version=1.0 }, funct
 
   c_include("<parasol/modules/display.h>")
 
-  flags("FTF", { strict=true, comment="Font flags" },
+  flags("FTF", { comment="Font flags" },
     "PREFER_SCALED: A scaled font is preferred over the equivalent fixed size font.",
     "PREFER_FIXED: A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.",
     "REQUIRE_SCALED: A scaled font is required and not a fixed size font.",
