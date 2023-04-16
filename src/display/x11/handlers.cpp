@@ -29,9 +29,9 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
-     XNextEvent(XDisplay, &xevent);
-     //log.trace("Event %d", xevent.type);
-     switch (xevent.type) {
+      XNextEvent(XDisplay, &xevent);
+      //log.trace("Event %d", xevent.type);
+      switch (xevent.type) {
          case ButtonPress:      handle_button_press(&xevent); break;
          case ButtonRelease:    handle_button_release(&xevent); break;
          case ConfigureNotify:  handle_configure_notify(&xevent.xconfigure); break;
