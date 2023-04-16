@@ -201,7 +201,7 @@ Charter:120%::255,128,255
       <name>Flags</name>
       <comment>Optional flags.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="FTF">INT</type>
+      <type lookup="FTF">FTF</type>
       <description>
 <types lookup="FTF"/>
       </description>

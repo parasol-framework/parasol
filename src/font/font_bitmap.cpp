@@ -75,7 +75,7 @@ public:
    FontCharacter Chars[256];
    std::string Path;
    WORD OpenCount;
-   LONG StyleFlags;
+   FTF StyleFlags;
    ERROR Result;
 
    BitmapCache(winfnt_header_fields &pFace, CSTRING pStyle, CSTRING pPath, objFile *pFile, winFont &pWinFont) {
@@ -89,10 +89,10 @@ public:
       Result    = ERR_Okay;
       Header    = pFace;
 
-      if (!StrMatch("Bold", pStyle)) StyleFlags = FTF_BOLD;
-      else if (!StrMatch("Italic", pStyle)) StyleFlags = FTF_ITALIC;
-      else if (!StrMatch("Bold Italic", pStyle)) StyleFlags = FTF_BOLD|FTF_ITALIC;
-      else StyleFlags = 0;
+      if (!StrMatch("Bold", pStyle)) StyleFlags = FTF::BOLD;
+      else if (!StrMatch("Italic", pStyle)) StyleFlags = FTF::ITALIC;
+      else if (!StrMatch("Bold Italic", pStyle)) StyleFlags = FTF::BOLD|FTF::ITALIC;
+      else StyleFlags = FTF::NIL;
 
       Path = pPath;
 
@@ -163,7 +163,7 @@ public:
       }
       else Result = log.warning(ERR_AllocMemory);
 
-      if ((StyleFlags & FTF_BOLD) and (Header.weight < 600)) {
+      if (((StyleFlags & FTF::BOLD) != FTF::NIL) and (Header.weight < 600)) {
          log.msg("Converting base font graphics data to bold.");
 
          LONG size = 0;
@@ -204,7 +204,7 @@ public:
          else Result = log.warning(ERR_AllocMemory);
       }
 
-      if ((StyleFlags & FTF_ITALIC) and (!Header.italic)) {
+      if (((StyleFlags & FTF::ITALIC) != FTF::NIL) and (!Header.italic)) {
          log.msg("Converting base font graphics data to italic.");
 
          LONG size = 0;
@@ -303,7 +303,7 @@ public:
    ~BitmapCache() {
       if (OpenCount) {
          pf::Log log(__FUNCTION__);
-         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, StyleFlags, OpenCount);
+         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, LONG(StyleFlags), OpenCount);
       }
       if (mData) { FreeResource(mData); mData = NULL; }
       if (mOutline) { FreeResource(mOutline); mOutline = NULL; }
@@ -316,7 +316,7 @@ static APTR glCacheTimer = NULL;
 //********************************************************************************************************************
 // Assumes a cache lock is held on being called.
 
-static BitmapCache * check_bitmap_cache(extFont *Self, LONG Style)
+static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
 {
    pf::Log log(__FUNCTION__);
 

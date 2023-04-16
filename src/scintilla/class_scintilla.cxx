@@ -119,7 +119,7 @@ extern OBJECTPTR clScintillaSearch;
 struct styledef {
    UBYTE Index;
    ULONG Colour;
-   ULONG FontStyle;
+   FTF FontStyle;
 };
 
 // This is bad - the fonts should be stored in the class.
@@ -1305,7 +1305,7 @@ static ERROR SCINTILLA_SetFont(extScintilla *Self, struct sciSetFont *Args)
    log.branch("%s", Args->Face);
 
    if ((Self->Font = objFont::create::integral(fl::Face(Args->Face)))) {
-      Self->Flags &= ~FTF_KERNING;
+      Self->Font->Flags = Self->Font->Flags & (~FTF::KERNING);
       create_styled_fonts(Self);
       Self->API->panFontChanged(Self->Font, Self->BoldFont, Self->ItalicFont, Self->BIFont);
       calc_longest_line(Self);
@@ -2106,7 +2106,7 @@ static void create_styled_fonts(extScintilla *Self)
 {
    pf::Log log;
 
-   log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, Self->Font->Flags);
+   log.msg("create_styled_fonts(%s,%.2f,$%.8x)", Self->Font->Face, Self->Font->Point, LONG(Self->Font->Flags));
 
    if (!Self->Font) return;
 
@@ -2119,7 +2119,7 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold")))) {
-      if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+      if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 
    if ((Self->ItalicFont = objFont::create::integral(
@@ -2127,7 +2127,7 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("italics")))) {
-      if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+      if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 
    if ((Self->BIFont = objFont::create::integral(
@@ -2135,7 +2135,7 @@ static void create_styled_fonts(extScintilla *Self)
          fl::Point(Self->Font->Point),
          fl::Flags(Self->Font->Flags),
          fl::Style("bold italics")))) {
-       if (!(Self->Font->Flags & FTF_KERNING)) Self->BoldFont->Flags &= ~FTF_KERNING;
+       if ((Self->Font->Flags & FTF::KERNING) IS FTF::NIL) Self->BoldFont->Flags &= ~FTF::KERNING;
    }
 }
 

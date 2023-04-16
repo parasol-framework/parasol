@@ -121,12 +121,12 @@
   <function>
     <name>SelectFont</name>
     <comment>Searches for a 'best fitting' font file based on select criteria.</comment>
-    <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path)</prototype>
+    <prototype>ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path)</prototype>
     <input>
       <param type="CSTRING" name="Name">The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.</param>
       <param type="CSTRING" name="Style">The required style, e.g. Bold or Italic.  Using camel-case for each word is compulsory.</param>
       <param type="LONG" name="Point">Preferred point size.</param>
-      <param type="LONG" name="Flags" lookup="FTF">Optional flags.</param>
+      <param type="FTF" name="Flags" lookup="FTF">Optional flags.</param>
       <param type="CSTRING *" name="Path">The location of the best-matching font file is returned in this parameter.</param>
     </input>
     <description>

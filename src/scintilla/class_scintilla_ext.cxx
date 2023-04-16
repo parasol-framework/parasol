@@ -26,33 +26,33 @@
 #define COL_RED            0xb00000
 
 static const struct styledef std_styles[] = {
-   { STYLE_DEFAULT,    COL_BLACK, 0 },
-   { STYLE_LINENUMBER, COL_BLACK, 0 },
-   { STYLE_BRACELIGHT, COL_BRIGHTRED, FTF_BOLD },
-   { STYLE_BRACEBAD,   COL_BRIGHTRED, FTF_BOLD|FTF_ITALIC }  // Somebody set us up the bomb
+   { STYLE_DEFAULT,    COL_BLACK, FTF::NIL },
+   { STYLE_LINENUMBER, COL_BLACK, FTF::NIL },
+   { STYLE_BRACELIGHT, COL_BRIGHTRED, FTF::BOLD },
+   { STYLE_BRACEBAD,   COL_BRIGHTRED, FTF::BOLD|FTF::ITALIC }  // Somebody set us up the bomb
 };
 
 static const struct styledef c_styles[] = {
-   { SCE_C_DEFAULT,                COL_BLACK, 0 },          // What you say?
-   { SCE_C_COMMENT,                COL_GREY, 0 },           // Standard C comment
-   { SCE_C_COMMENTLINE,            COL_GREY, 0 },           // // style comment
-   { SCE_C_COMMENTDOC,             COL_LIGHTSLATEGREY, 0 }, // Double-star comments
-   { SCE_C_NUMBER,                 COL_BLUE, 0 },           // Any number or float
-   { SCE_C_WORD,                   COL_FIREBRICK, 0 },
-   { SCE_C_STRING,                 COL_RED, 0 },          // Strings "..."
-   { SCE_C_CHARACTER,              COL_RED, 0 },          // Characters ' '
-   { SCE_C_UUID,                   COL_BRIGHTRED, 0 },    // \n, \r
-   { SCE_C_PREPROCESSOR,           COL_FORESTGREEN, 0 },  // #include, #define etc
-   { SCE_C_OPERATOR,               COL_BLACK, 0 },        // + - *
-   { SCE_C_IDENTIFIER,             COL_BLACK, 0 },        // The default colour
-   { SCE_C_STRINGEOL,              COL_BRIGHTRED, 0 },
-   { SCE_C_VERBATIM,               COL_BRIGHTRED, 0 },
-   { SCE_C_REGEX,                  COL_BLUE, 0 },
-   { SCE_C_COMMENTLINEDOC,         COL_GREY, 0 }, // // style comment
-   { SCE_C_WORD2,                  COL_BRIGHTRED, 0 },
-   { SCE_C_COMMENTDOCKEYWORD,      COL_GREY, 0 },
-   { SCE_C_COMMENTDOCKEYWORDERROR, COL_GREY, 0 },
-   { SCE_C_GLOBALCLASS,            COL_RED, 0 }
+   { SCE_C_DEFAULT,                COL_BLACK, FTF::NIL },          // What you say?
+   { SCE_C_COMMENT,                COL_GREY, FTF::NIL },           // Standard C comment
+   { SCE_C_COMMENTLINE,            COL_GREY, FTF::NIL },           // // style comment
+   { SCE_C_COMMENTDOC,             COL_LIGHTSLATEGREY, FTF::NIL }, // Double-star comments
+   { SCE_C_NUMBER,                 COL_BLUE, FTF::NIL },           // Any number or float
+   { SCE_C_WORD,                   COL_FIREBRICK, FTF::NIL },
+   { SCE_C_STRING,                 COL_RED, FTF::NIL },          // Strings "..."
+   { SCE_C_CHARACTER,              COL_RED, FTF::NIL },          // Characters ' '
+   { SCE_C_UUID,                   COL_BRIGHTRED, FTF::NIL },    // \n, \r
+   { SCE_C_PREPROCESSOR,           COL_FORESTGREEN, FTF::NIL },  // #include, #define etc
+   { SCE_C_OPERATOR,               COL_BLACK, FTF::NIL },        // + - *
+   { SCE_C_IDENTIFIER,             COL_BLACK, FTF::NIL },        // The default colour
+   { SCE_C_STRINGEOL,              COL_BRIGHTRED, FTF::NIL },
+   { SCE_C_VERBATIM,               COL_BRIGHTRED, FTF::NIL },
+   { SCE_C_REGEX,                  COL_BLUE, FTF::NIL },
+   { SCE_C_COMMENTLINEDOC,         COL_GREY, FTF::NIL }, // // style comment
+   { SCE_C_WORD2,                  COL_BRIGHTRED, FTF::NIL },
+   { SCE_C_COMMENTDOCKEYWORD,      COL_GREY, FTF::NIL },
+   { SCE_C_COMMENTDOCKEYWORDERROR, COL_GREY, FTF::NIL },
+   { SCE_C_GLOBALCLASS,            COL_RED, FTF::NIL }
 };
 
 void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
@@ -72,8 +72,8 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
          WndProc(SCI_STYLESETBACK, index, SCICOLOUR(255, 255, 200));
       }
 
-      if (Def[i].FontStyle & FTF_BOLD) WndProc(SCI_STYLESETBOLD, index, 1);
-      if (Def[i].FontStyle & FTF_ITALIC) WndProc(SCI_STYLESETITALIC, index, 1);
+      if ((Def[i].FontStyle & FTF::BOLD) != FTF::NIL) WndProc(SCI_STYLESETBOLD, index, 1);
+      if ((Def[i].FontStyle & FTF::ITALIC) != FTF::NIL) WndProc(SCI_STYLESETITALIC, index, 1);
    }
 
    WndProc(SCI_STYLESETBACK, STYLE_DEFAULT, (long int)SCICOLOUR(scintilla->BkgdColour.Red, scintilla->BkgdColour.Green, scintilla->BkgdColour.Blue));

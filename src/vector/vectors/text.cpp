@@ -1134,7 +1134,7 @@ static void generate_text(extVectorText *Vector)
    auto &lines = Vector->txLines;
    if (lines.empty()) return;
 
-   if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
+   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
       generate_text_bitmap(Vector);
       return;
    }
@@ -1748,7 +1748,7 @@ extern void get_text_xy(extVectorText *Vector)
    if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
    else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;
 
-   if (!(Vector->txFont->Flags & FTF_SCALABLE)) {
+   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
       // Bitmap fonts need an adjustment because the Y coordinate corresponds to the base-line.
       y -= Vector->txFont->Height + Vector->txFont->Leading;
    }
@@ -1796,7 +1796,7 @@ static void reset_font(extVectorText *Vector)
          else font->setStyle(Vector->txFontStyle);
 
          CSTRING location;
-         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF_PREFER_SCALED, &location)) {
+         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF::PREFER_SCALED, &location)) {
             font->setPath(location);
             FreeResource(location);
          }

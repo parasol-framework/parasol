@@ -14,21 +14,26 @@ class objFont;
 
 // Font flags
 
-#define FTF_PREFER_SCALED 0x00000001
-#define FTF_PREFER_FIXED 0x00000002
-#define FTF_REQUIRE_SCALED 0x00000004
-#define FTF_REQUIRE_FIXED 0x00000008
-#define FTF_ANTIALIAS 0x00000010
-#define FTF_SMOOTH 0x00000010
-#define FTF_HEAVY_LINE 0x00000020
-#define FTF_QUICK_ALIAS 0x00000040
-#define FTF_CHAR_CLIP 0x00000080
-#define FTF_BASE_LINE 0x00000100
-#define FTF_ALLOW_SCALE 0x00000200
-#define FTF_SCALABLE 0x10000000
-#define FTF_BOLD 0x20000000
-#define FTF_ITALIC 0x40000000
-#define FTF_KERNING 0x80000000
+enum class FTF : ULONG {
+   NIL = 0,
+   PREFER_SCALED = 0x00000001,
+   PREFER_FIXED = 0x00000002,
+   REQUIRE_SCALED = 0x00000004,
+   REQUIRE_FIXED = 0x00000008,
+   ANTIALIAS = 0x00000010,
+   SMOOTH = 0x00000010,
+   HEAVY_LINE = 0x00000020,
+   QUICK_ALIAS = 0x00000040,
+   CHAR_CLIP = 0x00000080,
+   BASE_LINE = 0x00000100,
+   ALLOW_SCALE = 0x00000200,
+   SCALABLE = 0x10000000,
+   BOLD = 0x20000000,
+   ITALIC = 0x40000000,
+   KERNING = 0x80000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FTF)
 
 struct FontList {
    struct FontList * Next;    // Pointer to the next entry in the list.
@@ -70,7 +75,7 @@ class objFont : public BaseClass {
    struct RGB8 Outline;                                  // Defines the outline colour around a font.
    struct RGB8 Underline;                                // Enables font underlining when set.
    struct RGB8 Colour;                                   // The font colour in RGB format.
-   LONG   Flags;                                         // Optional flags.
+   FTF    Flags;                                         // Optional flags.
    LONG   Gutter;                                        // The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
    LONG   GlyphSpacing;                                  // The amount of spacing between each character.
    LONG   LineSpacing;                                   // The amount of spacing between each line.
@@ -174,7 +179,7 @@ class objFont : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFlags(const LONG Value) {
+   inline ERROR setFlags(const FTF Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -313,7 +318,7 @@ struct FontBase {
    APTR (*_FreetypeHandle)(void);
    ERROR (*_InstallFont)(CSTRING Files);
    ERROR (*_RemoveFont)(CSTRING Name);
-   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path);
+   ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
 };
 
 #ifndef PRV_FONT_MODULE
@@ -326,6 +331,6 @@ inline DOUBLE fntSetDefaultSize(DOUBLE Size) { return FontBase->_SetDefaultSize(
 inline APTR fntFreetypeHandle(void) { return FontBase->_FreetypeHandle(); }
 inline ERROR fntInstallFont(CSTRING Files) { return FontBase->_InstallFont(Files); }
 inline ERROR fntRemoveFont(CSTRING Name) { return FontBase->_RemoveFont(Name); }
-inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING * Path) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path); }
+inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path); }
 #endif
 
