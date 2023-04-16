@@ -49,12 +49,12 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             auto gradient = (objVectorGradient *)def;
             std::string gradient_type;
             switch(gradient->Type) {
-               case VGT_RADIAL:  gradient_type = "<radialGradient/>"; break;
-               case VGT_CONIC:   gradient_type = "<conicGradient/>"; break;
-               case VGT_DIAMOND: gradient_type = "<diamondGradient/>"; break;
-               case VGT_CONTOUR: gradient_type = "<contourGradient/>"; break;
-               case VGT_LINEAR:
-               default:          gradient_type = "<linearGradient/>"; break;
+               case VGT::RADIAL:  gradient_type = "<radialGradient/>"; break;
+               case VGT::CONIC:   gradient_type = "<conicGradient/>"; break;
+               case VGT::DIAMOND: gradient_type = "<diamondGradient/>"; break;
+               case VGT::CONTOUR: gradient_type = "<contourGradient/>"; break;
+               case VGT::LINEAR:
+               default:           gradient_type = "<linearGradient/>"; break;
             }
             XMLTag *tag;
             error = xmlInsertXML(XML, def_index, XMI::CHILD_END, gradient_type, &tag);
@@ -80,7 +80,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
 
-            if ((gradient->Type IS VGT_LINEAR) or (gradient->Type IS VGT_CONTOUR)) {
+            if ((gradient->Type IS VGT::LINEAR) or (gradient->Type IS VGT::CONTOUR)) {
                if (!error) {
                   xmlNewAttrib(tag, "x1", std::to_string(gradient->X1));
                   xmlNewAttrib(tag, "y1", std::to_string(gradient->Y1));
@@ -88,7 +88,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                   xmlNewAttrib(tag, "y2", std::to_string(gradient->Y2));
                }
             }
-            else if ((gradient->Type IS VGT_RADIAL) or (gradient->Type IS VGT_DIAMOND) or (gradient->Type IS VGT_CONIC)) {
+            else if ((gradient->Type IS VGT::RADIAL) or (gradient->Type IS VGT::DIAMOND) or (gradient->Type IS VGT::CONIC)) {
                if ((!error) and (gradient->Flags & (VGF_FIXED_CX|VGF_RELATIVE_CX)))
                   set_dimension(tag, "cx", gradient->CenterX, gradient->Flags & VGF_RELATIVE_CX);
 

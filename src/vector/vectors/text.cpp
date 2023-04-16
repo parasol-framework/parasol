@@ -2372,17 +2372,17 @@ static const FieldDef clTextAlign[] = {
 };
 
 static const FieldDef clTextStretch[] = {
-   { "Normal",         VTS_NORMAL },
-   { "Wider",          VTS_WIDER },
-   { "Narrower",       VTS_NARROWER },
-   { "UltraCondensed", VTS_ULTRA_CONDENSED },
-   { "ExtraCondensed", VTS_EXTRA_CONDENSED },
-   { "Condensed",      VTS_CONDENSED },
-   { "SemiCondensed",  VTS_SEMI_CONDENSED },
-   { "Expanded",       VTS_EXPANDED },
-   { "SemiExpanded",   VTS_SEMI_EXPANDED },
-   { "ExtraExpanded",  VTS_EXTRA_EXPANDED },
-   { "UltraExpanded",  VTS_ULTRA_EXPANDED },
+   { "Normal",         VTS::NORMAL },
+   { "Wider",          VTS::WIDER },
+   { "Narrower",       VTS::NARROWER },
+   { "UltraCondensed", VTS::ULTRA_CONDENSED },
+   { "ExtraCondensed", VTS::EXTRA_CONDENSED },
+   { "Condensed",      VTS::CONDENSED },
+   { "SemiCondensed",  VTS::SEMI_CONDENSED },
+   { "Expanded",       VTS::EXPANDED },
+   { "SemiExpanded",   VTS::SEMI_EXPANDED },
+   { "ExtraExpanded",  VTS::EXTRA_EXPANDED },
+   { "UltraExpanded",  VTS::ULTRA_EXPANDED },
    { NULL, 0 }
 };
 

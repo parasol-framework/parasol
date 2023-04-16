@@ -170,7 +170,7 @@ static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
       return ERR_OutOfRange;
    }
 
-   if ((Self->Type IS VGT_CONTOUR) and (Self->Units IS VUNIT::USERSPACE)) {
+   if ((Self->Type IS VGT::CONTOUR) and (Self->Units IS VUNIT::USERSPACE)) {
       log.warning("Contour gradients are not compatible with Units.USERSPACE.");
       Self->Units = VUNIT::BOUNDING_BOX;
    }
@@ -183,7 +183,7 @@ static ERROR VECTORGRADIENT_Init(extVectorGradient *Self, APTR Void)
 static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
 {
    Self->SpreadMethod = VSPREAD::PAD;
-   Self->Type    = VGT_LINEAR;
+   Self->Type    = VGT::LINEAR;
    Self->Units   = VUNIT::BOUNDING_BOX;
    // SVG requires that these are all set to 50%
    Self->CenterX = 0.5;

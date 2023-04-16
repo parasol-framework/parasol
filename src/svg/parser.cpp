@@ -813,30 +813,30 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
             switch (StrHash(val)) {
                // SVG Operator types
                case SVF_NORMAL:
-               case SVF_OVER: fx->set(FID_Operator, OP_OVER); break;
-               case SVF_IN:   fx->set(FID_Operator, OP_IN); break;
-               case SVF_OUT:  fx->set(FID_Operator, OP_OUT); break;
-               case SVF_ATOP: fx->set(FID_Operator, OP_ATOP); break;
-               case SVF_XOR:  fx->set(FID_Operator, OP_XOR); break;
-               case SVF_ARITHMETIC: fx->set(FID_Operator, OP_ARITHMETIC); break;
+               case SVF_OVER: fx->set(FID_Operator, LONG(OP::OVER)); break;
+               case SVF_IN:   fx->set(FID_Operator, LONG(OP::IN)); break;
+               case SVF_OUT:  fx->set(FID_Operator, LONG(OP::OUT)); break;
+               case SVF_ATOP: fx->set(FID_Operator, LONG(OP::ATOP)); break;
+               case SVF_XOR:  fx->set(FID_Operator, LONG(OP::XOR)); break;
+               case SVF_ARITHMETIC: fx->set(FID_Operator, LONG(OP::ARITHMETIC)); break;
                // SVG Mode types
-               case SVF_SCREEN:   fx->set(FID_Operator, OP_SCREEN); break;
-               case SVF_MULTIPLY: fx->set(FID_Operator, OP_MULTIPLY); break;
-               case SVF_LIGHTEN:  fx->set(FID_Operator, OP_LIGHTEN); break;
-               case SVF_DARKEN:   fx->set(FID_Operator, OP_DARKEN); break;
+               case SVF_SCREEN:   fx->set(FID_Operator, LONG(OP::SCREEN)); break;
+               case SVF_MULTIPLY: fx->set(FID_Operator, LONG(OP::MULTIPLY)); break;
+               case SVF_LIGHTEN:  fx->set(FID_Operator, LONG(OP::LIGHTEN)); break;
+               case SVF_DARKEN:   fx->set(FID_Operator, LONG(OP::DARKEN)); break;
                // Parasol modes
-               case SVF_INVERTRGB:  fx->set(FID_Operator, OP_INVERT_RGB); break;
-               case SVF_INVERT:     fx->set(FID_Operator, OP_INVERT); break;
-               case SVF_CONTRAST:   fx->set(FID_Operator, OP_CONTRAST); break;
-               case SVF_DODGE:      fx->set(FID_Operator, OP_DODGE); break;
-               case SVF_BURN:       fx->set(FID_Operator, OP_BURN); break;
-               case SVF_HARDLIGHT:  fx->set(FID_Operator, OP_HARD_LIGHT); break;
-               case SVF_SOFTLIGHT:  fx->set(FID_Operator, OP_SOFT_LIGHT); break;
-               case SVF_DIFFERENCE: fx->set(FID_Operator, OP_DIFFERENCE); break;
-               case SVF_EXCLUSION:  fx->set(FID_Operator, OP_EXCLUSION); break;
-               case SVF_PLUS:       fx->set(FID_Operator, OP_PLUS); break;
-               case SVF_MINUS:      fx->set(FID_Operator, OP_MINUS); break;
-               case SVF_OVERLAY:    fx->set(FID_Operator, OP_OVERLAY); break;
+               case SVF_INVERTRGB:  fx->set(FID_Operator, LONG(OP::INVERT_RGB)); break;
+               case SVF_INVERT:     fx->set(FID_Operator, LONG(OP::INVERT)); break;
+               case SVF_CONTRAST:   fx->set(FID_Operator, LONG(OP::CONTRAST)); break;
+               case SVF_DODGE:      fx->set(FID_Operator, LONG(OP::DODGE)); break;
+               case SVF_BURN:       fx->set(FID_Operator, LONG(OP::BURN)); break;
+               case SVF_HARDLIGHT:  fx->set(FID_Operator, LONG(OP::HARD_LIGHT)); break;
+               case SVF_SOFTLIGHT:  fx->set(FID_Operator, LONG(OP::SOFT_LIGHT)); break;
+               case SVF_DIFFERENCE: fx->set(FID_Operator, LONG(OP::DIFFERENCE)); break;
+               case SVF_EXCLUSION:  fx->set(FID_Operator, LONG(OP::EXCLUSION)); break;
+               case SVF_PLUS:       fx->set(FID_Operator, LONG(OP::PLUS)); break;
+               case SVF_MINUS:      fx->set(FID_Operator, LONG(OP::MINUS)); break;
+               case SVF_OVERLAY:    fx->set(FID_Operator, LONG(OP::OVERLAY)); break;
                default:
                   log.warning("Composite operator '%s' not recognised.", val.c_str());
                   FreeResource(fx);
@@ -2804,17 +2804,17 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
 
             case SVF_FONT_STRETCH:
                switch(StrHash(StrValue)) {
-                  case SVF_NORMAL:          Vector->set(FID_Stretch, VTS_NORMAL); return ERR_Okay;
-                  case SVF_WIDER:           Vector->set(FID_Stretch, VTS_WIDER); return ERR_Okay;
-                  case SVF_NARROWER:        Vector->set(FID_Stretch, VTS_NARROWER); return ERR_Okay;
-                  case SVF_ULTRA_CONDENSED: Vector->set(FID_Stretch, VTS_ULTRA_CONDENSED); return ERR_Okay;
-                  case SVF_EXTRA_CONDENSED: Vector->set(FID_Stretch, VTS_EXTRA_CONDENSED); return ERR_Okay;
-                  case SVF_CONDENSED:       Vector->set(FID_Stretch, VTS_CONDENSED); return ERR_Okay;
-                  case VTS_SEMI_CONDENSED:  Vector->set(FID_Stretch, VTS_SEMI_CONDENSED); return ERR_Okay;
-                  case VTS_EXPANDED:        Vector->set(FID_Stretch, VTS_EXPANDED); return ERR_Okay;
-                  case VTS_SEMI_EXPANDED:   Vector->set(FID_Stretch, VTS_SEMI_EXPANDED); return ERR_Okay;
-                  case VTS_EXTRA_EXPANDED:  Vector->set(FID_Stretch, VTS_EXTRA_EXPANDED); return ERR_Okay;
-                  case VTS_ULTRA_EXPANDED:  Vector->set(FID_Stretch, VTS_ULTRA_EXPANDED); return ERR_Okay;
+                  case SVF_CONDENSED:       Vector->set(FID_Stretch, LONG(VTS::CONDENSED)); return ERR_Okay;
+                  case SVF_EXPANDED:        Vector->set(FID_Stretch, LONG(VTS::EXPANDED)); return ERR_Okay;
+                  case SVF_EXTRA_CONDENSED: Vector->set(FID_Stretch, LONG(VTS::EXTRA_CONDENSED)); return ERR_Okay;
+                  case SVF_EXTRA_EXPANDED:  Vector->set(FID_Stretch, LONG(VTS::EXTRA_EXPANDED)); return ERR_Okay;
+                  case SVF_NARROWER:        Vector->set(FID_Stretch, LONG(VTS::NARROWER)); return ERR_Okay;
+                  case SVF_NORMAL:          Vector->set(FID_Stretch, LONG(VTS::NORMAL)); return ERR_Okay;
+                  case SVF_SEMI_CONDENSED:  Vector->set(FID_Stretch, LONG(VTS::SEMI_CONDENSED)); return ERR_Okay;
+                  case SVF_SEMI_EXPANDED:   Vector->set(FID_Stretch, LONG(VTS::SEMI_EXPANDED)); return ERR_Okay;
+                  case SVF_ULTRA_CONDENSED: Vector->set(FID_Stretch, LONG(VTS::ULTRA_CONDENSED)); return ERR_Okay;
+                  case SVF_ULTRA_EXPANDED:  Vector->set(FID_Stretch, LONG(VTS::ULTRA_EXPANDED)); return ERR_Okay;
+                  case SVF_WIDER:           Vector->set(FID_Stretch, LONG(VTS::WIDER)); return ERR_Okay;
                   default: log.warning("no support for font-stretch value '%s'", StrValue.c_str());
                }
                break;

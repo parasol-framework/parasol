@@ -229,68 +229,94 @@ inline FieldValue Procedure(std::string Value) { return FieldValue(FID_Procedure
 constexpr FieldValue ReadOnly(LONG Value) { return FieldValue(FID_ReadOnly, Value); }
 constexpr FieldValue ReadOnly(bool Value) { return FieldValue(FID_ReadOnly, (Value ? 1 : 0)); }
 
+constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
+inline FieldValue ButtonOrder(std::string Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
+
 constexpr FieldValue Point(DOUBLE Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(std::string Value) { return FieldValue(FID_Point, Value.c_str()); }
 
-constexpr FieldValue ClassID(LONG Value) { return FieldValue(FID_ClassID, Value); }
-constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
-constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
-constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
-constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
-constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, LONG(Value)); }
-constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
-constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
-constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
-constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
-constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
-constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
-constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
-constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
-constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
-constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(Value)); }
+constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
-constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
-constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
-constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
+constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
+constexpr FieldValue BaseClassID(LONG Value) { return FieldValue(FID_BaseClassID, Value); }
 constexpr FieldValue Bitmap(objBitmap *Value) { return FieldValue(FID_Bitmap, Value); }
-constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
-constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
-constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
-constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
-constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
-constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
 constexpr FieldValue BitsPerPixel(LONG Value) { return FieldValue(FID_BitsPerPixel, Value); }
 constexpr FieldValue BytesPerPixel(LONG Value) { return FieldValue(FID_BytesPerPixel, Value); }
+constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, LONG(Value)); }
+constexpr FieldValue ClassID(LONG Value) { return FieldValue(FID_ClassID, Value); }
+constexpr FieldValue ClassVersion(DOUBLE Value) { return FieldValue(FID_ClassVersion, Value); }
+constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, LONG(Value)); }
-constexpr FieldValue RefreshRate(DOUBLE Value) { return FieldValue(FID_RefreshRate, Value); }
-constexpr FieldValue Opacity(DOUBLE Value) { return FieldValue(FID_Opacity, Value); }
-constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
-constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
-constexpr FieldValue MaxWidth(LONG Value) { return FieldValue(FID_MaxWidth, Value); }
-constexpr FieldValue MaxHeight(LONG Value) { return FieldValue(FID_MaxHeight, Value); }
+constexpr FieldValue DoubleClick(DOUBLE Value) { return FieldValue(FID_DoubleClick, Value); }
+constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
+constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
+constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
+constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
+constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
+constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
 constexpr FieldValue MatrixColumns(LONG Value) { return FieldValue(FID_MatrixColumns, Value); }
 constexpr FieldValue MatrixRows(LONG Value) { return FieldValue(FID_MatrixRows, Value); }
-
-constexpr FieldValue Type(LONG Value) { return FieldValue(FID_Type, Value); }
-constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
+constexpr FieldValue MaxHeight(LONG Value) { return FieldValue(FID_MaxHeight, Value); }
 constexpr FieldValue MaxSpeed(DOUBLE Value) { return FieldValue(FID_MaxSpeed, Value); }
-constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }
-constexpr FieldValue DoubleClick(DOUBLE Value) { return FieldValue(FID_DoubleClick, Value); }
+constexpr FieldValue MaxWidth(LONG Value) { return FieldValue(FID_MaxWidth, Value); }
+constexpr FieldValue Methods(const MethodEntry *Value) { return FieldValue(FID_Methods, Value, FD_ARRAY); }
+constexpr FieldValue Opacity(DOUBLE Value) { return FieldValue(FID_Opacity, Value); }
+constexpr FieldValue Owner(OBJECTID Value) { return FieldValue(FID_Owner, Value); }
+constexpr FieldValue Parent(OBJECTID Value) { return FieldValue(FID_Parent, Value); }
+constexpr FieldValue Permissions(PERMIT Value) { return FieldValue(FID_Permissions, LONG(Value)); }
+constexpr FieldValue Picture(OBJECTPTR Value) { return FieldValue(FID_Picture, Value); }
+constexpr FieldValue PopOver(OBJECTID Value) { return FieldValue(FID_PopOver, Value); }
+constexpr FieldValue RefreshRate(DOUBLE Value) { return FieldValue(FID_RefreshRate, Value); }
+constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value); }
+constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); }
-
-constexpr FieldValue ButtonOrder(CSTRING Value) { return FieldValue(FID_ButtonOrder, Value); }
-inline FieldValue ButtonOrder(std::string Value) { return FieldValue(FID_ButtonOrder, Value.c_str()); }
+constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
+constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
+constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
+constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }
+constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
+constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }
 
 // Template-based Flags are required for strongly typed enums
 
-template <class T> FieldValue AspectRatio(T Value) { return FieldValue(FID_AspectRatio, LONG(Value)); }
-template <class T> FieldValue ColourSpace(T Value) { return FieldValue(FID_ColourSpace, LONG(Value)); }
-template <class T> FieldValue Flags(T Value) { return FieldValue(FID_Flags, LONG(Value)); }
-template <class T> FieldValue Units(T Value) { return FieldValue(FID_Units, LONG(Value)); }
-template <class T> FieldValue SpreadMethod(T Value) { return FieldValue(FID_SpreadMethod, LONG(Value)); }
-template <class T> FieldValue Visibility(T Value) { return FieldValue(FID_Visibility, LONG(Value)); }
+template <class T> FieldValue Type(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Type value must be numeric");
+   return FieldValue(FID_Type, LONG(Value));
+}
+
+template <class T> FieldValue AspectRatio(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "AspectRatio value must be numeric");
+   return FieldValue(FID_AspectRatio, LONG(Value));
+}
+
+template <class T> FieldValue ColourSpace(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "ColourSpace value must be numeric");
+   return FieldValue(FID_ColourSpace, LONG(Value));
+}
+
+template <class T> FieldValue Flags(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Flags value must be numeric");
+   return FieldValue(FID_Flags, LONG(Value));
+}
+
+template <class T> FieldValue Units(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Units value must be numeric");
+   return FieldValue(FID_Units, LONG(Value));
+}
+
+template <class T> FieldValue SpreadMethod(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "SpreadMethod value must be numeric");
+   return FieldValue(FID_SpreadMethod, LONG(Value));
+}
+
+template <class T> FieldValue Visibility(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value, "Visibility value must be numeric");
+   return FieldValue(FID_Visibility, LONG(Value));
+}
 
 template <class T> FieldValue PageWidth(T Value) {
    static_assert(std::is_arithmetic<T>::value, "PageWidth value must be numeric");

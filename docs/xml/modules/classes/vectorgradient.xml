@@ -186,7 +186,7 @@
       <name>Type</name>
       <comment>Specifies the type of gradient (e.g. RADIAL, LINEAR)</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="VGT">INT</type>
+      <type lookup="VGT">VGT</type>
       <description>
 <p>The type of the gradient to be drawn is specified here.</p>
 <types lookup="VGT"/>

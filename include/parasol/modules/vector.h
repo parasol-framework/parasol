@@ -206,57 +206,69 @@ enum class VIJ : LONG {
 
 // VectorGradient options.
 
-#define VGT_LINEAR 0
-#define VGT_RADIAL 1
-#define VGT_CONIC 2
-#define VGT_DIAMOND 3
-#define VGT_CONTOUR 4
+enum class VGT : LONG {
+   NIL = 0,
+   LINEAR = 0,
+   RADIAL = 1,
+   CONIC = 2,
+   DIAMOND = 3,
+   CONTOUR = 4,
+};
 
 // Options for stretching text in VectorText.
 
-#define VTS_INHERIT 0
-#define VTS_NORMAL 1
-#define VTS_WIDER 2
-#define VTS_NARROWER 3
-#define VTS_ULTRA_CONDENSED 4
-#define VTS_EXTRA_CONDENSED 5
-#define VTS_CONDENSED 6
-#define VTS_SEMI_CONDENSED 7
-#define VTS_EXPANDED 8
-#define VTS_SEMI_EXPANDED 9
-#define VTS_ULTRA_EXPANDED 10
-#define VTS_EXTRA_EXPANDED 11
+enum class VTS : LONG {
+   NIL = 0,
+   INHERIT = 0,
+   NORMAL = 1,
+   WIDER = 2,
+   NARROWER = 3,
+   ULTRA_CONDENSED = 4,
+   EXTRA_CONDENSED = 5,
+   CONDENSED = 6,
+   SEMI_CONDENSED = 7,
+   EXPANDED = 8,
+   SEMI_EXPANDED = 9,
+   ULTRA_EXPANDED = 10,
+   EXTRA_EXPANDED = 11,
+};
 
 // MorphologyFX options.
 
-#define MOP_ERODE 0
-#define MOP_DILATE 1
+enum class MOP : LONG {
+   NIL = 0,
+   ERODE = 0,
+   DILATE = 1,
+};
 
 // Operators for CompositionFX.
 
-#define OP_OVER 0
-#define OP_IN 1
-#define OP_OUT 2
-#define OP_ATOP 3
-#define OP_XOR 4
-#define OP_ARITHMETIC 5
-#define OP_SCREEN 6
-#define OP_MULTIPLY 7
-#define OP_LIGHTEN 8
-#define OP_DARKEN 9
-#define OP_INVERT_RGB 10
-#define OP_INVERT 11
-#define OP_CONTRAST 12
-#define OP_DODGE 13
-#define OP_BURN 14
-#define OP_HARD_LIGHT 15
-#define OP_SOFT_LIGHT 16
-#define OP_DIFFERENCE 17
-#define OP_EXCLUSION 18
-#define OP_PLUS 19
-#define OP_MINUS 20
-#define OP_SUBTRACT 20
-#define OP_OVERLAY 21
+enum class OP : LONG {
+   NIL = 0,
+   OVER = 0,
+   IN = 1,
+   OUT = 2,
+   ATOP = 3,
+   XOR = 4,
+   ARITHMETIC = 5,
+   SCREEN = 6,
+   MULTIPLY = 7,
+   LIGHTEN = 8,
+   DARKEN = 9,
+   INVERT_RGB = 10,
+   INVERT = 11,
+   CONTRAST = 12,
+   DODGE = 13,
+   BURN = 14,
+   HARD_LIGHT = 15,
+   SOFT_LIGHT = 16,
+   DIFFERENCE = 17,
+   EXCLUSION = 18,
+   PLUS = 19,
+   MINUS = 20,
+   SUBTRACT = 20,
+   OVERLAY = 21,
+};
 
 // VectorText flags.
 
@@ -843,7 +855,7 @@ class objVectorGradient : public BaseClass {
    objVectorGradient * Inherit;    // Inherit attributes from the VectorGradient referenced here.
    VSPREAD SpreadMethod;           // The behaviour to use when the gradient bounds do not match the vector path.
    VUNIT   Units;                  // Defines the coordinate system for fields X1, Y1, X2 and Y2.
-   LONG    Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
+   VGT     Type;                   // Specifies the type of gradient (e.g. RADIAL, LINEAR)
    LONG    Flags;                  // Dimension flags are stored here.
    VCS     ColourSpace;            // Defines the colour space to use when interpolating gradient colours.
    LONG    TotalStops;             // Total number of stops defined in the Stops array.
@@ -934,7 +946,7 @@ class objVectorGradient : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setType(const LONG Value) {
+   inline ERROR setType(const VGT Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->Type = Value;
       return ERR_Okay;
@@ -2483,4 +2495,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_XCHANNELSELECTOR 0x57175337
 #define SVF_YCHANNELSELECTOR 0x634c7918
 #define SVF_ZOOMANDPAN 0xc606dfdc
+#define SVF_EXPANDED 0xd353d90e
+#define SVF_SEMI_EXPANDED 0xa6ff90c9
+#define SVF_EXTRA_EXPANDED 0x8c599b5f
+#define SVF_ULTRA_EXPANDED 0x87e8c363
 

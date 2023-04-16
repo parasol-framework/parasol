@@ -669,7 +669,7 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    const DOUBLE x_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds[0];
    const DOUBLE y_offset = Gradient.Units IS VUNIT::USERSPACE ? 0 : Bounds[1];
 
-   if (Gradient.Type IS VGT_LINEAR) {
+   if (Gradient.Type IS VGT::LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
 
       if (Gradient.Flags & VGF_RELATIVE_X1) ax1 = x_offset + (c_width * Gradient.X1);
@@ -706,7 +706,7 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
       agg::render_scanlines(Raster, scanline, solidgrad);
    }
-   else if (Gradient.Type IS VGT_RADIAL) {
+   else if (Gradient.Type IS VGT::RADIAL) {
       DOUBLE cx, cy, fx, fy;
 
       if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
@@ -815,7 +815,7 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
          agg::render_scanlines(Raster, scanline, solidrender_gradient);
       }
    }
-   else if (Gradient.Type IS VGT_DIAMOND) {
+   else if (Gradient.Type IS VGT::DIAMOND) {
       DOUBLE cx, cy;
 
       if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
@@ -863,7 +863,7 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
-   else if (Gradient.Type IS VGT_CONIC) {
+   else if (Gradient.Type IS VGT::CONIC) {
       DOUBLE cx, cy;
 
       if (Gradient.Flags & VGF_RELATIVE_CX) cx = x_offset + (c_width * Gradient.CenterX);
@@ -911,7 +911,7 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
       agg::render_scanlines(Raster, scanline, solidrender_gradient);
    }
-   else if (Gradient.Type IS VGT_CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
+   else if (Gradient.Type IS VGT::CONTOUR) { // NOTE: Contouring requires a bounding box and is thus incompatible with UserSpaceOnUse
       if (Gradient.Units != VUNIT::BOUNDING_BOX) return;
 
       auto x1 = (Gradient.X1 >= 0) ? Gradient.X1 : 0;

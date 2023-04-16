@@ -97,14 +97,14 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "ROUND: Rounds the edge of the join to produce the best looking results.",
     "INHERIT: Inherit the parent's join value.")
 
-  enum("VGT", { start=0, comment="VectorGradient options." },
+  enum("VGT", { type="int", start=0, comment="VectorGradient options." },
     "LINEAR: A linear gradient is drawn from (X1,Y1) to (X2,Y2).",
     "RADIAL: A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.",
     "CONIC: The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.",
     "DIAMOND: A diamond gradient is drawn as a square emanating from the center point.",
     "CONTOUR: Contoured gradients follow the contours of the vector path in which they are rendered.")
 
-  enum("VTS", { start=0, comment="Options for stretching text in VectorText." },
+  enum("VTS", { type="int", start=0, comment="Options for stretching text in VectorText." },
     "INHERIT",
     "NORMAL",
     "WIDER",
@@ -118,11 +118,11 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "ULTRA_EXPANDED",
     "EXTRA_EXPANDED")
 
-  enum("MOP", { start=0, comment="MorphologyFX options." },
+  enum("MOP", { type="int", start=0, comment="MorphologyFX options." },
     "ERODE: Erode (thin) the input source.",
     "DILATE: Dilate (fatten) the input source.")
 
-   enum("OP", { start=0, comment="Operators for CompositionFX." },
+   enum("OP", { type="int", start=0, comment="Operators for CompositionFX." },
     "OVER: The Porter-Duff 'over' operator, this is the default operation for standard alpha blending.",
     "IN: The Porter-Duff 'in' operator; the input alpha channel has priority and the mix channel is secondary.",
     "OUT: The Porter-Duff 'out' operator; the mix alpha channel is inversed with the input channel.",
@@ -1075,5 +1075,10 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "SURFACESCALE",
     "XCHANNELSELECTOR",
     "YCHANNELSELECTOR",
-    "ZOOMANDPAN")
+    "ZOOMANDPAN",
+    "EXPANDED",
+    "SEMI-EXPANDED",
+    "EXTRA-EXPANDED",
+    "ULTRA-EXPANDED"
+    )
 end)
