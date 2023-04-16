@@ -2015,6 +2015,9 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          case KEY::Y: // Redo
             if ((Self->txFlags & VTXF::EDITABLE) IS VTXF::NIL) return;
             return;
+
+         default:
+            break;
       }
    }
 
@@ -2184,6 +2187,9 @@ static void key_event(extVectorText *Self, evKey *Event, LONG Size)
          Self->txCursor.move(Self, new_row, new_column);
          acDraw(Self);
       }
+      break;
+
+   default:
       break;
    }
 }
