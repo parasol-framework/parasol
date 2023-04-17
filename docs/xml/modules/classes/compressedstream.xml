@@ -352,14 +352,6 @@
       <const name="PATH">Use the PATH environment variable to resolve the file name in the Path parameter.</const>
     </constants>
 
-    <constants lookup="SBF" comment="Flags for StrBuildArray()">
-      <const name="CASE">Use case-sensitivity when comparing strings in the list.</const>
-      <const name="CSV">The list is in CSV format and the Size and Total parameters should be ignored. Note that the source string will be modified in this mode.</const>
-      <const name="DESC">Sort in descending order.</const>
-      <const name="NO_DUPLICATES">Sort the resulting list and remove duplicated strings.</const>
-      <const name="SORT">Sort the resulting list.</const>
-    </constants>
-
     <constants lookup="STR">
       <const name="CASE">Perform a case-sensitive match.</const>
       <const name="MATCH_CASE">Perform a case-sensitive match.</const>

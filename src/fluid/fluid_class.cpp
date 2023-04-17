@@ -52,10 +52,10 @@ static void dump_global_table(objScript *Self, STRING Global)
 
 //********************************************************************************************************************
 
-static ERROR GET_Procedures(objScript *, STRING **, LONG *);
+static ERROR GET_Procedures(objScript *, pf::vector<std::string> **, LONG *);
 
 static const FieldArray clFields[] = {
-   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, GET_Procedures },
+   { "Procedures", FDF_VIRTUAL|FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_R, GET_Procedures },
    END_FIELD
 };
 
@@ -821,43 +821,29 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 -FIELD-
 Procedures: Returns a string array of all named procedures defined by a script.
 
-A string array of all procedures loaded into a script is returned by this function. The script will need to have been
-activated before reading this field, or an empty list will be returned.
-
-The procedure list is built at the time of the call.  The array is allocated as a memory block and will need to be
-removed by the caller with FreeResource().
+This field will return a string array of all procedures loaded into the script, conditional on it being activated.
+It will otherwise return an empty array.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
+static ERROR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LONG *Elements)
 {
-   auto prv = (prvFluid *)Self->ChildPrivate;
-   if (prv) {
-      LONG memsize = 1024 * 64;
-      UBYTE *list;
-      if (!AllocMemory(memsize, MEM::DATA|MEM::NO_CLEAR, &list)) {
-         LONG total = 0;
-         LONG size  = 0;
-         lua_pushnil(prv->Lua);
-         while (lua_next(prv->Lua, LUA_GLOBALSINDEX)) {
-            if (lua_type(prv->Lua, -1) IS LUA_TFUNCTION) {
-               CSTRING name = lua_tostring(prv->Lua, -2);
-               size += StrCopy(name, (STRING)list+size, memsize - size) + 1;
-               total++;
-            }
-            lua_pop(prv->Lua, 1);
+   if (auto prv = (prvFluid *)Self->ChildPrivate) {
+      prv->Procedures.clear();
+      lua_pushnil(prv->Lua);
+      while (lua_next(prv->Lua, LUA_GLOBALSINDEX)) {
+         if (lua_type(prv->Lua, -1) IS LUA_TFUNCTION) {
+            prv->Procedures.push_back(lua_tostring(prv->Lua, -2));
          }
-
-         *Value = StrBuildArray((STRING)list, size, total, SBF::SORT);
-         *Elements = total;
-
-         FreeResource(list);
-         return ERR_Okay;
+         lua_pop(prv->Lua, 1);
       }
-      else return ERR_AllocMemory;
+
+      *Value = &prv->Procedures;
+      *Elements = prv->Procedures.size();
+      return ERR_Okay;
    }
-   else return ERR_Failed;
+   else return ERR_NotInitialised;
 }
 
 //********************************************************************************************************************

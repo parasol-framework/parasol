@@ -180,6 +180,7 @@ struct prvFluid {
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;
    std::unordered_map<OBJECTID, LONG> StateMap;
    std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
+   pf::vector<std::string> Procedures;
    APTR   FocusEventHandle;
    struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;

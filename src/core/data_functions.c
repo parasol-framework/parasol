@@ -94,7 +94,6 @@ FDEF argsSetOwner[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR 
 FDEF argsSetResource[] = { { "Result", FD_LARGE }, { "Resource", FD_LONG }, { "Value", FD_LARGE }, { 0, 0 } };
 FDEF argsSetResourcePath[] = { { "Error", FD_LONG|FD_ERROR }, { "PathType", FD_LONG }, { "Path", FD_STR }, { 0, 0 } };
 FDEF argsSetVolume[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "Path", FD_STR }, { "Icon", FD_STR }, { "Label", FD_STR }, { "Device", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF argsStrBuildArray[] = { { "Result", FD_ARRAY|FD_STR|FD_ALLOC }, { "List", FD_STR }, { "Size", FD_LONG }, { "Total", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrCompare[] = { { "Error", FD_LONG|FD_ERROR }, { "String1", FD_STR }, { "String2", FD_STR }, { "Length", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF argsStrDatatype[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsStrHash[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_STR }, { "CaseSensitive", FD_LONG }, { 0, 0 } };
@@ -230,7 +229,7 @@ const struct Function glFunctions[] = {
    { (APTR)ResolveGroupID, "ResolveGroupID", argsResolveGroupID },
    { (APTR)ResolveUserID, "ResolveUserID", argsResolveUserID },
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
-   { (APTR)StrBuildArray, "StrBuildArray", argsStrBuildArray },
+   { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { (APTR)UTF8CharOffset, "UTF8CharOffset", argsUTF8CharOffset },
    { (APTR)UTF8Length, "UTF8Length", argsUTF8Length },
    { (APTR)UTF8OffsetToChar, "UTF8OffsetToChar", argsUTF8OffsetToChar },
@@ -245,7 +244,6 @@ const struct Function glFunctions[] = {
    { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
-   { (APTR)DeleteFile, "DeleteFile", argsDeleteFile },
    { NULL, NULL, NULL }
 };
 

@@ -108,7 +108,7 @@ objTask * CurrentTask();
 CSTRING ResolveGroupID(LONG Group);
 CSTRING ResolveUserID(LONG User);
 ERROR CreateLink(CSTRING From, CSTRING To);
-STRING * StrBuildArray(STRING List, LONG Size, LONG Total, SBF Flags);
+ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 LONG UTF8CharOffset(CSTRING String, LONG Offset);
 LONG UTF8Length(CSTRING String);
 LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
@@ -123,7 +123,6 @@ STT StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
 void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
 
 #ifdef  __cplusplus
 }

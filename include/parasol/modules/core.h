@@ -820,19 +820,6 @@ enum class RFD : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(RFD)
 
-// Flags for StrBuildArray()
-
-enum class SBF : ULONG {
-   NIL = 0,
-   NO_DUPLICATES = 0x00000001,
-   SORT = 0x00000002,
-   CASE = 0x00000004,
-   DESC = 0x00000008,
-   CSV = 0x00000010,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(SBF)
-
 // Task flags
 
 enum class TSF : ULONG {
@@ -2192,7 +2179,7 @@ struct CoreBase {
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
-   STRING * (*_StrBuildArray)(STRING List, LONG Size, LONG Total, SBF Flags);
+   ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
    LONG (*_UTF8CharOffset)(CSTRING String, LONG Offset);
    LONG (*_UTF8Length)(CSTRING String);
    LONG (*_UTF8OffsetToChar)(CSTRING String, LONG Offset);
@@ -2207,7 +2194,6 @@ struct CoreBase {
    void (*_UnloadFile)(struct CacheFile * Cache);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-   ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2315,7 +2301,7 @@ inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
-inline STRING * StrBuildArray(STRING List, LONG Size, LONG Total, SBF Flags) { return CoreBase->_StrBuildArray(List,Size,Total,Flags); }
+inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline LONG UTF8CharOffset(CSTRING String, LONG Offset) { return CoreBase->_UTF8CharOffset(String,Offset); }
 inline LONG UTF8Length(CSTRING String) { return CoreBase->_UTF8Length(String); }
 inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset) { return CoreBase->_UTF8OffsetToChar(String,Offset); }
@@ -2330,7 +2316,6 @@ inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); 
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
-inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 #endif
 
 
