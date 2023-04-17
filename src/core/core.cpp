@@ -553,7 +553,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Print task information
 
-   log.msg("Version: %.1f : Process: %d, Shared Pool: %p", VER_CORE, glProcessID, glSharedControl);
+   log.msg("Version: %.1f : Process: %d", VER_CORE, glProcessID);
    log.msg("Sync: %s, Root: %s", (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
@@ -659,7 +659,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    log.msg("PROGRAM OPENED");
 
-   glSharedControl->SystemState = 0; // Indicates that initialisation is complete.
+   glSystemState = 0; // Indicates that initialisation is complete.
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
    return LocalCoreBase;
@@ -859,8 +859,7 @@ static ERROR open_shared_control(void)
 
    #endif
 
-   glSharedControl->SystemState = -1; // System state of -1 == initialising
-
+   glSystemState = -1; // System state of -1 == initialising
    return ERR_Okay;
 }
 #endif

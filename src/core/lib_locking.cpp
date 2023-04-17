@@ -90,10 +90,10 @@ ERROR alloc_public_lock(UBYTE LockIndex, ALF Flags)
 {
    if ((LockIndex < 1) or (LockIndex >= PL_END)) return ERR_Args;
    if (!glSharedControl) return ERR_Failed;
-   ERROR error = alloc_lock(&glSharedControl->PublicLocks[LockIndex].Mutex, Flags|ALF::SHARED);
+   ERROR error = alloc_lock(&glPublicLocks[LockIndex].Mutex, Flags|ALF::SHARED);
    if (!error) {
-      if ((error = alloc_cond(&glSharedControl->PublicLocks[LockIndex].Cond, Flags|ALF::SHARED))) {
-         free_lock(&glSharedControl->PublicLocks[LockIndex].Mutex);
+      if ((error = alloc_cond(&glPublicLocks[LockIndex].Cond, Flags|ALF::SHARED))) {
+         free_lock(&glPublicLocks[LockIndex].Mutex);
       }
    }
    return error;
@@ -101,8 +101,8 @@ ERROR alloc_public_lock(UBYTE LockIndex, ALF Flags)
 
 void free_public_lock(UBYTE LockIndex)
 {
-   free_lock(&glSharedControl->PublicLocks[LockIndex].Mutex);
-   free_cond(&glSharedControl->PublicLocks[LockIndex].Cond);
+   free_lock(&glPublicLocks[LockIndex].Mutex);
+   free_cond(&glPublicLocks[LockIndex].Cond);
 }
 
 static ERROR alloc_lock(THREADLOCK *Lock, ALF Flags)
@@ -1009,18 +1009,18 @@ ERROR SysLock(LONG Index, LONG Timeout)
 
 retry:
    #ifdef __ANDROID__
-      result = pthread_mutex_lock(&glSharedControl->PublicLocks[Index].Mutex);
+      result = pthread_mutex_lock(&glPublicLocks[Index].Mutex);
    #else
       if (Timeout > 0) {
          // Attempt a quick-lock without resorting to the very slow clock_gettime()
-         result = pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex);
+         result = pthread_mutex_trylock(&glPublicLocks[Index].Mutex);
          if (result IS EBUSY) {
             #ifdef __APPLE__
                LARGE end = PreciseTime() + (Timeout * 1000LL);
                do {
                   struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
                   nanosleep(&ts, &ts);
-               } while ((pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex) IS EBUSY) and (PreciseTime() < end));
+               } while ((pthread_mutex_trylock(&glPublicLocks[Index].Mutex) IS EBUSY) and (PreciseTime() < end));
             #else
                struct timespec timestamp;
                clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
@@ -1035,32 +1035,32 @@ retry:
                }
                timestamp.tv_nsec = (LONG)tn;
 
-               result = pthread_mutex_timedlock(&glSharedControl->PublicLocks[Index].Mutex, &timestamp);
+               result = pthread_mutex_timedlock(&glPublicLocks[Index].Mutex, &timestamp);
             #endif
          }
       }
-      else result = pthread_mutex_lock(&glSharedControl->PublicLocks[Index].Mutex);
+      else result = pthread_mutex_lock(&glPublicLocks[Index].Mutex);
    #endif
 
    if ((result IS ETIMEDOUT) or (result IS EBUSY)) {
-      log.warning("Timeout locking mutex %d with timeout %d, locked by process %d.", Index, Timeout, glSharedControl->PublicLocks[Index].PID);
+      log.warning("Timeout locking mutex %d with timeout %d, locked by process %d.", Index, Timeout, glPublicLocks[Index].PID);
       return ERR_TimeOut;
    }
    else if (result IS EOWNERDEAD) { // The previous mutex holder crashed while holding it.
       log.warning("Resetting the state of a crashed mutex.");
       #if !defined(__ANDROID__) && !defined(__APPLE__)
-         pthread_mutex_consistent(&glSharedControl->PublicLocks[Index].Mutex);
+         pthread_mutex_consistent(&glPublicLocks[Index].Mutex);
       #endif
-      pthread_mutex_unlock(&glSharedControl->PublicLocks[Index].Mutex);
+      pthread_mutex_unlock(&glPublicLocks[Index].Mutex);
       goto retry;
    }
    else if (result) {
-      log.warning("Failed to lock mutex %d with timeout %d, locked by process %d. Error: %s", Index, Timeout, glSharedControl->PublicLocks[Index].PID, strerror(result));
+      log.warning("Failed to lock mutex %d with timeout %d, locked by process %d. Error: %s", Index, Timeout, glPublicLocks[Index].PID, strerror(result));
       return ERR_LockFailed;
    }
 
-   glSharedControl->PublicLocks[Index].Count++;
-   glSharedControl->PublicLocks[Index].PID = glProcessID;
+   glPublicLocks[Index].Count++;
+   glPublicLocks[Index].PID = glProcessID;
    tlPublicLockCount++;
    return ERR_Okay;
 }
@@ -1119,8 +1119,8 @@ ERROR SysUnlock(LONG Index)
 
    if (glSharedControl) {
       tlPublicLockCount--;
-      if (!(--glSharedControl->PublicLocks[Index].Count)) glSharedControl->PublicLocks[Index].PID = 0;
-      pthread_mutex_unlock(&glSharedControl->PublicLocks[Index].Mutex);
+      if (!(--glPublicLocks[Index].Count)) glPublicLocks[Index].PID = 0;
+      pthread_mutex_unlock(&glPublicLocks[Index].Mutex);
       return ERR_Okay;
    }
    else {

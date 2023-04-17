@@ -4638,18 +4638,9 @@ enum { // For SysLock()
 };
 
 struct SharedControl {
-   WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
    LONG WLOffset;                   // Offset to the wait-lock array
-   #ifdef __unix__
-      struct {
-         pthread_mutex_t Mutex;
-         pthread_cond_t Cond;
-         LONG PID;               // Resource tracking: Process that has the current lock.
-         WORD Count;             // Resource tracking: Count of all locks (nesting)
-      } PublicLocks[PL_END];
-   #endif
 };
 
 // Event support

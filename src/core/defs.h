@@ -290,6 +290,15 @@ struct public_lock {
 
 extern struct public_lock glPublicLocks[PL_END];
 
+#else
+struct public_lock {
+   pthread_mutex_t Mutex;
+   pthread_cond_t Cond;
+   LONG PID;               // Resource tracking: Process that has the current lock.
+   WORD Count;             // Resource tracking: Count of all locks (nesting)
+};
+
+extern struct public_lock glPublicLocks[PL_END];
 #endif
 
 enum {
@@ -665,7 +674,7 @@ extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMessageIDCount;
 extern LONG glGlobalIDCount;
 extern LONG glPrivateIDCounter;
-extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
+extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern UWORD glFunctionID;
 extern BYTE glProgramStage;
 extern bool glPrivileged, glSync;

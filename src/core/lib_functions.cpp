@@ -544,7 +544,7 @@ const SystemState * GetSystemState(void)
       #endif
    }
 
-   state.Stage = glSharedControl->SystemState;
+   state.Stage = glSystemState;
    return &state;
 }
 
