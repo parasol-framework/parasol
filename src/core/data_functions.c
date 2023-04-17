@@ -14,7 +14,6 @@ FDEF argsAddInfoTag[] = { { "Error", FD_LONG|FD_ERROR }, { "FileInfo:Info", FD_P
 FDEF argsAddMsgHandler[] = { { "Error", FD_LONG|FD_ERROR }, { "Custom", FD_PTR }, { "MsgType", FD_LONG }, { "Routine", FD_FUNCTIONPTR }, { "MsgHandler:Handle", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsAdjustLogLevel[] = { { "Result", FD_LONG }, { "Adjust", FD_LONG }, { 0, 0 } };
 FDEF argsAllocMemory[] = { { "Error", FD_LONG|FD_ERROR }, { "Size", FD_LONG }, { "Flags", FD_LONG }, { "Address", FD_PTR|FD_RESULT }, { "ID", FD_LONG|FD_RESULT }, { 0, 0 } };
-FDEF argsAllocMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Flags", FD_LONG }, { "Result", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsAllocateID[] = { { "Result", FD_LONG }, { "Type", FD_LONG }, { 0, 0 } };
 FDEF argsAnalysePath[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Type", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF argsBase64Decode[] = { { "Error", FD_LONG|FD_ERROR }, { "pfBase64Decode:State", FD_PTR|FD_STRUCT|FD_RESOURCE }, { "Input", FD_STR }, { "InputSize", FD_LONG|FD_BUFSIZE }, { "Output", FD_BUFFER|FD_PTR }, { "Written", FD_LONG|FD_RESULT }, { 0, 0 } };
@@ -35,7 +34,6 @@ FDEF argsFieldName[] = { { "Result", FD_STR }, { "FieldID", FD_LONG|FD_UNSIGNED 
 FDEF argsFindClass[] = { { "Object", FD_OBJECTPTR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
 FDEF argsFindField[] = { { "Field", FD_PTR|FD_STRUCT }, { "Object", FD_OBJECTPTR }, { "FieldID", FD_LONG|FD_UNSIGNED }, { "Target", FD_OBJECTPTR|FD_RESULT }, { 0, 0 } };
 FDEF argsFindObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Name", FD_STR }, { "ClassID", FD_LONG|FD_UNSIGNED }, { "Flags", FD_LONG }, { "ObjectID", FD_OBJECTID|FD_RESULT }, { 0, 0 } };
-FDEF argsFreeMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsFreeResource[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { 0, 0 } };
 FDEF argsFuncError[] = { { "Error", FD_LONG|FD_ERROR }, { "Header", FD_STR }, { "Error", FD_LONG|FD_ERROR }, { 0, 0 } };
 FDEF argsGenCRC32[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "CRC", FD_LONG|FD_UNSIGNED }, { "Data", FD_PTR }, { "Length", FD_LONG|FD_UNSIGNED }, { 0, 0 } };
@@ -55,9 +53,7 @@ FDEF argsIdentifyFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, {
 FDEF argsInitObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsListChildren[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "List", FD_PTR }, { 0, 0 } };
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
-FDEF argsLockMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLockObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
-FDEF argsLockSharedMutex[] = { { "Error", FD_LONG|FD_ERROR }, { "Mutex", FD_PTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
 FDEF argsLogF[] = { { "Void", FD_VOID }, { "Header", FD_STR }, { "Message", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsMemoryIDInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -111,8 +107,6 @@ FDEF argsUTF8ReadValue[] = { { "Result", FD_LONG|FD_UNSIGNED }, { "String", FD_S
 FDEF argsUTF8ValidEncoding[] = { { "Result", FD_STR }, { "String", FD_STR }, { "Encoding", FD_STR }, { 0, 0 } };
 FDEF argsUTF8WriteValue[] = { { "Result", FD_LONG }, { "Value", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsUnloadFile[] = { { "Void", FD_VOID }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE }, { 0, 0 } };
-FDEF argsUnlockMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
-FDEF argsUnlockSharedMutex[] = { { "Void", FD_VOID }, { "Mutex", FD_PTR }, { 0, 0 } };
 FDEF argsUnsubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { 0, 0 } };
 FDEF argsUnsubscribeEvent[] = { { "Void", FD_VOID }, { "Event", FD_PTR }, { 0, 0 } };
 FDEF argsUpdateMessage[] = { { "Error", FD_LONG|FD_ERROR }, { "Queue", FD_PTR }, { "Message", FD_LONG }, { "Type", FD_LONG }, { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -210,15 +204,9 @@ const struct Function glFunctions[] = {
    { (APTR)StrHash, "StrHash", argsStrHash },
    { (APTR)LockObject, "LockObject", argsLockObject },
    { (APTR)ReleaseObject, "ReleaseObject", argsReleaseObject },
-   { (APTR)AllocMutex, "AllocMutex", argsAllocMutex },
-   { (APTR)FreeMutex, "FreeMutex", argsFreeMutex },
-   { (APTR)LockMutex, "LockMutex", argsLockMutex },
-   { (APTR)UnlockMutex, "UnlockMutex", argsUnlockMutex },
    { (APTR)ActionThread, "ActionThread", argsActionThread },
    { (APTR)AddInfoTag, "AddInfoTag", argsAddInfoTag },
    { (APTR)SetDefaultPermissions, "SetDefaultPermissions", argsSetDefaultPermissions },
-   { (APTR)LockSharedMutex, "LockSharedMutex", argsLockSharedMutex },
-   { (APTR)UnlockSharedMutex, "UnlockSharedMutex", argsUnlockSharedMutex },
    { (APTR)VLogF, "VLogF", argsVLogF },
    { (APTR)Base64Encode, "Base64Encode", argsBase64Encode },
    { (APTR)ReadInfoTag, "ReadInfoTag", argsReadInfoTag },

@@ -2161,15 +2161,9 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERROR (*_AllocMutex)(ALF Flags, APTR Result);
-   void (*_FreeMutex)(APTR Mutex);
-   ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
-   void (*_UnlockMutex)(APTR Mutex);
    ERROR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
    ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
    void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
-   ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
-   void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
@@ -2282,15 +2276,9 @@ inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) 
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERROR AllocMutex(ALF Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
-inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
-inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
-inline void UnlockMutex(APTR Mutex) { return CoreBase->_UnlockMutex(Mutex); }
 inline ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
 inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
-inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
-inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
