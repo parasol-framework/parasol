@@ -639,7 +639,7 @@ extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
+extern struct SharedControl  *glSharedControl;
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];

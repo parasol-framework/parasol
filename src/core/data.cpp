@@ -109,8 +109,7 @@ CSTRING glIDL = MOD_IDL;
   WINHANDLE glProcessHandle = 0;
   struct public_lock glPublicLocks[PL_END] = {
      { "", 0, 0, 0, FALSE }, // 0
-     { "rka", 0, 0, 0, FALSE }, // PL_WAITLOCKS
-     { "rkc", 0, 0, 0, FALSE }, // PL_FORBID
+     { "rka", 0, 0, 0, FALSE } // PL_WAITLOCKS
   };
 #endif
 

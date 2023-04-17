@@ -4634,7 +4634,6 @@ struct ActionMessage {
 
 enum { // For SysLock()
    PL_WAITLOCKS=1,
-   PL_FORBID,
    PL_END
 };
 

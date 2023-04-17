@@ -496,7 +496,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          }
 
          // Check that the resource name is unique, otherwise keep looping.
-         if (open_public_lock(&handle, glPublicLocks[PL_FORBID].Name) != ERR_Okay) break;
+         if (open_public_lock(&handle, glPublicLocks[PL_WAITLOCKS].Name) != ERR_Okay) break;
 
          free_public_lock(handle);
          id += 17; // Alter the id with a prime number
@@ -706,7 +706,7 @@ static ERROR open_shared_control(void)
 
    LONG init;
    char sharename[12];
-   CopyMemory(glPublicLocks[PL_FORBID].Name, sharename, 12);
+   CopyMemory(glPublicLocks[PL_WAITLOCKS].Name, sharename, 12);
    sharename[2] = 'z';
    if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize, &glSharedControlID, (APTR *)&glSharedControl)) < 0) {
       KERR("Failed to create the shared memory pool in call to winCreateSharedMemory(), code %d.\n", init);
