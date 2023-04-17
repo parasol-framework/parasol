@@ -338,26 +338,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>AllocSharedMutex</name>
-    <category>Locks</category>
-    <comment>Allocate a mutex suitable for managing synchronisation between processes.</comment>
-    <prototype>ERROR AllocSharedMutex(CSTRING Name, APTR * Mutex)</prototype>
-    <input>
-      <param type="CSTRING" name="Name">A unique identifier for the mutex, expressed as a string.</param>
-      <param type="APTR *" name="Mutex">A reference to the new mutex will be returned in this variable.</param>
-    </input>
-    <description>
-<p>This function allocates a mutex that is suitable for keeping both processes and threads synchronised.  Shared mutexes are named, which allows other processes to find them.  It is recommended that names consist of random characters so as to limit the potential for cross-contamination with other programs.</p>
-<p>Mutexes are locked and unlocked using the <function module="Core">LockSharedMutex</function> and <function module="Core">UnlockSharedMutex</function> functions.  Shared mutexes carry a speed penalty in comparison to private mutexes, and therefore should only be used as circumstances dictate.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>AllocateID</name>
     <category>System</category>
     <comment>Generates unique ID's for general purposes.</comment>
@@ -807,19 +787,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
   </function>
 
   <function>
-    <name>FreeSharedMutex</name>
-    <category>Locks</category>
-    <comment>Deallocate a shared mutex.</comment>
-    <prototype>void FreeSharedMutex(APTR Mutex)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Reference to a shared mutex.</param>
-    </input>
-    <description>
-<p>This function will deallocate a shared mutex.  It is vital that no thread is sleeping on the mutex at the time this function is called.  The outcome when calling this function on a mutex still in use is undefined.</p>
-    </description>
-  </function>
-
-  <function>
     <name>GenCRC32</name>
     <category>System</category>
     <comment>Generates 32-bit CRC checksum values.</comment>
@@ -1201,11 +1168,11 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <comment>Acquire a lock on a shared mutex.</comment>
     <prototype>ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)</prototype>
     <input>
-      <param type="APTR" name="Mutex">Reference to a mutex allocated from <function module="Core">AllocSharedMutex</function></param>
+      <param type="APTR" name="Mutex">Reference to a mutex allocated from ~AllocSharedMutex()</param>
       <param type="LONG" name="MilliSeconds">Timeout in milliseconds.</param>
     </input>
     <description>
-<p>This function will lock a shared mutex allocated by <function module="Core">AllocSharedMutex</function>.  If the mutex is already locked by another thread or process, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
+<p>This function will lock a shared mutex allocated by ~AllocSharedMutex().  If the mutex is already locked by another thread or process, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
 <p>If the mutex was acquired with the <code>ALF::RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call <function module="Core">UnlockSharedMutex</function> for every lock that has been acquired.</p>
     </description>
     <result type="ERROR">

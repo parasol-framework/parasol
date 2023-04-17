@@ -1210,8 +1210,8 @@ struct ScriptArg { // For use with scExec
     "LockMutex",
     "UnlockMutex",
     "ActionThread",
-    "AllocSharedMutex",
-    "FreeSharedMutex",
+    "AddInfoTag",
+    "SetDefaultPermissions",
     "LockSharedMutex",
     "UnlockSharedMutex",
     "VLogF",
@@ -1234,9 +1234,7 @@ struct ScriptArg { // For use with scExec
     "WaitForObjects",
     "ReadFileToBuffer",
     "StrDatatype",
-    "UnloadFile",
-    "SetDefaultPermissions",
-    "AddInfoTag")
+    "UnloadFile")
 
   c_insert([[
 

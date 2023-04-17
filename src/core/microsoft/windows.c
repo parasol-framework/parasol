@@ -1475,34 +1475,6 @@ void UnlockMutex(void *Mutex)
 
 //********************************************************************************************************************
 
-int AllocSharedMutex(const char *Name, void **Result)
-{
-   if (!Result) return ERR_NullArgs;
-
-   HANDLE mutex;
-   if (Name) {
-      if ((mutex = OpenMutex(SYNCHRONIZE, FALSE, Name))) {
-         *Result = mutex;
-         return ERR_Okay;
-      }
-   }
-
-   if ((mutex = CreateMutex(NULL, FALSE, Name))) {
-      *Result = mutex;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
-//********************************************************************************************************************
-
-void FreeSharedMutex(void *Mutex)
-{
-   if (Mutex) CloseHandle(Mutex);
-}
-
-//********************************************************************************************************************
-
 int LockSharedMutex(void *Mutex, int Timeout)
 {
    if (Timeout < 1) Timeout = 1;

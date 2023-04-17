@@ -917,45 +917,6 @@ ERROR AllocMutex(ALF Flags, APTR *Result)
 /*********************************************************************************************************************
 
 -FUNCTION-
-AllocSharedMutex: Allocate a mutex suitable for managing synchronisation between processes.
-
-This function allocates a mutex that is suitable for keeping both processes and threads synchronised.  Shared mutexes
-are named, which allows other processes to find them.  It is recommended that names consist of random characters so
-as to limit the potential for cross-contamination with other programs.
-
-Mutexes are locked and unlocked using the ~LockSharedMutex() and ~UnlockSharedMutex() functions.  Shared mutexes carry
-a speed penalty in comparison to private mutexes, and therefore should only be used as circumstances dictate.
-
--INPUT-
-cstr Name:  A unique identifier for the mutex, expressed as a string.
-&ptr Mutex: A reference to the new mutex will be returned in this variable.
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-ERROR AllocSharedMutex(CSTRING Name, APTR *Result)
-{
-   LONG sem_id;
-   ERROR error = AllocSemaphore(Name, 1, SMF::NIL, &sem_id);
-   if (!error) {
-      *Result = (APTR)(MAXINT)sem_id;
-      return ERR_Okay;
-   }
-   return error;
-}
-#elif _WIN32 // Please refer to windows.c
-#else
-#error No support for AllocSharedMutex()
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
 FreeMutex: Deallocate a private mutex.
 
 This function will deallocate a mutex.  It is vital that no thread is sleeping on the mutex at the time this function
@@ -977,31 +938,6 @@ void FreeMutex(APTR Mutex)
 // See windows.c FreeMutex()
 #else
 #error No support for FreeMutex()
-#endif
-
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FreeSharedMutex: Deallocate a shared mutex.
-
-This function will deallocate a shared mutex.  It is vital that no thread is sleeping on the mutex at the time this
-function is called.  The outcome when calling this function on a mutex still in use is undefined.
-
--INPUT-
-ptr Mutex: Reference to a shared mutex.
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-void FreeSharedMutex(APTR Mutex)
-{
-   if (!Mutex) return;
-   FreeSemaphore((MAXINT)Mutex);
-}
-#elif _WIN32 // See windows.c FreeSharedMutex()
-#else
-#error No support for FreeSharedMutex()
 #endif
 
 /*********************************************************************************************************************

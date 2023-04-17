@@ -2166,8 +2166,8 @@ struct CoreBase {
    ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockMutex)(APTR Mutex);
    ERROR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-   ERROR (*_AllocSharedMutex)(CSTRING Name, APTR Mutex);
-   void (*_FreeSharedMutex)(APTR Mutex);
+   ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
    void (*_UnlockSharedMutex)(APTR Mutex);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
@@ -2191,8 +2191,6 @@ struct CoreBase {
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
    STT (*_StrDatatype)(CSTRING String);
    void (*_UnloadFile)(struct CacheFile * Cache);
-   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
-   ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2289,8 +2287,8 @@ inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
 inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
 inline void UnlockMutex(APTR Mutex) { return CoreBase->_UnlockMutex(Mutex); }
 inline ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
-inline ERROR AllocSharedMutex(CSTRING Name, APTR Mutex) { return CoreBase->_AllocSharedMutex(Name,Mutex); }
-inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mutex); }
+inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
+inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
 inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
@@ -2314,8 +2312,6 @@ inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * Objec
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
-inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
-inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 #endif
 
 

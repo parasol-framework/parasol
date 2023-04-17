@@ -96,8 +96,8 @@ void FreeMutex(APTR Mutex);
 ERROR LockMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockMutex(APTR Mutex);
 ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-ERROR AllocSharedMutex(CSTRING Name, APTR * Mutex);
-void FreeSharedMutex(APTR Mutex);
+ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
 ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds);
 void UnlockSharedMutex(APTR Mutex);
 void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args);
@@ -121,8 +121,6 @@ ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignal
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 STT StrDatatype(CSTRING String);
 void UnloadFile(struct CacheFile * Cache);
-void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
-ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 
 #ifdef  __cplusplus
 }
