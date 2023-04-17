@@ -660,14 +660,11 @@ void free_public_waitlock(HANDLE Lock)
    CloseHandle(Lock);
 }
 
-LONG wake_waitlock(HANDLE Lock, LONG ProcessID, LONG TotalSleepers)
+LONG wake_waitlock(HANDLE Lock, LONG TotalSleepers)
 {
    if (!Lock) return ERR_NullArgs;
 
    LONG error = ERR_Okay;
-   BYTE free;
-   Lock = handle_cache(ProcessID, Lock, &free);
-   if (!Lock) return ERR_Failed;
 
    #ifdef WAITLOCK_EVENTS
       while (TotalSleepers-- > 0) {
@@ -683,7 +680,6 @@ LONG wake_waitlock(HANDLE Lock, LONG ProcessID, LONG TotalSleepers)
       if (!ReleaseSemaphore(Lock, 1, &prev)) error = ERR_SystemCall;
    #endif
 
-   if (free) CloseHandle(Lock);
    return error;
 }
 

@@ -2118,7 +2118,7 @@ struct CoreBase {
    ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERROR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERROR (*_SendMessage)(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size);
+   ERROR (*_SendMessage)(LONG Type, MSF Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERROR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
@@ -2241,7 +2241,7 @@ inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) 
 inline ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
 inline ERROR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
+inline ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }

@@ -1123,7 +1123,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(0, MSGID_QUIT, MSF::NIL, NULL, 0);
+         SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
          glCrashStatus = 1;
          return;
       }

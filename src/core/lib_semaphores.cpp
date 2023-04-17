@@ -272,7 +272,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, SMF Flags)
 
          #ifdef _WIN32
             WORD wl;
-            if (init_sleep(semaphore->BlockingProcess, semaphore->BlockingThread, SemaphoreID, RT_SEMAPHORE, &wl) != ERR_Okay) {
+            if (init_sleep(semaphore->BlockingThread, SemaphoreID, RT_SEMAPHORE, &wl) != ERR_Okay) {
                return ERR_DeadLock;
             }
 
@@ -307,7 +307,7 @@ ERROR AccessSemaphore(LONG SemaphoreID, LONG Timeout, SMF Flags)
             LONG timeout = end_time - (PreciseTime()/1000LL);
             WORD wl;
             if (timeout > 0) {
-               if (!(error = init_sleep(semaphore->BlockingProcess, semaphore->BlockingThread, SemaphoreID, RT_SEMAPHORE, &wl))) { // For deadlocking prevention.
+               if (!(error = init_sleep(semaphore->BlockingThread, SemaphoreID, RT_SEMAPHORE, &wl))) { // For deadlocking prevention.
                   error = public_cond_wait(&glSharedControl->PublicLocks[PL_SEMAPHORES].Mutex, &glSharedControl->PublicLocks[PL_SEMAPHORES].Cond, timeout);
                   clear_waitlock(wl);
                }

@@ -963,7 +963,7 @@ static ERROR SURFACE_Free(extSurface *Self, APTR Void)
    if ((Self->Flags & RNF::AUTO_QUIT) != RNF::NIL) {
       pf::Log log;
       log.msg("Posting a quit message due to use of AUTOQUIT.");
-      SendMessage(0, MSGID_QUIT, MSF::NIL, NULL, 0);
+      SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
    }
 
    if (Self->InputHandle) gfxUnsubscribeInput(Self->InputHandle);

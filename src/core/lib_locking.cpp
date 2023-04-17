@@ -320,11 +320,11 @@ void cond_wake_all(UBYTE Index)
 
 static THREADVAR WORD glWLIndex = -1;
 
-ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG ResourceType, WORD *Index)
+ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType, WORD *Index)
 {
    pf::Log log(__FUNCTION__);
 
-   //log.trace("Sleeping on thread %d.%d for resource #%d, Total Threads: %d", OtherProcessID, OtherThreadID, ResourceID, glSharedControl->WLIndex);
+   //log.trace("Sleeping on thread %d for resource #%d, Total Threads: %d", OtherThreadID, ResourceID, glSharedControl->WLIndex);
 
    LONG our_thread = get_thread_id();
    if (OtherThreadID IS our_thread) return log.warning(ERR_Args);
@@ -346,7 +346,7 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
          for (i=glSharedControl->WLIndex-1; i >= 0; i--) {    // Check for deadlocks.  If a deadlock will occur then we return immediately.
             if (locks[i].ThreadID IS OtherThreadID) {
                if (locks[i].WaitingForThreadID IS our_thread) {
-                  log.warning("Thread %d.%d holds resource #%d and is waiting for us (%d.%d) to release #%d.", locks[i].ProcessID, locks[i].ThreadID, ResourceID, glProcessID, our_thread, locks[i].WaitingForResourceID);
+                  log.warning("Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", locks[i].ThreadID, ResourceID, our_thread, locks[i].WaitingForResourceID);
                   return ERR_DeadLock;
                }
             }
@@ -357,14 +357,13 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
          else i = __sync_fetch_and_add(&glSharedControl->WLIndex, 1); // Thread entry does not exist, add an entry to the end of the array.
          glWLIndex = i;
          locks[i].ThreadID  = our_thread;
-         locks[i].ProcessID = glProcessID;
       }
       else { // Our thread is already registered.
          // Check for deadlocks.  If a deadlock will occur then we return immediately.
          for (i=glSharedControl->WLIndex-1; i >= 0; i--) {
             if (locks[i].ThreadID IS OtherThreadID) {
                if (locks[i].WaitingForThreadID IS our_thread) {
-                  log.warning("Thread %d.%d holds resource #%d and is waiting for us (%d.%d) to release #%d.", locks[i].ProcessID, locks[i].ThreadID, ResourceID, glProcessID, our_thread, locks[i].WaitingForResourceID);
+                  log.warning("Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", locks[i].ThreadID, ResourceID, our_thread, locks[i].WaitingForResourceID);
                   return ERR_DeadLock;
                }
             }
@@ -375,7 +374,6 @@ ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG 
 
       locks[i].WaitingForResourceID   = ResourceID;
       locks[i].WaitingForResourceType = ResourceType;
-      locks[i].WaitingForProcessID    = OtherProcessID;
       locks[i].WaitingForThreadID     = OtherThreadID;
       #if defined(_WIN32) && !defined(USE_GLOBAL_EVENTS)
          locks[i].Lock = get_threadlock();
@@ -407,11 +405,10 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
          if ((locks[i].WaitingForResourceID IS ResourceID) and (locks[i].WaitingForResourceType IS ResourceType)) {
             locks[i].WaitingForResourceID   = 0;
             locks[i].WaitingForResourceType = 0;
-            locks[i].WaitingForProcessID    = 0;
             locks[i].WaitingForThreadID     = 0;
             #ifdef _WIN32
                #ifndef USE_GLOBAL_EVENTS
-                  if (ResourceType != RT_OBJECT) wake_waitlock(locks[i].Lock, locks[i].ProcessID, 1);
+                  if (ResourceType != RT_OBJECT) wake_waitlock(locks[i].Lock, 1);
                #endif
             #else
                // On Linux this version doesn't do any waking (the caller is expected to manage that)
@@ -424,7 +421,7 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
 
       #ifdef USE_GLOBAL_EVENTS // Windows only.  Note that the RT_OBJECTS type is ignored because it is private.
          if (count > 0) {
-            if (ResourceType IS RT_SEMAPHORE) wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, 0, count);
+            if (ResourceType IS RT_SEMAPHORE) wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, count);
          }
       #endif
 
@@ -454,24 +451,10 @@ void remove_process_waitlocks(void)
          #endif
 
          for (LONG i=glSharedControl->WLIndex-1; i >= 0; i--) {
-            if (locks[i].ProcessID IS glProcessID) {
+            if (locks[i].ThreadID) {
                ClearMemory(locks+i, sizeof(locks[0])); // Remove the entry.
                #ifdef USE_GLOBAL_EVENTS
                   count++;
-               #endif
-            }
-            else if (locks[i].WaitingForProcessID IS glProcessID) { // Foreign thread is waiting on us, wake it up.
-               #ifdef _WIN32
-                  log.warning("Waking foreign thread %d.%d, which is sleeping on our process", locks[i].ProcessID, locks[i].ThreadID);
-                  locks[i].WaitingForResourceID   = 0;
-                  locks[i].WaitingForResourceType = 0;
-                  locks[i].WaitingForProcessID    = 0;
-                  locks[i].WaitingForThreadID     = 0;
-                  #ifndef USE_GLOBAL_EVENTS
-                     wake_waitlock(locks[i].Lock, locks[i].ProcessID, 1);
-                  #else
-                     count++;
-                  #endif
                #endif
             }
             else continue;
@@ -481,7 +464,7 @@ void remove_process_waitlocks(void)
 
    #ifdef USE_GLOBAL_EVENTS
       if (count > 0) {
-         wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, 0, count);
+         wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, count);
       }
    #endif
 
@@ -527,7 +510,6 @@ ERROR clear_waitlock(WORD Index)
    locks[Index].Flags = 0;
    locks[Index].WaitingForResourceID   = 0;
    locks[Index].WaitingForResourceType = 0;
-   locks[Index].WaitingForProcessID    = 0;
    locks[Index].WaitingForThreadID     = 0; // NB: Important that you clear this last if you are to avoid threading conflicts.
    return error;
 }
@@ -837,7 +819,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
       ERROR error = ERR_TimeOut;
       WORD wl;
-      if (!init_sleep(glProcessID, Object->ThreadID, Object->UID, RT_OBJECT, &wl)) { // Indicate that our thread is sleeping.
+      if (!init_sleep(Object->ThreadID, Object->UID, RT_OBJECT, &wl)) { // Indicate that our thread is sleeping.
          while ((current_time = (PreciseTime() / 1000LL)) < end_time) {
             LONG tmout = (LONG)(end_time - current_time);
             if (tmout < 0) tmout = 0;
@@ -845,7 +827,6 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
             if (locks[wl].Flags & WLF_REMOVED) {
                locks[wl].WaitingForResourceID   = 0;
                locks[wl].WaitingForResourceType = 0;
-               locks[wl].WaitingForProcessID    = 0;
                locks[wl].WaitingForThreadID     = 0;
                locks[wl].Flags = 0;
                Object->subSleep();
@@ -855,7 +836,6 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
             if (Object->incQueue() IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
                locks[wl].WaitingForResourceID   = 0;
                locks[wl].WaitingForResourceType = 0;
-               locks[wl].WaitingForProcessID    = 0;
                locks[wl].WaitingForThreadID     = 0;
                locks[wl].Flags = 0;
                Object->Locked = false;

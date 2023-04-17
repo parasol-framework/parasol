@@ -1706,10 +1706,9 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
   <function>
     <name>SendMessage</name>
     <category>Messages</category>
-    <comment>Send messages to message queues.</comment>
-    <prototype>ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
+    <comment>Send messages to the local message queue.</comment>
+    <prototype>ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="OBJECTID" name="Task">ID of a task to target.  If zero, the local message queue is targeted.</param>
       <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
       <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.</param>

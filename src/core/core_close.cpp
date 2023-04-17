@@ -52,7 +52,7 @@ EXPORT void CloseCore(void)
                // to stop foreign processes that we've launched.
                kill(task.ProcessID, SIGHUP);
             #else
-               SendMessage(task.TaskID, MSGID_QUIT, MSF::NIL, NULL, 0);
+               SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
             #endif
 
             WaitTime(0, -100000);

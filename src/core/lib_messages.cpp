@@ -32,7 +32,7 @@ Name: Messages
 
 #include "defs.h"
 
-static ERROR wake_task(OBJECTID);
+static ERROR wake_task(void);
 #ifdef _WIN32
 static ERROR sleep_task(LONG, BYTE);
 #else
@@ -91,7 +91,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 
       if (glWFOList.empty()) {
          log.trace("All objects signalled.");
-         SendMessage(0, MSGID_WAIT_FOR_OBJECTS, MSF::WAIT, NULL, 0); // Will result in ProcessMessages() terminating
+         SendMessage(MSGID_WAIT_FOR_OBJECTS, MSF::WAIT, NULL, 0); // Will result in ProcessMessages() terminating
       }
    }
 }
@@ -759,7 +759,7 @@ ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG 
 /*********************************************************************************************************************
 
 -FUNCTION-
-SendMessage: Send messages to message queues.
+SendMessage: Send messages to the local message queue.
 
 The SendMessage() function is used to send messages to message queues.  Messages must be associated with a Type
 identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined,
@@ -771,7 +771,6 @@ handler to process the waiting messages, specify `WAIT` in the Flags parameter. 
 of 10 seconds in case the task responsible for handling the queue is failing to process its messages.
 
 -INPUT-
-oid Task: ID of a task to target.  If zero, the local message queue is targeted.
 int(MSGID) Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
 int(MSF) Flags: Optional flags.
 buf(ptr) Data:  Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.
@@ -813,13 +812,13 @@ static void view_messages(MessageHeader *Header)
    }
 }
 
-ERROR SendMessage(OBJECTID TaskID, LONG Type, MSF Flags, APTR Data, LONG Size)
+ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
    if (glLogLevel >= 9) log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
 
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted to queue #%d", TaskID);
+   if (Type IS MSGID_QUIT) log.function("A quit message is being posted");
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
@@ -971,7 +970,7 @@ ERROR SendMessage(OBJECTID TaskID, LONG Type, MSF Flags, APTR Data, LONG Size)
 
       // Alert the process to indicate that there are messages available.
 
-      wake_task(TaskID);
+      wake_task();
 
       #ifdef _WIN32
          tlMsgSent = TRUE;
@@ -1574,7 +1573,7 @@ static void thread_socket_free(void *Socket) { close(PTR_TO_HOST(Socket)); }
 static void thread_socket_init(void) { pthread_key_create(&keySocket, thread_socket_free); }
 #endif
 
-static ERROR wake_task(OBJECTID TaskID)
+static ERROR wake_task(void)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1613,45 +1612,19 @@ static ERROR wake_task(OBJECTID TaskID)
       }
    }
 
-   // Determine the target process
-
-   LONG target_pid = 0;
-   if ((TaskID IS glCurrentTask->UID) or (!TaskID)) {
-      target_pid = glProcessID; // Wake self (a thread may be trying to wake a sleeping main).
-   }
-   else {
-      for (auto &task : glTasks) {
-         if (TaskID IS task.TaskID) {
-            target_pid = task.ProcessID;
-            break;
-         }
-      }
-   }
-
    // Place a single character in the destination task's socket to indicate that there are messages to be processed.
 
    socklen_t socklen;
-   struct sockaddr_un *sockpath = get_socket_path(target_pid, &socklen);
+   struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);
    if (sendto(tlSendSocket, &msg, sizeof(msg), MSG_DONTWAIT, (struct sockaddr *)sockpath, socklen) IS -1) {
       if (errno != EAGAIN) {
-         log.warning("sendto(%d) from %d failed: %s", target_pid, glProcessID, strerror(errno));
-         glValidateProcessID = target_pid;
+         log.warning("sendto() failed: %s", strerror(errno));
       }
    }
 
 #elif _WIN32
 
-   if ((TaskID IS glCurrentTask->UID) or (!TaskID)) {
-      wake_waitlock(glCurrentTask->Lock, glProcessID, 1);
-   }
-   else {
-      for (auto &task : glTasks) {
-         if (TaskID IS task.TaskID) {
-            wake_waitlock(task.Lock, task.ProcessID, 1);
-            break;
-         }
-      }
-   }
+   wake_waitlock(glCurrentTask->Lock, 1);
 
 #endif
 

@@ -48,7 +48,7 @@ ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size);
 ERROR ReleaseMemory(MEMORYID MemoryID);
 CLASSID ResolveClassName(CSTRING Name);
-ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size);
+ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size);
 ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 OBJECTPTR SetContext(OBJECTPTR Object);
 ERROR SetField(OBJECTPTR Object, FIELD Field, ...);

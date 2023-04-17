@@ -322,7 +322,6 @@ enum {
 };
 
 struct WaitLock {
-   LONG ProcessID;
    LONG ThreadID;
    #ifdef _WIN32
       #ifndef USE_GLOBAL_EVENTS
@@ -330,7 +329,6 @@ struct WaitLock {
       #endif
    #endif
    LARGE WaitingTime;
-   LONG WaitingForProcessID;
    LONG WaitingForThreadID;
    LONG WaitingForResourceID;
    LONG WaitingForResourceType;
@@ -986,7 +984,7 @@ void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
+ERROR  init_sleep(LONG, LONG, LONG, WORD *);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
@@ -1023,7 +1021,7 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
    void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
    void  free_threadlocks(void);
-   ERROR wake_waitlock(WINHANDLE, LONG, LONG);
+   ERROR wake_waitlock(WINHANDLE, LONG);
    ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
    void  free_public_waitlock(WINHANDLE);
    ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
