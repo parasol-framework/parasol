@@ -307,7 +307,6 @@ class objFont : public BaseClass {
 
 };
 
-extern struct FontBase *FontBase;
 struct FontBase {
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
@@ -322,6 +321,7 @@ struct FontBase {
 };
 
 #ifndef PRV_FONT_MODULE
+extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
 inline void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows) { return FontBase->_StringSize(Font,String,Chars,Wrap,Width,Rows); }

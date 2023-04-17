@@ -2073,7 +2073,6 @@ struct ScriptArg { // For use with scExec
    };
 };
 
-extern struct CoreBase *CoreBase;
 struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
@@ -2197,6 +2196,7 @@ struct CoreBase {
 };
 
 #ifndef PRV_CORE_MODULE
+extern struct CoreBase *CoreBase;
 inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
@@ -2401,7 +2401,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 
 }
 
 inline ULONG StrHash(const std::string Value) {
-   return CoreBase->_StrHash(Value.c_str(), FALSE);
+   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
@@ -2943,7 +2943,7 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 

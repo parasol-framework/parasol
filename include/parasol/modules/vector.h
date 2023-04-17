@@ -1975,7 +1975,6 @@ class objVectorViewport : public objVector {
    using create = pf::Create<objVectorViewport>;
 };
 
-extern struct VectorBase *VectorBase;
 struct VectorBase {
    ERROR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
    void (*_FreePath)(APTR Path);
@@ -2006,6 +2005,7 @@ struct VectorBase {
 };
 
 #ifndef PRV_VECTOR_MODULE
+extern struct VectorBase *VectorBase;
 inline ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
 inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
 inline ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }

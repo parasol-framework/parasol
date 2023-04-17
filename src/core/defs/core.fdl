@@ -1322,7 +1322,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 
 }
 
 inline ULONG StrHash(const std::string Value) {
-   return CoreBase->_StrHash(Value.c_str(), FALSE);
+   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
@@ -1864,7 +1864,7 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 
