@@ -409,7 +409,6 @@ LARGE GetResource(RES Resource)
 
    switch(Resource) {
       case RES::MESSAGE_QUEUE:   return glTaskMessageMID;
-      case RES::SHARED_CONTROL:  return (MAXINT)glSharedControl;
       case RES::PRIVILEGED:      return glPrivileged;
       case RES::LOG_LEVEL:       return glLogLevel;
       case RES::PROCESS_STATE:   return MAXINT(glTaskState);

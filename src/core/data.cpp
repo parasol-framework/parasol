@@ -77,7 +77,6 @@ std::vector<TaskRecord> glTasks;
 std::vector<FDRecord> glRegisterFD;
 
 struct RootModule     *glModuleList    = NULL;
-struct SharedControl  *glSharedControl = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
 
@@ -105,13 +104,8 @@ CSTRING glIDL = MOD_IDL;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
-  struct public_lock glPublicLocks[PL_END];
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
-  struct public_lock glPublicLocks[PL_END] = {
-     { "", 0, 0, 0, FALSE }, // 0
-     { "rka", 0, 0, 0, FALSE } // PL_WAITLOCKS
-  };
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
@@ -120,7 +114,7 @@ LARGE glTimeLog      = 0;
 WORD glCrashStatus   = 0;
 WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;
-WORD glSystemState   = 0;
+WORD glSystemState   = -1; // Initialisation state is -1
 #ifdef DEBUG
    WORD glLogLevel = 8; // Thread global
 #else

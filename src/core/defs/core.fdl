@@ -333,7 +333,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   enum("RES", { type="int", start=1 },
     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
-    "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
+    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
     "USER_ID: Internal",
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
@@ -355,8 +355,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
     "FREE_MEMORY: The total amount of free memory.",
-    "FREE_SWAP: The total amount of free swap memory.",
-    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys."
+    "FREE_SWAP: The total amount of free swap memory."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -1168,8 +1167,8 @@ struct ScriptArg { // For use with scExec
     "GetResource",
     "SetResource",
     "ScanMessages",
-    "SysLock",
-    "SysUnlock",
+    "StrDatatype",
+    "UnloadFile",
     "CreateFolder",
     "LoadFile",
     "SetVolume",
@@ -1210,9 +1209,7 @@ struct ScriptArg { // For use with scExec
     "UTF8WriteValue",
     "CopyFile",
     "WaitForObjects",
-    "ReadFileToBuffer",
-    "StrDatatype",
-    "UnloadFile")
+    "ReadFileToBuffer")
 
   c_insert([[
 
@@ -2462,17 +2459,6 @@ struct ActionMessage {
 };
 
 #endif
-
-enum { // For SysLock()
-   PL_WAITLOCKS=1,
-   PL_END
-};
-
-struct SharedControl {
-   volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
-   LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG WLOffset;                   // Offset to the wait-lock array
-};
 
 // Event support
 

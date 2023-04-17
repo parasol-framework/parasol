@@ -31,8 +31,6 @@
 
 // See the makefile for optional defines
 
-//#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
-
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
 
 #define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
@@ -278,48 +276,9 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
   #endif
 #endif
 
-#ifdef _WIN32
-
-struct public_lock {
-   char Name[12];
-   WINHANDLE Lock;
-   LONG PID;
-   WORD Count;
-   bool Event; // Set to true if the lock is for a broadcast-able event
-};
-
-extern struct public_lock glPublicLocks[PL_END];
-
-#else
-struct public_lock {
-   pthread_mutex_t Mutex;
-   pthread_cond_t Cond;
-   LONG PID;               // Resource tracking: Process that has the current lock.
-   WORD Count;             // Resource tracking: Count of all locks (nesting)
-};
-
-extern struct public_lock glPublicLocks[PL_END];
-#endif
-
 enum {
    RT_OBJECT
 };
-
-struct WaitLock {
-   LONG ThreadID;
-   #ifdef _WIN32
-      #ifndef USE_GLOBAL_EVENTS
-         WINHANDLE Lock;
-      #endif
-   #endif
-   LARGE WaitingTime;
-   LONG WaitingForThreadID;
-   LONG WaitingForResourceID;
-   LONG WaitingForResourceType;
-   UBYTE Flags; // WLF flags
-};
-
-#define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
 //********************************************************************************************************************
 // This structure is used for internally timed broadcasting.
@@ -648,7 +607,6 @@ extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct SharedControl  *glSharedControl;
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
@@ -953,7 +911,7 @@ void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERROR  init_sleep(LONG, LONG, LONG, WORD *);
+ERROR  init_sleep(LONG, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
@@ -977,12 +935,7 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
 #define REF_WAKELOCK           get_threadlock()
 
 #ifdef _WIN32
-   ERROR alloc_public_lock(WINHANDLE *, CSTRING);
-   ERROR open_public_lock(WINHANDLE *, CSTRING);
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);
-   void  free_public_lock(WINHANDLE);
-   ERROR public_thread_lock(WINHANDLE, LONG);
-   void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
    void  free_threadlocks(void);
    ERROR wake_waitlock(WINHANDLE, LONG);
@@ -992,9 +945,7 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
    LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG, socklen_t *);
-   ERROR alloc_public_lock(UBYTE, ALF);
    ERROR alloc_public_cond(CONDLOCK *, ALF);
-   void  free_public_lock(UBYTE);
    void  free_public_cond(CONDLOCK *);
    ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
    ERROR send_thread_msg(LONG, LONG, APTR, LONG);
@@ -1010,7 +961,6 @@ ERROR cond_wait(UBYTE, UBYTE, LONG);
 
 void cond_wake_all(UBYTE);
 void cond_wake_single(UBYTE);
-ERROR clear_waitlock(WORD);
 
 #ifdef _WIN32
 void activate_console(BYTE);

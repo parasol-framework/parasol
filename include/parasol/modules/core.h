@@ -1292,7 +1292,7 @@ enum class RES : LONG {
    NIL = 0,
    MESSAGE_QUEUE = 1,
    CONSOLE_FD = 2,
-   SHARED_CONTROL = 3,
+   KEY_STATE = 3,
    USER_ID = 4,
    DISPLAY_DRIVER = 5,
    PRIVILEGED_USER = 6,
@@ -1315,7 +1315,6 @@ enum class RES : LONG {
    CPU_SPEED = 23,
    FREE_MEMORY = 24,
    FREE_SWAP = 25,
-   KEY_STATE = 26,
 };
 
 // Path types for SetResourcePath()
@@ -2115,8 +2114,8 @@ struct CoreBase {
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
-   ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
-   ERROR (*_SysUnlock)(LONG Index);
+   STT (*_StrDatatype)(CSTRING String);
+   void (*_UnloadFile)(struct CacheFile * Cache);
    ERROR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
@@ -2158,8 +2157,6 @@ struct CoreBase {
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-   STT (*_StrDatatype)(CSTRING String);
-   void (*_UnloadFile)(struct CacheFile * Cache);
 };
 
 #ifndef PRV_CORE_MODULE
@@ -2230,8 +2227,8 @@ inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_Ge
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
-inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
-inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
+inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
+inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline ERROR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
@@ -2273,8 +2270,6 @@ inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBa
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
-inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
-inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 #endif
 
 
@@ -4631,17 +4626,6 @@ struct ActionMessage {
 };
 
 #endif
-
-enum { // For SysLock()
-   PL_WAITLOCKS=1,
-   PL_END
-};
-
-struct SharedControl {
-   volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
-   LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG WLOffset;                   // Offset to the wait-lock array
-};
 
 // Event support
 

@@ -109,17 +109,7 @@ extern "C" ERROR add_storage_class(void);
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
-static ERROR open_shared_control(void);
-static ERROR init_shared_control(void);
 static ERROR init_volumes(const std::forward_list<std::string> &);
-
-#ifdef _WIN32
-static WINHANDLE glSharedControlID = 0; // Shared memory ID.
-#endif
-
-#if defined(__unix__) && !defined(__ANDROID__)
-static LONG glSharedControlID = -1;
-#endif
 
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
@@ -230,34 +220,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    setegid(glGID);  // Ensure that we run under the user's default group (important for file creation)
 
 #elif _WIN32
-   // Make some Windows calls and generate the global share names.  The share names are based on the library location -
-   // this is very important for preventing multiple installs and versions from clashing with each other (e.g. a USB
-   // stick installation clashing with a base installation on C: drive)
-   //
-   // NOTE: A globally recognisable name only matters when a global instance is active for resource sharing.  Otherwise
-   // the names will be rewritten so that they are unique (see open_shared_control())
-
    LONG id = 0;
    #ifdef DEBUG
       winInitialise(&id, NULL); // Don't set a break handler, this will allow GDB intercept CTRL-C.
    #else
       winInitialise(&id, (APTR)&BreakHandler);
    #endif
-
-   const char lookup[] = "0123456789ABCDEF";
-   for (LONG p=1; p < PL_END; p++) {
-      glPublicLocks[p].Name[0] = 'r';
-      glPublicLocks[p].Name[1] = 'k';
-      glPublicLocks[p].Name[2] = 'a' + p;
-      for (i=3; i < 11; i++) {
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         id = id>>4;
-      }
-      glPublicLocks[p].Name[i] = 0;
-   }
 #endif
 
    // Randomise the internal random variables
@@ -479,36 +447,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       winSetUnhandledExceptionFilter(&CrashHandler);
    }
    else log.msg("A debugger is active.");
-
-   // Generate unique resource names based on our process ID.
-
-   {
-      WINHANDLE handle;
-      LONG id = glProcessID;
-      static const char lookup[] = "0123456789ABCDEF";
-      while (true) {
-         for (LONG p=1; p < PL_END; p++) {
-            LONG mid = id;
-            for (LONG i=3; i < 11; i++) {
-               glPublicLocks[p].Name[i] = lookup[mid & 0xf];
-               mid = mid>>4;
-            }
-         }
-
-         // Check that the resource name is unique, otherwise keep looping.
-         if (open_public_lock(&handle, glPublicLocks[PL_WAITLOCKS].Name) != ERR_Okay) break;
-
-         free_public_lock(handle);
-         id += 17; // Alter the id with a prime number
-      }
-   }
 #endif
-
-   if (open_shared_control() != ERR_Okay) {
-      CloseCore();
-      if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
-      return NULL;
-   }
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
 
@@ -673,220 +612,6 @@ EXPORT void CleanSystem(LONG Flags)
    pf::Log log("Core");
    log.msg("Flags: $%.8x", Flags);
    Expunge(FALSE);
-}
-
-//********************************************************************************************************************
-
-#define MAGICKEY 0x58392712
-
-static const LONG glMemorySize = sizeof(SharedControl) +
-                                 (sizeof(WaitLock) * MAX_WAITLOCKS);
-
-#ifdef _WIN32
-static ERROR open_shared_control(void)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.trace("");
-
-   ERROR error;
-
-   for (LONG i=1; i < PL_END; i++) {
-      if (glPublicLocks[i].Event) {
-         if ((error = alloc_public_waitlock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Event
-            log.warning("Failed to allocate system waitlock %d '%s', error %d", i, glPublicLocks[i].Name, error);
-            return error;
-         }
-      }
-      else if ((error = alloc_public_lock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Mutex
-         log.warning("Failed to allocate system lock, error %d", error);
-         return error;
-      }
-   }
-
-   LONG init;
-   char sharename[12];
-   CopyMemory(glPublicLocks[PL_WAITLOCKS].Name, sharename, 12);
-   sharename[2] = 'z';
-   if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize, &glSharedControlID, (APTR *)&glSharedControl)) < 0) {
-      KERR("Failed to create the shared memory pool in call to winCreateSharedMemory(), code %d.\n", init);
-      return ERR_Failed;
-   }
-
-   if (init) error = init_shared_control();
-   else error = ERR_Okay;
-
-   return error;
-}
-
-#else
-
-static ERROR open_shared_control(void)
-{
-   pf::Log log("Core");
-
-   // Generate a resource sharing key based on the unique file inode of the core library.  This prevents
-   // conflicts with other installations of the system core on this machine.
-
-   LONG memkey = 0xd39f7ea1;
-
-   Dl_info dlinfo;
-   if (dladdr((CPTR)OpenCore, &dlinfo)) {
-      struct stat flinfo;
-      if (!stat(dlinfo.dli_fname, &flinfo)) {
-         memkey ^= flinfo.st_ino;
-      }
-   }
-
-   KMSG("open_shared_control() Key: $%.8x.\n", memkey);
-
-   #ifdef __ANDROID__
-      // Helpful ashmem article: http://notjustburritos.tumblr.com/post/21442138796/an-introduction-to-android-shared-memory
-
-      // There are two ways to go about managing shared memory: Allocate each request independently as a system memory block
-      // or allocate a memory pool and manage it with our own functionality.
-
-      if ((glMemoryFD = open("/dev/ashmem", O_RDWR, S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
-         LOGE("Failed to open /dev/ashmem");
-         return ERR_Failed;
-      }
-
-      char ashname[32];
-      snprintf(ashname, sizeof(ashname), "rkl_%d", memkey); // Use the memkey as the system-wide name.  This means that APK based installs are secluded, but a system installation of the core would be discoverable by everyone.
-
-      auto ret = ioctl(glMemoryFD, ASHMEM_SET_NAME, ashname);
-      if (ret < 0) {
-         LOGE("Failed to set name of the ashmem region that we want.");
-         close(glMemoryFD);
-         glMemoryFD = -1;
-         return ERR_Failed;
-      }
-
-      ret = ioctl(glMemoryFD, ASHMEM_SET_SIZE, glMemorySize);
-      if (ret < 0) {
-         LOGE("Failed to set size of the ashmem region to %d.", glMemorySize);
-         close(glMemoryFD);
-         glMemoryFD = -1;
-         return ERR_Failed;
-      }
-
-      // Map the first portion of the file into our process (i.e. the system stuff that needs to be permanently mapped).
-      // Mapping of blocks in the global pool will only be done on request in AccessMemory().
-
-      if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
-         // Call init_shared_control() if this is the first time that the block has been created.
-
-         if (glSharedControl->MagicKey != MAGICKEY) init_shared_control();
-         else LOGI("Shared control structure already initialised.");
-      }
-      else {
-         KERR("mmap() failed on public memory pool: %s.\n", strerror(errno));
-         return ERR_LockFailed;
-      }
-
-   #elif USE_SHM
-      // NOTE: Do not ever use shmctl(IPC_STAT) for any reason, as the resulting structure is not compatible between all Linux versions.
-
-      bool init = false;
-      if ((glSharedControlID = shmget(memkey, 0, SHM_R|SHM_W)) IS -1) {
-         KMSG("No existing memory block exists for the given key (will create a new one).  Error: %s\n", strerror(errno));
-
-         // Change the memkey with our PID to make it unique.
-         memkey ^= getpid();
-
-         if ((glSharedControlID = shmget(memkey, glMemorySize, IPC_CREAT|IPC_EXCL|SHM_R|SHM_W|S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
-            if (errno IS EEXIST); // The shared memory block already exists
-            else if (errno IS EIDRM) { // The shared memory block is marked for termination and some other process is still using it
-               KERR("Cannot load the Core because an existing process has permanently locked the public memory pool.\nUse 'ps aux' to find the process and kill it.\n");
-               return ERR_Failed;
-            }
-            else {
-               KERR("\033[1mshmget() failed on the public memory pool, error %d: %s\033[0m\n", errno, strerror(errno));
-               return ERR_Failed;
-            }
-         }
-         else init = true;
-      }
-      else KMSG("Shared memory block already exists - will attach to it.\n");
-
-      if ((glSharedControl = (SharedControl *)shmat(glSharedControlID, 0, SHM_R|SHM_W)) IS (void *)-1) {
-         glSharedControl = NULL;
-         KERR("\033[1mFailed to connect to the public memory pool.\033[0m\n");
-         return ERR_Failed;
-      }
-
-      // Initialise/Reset the memory if we created it, OR it can be determined that a crash has occurred on previous
-      // execution and all shared memory allocations need to be destroyed.
-
-      if ((init) or (glSharedControl->MagicKey != MAGICKEY)) {
-         KMSG("Initialisation of glSharedControl is required.\n");
-         init_shared_control();
-      }
-
-   #else
-      KMSG("Using mmap() sharing functionality.\n");
-
-      // Open the memory file, creating it if it does not exist.  If it does exist, the file is simply opened.
-
-      if ((glMemoryFD = open(MEMORYFILE, O_RDWR|O_CREAT, S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
-         KERR("Failed to open memory base file \"%s\".\n", MEMORYFILE);
-         return ERR_Failed;
-      }
-
-      // Expand the size of the page file if it is too small
-
-      struct stat info;
-      if (!fstat(glMemoryFD, &info)) {
-         if (info.st_size < glMemorySize) {
-            if (ftruncate(glMemoryFD, glMemorySize) IS -1) {
-               KERR("Failed to increase the filesize of \"%s\" to %d bytes.\n", MEMORYFILE, glMemorySize);
-               return ERR_Failed;
-            }
-         }
-      }
-
-      // Map the file into our process
-
-      if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
-         // Call init_shared_control() if this is the first time that the block has been created.
-
-         if (glSharedControl->MagicKey != MAGICKEY) init_shared_control();
-      }
-      else {
-         KERR("mmap() failed on public memory pool: %s.\n", strerror(errno));
-         return ERR_LockFailed;
-      }
-
-   #endif
-
-   glSystemState = -1; // System state of -1 == initialising
-   return ERR_Okay;
-}
-#endif
-
-static ERROR init_shared_control(void)
-{
-   KMSG("init_shared_control()\n");
-
-   ClearMemory(glSharedControl, glMemorySize);
-
-   glSharedControl->MagicKey   = MAGICKEY;
-
-   LONG offset = sizeof(SharedControl);
-
-   glSharedControl->WLOffset = offset;
-   offset += sizeof(WaitLock) * MAX_WAITLOCKS;
-
-   // Allocate public locks (for sharing between processes)
-
-   #ifdef __unix__
-      KMSG("Initialising %d global locks\n", PL_END-1);
-      for (UBYTE i=1; i < PL_END; i++) {
-         if (alloc_public_lock(i, ALF::RECURSIVE)) { CloseCore(); return ERR_Failed; };
-      }
-   #endif
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************

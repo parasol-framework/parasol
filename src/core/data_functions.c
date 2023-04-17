@@ -95,8 +95,6 @@ FDEF argsStrReadLocale[] = { { "Error", FD_LONG|FD_ERROR }, { "Key", FD_STR }, {
 FDEF argsSubscribeAction[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "Action", FD_LONG }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsSubscribeEvent[] = { { "Error", FD_LONG|FD_ERROR }, { "Event", FD_LARGE }, { "Callback", FD_FUNCTIONPTR }, { "Custom", FD_PTR }, { "Handle", FD_PTR|FD_RESULT }, { 0, 0 } };
 FDEF argsSubscribeTimer[] = { { "Error", FD_LONG|FD_ERROR }, { "Interval", FD_DOUBLE }, { "Callback", FD_FUNCTIONPTR }, { "Subscription", FD_PTR|FD_RESULT }, { 0, 0 } };
-FDEF argsSysLock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
-FDEF argsSysUnlock[] = { { "Error", FD_LONG|FD_ERROR }, { "Index", FD_LONG }, { 0, 0 } };
 FDEF argsUTF8CharLength[] = { { "Result", FD_LONG }, { "String", FD_STR }, { 0, 0 } };
 FDEF argsUTF8CharOffset[] = { { "Result", FD_LONG }, { "String", FD_STR }, { "Offset", FD_LONG }, { 0, 0 } };
 FDEF argsUTF8Copy[] = { { "Result", FD_LONG }, { "Src", FD_STR }, { "Dest", FD_STR }, { "Chars", FD_LONG }, { "Size", FD_LONG }, { 0, 0 } };
@@ -183,8 +181,8 @@ const struct Function glFunctions[] = {
    { (APTR)GetResource, "GetResource", argsGetResource },
    { (APTR)SetResource, "SetResource", argsSetResource },
    { (APTR)ScanMessages, "ScanMessages", argsScanMessages },
-   { (APTR)SysLock, "SysLock", argsSysLock },
-   { (APTR)SysUnlock, "SysUnlock", argsSysUnlock },
+   { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
+   { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { (APTR)CreateFolder, "CreateFolder", argsCreateFolder },
    { (APTR)LoadFile, "LoadFile", argsLoadFile },
    { (APTR)SetVolume, "SetVolume", argsSetVolume },
@@ -226,8 +224,6 @@ const struct Function glFunctions[] = {
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
    { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
    { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
-   { (APTR)StrDatatype, "StrDatatype", argsStrDatatype },
-   { (APTR)UnloadFile, "UnloadFile", argsUnloadFile },
    { NULL, NULL, NULL }
 };
 

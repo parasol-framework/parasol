@@ -70,8 +70,8 @@ ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
 LARGE GetResource(RES Resource);
 LARGE SetResource(RES Resource, LARGE Value);
 ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
-ERROR SysLock(LONG Index, LONG MilliSeconds);
-ERROR SysUnlock(LONG Index);
+STT StrDatatype(CSTRING String);
+void UnloadFile(struct CacheFile * Cache);
 ERROR CreateFolder(CSTRING Path, PERMIT Permissions);
 ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
 ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
@@ -113,8 +113,6 @@ LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-STT StrDatatype(CSTRING String);
-void UnloadFile(struct CacheFile * Cache);
 
 #ifdef  __cplusplus
 }

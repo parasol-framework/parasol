@@ -207,7 +207,6 @@ OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NUL
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 APTR glDither = NULL;
-SharedControl *glSharedControl = NULL;
 bool glSixBitDisplay = false;
 static MsgHandler *glExposeHandler = NULL;
 TIMER glRefreshPointerTimer = 0;
@@ -725,17 +724,12 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return ERR_Okay;
    }
 
-   CSTRING driver_name;
-   if ((driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER))) {
+   if (auto driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER)) {
       log.msg("User requested display driver '%s'", driver_name);
       if ((!StrMatch(driver_name, "none")) or (!StrMatch(driver_name, "headless"))) {
-         glHeadless = TRUE;
+         glHeadless = true;
       }
    }
-
-   // NB: The display module cannot load the Surface module during initialisation due to recursive dependency.
-
-   glSharedControl = (SharedControl *)GetResourcePtr(RES::SHARED_CONTROL);
 
    // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
 

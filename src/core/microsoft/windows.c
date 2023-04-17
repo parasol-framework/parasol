@@ -67,8 +67,6 @@ WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariab
 
 LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue);
 void plFreePrivateSemaphore(HANDLE *Semaphore);
-LONG plLockSemaphore(HANDLE *Semaphore, LONG TimeOut);
-void plUnlockSemaphore(HANDLE *Semaphore);
 long long winGetTickCount(void);
 
 static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
@@ -456,22 +454,6 @@ void plFreePrivateSemaphore(HANDLE *Semaphore)
    if (*Semaphore) { CloseHandle(*Semaphore); *Semaphore = 0; }
 }
 
-LONG plLockSemaphore(HANDLE *Semaphore, LONG TimeOut)
-{
-   switch(WaitForSingleObject(*Semaphore, TimeOut)) {
-      case WAIT_OBJECT_0:  return ERR_Okay;
-      case WAIT_TIMEOUT:   return ERR_TimeOut;
-      case WAIT_ABANDONED: return ERR_DoesNotExist;
-      default: return ERR_SystemCall;
-   }
-}
-
-void plUnlockSemaphore(HANDLE *Semaphore)
-{
-   LONG prev;
-   ReleaseSemaphore(*Semaphore, 1, &prev);
-}
-
 //********************************************************************************************************************
 // Broadcast a message saying that our process is dying.  Status should be 0 for an initial broadcast (closure is
 // starting) and 1 if the process has finished and closed the Core cleanly.
@@ -552,58 +534,6 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 
    LeaveCriticalSection(&csHandleBank);
    return result;
-}
-
-//********************************************************************************************************************
-// Windows compatible locking allocation functions.  See lib_locking.c for the POSIX versions.
-
-int alloc_public_lock(HANDLE *Lock, const char *Name)
-{
-   HANDLE mutex;
-
-   if ((mutex = OpenMutex(SYNCHRONIZE, FALSE, Name))) {
-      *Lock = mutex;
-      return ERR_Okay;
-   }
-
-   if ((mutex = CreateMutex(NULL, FALSE, Name))) {
-      *Lock = mutex;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
-int open_public_lock(HANDLE *Lock, const char *Name)
-{
-   HANDLE mutex;
-
-   if ((mutex = OpenMutex(SYNCHRONIZE, FALSE, Name))) {
-      *Lock = mutex;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
-void free_public_lock(HANDLE Lock)
-{
-   CloseHandle(Lock);
-}
-
-int public_thread_lock(HANDLE Lock, LONG TimeOut)
-{
-   if (TimeOut < 1) TimeOut = 1;
-
-   switch(WaitForSingleObject(Lock, TimeOut)) {
-      case WAIT_OBJECT_0:  return ERR_Okay;
-      case WAIT_TIMEOUT:   return ERR_TimeOut;
-      case WAIT_ABANDONED: return ERR_DoesNotExist;
-      default: return ERR_SystemCall;
-   }
-}
-
-void public_thread_unlock(HANDLE Lock)
-{
-   ReleaseMutex(Lock);
 }
 
 //********************************************************************************************************************
