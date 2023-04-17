@@ -959,7 +959,6 @@ void   scan_classes(void);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
-void   wake_sleepers(LONG, LONG);
 ERROR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);

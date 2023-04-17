@@ -386,45 +386,6 @@ ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType, WORD *I
 }
 
 //********************************************************************************************************************
-// Used by ReleaseSemaphore()
-
-void wake_sleepers(LONG ResourceID, LONG ResourceType)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.trace("Resource: %d, Type: %d, Total: %d", ResourceID, ResourceType, glSharedControl->WLIndex);
-
-   if (!SysLock(PL_WAITLOCKS, 2000)) {
-      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-      LONG i;
-      #ifdef USE_GLOBAL_EVENTS
-         LONG count = 0;
-      #endif
-
-      for (i=0; i < glSharedControl->WLIndex; i++) {
-         if ((locks[i].WaitingForResourceID IS ResourceID) and (locks[i].WaitingForResourceType IS ResourceType)) {
-            locks[i].WaitingForResourceID   = 0;
-            locks[i].WaitingForResourceType = 0;
-            locks[i].WaitingForThreadID     = 0;
-            #ifdef _WIN32
-               #ifndef USE_GLOBAL_EVENTS
-                  wake_waitlock(locks[i].Lock, 1);
-               #endif
-            #else
-               // On Linux this version doesn't do any waking (the caller is expected to manage that)
-            #endif
-         }
-         #ifdef USE_GLOBAL_EVENTS
-            if (locks[i].WaitingForResourceType IS ResourceType) count++;
-         #endif
-      }
-
-      SysUnlock(PL_WAITLOCKS);
-   }
-   else log.warning(ERR_SystemLocked);
-}
-
-//********************************************************************************************************************
 // Remove all the wait-locks for the current process (affects all threads).  Lingering wait-locks are indicative of
 // serious problems, as all should have been released on shutdown.
 

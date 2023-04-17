@@ -119,7 +119,6 @@ LARGE glTimeLog      = 0;
 WORD glCrashStatus   = 0;
 WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;
-WORD glFunctionIndex = 0;
 #ifdef DEBUG
    WORD glLogLevel = 8; // Thread global
 #else
