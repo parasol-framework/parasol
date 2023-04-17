@@ -326,7 +326,7 @@ ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType, WORD *I
 
    //log.trace("Sleeping on thread %d for resource #%d, Total Threads: %d", OtherThreadID, ResourceID, glSharedControl->WLIndex);
 
-   LONG our_thread = get_thread_id();
+   auto our_thread = get_thread_id();
    if (OtherThreadID IS our_thread) return log.warning(ERR_Args);
 
    ScopedSysLock lock(PL_WAITLOCKS, 3000);
@@ -436,6 +436,8 @@ void remove_process_waitlocks(void)
 
    if (!glSharedControl) return;
 
+   auto our_thread = get_thread_id();
+
    {
       ScopedSysLock lock(PL_WAITLOCKS, 5000);
       if (lock.granted()) {
@@ -445,10 +447,23 @@ void remove_process_waitlocks(void)
          #endif
 
          for (LONG i=glSharedControl->WLIndex-1; i >= 0; i--) {
-            if (locks[i].ThreadID) {
+            if (locks[i].ThreadID IS our_thread) {
                ClearMemory(locks+i, sizeof(locks[0])); // Remove the entry.
                #ifdef USE_GLOBAL_EVENTS
                   count++;
+               #endif
+            }
+            else if (locks[i].WaitingForThreadID IS our_thread) { // A thread is waiting on us, wake it up.
+               #ifdef _WIN32
+                  log.warning("Waking thread %d", locks[i].ThreadID);
+                  locks[i].WaitingForResourceID   = 0;
+                  locks[i].WaitingForResourceType = 0;
+                  locks[i].WaitingForThreadID     = 0;
+                  #ifndef USE_GLOBAL_EVENTS
+                     wake_waitlock(locks[i].Lock, 1);
+                  #else
+                     count++;
+                  #endif
                #endif
             }
             else continue;

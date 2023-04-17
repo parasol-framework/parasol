@@ -176,7 +176,7 @@ file.ui.copy = function(Source, Dest, Options)
                         response = 'cancel'
                      end
 
-                     mSys.SendMessage(0, break_dialog, MSF_WAIT, NULL, 0)
+                     mSys.SendMessage(break_dialog, MSF_WAIT, NULL, 0)
                   end
                })
 
@@ -221,7 +221,7 @@ file.ui.copy = function(Source, Dest, Options)
                title   = 'File Copy Failure',
                string  = message,
                feedback = function(Dialog, Response, State)
-                  mSys.SendMessage(0, break_dialog, MSF_WAIT, NULL, 0)
+                  mSys.SendMessage(break_dialog, MSF_WAIT, NULL, 0)
                end
             })
 

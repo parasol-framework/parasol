@@ -9,7 +9,7 @@
       warnExists = true,
       multiSelect = true,
       feedback = function(Dialog, Path, Files)
-         mSys.SendMessage(0, MSGID_QUIT)
+         mSys.SendMessage(MSGID_QUIT)
 
          if (Files == nil) then
             print('Dialog was cancelled.')

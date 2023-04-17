@@ -17,7 +17,7 @@ Demonstrates how to launch a sub-process and intercept the data that it prints t
          end,
          exitCallback = function(Task)
             print("Detected child process exit.")
-            mSys.SendMessage(0, MSGID_QUIT)
+            mSys.SendMessage(MSGID_QUIT)
          end
       })
 
