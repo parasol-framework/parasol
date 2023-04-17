@@ -65,6 +65,9 @@
 
 #define DEFAULT_VIRTUALID 0xffffffff
 
+#define CODE_MEMH 0x4D454D48L
+#define CODE_MEMT 0x4D454D54L
+
 #ifdef _WIN32
    typedef void * MODHANDLE;
    typedef void * THREADLOCK;
@@ -146,6 +149,30 @@ struct rkWatchPath {
 #include "prototypes.h"
 
 #include <parasol/main.h>
+
+struct ActionEntry {
+   ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
+};
+
+struct ThreadMessage {
+   OBJECTID ThreadID;    // Internal
+};
+
+struct ThreadActionMessage {
+   OBJECTPTR Object;    // Direct pointer to a target object.
+   LONG      ActionID;  // The action to execute.
+   LONG      Key;       // Internal
+   ERROR     Error;     // The error code resulting from the action's execution.
+   FUNCTION  Callback;  // Callback function to execute on action completion.
+};
+
+enum class ALF : UWORD {
+   NIL = 0,
+   SHARED = 0x0001,
+   RECURSIVE = 0x0002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ALF)
 
 enum {
    TL_GENERIC=0,

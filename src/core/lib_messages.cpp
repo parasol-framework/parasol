@@ -40,6 +40,10 @@ static ERROR sleep_task(LONG);
 ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime);
 #endif
 
+template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
+   return APTR(((BYTE *)Pointer) + Offset);
+}
+
 static ERROR msghandler_free(APTR Address)
 {
    pf::Log log("RemoveMsgHandler");

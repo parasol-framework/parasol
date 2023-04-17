@@ -53,10 +53,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("PMF", { comment="Flags for ProcessMessages" },
      "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
-  flags("ALF", { bits=16 },
-     "SHARED: The lock will be shared between foreign processes.",
-     "RECURSIVE: Set if support for recursive locking within the same thread is required.")
-
   flags("RFD", { bits=32, comment="Flags for RegisterFD()" },
      "WRITE: Activate the callback if there is room to write to the FD's buffer.",
      "EXCEPT: Activate the callback if error conditions are pending.",
@@ -588,9 +584,6 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 #define ALIGN32(a) (((a) + 3) & (~3))
 #define ALIGN16(a) (((a) + 1) & (~1))
 
-#define CODE_MEMH 0x4D454D48L
-#define CODE_MEMT 0x4D454D54L
-
 #ifdef PRINTF64I
   #define PF64 "I64d"
 #elif PRINTF64_PRID
@@ -754,10 +747,6 @@ struct OpenInfo {
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
-
-template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
-   return APTR(((BYTE *)Pointer) + Offset);
-}
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -959,16 +948,6 @@ struct FieldValue {
      int Size      # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
   ]])
 
-  struct("ThreadMessage", { restrict="c" }, [[ oid ThreadID # Internal ]])
-
-  struct("ThreadActionMessage", { restrict="c", comment="An internal structure for managing actions executed via threads." }, [[
-     obj   Object    # Direct pointer to a target object.
-     int   ActionID  # The action to execute.
-     int   Key       # Internal
-     error Error     # The error code resulting from the action's execution.
-     func  Callback  # Callback function to execute on action completion.
-  ]])
-
   struct("MemInfo", { type="meminfo" }, [[
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
@@ -977,8 +956,6 @@ struct FieldValue {
     mem  MemoryID      # The unique ID for this block.
     short AccessCount  # Total number of active locks on this block.
   ]])
-
-  struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
 
   struct("MsgHandler", { restrict="c" }, [[
     ptr(struct(MsgHandler)) Prev  # Previous message handler in the chain

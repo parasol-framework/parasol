@@ -784,14 +784,6 @@ enum class PMF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(PMF)
 
-enum class ALF : UWORD {
-   NIL = 0,
-   SHARED = 0x0001,
-   RECURSIVE = 0x0002,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(ALF)
-
 // Flags for RegisterFD()
 
 enum class RFD : ULONG {
@@ -1559,9 +1551,6 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 #define ALIGN32(a) (((a) + 3) & (~3))
 #define ALIGN16(a) (((a) + 1) & (~1))
 
-#define CODE_MEMH 0x4D454D48L
-#define CODE_MEMT 0x4D454D54L
-
 #ifdef PRINTF64I
   #define PF64 "I64d"
 #elif PRINTF64_PRID
@@ -1725,10 +1714,6 @@ struct OpenInfo {
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
-
-template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
-   return APTR(((BYTE *)Pointer) + Offset);
-}
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -1911,18 +1896,6 @@ struct Message {
    LONG  Size;       // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
 };
 
-struct ThreadMessage {
-   OBJECTID ThreadID;    // Internal
-};
-
-struct ThreadActionMessage {
-   OBJECTPTR Object;    // Direct pointer to a target object.
-   LONG      ActionID;  // The action to execute.
-   LONG      Key;       // Internal
-   ERROR     Error;     // The error code resulting from the action's execution.
-   FUNCTION  Callback;  // Callback function to execute on action completion.
-};
-
 typedef struct MemInfo {
    APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
@@ -1931,10 +1904,6 @@ typedef struct MemInfo {
    MEMORYID MemoryID;    // The unique ID for this block.
    WORD     AccessCount; // Total number of active locks on this block.
 } MEMINFO;
-
-struct ActionEntry {
-   ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
-};
 
 struct MsgHandler {
    struct MsgHandler * Prev;    // Previous message handler in the chain

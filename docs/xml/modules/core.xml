@@ -2369,11 +2369,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="Write"/>
     </constants>
 
-    <constants lookup="ALF">
-      <const name="RECURSIVE">Set if support for recursive locking within the same thread is required.</const>
-      <const name="SHARED">The lock will be shared between foreign processes.</const>
-    </constants>
-
     <constants lookup="ALIGN" comment="Universal values for alignment of graphics and text">
       <const name="BOTTOM">Align to bottom</const>
       <const name="CENTER">Synonym for HORIZONTAL | VERTICAL</const>
