@@ -419,12 +419,6 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
          #endif
       }
 
-      #ifdef USE_GLOBAL_EVENTS // Windows only.  Note that the RT_OBJECTS type is ignored because it is private.
-         if (count > 0) {
-            if (ResourceType IS RT_SEMAPHORE) wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, count);
-         }
-      #endif
-
       SysUnlock(PL_WAITLOCKS);
    }
    else log.warning(ERR_SystemLocked);
@@ -461,23 +455,6 @@ void remove_process_waitlocks(void)
          }
       }
    }
-
-   #ifdef USE_GLOBAL_EVENTS
-      if (count > 0) {
-         wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, count);
-      }
-   #endif
-
-   #ifdef __unix__
-      // Lazy wake-up, just wake everybody and they will go back to sleep if their desired lock isn't available.
-
-      {
-         ScopedSysLock lock(PL_SEMAPHORES, 5000);
-         if (lock.granted()) {
-            pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_SEMAPHORES].Cond);
-         }
-      }
-   #endif
 }
 
 //********************************************************************************************************************

@@ -59,8 +59,6 @@ static HANDLE glInstance = 0;
 static HANDLE glMsgWindow = 0;
 HANDLE glValidationSemaphore = 0;
 
-LONG glMutexLockSize = sizeof(CRITICAL_SECTION);
-
 WINBASEAPI VOID WINAPI InitializeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable, PSRWLOCK SRWLock, DWORD dwMilliseconds, ULONG Flags);
@@ -986,14 +984,6 @@ HANDLE winGetCurrentProcess(void)
 LONG winGetCurrentProcessId(void)
 {
    return GetCurrentProcessId();
-}
-
-//********************************************************************************************************************
-// Returns a handle if successful, otherwise NULL.
-
-HANDLE winOpenSemaphore(unsigned char *Name)
-{
-   return OpenSemaphore(SEMAPHORE_ALL_ACCESS, FALSE, Name);
 }
 
 //********************************************************************************************************************

@@ -792,17 +792,6 @@ enum class ALF : UWORD {
 
 DEFINE_ENUM_FLAG_OPERATORS(ALF)
 
-// Flags for semaphores
-
-enum class SMF : ULONG {
-   NIL = 0,
-   NO_BLOCKING = 0x00000001,
-   NON_BLOCKING = 0x00000001,
-   EXISTS = 0x00000002,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(SMF)
-
 // Flags for RegisterFD()
 
 enum class RFD : ULONG {
@@ -1287,20 +1276,6 @@ enum class IDTYPE : LONG {
    MESSAGE = 1,
    GLOBAL = 2,
    FUNCTION = 3,
-};
-
-enum class SEM : LONG {
-   NIL = 0,
-   GET_VAL = 1,
-   GET_COUNTER = 2,
-   GET_DATA_PTR = 3,
-   GET_DATA_LONG = 4,
-   GET_DATA_LARGE = 5,
-   GET_DATA_DOUBLE = 6,
-   SET_DATA_PTR = 7,
-   SET_DATA_LONG = 8,
-   SET_DATA_LARGE = 9,
-   SET_DATA_DOUBLE = 10,
 };
 
 // Indicates the state of a process.
@@ -4660,20 +4635,13 @@ struct ActionMessage {
 enum { // For SysLock()
    PL_WAITLOCKS=1,
    PL_FORBID,
-   PL_SEMAPHORES,
-   #ifdef _WIN32
-      CN_SEMAPHORES,
-   #endif
    PL_END
 };
 
 struct SharedControl {
-   volatile LONG ValidateProcess;
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG SemaphoreOffset;            // Offset to the semaphore control array
-   LONG TaskOffset;                 // Offset to the task control array
    LONG WLOffset;                   // Offset to the wait-lock array
    #ifdef __unix__
       struct {

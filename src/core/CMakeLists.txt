@@ -94,7 +94,6 @@ target_sources (core PRIVATE
    "lib_locking.cpp"
    "lib_memory.cpp"
    "lib_messages.cpp"
-   "lib_semaphores.cpp"
    "lib_strings.cpp"
    "classes/class_config.cpp"
    "classes/class_file.cpp"

@@ -1460,10 +1460,9 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is TRUE)
 
-      WINHANDLE handles[glFDTable.size()+2]; // +1 for thread-lock, +1 for validation lock.
+      WINHANDLE handles[glFDTable.size()+1]; // +1 for thread-lock
       handles[0] = get_threadlock();
-      handles[1] = glValidationSemaphore;
-      LONG total = 2;
+      LONG total = 1;
 
       if ((SystemOnly) and (!tlMessageBreak)) {
          log.trace("Sleeping on process semaphore only.");
@@ -1502,14 +1501,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       //    0 = Task semaphore signalled
       //   >0 = Handle signalled
 
-      if (i IS 1) {
-         log.trace("Process validation request signalled.");
-         if (glValidateProcessID) {
-            validate_process(glValidateProcessID);
-            glValidateProcessID = 0;
-         }
-      }
-      else if ((i > 1) and (i < total)) {
+      if ((i > 0) and (i < total)) {
          // Process only the handle routine that was signalled: NOTE: This is potentially an issue if the handle is
          // early on in the list and is being frequently signalled - it will mean that the other handles aren't
          // going to get signalled until the earlier one stops being signalled.

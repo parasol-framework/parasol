@@ -30,10 +30,6 @@ EXPORT void CloseCore(void)
 
    free_events(); // Remove event subscriptions
 
-   // Deallocate any semaphores that we've left in the system early if we've crashed
-
-   if (glCrashStatus) remove_semaphores();
-
    // Destroy all other tasks in our instance that we have created.
 
    {
@@ -185,8 +181,6 @@ EXPORT void CloseCore(void)
 
       while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
-
-      remove_semaphores();
 
       #ifdef __ANDROID__
       if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }

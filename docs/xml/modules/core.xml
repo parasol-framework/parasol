@@ -3229,25 +3229,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="START">Use an index at position zero.</const>
     </constants>
 
-    <constants lookup="SEM">
-      <const name="GET_COUNTER">Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.</const>
-      <const name="GET_DATA_DOUBLE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit float point number.</const>
-      <const name="GET_DATA_LARGE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.</const>
-      <const name="GET_DATA_LONG">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.</const>
-      <const name="GET_DATA_PTR">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.</const>
-      <const name="GET_VAL">Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.</const>
-      <const name="SET_DATA_DOUBLE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.</const>
-      <const name="SET_DATA_LARGE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.</const>
-      <const name="SET_DATA_LONG">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.</const>
-      <const name="SET_DATA_PTR">Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for semaphores">
-      <const name="EXISTS">When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.</const>
-      <const name="NON_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
-      <const name="NO_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
-    </constants>
-
     <constants lookup="STP" comment="ScrollToPoint flags">
       <const name="ANIM"/>
       <const name="X"/>

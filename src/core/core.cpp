@@ -194,8 +194,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF::RECURSIVE)) return NULL;
    if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
 
-   // Allocate a private POSIX semaphore for LockObject() and ReleaseObject()
-
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
    // bit set.  E.g. If I am user 500 and the program is run as suid, then the ID's are:
@@ -682,7 +680,6 @@ EXPORT void CleanSystem(LONG Flags)
 #define MAGICKEY 0x58392712
 
 static const LONG glMemorySize = sizeof(SharedControl) +
-                                 (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
                                  (sizeof(WaitLock) * MAX_WAITLOCKS);
 
 #ifdef _WIN32
@@ -877,9 +874,6 @@ static ERROR init_shared_control(void)
    glSharedControl->MagicKey   = MAGICKEY;
 
    LONG offset = sizeof(SharedControl);
-
-   glSharedControl->SemaphoreOffset = offset;
-   offset += sizeof(SemaphoreEntry) * MAX_SEMAPHORES;
 
    glSharedControl->WLOffset = offset;
    offset += sizeof(WaitLock) * MAX_WAITLOCKS;

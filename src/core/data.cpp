@@ -105,15 +105,12 @@ CSTRING glIDL = MOD_IDL;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
-  sem_t glObjectSemaphore;
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
   struct public_lock glPublicLocks[PL_END] = {
      { "", 0, 0, 0, FALSE }, // 0
      { "rka", 0, 0, 0, FALSE }, // PL_WAITLOCKS
      { "rkc", 0, 0, 0, FALSE }, // PL_FORBID
-     { "rke", 0, 0, 0, FALSE }, // PL_SEMAPHORES
-     { "rkg", 0, 0, 0, TRUE }   // CN_SEMAPHORES
   };
 #endif
 
@@ -166,7 +163,6 @@ const struct virtual_drive glFSDefault = {
 std::unordered_map<ULONG, virtual_drive> glVirtual;
 
 #ifdef __unix__
-LONG glMutexLockSize = sizeof(THREADLOCK);
 struct FileMonitor *glFileMonitor = NULL;
 #endif
 

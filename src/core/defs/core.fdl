@@ -57,10 +57,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "SHARED: The lock will be shared between foreign processes.",
      "RECURSIVE: Set if support for recursive locking within the same thread is required.")
 
-  flags("SMF", { comment="Flags for semaphores" },
-     "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
-     "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
-
   flags("RFD", { bits=32, comment="Flags for RegisterFD()" },
      "WRITE: Activate the callback if there is room to write to the FD's buffer.",
      "EXCEPT: Activate the callback if error conditions are pending.",
@@ -327,18 +323,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "GLOBAL: Global ID's have no specific association with anything.",
     "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
   )
-
-  enum("SEM", { type="int", start=1 },
-    "GET_VAL: Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.",
-    "GET_COUNTER: Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.",
-    "GET_DATA_PTR: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.",
-    "GET_DATA_LONG: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.",
-    "GET_DATA_LARGE: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.",
-    "GET_DATA_DOUBLE: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit float point number.",
-    "SET_DATA_PTR: Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.",
-    "SET_DATA_LONG: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.",
-    "SET_DATA_LARGE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.",
-    "SET_DATA_DOUBLE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.")
 
   enum("TSTATE", { type="char", comment="Indicates the state of a process." },
     "RUNNING: The process is currently executing code.",
@@ -2482,20 +2466,13 @@ struct ActionMessage {
 enum { // For SysLock()
    PL_WAITLOCKS=1,
    PL_FORBID,
-   PL_SEMAPHORES,
-   #ifdef _WIN32
-      CN_SEMAPHORES,
-   #endif
    PL_END
 };
 
 struct SharedControl {
-   volatile LONG ValidateProcess;
    WORD SystemState;
    volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
    LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG SemaphoreOffset;            // Offset to the semaphore control array
-   LONG TaskOffset;                 // Offset to the task control array
    LONG WLOffset;                   // Offset to the wait-lock array
    #ifdef __unix__
       struct {

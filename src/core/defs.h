@@ -34,12 +34,10 @@
 //#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
 
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
-#define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
 
 #define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
 #define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
 
-#define MAX_SEMAPHORES    40  // Maximum number of semaphores that can be allocated in the system
 #define MAX_THREADS       20  // Maximum number of threads per process.
 #define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
 #define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
@@ -209,28 +207,6 @@ public:
 };
 
 //********************************************************************************************************************
-// Semaphore management structure.
-
-struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
-   ULONG NameID;          // Hashed name of the semaphore
-   LONG  BlockingProcess; // Process ID of the blocker
-   LONG  BlockingThread;  // Global thread ID of the blocker
-   LARGE Data;            // User configurable 64-bit data
-   SMF   Flags;           // Status flags
-   WORD  BlockingValue;   // Value used for blocking access
-   WORD  MaxValue;        // Semaphore maximum value
-   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
-   struct SemProcess {
-      LONG ProcessID;
-      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
-      UBYTE BlockCount;      // Count of blocking locks currently recorded
-      UBYTE AccessCount;     // Count of access locks currently recorded
-      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
-   } Processes[20];
-   //LONG     FIFO[10];       // List of processes currently queued for access
-};
-
-//********************************************************************************************************************
 
 struct ActionSubscription {
    OBJECTPTR Context;
@@ -317,7 +293,6 @@ extern struct public_lock glPublicLocks[PL_END];
 #endif
 
 enum {
-   RT_SEMAPHORE,
    RT_OBJECT
 };
 
@@ -689,7 +664,6 @@ extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMessageIDCount;
 extern LONG glGlobalIDCount;
-extern LONG glMutexLockSize; // Read only constant
 extern LONG glPrivateIDCounter;
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
 extern UWORD glFunctionID;
@@ -755,7 +729,6 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 
 #ifdef _WIN32
 extern WINHANDLE glProcessHandle;
-extern WINHANDLE glValidationSemaphore;
 extern THREADVAR WORD tlMessageBreak;
 #endif
 
@@ -780,15 +753,6 @@ struct TaskMessage {
    LONG Type;       // Message type ID
    LONG DataSize;   // Size of the data (does not include the size of the TaskMessage structure)
    LONG NextMsg;    // Offset to the next message
-   /*
-   #ifdef _WIN32
-      LONG MsgProcess;
-      WINHANDLE MsgSemaphore;
-   #endif
-   #ifdef __unix__
-      THREADLOCK Mutex;
-   #endif
-   */
    // Data follows
 };
 
@@ -924,11 +888,7 @@ extern "C" {
 
 //********************************************************************************************************************
 
-ERROR AccessSemaphore(LONG, LONG, SMF);
-ERROR AllocSemaphore(CSTRING, LONG, SMF, LONG *);
-ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR pReleaseSemaphore(LONG, SMF);
 
 ERROR fs_closedir(DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
@@ -994,7 +954,6 @@ void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-void   remove_semaphores(void);
 ERROR  resolve_args(APTR, const FunctionField *);
 void   scan_classes(void);
 void   remove_threadpool(void);
@@ -1008,9 +967,6 @@ ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #define REF_WAKELOCK           get_threadlock()
-
-#define LOCK_SEMAPHORES(t)  SysLock(PL_SEMAPHORES,(t))
-#define UNLOCK_SEMAPHORES() SysUnlock(PL_SEMAPHORES)
 
 #ifdef _WIN32
    ERROR alloc_public_lock(WINHANDLE *, CSTRING);
@@ -1048,13 +1004,6 @@ void cond_wake_all(UBYTE);
 void cond_wake_single(UBYTE);
 ERROR clear_waitlock(WORD);
 
-// Platform specific semaphore functionality.
-
-ERROR plAllocPrivateSemaphore(APTR, LONG InitialValue);
-void  plFreePrivateSemaphore(APTR);
-ERROR plLockSemaphore(APTR, LONG TimeOut);
-void  plUnlockSemaphore(APTR);
-
 #ifdef _WIN32
 void activate_console(BYTE);
 void free_threadlock(void);
@@ -1088,7 +1037,6 @@ LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *Pro
 void winLeaveCriticalSection(APTR);
 WINHANDLE winLoadLibrary(CSTRING);
 void winLowerPriority(void);
-WINHANDLE winOpenSemaphore(unsigned char *Name);
 void winProcessMessages(void);
 LONG winReadStd(APTR, LONG, APTR Buffer, LONG *Size);
 LONG winReadPipe(WINHANDLE FD, APTR Buffer, LONG *Size);
