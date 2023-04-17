@@ -1732,7 +1732,6 @@ class objSurface : public BaseClass {
 
 };
 
-extern struct DisplayBase *DisplayBase;
 struct DisplayBase {
    objPointer * (*_AccessPointer)(void);
    ERROR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
@@ -1781,6 +1780,7 @@ struct DisplayBase {
 };
 
 #ifndef PRV_DISPLAY_MODULE
+extern struct DisplayBase *DisplayBase;
 inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(); }
 inline ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
 inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }

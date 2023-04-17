@@ -30,10 +30,6 @@ EXPORT void CloseCore(void)
 
    free_events(); // Remove event subscriptions
 
-   // Deallocate any semaphores that we've left in the system early if we've crashed
-
-   if (glCrashStatus) remove_semaphores();
-
    // Destroy all other tasks in our instance that we have created.
 
    {
@@ -52,7 +48,7 @@ EXPORT void CloseCore(void)
                // to stop foreign processes that we've launched.
                kill(task.ProcessID, SIGHUP);
             #else
-               SendMessage(task.TaskID, MSGID_QUIT, MSF::NIL, NULL, 0);
+               SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
             #endif
 
             WaitTime(0, -100000);
@@ -186,8 +182,6 @@ EXPORT void CloseCore(void)
       while (glMsgHandlers) FreeResource(glMsgHandlers);
       glLastMsgHandler = NULL;
 
-      remove_semaphores();
-
       #ifdef __ANDROID__
       if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
       #endif
@@ -243,32 +237,8 @@ EXPORT void CloseCore(void)
       free_private_memory();
    }
 
-   log.debug("Detaching from the shared memory control structure.");
-
-   #ifdef _WIN32
-      if (glSharedControl) {
-         auto tmp = glSharedControl;
-         glSharedControl = NULL;
-         winUnmapViewOfFile(tmp);
-      }
-   #endif
-
-   #ifdef __unix__
-      free_shared_control();
-   #endif
-
    #ifdef _WIN32
       free_threadlocks();
-
-      // Remove semaphore controls
-
-      for (LONG i=1; i < PL_END; i++) {
-         if (glPublicLocks[i].Event) free_public_waitlock(glPublicLocks[i].Lock);
-         else free_public_lock(glPublicLocks[i].Lock);
-      }
-
-      if (glSharedControlID) { winCloseHandle(glSharedControlID); glSharedControlID = 0; }
-
       winShutdown();
    #endif
 
@@ -481,39 +451,6 @@ static void free_private_memory(void)
 #ifdef __unix__
 static void free_shared_control(void)
 {
-   pf::Log log("Shutdown");
-
-   KMSG("free_shared_control()\n");
-
-   #ifdef USE_SHM
-      shmdt(glSharedControl);
-      glSharedControl = NULL;
-
-      KMSG("This is the last process - now marking the shared mempool for deletion.\n");
-
-      if (glSharedControlID != -1) {
-         if (shmctl(glSharedControlID, IPC_RMID, NULL) IS -1) {
-            KERR("shmctl() failed to kill the public memory pool: %s\n", strerror(errno));
-         }
-         glSharedControlID = -1;
-      }
-   #else
-      if (glMemoryFD != -1) {
-         close(glMemoryFD);
-         glMemoryFD = -1;
-      }
-
-      // Delete the memory mapped file if this is the last process to use it
-
-      #ifndef __ANDROID__
-         if (glDebugMemory IS false) {
-            log.msg("I am the last task - now closing the memory mapping.");
-            unlink(MEMORYFILE);
-         }
-      #endif
-
-   #endif
-
    if (glSocket != -1) {
       close(glSocket);
       glSocket = -1;

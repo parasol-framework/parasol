@@ -132,11 +132,6 @@
       <const name="Write"/>
     </constants>
 
-    <constants lookup="ALF">
-      <const name="RECURSIVE">Set if support for recursive locking within the same thread is required.</const>
-      <const name="SHARED">The lock will be shared between foreign processes.</const>
-    </constants>
-
     <constants lookup="CF" comment="Compression stream formats">
       <const name="DEFLATE">The 'deflate' format</const>
       <const name="GZIP">The 'gzip' format</const>

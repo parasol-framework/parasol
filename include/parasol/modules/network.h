@@ -627,7 +627,6 @@ inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR 
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
    else return ERR_CreateObject;
 }
-extern struct NetworkBase *NetworkBase;
 struct NetworkBase {
    ERROR (*_StrToAddress)(CSTRING String, struct IPAddress * Address);
    CSTRING (*_AddressToStr)(struct IPAddress * IPAddress);
@@ -639,6 +638,7 @@ struct NetworkBase {
 };
 
 #ifndef PRV_NETWORK_MODULE
+extern struct NetworkBase *NetworkBase;
 inline ERROR netStrToAddress(CSTRING String, struct IPAddress * Address) { return NetworkBase->_StrToAddress(String,Address); }
 inline CSTRING netAddressToStr(struct IPAddress * IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
 inline ULONG netHostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }

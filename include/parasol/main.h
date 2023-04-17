@@ -104,37 +104,6 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
 };
 
 //********************************************************************************************************************
-
-class ScopedSysLock { // C++ wrapper for terminating a system lock when scope is lost
-   private:
-      LONG index;
-
-   public:
-      ERROR error; // ERR_Okay is used to indicate that the lock is acquired
-
-      ScopedSysLock(LONG Index, LONG Milliseconds) {
-         error = SysLock(Index, Milliseconds);
-         index = Index;
-      }
-
-      ~ScopedSysLock() { if (!error) SysUnlock(index); }
-
-      bool granted() { return error == ERR_Okay; }
-
-      void release() {
-         if (!error) {
-            SysUnlock(index);
-            error = ERR_NotLocked;
-         }
-      }
-
-      ERROR acquire(LONG Milliseconds) {
-         if (error) error = SysLock(index, Milliseconds);
-         return error;
-      }
-};
-
-//********************************************************************************************************************
 // Resource guard for any allocation that can be freed with FreeResource()
 //
 // Usage: pf::GuardedResource resource(thing)

@@ -5688,11 +5688,11 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                continue;
             }
             else if (Flags & ULD_TERMINATE) FreeResource(resource->ObjectID);
-            else SendMessage(0, MSGID_FREE, MSF::NIL, &resource->ObjectID, sizeof(OBJECTID));
+            else SendMessage(MSGID_FREE, MSF::NIL, &resource->ObjectID, sizeof(OBJECTID));
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
             if (Flags & ULD_TERMINATE) FreeResource(resource->ObjectID);
-            else SendMessage(0, MSGID_FREE, MSF::NIL, &resource->ObjectID, sizeof(OBJECTID));
+            else SendMessage(MSGID_FREE, MSF::NIL, &resource->ObjectID, sizeof(OBJECTID));
          }
          else FreeResource(resource->ObjectID);
 

@@ -318,46 +318,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
   </function>
 
   <function>
-    <name>AllocMutex</name>
-    <category>Locks</category>
-    <comment>Allocate a mutex suitable for managing synchronisation between threads.</comment>
-    <prototype>ERROR AllocMutex(ALF Flags, APTR * Result)</prototype>
-    <input>
-      <param type="ALF" name="Flags" lookup="ALF">Optional flags.</param>
-      <param type="APTR *" name="Result">A reference to the new mutex will be returned in this variable if the call succeeds.</param>
-    </input>
-    <description>
-<p>This function allocates a mutex that is suitable for keeping threads synchronised (inter-process synchronisation is not supported).  Mutexes are locked and unlocked using the <function module="Core">LockMutex</function> and <function module="Core">UnlockMutex</function> functions.</p>
-<p>The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be used and may nest (<code>ALF::RECURSIVE</code> always applies).  Unix systems employ pthread mutexes and will only nest if the <code>ALF::RECURSIVE</code> option is specified.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>AllocSharedMutex</name>
-    <category>Locks</category>
-    <comment>Allocate a mutex suitable for managing synchronisation between processes.</comment>
-    <prototype>ERROR AllocSharedMutex(CSTRING Name, APTR * Mutex)</prototype>
-    <input>
-      <param type="CSTRING" name="Name">A unique identifier for the mutex, expressed as a string.</param>
-      <param type="APTR *" name="Mutex">A reference to the new mutex will be returned in this variable.</param>
-    </input>
-    <description>
-<p>This function allocates a mutex that is suitable for keeping both processes and threads synchronised.  Shared mutexes are named, which allows other processes to find them.  It is recommended that names consist of random characters so as to limit the potential for cross-contamination with other programs.</p>
-<p>Mutexes are locked and unlocked using the <function module="Core">LockSharedMutex</function> and <function module="Core">UnlockSharedMutex</function> functions.  Shared mutexes carry a speed penalty in comparison to private mutexes, and therefore should only be used as circumstances dictate.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>AllocateID</name>
     <category>System</category>
     <comment>Generates unique ID's for general purposes.</comment>
@@ -773,19 +733,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
   </function>
 
   <function>
-    <name>FreeMutex</name>
-    <category>Locks</category>
-    <comment>Deallocate a private mutex.</comment>
-    <prototype>void FreeMutex(APTR Mutex)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Pointer to a mutex.</param>
-    </input>
-    <description>
-<p>This function will deallocate a mutex.  It is vital that no thread is sleeping on the mutex at the time this function is called.  The outcome when calling this function on a mutex still in use is undefined.</p>
-    </description>
-  </function>
-
-  <function>
     <name>FreeResource</name>
     <category>Memory</category>
     <comment>Frees resources originating from AllocMemory().</comment>
@@ -804,19 +751,6 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
-  </function>
-
-  <function>
-    <name>FreeSharedMutex</name>
-    <category>Locks</category>
-    <comment>Deallocate a shared mutex.</comment>
-    <prototype>void FreeSharedMutex(APTR Mutex)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Reference to a shared mutex.</param>
-    </input>
-    <description>
-<p>This function will deallocate a shared mutex.  It is vital that no thread is sleeping on the mutex at the time this function is called.  The outcome when calling this function on a mutex still in use is undefined.</p>
-    </description>
   </function>
 
   <function>
@@ -1152,27 +1086,6 @@ GetField(Object, FID_Y|TLONG, &amp;y);
   </function>
 
   <function>
-    <name>LockMutex</name>
-    <category>Locks</category>
-    <comment>Acquire a lock on a mutex.</comment>
-    <prototype>ERROR LockMutex(APTR Mutex, LONG MilliSeconds)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Reference to a mutex allocated from AllocMutex()</param>
-      <param type="LONG" name="MilliSeconds">Timeout in milliseconds.</param>
-    </input>
-    <description>
-<p>This function will lock a mutex allocated by <function module="Core">AllocMutex</function>.  If the mutex is already locked by another thread, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
-<p>If the mutex was acquired with the <code>ALF::RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.</p>
-<p>Please note that in Microsoft Windows, mutexes are implemented as critical sections and the time-out is not supported in the normal manner.  If the MilliSeconds parameter is set to zero, the mutex will be tested immediately and the return is immediate.  For any other value, the thread will sleep until the mutex is available and the requested timeout will not be honoured.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
     <name>LockObject</name>
     <category>Objects</category>
     <comment>Lock an object to prevent contention between threads.</comment>
@@ -1191,26 +1104,6 @@ GetField(Object, FID_Y|TLONG, &amp;y);
       <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
-    </result>
-  </function>
-
-  <function>
-    <name>LockSharedMutex</name>
-    <category>Locks</category>
-    <comment>Acquire a lock on a shared mutex.</comment>
-    <prototype>ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Reference to a mutex allocated from <function module="Core">AllocSharedMutex</function></param>
-      <param type="LONG" name="MilliSeconds">Timeout in milliseconds.</param>
-    </input>
-    <description>
-<p>This function will lock a shared mutex allocated by <function module="Core">AllocSharedMutex</function>.  If the mutex is already locked by another thread or process, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.</p>
-<p>If the mutex was acquired with the <code>ALF::RECURSIVE</code> flag, then multiple calls to this function within the same thread will nest.  It will be necessary to call <function module="Core">UnlockSharedMutex</function> for every lock that has been acquired.</p>
-    </description>
-    <result type="ERROR">
-      <error code="Okay">Operation successful.</error>
-      <error code="TimeOut">Function timed-out before successful completion.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1706,10 +1599,9 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
   <function>
     <name>SendMessage</name>
     <category>Messages</category>
-    <comment>Send messages to message queues.</comment>
-    <prototype>ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
+    <comment>Send messages to the local message queue.</comment>
+    <prototype>ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="OBJECTID" name="Task">ID of a task to target.  If zero, the local message queue is targeted.</param>
       <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
       <param type="MSF" name="Flags" lookup="MSF">Optional flags.</param>
       <param type="APTR" name="Data">Pointer to the data that will be written to the queue.  Set to NULL if there is no data to write.</param>
@@ -2302,34 +2194,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </input>
     <description>
 <p>This function unloads cached files that have been previously loaded with the <function module="Core">LoadFile</function> function.</p>
-    </description>
-  </function>
-
-  <function>
-    <name>UnlockMutex</name>
-    <category>Locks</category>
-    <comment>Release a locked mutex.</comment>
-    <prototype>void UnlockMutex(APTR Mutex)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Reference to a locked mutex.</param>
-    </input>
-    <description>
-<p>This function will unlock any mutex that has been locked with the <function module="Core">LockMutex</function> function.  If the mutex is nested, this function must be called enough times to match the calls to <function module="Core">LockMutex</function> before it will be released to other processes.</p>
-<p>If the target mutex has no lock, or if the lock belongs to another thread, the resulting behaviour is undefined and may result in an exception.</p>
-    </description>
-  </function>
-
-  <function>
-    <name>UnlockSharedMutex</name>
-    <category>Locks</category>
-    <comment>Release a locked mutex.</comment>
-    <prototype>void UnlockSharedMutex(APTR Mutex)</prototype>
-    <input>
-      <param type="APTR" name="Mutex">Reference to a locked mutex.</param>
-    </input>
-    <description>
-<p>This function will unlock any mutex that has been locked with the <function module="Core">LockSharedMutex</function> function.  As shared mutexes are nested, this function must be called enough times to match the calls to <function module="Core">LockSharedMutex</function> before it will be released to other processes.</p>
-<p>If the target mutex has no lock, or if the lock belongs to another thread, the resulting behaviour is undefined and may result in an exception.</p>
     </description>
   </function>
 
@@ -3363,25 +3227,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="END">Use an index at the end of the data buffer.</const>
       <const name="RELATIVE">The index is between 0 and 1.0 and relative to the data size.</const>
       <const name="START">Use an index at position zero.</const>
-    </constants>
-
-    <constants lookup="SEM">
-      <const name="GET_COUNTER">Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.</const>
-      <const name="GET_DATA_DOUBLE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit float point number.</const>
-      <const name="GET_DATA_LARGE">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.</const>
-      <const name="GET_DATA_LONG">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.</const>
-      <const name="GET_DATA_PTR">Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.</const>
-      <const name="GET_VAL">Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.</const>
-      <const name="SET_DATA_DOUBLE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.</const>
-      <const name="SET_DATA_LARGE">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.</const>
-      <const name="SET_DATA_LONG">Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.</const>
-      <const name="SET_DATA_PTR">Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.</const>
-    </constants>
-
-    <constants lookup="SMF" comment="Flags for semaphores">
-      <const name="EXISTS">When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.</const>
-      <const name="NON_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
-      <const name="NO_BLOCKING">Do not block when locking the semaphore unless its counter has reached zero.</const>
     </constants>
 
     <constants lookup="STP" comment="ScrollToPoint flags">

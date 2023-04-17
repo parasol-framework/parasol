@@ -508,7 +508,6 @@ class objSound : public BaseClass {
 
 };
 
-extern struct AudioBase *AudioBase;
 struct AudioBase {
    ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
    ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
@@ -525,6 +524,7 @@ struct AudioBase {
 };
 
 #ifndef PRV_AUDIO_MODULE
+extern struct AudioBase *AudioBase;
 inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
 inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
 inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }

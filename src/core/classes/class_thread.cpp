@@ -263,7 +263,7 @@ static void * thread_entry(extThread *Self)
 
             ThreadMessage msg;
             msg.ThreadID = Self->UID;
-            SendMessage(0, MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
+            SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
 
             //Self->Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
          }

@@ -1722,7 +1722,10 @@ function functionNames(Prefix, ...)
       local func = {
          name  = fname,
          def   = '   void (*_' .. fname .. ')(void);',
-         macro = 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs) { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
+         macro = function() -- Default macro, to be overridden by documented function
+            return 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname ..
+               '(Args... pArgs) { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
+         end
       }
 
       table.insert(glFunctions, func)
@@ -2062,7 +2065,9 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
          if nz(comment) then content = content:match("^(.+):%s-.+$") end
          local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
          if (type != nil) then
-            local param = cType({ type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true }, "Function " .. Name)
+            local param = cType({
+               type=type:trim(), name=name:trim(), comment=comment:trim(), isFunction=true
+            }, "Function " .. Name)
             table.insert(func.input, param)
 
             if nz(argSeq) then
@@ -2132,11 +2137,17 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.c_response = response.type
 
    if (variadic) then
-      func.macro = "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name .. "(" .. nz(argSeq,"void") .. ")" ..
-                   " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+      func.macro = function()
+         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(argSeq,"void") .. ")" ..
+            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+      end
    else
-      func.macro = "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name .. "(" .. nz(argSeq,"void") .. ")" ..
-                   " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+      func.macro = function()
+         return "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(argSeq,"void") .. ")" ..
+            " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+      end
    end
 end
 
@@ -2180,16 +2191,19 @@ function saveOutput()
       local blank = 0
       for a=1, #glOutput do
          if (glOutput[a] == "__FUNCTION_TABLE__") then
-            local out = "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n" .. "struct " .. glModule.name .. "Base {\n"
+            local out = ''
+            out = "struct " .. glModule.name .. "Base {\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.def) then
                   out = out .. func.def .. "\n"
                end
             end
-            out = out .. "};\n\n" .. "#ifndef PRV_" .. glModule.name:upper() .. "_MODULE\n"
+            out = out .. "};\n\n"
+            out = out .. "#ifndef PRV_" .. glModule.name:upper() .. "_MODULE\n"
+            out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.macro) then
-                  out = out .. func.macro .. "\n"
+                  out = out .. func.macro() .. "\n"
                end
             end
             out = out .. "#endif\n\n"

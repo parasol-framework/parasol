@@ -112,7 +112,7 @@ static ERROR thread_resolve_name(objThread *Thread)
    DNSEntry *dummy;
    rb->Error = resolve_name((CSTRING)(rb + 1), &dummy);
 
-   SendMessage(0, glResolveNameMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
+   SendMessage(glResolveNameMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
    return ERR_Okay;
 }
 
@@ -130,7 +130,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
    auto ip_address = (const IPAddress *)(rb + 1);
    rb->Error = resolve_address((CSTRING)(ip_address + 1), ip_address, &dummy);
 
-   SendMessage(0, glResolveAddrMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
+   SendMessage(glResolveAddrMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
    return ERR_Okay;
 }
 

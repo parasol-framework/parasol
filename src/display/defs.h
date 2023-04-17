@@ -486,7 +486,6 @@ extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 #endif
 
-extern SharedControl *glSharedControl;
 extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
 extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;

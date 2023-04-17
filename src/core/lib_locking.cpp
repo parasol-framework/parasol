@@ -86,25 +86,6 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 }
 #endif
 
-ERROR alloc_public_lock(UBYTE LockIndex, ALF Flags)
-{
-   if ((LockIndex < 1) or (LockIndex >= PL_END)) return ERR_Args;
-   if (!glSharedControl) return ERR_Failed;
-   ERROR error = alloc_lock(&glSharedControl->PublicLocks[LockIndex].Mutex, Flags|ALF::SHARED);
-   if (!error) {
-      if ((error = alloc_cond(&glSharedControl->PublicLocks[LockIndex].Cond, Flags|ALF::SHARED))) {
-         free_lock(&glSharedControl->PublicLocks[LockIndex].Mutex);
-      }
-   }
-   return error;
-}
-
-void free_public_lock(UBYTE LockIndex)
-{
-   free_lock(&glSharedControl->PublicLocks[LockIndex].Mutex);
-   free_cond(&glSharedControl->PublicLocks[LockIndex].Cond);
-}
-
 static ERROR alloc_lock(THREADLOCK *Lock, ALF Flags)
 {
    LONG result;
@@ -311,6 +292,38 @@ void cond_wake_all(UBYTE Index)
 
 #endif
 
+//********************************************************************************************************************
+
+struct WaitLock {
+   LONG ThreadID; // The thread represented by this wait-lock
+   #ifdef _WIN32
+   WINHANDLE Lock;
+   #endif
+   LARGE WaitingTime;
+   LONG  WaitingForThreadID;
+   LONG  WaitingForResourceID;
+   LONG  WaitingForResourceType;
+   UBYTE Flags; // WLF flags
+
+   #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
+
+   WaitLock() : ThreadID(0) { }
+   WaitLock(LONG pThread) : ThreadID(pThread) { }
+
+   void setThread(LONG pThread) { ThreadID = pThread; }
+
+   void notWaiting() {
+      Flags = 0;
+      WaitingForResourceID = 0;
+      WaitingForResourceType = 0;
+      WaitingForThreadID = 0;  // NB: Important that you clear this last if you are to avoid threading conflicts.
+   }
+};
+
+static THREADVAR WORD glWLIndex = -1; // The current thread's index within glWaitLocks
+static std::vector<WaitLock> glWaitLocks;
+static std::mutex glWaitLockMutex;
+
 /*********************************************************************************************************************
 ** Prepare a thread for going to sleep on a resource.  Checks for deadlocks in advance.  Once a thread has added a
 ** WakeLock entry, it must keep it until either the thread or process is destroyed.
@@ -318,119 +331,45 @@ void cond_wake_all(UBYTE Index)
 ** Used by AccessMemory() and LockObject()
 */
 
-static THREADVAR WORD glWLIndex = -1;
-
-ERROR init_sleep(LONG OtherProcessID, LONG OtherThreadID, LONG ResourceID, LONG ResourceType, WORD *Index)
+ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
 {
-   pf::Log log(__FUNCTION__);
+   //log.trace("Sleeping on thread %d for resource #%d, Total Threads: %d", OtherThreadID, ResourceID, LONG(glWaitLocks.size()));
 
-   //log.trace("Sleeping on thread %d.%d for resource #%d, Total Threads: %d", OtherProcessID, OtherThreadID, ResourceID, glSharedControl->WLIndex);
+   auto our_thread = get_thread_id();
+   if (OtherThreadID IS our_thread) return ERR_Args;
 
-   LONG our_thread = get_thread_id();
-   if (OtherThreadID IS our_thread) return log.warning(ERR_Args);
+   const std::lock_guard<std::mutex> lock(glWaitLockMutex);
 
-   ScopedSysLock lock(PL_WAITLOCKS, 3000);
-   if (lock.granted()) {
-      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-
-      WORD i;
-      if (glWLIndex IS -1) {
-         if (glSharedControl->WLIndex >= MAX_WAITLOCKS-1) { // Check for space on the array.
-            return log.warning(ERR_ArrayFull);
-         }
-
-         // NOTE: An array slot is considered used if the ThreadID value has been set.  You can remove an array entry
-         // without obtaining a lock on PL_WAITLOCKS only if you clear the ThreadID value LAST.
-
-         WORD empty = -1;
-         for (i=glSharedControl->WLIndex-1; i >= 0; i--) {    // Check for deadlocks.  If a deadlock will occur then we return immediately.
-            if (locks[i].ThreadID IS OtherThreadID) {
-               if (locks[i].WaitingForThreadID IS our_thread) {
-                  log.warning("Thread %d.%d holds resource #%d and is waiting for us (%d.%d) to release #%d.", locks[i].ProcessID, locks[i].ThreadID, ResourceID, glProcessID, our_thread, locks[i].WaitingForResourceID);
-                  return ERR_DeadLock;
-               }
-            }
-            else if (!locks[i].ThreadID) empty = i;
-         }
-
-         if (empty != -1) i = empty;     // Thread entry does not exist, use an empty slot.
-         else i = __sync_fetch_and_add(&glSharedControl->WLIndex, 1); // Thread entry does not exist, add an entry to the end of the array.
-         glWLIndex = i;
-         locks[i].ThreadID  = our_thread;
-         locks[i].ProcessID = glProcessID;
+   if (glWLIndex IS -1) { // New thread that isn't registered yet
+      unsigned i=0;
+      for (; i < glWaitLocks.size(); i++) {
+         if (!glWaitLocks[i].ThreadID) break;
       }
-      else { // Our thread is already registered.
-         // Check for deadlocks.  If a deadlock will occur then we return immediately.
-         for (i=glSharedControl->WLIndex-1; i >= 0; i--) {
-            if (locks[i].ThreadID IS OtherThreadID) {
-               if (locks[i].WaitingForThreadID IS our_thread) {
-                  log.warning("Thread %d.%d holds resource #%d and is waiting for us (%d.%d) to release #%d.", locks[i].ProcessID, locks[i].ThreadID, ResourceID, glProcessID, our_thread, locks[i].WaitingForResourceID);
-                  return ERR_DeadLock;
-               }
+
+      glWLIndex = i;
+      if (i IS glWaitLocks.size()) glWaitLocks.push_back(our_thread);
+      else glWaitLocks[glWLIndex].setThread(our_thread);
+   }
+   else { // Check for deadlocks.  If a deadlock will occur then we return immediately.
+      for (unsigned i=0; i < glWaitLocks.size(); i++) {
+         if (glWaitLocks[i].ThreadID IS OtherThreadID) {
+            if (glWaitLocks[i].WaitingForThreadID IS our_thread) {
+               pf::Log log(__FUNCTION__);
+               log.warning("Deadlock: Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", glWaitLocks[i].ThreadID, ResourceID, our_thread, glWaitLocks[i].WaitingForResourceID);
+               return ERR_DeadLock;
             }
          }
-
-         i = glWLIndex;
       }
-
-      locks[i].WaitingForResourceID   = ResourceID;
-      locks[i].WaitingForResourceType = ResourceType;
-      locks[i].WaitingForProcessID    = OtherProcessID;
-      locks[i].WaitingForThreadID     = OtherThreadID;
-      #if defined(_WIN32) && !defined(USE_GLOBAL_EVENTS)
-         locks[i].Lock = get_threadlock();
-      #endif
-
-      *Index = i;
-      return ERR_Okay;
    }
-   else return log.warning(ERR_SystemLocked);
-}
 
-//********************************************************************************************************************
-// Used by ReleaseSemaphore()
+   glWaitLocks[glWLIndex].WaitingForResourceID   = ResourceID;
+   glWaitLocks[glWLIndex].WaitingForResourceType = ResourceType;
+   glWaitLocks[glWLIndex].WaitingForThreadID     = OtherThreadID;
+   #ifdef _WIN32
+   glWaitLocks[glWLIndex].Lock = get_threadlock();
+   #endif
 
-void wake_sleepers(LONG ResourceID, LONG ResourceType)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.trace("Resource: %d, Type: %d, Total: %d", ResourceID, ResourceType, glSharedControl->WLIndex);
-
-   if (!SysLock(PL_WAITLOCKS, 2000)) {
-      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-      LONG i;
-      #ifdef USE_GLOBAL_EVENTS
-         LONG count = 0;
-      #endif
-
-      for (i=0; i < glSharedControl->WLIndex; i++) {
-         if ((locks[i].WaitingForResourceID IS ResourceID) and (locks[i].WaitingForResourceType IS ResourceType)) {
-            locks[i].WaitingForResourceID   = 0;
-            locks[i].WaitingForResourceType = 0;
-            locks[i].WaitingForProcessID    = 0;
-            locks[i].WaitingForThreadID     = 0;
-            #ifdef _WIN32
-               #ifndef USE_GLOBAL_EVENTS
-                  if (ResourceType != RT_OBJECT) wake_waitlock(locks[i].Lock, locks[i].ProcessID, 1);
-               #endif
-            #else
-               // On Linux this version doesn't do any waking (the caller is expected to manage that)
-            #endif
-         }
-         #ifdef USE_GLOBAL_EVENTS
-            if (locks[i].WaitingForResourceType IS ResourceType) count++;
-         #endif
-      }
-
-      #ifdef USE_GLOBAL_EVENTS // Windows only.  Note that the RT_OBJECTS type is ignored because it is private.
-         if (count > 0) {
-            if (ResourceType IS RT_SEMAPHORE) wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, 0, count);
-         }
-      #endif
-
-      SysUnlock(PL_WAITLOCKS);
-   }
-   else log.warning(ERR_SystemLocked);
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -440,96 +379,24 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
 void remove_process_waitlocks(void)
 {
    pf::Log log("Shutdown");
-
    log.trace("Removing process waitlocks...");
 
-   if (!glSharedControl) return;
+   auto const our_thread = get_thread_id();
 
-   {
-      ScopedSysLock lock(PL_WAITLOCKS, 5000);
-      if (lock.granted()) {
-         auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-         #ifdef USE_GLOBAL_EVENTS
-            LONG count = 0;
+   const std::lock_guard<std::mutex> lock(glWaitLockMutex);
+
+   for (unsigned i=0; i < glWaitLocks.size(); i++) {
+      if (glWaitLocks[i].ThreadID IS our_thread) {
+         glWaitLocks[i].notWaiting();
+      }
+      else if (glWaitLocks[i].WaitingForThreadID IS our_thread) { // A thread is waiting on us, wake it up.
+         #ifdef _WIN32
+            log.warning("Waking thread %d", glWaitLocks[i].ThreadID);
+            glWaitLocks[i].notWaiting();
+            wake_waitlock(glWaitLocks[i].Lock, 1);
          #endif
-
-         for (LONG i=glSharedControl->WLIndex-1; i >= 0; i--) {
-            if (locks[i].ProcessID IS glProcessID) {
-               ClearMemory(locks+i, sizeof(locks[0])); // Remove the entry.
-               #ifdef USE_GLOBAL_EVENTS
-                  count++;
-               #endif
-            }
-            else if (locks[i].WaitingForProcessID IS glProcessID) { // Foreign thread is waiting on us, wake it up.
-               #ifdef _WIN32
-                  log.warning("Waking foreign thread %d.%d, which is sleeping on our process", locks[i].ProcessID, locks[i].ThreadID);
-                  locks[i].WaitingForResourceID   = 0;
-                  locks[i].WaitingForResourceType = 0;
-                  locks[i].WaitingForProcessID    = 0;
-                  locks[i].WaitingForThreadID     = 0;
-                  #ifndef USE_GLOBAL_EVENTS
-                     wake_waitlock(locks[i].Lock, locks[i].ProcessID, 1);
-                  #else
-                     count++;
-                  #endif
-               #endif
-            }
-            else continue;
-         }
       }
    }
-
-   #ifdef USE_GLOBAL_EVENTS
-      if (count > 0) {
-         wake_waitlock(glPublicLocks[CN_SEMAPHORES].Lock, 0, count);
-      }
-   #endif
-
-   #ifdef __unix__
-      // Lazy wake-up, just wake everybody and they will go back to sleep if their desired lock isn't available.
-
-      {
-         ScopedSysLock lock(PL_SEMAPHORES, 5000);
-         if (lock.granted()) {
-            pthread_cond_broadcast(&glSharedControl->PublicLocks[PL_SEMAPHORES].Cond);
-         }
-      }
-   #endif
-}
-
-//********************************************************************************************************************
-// Clear the wait-lock of the active thread.  This does not remove our thread from the wait-lock array.
-// Returns ERR_DoesNotExist if the resource was removed while waiting.
-
-ERROR clear_waitlock(WORD Index)
-{
-   pf::Log log(__FUNCTION__);
-   ERROR error = ERR_Okay;
-
-   // A sys-lock is not required so long as we only operate on our thread entry.
-
-   auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-   if (Index IS -1) {
-      WORD i;
-      LONG our_thread = get_thread_id();
-      for (i=glSharedControl->WLIndex-1; i >= 0; i--) {
-         if (locks[i].ThreadID IS our_thread) {
-            Index = i;
-         }
-      }
-   }
-
-   if (locks[Index].Flags & WLF_REMOVED) {
-      log.warning("TID %d: The private resource no longer exists.", get_thread_id());
-      error = ERR_DoesNotExist;
-   }
-
-   locks[Index].Flags = 0;
-   locks[Index].WaitingForResourceID   = 0;
-   locks[Index].WaitingForResourceType = 0;
-   locks[Index].WaitingForProcessID    = 0;
-   locks[Index].WaitingForThreadID     = 0; // NB: Important that you clear this last if you are to avoid threading conflicts.
-   return error;
 }
 
 //********************************************************************************************************************
@@ -641,7 +508,7 @@ ERROR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result
       return ERR_Args;
    }
 
-   // NB: Printing AccessMemory() calls is usually a waste of time unless the process is going to sleep.
+   // NB: Logging AccessMemory() calls is usually a waste of time unless the process is going to sleep.
    //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, LONG(Flags), MilliSeconds);
 
    *Result = NULL;
@@ -649,24 +516,24 @@ ERROR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result
    if (lock.granted()) {
       auto mem = glPrivateMemory.find(MemoryID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
-         LONG thread_id = get_thread_id();
+         auto our_thread = get_thread_id();
          // This loop looks odd, but will prevent sleeping if we already have a lock on the memory.
          // cond_wait() will be met with a global wake-up, not necessarily on the desired block, hence the need for while().
 
          LARGE end_time = (PreciseTime() / 1000LL) + MilliSeconds;
          ERROR error = ERR_TimeOut;
-         while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != thread_id)) {
+         while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
             LONG timeout = end_time - (PreciseTime() / 1000LL);
             if (timeout <= 0) return log.warning(ERR_TimeOut);
             else {
-               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (LONG)mem->second.ThreadLockID, thread_id);
+               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (LONG)mem->second.ThreadLockID, our_thread);
                if ((error = cond_wait(TL_PRIVATE_MEM, CN_PRIVATE_MEM, timeout))) {
                   return log.warning(error);
                }
             }
          }
 
-         mem->second.ThreadLockID = thread_id;
+         mem->second.ThreadLockID = our_thread;
          __sync_fetch_and_add(&mem->second.AccessCount, 1);
          tlPrivateLockCount++;
 
@@ -762,10 +629,9 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
 LockObject: Lock an object to prevent contention between threads.
 Category: Objects
 
-Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical
-behaviour to that of ~AccessObject(), but with a slight speed advantage as the object ID does not need to be
-resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to
-~ReleaseObject() to unlock the object.
+Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical behaviour
+to that of ~AccessObject(), but with a slight speed advantage as the object ID does not need to be resolved to an
+address.  Calls to LockObject() will nest, and must be matched with a call to ~ReleaseObject() to unlock the object.
 
 Be aware that while this function is faster than ~AccessObject(), its use may be considered unsafe if other threads
 could terminate the object without a suitable barrier in place.
@@ -834,30 +700,20 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
    if (lock.granted()) {
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
 
-      auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
       ERROR error = ERR_TimeOut;
-      WORD wl;
-      if (!init_sleep(glProcessID, Object->ThreadID, Object->UID, RT_OBJECT, &wl)) { // Indicate that our thread is sleeping.
+      if (!init_sleep(Object->ThreadID, Object->UID, RT_OBJECT)) { // Indicate that our thread is sleeping.
          while ((current_time = (PreciseTime() / 1000LL)) < end_time) {
             LONG tmout = (LONG)(end_time - current_time);
             if (tmout < 0) tmout = 0;
 
-            if (locks[wl].Flags & WLF_REMOVED) {
-               locks[wl].WaitingForResourceID   = 0;
-               locks[wl].WaitingForResourceType = 0;
-               locks[wl].WaitingForProcessID    = 0;
-               locks[wl].WaitingForThreadID     = 0;
-               locks[wl].Flags = 0;
+            if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
+               glWaitLocks[glWLIndex].notWaiting();
                Object->subSleep();
                return ERR_DoesNotExist;
             }
 
             if (Object->incQueue() IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
-               locks[wl].WaitingForResourceID   = 0;
-               locks[wl].WaitingForResourceType = 0;
-               locks[wl].WaitingForProcessID    = 0;
-               locks[wl].WaitingForThreadID     = 0;
-               locks[wl].Flags = 0;
+               glWaitLocks[glWLIndex].notWaiting();
                Object->Locked = false;
                Object->ThreadID = our_thread;
                Object->subSleep();
@@ -870,11 +726,17 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 
          // Failure: Either a timeout occurred or the object no longer exists.
 
-         if (clear_waitlock(wl) IS ERR_DoesNotExist) error = ERR_DoesNotExist;
+         if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
+            pf::Log log(__FUNCTION__);
+            log.warning("TID %d: The private resource no longer exists.", get_thread_id());
+            error = ERR_DoesNotExist;
+         }
          else {
             log.traceWarning("TID: %d, #%d, Timeout occurred.", our_thread, Object->UID);
             error = ERR_TimeOut;
          }
+
+         glWaitLocks[glWLIndex].notWaiting();
       }
       else error = log.error(ERR_Failed);
 
@@ -886,220 +748,6 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       return ERR_SystemLocked;
    }
 }
-
-/*********************************************************************************************************************
-
--FUNCTION-
-AllocMutex: Allocate a mutex suitable for managing synchronisation between threads.
-
-This function allocates a mutex that is suitable for keeping threads synchronised (inter-process synchronisation is not
-supported).  Mutexes are locked and unlocked using the ~LockMutex() and ~UnlockMutex() functions.
-
-The underlying implementation is dependent on the host platform.  In Microsoft Windows, critical sections will be
-used and may nest (`ALF::RECURSIVE` always applies).  Unix systems employ pthread mutexes and will only nest if the
-`ALF::RECURSIVE` option is specified.
-
--INPUT-
-int(ALF) Flags: Optional flags.
-&ptr Result: A reference to the new mutex will be returned in this variable if the call succeeds.
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-ERROR AllocMutex(ALF Flags, APTR *Result)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Result) return ERR_NullArgs;
-
-   THREADLOCK *m;
-   if ((m = (THREADLOCK *)malloc(sizeof(THREADLOCK)))) {
-      ERROR error = alloc_lock(m, Flags);
-      if (error) {
-         log.traceWarning("alloc_lock() failed: %s", GetErrorMsg(error));
-         free(m);
-      }
-      else *Result = m;
-      return error;
-   }
-   else return ERR_AllocMemory;
-}
-#elif _WIN32 // Please refer to windows.c
-#else
-#error No support for AllocMutex()
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-AllocSharedMutex: Allocate a mutex suitable for managing synchronisation between processes.
-
-This function allocates a mutex that is suitable for keeping both processes and threads synchronised.  Shared mutexes
-are named, which allows other processes to find them.  It is recommended that names consist of random characters so
-as to limit the potential for cross-contamination with other programs.
-
-Mutexes are locked and unlocked using the ~LockSharedMutex() and ~UnlockSharedMutex() functions.  Shared mutexes carry
-a speed penalty in comparison to private mutexes, and therefore should only be used as circumstances dictate.
-
--INPUT-
-cstr Name:  A unique identifier for the mutex, expressed as a string.
-&ptr Mutex: A reference to the new mutex will be returned in this variable.
-
--ERRORS-
-Okay
-NullArgs
-AllocMemory
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-ERROR AllocSharedMutex(CSTRING Name, APTR *Result)
-{
-   LONG sem_id;
-   ERROR error = AllocSemaphore(Name, 1, SMF::NIL, &sem_id);
-   if (!error) {
-      *Result = (APTR)(MAXINT)sem_id;
-      return ERR_Okay;
-   }
-   return error;
-}
-#elif _WIN32 // Please refer to windows.c
-#else
-#error No support for AllocSharedMutex()
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FreeMutex: Deallocate a private mutex.
-
-This function will deallocate a mutex.  It is vital that no thread is sleeping on the mutex at the time this function
-is called.  The outcome when calling this function on a mutex still in use is undefined.
-
--INPUT-
-ptr Mutex: Pointer to a mutex.
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-void FreeMutex(APTR Mutex)
-{
-   if (!Mutex) return;
-   free_lock((THREADLOCK *)Mutex);
-   free(Mutex);
-}
-#elif _WIN32
-// See windows.c FreeMutex()
-#else
-#error No support for FreeMutex()
-#endif
-
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FreeSharedMutex: Deallocate a shared mutex.
-
-This function will deallocate a shared mutex.  It is vital that no thread is sleeping on the mutex at the time this
-function is called.  The outcome when calling this function on a mutex still in use is undefined.
-
--INPUT-
-ptr Mutex: Reference to a shared mutex.
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-void FreeSharedMutex(APTR Mutex)
-{
-   if (!Mutex) return;
-   FreeSemaphore((MAXINT)Mutex);
-}
-#elif _WIN32 // See windows.c FreeSharedMutex()
-#else
-#error No support for FreeSharedMutex()
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-LockMutex: Acquire a lock on a mutex.
-
-This function will lock a mutex allocated by ~AllocMutex().  If the mutex is already locked by another thread, the
-caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are waiting on the mutex, the
-order of acquisition is dependent on the rules of the host platform.  It is recommended that the client makes no
-assumption as to the queue order and that the next thread to acquire the mutex will be randomly selected.
-
-If the mutex was acquired with the `ALF::RECURSIVE` flag, then multiple calls to this function within the same thread
-will nest.  It will be necessary to call UnlockMutex() for every lock that has been acquired.
-
-Please note that in Microsoft Windows, mutexes are implemented as critical sections and the time-out is not supported
-in the normal manner.  If the MilliSeconds parameter is set to zero, the mutex will be tested immediately and the
-return is immediate.  For any other value, the thread will sleep until the mutex is available and the requested timeout
-will not be honoured.
-
--INPUT-
-ptr Mutex: Reference to a mutex allocated from AllocMutex()
-int MilliSeconds: Timeout in milliseconds.
-
--ERRORS-
-Okay
-NullArgs
-TimeOut
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-ERROR LockMutex(APTR Mutex, LONG MilliSeconds)
-{
-   if (!Mutex) return ERR_NullArgs;
-   return pthread_lock((THREADLOCK *)Mutex, MilliSeconds);
-}
-#elif _WIN32
-// Refer to windows.c LockMutex()
-#else
-#error No support for LockMutex()
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-LockSharedMutex: Acquire a lock on a shared mutex.
-
-This function will lock a shared mutex allocated by ~AllocSharedMutex().  If the mutex is already locked by another
-thread or process, the caller will sleep until the mutex is released or a time-out occurs.  If multiple threads are
-waiting on the mutex, the order of acquisition is dependent on the rules of the host platform.  It is recommended that
-the client makes no assumption as to the queue order and that the next thread to acquire the mutex will be randomly
-selected.
-
-If the mutex was acquired with the `ALF::RECURSIVE` flag, then multiple calls to this function within the same thread
-will nest.  It will be necessary to call ~UnlockSharedMutex() for every lock that has been acquired.
-
--INPUT-
-ptr Mutex: Reference to a mutex allocated from ~AllocSharedMutex()
-int MilliSeconds: Timeout in milliseconds.
-
--ERRORS-
-Okay
-NullArgs
-TimeOut
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds)
-{
-   return AccessSemaphore((MAXINT)Mutex, MilliSeconds, SMF::NIL);
-}
-#elif _WIN32
-// Refer to windows.c LockMutex()
-#else
-#error No support for LockMutex()
-#endif
 
 /*********************************************************************************************************************
 
@@ -1190,13 +838,12 @@ obj Object: Pointer to the object to be released.
 
 void ReleaseObject(OBJECTPTR Object)
 {
-   pf::Log log(__FUNCTION__);
-
    if (!Object) return;
 
    #ifdef DEBUG
       LONG our_thread = get_thread_id();
       if (Object->ThreadID != our_thread) {
+         pf::Log log(__FUNCTION__);
          log.traceWarning("Invalid call to ReleaseObject(), locked by thread #%d, we are #%d", Object->ThreadID, our_thread);
          return;
       }
@@ -1211,17 +858,18 @@ void ReleaseObject(OBJECTPTR Object)
 
    if (Object->SleepQueue > 0) {
       #ifdef DEBUG
+         pf::Log log(__FUNCTION__);
          log.traceBranch("Thread: %d - Waking 1 of %d threads", our_thread, Object->SleepQueue);
       #endif
 
       if (!thread_lock(TL_PRIVATE_OBJECTS, -1)) {
          if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
-            // NB: A lock on PL_WAITLOCKS is not required because we're already protected by the TL_PRIVATE_OBJECTS
+            // NB: A lock on glWaitLocks is not required because we're already protected by the TL_PRIVATE_OBJECTS
             // barrier (which is common between LockObject() and ReleaseObject()
-            auto locks = (WaitLock *)ResolveAddress(glSharedControl, glSharedControl->WLOffset);
-            for (WORD i=0; i < glSharedControl->WLIndex; i++) {
-               if ((locks[i].WaitingForResourceID IS Object->UID) and (locks[i].WaitingForResourceType IS RT_OBJECT)) {
-                  locks[i].Flags |= WLF_REMOVED;
+            for (unsigned i=0; i < glWaitLocks.size(); i++) {
+               if ((glWaitLocks[i].WaitingForResourceID IS Object->UID) and
+                   (glWaitLocks[i].WaitingForResourceType IS RT_OBJECT)) {
+                  glWaitLocks[i].Flags |= WLF_REMOVED;
                }
             }
          }
@@ -1247,233 +895,3 @@ void ReleaseObject(OBJECTPTR Object)
       FreeResource(Object);
    }
 }
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SysLock: Locks internal system mutexes.
-Status: private
-
-Use the SysLock() function to lock one of the Core's internal mutexes.  This allows you to use the shared areas of
-the Core without encountering race conditions caused by other tasks trying to access the same areas.  Calls
-to SysLock() must be followed with a call to ~SysUnlock() to undo the lock.
-
-Due to the powerful nature of this function, you should only ever use it in small code segments and never in areas
-that involve communication with other processes.  Locking for extended periods of time (over 4 seconds) may also result
-in the process being automatically terminated by the system.
-
-Multiple calls to SysLock() will nest.
-
--INPUT-
-int Index: The index number of the system mutex that needs to be locked.
-int MilliSeconds: Timeout in milliseconds.
-
--ERRORS-
-Okay
-LockFailed
-TimeOut
--END-
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-
-ERROR SysLock(LONG Index, LONG Timeout)
-{
-   pf::Log log(__FUNCTION__);
-   LONG result;
-
-   if (!glSharedControl) {
-      log.warning("No glSharedControl.");
-      return ERR_Failed;
-   }
-
-retry:
-   #ifdef __ANDROID__
-      result = pthread_mutex_lock(&glSharedControl->PublicLocks[Index].Mutex);
-   #else
-      if (Timeout > 0) {
-         // Attempt a quick-lock without resorting to the very slow clock_gettime()
-         result = pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex);
-         if (result IS EBUSY) {
-            #ifdef __APPLE__
-               LARGE end = PreciseTime() + (Timeout * 1000LL);
-               do {
-                  struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
-                  nanosleep(&ts, &ts);
-               } while ((pthread_mutex_trylock(&glSharedControl->PublicLocks[Index].Mutex) IS EBUSY) and (PreciseTime() < end));
-            #else
-               struct timespec timestamp;
-               clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
-
-               // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a modulo operation).
-               // Note that nsec is from 0 - 1000000000.
-
-               LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
-               while (tn > 1000000000) {
-                  timestamp.tv_sec++;
-                  tn -= 1000000000;
-               }
-               timestamp.tv_nsec = (LONG)tn;
-
-               result = pthread_mutex_timedlock(&glSharedControl->PublicLocks[Index].Mutex, &timestamp);
-            #endif
-         }
-      }
-      else result = pthread_mutex_lock(&glSharedControl->PublicLocks[Index].Mutex);
-   #endif
-
-   if ((result IS ETIMEDOUT) or (result IS EBUSY)) {
-      log.warning("Timeout locking mutex %d with timeout %d, locked by process %d.", Index, Timeout, glSharedControl->PublicLocks[Index].PID);
-      return ERR_TimeOut;
-   }
-   else if (result IS EOWNERDEAD) { // The previous mutex holder crashed while holding it.
-      log.warning("Resetting the state of a crashed mutex.");
-      #if !defined(__ANDROID__) && !defined(__APPLE__)
-         pthread_mutex_consistent(&glSharedControl->PublicLocks[Index].Mutex);
-      #endif
-      pthread_mutex_unlock(&glSharedControl->PublicLocks[Index].Mutex);
-      goto retry;
-   }
-   else if (result) {
-      log.warning("Failed to lock mutex %d with timeout %d, locked by process %d. Error: %s", Index, Timeout, glSharedControl->PublicLocks[Index].PID, strerror(result));
-      return ERR_LockFailed;
-   }
-
-   glSharedControl->PublicLocks[Index].Count++;
-   glSharedControl->PublicLocks[Index].PID = glProcessID;
-   tlPublicLockCount++;
-   return ERR_Okay;
-}
-
-#elif _WIN32
-
-ERROR SysLock(LONG Index, LONG Timeout)
-{
-   pf::Log log(__FUNCTION__);
-   LONG result;
-
-   result = winWaitForSingleObject(glPublicLocks[Index].Lock, Timeout);
-   switch(result) {
-      case 2: // Abandoned mutex - technically successful, so we drop through to the success case after printing a warning.
-         log.warning("Warning - mutex #%d abandoned by crashed process.", Index);
-         glPublicLocks[Index].Count = 0; // Correct the nest count due to the abandonment.
-      case 0:
-         glPublicLocks[Index].PID = glProcessID;
-         glPublicLocks[Index].Count++;
-         tlPublicLockCount++;
-         return ERR_Okay;
-      case 1:
-         log.warning("Timeout occurred while waiting for mutex.");
-         break;
-      default:
-         log.warning("Unknown result #%d.", result);
-         break;
-   }
-   return ERR_LockFailed;
-}
-
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SysUnlock: Releases a lock obtained from SysLock().
-Status: private
-
-Use the SysUnlock() function to undo a previous call to ~SysLock() for a given mutex.
-
--INPUT-
-int Index: The index number of the system mutex that needs to be unlocked.
-
--ERRORS-
-Okay
--END-
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-
-ERROR SysUnlock(LONG Index)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (glSharedControl) {
-      tlPublicLockCount--;
-      if (!(--glSharedControl->PublicLocks[Index].Count)) glSharedControl->PublicLocks[Index].PID = 0;
-      pthread_mutex_unlock(&glSharedControl->PublicLocks[Index].Mutex);
-      return ERR_Okay;
-   }
-   else {
-      log.warning("Warning - no glSharedControl.");
-      return ERR_SystemCorrupt;
-   }
-}
-
-#elif _WIN32
-
-ERROR SysUnlock(LONG Index)
-{
-   tlPublicLockCount--;
-   if (!(--glPublicLocks[Index].Count)) glPublicLocks[Index].PID = 0;
-   public_thread_unlock(glPublicLocks[Index].Lock);
-   return ERR_Okay;
-}
-
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-UnlockMutex: Release a locked mutex.
-
-This function will unlock any mutex that has been locked with the ~LockMutex() function.  If the mutex is nested, this
-function must be called enough times to match the calls to ~LockMutex() before it will be released to other processes.
-
-If the target mutex has no lock, or if the lock belongs to another thread, the resulting behaviour is undefined and
-may result in an exception.
-
--INPUT-
-ptr Mutex: Reference to a locked mutex.
--END-
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-void UnlockMutex(APTR Mutex)
-{
-   if (Mutex) pthread_mutex_unlock((THREADLOCK *)Mutex);
-}
-#elif _WIN32
-// Refer to windows.c UnlockMutex()
-#else
-#error No support for UnlockMutex()
-#endif
-
-/*********************************************************************************************************************
-
--FUNCTION-
-UnlockSharedMutex: Release a locked mutex.
-
-This function will unlock any mutex that has been locked with the ~LockSharedMutex() function.  As shared
-mutexes are nested, this function must be called enough times to match the calls to ~LockSharedMutex() before
-it will be released to other processes.
-
-If the target mutex has no lock, or if the lock belongs to another thread, the resulting behaviour is undefined and
-may result in an exception.
-
--INPUT-
-ptr Mutex: Reference to a locked mutex.
--END-
-
-*********************************************************************************************************************/
-
-#ifdef __unix__
-void UnlockSharedMutex(APTR Mutex)
-{
-   pReleaseSemaphore((MAXINT)Mutex, SMF::NIL);
-}
-#elif _WIN32 // Refer to windows.c UnlockSharedMutex()
-#else
-#error No support for UnlockSharedMutex()
-#endif

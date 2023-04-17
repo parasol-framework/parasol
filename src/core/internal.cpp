@@ -346,18 +346,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             // The memory block will need to be released by the routine that called our function.
 
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
-            if (mid < 0) {
-               APTR memory;
-               if (!AccessMemory(mid, MEM::READ_WRITE, 3000, &memory)) {
-                  ((APTR *)(Buffer + pos))[0] = memory;
-               }
-               else {
-                  log.warning("Failed to gain access to memory block #%d.", mid);
-                  error = ERR_AccessMemory;
-                  goto looperror;
-               }
-            }
-            else if (mid > 0) {
+            if (mid) {
                log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
                error = ERR_AccessMemory;
                goto looperror;

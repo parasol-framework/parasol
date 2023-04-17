@@ -31,15 +31,11 @@
 
 // See the makefile for optional defines
 
-//#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
-
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
-#define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
 
 #define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
 #define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
 
-#define MAX_SEMAPHORES    40  // Maximum number of semaphores that can be allocated in the system
 #define MAX_THREADS       20  // Maximum number of threads per process.
 #define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
 #define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
@@ -209,28 +205,6 @@ public:
 };
 
 //********************************************************************************************************************
-// Semaphore management structure.
-
-struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
-   ULONG NameID;          // Hashed name of the semaphore
-   LONG  BlockingProcess; // Process ID of the blocker
-   LONG  BlockingThread;  // Global thread ID of the blocker
-   LARGE Data;            // User configurable 64-bit data
-   SMF   Flags;           // Status flags
-   WORD  BlockingValue;   // Value used for blocking access
-   WORD  MaxValue;        // Semaphore maximum value
-   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
-   struct SemProcess {
-      LONG ProcessID;
-      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
-      UBYTE BlockCount;      // Count of blocking locks currently recorded
-      UBYTE AccessCount;     // Count of access locks currently recorded
-      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
-   } Processes[20];
-   //LONG     FIFO[10];       // List of processes currently queued for access
-};
-
-//********************************************************************************************************************
 
 struct ActionSubscription {
    OBJECTPTR Context;
@@ -302,42 +276,9 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
   #endif
 #endif
 
-#ifdef _WIN32
-
-struct public_lock {
-   char Name[12];
-   WINHANDLE Lock;
-   LONG PID;
-   WORD Count;
-   bool Event; // Set to true if the lock is for a broadcast-able event
-};
-
-extern struct public_lock glPublicLocks[PL_END];
-
-#endif
-
 enum {
-   RT_SEMAPHORE,
    RT_OBJECT
 };
-
-struct WaitLock {
-   LONG ProcessID;
-   LONG ThreadID;
-   #ifdef _WIN32
-      #ifndef USE_GLOBAL_EVENTS
-         WINHANDLE Lock;
-      #endif
-   #endif
-   LARGE WaitingTime;
-   LONG WaitingForProcessID;
-   LONG WaitingForThreadID;
-   LONG WaitingForResourceID;
-   LONG WaitingForResourceType;
-   UBYTE Flags; // WLF flags
-};
-
-#define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
 //********************************************************************************************************************
 // This structure is used for internally timed broadcasting.
@@ -666,7 +607,6 @@ extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
@@ -691,9 +631,8 @@ extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMessageIDCount;
 extern LONG glGlobalIDCount;
-extern LONG glMutexLockSize; // Read only constant
 extern LONG glPrivateIDCounter;
-extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
+extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern UWORD glFunctionID;
 extern BYTE glProgramStage;
 extern bool glPrivileged, glSync;
@@ -757,7 +696,6 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 
 #ifdef _WIN32
 extern WINHANDLE glProcessHandle;
-extern WINHANDLE glValidationSemaphore;
 extern THREADVAR WORD tlMessageBreak;
 #endif
 
@@ -782,15 +720,6 @@ struct TaskMessage {
    LONG Type;       // Message type ID
    LONG DataSize;   // Size of the data (does not include the size of the TaskMessage structure)
    LONG NextMsg;    // Offset to the next message
-   /*
-   #ifdef _WIN32
-      LONG MsgProcess;
-      WINHANDLE MsgSemaphore;
-   #endif
-   #ifdef __unix__
-      THREADLOCK Mutex;
-   #endif
-   */
    // Data follows
 };
 
@@ -926,11 +855,7 @@ extern "C" {
 
 //********************************************************************************************************************
 
-ERROR AccessSemaphore(LONG, LONG, SMF);
-ERROR AllocSemaphore(CSTRING, LONG, SMF, LONG *);
-ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR pReleaseSemaphore(LONG, SMF);
 
 ERROR fs_closedir(DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
@@ -986,7 +911,7 @@ void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
+ERROR  init_sleep(LONG, LONG, LONG);
 void   local_free_args(APTR, const FunctionField *);
 Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
@@ -996,13 +921,11 @@ void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-void   remove_semaphores(void);
 ERROR  resolve_args(APTR, const FunctionField *);
 void   scan_classes(void);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
-void   wake_sleepers(LONG, LONG);
 ERROR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
@@ -1011,28 +934,18 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #define REF_WAKELOCK           get_threadlock()
 
-#define LOCK_SEMAPHORES(t)  SysLock(PL_SEMAPHORES,(t))
-#define UNLOCK_SEMAPHORES() SysUnlock(PL_SEMAPHORES)
-
 #ifdef _WIN32
-   ERROR alloc_public_lock(WINHANDLE *, CSTRING);
-   ERROR open_public_lock(WINHANDLE *, CSTRING);
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);
-   void  free_public_lock(WINHANDLE);
-   ERROR public_thread_lock(WINHANDLE, LONG);
-   void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
    void  free_threadlocks(void);
-   ERROR wake_waitlock(WINHANDLE, LONG, LONG);
+   ERROR wake_waitlock(WINHANDLE, LONG);
    ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
    void  free_public_waitlock(WINHANDLE);
    ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
    LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG, socklen_t *);
-   ERROR alloc_public_lock(UBYTE, ALF);
    ERROR alloc_public_cond(CONDLOCK *, ALF);
-   void  free_public_lock(UBYTE);
    void  free_public_cond(CONDLOCK *);
    ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
    ERROR send_thread_msg(LONG, LONG, APTR, LONG);
@@ -1048,14 +961,6 @@ ERROR cond_wait(UBYTE, UBYTE, LONG);
 
 void cond_wake_all(UBYTE);
 void cond_wake_single(UBYTE);
-ERROR clear_waitlock(WORD);
-
-// Platform specific semaphore functionality.
-
-ERROR plAllocPrivateSemaphore(APTR, LONG InitialValue);
-void  plFreePrivateSemaphore(APTR);
-ERROR plLockSemaphore(APTR, LONG TimeOut);
-void  plUnlockSemaphore(APTR);
 
 #ifdef _WIN32
 void activate_console(BYTE);
@@ -1090,7 +995,6 @@ LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *Pro
 void winLeaveCriticalSection(APTR);
 WINHANDLE winLoadLibrary(CSTRING);
 void winLowerPriority(void);
-WINHANDLE winOpenSemaphore(unsigned char *Name);
 void winProcessMessages(void);
 LONG winReadStd(APTR, LONG, APTR Buffer, LONG *Size);
 LONG winReadPipe(WINHANDLE FD, APTR Buffer, LONG *Size);

@@ -792,17 +792,6 @@ enum class ALF : UWORD {
 
 DEFINE_ENUM_FLAG_OPERATORS(ALF)
 
-// Flags for semaphores
-
-enum class SMF : ULONG {
-   NIL = 0,
-   NO_BLOCKING = 0x00000001,
-   NON_BLOCKING = 0x00000001,
-   EXISTS = 0x00000002,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(SMF)
-
 // Flags for RegisterFD()
 
 enum class RFD : ULONG {
@@ -1289,20 +1278,6 @@ enum class IDTYPE : LONG {
    FUNCTION = 3,
 };
 
-enum class SEM : LONG {
-   NIL = 0,
-   GET_VAL = 1,
-   GET_COUNTER = 2,
-   GET_DATA_PTR = 3,
-   GET_DATA_LONG = 4,
-   GET_DATA_LARGE = 5,
-   GET_DATA_DOUBLE = 6,
-   SET_DATA_PTR = 7,
-   SET_DATA_LONG = 8,
-   SET_DATA_LARGE = 9,
-   SET_DATA_DOUBLE = 10,
-};
-
 // Indicates the state of a process.
 
 enum class TSTATE : BYTE {
@@ -1317,7 +1292,7 @@ enum class RES : LONG {
    NIL = 0,
    MESSAGE_QUEUE = 1,
    CONSOLE_FD = 2,
-   SHARED_CONTROL = 3,
+   KEY_STATE = 3,
    USER_ID = 4,
    DISPLAY_DRIVER = 5,
    PRIVILEGED_USER = 6,
@@ -1340,7 +1315,6 @@ enum class RES : LONG {
    CPU_SPEED = 23,
    FREE_MEMORY = 24,
    FREE_SWAP = 25,
-   KEY_STATE = 26,
 };
 
 // Path types for SetResourcePath()
@@ -2073,7 +2047,6 @@ struct ScriptArg { // For use with scExec
    };
 };
 
-extern struct CoreBase *CoreBase;
 struct CoreBase {
    ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
@@ -2119,7 +2092,7 @@ struct CoreBase {
    ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERROR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERROR (*_SendMessage)(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size);
+   ERROR (*_SendMessage)(LONG Type, MSF Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERROR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
@@ -2141,8 +2114,8 @@ struct CoreBase {
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
-   ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
-   ERROR (*_SysUnlock)(LONG Index);
+   STT (*_StrDatatype)(CSTRING String);
+   void (*_UnloadFile)(struct CacheFile * Cache);
    ERROR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
    ERROR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
    ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
@@ -2162,15 +2135,9 @@ struct CoreBase {
    ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERROR (*_AllocMutex)(ALF Flags, APTR Result);
-   void (*_FreeMutex)(APTR Mutex);
-   ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
-   void (*_UnlockMutex)(APTR Mutex);
    ERROR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-   ERROR (*_AllocSharedMutex)(CSTRING Name, APTR Mutex);
-   void (*_FreeSharedMutex)(APTR Mutex);
-   ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
-   void (*_UnlockSharedMutex)(APTR Mutex);
+   ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
    void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
@@ -2190,13 +2157,10 @@ struct CoreBase {
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-   STT (*_StrDatatype)(CSTRING String);
-   void (*_UnloadFile)(struct CacheFile * Cache);
-   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
-   ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
 };
 
 #ifndef PRV_CORE_MODULE
+extern struct CoreBase *CoreBase;
 inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
@@ -2241,7 +2205,7 @@ inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) 
 inline ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
 inline ERROR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERROR SendMessage(OBJECTID Task, LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
+inline ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
@@ -2263,8 +2227,8 @@ inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_Ge
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
-inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
-inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
+inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
+inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline ERROR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
 inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
 inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
@@ -2284,15 +2248,9 @@ inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) 
 inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERROR AllocMutex(ALF Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
-inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
-inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
-inline void UnlockMutex(APTR Mutex) { return CoreBase->_UnlockMutex(Mutex); }
 inline ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
-inline ERROR AllocSharedMutex(CSTRING Name, APTR Mutex) { return CoreBase->_AllocSharedMutex(Name,Mutex); }
-inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mutex); }
-inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
-inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
+inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
+inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
 inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
@@ -2312,10 +2270,6 @@ inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBa
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
-inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
-inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
-inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
-inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
 #endif
 
 
@@ -2401,7 +2355,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 
 }
 
 inline ULONG StrHash(const std::string Value) {
-   return CoreBase->_StrHash(Value.c_str(), FALSE);
+   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
@@ -2943,7 +2897,7 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 
@@ -4672,34 +4626,6 @@ struct ActionMessage {
 };
 
 #endif
-
-enum { // For SysLock()
-   PL_WAITLOCKS=1,
-   PL_FORBID,
-   PL_SEMAPHORES,
-   #ifdef _WIN32
-      CN_SEMAPHORES,
-   #endif
-   PL_END
-};
-
-struct SharedControl {
-   volatile LONG ValidateProcess;
-   WORD SystemState;
-   volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
-   LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG SemaphoreOffset;            // Offset to the semaphore control array
-   LONG TaskOffset;                 // Offset to the task control array
-   LONG WLOffset;                   // Offset to the wait-lock array
-   #ifdef __unix__
-      struct {
-         pthread_mutex_t Mutex;
-         pthread_cond_t Cond;
-         LONG PID;               // Resource tracking: Process that has the current lock.
-         WORD Count;             // Resource tracking: Count of all locks (nesting)
-      } PublicLocks[PL_END];
-   #endif
-};
 
 // Event support
 

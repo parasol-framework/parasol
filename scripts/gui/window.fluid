@@ -572,7 +572,7 @@ gui.window = function(Options)
 
    self.surface.subscribe('free', function(Surface, Args, self)
       if self.quit then
-         mSys.SendMessage(nil, MSGID_QUIT, nil, nil, nil);
+         mSys.SendMessage(MSGID_QUIT, nil, nil, nil);
       end
       table.clear(self)
    end, self)

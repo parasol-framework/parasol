@@ -72,7 +72,7 @@ end
          err, res_class_folder = mSys.ResolvePath(class_folder)
          assert(err == ERR_Okay, 'Failed to resolve XML folder ' .. class_folder)
 
-         local parameters = res_src_path .. ' -o ' .. res_output_path .. ' --path "' .. res_module_folder .. '|' .. res_class_folder .. '"'
+         local parameters = res_src_path .. ' -o ' .. res_output_path .. ' --path "' .. res_module_folder .. ' ' .. res_class_folder .. '"'
          print('Running xsltproc ' .. parameters)
 
          local task = obj.new('task', {

@@ -57,10 +57,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "SHARED: The lock will be shared between foreign processes.",
      "RECURSIVE: Set if support for recursive locking within the same thread is required.")
 
-  flags("SMF", { comment="Flags for semaphores" },
-     "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
-     "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
-
   flags("RFD", { bits=32, comment="Flags for RegisterFD()" },
      "WRITE: Activate the callback if there is room to write to the FD's buffer.",
      "EXCEPT: Activate the callback if error conditions are pending.",
@@ -328,18 +324,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
   )
 
-  enum("SEM", { type="int", start=1 },
-    "GET_VAL: Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.",
-    "GET_COUNTER: Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.",
-    "GET_DATA_PTR: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.",
-    "GET_DATA_LONG: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.",
-    "GET_DATA_LARGE: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.",
-    "GET_DATA_DOUBLE: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit float point number.",
-    "SET_DATA_PTR: Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.",
-    "SET_DATA_LONG: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.",
-    "SET_DATA_LARGE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.",
-    "SET_DATA_DOUBLE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.")
-
   enum("TSTATE", { type="char", comment="Indicates the state of a process." },
     "RUNNING: The process is currently executing code.",
     "PAUSED: The process is asleep.",
@@ -349,7 +333,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   enum("RES", { type="int", start=1 },
     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
-    "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
+    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
     "USER_ID: Internal",
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
@@ -371,8 +355,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
     "FREE_MEMORY: The total amount of free memory.",
-    "FREE_SWAP: The total amount of free swap memory.",
-    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys."
+    "FREE_SWAP: The total amount of free swap memory."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -1184,8 +1167,8 @@ struct ScriptArg { // For use with scExec
     "GetResource",
     "SetResource",
     "ScanMessages",
-    "SysLock",
-    "SysUnlock",
+    "StrDatatype",
+    "UnloadFile",
     "CreateFolder",
     "LoadFile",
     "SetVolume",
@@ -1205,15 +1188,9 @@ struct ScriptArg { // For use with scExec
     "StrHash",
     "LockObject",
     "ReleaseObject",
-    "AllocMutex",
-    "FreeMutex",
-    "LockMutex",
-    "UnlockMutex",
     "ActionThread",
-    "AllocSharedMutex",
-    "FreeSharedMutex",
-    "LockSharedMutex",
-    "UnlockSharedMutex",
+    "AddInfoTag",
+    "SetDefaultPermissions",
     "VLogF",
     "Base64Encode",
     "ReadInfoTag",
@@ -1232,11 +1209,7 @@ struct ScriptArg { // For use with scExec
     "UTF8WriteValue",
     "CopyFile",
     "WaitForObjects",
-    "ReadFileToBuffer",
-    "StrDatatype",
-    "UnloadFile",
-    "SetDefaultPermissions",
-    "AddInfoTag")
+    "ReadFileToBuffer")
 
   c_insert([[
 
@@ -1322,7 +1295,7 @@ template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 
 }
 
 inline ULONG StrHash(const std::string Value) {
-   return CoreBase->_StrHash(Value.c_str(), FALSE);
+   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
@@ -1864,7 +1837,7 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 
@@ -2486,34 +2459,6 @@ struct ActionMessage {
 };
 
 #endif
-
-enum { // For SysLock()
-   PL_WAITLOCKS=1,
-   PL_FORBID,
-   PL_SEMAPHORES,
-   #ifdef _WIN32
-      CN_SEMAPHORES,
-   #endif
-   PL_END
-};
-
-struct SharedControl {
-   volatile LONG ValidateProcess;
-   WORD SystemState;
-   volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
-   LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG SemaphoreOffset;            // Offset to the semaphore control array
-   LONG TaskOffset;                 // Offset to the task control array
-   LONG WLOffset;                   // Offset to the wait-lock array
-   #ifdef __unix__
-      struct {
-         pthread_mutex_t Mutex;
-         pthread_cond_t Cond;
-         LONG PID;               // Resource tracking: Process that has the current lock.
-         WORD Count;             // Resource tracking: Count of all locks (nesting)
-      } PublicLocks[PL_END];
-   #endif
-};
 
 // Event support
 
