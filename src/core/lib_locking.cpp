@@ -408,7 +408,7 @@ void wake_sleepers(LONG ResourceID, LONG ResourceType)
             locks[i].WaitingForThreadID     = 0;
             #ifdef _WIN32
                #ifndef USE_GLOBAL_EVENTS
-                  if (ResourceType != RT_OBJECT) wake_waitlock(locks[i].Lock, 1);
+                  wake_waitlock(locks[i].Lock, 1);
                #endif
             #else
                // On Linux this version doesn't do any waking (the caller is expected to manage that)
