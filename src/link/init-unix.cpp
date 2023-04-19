@@ -23,7 +23,6 @@ extern "C" void program(void);
 
 struct CoreBase *CoreBase;
 
-static ERROR PROGRAM_DataFeed(OBJECTPTR, struct acDataFeed *);
 extern "C" void close_parasol(void);
 
 //********************************************************************************************************************
@@ -42,9 +41,6 @@ static CLOSECORE *closecore = NULL;
 
 extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
-   #define MAX_ARGS 30
-   APTR *actions;
-
    glCoreHandle = NULL;
    CSTRING msg  = NULL;
 
@@ -126,13 +122,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
       goto failed_lib_sym;
    }
 
-   if ((CoreBase = opencore(&info))) {
-      OBJECTPTR task = CurrentTask();
-
-      if (!task->getPtr(FID_Actions, &actions)) {
-         actions[AC_DataFeed] = (APTR)PROGRAM_DataFeed;
-      }
-   }
+   if ((CoreBase = opencore(&info)));
    else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    else msg = "Failed to initialise Parasol.  Run again with --log-info.";
 

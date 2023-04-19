@@ -62,8 +62,6 @@ way to initiate interprocess communication is to pass your MessageQueue ID to th
 
 extern "C" void CloseCore(void);
 
-static ERROR InterceptedAction(extTask *, APTR);
-
 #ifdef __unix__
 
 static void task_stdout(HOSTHANDLE FD, APTR);
@@ -137,46 +135,6 @@ static const ActionArray clActions[] = {
    { AC_SetVar,        TASK_SetVar },
    { AC_Init,          TASK_Init },
    { AC_Write,         TASK_Write },
-   // The following actions are program dependent
-   { AC_Clear,         InterceptedAction },
-   { AC_Custom,        InterceptedAction },
-   { AC_DataFeed,      InterceptedAction },
-   { AC_Deactivate,    InterceptedAction },
-   { AC_Disable,       InterceptedAction },
-   { AC_Draw,          InterceptedAction },
-   { AC_Enable,        InterceptedAction },
-   { AC_Flush,         InterceptedAction },
-   { AC_Focus,         InterceptedAction },
-   { AC_Hide,          InterceptedAction },
-   { AC_Lock,          InterceptedAction },
-   { AC_LostFocus,     InterceptedAction },
-   { AC_Move,          InterceptedAction },
-   { AC_MoveToBack,    InterceptedAction },
-   { AC_MoveToFront,   InterceptedAction },
-   { AC_MoveToPoint,   InterceptedAction },
-   { AC_NewChild,      InterceptedAction },
-   { AC_NewOwner,      InterceptedAction },
-   { AC_Query,         InterceptedAction },
-   { AC_Read,          InterceptedAction },
-   { AC_Redimension,   InterceptedAction },
-   { AC_Rename,        InterceptedAction },
-   { AC_Reset,         InterceptedAction },
-   { AC_Resize,        InterceptedAction },
-   { AC_SaveImage,     InterceptedAction },
-   { AC_SaveToObject,  InterceptedAction },
-   { AC_Scroll,        InterceptedAction },
-   { AC_ScrollToPoint, InterceptedAction },
-   { AC_Seek,          InterceptedAction },
-   { AC_Show,          InterceptedAction },
-   { AC_Unlock,        InterceptedAction },
-   { AC_Clipboard,     InterceptedAction },
-   { AC_Refresh,       InterceptedAction },
-   { AC_Sort,          InterceptedAction },
-   { AC_SaveSettings,  InterceptedAction },
-   { AC_SelectArea,    InterceptedAction },
-   { AC_Undo,          InterceptedAction },
-   { AC_Redo,          InterceptedAction },
-   { AC_DragDrop,      InterceptedAction },
    { 0, NULL }
 };
 
@@ -612,17 +570,6 @@ extern "C" void deregister_process_pipes(extTask *Self, WINHANDLE ProcessHandle)
    if (ProcessHandle) RegisterFD(ProcessHandle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, NULL, NULL);
 }
 #endif
-
-//********************************************************************************************************************
-// Action interception routine.
-
-static ERROR InterceptedAction(extTask *Self, APTR Args)
-{
-   if (Self->Actions[tlContext->Action].PerformAction) {
-      return Self->Actions[tlContext->Action].PerformAction(Self, Args);
-   }
-   else return ERR_NoSupport;
-}
 
 /*********************************************************************************************************************
 

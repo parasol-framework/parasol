@@ -1537,7 +1537,7 @@ extern "C" {
 
 namespace pf {
 
-template <class T> roundup(T Num, LONG Alignment) {
+template <class T> T roundup(T Num, LONG Alignment) {
    return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
 }
 
