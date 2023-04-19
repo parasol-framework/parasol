@@ -64,7 +64,6 @@ extern void program(void);
 
 struct CoreBase *CoreBase;
 
-static ERROR PROGRAM_DataFeed(OBJECTPTR, struct acDataFeed *);
 extern "C" void close_parasol(void);
 static APTR find_core(char *PathBuffer, int Size);
 
@@ -79,10 +78,8 @@ static char msgbuf[120];
 
 extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
-   #define MAX_ARGS 30
    struct OpenInfo info;
    const char *msg = NULL;
-   APTR *actions;
    char path_buffer[256];
 
    corehandle = find_core(path_buffer, sizeof(path_buffer));
@@ -108,13 +105,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Error = ERR_Okay;
    info.Flags = OPF::CORE_VERSION|OPF::COMPILED_AGAINST|OPF::ARGS|OPF::ERROR;
 
-   if ((CoreBase = opencore(&info))) {
-      OBJECTPTR task = CurrentTask();
-
-      if (!task->getPtr(FID_Actions, &actions)) {
-         actions[AC_DataFeed] = (APTR)PROGRAM_DataFeed;
-      }
-   }
+   if ((CoreBase = opencore(&info)));
    else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    else {
       snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Parasol, error code %d.", info.Error);

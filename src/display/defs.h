@@ -98,6 +98,8 @@
 #define PI (3.141592653589793238462643383279f)
 #endif
 
+#define ALIGN32(a) (((a) + 3) & (~3))
+
 #define SURFACE_READ      (0x0001)   // Read access
 #define SURFACE_WRITE     (0x0002)   // Write access
 #define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
@@ -105,6 +107,8 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
 #include <parasol/linear_rgb.h>
+
+using namespace pf;
 
 #define UpdateSurfaceRecord(a) update_surface_copy(a)
 

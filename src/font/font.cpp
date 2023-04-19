@@ -35,6 +35,8 @@ Font: Provides font management functionality and hosts the Font class.
 #include <wchar.h>
 #include <parasol/strings.hpp>
 
+using namespace pf;
+
 /*********************************************************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
 ** refer to an ASCII table to see what is going on here.
@@ -512,7 +514,7 @@ static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
          if (*String IS ' ') x += Font->prvChar[' '].Advance + Font->GlyphSpacing;
          else if (*String IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-            if (tabwidth) x += ROUNDUP(x, tabwidth);
+            if (tabwidth) x += pf::roundup(x, tabwidth);
          }
          else if (*String IS '\n') {
             if (lastword > longest) longest = lastword;
@@ -663,7 +665,7 @@ static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-         if (tabwidth) len = ROUNDUP(len, tabwidth);
+         if (tabwidth) len = pf::roundup(len, tabwidth);
          str++;
          Chars--;
       }
@@ -775,7 +777,7 @@ static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LON
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-         width = ROUNDUP(xpos, tabwidth) - xpos;
+         width = pf::roundup(xpos, tabwidth) - xpos;
          str++;
       }
       else {

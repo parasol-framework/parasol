@@ -197,6 +197,8 @@ enum {
 
 #include "hashes.h"
 
+using namespace pf;
+
 struct CoreBase  *CoreBase;
 struct FontBase    *FontBase;
 struct DisplayBase *DisplayBase;

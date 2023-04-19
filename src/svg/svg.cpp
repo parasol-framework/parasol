@@ -30,6 +30,8 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <katana.h>
 #include <math.h>
 
+using namespace pf;
+
 MODULE_COREBASE;
 struct DisplayBase *DisplayBase;
 struct VectorBase *VectorBase;

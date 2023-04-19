@@ -1243,7 +1243,7 @@ static ERROR draw_vector_font(extFont *Self)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Self->prvChar['o'].Advance + Self->GlyphSpacing) * Self->TabSize;
-         dxcoord = Self->X + ROUNDUP(dxcoord - Self->X, tabwidth);
+         dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
          prevglyph = 0;
       }
@@ -1804,7 +1804,7 @@ static ERROR draw_bitmap_font(extFont *Self)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Self->prvChar['o'].Advance + Self->GlyphSpacing) * Self->TabSize;
-         dxcoord = Self->X + ROUNDUP(dxcoord - Self->X, tabwidth);
+         dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
       }
       else {

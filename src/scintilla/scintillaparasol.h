@@ -4,6 +4,8 @@ class ScintillaParasol;
 
 #include <parasol/modules/scintilla.h>
 
+using namespace pf;
+
 class extScintilla : public objScintilla {
    public:
    struct  SurfaceCoords Surface;

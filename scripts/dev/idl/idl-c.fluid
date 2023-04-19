@@ -222,6 +222,7 @@ glActionStubs = {
 
 glHeader = { }
 glOutput = { }
+glConstants = { }
 glActiveRefs = { } -- For cType()
 
 function output(String)
@@ -236,9 +237,17 @@ function output(String)
    end
 end
 
-function priority(String)
-   if nz(String) then
-      table.insert(glHeader, String:rtrim())
+function priority(Input)
+   if (type(Input) == 'function') then
+      local saveOutput = glOutput
+      glOutput = { }
+      Input()
+      for k,v in ipairs(glOutput) do
+         table.insert(glHeader, v)
+      end
+      glOutput = saveOutput
+   elseif (type(Input) == 'string') and nz(Input) then
+      table.insert(glHeader, Input:rtrim())
    else
       table.insert(glHeader,'')
    end
@@ -300,7 +309,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
--- Restricts the output of anything declared within the referenced function.
+-- Restricts the output of anything declared within the Function.
 
 function restrict(Function)
    local status = glRestrict
@@ -488,7 +497,7 @@ function flags(Prefix, Options, ...)
    table.insert(out, '')
 
    if (glRestrict == nil) then
-      for k,v in pairs(out) do table.insert(glOutput, v) end
+      for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
    glCustomTypes[Prefix] = {
@@ -593,8 +602,8 @@ function const(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then
-      for k,v in pairs(out) do table.insert(glOutput, v) end
+   if (glRestrict == nil) then //.
+      for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
    glCustomTypes[Prefix] = {
@@ -656,7 +665,7 @@ function enum(Prefix, Options, ...)
    table.insert(out, '')
 
    if (glRestrict == nil) then
-      for k,v in pairs(out) do table.insert(glOutput, v) end
+      for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
    glCustomTypes[Prefix] = {
@@ -2154,7 +2163,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
-   if (#glOutput < 1) then
+   if (#glOutput < 1) and (#glConstants < 1) then
       print("No output was generated for the destination file.")
       return
    end
@@ -2188,7 +2197,17 @@ function saveOutput()
          if (blank < 2) then file.acWrite(str, str:len()) end
       end
 
-      local blank = 0
+      for a=1, #glConstants do
+         local str = glConstants[a] .. "\n"
+         if (str == "\n") then
+            blank = blank + 1
+         else
+            blank = 0
+         end
+
+         if (blank < 2) then file.acWrite(str, str:len()) end
+      end
+
       for a=1, #glOutput do
          if (glOutput[a] == "__FUNCTION_TABLE__") then
             local out = ''

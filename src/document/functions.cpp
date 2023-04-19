@@ -3970,7 +3970,7 @@ repass_row_height_ext:
          else if (Self->Stream[i] <= 0x20) {
             if (Self->Stream[i] IS '\t') {
                LONG tabwidth = (l.spacewidth + l.font->GlyphSpacing) * l.font->TabSize;
-               if (tabwidth) l.cursorx += ROUNDUP(l.cursorx, tabwidth);
+               if (tabwidth) l.cursorx += pf::roundup(l.cursorx, tabwidth);
                i++;
             }
             else {
