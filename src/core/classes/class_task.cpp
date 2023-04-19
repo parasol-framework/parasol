@@ -20,9 +20,6 @@ successfully.
 
 To find the task object that represents the active process, use the ~CurrentTask() function to quickly retrieve it.
 
-To send messages to another task, you need to know its #MessageQueue ID so that ~SendMessage() can be used.  A simple
-way to initiate interprocess communication is to pass your MessageQueue ID to the other task as a parameter.
-
 -END-
 
 *********************************************************************************************************************/
@@ -1993,23 +1990,6 @@ static ERROR SET_Location(extTask *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-MessageQueue: Read this field to acquire a task's message queue ID.
-
-If you need the ID of a task's message queue, read this field to obtain it.  Once you have a task's message queue ID,
-you can use it to send messages to the task.  For information on messaging, refer to the ~GetMessage(),
-~ProcessMessages() and ~SendMessage() functions.
-
-*********************************************************************************************************************/
-
-static ERROR GET_MessageQueue(extTask *Task, MEMORYID *Value)
-{
-   if ((*Value = glTaskMessageMID)) return ERR_Okay;
-   else return ERR_NoData;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Name: Name of the task.
 
 This field specifies the name of the Task or program that has been initialised. It is up to the developer of the
@@ -2288,7 +2268,6 @@ static const FieldArray clFields[] = {
    { "InputCallback",  FDF_FUNCTIONPTR|FDF_RW, GET_InputCallback,   SET_InputCallback }, // STDIN
    { "LaunchPath",     FDF_STRING|FDF_RW,      GET_LaunchPath,      SET_LaunchPath },
    { "Location",       FDF_STRING|FDF_RW,      GET_Location,        SET_Location },
-   { "MessageQueue",   FDF_LONG|FDF_R,         GET_MessageQueue },
    { "Name",           FDF_STRING|FDF_RW,      GET_Name,            SET_Name },
    { "OutputCallback", FDF_FUNCTIONPTR|FDF_RI, GET_OutputCallback,  SET_OutputCallback }, // STDOUT
    { "Path",           FDF_STRING|FDF_RW,      GET_Path,            SET_Path },
