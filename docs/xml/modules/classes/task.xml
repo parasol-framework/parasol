@@ -18,8 +18,7 @@
     <description>
 <p>Tasks, also known as processes, form the basis of process execution in an operating system.  By creating a task object, it is possible to execute a program from within the host system.</p>
 <p>To execute a compiled program, set the <field>Location</field> field to point to the executable file before initialising the task.  Arguments can be passed to the executable by setting the <field>Parameters</field> field.  Once the task object is successfully initialised, use the <action>Activate</action> action to run the executable.  If the file executes successfully, a new task object is spawned separately to represent the executable (which means it is safe to destroy your task object immediately afterwards).  If the <action>Activate</action> action returns with ERR_Okay then the executable program was run successfully.</p>
-<p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p>
-<p>To send messages to another task, you need to know its <field>MessageQueue</field> ID so that <function module="Core">SendMessage</function> can be used.  A simple way to initiate interprocess communication is to pass your MessageQueue ID to the other task as a parameter.</p></description>
+<p>To find the task object that represents the active process, use the <function module="Core">CurrentTask</function> function to quickly retrieve it.</p></description>
     <source>
       <file path="../classes/">class_task.cpp</file>
     </source>
@@ -251,16 +250,6 @@
       <description>
 <p>When a task object is activated, the Location field will be checked for a valid filename.  If the path is valid, the executable code will be loaded from this source.  The source must be in an executable format recognised by the native platform.</p>
 <p>Leading spaces will be ignored by the string parser.  The Location string can be enclosed with quotes, in which case only the quoted portion of the string will be used as the source path.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>MessageQueue</name>
-      <comment>Read this field to acquire a task's message queue ID.</comment>
-      <access read="G">Get</access>
-      <type>INT</type>
-      <description>
-<p>If you need the ID of a task's message queue, read this field to obtain it.  Once you have a task's message queue ID, you can use it to send messages to the task.  For information on messaging, refer to the <function module="Core">GetMessage</function>, <function module="Core">ProcessMessages</function> and <function module="Core">SendMessage</function> functions.</p>
       </description>
     </field>
 

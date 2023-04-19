@@ -266,14 +266,17 @@ gui.menu = function(Options)
          if (err == ERR_Okay) then
             local parent = { }
 
-            local err, parentInfo = mGfx.GetSurfaceInfo(surface.parentID)
-            if (err != ERR_Okay) then error('Failed to analyse parent surface: ' .. mSys.GetErrorMsg(err)) end
-
-            if (surface.parentID) and (err == ERR_Okay) then
-               parent.width  = parentinfo.width
-               parent.height = parentinfo.height
-               parent.absX   = parentinfo.absX
-               parent.absY   = parentinfo.absY
+            local sp = surface.parent
+            if sp then
+               err, parentInfo = mGfx.GetSurfaceInfo(sp)
+               if (err == ERR_Okay) then
+                  parent.width  = parentInfo.width
+                  parent.height = parentInfo.height
+                  parent.absX   = parentInfo.absX
+                  parent.absY   = parentInfo.absY
+               else
+                  error('Failed to analyse parent surface: ' .. mSys.GetErrorMsg(err))
+               end
             else
                local err, scrInfo = mGfx.GetDisplayInfo(0)
                if err == ERR_Okay then
