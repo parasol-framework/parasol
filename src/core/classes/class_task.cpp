@@ -414,7 +414,7 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
    }
 
    #ifdef DBG_INCOMING
-      log.function("Executing action %s on object #%d, Data: %p, Size: %d, Args: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize, action->SendArgs);
+      log.function("Executing action %s on object #%d, Data: %p, Size: %d", action_id_name(action->ActionID), action->ObjectID, Message, MsgSize);
    #endif
 
    if ((action->ObjectID) and (action->ActionID)) {
@@ -470,6 +470,8 @@ static ERROR msg_action(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LON
 
 static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
+   pf::Log log(__FUNCTION__);
+   log.function("Processing quit message");
    glTaskState = TSTATE::STOPPING;
    return ERR_Okay;
 }

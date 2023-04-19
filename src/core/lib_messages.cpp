@@ -792,44 +792,21 @@ AccessMemory: Access to the message queue memory was denied.
 
 static LONG glUniqueMsgID = 1;
 
-static void view_messages(MessageHeader *Header) __attribute__ ((unused));
-
-static void view_messages(MessageHeader *Header)
-{
-   pf::Log log("Messages");
-
-   log.warning("Count: %d, Next: %d", Header->Count, Header->NextEntry);
-
-   auto msg = (TaskMessage *)Header->Buffer;
-   WORD count = 0;
-   while (count < Header->Count) {
-      if (msg->Type) {
-         if (msg->Type IS MSGID_ACTION) {
-            auto action = (ActionMessage *)(msg + 1);
-            if (action->ActionID > 0) log.warning("Action: %s, Object: %d, Args: %d [Size: %d, Next: %d]", ActionTable[action->ActionID].Name, action->ObjectID, action->SendArgs, msg->DataSize, msg->NextMsg);
-            else log.warning("Method: %d, Object: %d, Args: %d [Size: %d, Next: %d]", action->ActionID, action->ObjectID, action->SendArgs, msg->DataSize, msg->NextMsg);
-         }
-         else log.warning("Type: %d, Size: %d, Next: %d", msg->Type, msg->DataSize, msg->NextMsg);
-         count++;
-      }
-      msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
-   }
-}
-
 ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
 {
    pf::Log log(__FUNCTION__);
 
-   if (glLogLevel >= 9) log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
-
-   if (Type IS MSGID_QUIT) log.function("A quit message is being posted");
+   if (glLogLevel >= 9) {
+      if (Type IS MSGID_ACTION) {
+         auto action = (ActionMessage *)Data;
+         if (action->ActionID > 0) log.branch("Action: %s, Object: %d, Size: %d", ActionTable[action->ActionID].Name, action->ObjectID, Size);
+      }
+      else log.branch("Type: %d, Data: %p, Size: %d", Type, Data, Size);
+   }
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
-   if (!Data) { // If no data has been provided, drive the Size to 0
-      if (Size) log.warning("Message size indicated but no data provided.");
-      Size = 0;
-   }
+   if (!Data) Size = 0;
 
    LONG msgsize = (Size + 3) & (~3); // Raise the size if not long-word aligned
 
@@ -885,42 +862,12 @@ ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
          }
 
          // Compress the message buffer
-         // Suspect that this compression routine corrupts the message queue.
-
-//         LONG j, nextentry, nextoffset;
-//         log.msg("Compressing message buffer #%d.", glTaskMessageMID);
-//
-//         msg = (TaskMessage *)header->Buffer;
-//         nextentry = 0; // Set the next entry point to position zero to start the compression
-//         j = 0;
-//         while (j < header->Count) {
-//            nextoffset = msg->NextMsg; // Get the offset to the next message
-//            if (msg->Type) {
-//               CopyMemory(msg, header->Buffer + nextentry, sizeof(TaskMessage) + msg->DataSize);
-//               nextentry += sizeof(TaskMessage) + ((msg->DataSize + 3) & ~3);
-//               j++;
-//            }
-//            if (!nextoffset) break;
-//            msg = (TaskMessage *)ResolveAddress(msg, nextoffset);
-//         }
-//         header->NextEntry = nextentry;
-
-         // This routine is slower than the normal compression technique, but is tested as working.
 
          MessageHeader *buffer;
          if (!AllocMemory(sizeof(MessageHeader), MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
             // Compress the message buffer to a temporary data store
 
             buffer->NextEntry = 0;
-            /*
-            #ifdef _WIN32
-               buffer->MsgProcess = header->MsgProcess;
-               buffer->MsgSemaphore = header->MsgSemaphore;
-            #else
-               buffer->Mutex = header->Mutex;
-            #endif
-            */
-
             auto srcmsg  = (TaskMessage *)header->Buffer;
             auto destmsg = (TaskMessage *)buffer->Buffer;
             for (buffer->Count=0; buffer->Count < header->Count;) {
@@ -944,9 +891,6 @@ ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
 
          if ((header->NextEntry + sizeof(TaskMessage) + msgsize) >= SIZE_MSGBUFFER) {
             log.warning("Message buffer %d is at capacity and I cannot compress the queue.", glTaskMessageMID);
-
-            //view_messages(header);
-
             header->CompressReset = 1;
             ReleaseMemory(glTaskMessageMID);
             return ERR_ArrayFull;
