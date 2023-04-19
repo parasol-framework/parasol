@@ -150,6 +150,8 @@ struct rkWatchPath {
 
 #include <parasol/main.h>
 
+using namespace pf;
+
 struct ActionEntry {
    ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
 };

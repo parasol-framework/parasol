@@ -18,25 +18,6 @@
 #include <bit>
 #endif
 
-class objMetaClass;
-class objStorageDevice;
-class objFile;
-class objConfig;
-class objScript;
-class objTask;
-class objThread;
-class objModule;
-class objTime;
-class objCompression;
-class objCompressedStream;
-
-#ifdef _WIN32
-
-#define NETMSG_START 0
-#define NETMSG_END 1
-
-#endif
-
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
@@ -54,6 +35,21 @@ inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FL
 inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
 inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
 #endif
+class objMetaClass;
+class objStorageDevice;
+class objFile;
+class objConfig;
+class objScript;
+class objTask;
+class objThread;
+class objModule;
+class objTime;
+class objCompression;
+class objCompressedStream;
+
+#define NETMSG_START 0
+#define NETMSG_END 1
+
 // Clipboard modes
 
 enum class CLIPMODE : ULONG {
@@ -460,57 +456,6 @@ enum class JET : LONG {
 #define FD_PTR_LONGRESULT 0x48000100
 #define FD_DOUBLE 0x80000000
 
-struct InputEvent {
-   const struct InputEvent * Next;    // Next event in the chain
-   DOUBLE   Value;                    // The value associated with the Type
-   LARGE    Timestamp;                // PreciseTime() of the recorded input
-   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
-   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
-   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
-   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
-   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   OBJECTID DeviceID;                 // The hardware device that this event originated from
-   JET      Type;                     // JET constant that describes the event
-   JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
-   JTYPE    Mask;                     // Mask to use for checking against subscribers
-};
-
-struct dcRequest {
-   LONG Item;             // Identifier for retrieval from the source
-   char Preference[4];    // Data preferences for the returned item(s)
-};
-
-struct dcAudio {
-   LONG Size;    // Byte size of this structure
-   LONG Format;  // Format of the audio data
-};
-
-struct dcKeyEntry {
-   LONG  Flags;        // Shift/Control/CapsLock...
-   LONG  Value;        // ASCII value of the key A/B/C/D...
-   LARGE Timestamp;    // PreciseTime() at which the keypress was recorded
-   LONG  Unicode;      // Unicode value for pre-calculated key translations
-};
-
-struct dcDeviceInput {
-   DOUBLE   Value;     // The value associated with the Type
-   LARGE    Timestamp; // PreciseTime() of the recorded input
-   OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-   JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
-   JET      Type;      // JET constant
-};
-
-struct DateTime {
-   LONG Year;        // Year
-   LONG Month;       // Month 1 to 12
-   LONG Day;         // Day 1 to 31
-   LONG Hour;        // Hour 0 to 23
-   LONG Minute;      // Minute 0 to 59
-   LONG Second;      // Second 0 to 59
-   LONG TimeZone;    // TimeZone -13 to +13
-};
-
 // Predefined cursor styles
 
 enum class PTC : LONG {
@@ -666,81 +611,6 @@ enum class LAYOUT : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(LAYOUT)
 
-struct HSV {
-   DOUBLE Hue;           // Between 0 and 359.999
-   DOUBLE Saturation;    // Between 0 and 1.0
-   DOUBLE Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
-};
-
-struct FRGB {
-   FLOAT Red;    // Red component value
-   FLOAT Green;  // Green component value
-   FLOAT Blue;   // Blue component value
-   FLOAT Alpha;  // Alpha component value
-   FRGB() { };
-   FRGB(FLOAT R, FLOAT G, FLOAT B, FLOAT A) : Red(R), Green(G), Blue(B), Alpha(A) { };
-};
-
-typedef struct RGB8 {
-   UBYTE Red;    // Red component value
-   UBYTE Green;  // Green component value
-   UBYTE Blue;   // Blue component value
-   UBYTE Alpha;  // Alpha component value
-} RGB8;
-
-struct RGB16 {
-   UWORD Red;    // Red component value
-   UWORD Green;  // Green component value
-   UWORD Blue;   // Blue component value
-   UWORD Alpha;  // Alpha component value
-};
-
-struct RGB32 {
-   ULONG Red;    // Red component value
-   ULONG Green;  // Green component value
-   ULONG Blue;   // Blue component value
-   ULONG Alpha;  // Alpha component value
-};
-
-struct RGBPalette {
-   LONG AmtColours;         // Amount of Colours
-   struct RGB8 Col[256];    // RGB Palette
-};
-
-typedef struct ColourFormat {
-   UBYTE RedShift;        // Right shift value for red (15/16 bit formats only)
-   UBYTE GreenShift;      // Right shift value for green
-   UBYTE BlueShift;       // Right shift value for blue
-   UBYTE AlphaShift;      // Right shift value for alpha
-   UBYTE RedMask;         // Unshifted mask value for red (ranges from 0x00 to 0xff)
-   UBYTE GreenMask;       // Unshifted mask value for green
-   UBYTE BlueMask;        // Unshifted mask value for blue
-   UBYTE AlphaMask;       // Unshifted mask value for alpha
-   UBYTE RedPos;          // Left shift/positional value for red
-   UBYTE GreenPos;        // Left shift/positional value for green
-   UBYTE BluePos;         // Left shift/positional value for blue
-   UBYTE AlphaPos;        // Left shift/positional value for alpha
-   UBYTE BitsPerPixel;    // Number of bits per pixel for this format.
-} COLOURFORMAT;
-
-struct ClipRectangle {
-   LONG Left;    // Left-most coordinate
-   LONG Top;     // Top coordinate
-   LONG Right;   // Right-most coordinate
-   LONG Bottom;  // Bottom coordinate
-  ClipRectangle() { }
-  ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
-  int width() const { return Right - Left; }
-  int height() const { return Bottom - Top; }
-};
-
-struct Edges {
-   LONG Left;    // Left-most coordinate
-   LONG Top;     // Top coordinate
-   LONG Right;   // Right-most coordinate
-   LONG Bottom;  // Bottom coordinate
-};
-
 // Script flags
 
 enum class SCF : ULONG {
@@ -818,62 +688,6 @@ enum class TSF : ULONG {
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(TSF)
-
-#define AHASH_ACTIVATE 0xdbaf4876
-#define AHASH_ACCESSOBJECT 0xbcf3b98e
-#define AHASH_CLEAR 0x0f3b6d8c
-#define AHASH_FREEWARNING 0xb903ddbd
-#define AHASH_COPYDATA 0x47b0d1fa
-#define AHASH_DATAFEED 0x05e6d293
-#define AHASH_DEACTIVATE 0x1ee323ff
-#define AHASH_DRAW 0x7c95d753
-#define AHASH_FLUSH 0x0f71fd67
-#define AHASH_FOCUS 0x0f735645
-#define AHASH_FREE 0x7c96f087
-#define AHASH_RELEASEOBJECT 0x9e22661d
-#define AHASH_GETVAR 0xff87a74e
-#define AHASH_DRAGDROP 0xf69e8a58
-#define AHASH_HIDE 0x7c97e2df
-#define AHASH_INIT 0x7c988539
-#define AHASH_LOCK 0x7c9a2dce
-#define AHASH_LOSTFOCUS 0x319b8e67
-#define AHASH_MOVE 0x7c9abc9c
-#define AHASH_MOVETOBACK 0xcbdb3170
-#define AHASH_MOVETOFRONT 0x479347c8
-#define AHASH_NEWCHILD 0x7b86ebf3
-#define AHASH_NEWOWNER 0x7c68601a
-#define AHASH_NEWOBJECT 0x07f62dc6
-#define AHASH_REDO 0x7c9d4daf
-#define AHASH_QUERY 0x103db63b
-#define AHASH_READ 0x7c9d4d41
-#define AHASH_RENAME 0x192cc41d
-#define AHASH_RESET 0x10474288
-#define AHASH_RESIZE 0x192fa5b7
-#define AHASH_SAVEIMAGE 0x398f7c57
-#define AHASH_SAVETOOBJECT 0x2878872e
-#define AHASH_SCROLL 0x1b6028b4
-#define AHASH_SEEK 0x7c9dda2d
-#define AHASH_SETVAR 0x1b858eda
-#define AHASH_SHOW 0x7c9de846
-#define AHASH_TIMER 0x106d8b86
-#define AHASH_UNLOCK 0x20ce3c11
-#define AHASH_NEXT 0x7c9b1ec4
-#define AHASH_PREV 0x7c9c6c62
-#define AHASH_WRITE 0x10a8b550
-#define AHASH_SETFIELD 0x12075f55
-#define AHASH_CLIPBOARD 0x4912a9b5
-#define AHASH_REFRESH 0x3e3db654
-#define AHASH_DISABLE 0x12c4e4b9
-#define AHASH_ENABLE 0xfb7573ac
-#define AHASH_REDIMENSION 0x08a67fa2
-#define AHASH_MOVETOPOINT 0x48467e29
-#define AHASH_SCROLLTOPOINT 0xe3665f41
-#define AHASH_CUSTOM 0xf753f9c0
-#define AHASH_SORT 0x7c9e066d
-#define AHASH_SAVESETTINGS 0x475f7165
-#define AHASH_SELECTAREA 0xf55e615e
-#define AHASH_SIGNAL 0x1bc6ade3
-#define AHASH_UNDO 0x7c9f191b
 
 // Internal options for requesting function tables from modules.
 
@@ -1499,6 +1313,188 @@ enum class KEY : LONG {
    LIST_END = 150,
 };
 
+struct InputEvent {
+   const struct InputEvent * Next;    // Next event in the chain
+   DOUBLE   Value;                    // The value associated with the Type
+   LARGE    Timestamp;                // PreciseTime() of the recorded input
+   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
+   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
+   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
+   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
+   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   OBJECTID DeviceID;                 // The hardware device that this event originated from
+   JET      Type;                     // JET constant that describes the event
+   JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
+   JTYPE    Mask;                     // Mask to use for checking against subscribers
+};
+
+struct dcRequest {
+   LONG Item;             // Identifier for retrieval from the source
+   char Preference[4];    // Data preferences for the returned item(s)
+};
+
+struct dcAudio {
+   LONG Size;    // Byte size of this structure
+   LONG Format;  // Format of the audio data
+};
+
+struct dcKeyEntry {
+   LONG  Flags;        // Shift/Control/CapsLock...
+   LONG  Value;        // ASCII value of the key A/B/C/D...
+   LARGE Timestamp;    // PreciseTime() at which the keypress was recorded
+   LONG  Unicode;      // Unicode value for pre-calculated key translations
+};
+
+struct dcDeviceInput {
+   DOUBLE   Value;     // The value associated with the Type
+   LARGE    Timestamp; // PreciseTime() of the recorded input
+   OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
+   JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
+   JET      Type;      // JET constant
+};
+
+struct DateTime {
+   LONG Year;        // Year
+   LONG Month;       // Month 1 to 12
+   LONG Day;         // Day 1 to 31
+   LONG Hour;        // Hour 0 to 23
+   LONG Minute;      // Minute 0 to 59
+   LONG Second;      // Second 0 to 59
+   LONG TimeZone;    // TimeZone -13 to +13
+};
+
+struct HSV {
+   DOUBLE Hue;           // Between 0 and 359.999
+   DOUBLE Saturation;    // Between 0 and 1.0
+   DOUBLE Value;         // Between 0 and 1.0.  Corresponds to Value, Lightness or Brightness
+};
+
+struct FRGB {
+   FLOAT Red;    // Red component value
+   FLOAT Green;  // Green component value
+   FLOAT Blue;   // Blue component value
+   FLOAT Alpha;  // Alpha component value
+   FRGB() { };
+   FRGB(FLOAT R, FLOAT G, FLOAT B, FLOAT A) : Red(R), Green(G), Blue(B), Alpha(A) { };
+};
+
+typedef struct RGB8 {
+   UBYTE Red;    // Red component value
+   UBYTE Green;  // Green component value
+   UBYTE Blue;   // Blue component value
+   UBYTE Alpha;  // Alpha component value
+} RGB8;
+
+struct RGB16 {
+   UWORD Red;    // Red component value
+   UWORD Green;  // Green component value
+   UWORD Blue;   // Blue component value
+   UWORD Alpha;  // Alpha component value
+};
+
+struct RGB32 {
+   ULONG Red;    // Red component value
+   ULONG Green;  // Green component value
+   ULONG Blue;   // Blue component value
+   ULONG Alpha;  // Alpha component value
+};
+
+struct RGBPalette {
+   LONG AmtColours;         // Amount of Colours
+   struct RGB8 Col[256];    // RGB Palette
+};
+
+typedef struct ColourFormat {
+   UBYTE RedShift;        // Right shift value for red (15/16 bit formats only)
+   UBYTE GreenShift;      // Right shift value for green
+   UBYTE BlueShift;       // Right shift value for blue
+   UBYTE AlphaShift;      // Right shift value for alpha
+   UBYTE RedMask;         // Unshifted mask value for red (ranges from 0x00 to 0xff)
+   UBYTE GreenMask;       // Unshifted mask value for green
+   UBYTE BlueMask;        // Unshifted mask value for blue
+   UBYTE AlphaMask;       // Unshifted mask value for alpha
+   UBYTE RedPos;          // Left shift/positional value for red
+   UBYTE GreenPos;        // Left shift/positional value for green
+   UBYTE BluePos;         // Left shift/positional value for blue
+   UBYTE AlphaPos;        // Left shift/positional value for alpha
+   UBYTE BitsPerPixel;    // Number of bits per pixel for this format.
+} COLOURFORMAT;
+
+struct ClipRectangle {
+   LONG Left;    // Left-most coordinate
+   LONG Top;     // Top coordinate
+   LONG Right;   // Right-most coordinate
+   LONG Bottom;  // Bottom coordinate
+  ClipRectangle() { }
+  ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
+  int width() const { return Right - Left; }
+  int height() const { return Bottom - Top; }
+};
+
+struct Edges {
+   LONG Left;    // Left-most coordinate
+   LONG Top;     // Top coordinate
+   LONG Right;   // Right-most coordinate
+   LONG Bottom;  // Bottom coordinate
+};
+
+#define AHASH_ACTIVATE 0xdbaf4876
+#define AHASH_ACCESSOBJECT 0xbcf3b98e
+#define AHASH_CLEAR 0x0f3b6d8c
+#define AHASH_FREEWARNING 0xb903ddbd
+#define AHASH_COPYDATA 0x47b0d1fa
+#define AHASH_DATAFEED 0x05e6d293
+#define AHASH_DEACTIVATE 0x1ee323ff
+#define AHASH_DRAW 0x7c95d753
+#define AHASH_FLUSH 0x0f71fd67
+#define AHASH_FOCUS 0x0f735645
+#define AHASH_FREE 0x7c96f087
+#define AHASH_RELEASEOBJECT 0x9e22661d
+#define AHASH_GETVAR 0xff87a74e
+#define AHASH_DRAGDROP 0xf69e8a58
+#define AHASH_HIDE 0x7c97e2df
+#define AHASH_INIT 0x7c988539
+#define AHASH_LOCK 0x7c9a2dce
+#define AHASH_LOSTFOCUS 0x319b8e67
+#define AHASH_MOVE 0x7c9abc9c
+#define AHASH_MOVETOBACK 0xcbdb3170
+#define AHASH_MOVETOFRONT 0x479347c8
+#define AHASH_NEWCHILD 0x7b86ebf3
+#define AHASH_NEWOWNER 0x7c68601a
+#define AHASH_NEWOBJECT 0x07f62dc6
+#define AHASH_REDO 0x7c9d4daf
+#define AHASH_QUERY 0x103db63b
+#define AHASH_READ 0x7c9d4d41
+#define AHASH_RENAME 0x192cc41d
+#define AHASH_RESET 0x10474288
+#define AHASH_RESIZE 0x192fa5b7
+#define AHASH_SAVEIMAGE 0x398f7c57
+#define AHASH_SAVETOOBJECT 0x2878872e
+#define AHASH_SCROLL 0x1b6028b4
+#define AHASH_SEEK 0x7c9dda2d
+#define AHASH_SETVAR 0x1b858eda
+#define AHASH_SHOW 0x7c9de846
+#define AHASH_TIMER 0x106d8b86
+#define AHASH_UNLOCK 0x20ce3c11
+#define AHASH_NEXT 0x7c9b1ec4
+#define AHASH_PREV 0x7c9c6c62
+#define AHASH_WRITE 0x10a8b550
+#define AHASH_SETFIELD 0x12075f55
+#define AHASH_CLIPBOARD 0x4912a9b5
+#define AHASH_REFRESH 0x3e3db654
+#define AHASH_DISABLE 0x12c4e4b9
+#define AHASH_ENABLE 0xfb7573ac
+#define AHASH_REDIMENSION 0x08a67fa2
+#define AHASH_MOVETOPOINT 0x48467e29
+#define AHASH_SCROLLTOPOINT 0xe3665f41
+#define AHASH_CUSTOM 0xf753f9c0
+#define AHASH_SORT 0x7c9e066d
+#define AHASH_SAVESETTINGS 0x475f7165
+#define AHASH_SELECTAREA 0xf55e615e
+#define AHASH_SIGNAL 0x1bc6ade3
+#define AHASH_UNDO 0x7c9f191b
+
 
 #ifndef __GNUC__
 #define __attribute__(a)
@@ -1507,20 +1503,18 @@ enum class KEY : LONG {
 #define VER_CORE (1.0f)  // Core version + revision
 #define REV_CORE (0)     // Core revision as a whole number
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #endif
 
-typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
-
 #define MOD_IDL NULL
+
+extern "C" {
+
+#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
 
 #ifdef MOD_NAME
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
@@ -1537,19 +1531,15 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
  #define FMSG(...)
 #endif
 
-#ifdef  __cplusplus
 }
-#endif
 
-#define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
+#define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
 
-#define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
+namespace pf {
 
-#define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
-
-#define ALIGN64(a) (((a) + 7) & (~7))
-#define ALIGN32(a) (((a) + 3) & (~3))
-#define ALIGN16(a) (((a) + 1) & (~1))
+template <class T> roundup(T Num, LONG Alignment) {
+   return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
+}
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -1600,7 +1590,7 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
    }
 }
 
-//#define F2T(a) LONG(a)
+} // namespace
 
 // Structures to pass to OpenCore()
 

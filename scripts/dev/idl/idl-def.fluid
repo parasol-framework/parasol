@@ -41,6 +41,7 @@ function functionNames(Prefix, ...) end
 function methods(ClassName, Prefix, Methods) end
 function c_insert(Raw) end
 function privateNames(List) end
+function priority(Value) end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function

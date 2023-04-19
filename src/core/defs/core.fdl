@@ -10,7 +10,7 @@ module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
 
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
-  c_insert([[
+  priority([[
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
@@ -540,20 +540,18 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define VER_CORE (1.0f)  // Core version + revision
 #define REV_CORE (0)     // Core revision as a whole number
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #endif
 
-typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
-
 #define MOD_IDL NULL
+
+extern "C" {
+
+#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
 
 #ifdef MOD_NAME
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
@@ -570,19 +568,15 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
  #define FMSG(...)
 #endif
 
-#ifdef  __cplusplus
 }
-#endif
 
-#define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
+#define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
 
-#define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
+namespace pf {
 
-#define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
-
-#define ALIGN64(a) (((a) + 7) & (~7))
-#define ALIGN32(a) (((a) + 3) & (~3))
-#define ALIGN16(a) (((a) + 1) & (~1))
+template <class T> roundup(T Num, LONG Alignment) {
+   return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
+}
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -633,7 +627,7 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
    }
 }
 
-//#define F2T(a) LONG(a)
+} // namespace
 
 // Structures to pass to OpenCore()
 

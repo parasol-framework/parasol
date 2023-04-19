@@ -19,32 +19,12 @@ class objProxy;
 class objNetLookup;
 class objNetSocket;
 
-
-#ifdef ENABLE_SSL
-#include "openssl/ssl.h"
-#endif
-
-#ifdef __linux__
-typedef LONG SOCKET_HANDLE;
-#elif _WIN32
-typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for now to avoid including winsock.h
-#elif __APPLE__
-typedef LONG SOCKET_HANDLE;
-#else
-#error "No support for this platform"
-#endif
 // Address types for the IPAddress structure.
 
 enum class IPADDR : LONG {
    NIL = 0,
    V4 = 0,
    V6 = 1,
-};
-
-struct IPAddress {
-   ULONG  Data[4];   // 128-bit array for supporting both V4 and V6 IP addresses.
-   IPADDR Type;      // Identifies the address Data value as a V4 or V6 address type.
-   LONG   Pad;       // Unused padding for 64-bit alignment
 };
 
 enum class NSF : ULONG {
@@ -89,6 +69,62 @@ enum class NSL : LONG {
 #define NETMSG_SIZE_LIMIT 1048576
 #define NETMSG_MAGIC 941629299
 #define NETMSG_MAGIC_TAIL 2198696884
+
+// These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
+
+#define SCV_OK 0
+#define SCV_UNABLE_TO_GET_ISSUER_CERT 2
+#define SCV_UNABLE_TO_GET_CRL 3
+#define SCV_UNABLE_TO_DECRYPT_CERT_SIGNATURE 4
+#define SCV_UNABLE_TO_DECRYPT_CRL_SIGNATURE 5
+#define SCV_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY 6
+#define SCV_CERT_SIGNATURE_FAILURE 7
+#define SCV_CRL_SIGNATURE_FAILURE 8
+#define SCV_CERT_NOT_YET_VALID 9
+#define SCV_CERT_HAS_EXPIRED 10
+#define SCV_CRL_NOT_YET_VALID 11
+#define SCV_CRL_HAS_EXPIRED 12
+#define SCV_ERROR_IN_CERT_NOT_BEFORE_FIELD 13
+#define SCV_ERROR_IN_CERT_NOT_AFTER_FIELD 14
+#define SCV_ERROR_IN_CRL_LAST_UPDATE_FIELD 15
+#define SCV_ERROR_IN_CRL_NEXT_UPDATE_FIELD 16
+#define SCV_OUT_OF_MEM 17
+#define SCV_DEPTH_ZERO_SELF_SIGNED_CERT 18
+#define SCV_SELF_SIGNED_CERT_IN_CHAIN 19
+#define SCV_UNABLE_TO_GET_ISSUER_CERT_LOCALLY 20
+#define SCV_UNABLE_TO_VERIFY_LEAF_SIGNATURE 21
+#define SCV_CERT_CHAIN_TOO_LONG 22
+#define SCV_CERT_REVOKED 23
+#define SCV_INVALID_CA 24
+#define SCV_PATH_LENGTH_EXCEEDED 25
+#define SCV_INVALID_PURPOSE 26
+#define SCV_CERT_UNTRUSTED 27
+#define SCV_CERT_REJECTED 28
+#define SCV_SUBJECT_ISSUER_MISMATCH 29
+#define SCV_AKID_SKID_MISMATCH 30
+#define SCV_AKID_ISSUER_SERIAL_MISMATCH 31
+#define SCV_KEYUSAGE_NO_CERTSIGN 32
+#define SCV_APPLICATION_VERIFICATION 50
+
+
+#ifdef ENABLE_SSL
+#include "openssl/ssl.h"
+#endif
+
+#ifdef __linux__
+typedef LONG SOCKET_HANDLE;
+#elif _WIN32
+typedef ULONG SOCKET_HANDLE; // NOTE: declared as ULONG instead of SOCKET for now to avoid including winsock.h
+#elif __APPLE__
+typedef LONG SOCKET_HANDLE;
+#else
+#error "No support for this platform"
+#endif
+struct IPAddress {
+   ULONG  Data[4];   // 128-bit array for supporting both V4 and V6 IP addresses.
+   IPADDR Type;      // Identifies the address Data value as a V4 or V6 address type.
+   LONG   Pad;       // Unused padding for 64-bit alignment
+};
 
 struct NetQueue {
    ULONG Index;    // The current read/write position within the buffer
@@ -586,42 +622,6 @@ class objNetSocket : public BaseClass {
    }
 
 };
-
-// These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
-
-#define SCV_OK 0
-#define SCV_UNABLE_TO_GET_ISSUER_CERT 2
-#define SCV_UNABLE_TO_GET_CRL 3
-#define SCV_UNABLE_TO_DECRYPT_CERT_SIGNATURE 4
-#define SCV_UNABLE_TO_DECRYPT_CRL_SIGNATURE 5
-#define SCV_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY 6
-#define SCV_CERT_SIGNATURE_FAILURE 7
-#define SCV_CRL_SIGNATURE_FAILURE 8
-#define SCV_CERT_NOT_YET_VALID 9
-#define SCV_CERT_HAS_EXPIRED 10
-#define SCV_CRL_NOT_YET_VALID 11
-#define SCV_CRL_HAS_EXPIRED 12
-#define SCV_ERROR_IN_CERT_NOT_BEFORE_FIELD 13
-#define SCV_ERROR_IN_CERT_NOT_AFTER_FIELD 14
-#define SCV_ERROR_IN_CRL_LAST_UPDATE_FIELD 15
-#define SCV_ERROR_IN_CRL_NEXT_UPDATE_FIELD 16
-#define SCV_OUT_OF_MEM 17
-#define SCV_DEPTH_ZERO_SELF_SIGNED_CERT 18
-#define SCV_SELF_SIGNED_CERT_IN_CHAIN 19
-#define SCV_UNABLE_TO_GET_ISSUER_CERT_LOCALLY 20
-#define SCV_UNABLE_TO_VERIFY_LEAF_SIGNATURE 21
-#define SCV_CERT_CHAIN_TOO_LONG 22
-#define SCV_CERT_REVOKED 23
-#define SCV_INVALID_CA 24
-#define SCV_PATH_LENGTH_EXCEEDED 25
-#define SCV_INVALID_PURPOSE 26
-#define SCV_CERT_UNTRUSTED 27
-#define SCV_CERT_REJECTED 28
-#define SCV_SUBJECT_ISSUER_MISMATCH 29
-#define SCV_AKID_SKID_MISMATCH 30
-#define SCV_AKID_ISSUER_SERIAL_MISMATCH 31
-#define SCV_KEYUSAGE_NO_CERTSIGN 32
-#define SCV_APPLICATION_VERIFICATION 50
 
 inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;

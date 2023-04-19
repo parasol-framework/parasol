@@ -43,6 +43,8 @@ significant differences between the source and destination bitmap types.
 
 #include "picture.h"
 
+using namespace pf;
+
 MODULE_COREBASE;
 static RootModule *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;

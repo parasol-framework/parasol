@@ -23,6 +23,8 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
 
+using namespace pf;
+
 #include "agg_alpha_mask_u8.h"
 #include "agg_basics.h"
 #include "agg_bounding_rect.h"

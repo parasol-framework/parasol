@@ -8,6 +8,11 @@
 #include <set>
 #include <array>
 
+using namespace pf;
+
+#define ALIGN64(a) (((a) + 7) & (~7))
+#define ALIGN32(a) (((a) + 3) & (~3))
+
 //********************************************************************************************************************
 
 struct CaseInsensitiveMap {

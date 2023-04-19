@@ -35,6 +35,11 @@ enum class FTF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(FTF)
 
+// Options for the StringSize() function.
+
+#define FSS_ALL -1
+#define FSS_LINE -2
+
 struct FontList {
    struct FontList * Next;    // Pointer to the next entry in the list.
    STRING Name;               // The name of the font face.
@@ -44,11 +49,6 @@ struct FontList {
    BYTE   Reserved1;          // Do not use.
    WORD   Reserved2;          // Do not use.
 };
-
-// Options for the StringSize() function.
-
-#define FSS_ALL -1
-#define FSS_LINE -2
 
 // Font class definition
 

@@ -21,6 +21,8 @@ extern "C" {
 
 #include <array>
 
+using namespace pf;
+
 #define VER_MP3 1.0
 
 MODULE_COREBASE;
