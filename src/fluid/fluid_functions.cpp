@@ -290,7 +290,7 @@ int fcmd_unsubscribe_event(lua_State *Lua)
 
    if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
-      if ((Lua->Script->Flags & SCF::DEBUG) != SCF::NIL) log.msg("Handle: %p", handle);
+      if ((Lua->Script->Flags & SCF::LOG_ALL) != SCF::NIL) log.msg("Handle: %p", handle);
 
       for (auto it=prv->EventList.begin(); it != prv->EventList.end(); it++) {
          if (it->EventHandle IS handle) {

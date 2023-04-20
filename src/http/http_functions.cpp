@@ -220,7 +220,7 @@ redo_upload:
       else if (error > ERR_ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
    }
    else if (Self->flInput) {
-      if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Sending content from an Input file.");
+      if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from an Input file.");
 
       error = acRead(Self->flInput, Self->WriteBuffer, Self->WriteSize, &len);
 
@@ -237,7 +237,7 @@ redo_upload:
       }
    }
    else if (Self->InputObjectID) {
-      if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
+      if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       OBJECTPTR object;
       if (!(error = AccessObject(Self->InputObjectID, 100, &object))) {
@@ -312,7 +312,7 @@ redo_upload:
       // Check for multiple input files
 
       if ((Self->MultipleInput) and (!Self->flInput)) {
-         /*if ((Self->Flags & HTF::DEBUG) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", Self->Index, Self->ContentLength);
+         /*if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", Self->Index, Self->ContentLength);
 
          // Open the next file
 
@@ -336,12 +336,12 @@ redo_upload:
 
          if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
 
-         if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", Self->TotalSent);
+         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", Self->TotalSent);
          Self->setCurrentState(HGS::SEND_COMPLETE);
          return ERR_Terminate;
       }
       else {
-         if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("Sent %" PF64 " bytes of %" PF64, Self->Index, Self->ContentLength);
+         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sent %" PF64 " bytes of %" PF64, Self->Index, Self->ContentLength);
       }
    }
 
@@ -896,7 +896,7 @@ static ERROR parse_response(extHTTP *Self, CSTRING Buffer)
       if (!Self->Args) return log.warning(ERR_Memory);
    }
 
-   if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("HTTP RESPONSE HEADER\n%s", Buffer);
+   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("HTTP RESPONSE HEADER\n%s", Buffer);
 
    // First line: HTTP/1.1 200 OK
 

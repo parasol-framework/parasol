@@ -489,11 +489,11 @@
   <types>
     <constants lookup="XMF" comment="Standard flags for the XML class.">
       <const name="ALL_CONTENT">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
-      <const name="DEBUG">Print extra log messages.</const>
       <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
       <const name="INDENT">Indent the output of XML tags to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
+      <const name="LOG_ALL">Print extra log messages.</const>
       <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>

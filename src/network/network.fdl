@@ -37,7 +37,7 @@ typedef LONG SOCKET_HANDLE;
     "SSL: Use Secure Sockets Layer for all communication.",
     "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
     "SYNCHRONOUS: Use synchronous (blocking) network calls.",
-    "DEBUG: Print extra log messages.")
+    "LOG_ALL: Print extra log messages.")
 
   flags("NLF", { comment="Options for NetLookup" },
     "NO_CACHE: Contact the name service and do not use the local DNS cache.")

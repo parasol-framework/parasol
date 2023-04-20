@@ -3212,8 +3212,8 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     </constants>
 
     <constants lookup="SCF" comment="Script flags">
-      <const name="DEBUG">Enables execution debugging.  More information will be printed to the console in this mode.</const>
       <const name="EXIT_ON_ERROR">The script will automatically terminate its execution process if an error is detected.</const>
+      <const name="LOG_ALL">Enables execution debugging.  More information will be printed to the console in this mode.</const>
     </constants>
 
     <constants lookup="SEEK" comment="Seek positions">
@@ -3258,9 +3258,9 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 
     <constants lookup="TSF" comment="Task flags">
       <const name="ATTACHED">Forces new task to be attached to the parent (child will close when parent closes).</const>
-      <const name="DEBUG">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
       <const name="DETACHED">Forces new task to be detached from the parent.</const>
       <const name="FOREIGN">Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.</const>
+      <const name="LOG_ALL">Additional debug messages will be printed during normal usage of the task class when this flag is set.</const>
       <const name="PIPE">Enable the output pipe to the launched process so that it can read data.</const>
       <const name="PRIVILEGED">During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.</const>
       <const name="QUIET">Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.</const>

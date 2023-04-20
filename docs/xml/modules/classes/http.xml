@@ -479,8 +479,8 @@ http.acActivate()
     </constants>
 
     <constants lookup="HTF" comment="HTTP flags">
-      <const name="DEBUG">Print extra log messages during HTTP processing.</const>
       <const name="DEBUG_SOCKET">Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.</const>
+      <const name="LOG_ALL">Print extra log messages during HTTP processing.</const>
       <const name="MESSAGE">When activating child objects, send delayed messages to postpone execution rather than making direct calls.</const>
       <const name="MOVED">Read-only.  Indicates that the HTTP source was moved (HTS_MovedPermanently).</const>
       <const name="NO_DIALOG">Turn off the username/password dialog.</const>

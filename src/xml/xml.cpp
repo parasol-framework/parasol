@@ -317,17 +317,17 @@ static ERROR XML_FindTag(extXML *Self, struct xmlFindTag *Args)
    pf::Log log;
 
    if (!Args) return ERR_NullArgs;
-   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR_NoData;
 
    if (!Self->findTag(Args->XPath, Args->Callback)) {
-      if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
+      if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
       Args->Result = Self->Cursor->ID;
       return ERR_Okay;
    }
    else if (Args->Callback) return ERR_Okay;
    else {
-      if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("Failed to find tag through XPath.");
+      if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Failed to find tag through XPath.");
       return ERR_Search;
    }
 }
@@ -386,7 +386,7 @@ static ERROR XML_GetAttrib(extXML *Self, struct xmlGetAttrib *Args)
       }
    }
 
-   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
    return ERR_NotFound;
 }
 
@@ -754,7 +754,7 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, LONG(Args->Where));
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, LONG(Args->Where));
 
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR_NotFound);
@@ -818,7 +818,7 @@ static ERROR XML_InsertXML(extXML *Self, struct xmlInsertXML *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
-   if ((Self->Flags & XMF::DEBUG) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, LONG(Args->Where), Args->XML);
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, LONG(Args->Where), Args->XML);
 
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR_NotFound);

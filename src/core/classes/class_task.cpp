@@ -116,7 +116,7 @@ static const FieldDef clFlags[] = {
    { "Shell",      TSF::SHELL },
    { "ResetPath",  TSF::RESET_PATH },
    { "Privileged", TSF::PRIVILEGED },
-   { "Debug",      TSF::DEBUG },
+   { "LogAll",     TSF::LOG_ALL },
    { "Quiet",      TSF::QUIET },
    { "Attached",   TSF::ATTACHED },
    { "Detached",   TSF::DETACHED },

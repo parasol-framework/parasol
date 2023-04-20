@@ -6,7 +6,7 @@ static const struct FieldDef clTaskFlags[] = {
    { "ResetPath", 0x00000004 },
    { "Privileged", 0x00000008 },
    { "Shell", 0x00000010 },
-   { "Debug", 0x00000020 },
+   { "LogAll", 0x00000020 },
    { "Quiet", 0x00000040 },
    { "Detached", 0x00000080 },
    { "Attached", 0x00000100 },
