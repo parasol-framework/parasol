@@ -33,7 +33,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 *********************************************************************************************************************/
 
-#ifdef DEBUG
+#ifdef _DEBUG
 #undef DEBUG
 #endif
 
@@ -79,7 +79,7 @@ FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { 
 
 // These test calls are used to check that the dynamic assembler function calls are working as expected.
 
-#ifdef DEBUG
+#ifdef _DEBUG
 static void flTestCall1(void);
 static LONG flTestCall2(void);
 static STRING flTestCall3(void);
@@ -99,7 +99,7 @@ FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "Str
 
 static const struct Function JumpTableV1[] = {
    { (APTR)flSetVariable, "SetVariable", argsSetVariable },
-   #ifdef DEBUG
+   #ifdef _DEBUG
    { (APTR)flTestCall1,   "TestCall1", argsTestCall1 },
    { (APTR)flTestCall2,   "TestCall2", argsTestCall2 },
    { (APTR)flTestCall3,   "TestCall3", argsTestCall3 },
@@ -111,7 +111,7 @@ static const struct Function JumpTableV1[] = {
    { NULL, NULL, NULL }
 };
 
-#ifdef DEBUG
+#ifdef _DEBUG
 
 static void flTestCall1(void)
 {
@@ -789,7 +789,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 
 //********************************************************************************************************************
 
-#ifdef DEBUG
+#ifdef _DEBUG
 
 static void stack_dump(lua_State *L) __attribute__ ((unused));
 

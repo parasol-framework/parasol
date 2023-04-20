@@ -1523,7 +1523,7 @@ extern "C" {
 #define MOD_NAME NULL
 #endif
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define MSG(...)  LogF(0,__VA_ARGS__)
  #define FMSG(...) LogF(__VA_ARGS__)
 #else
@@ -1552,7 +1552,7 @@ template <class T> T roundup(T Num, LONG Alignment) {
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
@@ -2458,7 +2458,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
@@ -2550,7 +2550,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void trace(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::TRACE, header, Message, arg);
@@ -2559,7 +2559,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void traceWarning(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::WARNING, header, Message, arg);

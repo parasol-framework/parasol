@@ -412,7 +412,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          master->Expunge    = table->Expunge;
          master->Flags      = table->Flags;
 
-#ifdef DEBUG
+#ifdef _DEBUG
          if (master->Name) { // Give the master object a nicer name for debug output.
             char mmname[30];
             mmname[0] = 'm';

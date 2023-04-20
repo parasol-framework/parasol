@@ -37,7 +37,7 @@
 #define AND &&
 #define OR ||
 
-#ifdef DEBUG
+#ifdef _DEBUG
 #define MSG(...) printf(__VA_ARGS__)
 #else
 #define MSG(...)
@@ -299,7 +299,7 @@ static inline unsigned int LCASEHASH(char *String)
 
 //********************************************************************************************************************
 
-#ifdef DEBUG
+#ifdef _DEBUG
 static char glSymbolsLoaded = FALSE;
 static void windows_print_stacktrace(CONTEXT* context)
 {
@@ -370,7 +370,7 @@ LONG winInitialise(unsigned int *PathHash, void *BreakHandler)
    char path[255];
    LONG len;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       // This is only needed if the application crashes and a stack trace is printed.
       SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
       if (SymInitialize(GetCurrentProcess(), 0, TRUE)) glSymbolsLoaded = TRUE;
@@ -1222,7 +1222,7 @@ LONG ExceptionFilter(LPEXCEPTION_POINTERS Args)
 {
    LONG continuable, code, err;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    if (Args->ExceptionRecord->ExceptionCode != EXCEPTION_STACK_OVERFLOW) {
       windows_print_stacktrace(Args->ContextRecord);
    }

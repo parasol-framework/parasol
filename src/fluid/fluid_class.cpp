@@ -1017,7 +1017,7 @@ static ERROR run_script(objScript *Self)
          Self->setErrorString(str);
          log.warning("%s", str);
 
-         #ifdef DEBUG
+         #ifdef _DEBUG
             STRING *list;
             LONG total_procedures;
             if (!GET_Procedures(Self, &list, &total_procedures)) {

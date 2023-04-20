@@ -391,7 +391,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
 
-#ifdef DEBUG
+#ifdef _DEBUG
    auto log_depth = tlDepth;
 #endif
 
@@ -445,7 +445,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    Object->ActionDepth--;
    Object->threadRelease();
 
-#ifdef DEBUG
+#ifdef _DEBUG
    if (log_depth != tlDepth) {
       pf::Log log(__FUNCTION__);
       if (ActionID >= 0) {

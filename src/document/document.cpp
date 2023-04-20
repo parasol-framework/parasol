@@ -756,7 +756,7 @@ static void   notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Resul
 static void   notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
 static void   notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args);
 static LONG   parse_tag(extDocument *, objXML *, XMLTag *, LONG *, LONG);
-#ifdef DEBUG
+#ifdef _DEBUG
 static void   print_xmltree(XMLTag *, LONG *) __attribute__ ((unused));
 #endif
 #ifdef DBG_LINES

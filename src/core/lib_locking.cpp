@@ -836,7 +836,7 @@ void ReleaseObject(OBJECTPTR Object)
 {
    if (!Object) return;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       LONG our_thread = get_thread_id();
       if (Object->ThreadID != our_thread) {
          pf::Log log(__FUNCTION__);
@@ -853,7 +853,7 @@ void ReleaseObject(OBJECTPTR Object)
    Object->Locked = false;
 
    if (Object->SleepQueue > 0) {
-      #ifdef DEBUG
+      #ifdef _DEBUG
          pf::Log log(__FUNCTION__);
          log.traceBranch("Thread: %d - Waking 1 of %d threads", our_thread, Object->SleepQueue);
       #endif

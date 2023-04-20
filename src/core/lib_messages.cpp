@@ -358,7 +358,7 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
    bool breaking = false;
    ERROR error;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       LARGE periodic = PreciseTime();
    #endif
 
@@ -453,7 +453,7 @@ timer_cycle:
                auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
                TaskMessage *prevmsg = NULL;
 
-               #ifdef DEBUG
+               #ifdef _DEBUG
                if (PreciseTime() - periodic > 1000000LL) {
                   periodic = PreciseTime();
                   log.trace("Message count: %d", msgbuffer->Count);

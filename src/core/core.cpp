@@ -73,7 +73,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include "defs.h"
 #include <parasol/modules/core.h>
 
-#ifdef DEBUG // KMSG() prints straight to stderr without going through the log.
+#ifdef _DEBUG // KMSG() prints straight to stderr without going through the log.
 #define KMSG(...) //fprintf(stderr, __VA_ARGS__)
 #else
 #define KMSG(...)
@@ -221,7 +221,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
 #elif _WIN32
    LONG id = 0;
-   #ifdef DEBUG
+   #ifdef _DEBUG
       winInitialise(&id, NULL); // Don't set a break handler, this will allow GDB intercept CTRL-C.
    #else
       winInitialise(&id, (APTR)&BreakHandler);
@@ -592,7 +592,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    if (glScanClasses) scan_classes();
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       print_class_list();
    #endif
 

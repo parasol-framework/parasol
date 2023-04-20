@@ -254,7 +254,7 @@ UBYTE validate_clip(CSTRING Header, CSTRING Name, extBitmap *Bitmap)
 {
    pf::Log log(Header);
 
-#ifdef DEBUG // Force break if clipping is wrong (use gdb)
+#ifdef _DEBUG // Force break if clipping is wrong (use gdb)
    if (((Bitmap->XOffset + Bitmap->Clip.Right) > Bitmap->Width) or
        ((Bitmap->YOffset + Bitmap->Clip.Bottom) > Bitmap->Height) or
        ((Bitmap->XOffset + Bitmap->Clip.Left) < 0) or
