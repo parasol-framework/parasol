@@ -2065,7 +2065,7 @@ struct CoreBase {
    ERROR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
    ERROR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERROR (*_UnsubscribeAction)(OBJECTPTR Object, LONG Action);
-   void (*_UnsubscribeEvent)(APTR Event);
+   void (*_UnsubscribeEvent)(APTR Handle);
    ERROR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
    LARGE (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
@@ -2178,7 +2178,7 @@ inline ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR 
 inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERROR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
-inline void UnsubscribeEvent(APTR Event) { return CoreBase->_UnsubscribeEvent(Event); }
+inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
 inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }

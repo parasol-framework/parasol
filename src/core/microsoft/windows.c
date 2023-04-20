@@ -498,7 +498,7 @@ void winShutdown(void)
 
 //********************************************************************************************************************
 // Return a duplicate handle linked to some other process.  A cache is used so that re-duplication is minimised.
-
+/*
 static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 {
    HANDLE result = 0;
@@ -535,7 +535,7 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
    LeaveCriticalSection(&csHandleBank);
    return result;
 }
-
+*/
 //********************************************************************************************************************
 // The SysLock() function uses these publicly accessible handles for synchronising Core processes.
 

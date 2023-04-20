@@ -816,8 +816,8 @@ FindObject("SystemPointer", ID_POINTER, 0, &amp;id);
     <prototype>LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)</prototype>
     <input>
       <param type="EVG" name="Group" lookup="EVG">The group to which the event belongs.</param>
-      <param type="CSTRING" name="SubGroup">The sub-group to which the event belongs.</param>
-      <param type="CSTRING" name="Event">The name of the event.</param>
+      <param type="CSTRING" name="SubGroup">The sub-group to which the event belongs (case-sensitive).</param>
+      <param type="CSTRING" name="Event">The name of the event (case-sensitive).</param>
     </input>
     <description>
 <p>Use GetEventID() to generate a 64-bit event identifier.  This identifier can be used for broadcasting and subscribing to events.  Events are described in three parts - Group, SubGroup and the Event name, or in string format <code>group.subgroup.event</code>.</p>
@@ -2220,9 +2220,9 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>UnsubscribeEvent</name>
     <category>Events</category>
     <comment>Removes an event subscription.</comment>
-    <prototype>void UnsubscribeEvent(APTR Event)</prototype>
+    <prototype>void UnsubscribeEvent(APTR Handle)</prototype>
     <input>
-      <param type="APTR" name="Event">An event handle returned from SubscribeEvent()</param>
+      <param type="APTR" name="Handle">An event handle returned from SubscribeEvent()</param>
     </input>
     <description>
 <p>Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle returned from the <function module="Core">SubscribeEvent</function> function must be provided.</p>
