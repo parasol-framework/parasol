@@ -259,8 +259,8 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
                   process_error(Self, "Action Subscription");
                }
 
-               log.msg(VLF::BRANCH|VLF::EXTAPI, "Collecting garbage.");
-               lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+               log.traceBranch("Collecting garbage.");
+               lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
             }
          }
 

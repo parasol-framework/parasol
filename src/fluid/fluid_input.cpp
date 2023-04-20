@@ -466,7 +466,7 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
       return;
    }
 
-   log.traceBranch("Incoming focus event.");
+   log.traceBranch("Incoming focus event targeting #%d, focus lost from #%d.", Event->FocusList[0], Event->FocusList[Event->TotalWithFocus]);
 
    for (auto input=prv->InputList; input; input=input->Next) {
       if (input->Mode != FIM_KEYBOARD) continue;

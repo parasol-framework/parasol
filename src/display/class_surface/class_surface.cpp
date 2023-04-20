@@ -866,7 +866,8 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
    for (auto &id : lostfocus) acLostFocus(id);
 
-   // Send a global focus event to all listeners
+   // Send a global focus event to all listeners.  The list consists of two sections with the focus-chain
+   // placed first, then the lost-focus chain.
 
    LONG event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
    UBYTE buffer[event_size];
