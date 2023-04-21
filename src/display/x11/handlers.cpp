@@ -55,23 +55,39 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
             last_motion = xevent;
             break;
 
-         case FocusIn:
+         case FocusIn: {
+            pf::Log log("X11Mgr");
             if (auto display_id = get_display(xevent.xany.window)) {
                auto surface_id = GetOwnerID(display_id);
-               log.trace("XFocusIn Surface: %d", surface_id);
+               log.traceBranch("XFocusIn surface #%d", surface_id);
                acFocus(surface_id);
             }
             else log.trace("XFocusIn Failed to get window display ID.");
             break;
+         }
 
          case FocusOut: {
-            log.traceBranch("XFocusOut");
-            std::vector<OBJECTID> list;
-            {
-               const std::lock_guard<std::mutex> lock(glFocusLock);
-               list = glFocusList;
+            pf::Log log("X11Mgr");
+            if (auto display_id = get_display(xevent.xany.window)) {
+               auto surface_id = GetOwnerID(display_id);
+               log.traceBranch("XFocusOut surface #%d", surface_id);
+
+               std::vector<OBJECTID> list;
+               { // Make a local copy of the focus list
+                  const std::lock_guard<std::mutex> lock(glFocusLock);
+                  list = glFocusList;
+               }
+
+               if (!list.empty()) {
+                  bool in_focus = false;
+                  for (auto &id : list) {
+                     if ((!in_focus) and (id != surface_id)) continue;
+                     in_focus = true;
+                     acLostFocus(id);
+                  }
+               }
             }
-            for (auto &id : list) acLostFocus(id);
+
             break;
          }
 
