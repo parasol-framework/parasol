@@ -894,7 +894,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
       argslist[i+1] = NULL;
 
-      if ((Self->Flags & TSF::DEBUG) != TSF::NIL) {
+      if ((Self->Flags & TSF::LOG_ALL) != TSF::NIL) {
          for (i=1; argslist[i]; i++) {
             log.msg("Arg %d: %s", i, argslist[i]);
          }
