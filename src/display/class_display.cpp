@@ -1387,9 +1387,9 @@ static ERROR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
    if (Args->EnforceAspect) {
       hints.flags |= PAspect;
       hints.min_aspect.x = Args->MinWidth;
-      hints.max_aspect.x = Args->MaxWidth;
+      hints.max_aspect.x = Args->MinWidth;
       hints.min_aspect.y = Args->MinHeight;
-      hints.max_aspect.y = Args->MaxHeight;
+      hints.max_aspect.y = Args->MinHeight;
    }
 
    XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
@@ -3062,4 +3062,3 @@ ERROR create_display_class(void)
 
    return clDisplay ? ERR_Okay : ERR_AddClass;
 }
-
