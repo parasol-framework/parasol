@@ -1360,6 +1360,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
             if (Self->MaxHeight > 0) hints.MaxHeight = Self->MaxHeight + Self->TopMargin  + Self->BottomMargin; else hints.MaxHeight = 0;
             if (Self->MinWidth > 0)  hints.MinWidth  = Self->MinWidth  + Self->LeftMargin + Self->RightMargin;  else hints.MinWidth  = 0;
             if (Self->MinHeight > 0) hints.MinHeight = Self->MinHeight + Self->TopMargin  + Self->BottomMargin; else hints.MinHeight = 0;
+            hints.EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL;
             Action(MT_GfxSizeHints, display, &hints);
          }
 
