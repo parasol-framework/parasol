@@ -250,15 +250,16 @@
     <method>
       <name>SizeHints</name>
       <comment>Sets the width and height restrictions for the host window (hosted environments only).</comment>
-      <prototype>ERROR gfxSizeHints(OBJECTPTR Object, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight)</prototype>
+      <prototype>ERROR gfxSizeHints(OBJECTPTR Object, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect)</prototype>
       <input>
         <param type="LONG" name="MinWidth">The minimum width of the window.</param>
         <param type="LONG" name="MinHeight">The minimum height of the window.</param>
         <param type="LONG" name="MaxWidth">The maximum width of the window.</param>
         <param type="LONG" name="MaxHeight">The maximum width of the window.</param>
+        <param type="LONG" name="EnforceAspect">Set to true to enforce an aspect ratio that is scaled by MinHeight / MinWidth.</param>
       </input>
       <description>
-<p>If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window from being shrunk below, or expanded beyond a certain size.  This feature is platform dependent and ERR_NoSupport will be returned if it is not implemented.</p>
+<p>If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window from being shrunk or expanded beyond a certain size.  This feature is platform dependent and <code>ERR_NoSupport</code> will be returned if it is not implemented.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

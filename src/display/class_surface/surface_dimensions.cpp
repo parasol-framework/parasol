@@ -110,7 +110,7 @@ static ERROR GET_Bottom(extSurface *Self, LONG *Bottom)
 -FIELD-
 BottomLimit: Prevents a surface object from moving beyond a given point at the bottom of its container.
 
-You can prevent a surface object from moving beyond a given point at the bottom of its container by setting this field.
+A client can prevent a surface object from moving beyond a given point at the bottom of its container by setting this field.
 If for example you were to set the BottomLimit to 5, then any attempt to move the surface object into or beyond the 5
 units at the bottom of its container would fail.
 
@@ -237,7 +237,7 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 Height: Defines the height of a surface object.
 
 The height of a surface object is manipulated through this field, although you can also use the Resize() action, which
-is faster if you need to set both the Width and the Height.  You can set the Height as a fixed value by default, or as
+is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as
 a relative value if you set the `FD_PERCENT` marker. Relative heights are always calculated in relationship to a surface
 object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will
 be 160 pixels high.
@@ -329,7 +329,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 -FIELD-
 InsideHeight: Defines the amount of space between the vertical margins.
 
-You can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the
+A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the
 result of calculating this formula: `Height - TopMargin - BottomMargin`.
 
 If the TopMargin and BottomMargin fields are not set, the returned value will be equal to the surface object's
@@ -356,7 +356,7 @@ static ERROR SET_InsideHeight(extSurface *Self, LONG Value)
 -FIELD-
 InsideWidth: Defines the amount of space between the horizontal margins.
 
-You can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
+A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the
 result of calculating this formula: `Width - LeftMargin - RightMargin`.
 
 If the LeftMargin and RightMargin fields are not set, the returned value will be equal to the surface object's width.
@@ -382,7 +382,7 @@ static ERROR SET_InsideWidth(extSurface *Self, LONG Value)
 -FIELD-
 LeftLimit: Prevents a surface object from moving beyond a given point on the left-hand side.
 
-You can prevent a surface object from moving beyond a given point at the left-hand side of its container by setting
+A client can prevent a surface object from moving beyond a given point at the left-hand side of its container by setting
 this field.  If for example you were to set the LeftLimit to 3, then any attempt to move the surface object into or
 beyond the 3 units at the left of its container would fail.
 
@@ -412,7 +412,7 @@ By default, all margins are set to zero when a new surface object is created.
 -FIELD-
 MaxHeight: Prevents the height of a surface object from exceeding a certain value.
 
-You can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing,
+A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing,
 making it impossible to use the Resize() action to extend beyond the height you specify.
 
 It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers
@@ -430,7 +430,8 @@ static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
          .MinWidth  = -1,
          .MinHeight = -1,
          .MaxWidth  = Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin
+         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
       };
       ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
    }
@@ -443,7 +444,7 @@ static ERROR SET_MaxHeight(extSurface *Self, LONG Value)
 -FIELD-
 MaxWidth: Prevents the width of a surface object from exceeding a certain value.
 
-You can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making
+A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making
 it impossible to use the Resize() action to extend beyond the width you specify.
 
 It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to
@@ -461,7 +462,8 @@ static ERROR SET_MaxWidth(extSurface *Self, LONG Value)
          .MinWidth  = -1,
          .MinHeight = -1,
          .MaxWidth  = Self->MaxWidth + Self->LeftMargin + Self->RightMargin,
-         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin
+         .MaxHeight = Self->MaxHeight + Self->TopMargin + Self->BottomMargin,
+         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
       };
       ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
    }
@@ -474,7 +476,7 @@ static ERROR SET_MaxWidth(extSurface *Self, LONG Value)
 -FIELD-
 MinHeight: Prevents the height of a surface object from shrinking beyond a certain value.
 
-You can prevent the height of a surface object from shrinking too far by setting this field.  This feature specifically
+A client can prevent the height of a surface object from shrinking too far by setting this field.  This feature specifically
 affects resizing, making it impossible to use the Resize() action to shrink the height of a surface object to a value
 less than the one you specify.
 
@@ -492,7 +494,8 @@ static ERROR SET_MinHeight(extSurface *Self, LONG Value)
          .MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin,
          .MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin,
          .MaxWidth  = -1,
-         .MaxHeight = -1
+         .MaxHeight = -1,
+         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
       };
       ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
    }
@@ -505,7 +508,7 @@ static ERROR SET_MinHeight(extSurface *Self, LONG Value)
 -FIELD-
 MinWidth: Prevents the width of a surface object from shrinking beyond a certain value.
 
-You can prevent the width of a surface object from shrinking too far by setting this field.  This feature specifically
+A client can prevent the width of a surface object from shrinking too far by setting this field.  This feature specifically
 affects resizing, making it impossible to use the Resize() action to shrink the width of a surface object to a value
 less than the one you specify.
 
@@ -519,11 +522,13 @@ static ERROR SET_MinWidth(extSurface *Self, LONG Value)
    if (Self->MinWidth < 1) Self->MinWidth = 1;
 
    if ((!Self->ParentID) and (Self->DisplayID)) {
-      struct gfxSizeHints hints;
-      hints.MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin;
-      hints.MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin;
-      hints.MaxWidth  = -1;
-      hints.MaxHeight = -1;
+      struct gfxSizeHints hints = {
+         .MinWidth  = Self->MinWidth + Self->LeftMargin + Self->RightMargin,
+         .MinHeight = Self->MinHeight + Self->TopMargin + Self->BottomMargin,
+         .MaxWidth  = -1,
+         .MaxHeight = -1,
+         .EnforceAspect = (Self->Flags & RNF::ASPECT_RATIO) != RNF::NIL
+      };
       ActionMsg(MT_GfxSizeHints, Self->DisplayID, &hints);
    }
 
@@ -548,7 +553,7 @@ static ERROR GET_Right(extSurface *Self, LONG *Value)
 -FIELD-
 RightLimit: Prevents a surface object from moving beyond a given point on the right-hand side.
 
-You can prevent a surface object from moving beyond a given point at the right-hand side of its container by setting
+A client can prevent a surface object from moving beyond a given point at the right-hand side of its container by setting
 this field.  If for example you were to set the RightLimit to 8, then any attempt to move the surface object into or
 beyond the 8 units at the right-hand side of its container would fail.
 
@@ -589,7 +594,7 @@ static ERROR SET_RightMargin(extSurface *Self, LONG Value)
 -FIELD-
 TopLimit: Prevents a surface object from moving beyond a given point at the top of its container.
 
-You can prevent a surface object from moving beyond a given point at the top of its container by setting this field.
+A client can prevent a surface object from moving beyond a given point at the top of its container by setting this field.
 If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10
 units at the top of its container would fail.
 
@@ -757,7 +762,7 @@ static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 Width: Defines the width of a surface object.
 
 The width of a surface object is manipulated through this field, although you can also use the Resize() action, which
-is faster if you need to set both the Width and the Height.  You can set the Width as a fixed value by default, or as a
+is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a
 relative value if you set the `FD_PERCENT` field.  Relative widths are always calculated in relationship to a surface
 object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be
 160 pixels wide.

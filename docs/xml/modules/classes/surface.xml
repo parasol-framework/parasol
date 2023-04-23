@@ -369,7 +369,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can prevent a surface object from moving beyond a given point at the bottom of its container by setting this field. If for example you were to set the BottomLimit to 5, then any attempt to move the surface object into or beyond the 5 units at the bottom of its container would fail.</p>
+<p>A client can prevent a surface object from moving beyond a given point at the bottom of its container by setting this field. If for example you were to set the BottomLimit to 5, then any attempt to move the surface object into or beyond the 5 units at the bottom of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
       </description>
     </field>
@@ -483,7 +483,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  You can set the Height as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> marker. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
+<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> marker. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
 <p>Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change. Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for pairing the Y and YOffset fields together for dynamic height adjustment.</p>
       </description>
@@ -495,7 +495,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>You can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the result of calculating this formula: <code>Height - TopMargin - BottomMargin</code>.</p>
+<p>A client can determine the internal height of a surface object by reading the InsideHeight field.  The returned value is the result of calculating this formula: <code>Height - TopMargin - BottomMargin</code>.</p>
 <p>If the TopMargin and BottomMargin fields are not set, the returned value will be equal to the surface object's height.</p>
       </description>
     </field>
@@ -506,7 +506,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>You can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the result of calculating this formula: <code>Width - LeftMargin - RightMargin</code>.</p>
+<p>A client can determine the internal width of a surface object by reading the InsideWidth field.  The returned value is the result of calculating this formula: <code>Width - LeftMargin - RightMargin</code>.</p>
 <p>If the LeftMargin and RightMargin fields are not set, the returned value will be equal to the surface object's width.</p>
       </description>
     </field>
@@ -517,7 +517,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can prevent a surface object from moving beyond a given point at the left-hand side of its container by setting this field.  If for example you were to set the LeftLimit to 3, then any attempt to move the surface object into or beyond the 3 units at the left of its container would fail.</p>
+<p>A client can prevent a surface object from moving beyond a given point at the left-hand side of its container by setting this field.  If for example you were to set the LeftLimit to 3, then any attempt to move the surface object into or beyond the 3 units at the left of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the <action>Move</action> action.  This means it is possible to override limits by setting the coordinate fields directly.</p>
       </description>
     </field>
@@ -539,7 +539,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing, making it impossible to use the Resize() action to extend beyond the height you specify.</p>
+<p>A client can limit the maximum height of a surface object by setting this field.  Limiting the height affects resizing, making it impossible to use the Resize() action to extend beyond the height you specify.</p>
 <p>It is possible to circumvent the MaxHeight by setting the Height field directly.  Note that the MaxHeight value refers to the inside-height of the surface area, thus the overall maximum height will include both the <field>TopMargin</field> and <field>BottomMargin</field> values.</p>
       </description>
     </field>
@@ -550,7 +550,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making it impossible to use the Resize() action to extend beyond the width you specify.</p>
+<p>A client can limit the maximum width of a surface object by setting this field.  Limiting the width affects resizing, making it impossible to use the Resize() action to extend beyond the width you specify.</p>
 <p>It is possible to circumvent the MaxWidth by setting the Width field directly.  Note that the MaxWidth value refers to the inside-width of the surface area, thus the overall maximum width will include both the LeftMargin and RightMargin values.</p>
       </description>
     </field>
@@ -561,7 +561,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can prevent the height of a surface object from shrinking too far by setting this field.  This feature specifically affects resizing, making it impossible to use the Resize() action to shrink the height of a surface object to a value less than the one you specify.</p>
+<p>A client can prevent the height of a surface object from shrinking too far by setting this field.  This feature specifically affects resizing, making it impossible to use the Resize() action to shrink the height of a surface object to a value less than the one you specify.</p>
 <p>It is possible to circumvent the MinHeight by setting the <field>Height</field> field directly.</p>
       </description>
     </field>
@@ -572,7 +572,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can prevent the width of a surface object from shrinking too far by setting this field.  This feature specifically affects resizing, making it impossible to use the Resize() action to shrink the width of a surface object to a value less than the one you specify.</p>
+<p>A client can prevent the width of a surface object from shrinking too far by setting this field.  This feature specifically affects resizing, making it impossible to use the Resize() action to shrink the width of a surface object to a value less than the one you specify.</p>
 <p>It is possible to circumvent the MinWidth by setting the Width field directly.</p>
       </description>
     </field>
@@ -646,7 +646,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can prevent a surface object from moving beyond a given point at the right-hand side of its container by setting this field.  If for example you were to set the RightLimit to 8, then any attempt to move the surface object into or beyond the 8 units at the right-hand side of its container would fail.</p>
+<p>A client can prevent a surface object from moving beyond a given point at the right-hand side of its container by setting this field.  If for example you were to set the RightLimit to 8, then any attempt to move the surface object into or beyond the 8 units at the right-hand side of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the <action>Move</action> action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
       </description>
     </field>
@@ -675,7 +675,7 @@ the surface area first).</li>
       <access read="R" write="S">Read/Set</access>
       <type>INT</type>
       <description>
-<p>You can prevent a surface object from moving beyond a given point at the top of its container by setting this field. If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10 units at the top of its container would fail.</p>
+<p>A client can prevent a surface object from moving beyond a given point at the top of its container by setting this field. If for example you were to set the TopLimit to 10, then any attempt to move the surface object into or beyond the 10 units at the top of its container would fail.</p>
 <p>Limits only apply to movement, as induced through the Move() action.  This means that limits can be over-ridden by setting the coordinate fields directly (which can be useful in certain cases).</p>
       </description>
     </field>
@@ -766,7 +766,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  You can set the Width as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
+<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
 <p>Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>Width values of 0 or less are illegal, and will result in an <code>ERR_OutOfRange</code> error-code.</p>
       </description>

@@ -40,7 +40,7 @@ static const struct FieldDef clDisplayPowerMode[] = {
 
 FDEF maUpdatePalette[] = { { "RGBPalette:NewPalette", FD_PTR|FD_STRUCT }, { 0, 0 } };
 FDEF maSetDisplay[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "InsideWidth", FD_LONG }, { "InsideHeight", FD_LONG }, { "BitsPerPixel", FD_LONG }, { "RefreshRate", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maSizeHints[] = { { "MinWidth", FD_LONG }, { "MinHeight", FD_LONG }, { "MaxWidth", FD_LONG }, { "MaxHeight", FD_LONG }, { 0, 0 } };
+FDEF maSizeHints[] = { { "MinWidth", FD_LONG }, { "MinHeight", FD_LONG }, { "MaxWidth", FD_LONG }, { "MaxHeight", FD_LONG }, { "EnforceAspect", FD_LONG }, { 0, 0 } };
 FDEF maSetGamma[] = { { "Red", FD_DOUBLE }, { "Green", FD_DOUBLE }, { "Blue", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetGammaLinear[] = { { "Red", FD_DOUBLE }, { "Green", FD_DOUBLE }, { "Blue", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetMonitor[] = { { "Name", FD_STR }, { "MinH", FD_LONG }, { "MaxH", FD_LONG }, { "MinV", FD_LONG }, { "MaxV", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };

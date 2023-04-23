@@ -1354,7 +1354,7 @@ static ERROR DISPLAY_SaveSettings(extDisplay *Self, APTR Void)
 SizeHints: Sets the width and height restrictions for the host window (hosted environments only).
 
 If a display is hosted in a desktop window, it may be possible to enforce size restrictions that prevent the window
-from being shrunk below, or expanded beyond a certain size.  This feature is platform dependent and ERR_NoSupport
+from being shrunk or expanded beyond a certain size.  This feature is platform dependent and `ERR_NoSupport`
 will be returned if it is not implemented.
 
 -INPUT-
@@ -1362,6 +1362,7 @@ int MinWidth: The minimum width of the window.
 int MinHeight: The minimum height of the window.
 int MaxWidth: The maximum width of the window.
 int MaxHeight: The maximum width of the window.
+int EnforceAspect: Set to true to enforce an aspect ratio that is scaled by MinHeight / MinWidth.
 
 -ERRORS-
 Okay
@@ -1373,9 +1374,7 @@ NoSupport: The host platform does not support this feature.
 static ERROR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
 {
 #ifdef __xwindows__
-   XSizeHints hints;
-
-   hints.flags = 0;
+   XSizeHints hints = { .flags = 0 };
 
    if ((Args->MaxWidth >= 0) or (Args->MaxHeight >= 0)) hints.flags |= PMaxSize;
    if ((Args->MinWidth >= 0) or (Args->MinHeight >= 0)) hints.flags |= PMinSize;
@@ -1384,6 +1383,14 @@ static ERROR DISPLAY_SizeHints(extDisplay *Self, struct gfxSizeHints *Args)
    if (Args->MaxHeight > 0) hints.max_height = Args->MaxHeight; else hints.max_height = 0;
    if (Args->MinWidth > 0)  hints.min_width  = Args->MinWidth;  else hints.min_width  = 0;
    if (Args->MinHeight > 0) hints.min_height = Args->MinHeight; else hints.min_height = 0;
+
+   if (Args->EnforceAspect) {
+      hints.flags |= PAspect;
+      hints.min_aspect.x = Args->MinWidth;
+      hints.max_aspect.x = Args->MinWidth;
+      hints.min_aspect.y = Args->MinHeight;
+      hints.max_aspect.y = Args->MinHeight;
+   }
 
    XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
    return ERR_Okay;
@@ -3055,4 +3062,3 @@ ERROR create_display_class(void)
 
    return clDisplay ? ERR_Okay : ERR_AddClass;
 }
-
