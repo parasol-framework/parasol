@@ -315,6 +315,10 @@ gui.menubar = function(HostVP, Options)
             if self._currentItem then
                self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
             end
+
+            if self._lastMenu then
+               self._lastMenu.hide()
+            end
          else
             self._hasFocus = true
          end
@@ -350,7 +354,7 @@ gui.menubar = function(HostVP, Options)
             elseif (bit.band(ev.flags, JTYPE_BUTTON) != 0) then
                if (ev.type != JET_BUTTON_1) then return end
 
-               if (ev.value > 0) then
+               if (ev.value != 0) then
                   if self._currentItem then
                      if self._currentItem.disabled or self._disabled then return end
 

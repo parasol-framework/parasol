@@ -1015,6 +1015,9 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be destroyed at any time.
+   //
+   // NOTE: The ActiveVector refers to the vector that received the most recent input movement event.  It
+   // receives wheel events and button presses.
 
    for (auto input=Events; input; input=input->Next) {
       if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
@@ -1025,7 +1028,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value IS 1)) {
+      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value)) {
          apply_focus(Self, (extVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 

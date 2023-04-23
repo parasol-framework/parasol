@@ -19,7 +19,7 @@ Valid options to use when creating the menu are as follows:
   x:         The x coordinate of the menu.
   y:         The y coordinate of the menu.
   width:     The preferred width of the menu, in pixels.
-  popup:     Locks the position of the menu to the mouse pointer.
+  popup:     Locks the position of the menu to the mouse pointer; also grabs the UI focus.
   style:     'menubar', 'list', 'popup'
   noTranslation: If true, do not translate menu text to the user's native language.
 --]]
@@ -483,7 +483,7 @@ gui.menu = function(Options)
    end)
 
    self.surface.subscribe('show', function(Surface, Args)
-      if self.popup or self.rootMenu then
+      if self.popup then
          self.surface.acFocus()
       end
       self.visible = true
