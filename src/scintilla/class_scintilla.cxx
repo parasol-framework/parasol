@@ -912,7 +912,7 @@ static ERROR SCINTILLA_Init(extScintilla *Self, APTR)
    SCICALL(SCI_SETCARETFORE, SCICOLOUR(Self->CursorColour.Red, Self->CursorColour.Green, Self->CursorColour.Blue));
    SCICALL(SCI_SETCARETWIDTH, 2);
 
-#ifdef DEBUG
+#ifdef _DEBUG
    SCICALL(SCI_SETCARETPERIOD, 0UL);
 #endif
 

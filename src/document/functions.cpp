@@ -1292,7 +1292,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
       return 0;
    }
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       char tagarg[30];
 
       if (Tag->Attrib->Name) {
@@ -1319,7 +1319,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
    while (Tag) {
       SAVE_ARGS(Tag);
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
           if (Tag->Attrib->Name) log.trace("Tag: %s", Tag->Attrib->Name);
           else if (Tag->Attrib->Value) {
              for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
@@ -4167,7 +4167,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
       return;
    }
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    if ((!Self->Stream[0]) or (!Self->SegCount)) {
       //log.traceWarning("No content in stream or no segments.");
       return;
@@ -6069,7 +6069,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
       else return -1;
    }
 
-#ifdef DEBUG
+#ifdef _DEBUG
    // If this is a segmented line, check if any previous entries have greater
    // heights.  If so, this is considered an internal programming error.
 
@@ -8081,7 +8081,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
    }
    else pos += StrCopy(Link+dot, exsbuffer+pos);
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    if (pos > len) {
       log.warning("Buffer overflow (%d > %d) translating: %s", pos, len, Link);
    }

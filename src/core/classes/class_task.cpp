@@ -116,7 +116,7 @@ static const FieldDef clFlags[] = {
    { "Shell",      TSF::SHELL },
    { "ResetPath",  TSF::RESET_PATH },
    { "Privileged", TSF::PRIVILEGED },
-   { "Debug",      TSF::DEBUG },
+   { "LogAll",     TSF::LOG_ALL },
    { "Quiet",      TSF::QUIET },
    { "Attached",   TSF::ATTACHED },
    { "Detached",   TSF::DETACHED },
@@ -894,7 +894,7 @@ static ERROR TASK_Activate(extTask *Self, APTR Void)
       }
       argslist[i+1] = NULL;
 
-      if ((Self->Flags & TSF::DEBUG) != TSF::NIL) {
+      if ((Self->Flags & TSF::LOG_ALL) != TSF::NIL) {
          for (i=1; argslist[i]; i++) {
             log.msg("Arg %d: %s", i, argslist[i]);
          }

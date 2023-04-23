@@ -259,8 +259,8 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
                   process_error(Self, "Action Subscription");
                }
 
-               log.msg(VLF::BRANCH|VLF::EXTAPI, "Collecting garbage.");
-               lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+               log.traceBranch("Collecting garbage.");
+               lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
             }
          }
 
@@ -365,7 +365,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       // Line hook, executes on the execution of a new line
 
-      if ((Self->Flags & SCF::DEBUG) != SCF::NIL) {
+      if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
          // LUA_MASKLINE:  Interpreter is executing a line.
          // LUA_MASKCALL:  Interpreter is calling a function.
          // LUA_MASKRET:   Interpreter returns from a function.
@@ -860,7 +860,7 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    const Proto *f;
    LONG i;
 
-   log.branch("Save Symbols: %d", Self->Flags & SCF::DEBUG);
+   log.branch("Save Symbols: %d", Self->Flags & SCF::LOG_ALL);
 
    if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
 
@@ -884,9 +884,9 @@ static ERROR save_binary(objScript *Self, OBJECTPTR Target)
    }
 
    if ((code_writer_id > 0) and ((dest = GetObjectPtr(FileID)))) {
-      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF::DEBUG) ? 0 : 1);
+      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF::LOG_ALL) ? 0 : 1);
    }
-   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF::DEBUG) ? 0 : 1);
+   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF::LOG_ALL) ? 0 : 1);
 
    LogReturn();
    return ERR_Okay;
@@ -913,7 +913,7 @@ static ERROR run_script(objScript *Self)
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
 
       if (lua_isfunction(prv->Lua, -1)) {
-         if ((Self->Flags & SCF::DEBUG) != SCF::NIL) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
+         if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
 
          top = lua_gettop(prv->Lua);
 
@@ -1017,7 +1017,7 @@ static ERROR run_script(objScript *Self)
          Self->setErrorString(str);
          log.warning("%s", str);
 
-         #ifdef DEBUG
+         #ifdef _DEBUG
             STRING *list;
             LONG total_procedures;
             if (!GET_Procedures(Self, &list, &total_procedures)) {

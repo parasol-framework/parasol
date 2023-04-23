@@ -410,7 +410,7 @@ next_card:
    if (Self->AudioBuffer) { FreeResource(Self->AudioBuffer); Self->AudioBuffer = NULL; }
 
    if (!AllocMemory(Self->AudioBufferSize, MEM::DATA, &Self->AudioBuffer)) {
-      #ifdef DEBUG
+      #ifdef _DEBUG
          snd_pcm_hw_params_dump(hwparams, log);
       #endif
 

@@ -25,7 +25,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "ALL_CONTENT: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
     "PARSE_HTML: Automatically parse HTML escape codes.",
     "STRIP_CDATA: Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.",
-    "DEBUG: Print extra log messages.",
+    "LOG_ALL: Print extra log messages.",
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (GetXMLString only)" })
 

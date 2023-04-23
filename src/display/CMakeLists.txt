@@ -67,13 +67,14 @@ int main() {
 }"
    XDGA_INSTALLED)
 
-   if (XRANDR_INSTALLED)
-      add_definitions ("-DXRANDR_ENABLED")
-   endif ()
+if (XRANDR_INSTALLED)
+   add_definitions ("-DXRANDR_ENABLED")
+endif ()
 
-   if (XDGA_INSTALLED)
-      add_definitions ("-DXDGA_ENABLED")
-   endif ()
+if (XDGA_INSTALLED)
+   add_definitions ("-DXDGA_ENABLED")
+endif ()
+
 
 add_library (${MOD} SHARED)
 

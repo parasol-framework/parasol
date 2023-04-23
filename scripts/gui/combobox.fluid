@@ -224,6 +224,8 @@ gui.combobox = function(Options)
          if self.allowCustom then
             reportFeedback(self)
          end
+
+         self.menu.hide()
       else
          self._lastGoodInput = self.text.string
          if self.disabled then
@@ -240,7 +242,7 @@ gui.combobox = function(Options)
    self._textClip.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
-      if (Value == K_ENTER) or (Value == K_NP_ENTER) or ((not self.allowCustom) and (Value == K_SPACE)) then
+      if (Value == KEY_ENTER) or (Value == KEY_NP_ENTER) or ((not self.allowCustom) and (Value == KEY_SPACE)) then
          toggleMenu(self)
          if self.allowCustom then
             reportFeedback(self)
@@ -258,7 +260,8 @@ gui.combobox = function(Options)
    end)
 
    self.menu = gui.menu({
-      relative = self.viewport.scene.surface,
+      relative  = self.viewport,
+      client    = self.inputViewport,
       style     = 'list',
       config    = Options.items,
       lineLimit = 8,

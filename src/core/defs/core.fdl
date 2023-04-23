@@ -35,7 +35,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   flags("SCF", { comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
-     "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
+     "LOG_ALL: Enables execution debugging.  More information will be printed to the console in this mode.")
 
   flags("STR", { bits=32 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
@@ -70,7 +70,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
     "PRIVILEGED: During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.",
     "SHELL: Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.",
-    "DEBUG: Additional debug messages will be printed during normal usage of the task class when this flag is set.",
+    "LOG_ALL: Additional debug messages will be printed during normal usage of the task class when this flag is set.",
     "QUIET: Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.",
     "DETACHED: Forces new task to be detached from the parent.",
     "ATTACHED: Forces new task to be attached to the parent (child will close when parent closes).",
@@ -560,7 +560,7 @@ extern "C" {
 #define MOD_NAME NULL
 #endif
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define MSG(...)  LogF(0,__VA_ARGS__)
  #define FMSG(...) LogF(__VA_ARGS__)
 #else
@@ -589,7 +589,7 @@ template <class T> T roundup(T Num, LONG Alignment) {
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
@@ -1410,7 +1410,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
@@ -1502,7 +1502,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void trace(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::TRACE, header, Message, arg);
@@ -1511,7 +1511,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void traceWarning(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::WARNING, header, Message, arg);

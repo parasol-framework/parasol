@@ -625,7 +625,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
          }
       }
 
-      if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("HTTP REQUEST HEADER\n%s", cmd.str().c_str());
+      if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("HTTP REQUEST HEADER\n%s", cmd.str().c_str());
    }
 
    cmd << CRLF; // Terminating line feed
@@ -1516,7 +1516,7 @@ static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
 
    if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR_OutOfRange);
 
-   if ((Self->Flags & HTF::DEBUG) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
+   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
 
    if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
       Self->CurrentState = Value;

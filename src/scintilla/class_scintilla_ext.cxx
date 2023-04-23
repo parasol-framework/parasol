@@ -823,7 +823,7 @@ void ScintillaParasol::panIdleEvent()
    }
 
    if (ticking_on) {
-#ifdef DEBUG
+#ifdef _DEBUG
       if ((LONG)((PreciseTime()/1000LL) - lastticktime) >= caret.period) {
 #else
       if ((LONG)((PreciseTime()/1000LL) - lastticktime) >= caret.period / 5) {

@@ -1825,7 +1825,7 @@ static ERROR xtag_style(extSVG *Self, objXML *XML, const XMLTag &Tag)
    if (!AllocMemory(css_size, MEM::DATA|MEM::STRING|MEM::NO_CLEAR, &css_buffer)) {
       if (!(error = xmlGetContent(XML, Tag.ID, css_buffer, css_size))) {
          if (auto css = katana_parse(css_buffer, StrLength(css_buffer), KatanaParserModeStylesheet)) {
-            /*#ifdef DEBUG
+            /*#ifdef _DEBUG
                Self->CSS->mode = KatanaParserModeStylesheet;
                katana_dump_output(css);
             #endif*/

@@ -41,6 +41,7 @@ Vector definitions can be saved and loaded from permanent storage by using the @
 
 static ERROR VECTORSCENE_Reset(extVectorScene *, APTR);
 
+void apply_focus(extVectorScene *, extVector *);
 static void scene_key_event(extVectorScene *, evKey *, LONG);
 static void process_resize_msgs(extVectorScene *);
 
@@ -84,14 +85,18 @@ static void notify_redimension(OBJECTPTR Object, ACTIONID ActionID, ERROR Result
 }
 
 //********************************************************************************************************************
+// Called when the subscribed Surface loses the focus.
 
 static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extVectorScene *)CurrentContext();
    if (Self->KeyHandle) { UnsubscribeEvent(Self->KeyHandle); Self->KeyHandle = NULL; }
+
+   apply_focus(Self, NULL);
 }
 
 //********************************************************************************************************************
+// Called when the subscribed Surface receives the focus.
 
 static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
@@ -665,11 +670,11 @@ VectorViewport object is initialised.
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
 // Also sends LostFocus notifications to vectors that previously had the focus.
 // The glFocusList maintains the current focus state, with the most foreground vector at the beginning.
+//
+// If Vector is NULL then the focus is dropped from all vectors.
 
 void apply_focus(extVectorScene *Scene, extVector *Vector)
 {
-   if (!Vector) return;
-
    const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
    if ((!glFocusList.empty()) and (Vector IS glFocusList.front())) return;
@@ -1015,6 +1020,9 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
    // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
    // code is that the scene's surface could be destroyed at any time.
+   //
+   // NOTE: The ActiveVector refers to the vector that received the most recent input movement event.  It
+   // receives wheel events and button presses.
 
    for (auto input=Events; input; input=input->Next) {
       if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
@@ -1025,7 +1033,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
       // Focus management - clicking with the LMB can result in a change of focus.
 
-      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value IS 1)) {
+      if (((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (input->Type IS JET::LMB) and (input->Value)) {
          apply_focus(Self, (extVector *)get_viewport_at_xy(Self, input->X, input->Y));
       }
 

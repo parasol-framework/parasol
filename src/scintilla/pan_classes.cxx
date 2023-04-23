@@ -289,7 +289,7 @@ int Scintilla::Platform::Maximum(int a, int b)
 
 void Scintilla::Platform::DebugPrintf(const char *format, ...)
 {
-#ifdef DEBUG
+#ifdef _DEBUG
    va_list pArguments;
    va_start(pArguments, format);
    VLogF(VLF::DEBUG, "Scintilla", format, pArguments);

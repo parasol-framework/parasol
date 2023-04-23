@@ -616,7 +616,7 @@ DEFINE_ENUM_FLAG_OPERATORS(LAYOUT)
 enum class SCF : ULONG {
    NIL = 0,
    EXIT_ON_ERROR = 0x00000001,
-   DEBUG = 0x00000002,
+   LOG_ALL = 0x00000002,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(SCF)
@@ -680,7 +680,7 @@ enum class TSF : ULONG {
    RESET_PATH = 0x00000004,
    PRIVILEGED = 0x00000008,
    SHELL = 0x00000010,
-   DEBUG = 0x00000020,
+   LOG_ALL = 0x00000020,
    QUIET = 0x00000040,
    DETACHED = 0x00000080,
    ATTACHED = 0x00000100,
@@ -1523,7 +1523,7 @@ extern "C" {
 #define MOD_NAME NULL
 #endif
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define MSG(...)  LogF(0,__VA_ARGS__)
  #define FMSG(...) LogF(__VA_ARGS__)
 #else
@@ -1552,7 +1552,7 @@ template <class T> T roundup(T Num, LONG Alignment) {
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
@@ -2065,7 +2065,7 @@ struct CoreBase {
    ERROR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
    ERROR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERROR (*_UnsubscribeAction)(OBJECTPTR Object, LONG Action);
-   void (*_UnsubscribeEvent)(APTR Event);
+   void (*_UnsubscribeEvent)(APTR Handle);
    ERROR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
    LARGE (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
@@ -2178,7 +2178,7 @@ inline ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR 
 inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERROR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
-inline void UnsubscribeEvent(APTR Event) { return CoreBase->_UnsubscribeEvent(Event); }
+inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
 inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
@@ -2458,7 +2458,7 @@ class Log { // C++ wrapper for Parasol's log functionality
          branches++;
       }
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
@@ -2550,7 +2550,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void trace(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::TRACE, header, Message, arg);
@@ -2559,7 +2559,7 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void traceWarning(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
             VLogF(VLF::WARNING, header, Message, arg);

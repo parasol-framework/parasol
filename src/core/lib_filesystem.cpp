@@ -1152,7 +1152,7 @@ ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG *BytesRe
    }
    else error = ERR_FileNotFound;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       if (error) log.warning(error);
    #endif
    return error;

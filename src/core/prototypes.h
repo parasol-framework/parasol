@@ -62,7 +62,7 @@ ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR * Handl
 ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription);
 ERROR UpdateTimer(APTR Subscription, DOUBLE Interval);
 ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action);
-void UnsubscribeEvent(APTR Event);
+void UnsubscribeEvent(APTR Handle);
 ERROR BroadcastEvent(APTR Event, LONG EventSize);
 void WaitTime(LONG Seconds, LONG MicroSeconds);
 LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);

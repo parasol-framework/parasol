@@ -377,7 +377,7 @@ if (ENABLE_ANALYSIS)
 endif ()
 
 if (PARASOL_VLOG)
-   add_definitions ("-DDEBUG")
+   add_definitions ("-D_DEBUG")
 endif ()
 
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")

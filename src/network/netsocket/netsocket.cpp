@@ -1144,7 +1144,7 @@ static ERROR SET_State(extNetSocket *Self, NTC Value)
    pf::Log log;
 
    if (Value != Self->State) {
-      if ((Self->Flags & NSF::DEBUG) != NSF::NIL) log.msg("State changed from %d to %d", LONG(Self->State), LONG(Value));
+      if ((Self->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", LONG(Self->State), LONG(Value));
 
       #ifdef ENABLE_SSL
       if ((Self->State IS NTC::CONNECTING_SSL) and (Value IS NTC::CONNECTED)) {
@@ -1350,7 +1350,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, LONG 
       ClientSocket = NULL;
    }
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    static const CSTRING msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
    log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], Error, Socket->InUse, Socket->WinRecursion);
    #endif

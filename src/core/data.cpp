@@ -115,7 +115,7 @@ WORD glCrashStatus   = 0;
 WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;
 WORD glSystemState   = -1; // Initialisation state is -1
-#ifdef DEBUG
+#ifdef _DEBUG
    WORD glLogLevel = 8; // Thread global
 #else
    WORD glLogLevel  = 0;

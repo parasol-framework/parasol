@@ -25,12 +25,20 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 {
    pf::Log log("X11Mgr");
    XEvent xevent;
+   XEvent last_motion;
+   last_motion.xany.window = 0;
 
    if (!XDisplay) return;
 
    while (XPending(XDisplay)) {
       XNextEvent(XDisplay, &xevent);
       //log.trace("Event %d", xevent.type);
+      if ((xevent.type != MotionNotify) and (last_motion.xany.window)) {
+         // Buffered MotionNotify event detected, process it now
+         process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
+         last_motion.xany.window = 0;
+      }
+
       switch (xevent.type) {
          case ButtonPress:      handle_button_press(&xevent); break;
          case ButtonRelease:    handle_button_release(&xevent); break;
@@ -39,26 +47,47 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          case Expose:           handle_exposure(&xevent.xexpose); break;
          case KeyPress:         handle_key_press(&xevent); break;
          case KeyRelease:       handle_key_release(&xevent); break;
-         case MotionNotify:     handle_motion_notify(&xevent.xmotion); break;
          case CirculateNotify:  handle_stack_change(&xevent.xcirculate); break;
 
-         case FocusIn:
+         case MotionNotify:
+            // Handling of motion events is delayed in case there is a long series of them
+            // (i.e. due to rapid pointer movement).
+            last_motion = xevent;
+            break;
+
+         case FocusIn: {
+            pf::Log log("X11Mgr");
             if (auto display_id = get_display(xevent.xany.window)) {
                auto surface_id = GetOwnerID(display_id);
-               log.trace("XFocusIn Surface: %d", surface_id);
+               log.traceBranch("XFocusIn surface #%d", surface_id);
                acFocus(surface_id);
             }
             else log.trace("XFocusIn Failed to get window display ID.");
             break;
+         }
 
          case FocusOut: {
-            log.traceBranch("XFocusOut");
-            std::vector<OBJECTID> list;
-            {
-               const std::lock_guard<std::mutex> lock(glFocusLock);
-               list = glFocusList;
+            pf::Log log("X11Mgr");
+            if (auto display_id = get_display(xevent.xany.window)) {
+               auto surface_id = GetOwnerID(display_id);
+               log.traceBranch("XFocusOut surface #%d", surface_id);
+
+               std::vector<OBJECTID> list;
+               { // Make a local copy of the focus list
+                  const std::lock_guard<std::mutex> lock(glFocusLock);
+                  list = glFocusList;
+               }
+
+               if (!list.empty()) {
+                  bool in_focus = false;
+                  for (auto &id : list) {
+                     if ((!in_focus) and (id != surface_id)) continue;
+                     in_focus = true;
+                     acLostFocus(id);
+                  }
+               }
             }
-            for (auto &id : list) acLostFocus(id);
+
             break;
          }
 
@@ -138,6 +167,10 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
          }
       }
       #endif
+   }
+
+   if (last_motion.xany.window) {
+      process_movement(last_motion.xany.window, last_motion.xmotion.x_root, last_motion.xmotion.y_root);
    }
 
    XFlush(XDisplay);
@@ -671,20 +704,6 @@ void handle_key_release(XEvent *xevent)
 
 void handle_enter_notify(XCrossingEvent *xevent)
 {
-   process_movement(xevent->window, xevent->x_root, xevent->y_root);
-}
-
-//********************************************************************************************************************
-
-void handle_motion_notify(XMotionEvent *xevent)
-{
-   // If the user is moving the X11 pointer quite rapidly, a queue of motion events can build up very quickly.  Our
-   // solution to this is to read all the motion events up to the most recent one, because we're only interested in the
-   // most current position of the mouse pointer.
-
-   XCrossingEvent enter_event;
-   while (XCheckTypedEvent(XDisplay, EnterNotify, (XEvent *)&enter_event) IS True);
-   while (XCheckTypedEvent(XDisplay, MotionNotify, (XEvent *)xevent) IS True);
    process_movement(xevent->window, xevent->x_root, xevent->y_root);
 }
 

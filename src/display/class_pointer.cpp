@@ -378,7 +378,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
       userinput.Value += Self->Y;
    }
 
-   bool moved = false;
+   bool moved = false, underlying_change = false;
    DOUBLE current_x = Self->X;
    DOUBLE current_y = Self->Y;
    switch (userinput.Type) {
@@ -390,10 +390,13 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
    if (!moved) {
       // Check if the surface that we're over has changed due to hide, show or movement of surfaces in the display.
 
-      if (get_over_object(Self)) moved = true;
+      if (get_over_object(Self)) {
+         log.trace("Detected change to underlying surface.");
+         underlying_change = true;
+      }
    }
 
-   if (moved) {
+   if ((moved) or (underlying_change)) {
       // Movement handling.  Pointer coordinates are managed here on the basis that they are 'global', i.e. in a hosted
       // environment the coordinates are relative to the top-left of the host display.  Anchoring is enabled by calling
       // LockCursor().  Typically this support is not available on hosted environments because we can't guarantee that
@@ -484,7 +487,7 @@ static void process_ptr_movement(extPointer *Self, struct dcDeviceInput *Input)
          // If the surface that we're over has changed, send a message to the previous surface to tell it that the
          // pointer has moved for one final time.
 
-         if ((Self->LastSurfaceID) and (Self->LastSurfaceID != Self->OverObjectID)) {
+         if ((moved) and (Self->LastSurfaceID) and (Self->LastSurfaceID != Self->OverObjectID)) {
             add_input("Movement-PrevSurface", userinput, JTYPE::NIL, Self->LastSurfaceID, Self->OverObjectID,
                Self->X, Self->Y, Self->OverX, Self->OverY);
          }
@@ -1073,6 +1076,7 @@ static void set_pointer_defaults(extPointer *Self)
 }
 
 //********************************************************************************************************************
+// Returns true if the underlying object has changed.  The OverObjectID will reflect the current underlying surface.
 
 static bool get_over_object(extPointer *Self)
 {
@@ -1136,8 +1140,6 @@ static bool get_over_object(extPointer *Self)
 
    Self->OverX = Self->X - li_left;
    Self->OverY = Self->Y - li_top;
-
-   //drwReleaseList(ARF_READ);
 
    if (cursor_image != PTC::NIL) {
       if (cursor_image != Self->CursorID) gfxSetCursor(0, CRF::NIL, cursor_image, NULL, 0);

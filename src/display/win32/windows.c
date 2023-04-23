@@ -8,7 +8,7 @@
 #define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
 #define WINVER 0x0600
 
-#include <parasol/system/keys.h>
+#include "keys.h"
 #include <windows.h>
 #include <windowsx.h>
 //#include <resource.h>
@@ -77,7 +77,7 @@ enum {
 #define HIDA_GetPIDLFolder(pida) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[0])
 #define HIDA_GetPIDLItem(pida, i) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[i+1])
 
-#ifdef DEBUG
+#ifdef _DEBUG
 #define MSG(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define MSG(...)

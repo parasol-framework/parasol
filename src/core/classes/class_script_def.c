@@ -2,7 +2,7 @@
 
 static const struct FieldDef clScriptFlags[] = {
    { "ExitOnError", 0x00000001 },
-   { "Debug", 0x00000002 },
+   { "LogAll", 0x00000002 },
    { NULL, 0 }
 };
 
