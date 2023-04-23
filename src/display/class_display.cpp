@@ -557,7 +557,6 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
    struct gfxUpdatePalette pal;
    objBitmap *bmp;
    #ifdef __xwindows__
-      XSetWindowAttributes swa;
       XWindowAttributes winattrib;
       XPixmapFormatValues *list;
       LONG xbpp, xbytes;
@@ -687,10 +686,11 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
       // Set the Window Attributes structure
 
+      XSetWindowAttributes swa;
       swa.bit_gravity = CenterGravity;
       swa.win_gravity = CenterGravity;
       swa.cursor      = C_Default;
-      swa.override_redirect = ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0;
+      swa.override_redirect = (Self->Flags & SCR::BORDERLESS) != SCR::NIL;
       swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                         |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
@@ -704,23 +704,33 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          cwflags = CWEventMask|CWOverrideRedirect;
 
-         if (!Self->XWindowHandle) {
-            if (!(Self->XWindowHandle = XCreateWindow(XDisplay, DefaultRootWindow(XDisplay),
-               Self->X, Self->Y,
-               Self->Width, Self->Height, 0 /* Border */, CopyFromParent /* Depth */, InputOutput /* Class */,
-               CopyFromParent /* Visual */, cwflags, &swa))) {
-               log.warning("Failed in call to XCreateWindow().");
-               return ERR_Failed;
+         auto depth = CopyFromParent;
+         Visual *visual = CopyFromParent;
+         if (swa.override_redirect) {
+            XVisualInfo vinfo;
+            if (XMatchVisualInfo(XDisplay, DefaultScreen(XDisplay), 32, TrueColor, &vinfo)) {
+               swa.colormap         = XCreateColormap(XDisplay, DefaultRootWindow(XDisplay), vinfo.visual, AllocNone);
+               swa.background_pixel = 0;
+               swa.border_pixel     = 0;
+               cwflags |= CWColormap|CWBackPixel|CWBorderPixel;
+               visual   = vinfo.visual;
+               depth    = vinfo.depth;
             }
          }
-         else {
-            // If the WindowHandle field is already set, use it as the parent for the new window.
 
+         if (!Self->XWindowHandle) {
+            if (!(Self->XWindowHandle = XCreateWindow(XDisplay, DefaultRootWindow(XDisplay),
+               Self->X, Self->Y, Self->Width, Self->Height, 0 /* Border */, depth, InputOutput /* Class */,
+               visual, cwflags, &swa))) {
+               log.warning("XCreateWindow() failed.");
+               return ERR_SystemCall;
+            }
+         }
+         else { // If the WindowHandle field is already set, use it as the parent for the new window.
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, Self->XWindowHandle,
-               0, 0, Self->Width, Self->Height, 0, CopyFromParent, InputOutput,
-               CopyFromParent, cwflags, &swa))) {
-               log.warning("Failed in call to XCreateWindow().");
-               return ERR_Failed;
+               0, 0, Self->Width, Self->Height, 0, depth, InputOutput, visual, cwflags, &swa))) {
+               log.warning("XCreateWindow() failed.");
+               return ERR_SystemCall;
             }
          }
 
@@ -2485,6 +2495,8 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
          }
 
          resize_feedback(&Self->ResizeFeedback, Self->UID, Self->X, Self->Y, Self->Width, Self->Height);
+
+         XSync(XDisplay, False);
       #endif
       }
 

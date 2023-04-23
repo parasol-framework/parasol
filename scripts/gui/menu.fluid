@@ -168,7 +168,9 @@ gui.menu = function(Options)
 
             if showIcons and item['icon'] then
                catch(function()
-                  local svgGroup = self.viewport.new('VectorViewport', { x=8, y=y, width=icon_size, height=icon_size })
+                  local svgGroup = self.viewport.new('VectorViewport', {
+                     x=8, y=y, width=icon_size, height=icon_size
+                  })
                   local svg = obj.new('svg', { target=svgGroup, path='icons:' .. item['icon'] .. '.svg' })
                   applyFill(svgGroup, 'rgb(80,80,120,255)')
                   mi.svgIcon = svgGroup
@@ -436,6 +438,7 @@ gui.menu = function(Options)
    if not Options.config then error('A config value is required to define the Menu items') end
 
    self.surface = obj.new('surface')
+   self.surface.name       = 'menu'
    self.surface.width      = nz(Options.width, 200)
    self.surface.parent     = Options.target
    self.surface.flags      = bit.bor(RNF_STICK_TO_FRONT, RNF_COMPOSITE)
