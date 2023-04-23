@@ -1250,16 +1250,16 @@ gui.fileview = function(View, Options)
          -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
          -- application.
 
-         if (Value == K_C) then
+         if (Value == KEY_C) then
             copy_files()
-         elseif (Value == K_X) then
+         elseif (Value == KEY_X) then
             cut_files()
-         elseif (Value == K_V) then
+         elseif (Value == KEY_V) then
             paste_files()
-         elseif (Value == K_A) then
+         elseif (Value == KEY_A) then
             self.view.selectAll()
          end
-      elseif (Value == K_DELETE) then
+      elseif (Value == KEY_DELETE) then
          self.deleteFiles()
       end
    end)

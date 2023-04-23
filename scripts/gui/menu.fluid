@@ -14,8 +14,10 @@ The following example illustrates typical usage:
 
 Valid options to use when creating the menu are as follows:
 
-  target:    Optional reference to a surface that will contain the menu.
+  target:    Optional reference to a Surface that will contain the menu.  Viewports are not supported.
   config:    Required.  A list of items for configuring the content of the menu.
+  client:    Optional vector deemed responsible for instantiating the menu.  Recommended to enable keyboard
+             navigation for the user.
   x:         The x coordinate of the menu.
   y:         The y coordinate of the menu.
   width:     The preferred width of the menu, in pixels.
@@ -57,6 +59,7 @@ gui.menu = function(Options)
       timeHide = 0,
       tipDelay = 500,
       visible  = false,
+      client   = Options.client,
       feedback = Options.feedback,
       x        = nz(Options.x, 0),
       y        = nz(Options.y, 0),
@@ -225,11 +228,6 @@ gui.menu = function(Options)
          timelapse = 5000
       end
 
-      if self.focusTimer then -- Cancel the focus timer if it hasn't triggered, because it intends to hide the menu
-         mSys.UpdateTimer(self.focusTimer, 0)
-         self.focusTimer = nil
-      end
-
       local currentTime = mSys.PreciseTime()
       if (self.timeShow > self.timeHide) then -- Hide the menu
          if (currentTime - self.timeShow >= timelapse) then self.hide() end
@@ -357,9 +355,9 @@ gui.menu = function(Options)
          ensure_on_display(self)
 --]]
       elseif self.relative then
-         -- Correct the position of the menu according to the relative object that it is offset from.
+         -- Correct the position of the menu according to the relative vector that it is offset from.
 
-         local err, target = mGfx.GetSurfaceInfo(self.relative)
+         local err, target = mGfx.GetSurfaceInfo(self.relative.scene.surface)
          if err == ERR_Okay then
             local rel = { absX = target.absX, absY = target.absY }
             local target = { absX = 0, absY = 0, height = 4096 }
@@ -452,30 +450,15 @@ gui.menu = function(Options)
    self.vg = self.viewport.new('VectorGroup', { })
 
    self.surface.subscribe('free', function(Surface, Args)
-      if self.focusTimer then mSys.UpdateTimer(self.focusTimer, 0) end
       if self.tipTimer then mSys.UpdateTimer(self.tipTimer, 0) end
       self.surface = nil
    end)
 
-   if self.rootMenu then
-      self.surface.subscribe('focus', function(Surface, Args)
-         if (self.keyMonitorID == Args.objectID) and (not self.keyEvent) then
-            --SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, self, &self.prvKeyEvent)
-         end
+   if self.popup then
+      self.surface.subscribe('lostfocus', function(Surface, Args)
+         self.surface.acHide()
       end)
    end
-
-   self.surface.subscribe('lostfocus', function(Surface, Args)
-      -- A menu losing the focus normally means we'd hide it, but the user may have clicked a menubar
-      -- button that controls visibility.  Therefore we delay the hide, providing an opportunity to cancel it.
-      if not self.focusTimer then
-         _, self.focusTimer = mSys.SubscribeTimer(2/60, function(Elapsed, CurrentTime)
-            self.surface.acHide()
-            self.focusTimer = nil
-            check(ERR_Terminate)
-         end)
-      end
-   end)
 
    self.surface.subscribe('hide', function(Surface, Args)
       self.visible = false
@@ -488,6 +471,27 @@ gui.menu = function(Options)
       end
       self.visible = true
       self.timeShow = mSys.preciseTime()
+
+      -- Keyboard support requires a client reference to grab input from.
+
+      if self.client and (not self._subscribedKb) then
+         if self.client.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
+            if not self.visible then
+               self._subscribedKb = false
+               check(ERR_Terminate)
+            end
+
+            if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
+            if (Value == KEY_UP) then
+            elseif (Value == KEY_DOWN) then
+
+            elseif (Value == KEY_RETURN) then
+
+            end
+         end) == ERR_Okay then
+            self._subscribedKb = true
+         end
+      end
    end)
 
    self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)

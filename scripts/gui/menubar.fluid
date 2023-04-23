@@ -60,7 +60,8 @@ local function activateItem(self) -- Activate the current menu item.
    local menu = self._currentItem.menu
    if not menu then
       menu = gui.menu({
-         relative     = self.viewport.scene.surface,
+         client       = self.viewport,
+         relative     = self.viewport,
          x            = self._currentItem.x,
          y            = self.viewport.height - 2,
          keyMonitor   = self.viewport,
@@ -375,9 +376,9 @@ gui.menubar = function(HostVP, Options)
 
       self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
          if (bit.band(Qualifiers, KQ_PRESSED) != 0) then
-            if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+            if (Code == KEY_ENTER) or (Code == KEY_NP_ENTER) or (Code == KEY_SPACE) then
                activateItem(self)
-            elseif (Code == K_UP) or (Code == K_LEFT) then
+            elseif (Code == KEY_UP) or (Code == KEY_LEFT) then
                if (self._currentItem) then
                   local scan = self._currentItem.prev
                   if (not scan) then scan = lastItem(self) end
@@ -385,7 +386,7 @@ gui.menubar = function(HostVP, Options)
                else
                   highlightItem(self, firstItem(self))
                end
-            elseif (Code == K_DOWN) or (Code == K_RIGHT) or (Code == K_TAB) then
+            elseif (Code == KEY_DOWN) or (Code == KEY_RIGHT) or (Code == KEY_TAB) then
                if self._currentItem then
                   local scan = self._currentItem.next
                   if (not scan) then scan = firstItem(self) end

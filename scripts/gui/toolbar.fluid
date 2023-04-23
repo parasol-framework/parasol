@@ -594,9 +594,9 @@ gui.toolbar = function(HostVP, Options)
 
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) != 0 then
-         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+         if (Code == KEY_ENTER) or (Code == KEY_NP_ENTER) or (Code == KEY_SPACE) then
             sendFeedback()
-         elseif (Code == K_UP) or (Code == K_LEFT) then
+         elseif (Code == KEY_UP) or (Code == KEY_LEFT) then
             if self._current then
                local scan = self._current.prev
                while scan and (scan.type != TI_ICON) do
@@ -607,7 +607,7 @@ gui.toolbar = function(HostVP, Options)
             else
                highlightItem(firstIcon())
             end
-         elseif (Code == K_DOWN) or (Code == K_RIGHT) then
+         elseif (Code == KEY_DOWN) or (Code == KEY_RIGHT) then
             if self._current then
                local scan = self._current.next
                while scan and (scan.type != TI_ICON) do

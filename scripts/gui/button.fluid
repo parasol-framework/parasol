@@ -175,7 +175,7 @@ gui.button = function(Options)
    self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
-      if (Value == K_ENTER) or (Value == K_SPACE) or (Value == K_NP_ENTER) then
+      if (Value == KEY_ENTER) or (Value == KEY_SPACE) or (Value == KEY_NP_ENTER) then
          if self.events.activate then self.events.activate(self) end
       end
    end)

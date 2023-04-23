@@ -215,7 +215,7 @@ gui.input = function(Options)
    self._textClip.mtSubscribeKeyboard(function(Viewport, Qualifiers, Value, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) == 0 then return end
 
-      if (Value == K_ENTER) or (Value == K_NP_ENTER) then
+      if (Value == KEY_ENTER) or (Value == KEY_NP_ENTER) then
          validateInput(self)
          reportActivate(self, 'activated')
       end

@@ -8,7 +8,7 @@
 #define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
 #define WINVER 0x0600
 
-#include <parasol/system/keys.h>
+#include "keys.h"
 #include <windows.h>
 #include <windowsx.h>
 //#include <resource.h>
