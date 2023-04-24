@@ -580,10 +580,12 @@ extern void free_xcursors(void);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
+extern XVisualInfo glXInfoAlpha;
 extern X11Globals glX11;
 extern _XDisplay *XDisplay;
 extern struct XRandRBase *XRandRBase;
 extern bool glX11ShmImage;
+extern bool glXCompositeSupported;
 extern UBYTE KeyHeld[LONG(KEY::LIST_END)];
 extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
 extern KQ glKeyFlags;

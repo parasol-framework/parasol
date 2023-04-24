@@ -701,19 +701,16 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          LONG cwflags   = CWEventMask|CWOverrideRedirect;
          LONG depth     = CopyFromParent;
          Visual *visual = CopyFromParent;
-         if (swa.override_redirect) {
-            XVisualInfo vinfo;
-            if (XMatchVisualInfo(XDisplay, DefaultScreen(XDisplay), 32, TrueColor, &vinfo)) {
-               swa.colormap         = XCreateColormap(XDisplay, DefaultRootWindow(XDisplay), vinfo.visual, AllocNone);
-               swa.background_pixel = 0;
-               swa.border_pixel     = 0;
-               cwflags |= CWColormap|CWBackPixel|CWBorderPixel;
-               visual   = vinfo.visual;
-               depth    = vinfo.depth;
-               bmp->Flags |= BMF::ALPHA_CHANNEL|BMF::FIXED_DEPTH;
-               bmp->BitsPerPixel  = 32;
-               bmp->BytesPerPixel = 4;
-            }
+         if ((swa.override_redirect) and (glXCompositeSupported)) {
+            swa.colormap         = XCreateColormap(XDisplay, DefaultRootWindow(XDisplay), glXInfoAlpha.visual, AllocNone);
+            swa.background_pixel = 0;
+            swa.border_pixel     = 0;
+            cwflags |= CWColormap|CWBackPixel|CWBorderPixel;
+            visual   = glXInfoAlpha.visual;
+            depth    = glXInfoAlpha.depth;
+            bmp->Flags |= BMF::ALPHA_CHANNEL|BMF::FIXED_DEPTH;
+            bmp->BitsPerPixel  = 32;
+            bmp->BytesPerPixel = 4;
          }
 
          if (!Self->XWindowHandle) {

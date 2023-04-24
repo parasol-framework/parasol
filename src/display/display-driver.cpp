@@ -34,7 +34,9 @@ void handle_stack_change(XCirculateEvent *);
 X11Globals glX11;
 _XDisplay *XDisplay = 0;
 struct XRandRBase *XRandRBase = 0;
+XVisualInfo glXInfoAlpha;
 bool glX11ShmImage = false;
+bool glXCompositeSupported = false;
 UBYTE KeyHeld[LONG(KEY::LIST_END)];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 KQ glKeyFlags = KQ::NIL;
@@ -844,6 +846,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       atomSurfaceID   = XInternAtom(XDisplay, "PARASOL_SCREENID", False);
 
       XGetWindowAttributes(XDisplay, DefaultRootWindow(XDisplay), &glRootWindow);
+
+      if (XMatchVisualInfo(XDisplay, DefaultScreen(XDisplay), 32, TrueColor, &glXInfoAlpha)) {
+         glXCompositeSupported = true;
+      }
+      else glXCompositeSupported = false;
 
       ClearMemory(KeyHeld, sizeof(KeyHeld));
 

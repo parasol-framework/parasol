@@ -787,7 +787,7 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
    }
 }
 
-// Raw version of save_bitmap()
+// Raw-copy version of save_bitmap()
 
 inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG Height, LONG BPP = 32)
 {
