@@ -1029,14 +1029,13 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                   Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
                   Self->x11.ximage.bitmap_bit_order = 0;            // LSBFirst / MSBFirst
                   Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-                  if ((Self->BitsPerPixel IS 32) and (!Self->x11.gc)) Self->x11.ximage.depth = 24;
+                  if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
                   else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
                   Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
                   Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
                   Self->x11.ximage.red_mask         = 0;
                   Self->x11.ximage.green_mask       = 0;
                   Self->x11.ximage.blue_mask        = 0;
-
                   XInitImage(&Self->x11.ximage);
 
                   // If the XShm extension is available, try using it.  Using XShm allows the
@@ -1739,7 +1738,7 @@ setfields:
          Self->x11.ximage.obdata      = (char *)&Self->x11.ShmInfo;
          Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
          Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
-         if ((Self->BitsPerPixel IS 32) and (!Self->x11.gc)) Self->x11.ximage.depth = 24;
+         if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
          else Self->x11.ximage.depth = Self->BitsPerPixel;          // Actual bits per pixel
          Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
          Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
@@ -1762,7 +1761,7 @@ setfields:
       Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
       Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
       Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
-      if ((Self->BitsPerPixel IS 32) and (!Self->x11.gc)) Self->x11.ximage.depth = 24;
+      if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
       else Self->x11.ximage.depth = Self->BitsPerPixel;      // Actual bits per pixel
       Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
       Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group

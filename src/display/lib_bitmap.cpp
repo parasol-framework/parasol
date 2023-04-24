@@ -1299,7 +1299,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       ximage.bitmap_unit      = alignment;       // Quant. of scanline - 8, 16, 32
       ximage.bitmap_bit_order = 0;               // LSBFirst / MSBFirst
       ximage.bitmap_pad       = alignment;       // 8, 16, 32, either XY or Zpixmap
-      if ((Surface->BitsPerPixel IS 32) and (!Bitmap->x11.gc)) ximage.depth = 24;
+      if ((Surface->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) ximage.depth = 24;
       else ximage.depth = Surface->BitsPerPixel;            // Actual bits per pixel
       ximage.bytes_per_line   = Surface->LineWidth;         // Accelerator to next line
       ximage.bits_per_pixel   = Surface->BytesPerPixel * 8; // Bits per pixel-group

@@ -689,7 +689,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
       swa.bit_gravity = CenterGravity;
       swa.win_gravity = CenterGravity;
       swa.cursor      = C_Default;
-      swa.override_redirect = (Self->Flags & SCR::BORDERLESS) != SCR::NIL;
+      swa.override_redirect = (Self->Flags & (SCR::BORDERLESS|SCR::COMPOSITE)) != SCR::NIL;
       swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                         |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
@@ -710,6 +710,9 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
                cwflags |= CWColormap|CWBackPixel|CWBorderPixel;
                visual   = vinfo.visual;
                depth    = vinfo.depth;
+               bmp->Flags |= BMF::ALPHA_CHANNEL|BMF::FIXED_DEPTH;
+               bmp->BitsPerPixel  = 32;
+               bmp->BytesPerPixel = 4;
             }
          }
 
@@ -2308,13 +2311,13 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
          swa.bit_gravity = CenterGravity;
          swa.win_gravity = CenterGravity;
          swa.cursor      = C_Default;
-         swa.override_redirect = ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) ? 1 : 0;
+         swa.override_redirect = (Self->Flags & (SCR::BORDERLESS|SCR::COMPOSITE)) != SCR::NIL;
          swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                            |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
          LONG cwflags = CWEventMask|CWOverrideRedirect;
 
-         if ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) {
+         if ((Self->Flags & (SCR::BORDERLESS|SCR::COMPOSITE)) != SCR::NIL) {
             Self->X = 0;
             Self->Y = 0;
             Self->Width  = glRootWindow.width;
@@ -2330,9 +2333,8 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
          }
 
          if (!(Self->WindowHandle = (APTR)XCreateWindow(XDisplay, DefaultRootWindow(XDisplay),
-            Self->X, Self->Y,
-            Self->Width, Self->Height, 0, CopyFromParent, InputOutput,
-            CopyFromParent, cwflags, &swa))) {
+               Self->X, Self->Y, Self->Width, Self->Height, 0, CopyFromParent, InputOutput,
+               CopyFromParent, cwflags, &swa))) {
             log.warning("Failed in call to XCreateWindow().");
             return ERR_Failed;
          }
@@ -2343,8 +2345,7 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
 
-         Atom protocols[2];
-         protocols[0] = XWADeleteWindow;
+         Atom protocols[1] = { XWADeleteWindow };
          XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, 1);
 
          if (glStickToFront) {
@@ -2355,8 +2356,7 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
 
          // Indicate that the window position is not to be meddled with by the window manager.
 
-         XSizeHints hints;
-         hints.flags = USPosition|USSize;
+         XSizeHints hints = { .flags = USPosition|USSize };
          XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
 
          // The keyboard qualifiers need to be reset, because if the user is holding down any keys we will lose any
