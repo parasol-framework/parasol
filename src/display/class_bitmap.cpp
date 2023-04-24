@@ -1086,25 +1086,18 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
    if (!Self->Data) {
       if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
-         if (!Self->Size) {
-            log.warning("The Bitmap has no Size (there is a dimensional error).");
-            return ERR_FieldNotSet;
-         }
+         if (!Self->Size) return log.warning(ERR_FieldNotSet);
 
          if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
             Self->prvAFlags |= BF_WINVIDEO;
-            if ((Self->win.Drawable = winCreateCompatibleDC())) {
-            }
-            else return log.warning(ERR_SystemCall);
+            if (!(Self->win.Drawable = winCreateCompatibleDC())) return log.warning(ERR_SystemCall);
          }
          else if (!AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return log.warning(ERR_AllocMemory);
       }
-      else {
-         if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) Self->prvAFlags |= BF_WINVIDEO;
-      }
+      else if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) Self->prvAFlags |= BF_WINVIDEO;
    }
 
 #elif _GLES_
@@ -1115,10 +1108,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
    if (!Self->Data) {
       if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
-         if (Self->Size <= 0) {
-            log.warning("The Bitmap has no Size (there is a dimensional error).");
-            return ERR_FieldNotSet;
-         }
+         if (Self->Size <= 0) log.warning(ERR_FieldNotSet);
 
          if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
             // Do nothing - the bitmap merely represents the video display and does not hold content.
@@ -1184,7 +1174,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #endif
 
-   if ((error = CalculatePixelRoutines(Self)) != ERR_Okay) return error;
+   if (auto error = CalculatePixelRoutines(Self)) return error;
 
    if (Self->BitsPerPixel > 8) {
       Self->TransIndex = (((Self->TransRGB.Red   >> Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |

@@ -698,9 +698,8 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PF64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
 
-         LONG cwflags = CWEventMask|CWOverrideRedirect;
-
-         LONG depth = CopyFromParent;
+         LONG cwflags   = CWEventMask|CWOverrideRedirect;
+         LONG depth     = CopyFromParent;
          Visual *visual = CopyFromParent;
          if (swa.override_redirect) {
             XVisualInfo vinfo;
@@ -759,8 +758,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          // Indicate that the window position is not to be meddled with by the window manager.
 
-         XSizeHints hints;
-         hints.flags = USPosition|USSize;
+         XSizeHints hints = { .flags = USPosition|USSize };
          XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
 
          if (InitObject(bmp) != ERR_Okay) return log.warning(ERR_Init);

@@ -143,7 +143,7 @@ static void VideoDrawPixel8(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 
 static void VideoDrawRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
 {
-   ULONG colour = RGBToValue(RGB, Bitmap->Palette);
+   //ULONG colour = RGBToValue(RGB, Bitmap->Palette);
    XDrawPoint(XDisplay, ((extBitmap *)Bitmap)->x11.drawable, ((extBitmap *)Bitmap)->getGC(), X, Y);
 }
 
