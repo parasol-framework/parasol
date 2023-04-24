@@ -583,14 +583,14 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          else {
             // Source is an ximage, destination is a pixmap
 
-            if (Bitmap->x11.XShmImage IS TRUE)  {
-               if (XShmPutImage(XDisplay, dest->x11.drawable, glXGC, &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False)) {
+            if (Bitmap->x11.XShmImage IS true)  {
+               if (XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False)) {
 
                }
                else log.warning("XShmPutImage() failed.");
             }
             else {
-               XPutImage(XDisplay, dest->x11.drawable, glXGC,
+               XPutImage(XDisplay, dest->x11.drawable, dest->getGC(),
                   &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
             }
          }
@@ -599,7 +599,7 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
          // Both the source and the destination are pixmaps
 
          XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable,
-            glXGC, X, Y, Width, Height, DestX, DestY);
+            dest->getGC(), X, Y, Width, Height, DestX, DestY);
       }
 
       return ERR_Okay;
@@ -1325,7 +1325,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       ximage.blue_mask        = 0;
       XInitImage(&ximage);
 
-      XPutImage(XDisplay, Bitmap->x11.drawable, glXGC,
+      XPutImage(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(),
          &ximage, X, Y, XDest, YDest, Width, Height);
 
       return ERR_Okay;
@@ -1779,8 +1779,8 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 
    #ifdef __xwindows__
       if ((Bitmap->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
-         XSetForeground(XDisplay, glXGC, Colour);
-         XFillRectangle(XDisplay, Bitmap->x11.drawable, glXGC, X, Y, Width, Height);
+         XSetForeground(XDisplay, Bitmap->getGC(), Colour);
+         XFillRectangle(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(), X, Y, Width, Height);
          return;
       }
    #endif

@@ -109,6 +109,7 @@
 #include <parasol/linear_rgb.h>
 
 using namespace pf;
+class extBitmap;
 
 #define UpdateSurfaceRecord(a) update_surface_copy(a)
 
@@ -420,35 +421,6 @@ class extDisplay : public objDisplay {
    #endif
 };
 
-class extBitmap : public objBitmap {
-   public:
-   using create = pf::Create<extBitmap>;
-
-   ULONG  *Gradients;
-   APTR   ResolutionChangeHandle;
-   RGBPalette prvPaletteArray;
-   struct ColourFormat prvColourFormat;
-   UBYTE *prvCompress;
-   LONG   prvAFlags;                  // Private allocation flags
-   #ifdef __xwindows__
-      struct {
-         XImage   ximage;
-         Drawable drawable;
-         XImage   *readable;
-         XShmSegmentInfo ShmInfo;
-         bool XShmImage;
-      } x11;
-   #elif _WIN32
-      struct {
-         APTR Drawable;  // HDC for the Bitmap
-      } win;
-   #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
-      LONG prvGLPixel;
-      LONG prvGLFormat;
-   #endif
-};
-
 extern ERROR create_bitmap_class(void);
 extern ERROR create_clipboard_class(void);
 extern ERROR create_display_class(void);
@@ -483,6 +455,7 @@ extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LO
 extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
 extern ERROR update_surface_copy(extSurface *);
+extern ERROR update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 
 extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
@@ -700,3 +673,40 @@ inline LONG find_parent_list(const SURFACELIST &list, extSurface *Self)
    return find_surface_list(Self->ParentID);
 }
 
+//********************************************************************************************************************
+
+class extBitmap : public objBitmap {
+   public:
+   using create = pf::Create<extBitmap>;
+
+   ULONG  *Gradients;
+   APTR   ResolutionChangeHandle;
+   RGBPalette prvPaletteArray;
+   struct ColourFormat prvColourFormat;
+   UBYTE *prvCompress;
+   LONG   prvAFlags;                  // Private allocation flags
+   #ifdef __xwindows__
+      struct {
+         XImage   ximage;
+         Drawable drawable;
+         XImage   *readable;
+         XShmSegmentInfo ShmInfo;
+         GC gc;
+         bool XShmImage;
+      } x11;
+
+      inline GC getGC() {
+         if (x11.gc) return x11.gc;
+         else return glXGC;
+      }
+
+   #elif _WIN32
+      struct {
+         APTR Drawable;  // HDC for the Bitmap
+      } win;
+   #elif _GLES_
+      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
+      LONG prvGLPixel;
+      LONG prvGLFormat;
+   #endif
+};

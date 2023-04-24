@@ -868,6 +868,11 @@ static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
          free_shm(Self->Data, Self->x11.ShmInfo.shmid);
          Self->Data = NULL;
       }
+
+      if (Self->x11.gc) {
+         XFreeGC(XDisplay, Self->x11.gc);
+         Self->x11.gc = 0;
+      }
    #endif
 
    if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {

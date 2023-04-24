@@ -555,7 +555,6 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 {
    pf::Log log;
    struct gfxUpdatePalette pal;
-   objBitmap *bmp;
    #ifdef __xwindows__
       XWindowAttributes winattrib;
       XPixmapFormatValues *list;
@@ -600,7 +599,7 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
    // Set defaults
 
-   bmp = Self->Bitmap;
+   auto bmp = (extBitmap *)Self->Bitmap;
 
    DISPLAYINFO info;
    if (get_display_info(0, &info, sizeof(info))) return log.warning(ERR_Failed);
@@ -695,16 +694,13 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
                         |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
       if (!glX11.Manager) {
-         Atom protocols[2];
-         LONG cwflags;
-
          // If we are running inside a foreign window manager, use the following routine to create a new X11 window for us to run in.
 
          log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PF64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (LARGE)Self->XWindowHandle);
 
-         cwflags = CWEventMask|CWOverrideRedirect;
+         LONG cwflags = CWEventMask|CWOverrideRedirect;
 
-         auto depth = CopyFromParent;
+         LONG depth = CopyFromParent;
          Visual *visual = CopyFromParent;
          if (swa.override_redirect) {
             XVisualInfo vinfo;
@@ -720,21 +716,19 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
 
          if (!Self->XWindowHandle) {
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, DefaultRootWindow(XDisplay),
-               Self->X, Self->Y, Self->Width, Self->Height, 0 /* Border */, depth, InputOutput /* Class */,
-               visual, cwflags, &swa))) {
+                  Self->X, Self->Y, Self->Width, Self->Height, 0 /* Border */, depth, InputOutput,
+                  visual, cwflags, &swa))) {
                log.warning("XCreateWindow() failed.");
                return ERR_SystemCall;
             }
          }
          else { // If the WindowHandle field is already set, use it as the parent for the new window.
             if (!(Self->XWindowHandle = XCreateWindow(XDisplay, Self->XWindowHandle,
-               0, 0, Self->Width, Self->Height, 0, depth, InputOutput, visual, cwflags, &swa))) {
+                  0, 0, Self->Width, Self->Height, 0, depth, InputOutput, visual, cwflags, &swa))) {
                log.warning("XCreateWindow() failed.");
                return ERR_SystemCall;
             }
          }
-
-         log.trace("X-Window created successfully: %" PF64, (LARGE)Self->XWindowHandle);
 
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
 
@@ -744,13 +738,18 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
 
-         protocols[0] = XWADeleteWindow;
-         XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, 1);
+         Atom protocols[1] = { XWADeleteWindow };
+         XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, ARRAYSIZE(protocols));
 
          Self->Flags |= SCR::HOSTED;
 
          bmp->Width  = Self->Width;
          bmp->Height = Self->Height;
+
+         if (swa.override_redirect) { // Composite windows require a dedicated GC for drawing
+            XGCValues gcv = { .function = GXcopy, .graphics_exposures = False };
+            bmp->x11.gc = XCreateGC(XDisplay, Self->XWindowHandle, GCGraphicsExposures|GCFunction, &gcv);
+         }
 
          if (glStickToFront) {
             // KDE doesn't honour this request, not sure how many window managers would but it's worth a go.
@@ -764,13 +763,9 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          hints.flags = USPosition|USSize;
          XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
 
-         if (InitObject(bmp) != ERR_Okay) {
-            return log.warning(ERR_Init);
-         }
+         if (InitObject(bmp) != ERR_Okay) return log.warning(ERR_Init);
       }
-      else {
-         // If we are the window manager, set up the root window as our display.
-
+      else { // If we are the window manager, set up the root window as our display.
          if (!Self->WindowHandle) Self->XWindowHandle = DefaultRootWindow(XDisplay);
          bmp->set(FID_Handle, (APTR)Self->XWindowHandle);
          XChangeWindowAttributes(XDisplay, Self->XWindowHandle, CWEventMask|CWCursor, &swa);
@@ -778,16 +773,14 @@ static ERROR DISPLAY_Init(extDisplay *Self, APTR Void)
          if (XRandRBase) xrSelectInput(Self->XWindowHandle);
 
          XGetWindowAttributes(XDisplay, Self->XWindowHandle, &winattrib);
-         Self->Width    = winattrib.width;
-         Self->Height   = winattrib.height;
-         bmp->Width  = Self->Width;
-         bmp->Height = Self->Height;
+         Self->Width  = winattrib.width;
+         Self->Height = winattrib.height;
+         bmp->Width   = Self->Width;
+         bmp->Height  = Self->Height;
 
-         if (InitObject(bmp) != ERR_Okay) {
-            return log.warning(ERR_Init);
-         }
+         if (InitObject(bmp) != ERR_Okay) return log.warning(ERR_Init);
 
-         if (glDGAAvailable IS TRUE) {
+         if (glDGAAvailable) {
             bmp->Flags |= BMF::X11_DGA;
             bmp->Data = (UBYTE *)glDGAVideo;
          }
@@ -1895,117 +1888,6 @@ ERROR DISPLAY_Show(extDisplay *Self, APTR Void)
 /*********************************************************************************************************************
 
 -METHOD-
-UpdateDisplay: Private. Updates the display using content from a source bitmap.
-
-Called by the Surface class when a surface buffer needs to be exposed to the display.
-
--INPUT-
-obj(Bitmap) Bitmap: Source bitmap.
-int X: Source coordinate X.
-int Y: Source coordinate Y.
-int Width: Source dimension Width.
-int Height: Source dimension Height.
-int XDest: Destination coordinate X.
-int YDest: Destination coordinate Y.
-
--ERRORS-
-Okay
-NullArgs
--END-
-
-*********************************************************************************************************************/
-
-static ERROR DISPLAY_UpdateDisplay(extDisplay *Self, struct gfxUpdateDisplay *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Bitmap)) return log.warning(ERR_NullArgs);
-
-   //log.trace("START: %dx%d, %dx%d TO %dx%d.  SBmp: %dx%d", x, y, width, height, xdest, ydest, bmp->Width, bmp->Height);
-#ifdef _WIN32
-   objBitmap *bmp  = Args->Bitmap;
-   objBitmap *dest = Self->Bitmap;
-   LONG x      = Args->X;
-   LONG y      = Args->Y;
-   LONG width  = Args->Width;
-   LONG height = Args->Height;
-   LONG xdest  = Args->XDest;
-   LONG ydest  = Args->YDest;
-
-   // Check if the destination that we are copying to is within the drawable area.
-
-   if ((xdest < dest->Clip.Left)) {
-      width = width - (dest->Clip.Left - xdest);
-      if (width < 1) return ERR_Okay;
-      x = x + (dest->Clip.Left - xdest);
-      xdest = dest->Clip.Left;
-   }
-   else if (xdest >= dest->Clip.Right) return ERR_Okay;
-
-   if ((ydest < dest->Clip.Top)) {
-      height = height - (dest->Clip.Top - ydest);
-      if (height < 1) return ERR_Okay;
-      y = y + (dest->Clip.Top - ydest);
-      ydest = dest->Clip.Top;
-   }
-   else if (ydest >= dest->Clip.Bottom) return ERR_Okay;
-
-   // Check if the source that we are copying from is within its own drawable area.
-
-   if (x < 0) {
-      if ((width += x) < 1) return ERR_Okay;
-      x = 0;
-   }
-   else if (x >= bmp->Width) return ERR_Okay;
-
-   if (y < 0) {
-      if ((height += y) < 1) return ERR_Okay;
-      y = 0;
-   }
-   else if (y >= bmp->Height) return ERR_Okay;
-
-   // Clip the Width and Height
-
-   if ((xdest + width)  >= dest->Clip.Right)  width  = dest->Clip.Right - xdest;
-   if ((ydest + height) >= dest->Clip.Bottom) height = dest->Clip.Bottom - ydest;
-
-   if ((x + width)  >= bmp->Width)  width  = bmp->Width - x;
-   if ((y + height) >= bmp->Height) height = bmp->Height - y;
-
-   if (width < 1) return ERR_Okay;
-   if (height < 1) return ERR_Okay;
-
-   // Adjust coordinates by offset values
-
-   x += bmp->XOffset;
-   y += bmp->YOffset;
-   xdest += dest->XOffset;
-   ydest += dest->YOffset;
-
-   APTR drawable;
-   dest->getPtr(FID_Handle, &drawable);
-
-   win32RedrawWindow(Self->WindowHandle, drawable,
-      x, y,
-      width, height,
-      xdest, ydest,
-      bmp->Width, bmp->Height,
-      bmp->BitsPerPixel, bmp->Data,
-      bmp->ColourFormat->RedMask   << bmp->ColourFormat->RedPos,
-      bmp->ColourFormat->GreenMask << bmp->ColourFormat->GreenPos,
-      bmp->ColourFormat->BlueMask  << bmp->ColourFormat->BluePos,
-      ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) ? (bmp->ColourFormat->AlphaMask << bmp->ColourFormat->AlphaPos) : 0,
-      Self->Opacity);
-   return ERR_Okay;
-#else
-   return(gfxCopyArea((extBitmap *)Args->Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL,
-      Args->X, Args->Y, Args->Width, Args->Height, Args->XDest, Args->YDest));
-#endif
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 UpdatePalette: Updates the video display palette to new colour values if in 256 colour mode.
 
 Call UpdatePalette to copy a new palette to the display bitmap's internal palette.  If the video display is running in
@@ -2413,11 +2295,7 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
 
          if (glX11.Manager) return ERR_NoSupport;
 
-         Atom protocols[2];
-         XSizeHints hints;
          XSetWindowAttributes swa;
-         LONG cwflags;
-         STRING name;
 
          log.msg("Destroying current window.");
 
@@ -2436,7 +2314,7 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
          swa.event_mask  = ExposureMask|EnterWindowMask|LeaveWindowMask|PointerMotionMask|StructureNotifyMask
                            |KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|FocusChangeMask;
 
-         cwflags = CWEventMask|CWOverrideRedirect;
+         LONG cwflags = CWEventMask|CWOverrideRedirect;
 
          if ((Self->Flags & SCR::BORDERLESS) != SCR::NIL) {
             Self->X = 0;
@@ -2461,11 +2339,13 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
             return ERR_Failed;
          }
 
-         if ((CurrentTask()->getPtr(FID_Name, &name) IS ERR_Okay) and (name)) {
+         STRING name;
+         if ((!CurrentTask()->getPtr(FID_Name, &name)) and (name)) {
             XStoreName(XDisplay, Self->XWindowHandle, name);
          }
          else XStoreName(XDisplay, Self->XWindowHandle, "Parasol");
 
+         Atom protocols[2];
          protocols[0] = XWADeleteWindow;
          XSetWMProtocols(XDisplay, Self->XWindowHandle, protocols, 1);
 
@@ -2477,6 +2357,7 @@ static ERROR SET_Flags(extDisplay *Self, SCR Value)
 
          // Indicate that the window position is not to be meddled with by the window manager.
 
+         XSizeHints hints;
          hints.flags = USPosition|USSize;
          XSetWMNormalHints(XDisplay, Self->XWindowHandle, &hints);
 
