@@ -1044,7 +1044,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                      Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
                      Self->x11.ximage.bitmap_bit_order = 0;            // LSBFirst / MSBFirst
                      Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-                     if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
+                     if ((Self->BitsPerPixel IS 32) and (!Self->x11.gc)) Self->x11.ximage.depth = 24;
                      else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
                      Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
                      Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
@@ -1640,7 +1640,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   LONG origbpp    = Self->BitsPerPixel;
+   auto origbpp = Self->BitsPerPixel;
 
    if (Args->Width > 0) width = (LONG)Args->Width;
    else width = Self->Width;
@@ -1693,7 +1693,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 
    //if (Self->x11.drawable) {
    //   if ((drawable = XCreatePixmap(XDisplay, DefaultRootWindow(XDisplay), width, height, bpp))) {
-   //      XCopyArea(XDisplay, Self->x11.drawable, drawable, glXGC, 0, 0, Self->Width, Self->Height, 0, 0);
+   //      XCopyArea(XDisplay, Self->x11.drawable, drawable, Self->getGC(), 0, 0, Self->Width, Self->Height, 0, 0);
    //      XFreePixmap(XDisplay, Self->x11.drawable);
    //      Self->x11.drawable = drawable;
    //   }
@@ -1765,7 +1765,7 @@ setfields:
          Self->x11.ximage.obdata      = (char *)&Self->x11.ShmInfo;
          Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
          Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
-         if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
+         if ((Self->BitsPerPixel IS 32) and (!Self->x11.gc)) Self->x11.ximage.depth = 24;
          else Self->x11.ximage.depth = Self->BitsPerPixel;          // Actual bits per pixel
          Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
          Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
@@ -1788,7 +1788,7 @@ setfields:
       Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
       Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
       Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
-      if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
+      if ((Self->BitsPerPixel IS 32) and (!Self->x11.gc)) Self->x11.ximage.depth = 24;
       else Self->x11.ximage.depth = Self->BitsPerPixel;      // Actual bits per pixel
       Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
       Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group

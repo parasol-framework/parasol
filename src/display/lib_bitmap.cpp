@@ -526,24 +526,17 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
    else if (dest->x11.drawable) {
       if (!Bitmap->x11.drawable) {
          if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
-            ULONG *srcdata;
-            UBYTE alpha;
-            WORD cl, cr, ct, cb;
-
-            cl = dest->Clip.Left;
-            cr = dest->Clip.Right;
-            ct = dest->Clip.Top;
-            cb = dest->Clip.Bottom;
+            auto save_clip = dest->Clip;
             dest->Clip.Left   = DestX - dest->XOffset;
             dest->Clip.Right  = DestX + Width - dest->XOffset;
             dest->Clip.Top    = DestY - dest->YOffset;
             dest->Clip.Bottom = DestY + Height - dest->YOffset;
             if (!lock_surface(dest, SURFACE_READ|SURFACE_WRITE)) {
-               srcdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
+               auto srcdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
 
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
-                     alpha = 255 - Bitmap->unpackAlpha(srcdata[i]);
+                     UBYTE alpha = 255 - Bitmap->unpackAlpha(srcdata[i]);
 
                      if (alpha >= BLEND_MAX_THRESHOLD) {
                         pixel.Red   = (UBYTE)(srcdata[i] >> Bitmap->prvColourFormat.RedPos);
@@ -565,14 +558,11 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                }
                unlock_surface(dest);
             }
-            dest->Clip.Left   = cl;
-            dest->Clip.Right  = cr;
-            dest->Clip.Top    = ct;
-            dest->Clip.Bottom = cb;
+            dest->Clip = save_clip;
          }
          else if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL) {
             while (Height > 0) {
-               for (i = 0; i < Width; i++) {
+               for (auto i=0; i < Width; i++) {
                   colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
                   if (colour != (ULONG)Bitmap->TransIndex) dest->DrawUCPixel(dest, DestX + i, DestY, colour);
                }
@@ -580,24 +570,17 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                Height--;
             }
          }
-         else {
-            // Source is an ximage, destination is a pixmap
-
+         else { // Source is an ximage, destination is a pixmap
             if (Bitmap->x11.XShmImage IS true)  {
                if (XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False)) {
 
                }
                else log.warning("XShmPutImage() failed.");
             }
-            else {
-               XPutImage(XDisplay, dest->x11.drawable, dest->getGC(),
-                  &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
-            }
+            else XPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
          }
       }
-      else {
-         // Both the source and the destination are pixmaps
-
+      else { // Both the source and the destination are pixmaps
          XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable,
             dest->getGC(), X, Y, Width, Height, DestX, DestY);
       }
@@ -1300,13 +1283,13 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       // Source is an ximage, destination is a pixmap.  NB: If DGA is enabled, we will avoid using these routines because mem-copying from software
       // straight to video RAM is a lot faster.
 
-      XImage ximage;
       WORD alignment;
 
       if (Bitmap->LineWidth & 0x0001) alignment = 8;
       else if (Bitmap->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
+      XImage ximage;
       ximage.width            = Surface->LineWidth / Surface->BytesPerPixel;  // Image width
       ximage.height           = Surface->Height; // Image height
       ximage.xoffset          = 0;               // Number of pixels offset in X direction
@@ -1316,7 +1299,7 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       ximage.bitmap_unit      = alignment;       // Quant. of scanline - 8, 16, 32
       ximage.bitmap_bit_order = 0;               // LSBFirst / MSBFirst
       ximage.bitmap_pad       = alignment;       // 8, 16, 32, either XY or Zpixmap
-      if (Surface->BitsPerPixel IS 32) ximage.depth = 24;
+      if ((Surface->BitsPerPixel IS 32) and (!Bitmap->x11.gc)) ximage.depth = 24;
       else ximage.depth = Surface->BitsPerPixel;            // Actual bits per pixel
       ximage.bytes_per_line   = Surface->LineWidth;         // Accelerator to next line
       ximage.bits_per_pixel   = Surface->BytesPerPixel * 8; // Bits per pixel-group
