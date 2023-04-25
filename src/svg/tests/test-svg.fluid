@@ -45,17 +45,17 @@ end
 
 function testCircles()            hashTestSVG('paths/circles.svg', 0xdbb4ab98) end
 function testClip()               hashTestSVG('paths/clip.svg', 0x41ce561b) end
-function testMorph()              hashTestSVG('paths/morph.svg', 0x574d45f1) end
+function testMorph()              hashTestSVG('paths/morph.svg', 0xb3a8755a) end
 function testPolygons()           hashTestSVG('paths/polygons.svg', 0x0eaf8984) end
 function testShapes()             hashTestSVG('paths/shapes.svg', 0x6cf5cd84) end
 function testSpirals()            hashTestSVG('paths/spirals.svg', 0x313798f4) end
 function testStrokes()            hashTestSVG('paths/strokes.svg', 0xe89c2abe) end
 function testSuperShapes()        hashTestSVG('paths/supershapes.svg', 0x564f7346) end
 function testSuperSpiral()        hashTestSVG('paths/superspiral.svg', 0x877b2e0d) end
-function testTransitions()        hashTestSVG('paths/transitions.svg', 0xf68e3674) end
+function testTransitions()        hashTestSVG('paths/transitions.svg', 0xa125e343) end
 function testWave()               hashTestSVG('paths/wave.svg', 0xefac2b4c) end
 
-function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x30c3038e) end
+function testChevrons()           hashTestSVG('patterns/chevrons.svg', 0x7e048374) end
 function testComplex()            hashTestSVG('patterns/complex.svg', 0xf399cb0c) end
 function testDiamonds()           hashTestSVG('patterns/diamonds.svg', 0xe14ac1e8) end
 function testDimple()             hashTestSVG('patterns/dimple.svg', 0x1806e6a0) end
@@ -66,13 +66,13 @@ function testVStripes()           hashTestSVG('patterns/vstripes.svg', 0xc8ab997
 
 function testComposite()          hashTestSVG('filters/composite.svg', 0x8028097a) end
 function testConvolve()           hashTestSVG('filters/convolve.svg', 0x94268f20) end
-function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0xaffd01f8) end
-function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0xc4668578) end
+function testW3Composite1()       hashTestSVG('filters/w3-composite.svg', 0x71241a09) end
+function testW3Composite2()       hashTestSVG('filters/w3-filters-composite-02-b.svg', 0x30616069) end
 function testW3Displacement1()    hashTestSVG('filters/w3-filters-displace-01-f.svg', 0x38eb34bf) end
-function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x9895f90d) end
-function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0xacf98436) end
+function testW3Transfer()         hashTestSVG('filters/w3-filters-comptran-01-b.svg', 0x89dde8eb) end
+function testW3Transfer2()        hashTestSVG('filters/w3-filters-color-02-b.svg', 0x2f99b8d7) end
 function testW3Filters()          hashTestSVG('filters/w3-filters.svg', 0x0d83ba86) end
-function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0x65077832) end
+function testW3Filters2()         hashTestSVG('filters/w3-filters2.svg', 0xf73acacf) end
 function testW3Image()            hashTestSVG('filters/w3-image.svg', 0x156c8293) end
 function testW3Morphology()       hashTestSVG('filters/w3-morphology.svg', 0xa34245c2) end
 function testW3Offset()           hashTestSVG('filters/w3-offset.svg', 0xa29355c9) end
@@ -86,7 +86,7 @@ function testMoonSurface()        hashTestSVG('filters/moon-surface.svg', 0x8faf
 function testTransformations()    hashTestSVG('transforms/transformations.svg', 0x10f2fc02) end
 function testW3AspectRatio()      hashTestSVG('transforms/w3-aspectratio.svg', 0xe424230e) end
 function testW3SkewText()         hashTestSVG('transforms/w3-skew-text.svg', 0xc8e8a8bb) end
-function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0xb25c0f0e) end
+function testW3Viewbox()          hashTestSVG('transforms/w3-viewbox.svg', 0x5c4d1caf) end
 
 function testCSS()                hashTestSVG('misc/css.svg', 0x7b6b507b) end
 function testBrushStrokes()       hashTestSVG('misc/brush-strokes.svg', 0xd9b1b741) end

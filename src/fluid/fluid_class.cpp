@@ -20,7 +20,7 @@ extern "C" {
 
 static ERROR run_script(objScript *);
 static ERROR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
-static ERROR save_binary(objScript *, OBJECTID);
+static ERROR save_binary(objScript *, OBJECTPTR);
 
 INLINE CSTRING check_bom(CSTRING Value)
 {
@@ -52,10 +52,10 @@ static void dump_global_table(objScript *Self, STRING Global)
 
 //********************************************************************************************************************
 
-static ERROR GET_Procedures(objScript *, STRING **, LONG *);
+static ERROR GET_Procedures(objScript *, pf::vector<std::string> **, LONG *);
 
 static const FieldArray clFields[] = {
-   { "Procedures", FDF_VIRTUAL|FDF_ARRAY|FDF_STRING|FDF_ALLOC|FDF_R, GET_Procedures },
+   { "Procedures", FDF_VIRTUAL|FDF_CPP|FDF_ARRAY|FDF_STRING|FDF_R, GET_Procedures },
    END_FIELD
 };
 
@@ -81,20 +81,19 @@ static const ActionArray clActions[] = {
 static ERROR FLUID_GetProcedureID(objScript *, struct scGetProcedureID *);
 static ERROR FLUID_DerefProcedure(objScript *, struct scDerefProcedure *);
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_ScGetProcedureID, (APTR)FLUID_GetProcedureID, "GetProcedureID", NULL, 0 },
    { MT_ScDerefProcedure, (APTR)FLUID_DerefProcedure, "DerefProcedure", NULL, 0 },
    { 0, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
+// NOTE: Be aware that this function can be called by Activate() to perform a complete state reset.
 
 static void free_all(objScript *Self)
 {
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return; // Not a problem - indicates the object did not pass initialisation
-
-   clear_subscriptions(Self);
 
    if (prv->FocusEventHandle) { UnsubscribeEvent(prv->FocusEventHandle); prv->FocusEventHandle = NULL; }
 
@@ -137,16 +136,16 @@ void process_error(objScript *Self, CSTRING Procedure)
 {
    auto prv = (prvFluid *)Self->ChildPrivate;
 
-   LONG flags = VLF_WARNING;
+   auto flags = VLF::WARNING;
    if (prv->CaughtError) {
       Self->Error = prv->CaughtError;
-      if (Self->Error <= ERR_Terminate) flags = VLF_EXTAPI; // Non-critical errors are muted to prevent log noise.
+      if (Self->Error <= ERR_Terminate) flags = VLF::EXTAPI; // Non-critical errors are muted to prevent log noise.
    }
 
    pf::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
    lua_pop(prv->Lua, 1);  // pop returned value
-   Self->set(FID_ErrorString, str);
+   Self->setErrorString(str);
 
    CSTRING file = Self->Path;
    if (file) {
@@ -236,22 +235,22 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) return;
 
-   for (auto scan=prv->ActionList; scan; scan=scan->Next) {
-      if ((Object->UID IS scan->ObjectID) and (ActionID IS scan->ActionID)) {
-         LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
+   for (auto &scan : prv->ActionList) {
+      if ((Object->UID IS scan.ObjectID) and (ActionID IS scan.ActionID)) {
+         LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its branch
 
          {
             pf::Log log;
 
-            log.msg(VLF_BRANCH|VLF_EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
+            log.msg(VLF::BRANCH|VLF::EXTAPI, "Action notification for object #%d, action %d.  Top: %d", Object->UID, ActionID, lua_gettop(prv->Lua));
 
-            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Function); // +1 stack: Get the function reference
+            lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Function); // +1 stack: Get the function reference
             push_object_id(prv->Lua, Object->UID);  // +1: Pass the object ID
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
-            if (!stack_args(prv->Lua, Object->UID, scan->Args, (STRING)Args)) {
+            if (!stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args)) {
                LONG total_args;
-               if (scan->Reference) { // +1: Custom reference (optional)
-                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan->Reference);
+               if (scan.Reference) { // +1: Custom reference (optional)
+                  lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, scan.Reference);
                   total_args = 3; // ObjectID, ArgTable, Reference
                }
                else total_args = 2; // ObjectID, ArgTable
@@ -260,12 +259,12 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
                   process_error(Self, "Action Subscription");
                }
 
-               log.msg(VLF_BRANCH|VLF_EXTAPI, "Collecting garbage.");
-               lua_gc(prv->Lua, LUA_GCCOLLECT, 0); // Run the garbage collector
+               log.traceBranch("Collecting garbage.");
+               lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
             }
          }
 
-         SetResource(RES_LOG_DEPTH, depth);
+         SetResource(RES::LOG_DEPTH, depth);
          return;
       }
    }
@@ -279,7 +278,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
    if ((!Self->String) or (!Self->String[0])) return log.warning(ERR_FieldNotSet);
 
-   log.msg(VLF_EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
+   log.msg(VLF::EXTAPI, "Target: %d, Procedure: %s / ID #%" PF64, Self->TargetID, Self->Procedure ? Self->Procedure : (STRING)".", Self->ProcedureID);
 
    ERROR error = ERR_Failed;
 
@@ -318,7 +317,8 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
    if ((Self->ActivationCount) and (!Self->Procedure) and (!Self->ProcedureID)) {
       // If no procedure has been specified, kill the old Lua instance to restart from scratch
 
-      FLUID_Free(Self, NULL);
+      free_all(Self);
+      new (prv) prvFluid;
 
       if (!(prv->Lua = luaL_newstate())) {
          log.warning("Failed to open a Lua instance.");
@@ -365,7 +365,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
 
       // Line hook, executes on the execution of a new line
 
-      if (Self->Flags & SCF_DEBUG) {
+      if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) {
          // LUA_MASKLINE:  Interpreter is executing a line.
          // LUA_MASKCALL:  Interpreter is calling a function.
          // LUA_MASKRET:   Interpreter returns from a function.
@@ -393,7 +393,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       prv->Lua->ProtectedGlobals = true;
 
       LONG result;
-      if (!StrCompare(LUA_COMPILED, Self->String, 0, 0)) { // The source is compiled
+      if (!StrCompare(LUA_COMPILED, Self->String)) { // The source is compiled
          log.trace("Loading pre-compiled Lua script.");
          LONG headerlen = StrLength(Self->String) + 1;
          result = luaL_loadbuffer(prv->Lua, Self->String + headerlen, prv->LoadedSize - headerlen, "DefaultChunk");
@@ -431,7 +431,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
                   }
                   if (!(str = next_line(str))) break;
                }
-               Self->set(FID_ErrorString, buffer);
+               Self->setErrorString(buffer);
 
                log.warning("Parser Failed: %s", Self->ErrorString);
             }
@@ -449,12 +449,12 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
          prv->SaveCompiled = false;
 
          objFile::create cachefile = {
-            fl::Path(Self->CacheFile), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(prv->CachePermissions)
+            fl::Path(Self->CacheFile), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(prv->CachePermissions)
          };
 
          if (cachefile.ok()) {
-            save_binary(Self, cachefile->UID);
-            cachefile->set(FID_Date, &prv->CacheDate);
+            save_binary(Self, *cachefile);
+            cachefile->setDate(&prv->CacheDate);
          }
       }
    }
@@ -492,13 +492,13 @@ failure:
 
    if (owner_id) {
       OBJECTPTR owner;
-      if (!AccessObjectID(owner_id, 5000, &owner)) {
+      if (!AccessObject(owner_id, 5000, &owner)) {
          SetOwner(Self, owner);
          ReleaseObject(owner);
       }
       else {
          log.msg("Owner #%d no longer exists - self-terminating.", owner_id);
-         acFree(Self);
+         FreeResource(Self);
       }
    }
 
@@ -515,27 +515,24 @@ static ERROR FLUID_DataFeed(objScript *Self, struct acDataFeed *Args)
 
    if (!Args) return ERR_NullArgs;
 
-   if (Args->DataType IS DATA_TEXT) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+   if (Args->Datatype IS DATA::TEXT) {
+      Self->setStatement((CSTRING)Args->Buffer);
    }
-   else if (Args->DataType IS DATA_XML) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+   else if (Args->Datatype IS DATA::XML) {
+      Self->setStatement((CSTRING)Args->Buffer);
    }
-   else if (Args->DataType IS DATA_RECEIPT) {
+   else if (Args->Datatype IS DATA::RECEIPT) {
       auto prv = (prvFluid *)Self->ChildPrivate;
-      struct datarequest *prev;
 
-      log.branch("Incoming data receipt from #%d", Args->ObjectID);
+      log.branch("Incoming data receipt from #%d", Args->Object ? Args->Object->UID : 0);
 
-restart:
-      prev = NULL;
-      for (auto list=prv->Requests; list; list=list->Next) {
-         if (list->SourceID IS Args->ObjectID) {
+      for (auto it = prv->Requests.begin(); it != prv->Requests.end(); ) {
+         if ((Args->Object) and (it->SourceID IS Args->Object->UID)) {
             // Execute the callback associated with this input subscription: function({Items...})
 
-            LONG step = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
+            LONG step = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its step position
 
-               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
+               lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, it->Callback); // +1 Reference to callback
                lua_newtable(prv->Lua); // +1 Item table
 
                if (auto xml = objXML::create::integral(fl::Statement((CSTRING)Args->Buffer))) {
@@ -564,22 +561,19 @@ restart:
                      }
                   }
 
-                  acFree(xml);
+                  FreeResource(xml);
 
                   if (lua_pcall(prv->Lua, 1, 0, 0)) { // function(Items)
                      process_error(Self, "Data Receipt Callback");
                   }
                }
 
-            SetResource(RES_LOG_DEPTH, step);
+            SetResource(RES::LOG_DEPTH, step);
 
-            if (!prev) prv->Requests = list->Next;
-            else prev->Next = list->Next;
-            FreeResource(list);
-            goto restart;
+            it = prv->Requests.erase(it);
+            continue;
          }
-
-         prev = list;
+         it++;
       }
 
       {
@@ -661,7 +655,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    pf::Log log;
 
    if (Self->Path) {
-      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR_WILDCARD) != ERR_Okay) {
+      if (StrCompare("*.fluid|*.fb|*.lua", Self->Path, 0, STR::WILDCARD) != ERR_Okay) {
          log.trace("No support for path '%s'", Self->Path);
          return ERR_NoSupport;
       }
@@ -704,7 +698,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          if (cache_ts != -1) {
             if ((cache_ts IS src_ts) or (error)) {
                log.msg("Using cache '%s'", Self->CacheFile);
-               if (!AllocMemory(cache_size, MEM_STRING|MEM_NO_CLEAR, &Self->String)) {
+               if (!AllocMemory(cache_size, MEM::STRING|MEM::NO_CLEAR, &Self->String)) {
                   LONG len;
                   error = ReadFileToBuffer(Self->CacheFile, Self->String, cache_size, &len);
                   loaded_size = cache_size;
@@ -715,7 +709,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       }
 
       if ((!error) and (!loaded_size)) {
-         if (!AllocMemory(src_size+1, MEM_STRING|MEM_NO_CLEAR, &Self->String)) {
+         if (!AllocMemory(src_size+1, MEM::STRING|MEM::NO_CLEAR, &Self->String)) {
             LONG len;
             if (!ReadFileToBuffer(Self->Path, Self->String, src_size, &len)) {
                Self->String[len] = 0;
@@ -744,13 +738,13 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    prvFluid *prv;
    if (!error) {
-      if (!AllocMemory(sizeof(prvFluid), MEM_DATA, &Self->ChildPrivate)) {
+      if (!AllocMemory(sizeof(prvFluid), MEM::DATA, &Self->ChildPrivate)) {
          prv = (prvFluid *)Self->ChildPrivate;
          new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
             if (!src_file.obj->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
-            src_file.obj->get(FID_Permissions, &prv->CachePermissions);
+            src_file.obj->get(FID_Permissions, (LONG *)&prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
@@ -779,7 +773,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    //    \* $FLUID
    //    // $FLUID
 
-   if (!StrCompare("?? $FLUID", str, 0, STR_WILDCARD)) {
+   if (!StrCompare("?? $FLUID", str, 0, STR::WILDCARD)) {
 
    }
 
@@ -801,7 +795,7 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    if (!Self->String) return log.warning(ERR_FieldNotSet);
 
@@ -811,7 +805,7 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
    if (!prv) return log.warning(ERR_ObjectCorrupt);
 
    if (!luaL_loadstring(prv->Lua, Self->String)) {
-      ERROR error = save_binary(Self, Args->DestID);
+      ERROR error = save_binary(Self, Args->Dest);
       return error;
    }
    else {
@@ -827,48 +821,34 @@ static ERROR FLUID_SaveToObject(objScript *Self, struct acSaveToObject *Args)
 -FIELD-
 Procedures: Returns a string array of all named procedures defined by a script.
 
-A string array of all procedures loaded into a script is returned by this function. The script will need to have been
-activated before reading this field, or an empty list will be returned.
-
-The procedure list is built at the time of the call.  The array is allocated as a memory block and will need to be
-removed by the caller with FreeResource().
+This field will return a string array of all procedures loaded into the script, conditional on it being activated.
+It will otherwise return an empty array.
 -END-
 
 *********************************************************************************************************************/
 
-static ERROR GET_Procedures(objScript *Self, STRING **Value, LONG *Elements)
+static ERROR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LONG *Elements)
 {
-   auto prv = (prvFluid *)Self->ChildPrivate;
-   if (prv) {
-      LONG memsize = 1024 * 64;
-      UBYTE *list;
-      if (!AllocMemory(memsize, MEM_DATA|MEM_NO_CLEAR, &list)) {
-         LONG total = 0;
-         LONG size  = 0;
-         lua_pushnil(prv->Lua);
-         while (lua_next(prv->Lua, LUA_GLOBALSINDEX)) {
-            if (lua_type(prv->Lua, -1) IS LUA_TFUNCTION) {
-               CSTRING name = lua_tostring(prv->Lua, -2);
-               size += StrCopy(name, (STRING)list+size, memsize - size) + 1;
-               total++;
-            }
-            lua_pop(prv->Lua, 1);
+   if (auto prv = (prvFluid *)Self->ChildPrivate) {
+      prv->Procedures.clear();
+      lua_pushnil(prv->Lua);
+      while (lua_next(prv->Lua, LUA_GLOBALSINDEX)) {
+         if (lua_type(prv->Lua, -1) IS LUA_TFUNCTION) {
+            prv->Procedures.push_back(lua_tostring(prv->Lua, -2));
          }
-
-         *Value = StrBuildArray((STRING)list, size, total, SBF_SORT);
-         *Elements = total;
-
-         FreeResource(list);
-         return ERR_Okay;
+         lua_pop(prv->Lua, 1);
       }
-      else return ERR_AllocMemory;
+
+      *Value = &prv->Procedures;
+      *Elements = prv->Procedures.size();
+      return ERR_Okay;
    }
-   else return ERR_Failed;
+   else return ERR_NotInitialised;
 }
 
 //********************************************************************************************************************
 
-static ERROR save_binary(objScript *Self, OBJECTID FileID)
+static ERROR save_binary(objScript *Self, OBJECTPTR Target)
 {
    #warning No support for save_binary() yet.
 
@@ -880,7 +860,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
    const Proto *f;
    LONG i;
 
-   log.branch("Save Symbols: %d", Self->Flags & SCF_DEBUG);
+   log.branch("Save Symbols: %d", Self->Flags & SCF::LOG_ALL);
 
    if (!(prv = Self->ChildPrivate)) return LogReturnError(0, ERR_ObjectCorrupt);
 
@@ -889,7 +869,7 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
    // Write the fluid header first.  This must identify the content as compiled, plus include any relevant options,
    // such as the persistent identifier.
 
-   if (!AccessObjectID(FileID, 3000, &dest)) {
+   if (!AccessObject(FileID, 3000, &dest)) {
       LONG result;
       UBYTE header[256];
 
@@ -904,9 +884,9 @@ static ERROR save_binary(objScript *Self, OBJECTID FileID)
    }
 
    if ((code_writer_id > 0) and ((dest = GetObjectPtr(FileID)))) {
-      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+      luaU_dump(prv->Lua, f, &code_writer, dest, (Self->Flags & SCF::LOG_ALL) ? 0 : 1);
    }
-   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+   else luaU_dump(prv->Lua, f, &code_writer_id, (void *)(MAXINT)FileID, (Self->Flags & SCF::LOG_ALL) ? 0 : 1);
 
    LogReturn();
    return ERR_Okay;
@@ -933,7 +913,7 @@ static ERROR run_script(objScript *Self)
       else lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Self->ProcedureID);
 
       if (lua_isfunction(prv->Lua, -1)) {
-         if (Self->Flags & SCF_DEBUG) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
+         if ((Self->Flags & SCF::LOG_ALL) != SCF::NIL) log.branch("Executing procedure: %s, Args: %d", Self->Procedure, Self->TotalArgs);
 
          top = lua_gettop(prv->Lua);
 
@@ -1020,13 +1000,13 @@ static ERROR run_script(objScript *Self)
             }
          }
 
-         LONG step = GetResource(RES_LOG_DEPTH);
+         LONG step = GetResource(RES::LOG_DEPTH);
 
          if (lua_pcall(prv->Lua, count, LUA_MULTRET, 0)) {
             pcall_failed = true;
          }
 
-         SetResource(RES_LOG_DEPTH, step);
+         SetResource(RES::LOG_DEPTH, step);
 
          while (r > 0) release_object(release_list[--r]);
       }
@@ -1034,10 +1014,10 @@ static ERROR run_script(objScript *Self)
          std::ostringstream ss;
          ss << "Procedure '" << Self->Procedure << "' / #" << Self->ProcedureID << " does not exist in the script.";
          auto str = ss.str().c_str();
-         Self->set(FID_ErrorString, str);
+         Self->setErrorString(str);
          log.warning("%s", str);
 
-         #ifdef DEBUG
+         #ifdef _DEBUG
             STRING *list;
             LONG total_procedures;
             if (!GET_Procedures(Self, &list, &total_procedures)) {
@@ -1051,14 +1031,14 @@ static ERROR run_script(objScript *Self)
       }
    }
    else {
-      LONG depth = GetResource(RES_LOG_DEPTH);
+      LONG depth = GetResource(RES::LOG_DEPTH);
 
          top = lua_gettop(prv->Lua);
          if (lua_pcall(prv->Lua, 0, LUA_MULTRET, 0)) {
             pcall_failed = true;
          }
 
-      SetResource(RES_LOG_DEPTH, depth);
+      SetResource(RES::LOG_DEPTH, depth);
    }
 
    if (!pcall_failed) { // If the procedure returned results, copy them to the Results field of the Script.
@@ -1133,10 +1113,10 @@ ERROR create_fluid(void)
 {
    clFluid = objMetaClass::create::global(
       fl::BaseClassID(ID_SCRIPT),
-      fl::SubClassID(ID_FLUID),
+      fl::ClassID(ID_FLUID),
       fl::ClassVersion(VER_FLUID),
       fl::Name("Fluid"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.fluid|*.fb|*.lua"),
       fl::FileDescription("Fluid"),
       fl::Actions(clActions),

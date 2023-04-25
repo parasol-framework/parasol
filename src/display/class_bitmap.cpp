@@ -154,7 +154,7 @@ static ERROR SET_Handle(extBitmap *, APTR);
 static ERROR SET_Palette(extBitmap *, RGBPalette *);
 
 static const FieldDef clDataFlags[] = {
-   { "Video", MEM_VIDEO }, { "Blit", MEM_TEXTURE }, { "NoClear", MEM_NO_CLEAR }, { "Data", 0 },
+   { "Video", MEM::VIDEO }, { "Blit", MEM::TEXTURE }, { "NoClear", MEM::NO_CLEAR }, { "Data", 0 },
    { NULL, 0 }
 };
 
@@ -259,7 +259,7 @@ If the bitmap supports alpha blending, the alpha blend bits will be reset to 'cl
 static ERROR BITMAP_Clear(extBitmap *Self, APTR Void)
 {
 #ifdef _GLES_
-   if (Self->DataFlags & MEM_VIDEO) {
+   if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
       if (!lock_graphics_active(__func__)) {
          glClearColorx(Self->BkgdRGB.Red, Self->BkgdRGB.Green, Self->BkgdRGB.Blue, 255);
          glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -272,7 +272,7 @@ static ERROR BITMAP_Clear(extBitmap *Self, APTR Void)
 
    LONG opacity = Self->Opacity;
    Self->Opacity = 255;
-   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF_FILL);
+   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    Self->Opacity = opacity;
    return ERR_Okay;
 }
@@ -289,7 +289,7 @@ Once a bitmap is compressed, its image data is invalid.  Any attempt to access t
 result in a memory access fault.  The image data will remain invalid until the #Decompress() method is
 called to restore the bitmap to its original state.
 
-The `BMF_COMPRESSED` bit will be set in the #Flags field after a successful call to this function to indicate that the
+The `BMF::COMPRESSED` bit will be set in the #Flags field after a successful call to this function to indicate that the
 bitmap is compressed.
 
 -INPUT-
@@ -311,7 +311,7 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Self->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) {
+   if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       log.warning("Cannot compress video bitmaps.");
       return ERR_Failed;
    }
@@ -340,14 +340,14 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
    }
 
    APTR buffer;
-   if (!AllocMemory(Self->Size, MEM_NO_CLEAR, &buffer)) {
+   if (!AllocMemory(Self->Size, MEM::NO_CLEAR, &buffer)) {
       struct cmpCompressBuffer cbuf;
       cbuf.Input      = Self->Data;
       cbuf.InputSize  = Self->Size;
       cbuf.Output     = buffer;
       cbuf.OutputSize = Self->Size;
       if (!Action(MT_CmpCompressBuffer, glCompress, &cbuf)) {
-         if (!AllocMemory(cbuf.Result, MEM_NO_CLEAR, &Self->prvCompress)) {
+         if (!AllocMemory(cbuf.Result, MEM::NO_CLEAR, &Self->prvCompress)) {
             CopyMemory(buffer, Self->prvCompress, cbuf.Result);
             FreeResource(buffer);
          }
@@ -363,7 +363,7 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
          Self->Data = NULL;
       }
 
-      Self->Flags |= BMF_COMPRESSED;
+      Self->Flags |= BMF::COMPRESSED;
    }
 
    return error;
@@ -373,7 +373,7 @@ static ERROR BITMAP_Compress(extBitmap *Self, struct bmpCompress *Args)
 -METHOD-
 ConvertToLinear: Convert a bitmap's colour space to linear RGB.
 
-Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the `BMF_ALPHA_CHANNEL` flag
+Use ConvertToLinear to convert the colour space of a bitmap from sRGB to linear RGB.  If the `BMF::ALPHA_CHANNEL` flag
 is enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `LINEAR_RGB` on completion.  This method returns immediately if the #ColourSpace is
@@ -393,7 +393,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->ColourSpace IS CS_LINEAR_RGB) return log.warning(ERR_NothingDone);
+   if (Self->ColourSpace IS CS::LINEAR_RGB) return log.warning(ERR_NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
@@ -402,7 +402,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
 
-   if (Self->Flags & BMF_ALPHA_CHANNEL) {
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
       const UBYTE R = Self->ColourFormat->RedPos>>3;
       const UBYTE G = Self->ColourFormat->GreenPos>>3;
       const UBYTE B = Self->ColourFormat->BluePos>>3;
@@ -440,7 +440,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
       }
    }
 
-   Self->ColourSpace = CS_LINEAR_RGB;
+   Self->ColourSpace = CS::LINEAR_RGB;
    return ERR_Okay;
 }
 
@@ -449,7 +449,7 @@ ERROR BITMAP_ConvertToLinear(extBitmap *Self, APTR Void)
 -METHOD-
 ConvertToRGB: Convert a bitmap's colour space to standard RGB.
 
-Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF_ALPHA_CHANNEL` flag is
+Use ConvertToRGB to convert the colour space of a bitmap from linear RGB to sRGB.  If the `BMF::ALPHA_CHANNEL` flag is
 enabled on the bitmap, pixels with an alpha value of 0 are ignored.
 
 The #ColourSpace will be set to `SRGB` on completion.  This method returns immediately if the #ColourSpace is
@@ -469,7 +469,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Self->ColourSpace IS CS_SRGB) return log.warning(ERR_NothingDone);
+   if (Self->ColourSpace IS CS::SRGB) return log.warning(ERR_NothingDone);
    if (Self->BytesPerPixel != 4) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
@@ -478,7 +478,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
    if (Self->Clip.Left + w > Self->Width) return log.warning(ERR_InvalidDimension);
    if (Self->Clip.Top + h > Self->Height) return log.warning(ERR_InvalidDimension);
 
-   if (Self->Flags & BMF_ALPHA_CHANNEL) {
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
       const UBYTE R = Self->ColourFormat->RedPos>>3;
       const UBYTE G = Self->ColourFormat->GreenPos>>3;
       const UBYTE B = Self->ColourFormat->BluePos>>3;
@@ -516,7 +516,7 @@ ERROR BITMAP_ConvertToRGB(extBitmap *Self, APTR Void)
       }
    }
 
-   Self->ColourSpace = CS_SRGB;
+   Self->ColourSpace = CS::SRGB;
    return ERR_Okay;
 }
 
@@ -577,13 +577,13 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
 
    if (!Self->prvCompress) return ERR_Okay;
 
-   log.msg(VLF_BRANCH|VLF_EXTAPI, "Size: %d, Retain: %d", Self->Size, (Args) ? Args->RetainData : FALSE);
+   log.msg(VLF::BRANCH|VLF::EXTAPI, "Size: %d, Retain: %d", Self->Size, (Args) ? Args->RetainData : FALSE);
 
    // Note: If the decompression fails, we'll keep the bitmap data in memory in order to stop code from failing if it
    // accesses the Data address following attempted decompression.
 
    if (!Self->Data) {
-      if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->DataFlags, &Self->Data)) {
+      if (!AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data)) {
          Self->prvAFlags |= BF_DATA;
       }
       else return log.warning(ERR_AllocMemory);
@@ -608,7 +608,7 @@ static ERROR BITMAP_Decompress(extBitmap *Self, struct bmpDecompress *Args)
    else {
       FreeResource(Self->prvCompress);
       Self->prvCompress = NULL;
-      Self->Flags &= ~BMF_COMPRESSED;
+      Self->Flags &= ~BMF::COMPRESSED;
    }
 
    return error;
@@ -629,38 +629,29 @@ This action features automatic clipping and remapping, for occasions where the b
 static ERROR BITMAP_CopyData(extBitmap *Self, struct acCopyData *Args)
 {
    pf::Log log;
-   extBitmap *Dest;
-   LONG MaxHeight;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
+   if ((Args->Dest->Class->ClassID != ID_BITMAP)) return log.warning(ERR_Args);
 
-   if (!AccessObjectID(Args->DestID, 3000, &Dest)) {
-      if ((Dest->ClassID != ID_BITMAP)) {
-         ReleaseObject(Dest);
-         return log.warning(ERR_Args);
-      }
+   auto target = (extBitmap *)Args->Dest;
 
-      if (Self->Height > Dest->Height) MaxHeight = Dest->Height;
-      else MaxHeight = Self->Height;
+   LONG max_height = Self->Height > target->Height ? target->Height : Self->Height;
 
-      if (Self->Width >= Dest->Width) { // Source is wider or equal to the target
-         gfxCopyArea(Self, Dest, 0, 0, 0, Dest->Width, MaxHeight, 0, 0);
-      }
-      else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
-         gfxCopyArea(Self, Dest, 0, 0, 0, Self->Width, MaxHeight, 0, 0);
-         gfxDrawRectangle(Dest, Self->Width, 0, Dest->Width - Self->Width, MaxHeight, Dest->BkgdIndex, BAF_FILL);
-      }
-
-      // If the target height is greater, we will need to clear the pixels trailing at the bottom.
-
-      if (Self->Height < Dest->Height) {
-         gfxDrawRectangle(Dest, 0, Self->Height, Dest->Width, Dest->Height - Self->Height, Dest->BkgdIndex, BAF_FILL);
-      }
-
-      ReleaseObject(Dest);
-      return ERR_Okay;
+   if (Self->Width >= target->Width) { // Source is wider or equal to the target
+      gfxCopyArea(Self, target, BAF::NIL, 0, 0, target->Width, max_height, 0, 0);
    }
-   else return log.warning(ERR_ExclusiveDenied);
+   else { // The target is wider than the source.  Cpoy the source first, then clear the exposed region on the right.
+      gfxCopyArea(Self, target, BAF::NIL, 0, 0, Self->Width, max_height, 0, 0);
+      gfxDrawRectangle(target, Self->Width, 0, target->Width - Self->Width, max_height, target->BkgdIndex, BAF::FILL);
+   }
+
+   // If the target height is greater, we will need to clear the pixels trailing at the bottom.
+
+   if (Self->Height < target->Height) {
+      gfxDrawRectangle(target, 0, Self->Height, target->Width, target->Height - Self->Height, target->BkgdIndex, BAF::FILL);
+   }
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -687,7 +678,7 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
    if (!glDemultiply) {
       const std::lock_guard<std::mutex> lock(mutex);
       if (!glDemultiply) {
-         if (!AllocMemory(256 * 256, MEM_NO_CLEAR|MEM_UNTRACKED, &glDemultiply)) {
+         if (!AllocMemory(256 * 256, MEM::NO_CLEAR|MEM::UNTRACKED, &glDemultiply)) {
             for (LONG a=1; a <= 255; a++) {
                for (LONG i=0; i <= 255; i++) {
                   glDemultiply[(a<<8) + i] = (i * 0xff) / a;
@@ -698,9 +689,9 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
       }
    }
 
-   if (!(Self->Flags & BMF_PREMUL)) return log.warning(ERR_NothingDone);
+   if ((Self->Flags & BMF::PREMUL) IS BMF::NIL) return log.warning(ERR_NothingDone);
    if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
-   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -734,7 +725,7 @@ static ERROR BITMAP_Demultiply(extBitmap *Self, APTR Void)
       data += Self->LineWidth;
    }
 
-   Self->Flags &= ~BMF_PREMUL;
+   Self->Flags &= ~BMF::PREMUL;
    return ERR_Okay;
 }
 
@@ -747,7 +738,7 @@ Draw: Clears a bitmap's image to its assigned background colour.
 
 static ERROR BITMAP_Draw(extBitmap *Self, APTR Void)
 {
-   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF_FILL);
+   gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->BkgdIndex, BAF::FILL);
    return ERR_Okay;
 }
 
@@ -767,7 +758,7 @@ int Y: The top-most coordinate of the rectangle.
 int Width:  The width of the rectangle.
 int Height: The height of the rectangle.
 uint Colour: The colour index to use for the rectangle.
-int(BAF) Flags:  Supports BAF_FILL and BAF_BLEND.
+int(BAF) Flags:  Supports FILL and BLEND.
 
 -ERRORS-
 Okay
@@ -808,7 +799,7 @@ static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
    // NB: A faster way to flip a Bitmap would be to use CopyArea() to do the transfer in strips, but would require a
    // temporary memory area to hold the information.
 
-   if (Args->Orientation IS FLIP_HORIZONTAL) {
+   if (Args->Orientation IS FLIP::HORIZONTAL) {
       if (!lock_surface(Self, SURFACE_READWRITE)) {
          for (LONG y=0; y < Self->Height/2; y++) {
             for (LONG x=0; x < Self->Width; x++) {
@@ -821,7 +812,7 @@ static ERROR BITMAP_Flip(extBitmap *Self, struct bmpFlip *Args)
          unlock_surface(Self);
       }
    }
-   else if (Args->Orientation IS FLIP_VERTICAL) {
+   else if (Args->Orientation IS FLIP::VERTICAL) {
       if (!lock_surface(Self, SURFACE_READWRITE)) {
          // Palette based Bitmap
          for (LONG x=0; x < Self->Width/2; x++) {
@@ -876,6 +867,11 @@ static ERROR BITMAP_Free(extBitmap *Self, APTR Void)
          Self->x11.XShmImage = false;
          free_shm(Self->Data, Self->x11.ShmInfo.shmid);
          Self->Data = NULL;
+      }
+
+      if (Self->x11.gc) {
+         XFreeGC(XDisplay, Self->x11.gc);
+         Self->x11.gc = 0;
       }
    #endif
 
@@ -958,11 +954,11 @@ static ERROR BITMAP_GetColour(extBitmap *Self, struct bmpGetColour *Args)
 -ACTION-
 Init: Initialises a bitmap.
 
-This action will initialise a bitmap object so that it is ready for use.  If the bitmap #Data field has not
-been specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is
+This action will initialise a bitmap object so that it is ready for use.  If the bitmap #Data field has not been
+specified, a memory block will be allocated and placed in this field.  The type of memory that is allocated is
 dependent on the bitmap #DataFlags field.  If you have not specified a memory type, you will get a default of
-MEM_DATA.  For a display compatible bitmap use MEM_VIDEO.  If you just want to store a bitmap in fast writeable memory,
-use MEM_TEXTURE.
+`MEM::DATA`.  For a display compatible bitmap use `MEM::VIDEO`.  If you just want to store a bitmap in fast writeable
+memory, use `MEM::TEXTURE`.
 
 This action will not work unless you have defined the #Width and #Height fields of the bitmap at a minimum.
 
@@ -971,14 +967,10 @@ This action will not work unless you have defined the #Width and #Height fields 
 static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 {
    pf::Log log;
-   #ifdef __xwindows__
-      WORD alignment;
-   #endif
-   ERROR error;
 
    if (acQuery(Self) != ERR_Okay) return log.warning(ERR_Query);
 
-   log.branch("Size: %dx%d @ %d bit, %d bytes, Mem: $%.8x, Flags: $%.8x", Self->Width, Self->Height, Self->BitsPerPixel, Self->BytesPerPixel, Self->DataFlags, Self->Flags);
+   log.branch("Size: %dx%d @ %d bit, %d bytes, Mem: $%.8x, Flags: $%.8x", Self->Width, Self->Height, Self->BitsPerPixel, Self->BytesPerPixel, LONG(Self->DataFlags), LONG(Self->Flags));
 
    if (Self->Clip.Left < 0) Self->Clip.Left = 0;
    if (Self->Clip.Top < 0)  Self->Clip.Top  = 0;
@@ -1008,77 +1000,64 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #ifdef __xwindows__
 
-   Self->DataFlags &= ~MEM_TEXTURE; // Blitter memory not available in X11
+   Self->DataFlags &= ~MEM::TEXTURE; // Blitter memory not available in X11
 
    if (!Self->Data) {
-      if (!(Self->Flags & BMF_NO_DATA)) {
-         Self->DataFlags &= ~MEM_VIDEO; // Video memory not available for allocation in X11 (may be set to identify X11 windows only)
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
+         Self->DataFlags &= ~MEM::VIDEO; // Video memory not available for allocation in X11 (may be set to identify X11 windows only)
 
-         if (!Self->Size) {
-            log.warning("The Bitmap has no Size (there is a dimensional error).");
-            return ERR_FieldNotSet;
-         }
+         if (!Self->Size) return log.warning(ERR_FieldNotSet);
 
-         //if (Self->DataFlags & MEM_VIDEO) {
-         //   Self->x11.drawable = XCreatePixmap(XDisplay, DefaultRootWindow(XDisplay), Self->Width, Self->Height, Self->BitsPerPixel);
-         //   if (!Self->x11.drawable) {
-         //      log.warning("X11 failed to allocate a Pixmap for the video based Bitmap.");
-         //      return ERR_Failed;
-         //   }
-         //}
-         //else {
+         if (!Self->x11.XShmImage) {
+            log.extmsg("Allocating a memory based XImage.");
+            if (!alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid)) {
+               Self->prvAFlags |= BF_DATA;
 
-            if (!Self->x11.XShmImage) {
-               log.extmsg("Allocating a memory based XImage.");
-               if (!alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid)) {
-                  Self->prvAFlags |= BF_DATA;
+               WORD alignment;
+               if (Self->LineWidth & 0x0001) alignment = 8;
+               else if (Self->LineWidth & 0x0002) alignment = 16;
+               else alignment = 32;
 
-                  if (Self->LineWidth & 0x0001) alignment = 8;
-                  else if (Self->LineWidth & 0x0002) alignment = 16;
-                  else alignment = 32;
+               if (!glHeadless) {
+                  Self->x11.ximage.width            = Self->Width;  // Image width
+                  Self->x11.ximage.height           = Self->Height; // Image height
+                  Self->x11.ximage.xoffset          = 0;            // Number of pixels offset in X direction
+                  Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
+                  Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
+                  if (glX11ShmImage) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
+                  Self->x11.ximage.byte_order       = LSBFirst;     // LSBFirst / MSBFirst
+                  Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
+                  Self->x11.ximage.bitmap_bit_order = LSBFirst;     // LSBFirst / MSBFirst
+                  Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
+                  if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
+                  else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
+                  Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
+                  Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
+                  Self->x11.ximage.red_mask         = 0;
+                  Self->x11.ximage.green_mask       = 0;
+                  Self->x11.ximage.blue_mask        = 0;
+                  XInitImage(&Self->x11.ximage);
 
-                  if (!glHeadless) {
-                     Self->x11.ximage.width            = Self->Width;  // Image width
-                     Self->x11.ximage.height           = Self->Height; // Image height
-                     Self->x11.ximage.xoffset          = 0;            // Number of pixels offset in X direction
-                     Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-                     Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
-                     if (glX11ShmImage) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
-                     Self->x11.ximage.byte_order       = 0;            // LSBFirst / MSBFirst
-                     Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-                     Self->x11.ximage.bitmap_bit_order = 0;            // LSBFirst / MSBFirst
-                     Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-                     if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
-                     else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
-                     Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
-                     Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
-                     Self->x11.ximage.red_mask         = 0;
-                     Self->x11.ximage.green_mask       = 0;
-                     Self->x11.ximage.blue_mask        = 0;
+                  // If the XShm extension is available, try using it.  Using XShm allows the
+                  // X11 server to copy image memory straight to the display rather than
+                  // having it messaged.
 
-                     XInitImage(&Self->x11.ximage);
+                  if (glX11ShmImage) {
+                     Self->x11.ShmInfo.readOnly = False;
+                     Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
 
-                     // If the XShm extension is available, try using it.  Using XShm allows the
-                     // X11 server to copy image memory straight to the display rather than
-                     // having it messaged.
+                     // Attach the memory block to the X11 server
 
-                     if (glX11ShmImage) {
-                        Self->x11.ShmInfo.readOnly = False;
-                        Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
-
-                        // Attach the memory block to the X11 server
-
-                        if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
-                           Self->x11.XShmImage = true;
-                           XSync(XDisplay, TRUE);
-                        }
-                        else log.warning("XShmAttach() failed.");
+                     if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
+                        Self->x11.XShmImage = true;
+                        XSync(XDisplay, TRUE);
                      }
+                     else log.warning(ERR_SystemCall);
                   }
                }
-               else return log.warning(ERR_AllocMemory);
             }
-         //}
+            else return log.warning(ERR_AllocMemory);
+         }
       }
    }
 
@@ -1086,62 +1065,52 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #elif _WIN32
 
-   Self->DataFlags &= ~MEM_TEXTURE; // Video buffer memory not available in Win32
+   Self->DataFlags &= ~MEM::TEXTURE; // Video buffer memory not available in Win32
 
    if (!Self->Data) {
-      if (!(Self->Flags & BMF_NO_DATA)) {
-         if (!Self->Size) {
-            log.warning("The Bitmap has no Size (there is a dimensional error).");
-            return ERR_FieldNotSet;
-         }
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
+         if (!Self->Size) return log.warning(ERR_FieldNotSet);
 
-         if (Self->DataFlags & MEM_VIDEO) {
+         if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
             Self->prvAFlags |= BF_WINVIDEO;
-            if ((Self->win.Drawable = winCreateCompatibleDC())) {
-            }
-            else return log.warning(ERR_SystemCall);
+            if (!(Self->win.Drawable = winCreateCompatibleDC())) return log.warning(ERR_SystemCall);
          }
-         else if (!AllocMemory(Self->Size, MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR|Self->DataFlags, &Self->Data)) {
+         else if (!AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return log.warning(ERR_AllocMemory);
       }
-      else {
-         if (Self->DataFlags & MEM_VIDEO) Self->prvAFlags |= BF_WINVIDEO;
-      }
+      else if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) Self->prvAFlags |= BF_WINVIDEO;
    }
 
 #elif _GLES_
-   // MEM_VIDEO + BMF_NO_DATA: The bitmap represents the OpenGL display.  No data area will be allocated as direct access to the OpenGL video frame buffer is not possible.
-   // MEM_VIDEO: Not currently used as a means of allocating a particular type of OpenGL buffer.
-   // MEM_TEXTURE:  The bitmap is to be used as an OpenGL texture or off-screen buffer.  The bitmap content is temporary - i.e. the content can be dumped by the graphics driver if the video display changes.
-   // MEM_DATA:  The bitmap resides in regular CPU accessible memory.
+   // MEM::VIDEO + BMF::NO_DATA: The bitmap represents the OpenGL display.  No data area will be allocated as direct access to the OpenGL video frame buffer is not possible.
+   // MEM::VIDEO: Not currently used as a means of allocating a particular type of OpenGL buffer.
+   // MEM::TEXTURE:  The bitmap is to be used as an OpenGL texture or off-screen buffer.  The bitmap content is temporary - i.e. the content can be dumped by the graphics driver if the video display changes.
+   // MEM::DATA:  The bitmap resides in regular CPU accessible memory.
 
    if (!Self->Data) {
-      if (!(Self->Flags & BMF_NO_DATA)) {
-         if (Self->Size <= 0) {
-            log.warning("The Bitmap has no Size (there is a dimensional error).");
-            return ERR_FieldNotSet;
-         }
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
+         if (Self->Size <= 0) log.warning(ERR_FieldNotSet);
 
-         if (Self->DataFlags & MEM_VIDEO) {
+         if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
             // Do nothing - the bitmap merely represents the video display and does not hold content.
          }
-         else if (Self->DataFlags & MEM_TEXTURE) {
+         else if ((Self->DataFlags & MEM::TEXTURE) != MEM::NIL) {
             // Blittable bitmaps are fast, but their content is temporary.  It is not possible to use the CPU on this
-            // bitmap type - the developer should use MEM_DATA if that is desired.
+            // bitmap type - the developer should use MEM::DATA if that is desired.
 
-            log.warning("Support for MEM_TEXTURE not included yet.");
+            log.warning("Support for MEM::TEXTURE not included yet.");
             return ERR_NoSupport;
          }
-         else if (!AllocMemory(Self->Size, Self->DataFlags|MEM_NO_BLOCKING|MEM_NO_POOL|MEM_NO_CLEAR, &Self->Data)) {
+         else if (!AllocMemory(Self->Size, Self->DataFlags|MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR, &Self->Data)) {
             Self->prvAFlags |= BF_DATA;
          }
          else return ERR_AllocMemory;
       }
    }
 
-   if (Self->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) Self->Flags |= BMF_2DACCELERATED;
+   if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) Self->Flags |= BMF::2DACCELERATED;
 
 #else
    #error Platform requires memory allocation routines for the Bitmap class.
@@ -1165,7 +1134,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #elif _WIN32
 
-   if (Self->DataFlags & MEM_VIDEO) {
+   if ((Self->DataFlags & MEM::VIDEO) != MEM::NIL) {
       LONG red, green, blue, alpha;
 
       if (winGetPixelFormat(&red, &green, &blue, &alpha) IS ERR_Okay) {
@@ -1188,7 +1157,7 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #endif
 
-   if ((error = CalculatePixelRoutines(Self)) != ERR_Okay) return error;
+   if (auto error = CalculatePixelRoutines(Self)) return error;
 
    if (Self->BitsPerPixel > 8) {
       Self->TransIndex = (((Self->TransRGB.Red   >> Self->prvColourFormat.RedShift)   & Self->prvColourFormat.RedMask)   << Self->prvColourFormat.RedPos) |
@@ -1202,14 +1171,14 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                         (((255 >> Self->prvColourFormat.AlphaShift) & Self->prvColourFormat.AlphaMask) << Self->prvColourFormat.AlphaPos);
    }
 
-   if ((!(Self->Flags & BMF_NO_DATA)) and (Self->Flags & BMF_CLEAR)) {
+   if (((Self->Flags & BMF::NO_DATA) IS BMF::NIL) and ((Self->Flags & BMF::CLEAR) != BMF::NIL)) {
       log.trace("Clearing Bitmap...");
       acClear(Self);
    }
 
    // Sanitise the Flags field
 
-   if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF_ALPHA_CHANNEL;
+   if (Self->BitsPerPixel < 32) Self->Flags &= ~BMF::ALPHA_CHANNEL;
 
    //log.msg("Red: %.2x/%d/%d , Green: %.2x/%d/%d",
    //   Self->prvColourFormat.RedMask,   Self->prvColourFormat.RedShift,   Self->prvColourFormat.RedPos,
@@ -1254,7 +1223,7 @@ static ERROR BITMAP_Lock(extBitmap *Self, APTR Void)
       else if (Self->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
-      if (Self->Type IS BMP_PLANAR) {
+      if (Self->Type IS BMP::PLANAR) {
          size = Self->ByteWidth * Self->Height * Self->BitsPerPixel;
       }
       else size = Self->ByteWidth * Self->Height;
@@ -1292,7 +1261,7 @@ static ERROR BITMAP_NewObject(extBitmap *Self, APTR Void)
 
    Self->Palette      = &Self->prvPaletteArray;
    Self->ColourFormat = &Self->prvColourFormat;
-   Self->ColourSpace  = CS_SRGB;
+   Self->ColourSpace  = CS::SRGB;
 
    Self->Opacity = 255;
 
@@ -1380,12 +1349,12 @@ static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & BMF_PREMUL) {
+   if ((Self->Flags & BMF::PREMUL) != BMF::NIL) {
       return log.warning(ERR_NothingDone);
    }
 
    if (Self->BitsPerPixel != 32) return log.warning(ERR_InvalidState);
-   if (!(Self->Flags & BMF_ALPHA_CHANNEL)) return log.warning(ERR_InvalidState);
+   if ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL) return log.warning(ERR_InvalidState);
 
    const auto w = (LONG)(Self->Clip.Right - Self->Clip.Left);
    const auto h = (LONG)(Self->Clip.Bottom - Self->Clip.Top);
@@ -1416,7 +1385,7 @@ static ERROR BITMAP_Premultiply(extBitmap *Self, APTR Void)
       data += Self->LineWidth;
    }
 
-   Self->Flags |= BMF_PREMUL;
+   Self->Flags |= BMF::PREMUL;
    return ERR_Okay;
 }
 
@@ -1441,14 +1410,14 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
    OBJECTID display_id;
    LONG i;
 
-   log.msg(VLF_BRANCH|VLF_EXTAPI, "Bitmap: %p, Depth: %d, Width: %d, Height: %d", Self, Self->BitsPerPixel, Self->Width, Self->Height);
+   log.msg(VLF::BRANCH|VLF::EXTAPI, "Bitmap: %p, Depth: %d, Width: %d, Height: %d", Self, Self->BitsPerPixel, Self->Width, Self->Height);
 
    if ((Self->Width <= 0) or (Self->Height <= 0)) {
       return log.warning(ERR_InvalidDimension);
    }
 
    #ifdef _GLES_
-      if (Self->DataFlags & MEM_TEXTURE) {
+      if ((Self->DataFlags & MEM::TEXTURE) != MEM::NIL) {
          // OpenGL requires bitmap textures to be a power of 2.
 
          LONG new_width = nearestPower(Self->Width);
@@ -1466,17 +1435,17 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
       }
    #endif
 
-   // If the BMF_MASK flag is set then the programmer wants to use the Bitmap object as a 1 or 8-bit mask.
+   // If the BMF::MASK flag is set then the programmer wants to use the Bitmap object as a 1 or 8-bit mask.
 
-   if (Self->Flags & BMF_MASK) {
+   if ((Self->Flags & BMF::MASK) != BMF::NIL) {
       if ((!Self->BitsPerPixel) and (!Self->AmtColours)) {
          Self->BitsPerPixel = 1;
          Self->AmtColours = 2;
-         Self->Type = BMP_PLANAR;
+         Self->Type = BMP::PLANAR;
       }
       else if (Self->AmtColours >= 256) {
          Self->AmtColours = 256;
-         Self->Type = BMP_CHUNKY;
+         Self->Type = BMP::CHUNKY;
          // Change the palette to grey scale for alpha channel masks
          for (i=0; i < 256; i++) {
             Self->Palette->Col[i].Red   = i;
@@ -1489,11 +1458,11 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // If no type has been set, use the type that is native to the system that Parasol is running on.
 
-   if (!Self->Type) Self->Type = BMP_CHUNKY;
+   if (Self->Type IS BMP::NIL) Self->Type = BMP::CHUNKY;
 
    if (Self->BitsPerPixel) {
       switch(Self->BitsPerPixel) {
-         case 1:  Self->BytesPerPixel = 1; Self->AmtColours = 2; Self->Type = BMP_PLANAR; break;
+         case 1:  Self->BytesPerPixel = 1; Self->AmtColours = 2; Self->Type = BMP::PLANAR; break;
          case 2:  Self->BytesPerPixel = 1; Self->AmtColours = 4; break;
          case 8:  Self->BytesPerPixel = 1; Self->AmtColours = 256; break;
          case 15: Self->BytesPerPixel = 2; Self->AmtColours = 32768; break;
@@ -1532,8 +1501,8 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
          Self->BitsPerPixel  = 32;
          Self->BytesPerPixel = 4;
 #if 1
-         if (!FindObject("SystemDisplay", ID_DISPLAY, 0, &display_id)) {
-            if (!AccessObjectID(display_id, 3000, &display)) {
+         if (!FindObject("SystemDisplay", ID_DISPLAY, FOF::NIL, &display_id)) {
+            if (!AccessObject(display_id, 3000, &display)) {
                Self->AmtColours    = display->Bitmap->AmtColours;
                Self->BytesPerPixel = display->Bitmap->BytesPerPixel;
                Self->BitsPerPixel  = display->Bitmap->BitsPerPixel;
@@ -1553,7 +1522,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // Calculate ByteWidth, make sure it's word aligned
 
-   if (Self->Type IS BMP_PLANAR) {
+   if (Self->Type IS BMP::PLANAR) {
       Self->ByteWidth = (Self->Width + 7) / 8;
    }
    else Self->ByteWidth = Self->Width * Self->BytesPerPixel;
@@ -1568,7 +1537,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // If we have Direct Graphics Access, use the DGA values rather than our generic calculations for bitmap parameters.
 
-   if ((Self->DataFlags & MEM_VIDEO) and (Self->x11.drawable)) {
+   if (((Self->DataFlags & MEM::VIDEO) != MEM::NIL) and (Self->x11.drawable)) {
       log.trace("LineWidth: %d, PixelLine: %d, BankSize: %d", Self->LineWidth, glDGAPixelsPerLine, glDGABankSize);
       if ((glDGAAvailable) and (glDGAPixelsPerLine)) {
          Self->LineWidth = glDGAPixelsPerLine * Self->BytesPerPixel;
@@ -1579,7 +1548,7 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 #endif
 
 #ifdef _GLES_
-   if ((Self->BitsPerPixel IS 8) and (Self->Flags & BMF_MASK)) Self->prvGLPixel = GL_ALPHA;
+   if ((Self->BitsPerPixel IS 8) and ((Self->Flags & BMF::MASK) != BMF::NIL)) Self->prvGLPixel = GL_ALPHA;
    else if (Self->BitsPerPixel <= 24) Self->prvGLPixel = GL_RGB;
    else Self->prvGLPixel = GL_RGBA;
 
@@ -1591,12 +1560,12 @@ static ERROR BITMAP_Query(extBitmap *Self, APTR Void)
 
    // Calculate the total size of the bitmap
 
-   if (Self->Type IS BMP_PLANAR) {
+   if (Self->Type IS BMP::PLANAR) {
       Self->Size = Self->LineWidth * Self->Height * Self->BitsPerPixel;
    }
    else Self->Size = Self->LineWidth * Self->Height;
 
-   Self->Flags |= BMF_QUERIED;
+   Self->Flags |= BMF::QUERIED;
    return ERR_Okay;
 }
 
@@ -1644,7 +1613,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   LONG origbpp    = Self->BitsPerPixel;
+   auto origbpp = Self->BitsPerPixel;
 
    if (Args->Width > 0) width = (LONG)Args->Width;
    else width = Self->Width;
@@ -1652,12 +1621,12 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Args->Height > 0) height = (LONG)Args->Height;
    else height = Self->Height;
 
-   if ((Args->Depth > 0) and (!(Self->Flags & BMF_FIXED_DEPTH))) bpp = (LONG)Args->Depth;
+   if ((Args->Depth > 0) and ((Self->Flags & BMF::FIXED_DEPTH) IS BMF::NIL)) bpp = (LONG)Args->Depth;
    else bpp = Self->BitsPerPixel;
 
    // If the NEVER_SHRINK option is set, the width and height may not be set to anything less than what is current.
 
-   if (Self->Flags & BMF_NEVER_SHRINK) {
+   if ((Self->Flags & BMF::NEVER_SHRINK) != BMF::NIL) {
       if (width < Self->Width) width = Self->Width;
       if (height < Self->Height) height = Self->Height;
    }
@@ -1682,13 +1651,13 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
                amtcolours = 1<<bpp;
    }
 
-   if (Self->Type IS BMP_PLANAR) bytewidth = (width + (width % 16))/8;
+   if (Self->Type IS BMP::PLANAR) bytewidth = (width + (width % 16))/8;
    else bytewidth = width * bytesperpixel;
 
    LONG linewidth = ALIGN32(bytewidth);
    LONG planemod = bytewidth * height;
 
-   if (Self->Type IS BMP_PLANAR) size = linewidth * height * bpp;
+   if (Self->Type IS BMP::PLANAR) size = linewidth * height * bpp;
    else size = linewidth * height;
 
    if (GetClassID(Self->ownerID()) IS ID_DISPLAY) goto setfields;
@@ -1697,7 +1666,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
 
    //if (Self->x11.drawable) {
    //   if ((drawable = XCreatePixmap(XDisplay, DefaultRootWindow(XDisplay), width, height, bpp))) {
-   //      XCopyArea(XDisplay, Self->x11.drawable, drawable, glXGC, 0, 0, Self->Width, Self->Height, 0, 0);
+   //      XCopyArea(XDisplay, Self->x11.drawable, drawable, Self->getGC(), 0, 0, Self->Width, Self->Height, 0, 0);
    //      XFreePixmap(XDisplay, Self->x11.drawable);
    //      Self->x11.drawable = drawable;
    //   }
@@ -1709,7 +1678,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
    if (Self->prvAFlags & BF_WINVIDEO) return ERR_NoSupport;
 #endif
 
-   if (Self->Flags & BMF_NO_DATA);
+   if ((Self->Flags & BMF::NO_DATA) != BMF::NIL);
    #ifdef __xwindows__
    else if (Self->x11.XShmImage);
    #endif
@@ -1718,7 +1687,7 @@ static ERROR BITMAP_Resize(extBitmap *Self, struct acResize *Args)
       if ((size <= Self->Size) and (size / Self->Size > 0.5)) { // Do nothing when shrinking unless able to save considerable resources
          size = Self->Size;
       }
-      else if (!AllocMemory(size, MEM_NO_BLOCKING|MEM_NO_POOL|Self->DataFlags|MEM_NO_CLEAR, &data)) {
+      else if (!AllocMemory(size, MEM::NO_BLOCKING|MEM::NO_POOL|Self->DataFlags|MEM::NO_CLEAR, &data)) {
          if (Self->Data) FreeResource(Self->Data);
          Self->Data = data;
       }
@@ -1762,16 +1731,18 @@ setfields:
 
          ClearMemory(&Self->x11.ximage, sizeof(Self->x11.ximage));
 
-         Self->x11.ximage.width       = Self->Width;  // Image width
-         Self->x11.ximage.height      = Self->Height; // Image height
+         Self->x11.ximage.width       = Self->Width;
+         Self->x11.ximage.height      = Self->Height;
          Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-         Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
+         Self->x11.ximage.data        = (char *)Self->Data;
+         Self->x11.ximage.byte_order  = LSBFirst;        // LSBFirst / MSBFirst
+         Self->x11.ximage.bitmap_bit_order = LSBFirst;
          Self->x11.ximage.obdata      = (char *)&Self->x11.ShmInfo;
          Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
-         Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
-         if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
-         else Self->x11.ximage.depth = Self->BitsPerPixel;          // Actual bits per pixel
-         Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
+         Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32
+         if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
+         else Self->x11.ximage.depth = Self->BitsPerPixel;
+         Self->x11.ximage.bytes_per_line = Self->LineWidth;
          Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
 
          XInitImage(&Self->x11.ximage);
@@ -1786,15 +1757,17 @@ setfields:
 
       ClearMemory(&Self->x11.ximage, sizeof(XImage));
 
-      Self->x11.ximage.width       = Self->Width;  // Image width
-      Self->x11.ximage.height      = Self->Height; // Image height
+      Self->x11.ximage.width       = Self->Width;
+      Self->x11.ximage.height      = Self->Height;
       Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-      Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
+      Self->x11.ximage.data        = (char *)Self->Data;
+      Self->x11.ximage.byte_order  = LSBFirst;     // LSBFirst / MSBFirst
+      Self->x11.ximage.bitmap_bit_order = LSBFirst;
       Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
-      Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
-      if (Self->BitsPerPixel IS 32) Self->x11.ximage.depth = 24;
-      else Self->x11.ximage.depth = Self->BitsPerPixel;      // Actual bits per pixel
-      Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
+      Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32
+      if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
+      else Self->x11.ximage.depth = Self->BitsPerPixel;
+      Self->x11.ximage.bytes_per_line = Self->LineWidth;
       Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
 
       XInitImage(&Self->x11.ximage);
@@ -1808,8 +1781,8 @@ setfields:
 
    CalculatePixelRoutines(Self);
 
-   if (Self->Flags & BMF_CLEAR) {
-      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF_FILL);
+   if ((Self->Flags & BMF::CLEAR) != BMF::NIL) {
+      gfxDrawRectangle(Self, 0, 0, Self->Width, Self->Height, Self->getColour(Self->BkgdRGB), BAF::FILL);
    }
 
 #ifdef __xwindows__
@@ -1845,13 +1818,12 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
       UBYTE dummy[54];
    } pcx;
    RGB8 rgb;
-   OBJECTPTR dest;
    UBYTE *buffer, lastpixel, newpixel;
    LONG i, j, p, size;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
-   log.branch("Save To #%d", Args->DestID);
+   log.branch("Save To #%d", Args->Dest->UID);
 
    LONG width = Self->Clip.Right - Self->Clip.Left;
    LONG height = Self->Clip.Bottom - Self->Clip.Top;
@@ -1877,121 +1849,114 @@ static ERROR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
    else pcx.NumPlanes = 3;
 
    size = width * height * pcx.NumPlanes;
-   if (!AllocMemory(size, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
-      if (!AccessObjectID(Args->DestID, 3000, &dest)) {
-         acWrite(dest, &pcx, sizeof(pcx), NULL);
+   if (!AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &buffer)) {
+      acWrite(Args->Dest, &pcx, sizeof(pcx), NULL);
 
-         LONG dp = 0;
-         for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
-            if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
-               lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
+      LONG dp = 0;
+      for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
+         if (pcx.NumPlanes IS 1) { // Save as a 256 colour image
+            lastpixel = Self->ReadUCPixel(Self, Self->Clip.Left, i);
+            UBYTE counter = 1;
+            for (j=Self->Clip.Left+1; j <= width; j++) {
+               newpixel = Self->ReadUCPixel(Self, j, i);
+
+               if ((newpixel IS lastpixel) and (j != width - 1) and (counter <= 62)) {
+                  counter++;
+               }
+               else {
+                  if (!((counter IS 1) and (lastpixel < 192))) {
+                     buffer[dp++] = 192 + counter;
+                  }
+                  buffer[dp++] = lastpixel;
+                  lastpixel = newpixel;
+                  counter = 1;
+               }
+
+               if (dp >= (size - 10)) {
+                  FreeResource(buffer);
+                  return log.warning(ERR_BufferOverflow);
+               }
+            }
+         }
+         else { // Save as a true colour image with run-length encoding
+            for (p=0; p < 3; p++) {
+               Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
+
+               if (Self->ColourSpace IS CS::LINEAR_RGB) {
+                  rgb.Red   = conv_l2r(rgb.Red);
+                  rgb.Green = conv_l2r(rgb.Green);
+                  rgb.Blue  = conv_l2r(rgb.Blue);
+               }
+
+               switch(p) {
+                  case 0:  lastpixel = rgb.Red;   break;
+                  case 1:  lastpixel = rgb.Green; break;
+                  default: lastpixel = rgb.Blue;
+               }
                UBYTE counter = 1;
-               for (j=Self->Clip.Left+1; j <= width; j++) {
-                  newpixel = Self->ReadUCPixel(Self, j, i);
 
-                  if ((newpixel IS lastpixel) and (j != width - 1) and (counter <= 62)) {
+               for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
+                  Self->ReadUCRPixel(Self, j, i, &rgb);
+                  switch(p) {
+                     case 0:  newpixel = rgb.Red;   break;
+                     case 1:  newpixel = rgb.Green; break;
+                     default: newpixel = rgb.Blue;
+                  }
+
+                  if (newpixel IS lastpixel) {
                      counter++;
+                     if (counter IS 63) {
+                        buffer[dp++] = 0xc0 | counter;
+                        buffer[dp++] = lastpixel;
+                        counter = 0;
+                     }
                   }
                   else {
-                     if (!((counter IS 1) and (lastpixel < 192))) {
-                        buffer[dp++] = 192 + counter;
+                     if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
+                        buffer[dp++] = lastpixel;
                      }
-                     buffer[dp++] = lastpixel;
+                     else if (counter) {
+                        buffer[dp++] = 0xc0 | counter;
+                        buffer[dp++] = lastpixel;
+                     }
                      lastpixel = newpixel;
                      counter = 1;
                   }
-
-                  if (dp >= (size - 10)) {
-                     FreeResource(buffer);
-                     ReleaseObject(dest);
-                     return log.warning(ERR_BufferOverflow);
-                  }
                }
-            }
-            else { // Save as a true colour image with run-length encoding
-               for (p=0; p < 3; p++) {
-                  Self->ReadUCRPixel(Self, Self->Clip.Left, i, &rgb);
 
-                  if (Self->ColourSpace IS CS_LINEAR_RGB) {
-                     rgb.Red   = conv_l2r(rgb.Red);
-                     rgb.Green = conv_l2r(rgb.Green);
-                     rgb.Blue  = conv_l2r(rgb.Blue);
-                  }
+               // Finish line if necessary
 
-                  switch(p) {
-                     case 0:  lastpixel = rgb.Red;   break;
-                     case 1:  lastpixel = rgb.Green; break;
-                     default: lastpixel = rgb.Blue;
-                  }
-                  UBYTE counter = 1;
-
-                  for (j=Self->Clip.Left+1; j < Self->Clip.Right; j++) {
-                     Self->ReadUCRPixel(Self, j, i, &rgb);
-                     switch(p) {
-                        case 0:  newpixel = rgb.Red;   break;
-                        case 1:  newpixel = rgb.Green; break;
-                        default: newpixel = rgb.Blue;
-                     }
-
-                     if (newpixel IS lastpixel) {
-                        counter++;
-                        if (counter IS 63) {
-                           buffer[dp++] = 0xc0 | counter;
-                           buffer[dp++] = lastpixel;
-                           counter = 0;
-                        }
-                     }
-                     else {
-                        if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
-                           buffer[dp++] = lastpixel;
-                        }
-                        else if (counter) {
-                           buffer[dp++] = 0xc0 | counter;
-                           buffer[dp++] = lastpixel;
-                        }
-                        lastpixel = newpixel;
-                        counter = 1;
-                     }
-                  }
-
-                  // Finish line if necessary
-
-                  if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
-                     buffer[dp++] = lastpixel;
-                  }
-                  else if (counter) {
-                     buffer[dp++] = 0xc0 | counter;
-                     buffer[dp++] = lastpixel;
-                  }
+               if ((counter IS 1) and (0xc0 != (0xc0 & lastpixel))) {
+                  buffer[dp++] = lastpixel;
+               }
+               else if (counter) {
+                  buffer[dp++] = 0xc0 | counter;
+                  buffer[dp++] = lastpixel;
                }
             }
          }
+      }
 
-         acWrite(dest, buffer, dp, NULL);
-         FreeResource(buffer);
+      acWrite(Args->Dest, buffer, dp, NULL);
+      FreeResource(buffer);
 
-         // Setup palette
+      // Setup palette
 
-         if (Self->AmtColours <= 256) {
-            UBYTE palette[(256 * 3) + 1];
-            LONG j = 0;
-            palette[j++] = 12;          // Palette identifier
-            for (LONG i=0; i < 256; i++) {
-               palette[j++] = Self->Palette->Col[i].Red;
-               palette[j++] = Self->Palette->Col[i].Green;
-               palette[j++] = Self->Palette->Col[i].Blue;
-            }
-
-            acWrite(dest, palette, sizeof(palette), NULL);
+      if (Self->AmtColours <= 256) {
+         UBYTE palette[(256 * 3) + 1];
+         LONG j = 0;
+         palette[j++] = 12;          // Palette identifier
+         for (LONG i=0; i < 256; i++) {
+            palette[j++] = Self->Palette->Col[i].Red;
+            palette[j++] = Self->Palette->Col[i].Green;
+            palette[j++] = Self->Palette->Col[i].Blue;
          }
 
-         ReleaseObject(dest);
-         return ERR_Okay;
+         acWrite(Args->Dest, palette, sizeof(palette), NULL);
       }
-      else {
-         FreeResource(buffer);
-         return ERR_AccessObject;
-      }
+
+      return ERR_Okay;
+
    }
    else return ERR_AllocMemory;
 }
@@ -2004,9 +1969,9 @@ Seek: Changes the current byte position for read/write operations.
 
 static ERROR BITMAP_Seek(extBitmap *Self, struct acSeek *Args)
 {
-   if (Args->Position IS SEEK_START) Self->Position = (LONG)Args->Offset;
-   else if (Args->Position IS SEEK_END) Self->Position = (LONG)(Self->Size - Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) Self->Position = (LONG)(Self->Position + Args->Offset);
+   if (Args->Position IS SEEK::START) Self->Position = (LONG)Args->Offset;
+   else if (Args->Position IS SEEK::END) Self->Position = (LONG)(Self->Size - Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) Self->Position = (LONG)(Self->Position + Args->Offset);
    else return ERR_Args;
 
    if (Self->Position > Self->Size) Self->Position = Self->Size;
@@ -2279,7 +2244,7 @@ ERROR SET_Data(extBitmap *Self, UBYTE *Value)
    if (Self->Data != Value) {
       Self->Data = Value;
 
-      if (!Self->DataFlags) {
+      if (Self->DataFlags IS MEM::NIL) {
          MemInfo info;
          if (MemoryPtrInfo(Value, &info) != ERR_Okay) {
             pf::Log log;
@@ -2301,7 +2266,7 @@ ERROR SET_Data(extBitmap *Self, UBYTE *Value)
 DataFlags: Defines the memory flags to use in allocating a bitmap's data area.
 
 This field determines the type of memory that will be allocated for the #Data field during the initialisation process.
-This field accepts the `MEM_DATA`, `MEM_VIDEO` and `MEM_TEXTURE` memory flags.
+This field accepts the `MEM::DATA`, `MEM::VIDEO` and `MEM::TEXTURE` memory flags.
 
 Please note that video based bitmaps may be faster than data bitmaps for certain applications, but the content is typically
 read-only.  Under normal circumstances it is not possible to use the pixel reading functions, or read from the
@@ -2443,7 +2408,7 @@ ERROR SET_Palette(extBitmap *Self, RGBPalette *SrcPalette)
 
    if (SrcPalette->AmtColours <= 256) {
       if (!Self->Palette) {
-         if (AllocMemory(sizeof(RGBPalette), MEM_NO_CLEAR, &Self->Palette) != ERR_Okay) {
+         if (AllocMemory(sizeof(RGBPalette), MEM::NO_CLEAR, &Self->Palette) != ERR_Okay) {
             log.warning(ERR_AllocMemory);
          }
       }
@@ -2540,7 +2505,7 @@ static ERROR SET_Trans(extBitmap *Self, RGB8 *Value)
    }
    else Self->TransIndex = RGBToValue(&Self->TransRGB, Self->Palette);
 
-   if (!(Self->DataFlags & MEM_VIDEO)) Self->Flags |= BMF_TRANSPARENT;
+   if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF::TRANSPARENT;
    return ERR_Okay;
 }
 
@@ -2564,7 +2529,7 @@ static ERROR SET_TransIndex(extBitmap *Self, LONG Index)
    Self->TransIndex = Index;
    Self->TransRGB   = Self->Palette->Col[Self->TransIndex];
 
-   if (!(Self->DataFlags & MEM_VIDEO)) Self->Flags |= BMF_TRANSPARENT;
+   if ((Self->DataFlags & MEM::VIDEO) IS MEM::NIL) Self->Flags |= BMF::TRANSPARENT;
    return ERR_Okay;
 }
 
@@ -2593,7 +2558,7 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
 {
    pf::Log log;
 
-   if (Self->Type IS BMP_PLANAR) {
+   if (Self->Type IS BMP::PLANAR) {
       Self->ReadUCPixel  = MemReadPixelPlanar;
       Self->ReadUCRPixel = MemReadRGBPixelPlanar;
       Self->ReadUCRIndex = MemReadRGBIndexPlanar;
@@ -2603,8 +2568,8 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
       return ERR_Okay;
    }
 
-   if (Self->Type != BMP_CHUNKY) {
-      log.warning("Unsupported Bitmap->Type %d.", Self->Type);
+   if (Self->Type != BMP::CHUNKY) {
+      log.warning("Unsupported Bitmap->Type %d.", LONG(Self->Type));
       return ERR_Failed;
    }
 
@@ -2622,7 +2587,7 @@ static ERROR CalculatePixelRoutines(extBitmap *Self)
 
 #else
 
-   if (Self->DataFlags & (MEM_VIDEO|MEM_TEXTURE)) {
+   if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       switch(Self->BytesPerPixel) {
          case 1:
             Self->ReadUCPixel  = &VideoReadPixel8;
@@ -2790,7 +2755,7 @@ ERROR create_bitmap_class(void)
    clBitmap = objMetaClass::create::global(
       fl::ClassVersion(VER_BITMAP),
       fl::Name("Bitmap"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clBitmapActions),
       fl::Methods(clBitmapMethods),
       fl::Fields(clBitmapFields),

@@ -20,12 +20,12 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((Self->Units != VUNIT_BOUNDING_BOX) and (Self->Units != VUNIT_USERSPACE)) {
+   if ((LONG(Self->Units) != LONG(VUNIT::BOUNDING_BOX)) and (LONG(Self->Units) != LONG(VUNIT::USERSPACE))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
@@ -43,9 +43,9 @@ static ERROR IMAGE_Init(objVectorImage *Self, APTR Void)
 
 static ERROR IMAGE_NewObject(objVectorImage *Self, APTR Void)
 {
-   Self->Units        = VUNIT_BOUNDING_BOX;
-   Self->SpreadMethod = VSPREAD_PAD;
-   Self->AspectRatio  = ARF_X_MID|ARF_Y_MID|ARF_MEET; // SVG defaults
+   Self->Units        = VUNIT::BOUNDING_BOX;
+   Self->SpreadMethod = VSPREAD::PAD;
+   Self->AspectRatio  = ARF::X_MID|ARF::Y_MID|ARF::MEET; // SVG defaults
    return ERR_Okay;
 }
 
@@ -124,17 +124,17 @@ static const ActionArray clImageActions[] = {
 };
 
 static const FieldDef clImageSpread[] = {
-   { "Pad",      VSPREAD_PAD },
-   { "Repeat",   VSPREAD_REPEAT },
-   { "ReflectX", VSPREAD_REFLECT_X },
-   { "ReflectY", VSPREAD_REFLECT_Y },
-   { "Clip",     VSPREAD_CLIP },
+   { "Pad",      VSPREAD::PAD },
+   { "Repeat",   VSPREAD::REPEAT },
+   { "ReflectX", VSPREAD::REFLECT_X },
+   { "ReflectY", VSPREAD::REFLECT_Y },
+   { "Clip",     VSPREAD::CLIP },
    { NULL, 0 }
 };
 
 static const FieldDef clImageUnits[] = {
-   { "BoundingBox", VUNIT_BOUNDING_BOX }, // Coordinates are relative to the object's bounding box
-   { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
+   { "BoundingBox", VUNIT::BOUNDING_BOX }, // Coordinates are relative to the object's bounding box
+   { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
@@ -166,7 +166,7 @@ ERROR init_image(void) // The gradient is a definition type for creating gradien
    clVectorImage = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORIMAGE),
       fl::Name("VectorImage"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clImageActions),
       fl::Fields(clImageFields),
       fl::Size(sizeof(objVectorImage)),

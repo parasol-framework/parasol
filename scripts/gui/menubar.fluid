@@ -60,7 +60,8 @@ local function activateItem(self) -- Activate the current menu item.
    local menu = self._currentItem.menu
    if not menu then
       menu = gui.menu({
-         relative     = self.viewport.scene.surface,
+         client       = self.viewport,
+         relative     = self.viewport,
          x            = self._currentItem.x,
          y            = self.viewport.height - 2,
          keyMonitor   = self.viewport,
@@ -130,7 +131,7 @@ local function highlightItem(self, Item)
 end
 
 local function arrangeItems(self)
-   if self._vg then self._vg.acFree() end
+   if self._vg then self._vg.free() end
 
    self._vg = self.viewport.new('VectorGroup', { name='ItemGroup' })
 
@@ -303,7 +304,7 @@ gui.menubar = function(HostVP, Options)
       self.viewport.height = 1
       self.viewport.xOffset = nz(Options.xOffset, 0)
 
-      if (self.viewport.acInit() != ERR_Okay) then error('Failed to initialise viewport.') end
+      if (self.viewport.init() != ERR_Okay) then error('Failed to initialise viewport.') end
 
       self.viewport.subscribe('free', function(Viewport, Args)
          self = { }
@@ -314,6 +315,10 @@ gui.menubar = function(HostVP, Options)
             self._hasFocus = false
             if self._currentItem then
                self._hIcon.visibility = 'hidden' -- Turn off keyboard highlighting
+            end
+
+            if self._lastMenu then
+               self._lastMenu.hide()
             end
          else
             self._hasFocus = true
@@ -350,7 +355,7 @@ gui.menubar = function(HostVP, Options)
             elseif (bit.band(ev.flags, JTYPE_BUTTON) != 0) then
                if (ev.type != JET_BUTTON_1) then return end
 
-               if (ev.value > 0) then
+               if (ev.value != 0) then
                   if self._currentItem then
                      if self._currentItem.disabled or self._disabled then return end
 
@@ -371,9 +376,9 @@ gui.menubar = function(HostVP, Options)
 
       self.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
          if (bit.band(Qualifiers, KQ_PRESSED) != 0) then
-            if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+            if (Code == KEY_ENTER) or (Code == KEY_NP_ENTER) or (Code == KEY_SPACE) then
                activateItem(self)
-            elseif (Code == K_UP) or (Code == K_LEFT) then
+            elseif (Code == KEY_UP) or (Code == KEY_LEFT) then
                if (self._currentItem) then
                   local scan = self._currentItem.prev
                   if (not scan) then scan = lastItem(self) end
@@ -381,7 +386,7 @@ gui.menubar = function(HostVP, Options)
                else
                   highlightItem(self, firstItem(self))
                end
-            elseif (Code == K_DOWN) or (Code == K_RIGHT) or (Code == K_TAB) then
+            elseif (Code == KEY_DOWN) or (Code == KEY_RIGHT) or (Code == KEY_TAB) then
                if self._currentItem then
                   local scan = self._currentItem.next
                   if (not scan) then scan = firstItem(self) end

@@ -13,7 +13,7 @@ static const struct FieldDef clXMLFlags[] = {
    { "AllContent", 0x00000100 },
    { "ParseHTML", 0x00000200 },
    { "StripCDATA", 0x00000400 },
-   { "Debug", 0x00000800 },
+   { "LogAll", 0x00000800 },
    { "ParseEntity", 0x00001000 },
    { "IncludeSiblings", (LONG)0x80000000 },
    { NULL, 0 }
@@ -35,7 +35,7 @@ FDEF maInsertContent[] = { { "Index", FD_LONG }, { "Where", FD_LONG }, { "Conten
 FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Limit", FD_LONG }, { 0, 0 } };
 FDEF maGetTag[] = { { "Index", FD_LONG }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clXMLMethods[] = {
+static const struct MethodEntry clXMLMethods[] = {
    { -1, (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xmlSetAttrib) },
    { -2, (APTR)XML_GetString, "GetString", maGetString, sizeof(struct xmlGetString) },
    { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xmlInsertXML) },
@@ -68,4 +68,4 @@ static const struct ActionArray clXMLActions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.XMLAttrib:zsName,zsValue\ns.XMLTag:lID,lParentID,lLineNo,lFlags,zeAttribs:XMLAttrib[],zeChildren:XMLTag[]\nc.XMF:ALL_CONTENT=0x100,DEBUG=0x800,INCLUDE_COMMENTS=0x2,INCLUDE_SIBLINGS=0x80000000,INDENT=0x8,LOCK_REMOVE=0x10,NEW=0x40,NO_ESCAPE=0x80,PARSE_ENTITY=0x1000,PARSE_HTML=0x200,READABLE=0x8,STRIP_CDATA=0x400,STRIP_CONTENT=0x4,STRIP_HEADERS=0x20,WELL_FORMED=0x1\nc.XMI:CHILD=0x1,CHILD_END=0x3,END=0x4,NEXT=0x2,PREV=0x0,PREVIOUS=0x0\nc.XMS:NEW=0xffffffff,UPDATE=0xfffffffd,UPDATE_ONLY=0xfffffffe\nc.XSF:CHECK_SORT=0x2,DESC=0x1\nc.XTF:CDATA=0x1,INSTRUCTION=0x2,NOTATION=0x4\n"
+#define MOD_IDL "s.XMLAttrib:zsName,zsValue\ns.XMLTag:lID,lParentID,lLineNo,lFlags,zeAttribs:XMLAttrib[],zeChildren:XMLTag[]\nc.XMF:ALL_CONTENT=0x100,INCLUDE_COMMENTS=0x2,INCLUDE_SIBLINGS=0x80000000,INDENT=0x8,LOCK_REMOVE=0x10,LOG_ALL=0x800,NEW=0x40,NO_ESCAPE=0x80,PARSE_ENTITY=0x1000,PARSE_HTML=0x200,READABLE=0x8,STRIP_CDATA=0x400,STRIP_CONTENT=0x4,STRIP_HEADERS=0x20,WELL_FORMED=0x1\nc.XMI:CHILD=0x1,CHILD_END=0x3,END=0x4,NEXT=0x2,PREV=0x0,PREVIOUS=0x0\nc.XMS:NEW=0xffffffff,UPDATE=0xfffffffd,UPDATE_ONLY=0xfffffffe\nc.XSF:CHECK_SORT=0x2,DESC=0x1\nc.XTF:CDATA=0x1,INSTRUCTION=0x2,NOTATION=0x4\n"

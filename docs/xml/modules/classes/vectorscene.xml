@@ -1,0 +1,257 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorScene</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Manages the scene graph for a collection of vectors.</comment>
+    <version>1</version>
+    <id>890a3646</id>
+    <idstring>ID_VECTORSCENE</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorscene.h</include>
+    <copyright>Paul Manias © 2010-2023</copyright>
+    <description>
+<p>The VectorScene class acts as a container and control point for the management of vector definitions.  Its main purpose is to draw the scene to a target <class name="Bitmap">Bitmap</class> or <class name="Surface">Surface</class> provided by the client.</p>
+<p>Vector scenes are created by initialising multiple Vector objects such as <class name="VectorPath">VectorPath</class> and <class name="VectorViewport">VectorViewport</class> and positioning them within a vector tree.  The VectorScene must lie at the root.</p>
+<p>The default mode of operation is for scenes to be manually drawn, for which the client must set the target <field>Bitmap</field> and call the <action>Draw</action> action as required.  Automated drawing can be enabled by setting the target <field>Surface</field> prior to initialisation.  In automated mode the <field>PageWidth</field> and <field>PageHeight</field> will reflect the dimensions of the target surface at all times.</p>
+<p>Vector definitions can be saved and loaded from permanent storage by using the <class name="SVG">SVG</class> class.</p></description>
+    <source>
+      <file path="scene/">scene.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Draw</name>
+      <comment>Renders the scene to a bitmap.</comment>
+      <description>
+<p>The Draw action will render the scene to the target <field>Bitmap</field> immediately.  If <field>Bitmap</field> is NULL, an error will be returned.</p>
+<p>In addition, the <field>RenderTime</field> field will be updated if the <code>RENDER_TIME</code> flag is defined.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="FieldNotSet">The Bitmap field is NULL.</error>
+      </result>
+    </action>
+
+    <action>
+      <name>Redimension</name>
+      <comment>Redefines the size of the page.</comment>
+    </action>
+
+    <action>
+      <name>Reset</name>
+      <comment>Clears all registered definitions and resets field values.  Child vectors are unmodified.</comment>
+    </action>
+
+    <action>
+      <name>Resize</name>
+      <comment>Redefines the size of the page.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>AddDef</name>
+      <comment>Adds a new definition to a vector tree.</comment>
+      <prototype>ERROR scAddDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR Def)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The unique name to associate with the definition.</param>
+        <param type="OBJECTPTR" name="Def">Reference to the definition object.</param>
+      </input>
+      <description>
+<p>This method will add a new definition object to the root of a vector tree.  This feature is provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name with the definition object, the object can then be referenced in URL strings.</p>
+<p>For instance, if creating a gradient with a name of "redGradient" it would be possible to reference it with <code>url(#redGradient)</code> in common graphics attributes such as <code>fill</code> and <code>stroke</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="UnsupportedOwner">The definition is not owned by the scene.</error>
+        <error code="ResourceExists">The given name is already in use as a definition.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="InvalidObject">The definition is not an accepted object class.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Debug</name>
+      <comment>Internal functionality for debugging.</comment>
+      <prototype>ERROR scDebug(OBJECTPTR Object)</prototype>
+      <description>
+<p>This internal method prints comprehensive debugging information to the log.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>FindDef</name>
+      <comment>Search for a vector definition by name.</comment>
+      <prototype>ERROR scFindDef(OBJECTPTR Object, CSTRING Name, OBJECTPTR * Def)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The name of the definition.</param>
+        <param type="OBJECTPTR *" name="Def">A pointer to the definition object is returned here if discovered.</param>
+      </input>
+      <description>
+<p>Use the FindDef method to search for a vector definition by name.  A reference to the definition will be returned if the search is successful.</p>
+<p>Definitions are created with the <method>AddDef</method> method.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">A definition with the given Name was not found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SearchByID</name>
+      <comment>Search for a vector by numeric ID.</comment>
+      <prototype>ERROR scSearchByID(OBJECTPTR Object, LONG ID, OBJECTPTR * Result)</prototype>
+      <input>
+        <param type="LONG" name="ID">The ID to search for.</param>
+        <param type="OBJECTPTR *" name="Result">This parameter will be updated with the discovered vector, or NULL if not found.</param>
+      </input>
+      <description>
+<p>This method will search a scene for an object that matches a given ID (vector ID's can be set with the NumericID and ID fields).  If multiple vectors are using the same ID, repeated calls can be made to this method to find all of them. This is achieved by calling this method on the vector that was last returned as a result.</p>
+<p>Please note that searching for string-based ID's is achieved by converting the string to a case-sensitive hash with <function module="Core">StrHash</function> and using that as the ID.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">A vector with a matching ID was not found.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Bitmap</name>
+      <comment>Target bitmap for drawing vectors.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="Bitmap">*Bitmap</type>
+      <description>
+<p>The target bitmap to use when drawing the vectors must be specified here.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VPF">VPF</type>
+      <description>
+<types lookup="VPF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>HostScene</name>
+      <comment>Refers to a top-level VectorScene object, if applicable.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type class="VectorScene">*VectorScene</type>
+      <description>
+<p>Set HostScene to another VectorScene object if it is intended that this scene is a child of the other.  This allows some traits such as vector definitions to be automatically inherited from the host scene.</p>
+<p>This feature is useful in circumstances where a hidden group of vectors need to be managed separately, while retaining access to established definitions and vectors in the main.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PageHeight</name>
+      <comment>The height of the page that contains the vector.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>This value defines the pixel height of the page that contains the vector scene graph.  If the <code>RESIZE</code> <field>Flags</field> option is used then the viewport will be scaled to fit within the page.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PageWidth</name>
+      <comment>The width of the page that contains the vector.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>This value defines the pixel width of the page that contains the vector scene graph.  If the <code>RESIZE</code> <field>Flags</field> option is used then the viewport will be scaled to fit within the page.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RenderTime</name>
+      <comment>Returns the rendering time of the last scene.</comment>
+      <access read="G">Get</access>
+      <type>BIGINT</type>
+      <description>
+<p>RenderTime returns the rendering time of the last scene that was drawn, measured in microseconds.  This value can also be used to compute frames-per-second with <code>1000000 / RenderTime</code>.</p>
+<p>The <code>RENDER_TIME</code> flag should also be set before fetching this value, as it is required to enable the timing feature.  If <code>RENDER_TIME</code> is not set, it will be set automatically so that subsequent calls succeed correctly.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SampleMethod</name>
+      <comment>The sampling method to use when interpolating images and patterns.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VSM">VSM</type>
+      <description>
+<p>The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of the images that are displayed in the rendered scene.  The recommended default is <code>BILINEAR</code>, which provides a comparatively average result and execution speed.  The most advanced method is <code>BLACKMAN8</code>, which produces an excellent level of quality at the cost of very poor execution speed.</p>
+<types lookup="VSM"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Surface</name>
+      <comment>May refer to a Surface object for enabling automatic rendering.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>OBJECTID</type>
+      <description>
+<p>Setting the Surface field will enable automatic rendering to a display surface.  The use of features such as input event handling and user focus management will also require an associated surface as a pre-requisite.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Viewport</name>
+      <comment>References the first object in the scene, which must be a VectorViewport object.</comment>
+      <access read="R">Read</access>
+      <type class="VectorViewport">*VectorViewport</type>
+      <description>
+<p>The first object in the vector scene is referenced here.  It must belong to the <class name="VectorViewport">VectorViewport</class> class, because it will be used to define the size and location of the area rendered by the scene.</p>
+<p>The Viewport field must not be set by the client.  The VectorViewport object will configure its ownership to the VectorScene prior to initialisation.  The Viewport field value will then be set automatically when the VectorViewport object is initialised.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VPF" comment="Optional flags for the VectorScene object.">
+      <const name="BITMAP_SIZED">Automatically adjust the PageWidth and PageHeight to match the target Bitmap width and height.</const>
+      <const name="OUTLINE_VIEWPORTS">Draw a green outline around all viewport paths.  Extremely useful for debugging layout issues.</const>
+      <const name="RENDER_TIME">Compute the drawing frame-rate for the RenderTime field.</const>
+      <const name="RESIZE">The vector will be stretched to fit the PageWidth and PageHeight values, if defined by the client.</const>
+    </constants>
+
+    <constants lookup="VSM">
+      <const name="AUTO">The default option is chosen by the system.  This will typically be bilinear, but slow machines may switch to nearest neighbour and high speed machines could use more advanced methods.</const>
+      <const name="BESSEL"/>
+      <const name="BICUBIC">Produces a similar result to bilinear with a marginally sharper after-effect.</const>
+      <const name="BILINEAR">Bilinear is a common algorithm that produces a reasonable quality image.</const>
+      <const name="BLACKMAN3">Five times slower than bilinear, the final result will lack sharpness when compared to SINC3.</const>
+      <const name="BLACKMAN8">15 times slower than bilinear, the final result is of excellent quality and sharpness is well balanced.</const>
+      <const name="GAUSSIAN"/>
+      <const name="KAISER"/>
+      <const name="LANCZOS3">This well known algorithm may serve as a point of comparison for evaluating the results of other methods.  It shares characteristics with SINC and BLACKMAN.</const>
+      <const name="LANCZOS8"/>
+      <const name="MITCHELL"/>
+      <const name="NEIGHBOUR">Nearest neighbour is the fastest sampler at the cost of poor quality.</const>
+      <const name="QUADRIC"/>
+      <const name="SINC3">Five times slower than bilinear, the final result is of very good quality.</const>
+      <const name="SINC8">15 times slower than bilinear, the final result is of excellent quality but may be marginally over-sharpened.</const>
+      <const name="SPLINE16">About 1/2 the speed of bilinear, this method produces a considerably better result.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

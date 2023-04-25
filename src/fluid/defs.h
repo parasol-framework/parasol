@@ -6,6 +6,28 @@
 #include <list>
 #include <unordered_set>
 #include <set>
+#include <array>
+
+using namespace pf;
+
+#define ALIGN64(a) (((a) + 7) & (~7))
+#define ALIGN32(a) (((a) + 3) & (~3))
+
+//********************************************************************************************************************
+
+struct CaseInsensitiveMap {
+   bool operator() (const std::string &lhs, const std::string &rhs) const {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+   }
+};
+
+extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
+extern struct ActionTable *glActions;
+extern OBJECTPTR modDisplay; // Required by fluid_input.c
+extern OBJECTPTR modFluid;
+extern struct DisplayBase *DisplayBase;
+extern OBJECTPTR clFluid;
+extern std::unordered_map<std::string, ULONG> glStructSizes;
 
 //********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
@@ -27,36 +49,73 @@ inline ULONG STRUCTHASH(CSTRING String)
 
 //********************************************************************************************************************
 
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
-//********************************************************************************************************************
-
 struct code_reader_handle {
    objFile *File;
    APTR Buffer;
 };
 
 struct actionmonitor {
-   struct actionmonitor *Prev;
-   struct actionmonitor *Next;
    struct object *Object;      // Fluid.obj original passed in for the subscription.
-   const struct FunctionField *Args; // The args of the action/method are stored here so that we can build the arg value table later.
-   LONG Function;              // Index of function to call back.
-   LONG ActionID;              // Action being monitored.
-   LONG Reference;             // A custom reference to pass to the callback (optional)
+   const FunctionField *Args;  // The args of the action/method are stored here so that we can build the arg value table later.
+   LONG     Function;          // Index of function to call back.
+   LONG     Reference;         // A custom reference to pass to the callback (optional)
+   ACTIONID ActionID;          // Action being monitored.
    OBJECTID ObjectID;          // Object being monitored
+
+   actionmonitor() {}
+
+   ~actionmonitor() {
+      if (ObjectID) {
+         pf::Log log(__FUNCTION__);
+         log.trace("Unsubscribe action %s from object #%d", glActions[ActionID].Name, ObjectID);
+         OBJECTPTR obj;
+         if (!AccessObject(ObjectID, 3000, &obj)) {
+            UnsubscribeAction(obj, ActionID);
+            ReleaseObject(obj);
+         }
+      }
+   }
+
+   actionmonitor(actionmonitor &&move) noexcept :
+      Object(move.Object), Args(move.Args), Function(move.Function), Reference(move.Reference), ActionID(move.ActionID), ObjectID(move.ObjectID) {
+      move.ObjectID = 0;
+   }
+
+   actionmonitor& operator=(actionmonitor &&move) = default;
 };
 
+//********************************************************************************************************************
+
 struct eventsub {
-   struct eventsub *Prev;
-   struct eventsub *Next;
-   LONG Function;     // Lua function index
-   EVENTID EventID;   // Event message ID
-   APTR EventHandle;
+   LONG    Function;     // Lua function index
+   EVENTID EventID;      // Event message ID
+   APTR    EventHandle;
+
+   eventsub(LONG pFunction, EVENTID pEventID, APTR pEventHandle) :
+      Function(pFunction), EventID(pEventID), EventHandle(pEventHandle) { }
+
+   ~eventsub() {
+      if (EventHandle) UnsubscribeEvent(EventHandle);
+   }
+
+   eventsub(eventsub &&move) noexcept :
+      Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
+      move.EventHandle = NULL;
+   }
+
+   eventsub& operator=(eventsub &&move) = default;
+};
+
+//********************************************************************************************************************
+
+struct datarequest {
+   OBJECTID SourceID;
+   LONG Callback;
+   LARGE TimeCreated;
+
+   datarequest(OBJECTID pSourceID, LONG pCallback) : SourceID(pSourceID), Callback(pCallback) {
+      TimeCreated = PreciseTime();
+   }
 };
 
 //********************************************************************************************************************
@@ -119,18 +178,19 @@ struct struct_hash {
 //********************************************************************************************************************
 
 struct prvFluid {
-   lua_State *Lua;                   // Lua instance
-   struct actionmonitor *ActionList; // Action subscriptions managed by subscribe()
-   struct eventsub *EventList;       // Event subscriptions managed by subscribeEvent()
-   struct finput *InputList;         // Managed by the input interface
-   struct datarequest *Requests;     // For drag and drop requests
+   lua_State *Lua;                        // Lua instance
+   std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
+   std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
+   std::vector<datarequest> Requests;     // For drag and drop requests
    std::unordered_map<struct_name, struct_record, struct_hash> Structs;
-   std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
-   APTR   FocusEventHandle;
    std::unordered_map<OBJECTID, LONG> StateMap;
+   std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
+   pf::vector<std::string> Procedures;
+   APTR   FocusEventHandle;
+   struct finput *InputList;         // Managed by the input interface
    DateTime CacheDate;
    ERROR  CaughtError;               // Set to -1 to enable catching of ERROR results.
-   LONG   CachePermissions;
+   PERMIT CachePermissions;
    LONG   LoadedSize;
    UBYTE  Recurse;
    UBYTE  SaveCompiled;
@@ -201,52 +261,19 @@ struct metafield {
    LONG SetFunction;
 };
 
-struct fwidget {
-   objMetaClass *Class;
-   struct metafield *Fields;
-   lua_State *Lua;
-   LONG InputMask;
-   struct {
-      LONG Activate;
-      LONG Deactivate;
-      LONG Disable;
-      LONG Draw;
-      LONG Enable;
-      LONG Free;
-      LONG Hide;
-      LONG Input;
-      LONG Keyboard;
-      LONG Focus;
-      LONG New;
-      LONG MoveToBack;
-      LONG MoveToFront;
-      LONG Redimension;
-      LONG Resize;
-      LONG Show;
-   } AC;
-   WORD TotalFields;
-};
-
 #define FIM_KEYBOARD 1
 #define FIM_DEVICE 2
 
 struct finput {
    objScript *Script;
    struct finput *Next;
-   APTR KeyEvent;
+   APTR  KeyEvent;
    OBJECTID SurfaceID;
-   LONG InputHandle;
-   LONG Callback;
-   LONG InputValue;
-   LONG Mask;
-   BYTE Mode;
-};
-
-struct datarequest {
-   struct datarequest *Next;
-   OBJECTID SourceID;
-   LONG Callback;
-   LARGE TimeCreated;
+   LONG  InputHandle;
+   LONG  Callback;
+   LONG  InputValue;
+   JTYPE Mask;
+   BYTE  Mode;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
@@ -268,15 +295,72 @@ struct module {
    OBJECTPTR Module;
 };
 
+inline ULONG simple_hash(CSTRING String, ULONG Hash = 5381) {
+   while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
+   return Hash;
+}
+
+//********************************************************************************************************************
+// obj_read is used to build efficient customised jump tables for object calls.
+
+struct obj_read {
+   typedef int JUMP(lua_State *, const struct obj_read &, struct object *);
+
+   ULONG Hash;
+   JUMP *Call;
+   APTR Data;
+
+   auto operator<=>(const obj_read &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_read(ULONG pHash, const JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(ULONG pHash) : Hash(pHash) { }
+};
+
+inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
+
+typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
+
+//********************************************************************************************************************
+
+struct obj_write {
+   typedef ERROR JUMP(lua_State *, OBJECTPTR, struct Field *, LONG);
+
+   ULONG Hash;
+   JUMP *Call;
+   struct Field *Field;
+
+   auto operator<=>(const obj_write &Other) const {
+       if (Hash < Other.Hash) return -1;
+       if (Hash > Other.Hash) return 1;
+       return 0;
+   }
+
+   obj_write(ULONG pHash, const JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(ULONG pHash) : Hash(pHash) { }
+};
+
+inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
+
+typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
+
+//********************************************************************************************************************
+
 struct object {
-   OBJECTPTR prvObject;       // If the object is private we can have the address
-   objMetaClass *Class;       // Direct pointer to the module's class
-   OBJECTID  ObjectID;        // If the object is referenced externally, access is managed by ID
-   CLASSID   ClassID;         // Class identifier
-   UBYTE     Detached:1;      // TRUE if the object is an external reference or is not to be garbage collected
-   UBYTE     Locked:1;        // Can be TRUE only if a lock has been acquired from AccessObjectID()
-   UBYTE     DelayCall:1;     // If TRUE, the next action/method call is to be delayed.
-   ULONG     AccessCount;     // Controlled by access_object() and release_object()
+   OBJECTPTR ObjectPtr;   // If the object is local then we can have the address
+   objMetaClass *Class;   // Direct pointer to the object's class
+   READ_TABLE *ReadTable;
+   WRITE_TABLE *WriteTable;
+   OBJECTID UID;          // If the object is referenced externally, access is managed by ID
+   UWORD AccessCount;     // Controlled by access_object() and release_object()
+   bool  Detached;        // True if the object is an external reference or is not to be garbage collected
+   bool  Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
+   bool  DelayCall;       // If true, the next action/method call is to be delayed.
 };
 
 struct lua_ref {
@@ -284,19 +368,10 @@ struct lua_ref {
    LONG Ref;
 };
 
-extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
-extern struct ActionTable *glActions;
-extern OBJECTPTR modDisplay; // Required by fluid_input.c
-extern OBJECTPTR modFluid;
-extern struct DisplayBase *DisplayBase;
-extern OBJECTPTR clFluid;
-extern std::unordered_map<std::string, ULONG> glStructSizes;
-
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
 ERROR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
-void clear_subscriptions(objScript *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));

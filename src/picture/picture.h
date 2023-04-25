@@ -1,5 +1,5 @@
 
-class prvPicture : public objPicture {
+class extPicture : public objPicture {
    public:
    STRING   prvPath;
    char     prvAuthor[60];

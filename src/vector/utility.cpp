@@ -39,15 +39,15 @@ static CSTRING get_effect_name(UBYTE Effect)
 //********************************************************************************************************************
 
 const FieldDef clAspectRatio[] = {
-   { "XMin",  ARF_X_MIN },
-   { "XMid",  ARF_X_MID },
-   { "XMax",  ARF_X_MAX },
-   { "YMin",  ARF_Y_MIN },
-   { "YMid",  ARF_Y_MID },
-   { "YMax",  ARF_Y_MAX },
-   { "Meet",  ARF_MEET },
-   { "Slice", ARF_SLICE },
-   { "None",  ARF_NONE },
+   { "XMin",  ARF::X_MIN },
+   { "XMid",  ARF::X_MID },
+   { "XMax",  ARF::X_MAX },
+   { "YMin",  ARF::Y_MIN },
+   { "YMid",  ARF::Y_MID },
+   { "YMax",  ARF::Y_MAX },
+   { "Meet",  ARF::MEET },
+   { "Slice", ARF::SLICE },
+   { "None",  ARF::NONE },
    { NULL, 0 }
 };
 
@@ -57,7 +57,7 @@ CSTRING get_name(OBJECTPTR Vector)
 {
    if (!Vector) return "NULL";
 
-   switch(Vector->SubID) {
+   switch(Vector->Class->ClassID) {
       case ID_VECTORCLIP:      return "Clip";
       case ID_VECTORRECTANGLE: return "Rectangle";
       case ID_VECTORELLIPSE:   return "Ellipse";
@@ -70,7 +70,7 @@ CSTRING get_name(OBJECTPTR Vector)
       case ID_VECTORWAVE:      return "Wave";
    }
 
-   switch(Vector->ClassID) {
+   switch(Vector->Class->BaseClassID) {
       case ID_VECTORCOLOUR:    return "Colour";
       case ID_VECTORFILTER:    return "Filter";
       case ID_VECTORGRADIENT:  return "Gradient";
@@ -105,11 +105,11 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
          case 'M': case 'm': // MoveTo
             Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
             if (cmd IS 'M') {
-               path.Type = PE_Move;
+               path.Type = PE::Move;
                cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
             }
             else {
-               path.Type = PE_MoveRel;
+               path.Type = PE::MoveRel;
                cmd = 'l';
             }
             path.Curved = FALSE;
@@ -117,50 +117,50 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
          case 'L': case 'l': // LineTo
             Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'L') path.Type = PE_Line;
-            else path.Type = PE_LineRel;
+            if (cmd IS 'L') path.Type = PE::Line;
+            else path.Type = PE::LineRel;
             path.Curved = FALSE;
             break;
 
          case 'V': case 'v': // Vertical LineTo
             Value = read_numseq(Value, &path.Y, TAGEND);
-            if (cmd IS 'V') path.Type = PE_VLine;
-            else path.Type = PE_VLineRel;
+            if (cmd IS 'V') path.Type = PE::VLine;
+            else path.Type = PE::VLineRel;
             path.Curved = FALSE;
             break;
 
          case 'H': case 'h': // Horizontal LineTo
             Value = read_numseq(Value, &path.X, TAGEND);
-            if (cmd IS 'H') path.Type = PE_HLine;
-            else path.Type = PE_LineRel;
+            if (cmd IS 'H') path.Type = PE::HLine;
+            else path.Type = PE::LineRel;
             path.Curved = FALSE;
             break;
 
          case 'Q': case 'q': // Quadratic Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'Q') path.Type = PE_QuadCurve;
-            else path.Type = PE_QuadCurveRel;
+            if (cmd IS 'Q') path.Type = PE::QuadCurve;
+            else path.Type = PE::QuadCurveRel;
             path.Curved = TRUE;
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'T') path.Type = PE_QuadSmooth;
-            else path.Type = PE_QuadSmoothRel;
+            if (cmd IS 'T') path.Type = PE::QuadSmooth;
+            else path.Type = PE::QuadSmoothRel;
             path.Curved = TRUE;
            break;
 
          case 'C': case 'c': // Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'C') path.Type = PE_Curve;
-            else path.Type = PE_CurveRel;
+            if (cmd IS 'C') path.Type = PE::Curve;
+            else path.Type = PE::CurveRel;
             path.Curved = TRUE;
             break;
 
          case 'S': case 's': // Smooth Curve To
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
-            if (cmd IS 'S') path.Type = PE_Smooth;
-            else path.Type = PE_SmoothRel;
+            if (cmd IS 'S') path.Type = PE::Smooth;
+            else path.Type = PE::SmoothRel;
             path.Curved = TRUE;
             break;
 
@@ -169,8 +169,8 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
             Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
             path.LargeArc = F2T(largearc);
             path.Sweep = F2T(sweep);
-            if (cmd IS 'A') path.Type = PE_Arc;
-            else path.Type = PE_ArcRel;
+            if (cmd IS 'A') path.Type = PE::Arc;
+            else path.Type = PE::ArcRel;
             path.Curved = TRUE;
             break;
          }
@@ -184,7 +184,7 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
          // current point is set to the initial point of the current subpath.
 
          case 'Z': case 'z': { // Close Path
-            path.Type = PE_ClosePath;
+            path.Type = PE::ClosePath;
             path.Curved = FALSE;
             break;
          }
@@ -210,7 +210,7 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 // Calculate the target X/Y for a vector path based on an aspect ratio and source/target dimensions.
 // Source* defines size of the source area and Target* defines the size of the projection to the display.
 
-void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
+void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
    DOUBLE TargetWidth, DOUBLE TargetHeight,
    DOUBLE SourceWidth, DOUBLE SourceHeight,
    DOUBLE *X, DOUBLE *Y, DOUBLE *XScale, DOUBLE *YScale)
@@ -228,34 +228,34 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    if (SourceWidth <= 0.000001) SourceWidth = TargetWidth;
    if (SourceHeight <= 0.000001) SourceHeight = TargetHeight;
 
-   if (AspectRatio & (ARF_MEET|ARF_SLICE)) {
+   if ((AspectRatio & (ARF::MEET|ARF::SLICE)) != ARF::NIL) {
       DOUBLE xScale = TargetWidth / SourceWidth;
       DOUBLE yScale = TargetHeight / SourceHeight;
 
       // MEET: Choose the smaller of the two scaling factors, so that the scaled graphics meet the edge of the
       // viewport and do not exceed it.  SLICE: Choose the larger scale, expanding beyond the boundary on one axis.
 
-      if (AspectRatio & ARF_MEET) {
+      if ((AspectRatio & ARF::MEET) != ARF::NIL) {
          if (yScale > xScale) yScale = xScale;
          else if (xScale > yScale) xScale = yScale;
       }
-      else if (AspectRatio & ARF_SLICE) {
+      else if ((AspectRatio & ARF::SLICE) != ARF::NIL) {
          // Choose the larger of the two scaling factors.
          if (yScale < xScale) yScale = xScale;
          else if (xScale < yScale) xScale = yScale;
       }
 
       *XScale = xScale;
-      if (AspectRatio & ARF_X_MIN) *X = 0;
-      else if (AspectRatio & ARF_X_MID) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
-      else if (AspectRatio & ARF_X_MAX) *X = TargetWidth - (SourceWidth * xScale);
+      if ((AspectRatio & ARF::X_MIN) != ARF::NIL) *X = 0;
+      else if ((AspectRatio & ARF::X_MID) != ARF::NIL) *X = (TargetWidth - (SourceWidth * xScale)) * 0.5;
+      else if ((AspectRatio & ARF::X_MAX) != ARF::NIL) *X = TargetWidth - (SourceWidth * xScale);
 
       *YScale = yScale;
-      if (AspectRatio & ARF_Y_MIN) *Y = 0;
-      else if (AspectRatio & ARF_Y_MID) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
-      else if (AspectRatio & ARF_Y_MAX) *Y = TargetHeight - (SourceHeight * yScale);
+      if ((AspectRatio & ARF::Y_MIN) != ARF::NIL) *Y = 0;
+      else if ((AspectRatio & ARF::Y_MID) != ARF::NIL) *Y = (TargetHeight - (SourceHeight * yScale)) * 0.5;
+      else if ((AspectRatio & ARF::Y_MAX) != ARF::NIL) *Y = TargetHeight - (SourceHeight * yScale);
    }
-   else { // ARF_NONE
+   else { // ARF::NONE
       *X = 0;
       if ((TargetWidth >= 1.0) and (SourceWidth >= 1.0)) *XScale = TargetWidth / SourceWidth;
       else *XScale = 1.0;
@@ -266,7 +266,7 @@ void calc_aspectratio(CSTRING Caller, LONG AspectRatio,
    }
 
    log.trace("ARF Aspect: $%.8x, Target: %.0fx%.0f, View: %.0fx%.0f, AlignXY: %.2fx%.2f, Scale: %.2fx%.2f",
-      AspectRatio, TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
+      LONG(AspectRatio), TargetWidth, TargetHeight, SourceWidth, SourceHeight, *X, *Y, *XScale, *YScale);
 }
 
 //********************************************************************************************************************
@@ -279,9 +279,9 @@ void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool I
    if (!Vector) return;
 
    for (; Vector; Vector=(extVector *)Vector->Next) {
-      if (Vector->Dirty) gen_vector_path(Vector);
+      if (Vector->dirty()) gen_vector_path(Vector);
 
-      if (Vector->SubID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
+      if (Vector->Class->ClassID != ID_VECTORVIEWPORT) { // Don't consider viewport sizes when determining content dimensions.
          DOUBLE bx1, by1, bx2, by2;
 
          if ((Vector->ClipMask) and (Vector->ClipMask->ClipPath)) {
@@ -349,12 +349,12 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    spacing[i] = 0;
 
    while (Vector) {
-      if (Vector->ClassID IS ID_VECTORSCENE) {
+      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_tree_ptrs(Header, (((objVectorScene *)Vector)->Viewport), Level);
          break;
       }
-      else if (Vector->ClassID IS ID_VECTOR) {
+      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          auto shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
          if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);

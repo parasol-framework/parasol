@@ -4,7 +4,7 @@ Name: Files
 -END-
 *********************************************************************************************************************/
 
-static void folder_free(APTR Address)
+static ERROR folder_free(APTR Address)
 {
    pf::Log log("CloseDir");
    auto folder = (DirInfo *)Address;
@@ -21,6 +21,7 @@ static void folder_free(APTR Address)
    }
 
    fs_closedir(folder);
+   return ERR_Okay;
 }
 
 static ResourceManager glResourceFolder = {
@@ -55,7 +56,7 @@ AllocMemory
 
 *********************************************************************************************************************/
 
-ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
+ERROR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -65,12 +66,11 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
 
    *Result = NULL;
 
-   if (!(Flags & (RDF_FOLDER|RDF_FILE))) Flags |= RDF_FOLDER|RDF_FILE;
+   if ((Flags & (RDF::FOLDER|RDF::FILE)) IS RDF::NIL) Flags |= RDF::FOLDER|RDF::FILE;
 
-   ERROR error;
    STRING resolved_path;
    if (!Path[0]) Path = ":"; // A path of ':' will return all known volumes.
-   if (!(error = ResolvePath(Path, 0, &resolved_path))) {
+   if (auto error = ResolvePath(Path, RSF::NIL, &resolved_path); !error) {
       auto vd = get_fs(resolved_path);
 
       // NB: We use MAX_FILENAME rather than resolve_len in the allocation size because fs_opendir() requires more space.
@@ -79,7 +79,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
       DirInfo *dir;
       // Layout: [DirInfo] [FileInfo] [Driver] [Name] [Path]
       LONG size = sizeof(DirInfo) + sizeof(FileInfo) + vd->DriverSize + MAX_FILENAME + path_len + MAX_FILENAME;
-      if (AllocMemory(size, MEM_DATA|MEM_MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
+      if (AllocMemory(size, MEM::DATA|MEM::MANAGED, (APTR *)&dir, NULL) != ERR_Okay) {
          FreeResource(resolved_path);
          return ERR_AllocMemory;
       }
@@ -90,7 +90,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
       dir->Info->Name      = STRING(dir->Info + 1) + vd->DriverSize;
       dir->Driver          = dir->Info + 1;
       dir->prvPath         = dir->Info->Name + MAX_FILENAME;
-      dir->prvFlags        = Flags | RDF_OPENDIR;
+      dir->prvFlags        = Flags | RDF::OPENDIR;
       dir->prvVirtualID    = DEFAULT_VIRTUALID;
       dir->prvResolvedPath = dir->prvPath + path_len;
       dir->prvResolveLen   = resolve_len;
@@ -103,7 +103,7 @@ ERROR OpenDir(CSTRING Path, LONG Flags, DirInfo **Result)
       FreeResource(resolved_path);
 
       if ((Path[0] IS ':') or (!Path[0])) {
-         if (!(Flags & RDF_FOLDER)) {
+         if ((Flags & RDF::FOLDER) IS RDF::NIL) {
             FreeResource(dir);
             return ERR_DirEmpty;
          }
@@ -139,7 +139,7 @@ for each function call that you make.  The following code sample illustrates typ
 
 <pre>
 DirInfo *info;
-if (!OpenDir(path, RDF_FILE|RDF_FOLDER, &info)) {
+if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &info)) {
    while (!ScanDir(info)) {
       log.msg("File: %s", info->Name);
    }
@@ -176,8 +176,8 @@ ERROR ScanDir(DirInfo *Dir)
    if (!file->Name) { log.trace("Missing Dir->Info->Name"); return log.warning(ERR_InvalidData); }
 
    file->Name[0] = 0;
-   file->Flags   = 0;
-   file->Permissions = 0;
+   file->Flags   = RDF::NIL;
+   file->Permissions = PERMIT::NIL;
    file->Size    = 0;
    file->UserID  = 0;
    file->GroupID = 0;
@@ -196,21 +196,20 @@ ERROR ScanDir(DirInfo *Dir)
             Dir->prvIndex++;
             auto &volume = pair.first;
             LONG j = StrCopy(volume.c_str(), file->Name, MAX_FILENAME-2);
-            if (Dir->prvFlags & RDF_QUALIFY) {
+            if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
                file->Name[j++] = ':';
                file->Name[j] = 0;
             }
 
             if (glVolumes[volume]["Hidden"] == "Yes") {
-               file->Flags |= RDF_HIDDEN;
+               file->Flags |= RDF::HIDDEN;
             }
 
             if (glVolumes[volume].contains("Label")) {
                AddInfoTag(file, "Label", glVolumes[volume]["Label"].c_str());
             }
 
-            file->Flags |= RDF_VOLUME;
-
+            file->Flags |= RDF::VOLUME;
             return ERR_Okay;
          }
          else count++;
@@ -231,7 +230,7 @@ ERROR ScanDir(DirInfo *Dir)
       }
    }
 
-   if ((file->Name[0]) and (Dir->prvFlags & RDF_DATE)) {
+   if ((file->Name[0]) and ((Dir->prvFlags & RDF::DATE) != RDF::NIL)) {
       file->TimeStamp = calc_timestamp(&file->Modified);
    }
 

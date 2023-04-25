@@ -33,7 +33,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 
 *********************************************************************************************************************/
 
-#ifdef DEBUG
+#ifdef _DEBUG
 #undef DEBUG
 #endif
 
@@ -79,7 +79,7 @@ FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { 
 
 // These test calls are used to check that the dynamic assembler function calls are working as expected.
 
-#ifdef DEBUG
+#ifdef _DEBUG
 static void flTestCall1(void);
 static LONG flTestCall2(void);
 static STRING flTestCall3(void);
@@ -99,7 +99,7 @@ FDEF argsTestCall7[]   = { { "Void", FD_VOID }, { "StringA", FD_STRING }, { "Str
 
 static const struct Function JumpTableV1[] = {
    { (APTR)flSetVariable, "SetVariable", argsSetVariable },
-   #ifdef DEBUG
+   #ifdef _DEBUG
    { (APTR)flTestCall1,   "TestCall1", argsTestCall1 },
    { (APTR)flTestCall2,   "TestCall2", argsTestCall2 },
    { (APTR)flTestCall3,   "TestCall3", argsTestCall3 },
@@ -111,7 +111,7 @@ static const struct Function JumpTableV1[] = {
    { NULL, NULL, NULL }
 };
 
-#ifdef DEBUG
+#ifdef _DEBUG
 
 static void flTestCall1(void)
 {
@@ -205,51 +205,35 @@ APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
 
 OBJECTPTR access_object(struct object *Object)
 {
-   pf::Log log(__FUNCTION__);
-
    if (Object->AccessCount) {
       Object->AccessCount++;
-      return Object->prvObject;
+      return Object->ObjectPtr;
    }
-
-   if (!Object->ObjectID) return NULL; // Object reference is dead
-
-   if (!Object->prvObject) {
-      ERROR error;
-      log.trace("Locking object #%d.", Object->ObjectID);
-      if (!(error = AccessObjectID(Object->ObjectID, 5000, &Object->prvObject))) {
-         Object->Locked = TRUE;
+   else if (!Object->UID) return NULL; // Object reference is dead
+   else if (!Object->ObjectPtr) { // If not pointer defined then treat the object as detached.
+      if (auto error = AccessObject(Object->UID, 5000, &Object->ObjectPtr); !error) {
+         Object->Locked = true;
       }
       else if (error IS ERR_DoesNotExist) {
-         log.trace("Object #%d has been terminated.", Object->ObjectID);
-         Object->prvObject = NULL;
-         Object->ObjectID = 0;
+         pf::Log log(__FUNCTION__);
+         log.trace("Object #%d has been terminated.", Object->UID);
+         Object->ObjectPtr = NULL;
+         Object->UID = 0;
       }
    }
-   else if (CheckObjectExists(Object->ObjectID) != ERR_True) {
-      log.trace("Object #%d has been terminated.", Object->ObjectID);
-      Object->prvObject = NULL;
-      Object->ObjectID = 0;
-   }
 
-   if (Object->prvObject) Object->AccessCount++;
-   return Object->prvObject;
+   if (Object->ObjectPtr) Object->AccessCount++;
+   return Object->ObjectPtr;
 }
 
 void release_object(struct object *Object)
 {
-   pf::Log log(__FUNCTION__);
-
-   log.trace("#%d Current Locked: %d, Accesses: %d", Object->ObjectID, Object->Locked, Object->AccessCount);
-
    if (Object->AccessCount > 0) {
       Object->AccessCount--;
-      if (!Object->AccessCount) {
-         if (Object->Locked) {
-            ReleaseObject(Object->prvObject);
-            Object->Locked = FALSE;
-            Object->prvObject = NULL;
-         }
+      if ((!Object->AccessCount) and (Object->Locked)) {
+         ReleaseObject(Object->ObjectPtr);
+         Object->Locked = false;
+         Object->ObjectPtr = NULL;
       }
    }
 }
@@ -327,8 +311,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (clFluid)        { acFree(clFluid); clFluid = NULL; }
-   if (modDisplay)     { acFree(modDisplay); modDisplay = NULL; }
+   if (clFluid)    { FreeResource(clFluid); clFluid = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
 }
 
@@ -367,7 +351,7 @@ static ERROR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    prvFluid *prv;
    va_list list;
 
-   if ((!Script) or (Script->ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
+   if ((!Script) or (Script->Class->ClassID != ID_FLUID) or (!Name) or (!*Name)) return log.warning(ERR_Args);
 
    log.branch("Script: %d, Name: %s, Type: $%.8x", Script->UID, Name, Type);
 
@@ -725,14 +709,14 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       value[n] = 0;
 
       if (n > 0) {
-         LONG dt = StrDatatype(value);
-         if (dt IS STT_NUMBER) {
+         auto dt = StrDatatype(value);
+         if (dt IS STT::NUMBER) {
             lua_pushinteger(Lua, strtoll(value, NULL, 0));
          }
-         else if (dt IS STT_FLOAT) {
+         else if (dt IS STT::FLOAT) {
             lua_pushnumber(Lua, strtod(value, NULL));
          }
-         else if (dt IS STT_HEX) {
+         else if (dt IS STT::HEX) {
             lua_pushnumber(Lua, strtoull(value, NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {
@@ -805,7 +789,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 
 //********************************************************************************************************************
 
-#ifdef DEBUG
+#ifdef _DEBUG
 
 static void stack_dump(lua_State *L) __attribute__ ((unused));
 

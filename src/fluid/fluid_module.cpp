@@ -49,7 +49,7 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
-      auto mod = (struct module *)lua_newuserdata(Lua, sizeof(struct module));
+      auto mod = (module *)lua_newuserdata(Lua, sizeof(module));
       ClearMemory(mod, sizeof(struct module));
 
       luaL_getmetatable(Lua, "Fluid.mod");
@@ -71,9 +71,8 @@ static int module_load(lua_State *Lua)
 
 static int module_destruct(lua_State *Lua)
 {
-   struct module *mod;
-   if ((mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod"))) {
-      acFree(mod->Module);
+   if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
+      FreeResource(mod->Module);
    }
 
    return 0;
@@ -101,7 +100,7 @@ static int module_tostring(lua_State *Lua)
 
 static int module_index(lua_State *Lua)
 {
-   if (auto mod = (struct module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
+   if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       if (auto function = luaL_checkstring(Lua, 2)) {
          if (auto list = mod->Functions) {
             for (LONG i=0; list[i].Name; i++) {
@@ -140,7 +139,7 @@ static int module_call(lua_State *Lua)
       return 0;
    }
 
-   auto mod = (struct module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod");
+   auto mod = (module *)get_meta(Lua, lua_upvalueindex(1), "Fluid.mod");
    if (!mod) {
       luaL_error(Lua, "module_call() expected module in upvalue.");
       return 0;
@@ -148,7 +147,7 @@ static int module_call(lua_State *Lua)
 
    if (!mod->Functions) return 0;
 
-   UWORD index = lua_tointeger(Lua, lua_upvalueindex(2));
+   auto index = lua_tointeger(Lua, lua_upvalueindex(2));
    LONG nargs = lua_gettop(Lua);
    if (nargs > MAX_MODULE_ARGS-1) nargs = MAX_MODULE_ARGS-1;
 
@@ -456,15 +455,15 @@ static int module_call(lua_State *Lua)
             }
          }
          else if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-            if (obj->prvObject) {
-               ((OBJECTPTR *)(buffer + j))[0] = obj->prvObject;
+            if (obj->ObjectPtr) {
+               ((OBJECTPTR *)(buffer + j))[0] = obj->ObjectPtr;
             }
             else if (auto ptr_obj = (OBJECTPTR)access_object(obj)) {
                ((OBJECTPTR *)(buffer + j))[0] = ptr_obj;
                release_object(obj);
             }
             else {
-               log.warning("Unable to resolve object pointer for #%d.", obj->ObjectID);
+               log.warning("Unable to resolve object pointer for #%d.", obj->UID);
                ((OBJECTPTR *)(buffer + j))[0] = NULL;
             }
 
@@ -482,12 +481,12 @@ static int module_call(lua_State *Lua)
       else if (argtype & FD_LONG) {
          if (argtype & FD_OBJECT) {
             if (auto obj = (object *)get_meta(Lua, i, "Fluid.obj")) {
-               ((LONG *)(buffer + j))[0] = obj->ObjectID;
+               ((LONG *)(buffer + j))[0] = obj->UID;
             }
-            else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
+            else ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
          }
-         else if (argtype & FD_UNSIGNED) ((ULONG *)(buffer + j))[0] = lua_tonumber(Lua, i);
-         else ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
+         else if (argtype & FD_UNSIGNED) ((ULONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
+         else ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint32;
          j += sizeof(LONG);
@@ -499,13 +498,13 @@ static int module_call(lua_State *Lua)
          j += sizeof(DOUBLE);
       }
       else if (argtype & FD_LARGE) {
-         ((LARGE *)(buffer + j))[0] = lua_tonumber(Lua, i);
+         ((LARGE *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint64;
          j += sizeof(LARGE);
       }
       else if (argtype & FD_PTRSIZE) {
-         ((LONG *)(buffer + j))[0] = F2I(lua_tonumber(Lua, i));
+         ((LONG *)(buffer + j))[0] = lua_tointeger(Lua, i);
          arg_values[in] = buffer + j;
          arg_types[in++] = &ffi_type_sint32;
          j += sizeof(LONG);
@@ -534,7 +533,7 @@ static int module_call(lua_State *Lua)
          ffi_call(&cif, (void (*)())function, &rc, arg_values);
          if ((OBJECTPTR)rc) {
             object *obj = push_object(Lua, (OBJECTPTR)rc);
-            if (restype & FD_ALLOC) obj->Detached = FALSE;
+            if (restype & FD_ALLOC) obj->Detached = false;
          }
          else lua_pushnil(Lua);
       }
@@ -688,7 +687,7 @@ static LONG process_results(prvFluid *prv, APTR resultsidx, const FunctionField 
                   RMSG("Result-Arg: %s, Value: %p (Object)", argname, ((OBJECTPTR *)var)[0]);
                   if (((APTR *)var)[0]) {
                      object *obj = push_object(prv->Lua, ((OBJECTPTR *)var)[0]);
-                     if (argtype & FD_ALLOC) obj->Detached = FALSE;
+                     if (argtype & FD_ALLOC) obj->Detached = false;
                   }
                   else lua_pushnil(prv->Lua);
                }

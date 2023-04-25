@@ -292,8 +292,8 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (init_proxy()) return ERR_AddClass;
    if (init_netlookup()) return ERR_AddClass;
 
-   glResolveNameMsgID = AllocateID(IDTYPE_MESSAGE);
-   glResolveAddrMsgID = AllocateID(IDTYPE_MESSAGE);
+   glResolveNameMsgID = AllocateID(IDTYPE::MESSAGE);
+   glResolveAddrMsgID = AllocateID(IDTYPE::MESSAGE);
 
 #ifdef _WIN32
    // Configure Winsock
@@ -303,7 +303,7 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
          log.warning("Winsock initialisation failed: %s", msg);
          return ERR_SystemCall;
       }
-      SetResourcePtr(RES_NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
+      SetResourcePtr(RES::NET_PROCESSING, reinterpret_cast<APTR>(win_net_processing)); // Hooks into ProcessMessages()
    }
 #endif
 
@@ -337,7 +337,7 @@ static ERROR MODExpunge(void)
    pf::Log log;
 
 #ifdef _WIN32
-   SetResourcePtr(RES_NET_PROCESSING, NULL);
+   SetResourcePtr(RES::NET_PROCESSING, NULL);
 #endif
 
    if (glResolveNameHandler) { FreeResource(glResolveNameHandler); glResolveNameHandler = NULL; }
@@ -349,10 +349,10 @@ static ERROR MODExpunge(void)
    if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
-   if (clNetSocket)    { acFree(clNetSocket); clNetSocket = NULL; }
-   if (clClientSocket) { acFree(clClientSocket); clClientSocket = NULL; }
-   if (clProxy)        { acFree(clProxy); clProxy = NULL; }
-   if (clNetLookup)    { acFree(clNetLookup); clNetLookup = NULL; }
+   if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = NULL; }
+   if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = NULL; }
+   if (clProxy)        { FreeResource(clProxy); clProxy = NULL; }
+   if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = NULL; }
 
 #ifdef ENABLE_SSL
    if (ssl_init) {
@@ -387,7 +387,7 @@ static CSTRING netAddressToStr(IPAddress *Address)
 
    if (!Address) return NULL;
 
-   if (Address->Type != IPADDR_V4) {
+   if (Address->Type != IPADDR::V4) {
       log.warning("Only IPv4 Addresses are supported currently");
       return NULL;
    }
@@ -448,7 +448,7 @@ static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
-   Address->Type = IPADDR_V4;
+   Address->Type = IPADDR::V4;
 
    return ERR_Okay;
 }
@@ -573,8 +573,8 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
       pf::Log log(__FUNCTION__);
       log.traceBranch("Command: %d", tagid);
 
-      switch(tagid) {
-         case NSL_CONNECT:
+      switch(NSL(tagid)) {
+         case NSL::CONNECT:
             value = va_arg(list, LONG);
             if (value) { // Initiate an SSL connection on this socket
                if ((error = sslSetup(Socket)) IS ERR_Okay) {
@@ -590,6 +590,8 @@ static ERROR netSetSSL(extNetSocket *Socket, ...)
             else { // Disconnect SSL (i.e. go back to unencrypted mode)
                sslDisconnect(Socket);
             }
+            break;
+         default:
             break;
       }
    }
@@ -613,7 +615,7 @@ static void client_server_pending(SOCKET_HANDLE FD, APTR Self) __attribute__((un
 static void client_server_pending(SOCKET_HANDLE FD, APTR Self)
 {
    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD_REMOVE|RFD_READ|RFD_SOCKET, NULL, NULL);
+   RegisterFD((HOSTHANDLE)((extNetSocket *)Self)->SocketHandle, RFD::REMOVE|RFD::READ|RFD::SOCKET, NULL, NULL);
    #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
    client_server_incoming(FD, (extNetSocket *)Self);
 }
@@ -664,7 +666,7 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
                    log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
                    #ifdef __linux__
-                      RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_SOCKET, &ssl_handshake_write, Self);
+                      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, &ssl_handshake_write, Self);
                    #else
                       win_socketstate(Socket, -1, TRUE);
                    #endif
@@ -697,12 +699,12 @@ static ERROR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, LONG
          // data pending.
 
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+            RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
          #elif _WIN32
             // In Windows we don't want to listen to FD's on a permanent basis,
             // so this is a temporary setting that will be reset by client_server_pending()
 
-            RegisterFD((HOSTHANDLE)(MAXINT)Socket, RFD_RECALL|RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_pending), (APTR)Self);
+            RegisterFD((HOSTHANDLE)(MAXINT)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_pending), (APTR)Self);
          #endif
       }
 
@@ -775,7 +777,7 @@ static ERROR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, LONG *L
                log.trace("Handshake requested by server.");
                Self->SSLBusy = SSL_HANDSHAKE_READ;
                #ifdef __linux__
-                  RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_SOCKET, &ssl_handshake_read, Self);
+                  RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
                #elif _WIN32
                   win_socketstate(Socket, TRUE, -1);
                #endif

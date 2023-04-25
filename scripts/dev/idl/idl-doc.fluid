@@ -76,7 +76,7 @@ glActionComments[AC_Write]          = 'Writes data to objects that provide stora
 function saveDocuments()
    -- Save module functions, if any
 
-   local outPath = nz(glDocPath, 'sdk:docs/modules/')
+   local outPath = nz(glDocPath, 'sdk:docs/xml/modules/')
    if (outPath:sub(-1) != '/') then outPath = outPath .. '/' end
 
    if nz(glFunctions) then
@@ -540,7 +540,7 @@ function docClass(Class)
                   prototype = ' prototype="' .. f.type .. '"'
                end
 
-               out = out .. '      <type' .. lookup .. prototype .. '>' .. typeName .. '</type>\n'
+               out = out .. '      <type' .. lookup .. prototype .. '>' .. typeName:escXML() .. '</type>\n'
 
                local description = f.description
                if (description) then
@@ -698,7 +698,7 @@ function docFunction(Function)
             ref = " lookup=\"" .. Function.result.lookup .. '"'
          end
 
-         out = out .. "    <result type=\"" .. Function.result.type .. '"' .. ref .. ">" .. substituteReferences(Function.result.comment:escXML()) .. "</result>\n"
+         out = out .. "    <result type=\"" .. Function.result.type:escXML() .. '"' .. ref .. ">" .. substituteReferences(Function.result.comment:escXML()) .. "</result>\n"
       end
    end
 

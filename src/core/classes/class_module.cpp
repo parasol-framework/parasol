@@ -64,7 +64,7 @@ static STRUCTS glStructures = {
    { "InputEvent",          sizeof(InputEvent) },
    { "MemInfo",             sizeof(MemInfo) },
    { "Message",             sizeof(Message) },
-   { "MethodArray",         sizeof(MethodArray) },
+   { "MethodEntry",         sizeof(MethodEntry) },
    { "ModHeader",           sizeof(ModHeader) },
    { "MsgHandler",          sizeof(MsgHandler) },
    { "ObjectSignal",        sizeof(ObjectSignal) },
@@ -100,8 +100,8 @@ static ERROR SET_Header(extModule *, ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
-   { "LinkLibrary", MOF_LINK_LIBRARY },
-   { "Static",      MOF_STATIC },
+   { "LinkLibrary", MOF::LINK_LIBRARY },
+   { "Static",      MOF::STATIC },
    { NULL, 0 }
 };
 
@@ -138,7 +138,7 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
 
    // Free the module's segment/code area
 
-   if ((Self->NoUnload IS FALSE) and (!(Self->Flags & MHF_STATIC))) {
+   if ((Self->NoUnload IS FALSE) and ((Self->Flags & MHF::STATIC) IS MHF::NIL)) {
       free_module(Self->LibraryBase);
       Self->LibraryBase = NULL;
    }
@@ -234,7 +234,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             path = Self->Name;
 
             STRING volume;
-            if (!ResolvePath(path.c_str(), RSF_APPROXIMATE, &volume)) {
+            if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
                path = volume;
                FreeResource(volume);
             }
@@ -253,7 +253,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                }
                else path = glRootPath + "lib/parasol/";
 
-               if (Self->Flags & MOF_LINK_LIBRARY) path += "lib/";
+               if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
 
                #ifdef __ANDROID__
                   if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
@@ -278,7 +278,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
                   path += "lib\\";
                }
 
-               if (Self->Flags & MOF_LINK_LIBRARY) path += "lib\\";
+               if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib\\";
                path.append(Self->Name);
             #endif
          }
@@ -315,10 +315,10 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             // other libraries.  SSL is an example of this as the libssl library is dependent
             // on symbols found in libcrypto, therefore libcrypto needs RTLD_GLOBAL.
 
-            if ((master->LibraryBase = dlopen(path.c_str(), (Self->Flags & MOF_LINK_LIBRARY) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
+            if ((master->LibraryBase = dlopen(path.c_str(), ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
                aflags |= AF_SEGMENT;
 
-               if (!(Self->Flags & MOF_LINK_LIBRARY)) {
+               if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
                   if (!(table = (ModHeader *)dlsym(master->LibraryBase, "ModHeader"))) {
                      log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                      goto exit;
@@ -336,7 +336,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             if ((master->LibraryBase = winLoadLibrary(path.c_str()))) {
                aflags |= AF_SEGMENT;
 
-               if (!(Self->Flags & MOF_LINK_LIBRARY)) {
+               if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
                   if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "ModHeader"))) {
                      if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "_ModHeader"))) {
                         log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
@@ -389,7 +389,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
 
                free_module(master->LibraryBase);
                master->LibraryBase = NULL;
-               acFree(master);
+               FreeResource(master);
 
                Self->Root = table->Root;
                master = table->Root;
@@ -412,7 +412,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          master->Expunge    = table->Expunge;
          master->Flags      = table->Flags;
 
-#ifdef DEBUG
+#ifdef _DEBUG
          if (master->Name) { // Give the master object a nicer name for debug output.
             char mmname[30];
             mmname[0] = 'm';
@@ -437,7 +437,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
             if (error) goto exit;
          }
       }
-      else if (Self->Flags & MOF_LINK_LIBRARY) {
+      else if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) {
          log.msg("Loaded link library '%s'", Self->Name);
       }
       else {
@@ -457,7 +457,7 @@ open_module:
    // If the STATIC option is set then the loaded module must not be removed when the Module object is freed.  This is
    // typically used for symbolic linked libraries.
 
-   if (Self->Flags & MOF_STATIC) master->Flags |= MHF_STATIC;
+   if ((Self->Flags & MOF::STATIC) != MOF::NIL) master->Flags |= MHF::STATIC;
 
    // At this stage the module is 100% resident and it is not possible to reverse the process.  Because of this, if an
    // error occurs we must not try to free any resident allocations from memory.
@@ -508,7 +508,7 @@ exit:
             master->Expunge();
          }
 
-         acFree(master);
+         FreeResource(master);
          Self->Root = NULL;
       }
    }
@@ -703,7 +703,7 @@ APTR build_jump_table(const Function *FList)
    log.trace("%d functions have been detected in the function list.", size);
 
    void **functions;
-   if (!AllocMemory((size+1) * sizeof(APTR), MEM_NO_CLEAR|MEM_UNTRACKED, (APTR *)&functions, NULL)) {
+   if (!AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, NULL)) {
       for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
       functions[size] = NULL;
       return functions;
@@ -780,7 +780,6 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
          kminit = true;
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
-         glCoreRoot.ClassID     = ID_ROOTMODULE;
          glCoreRoot.Name        = "Core";
          glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;
@@ -832,9 +831,9 @@ static void free_module(MODHANDLE handle)
 
 static const FunctionField argsResolveSymbol[] = { { "Name", FD_STR }, { "Address", FD_PTR|FD_RESULT }, { NULL, 0 } };
 
-static const MethodArray glModuleMethods[] = {
+static const MethodEntry glModuleMethods[] = {
    { MT_ModResolveSymbol, (APTR)MODULE_ResolveSymbol, "ResolveSymbol", argsResolveSymbol, sizeof(struct modResolveSymbol) },
-   { 0, NULL, NULL, 0 }
+   { 0, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
@@ -857,7 +856,7 @@ extern "C" ERROR add_module_class(void)
       fl::BaseClassID(ID_MODULE),
       fl::ClassVersion(VER_MODULE),
       fl::Name("Module"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::FileExtension("*.mod|*.so|*.dll"),
       fl::FileDescription("System Module"),
       fl::Actions(glModuleActions),
@@ -870,8 +869,8 @@ extern "C" ERROR add_module_class(void)
       fl::BaseClassID(ID_ROOTMODULE),
       fl::ClassVersion(1.0),
       fl::Name("RootModule"),
-      fl::Flags(CLF_NO_OWNERSHIP),
-      fl::Category(CCF_SYSTEM),
+      fl::Flags(CLF::NO_OWNERSHIP),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(glRootModuleActions),
       fl::Fields(glRootModuleFields),
       fl::Size(sizeof(RootModule)),

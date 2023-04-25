@@ -83,9 +83,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    if ((clJSON = objMetaClass::create::global(
       fl::BaseClassID(ID_XML),
-      fl::SubClassID(ID_JSON),
+      fl::ClassID(ID_JSON),
       fl::Name("JSON"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.json"),
       fl::FileDescription("JSON Data"),
       fl::Actions(clActions),
@@ -96,7 +96,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (clJSON) { acFree(clJSON); clJSON = NULL; }
+   if (clJSON) { FreeResource(clJSON); clJSON = NULL; }
    return ERR_Okay;
 }
 
@@ -144,7 +144,7 @@ static ERROR load_file(objXML *Self, CSTRING Path)
 {
    CacheFile *filecache;
 
-   if (!(Self->ParseError = LoadFile(Self->Path, 0, &filecache))) {
+   if (!(Self->ParseError = LoadFile(Self->Path, LDF::NIL, &filecache))) {
       Self->ParseError = txt_to_json(Self, (CSTRING)filecache->Data);
       UnloadFile(filecache);
       return Self->ParseError;
@@ -188,7 +188,7 @@ static ERROR JSON_Init(objXML *Self, APTR Void)
    }
 
    Self->get(FID_Path, &location);
-   if ((!location) or (Self->Flags & XMF_NEW)) {
+   if ((!location) or ((Self->Flags & XMF::NEW) != XMF::NIL)) {
       // If no location has been specified, assume that the JSON source is being
       // created from scratch (e.g. to save to disk).
 
@@ -619,7 +619,7 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
       number_tag.Children.emplace_back(XMLTag(glTagID++, Line, { { "", numbuf } }));
    }
-   else if (!StrCompare("null", str, 4, 0)) { // Evaluates to <item name="item_name" type="null"/>
+   else if (!StrCompare("null", str, 4)) { // Evaluates to <item name="item_name" type="null"/>
       str += 4;
 
       Tags.emplace_back(XMLTag(glTagID++, Line, {

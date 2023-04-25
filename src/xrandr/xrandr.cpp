@@ -43,7 +43,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Do not proceed with initialisation if the module is being probed
 
-   if (((objModule *)argModule)->Flags & MOF_SYSTEM_PROBE) return ERR_ServiceUnavailable|ERF_Notified;
+   if ((((objModule *)argModule)->Flags & MOF::SYSTEM_PROBE) != MOF::NIL) return ERR_ServiceUnavailable|ERF_Notified;
 
    if (!acGetVar(argModule, "XDisplay", buffer, sizeof(buffer))) {
       XDisplay = (struct _XDisplay *)(MAXINT)StrToInt(buffer);
@@ -68,7 +68,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Build the screen.xml file if this is the first task to initialise the RandR extension.
 
-   objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL_NEW|FL_WRITE) };
+   objFile::create file = { fl::Path("user:config/screen.xml"), fl::Flags(FL::NEW|FL::WRITE) };
 
    if (file.ok()) {
       write_string(*file, "<?xml version=\"1.0\"?>\n\n");

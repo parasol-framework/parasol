@@ -18,7 +18,7 @@ class extCompositeFX : public extFilterEffect {
    using create = pf::Create<extCompositeFX>;
 
    DOUBLE K1, K2, K3, K4; // For the arithmetic operator
-   LONG Operator; // OP constant
+   OP Operator; // OP constant
 
    template <class CompositeOp>
    void doMix(objBitmap *InBitmap, objBitmap *MixBitmap, UBYTE *Dest, UBYTE *In, UBYTE *Mix) {
@@ -564,7 +564,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
    UBYTE *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
 
    switch (Self->Operator) {
-      case OP_OVER: {
+      case OP::OVER: {
          if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
             objBitmap *mixBmp;
             if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
@@ -576,7 +576,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          break;
       }
 
-      case OP_IN: {
+      case OP::IN: {
          if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
             objBitmap *mixBmp;
             if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
@@ -588,7 +588,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          break;
       }
 
-      case OP_OUT: {
+      case OP::OUT: {
          if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
             objBitmap *mixBmp;
             if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
@@ -600,7 +600,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          break;
       }
 
-      case OP_ATOP: {
+      case OP::ATOP: {
          if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
             objBitmap *mixBmp;
             if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
@@ -612,7 +612,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          break;
       }
 
-      case OP_XOR: {
+      case OP::XOR: {
          if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
             objBitmap *mixBmp;
             if (!get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) {
@@ -624,7 +624,7 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
          break;
       }
 
-      case OP_ARITHMETIC: {
+      case OP::ARITHMETIC: {
          if (!get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false)) {
             objBitmap *mixBmp;
             LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
@@ -706,22 +706,22 @@ static ERROR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
                UBYTE *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
                #pragma GCC diagnostic ignored "-Wswitch"
                switch(Self->Operator) {
-                  case OP_MULTIPLY:    Self->doMix<blend_multiply>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_SCREEN:      Self->doMix<blend_screen>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_DARKEN:      Self->doMix<blend_darken>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_LIGHTEN:     Self->doMix<blend_lighten>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_OVERLAY:     Self->doMix<blend_overlay>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_BURN:        Self->doMix<blend_burn>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_DODGE:       Self->doMix<blend_dodge>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_HARD_LIGHT:  Self->doMix<blend_hard_light>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_SOFT_LIGHT:  Self->doMix<blend_soft_light>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_DIFFERENCE:  Self->doMix<blend_difference>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_EXCLUSION:   Self->doMix<blend_exclusion>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_PLUS:        Self->doMix<blend_plus>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_MINUS:       Self->doMix<blend_minus>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_CONTRAST:    Self->doMix<blend_contrast>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_INVERT:      Self->doMix<blend_invert>(inBmp, mixBmp, dest, in, mix); break;
-                  case OP_INVERT_RGB:  Self->doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::MULTIPLY:    Self->doMix<blend_multiply>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::SCREEN:      Self->doMix<blend_screen>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::DARKEN:      Self->doMix<blend_darken>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::LIGHTEN:     Self->doMix<blend_lighten>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::OVERLAY:     Self->doMix<blend_overlay>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::BURN:        Self->doMix<blend_burn>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::DODGE:       Self->doMix<blend_dodge>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::HARD_LIGHT:  Self->doMix<blend_hard_light>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::SOFT_LIGHT:  Self->doMix<blend_soft_light>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::DIFFERENCE:  Self->doMix<blend_difference>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::EXCLUSION:   Self->doMix<blend_exclusion>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::PLUS:        Self->doMix<blend_plus>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::MINUS:       Self->doMix<blend_minus>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::CONTRAST:    Self->doMix<blend_contrast>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::INVERT:      Self->doMix<blend_invert>(inBmp, mixBmp, dest, in, mix); break;
+                  case OP::INVERT_RGB:  Self->doMix<blend_invert_rgb>(inBmp, mixBmp, dest, in, mix); break;
                }
 
                 bmpDemultiply(mixBmp);
@@ -742,7 +742,7 @@ static ERROR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->MixType) {
+   if (Self->MixType IS VSF::NIL) {
       log.warning("A mix input is required.");
       return ERR_FieldNotSet;
    }
@@ -754,7 +754,7 @@ static ERROR COMPOSITEFX_Init(extCompositeFX *Self, APTR Void)
 
 static ERROR COMPOSITEFX_NewObject(extCompositeFX *Self, APTR Void)
 {
-   Self->Operator = OP_OVER;
+   Self->Operator = OP::OVER;
    return ERR_Okay;
 }
 
@@ -844,13 +844,13 @@ Setting the Operator will determine the algorithm that is used for compositing. 
 
 *********************************************************************************************************************/
 
-static ERROR COMPOSITEFX_GET_Operator(extCompositeFX *Self, LONG *Value)
+static ERROR COMPOSITEFX_GET_Operator(extCompositeFX *Self, OP *Value)
 {
    *Value = Self->Operator;
    return ERR_Okay;
 }
 
-static ERROR COMPOSITEFX_SET_Operator(extCompositeFX *Self, LONG Value)
+static ERROR COMPOSITEFX_SET_Operator(extCompositeFX *Self, OP Value)
 {
    Self->Operator = Value;
    return ERR_Okay;
@@ -875,29 +875,29 @@ static ERROR COMPOSITEFX_GET_XMLDef(extCompositeFX *Self, STRING *Value)
 #include "filter_composite_def.c"
 
 static const FieldDef clCompositeOperator[] = {
-   { "Over",       OP_OVER },
-   { "In",         OP_IN },
-   { "Out",        OP_OUT },
-   { "Atop",       OP_ATOP },
-   { "Xor",        OP_XOR },
-   { "Arithmetic", OP_ARITHMETIC },
-   { "Screen",     OP_SCREEN },
-   { "Multiply",   OP_MULTIPLY },
-   { "Lighten",    OP_LIGHTEN },
-   { "Darken",     OP_DARKEN },
-   { "InvertRGB",  OP_INVERT_RGB },
-   { "Invert",     OP_INVERT },
-   { "Contrast",   OP_CONTRAST },
-   { "Dodge",      OP_DODGE },
-   { "Burn",       OP_BURN },
-   { "HardLight",  OP_HARD_LIGHT },
-   { "SoftLight",  OP_SOFT_LIGHT },
-   { "Difference", OP_DIFFERENCE },
-   { "Exclusion",  OP_EXCLUSION },
-   { "Plus",       OP_PLUS },
-   { "Minus",      OP_MINUS },
-   { "Subtract",   OP_SUBTRACT },
-   { "Overlay",    OP_OVERLAY },
+   { "Over",       OP::OVER },
+   { "In",         OP::IN },
+   { "Out",        OP::OUT },
+   { "Atop",       OP::ATOP },
+   { "Xor",        OP::XOR },
+   { "Arithmetic", OP::ARITHMETIC },
+   { "Screen",     OP::SCREEN },
+   { "Multiply",   OP::MULTIPLY },
+   { "Lighten",    OP::LIGHTEN },
+   { "Darken",     OP::DARKEN },
+   { "InvertRGB",  OP::INVERT_RGB },
+   { "Invert",     OP::INVERT },
+   { "Contrast",   OP::CONTRAST },
+   { "Dodge",      OP::DODGE },
+   { "Burn",       OP::BURN },
+   { "HardLight",  OP::HARD_LIGHT },
+   { "SoftLight",  OP::SOFT_LIGHT },
+   { "Difference", OP::DIFFERENCE },
+   { "Exclusion",  OP::EXCLUSION },
+   { "Plus",       OP::PLUS },
+   { "Minus",      OP::MINUS },
+   { "Subtract",   OP::SUBTRACT },
+   { "Overlay",    OP::OVERLAY },
    { NULL, 0 }
 };
 
@@ -917,9 +917,9 @@ ERROR init_compositefx(void)
 {
    clCompositeFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_COMPOSITEFX),
+      fl::ClassID(ID_COMPOSITEFX),
       fl::Name("CompositeFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clCompositeFXActions),
       fl::Fields(clCompositeFXFields),
       fl::Size(sizeof(extCompositeFX)),

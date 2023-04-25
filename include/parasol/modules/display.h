@@ -21,235 +21,363 @@ class objClipboard;
 class objPointer;
 class objSurface;
 
-#define DRAG_NONE 0
-#define DRAG_ANCHOR 1
-#define DRAG_NORMAL 2
+enum class DRAG : LONG {
+   NIL = 0,
+   NONE = 0,
+   ANCHOR = 1,
+   NORMAL = 2,
+};
 
 // Events for WindowHook()
 
-#define WH_CLOSE 1
+enum class WH : LONG {
+   NIL = 0,
+   CLOSE = 1,
+};
 
 // Colour space options.
 
-#define CS_SRGB 1
-#define CS_LINEAR_RGB 2
-#define CS_CIE_LAB 3
-#define CS_CIE_LCH 4
+enum class CS : LONG {
+   NIL = 0,
+   SRGB = 1,
+   LINEAR_RGB = 2,
+   CIE_LAB = 3,
+   CIE_LCH = 4,
+};
 
 // Optional flags for the ExposeSurface() function.
 
-#define EXF_CHILDREN 0x00000001
-#define EXF_REDRAW_VOLATILE 0x00000002
-#define EXF_REDRAW_VOLATILE_OVERLAP 0x00000004
-#define EXF_ABSOLUTE_COORDS 0x00000008
-#define EXF_ABSOLUTE 0x00000008
-#define EXF_CURSOR_SPLIT 0x00000010
+enum class EXF : ULONG {
+   NIL = 0,
+   CHILDREN = 0x00000001,
+   REDRAW_VOLATILE = 0x00000002,
+   REDRAW_VOLATILE_OVERLAP = 0x00000004,
+   ABSOLUTE_COORDS = 0x00000008,
+   ABSOLUTE = 0x00000008,
+   CURSOR_SPLIT = 0x00000010,
+};
 
-#define RT_ROOT 0x00000001
+DEFINE_ENUM_FLAG_OPERATORS(EXF)
+
+enum class RT : ULONG {
+   NIL = 0,
+   ROOT = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RT)
 
 // drwLockBitmap() result flags
 
-#define LVF_EXPOSE_CHANGES 0x00000001
+enum class LVF : ULONG {
+   NIL = 0,
+   EXPOSE_CHANGES = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(LVF)
 
 // Flags for RedrawSurface().
 
-#define IRF_IGNORE_NV_CHILDREN 0x00000001
-#define IRF_IGNORE_CHILDREN 0x00000002
-#define IRF_SINGLE_BITMAP 0x00000004
-#define IRF_RELATIVE 0x00000008
-#define IRF_FORCE_DRAW 0x00000010
+enum class IRF : ULONG {
+   NIL = 0,
+   IGNORE_NV_CHILDREN = 0x00000001,
+   IGNORE_CHILDREN = 0x00000002,
+   SINGLE_BITMAP = 0x00000004,
+   RELATIVE = 0x00000008,
+   FORCE_DRAW = 0x00000010,
+   REDRAWS_CHILDREN = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(IRF)
 
 // CopySurface() flags
 
-#define BDF_REDRAW 0x00000001
-#define BDF_DITHER 0x00000002
+enum class BDF : ULONG {
+   NIL = 0,
+   REDRAW = 0x00000001,
+   DITHER = 0x00000002,
+};
 
-#define DSF_NO_DRAW 0x00000001
-#define DSF_NO_EXPOSE 0x00000002
+DEFINE_ENUM_FLAG_OPERATORS(BDF)
+
+enum class DSF : ULONG {
+   NIL = 0,
+   NO_DRAW = 0x00000001,
+   NO_EXPOSE = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DSF)
 
 // Options for the Surface WindowType field.
 
-#define SWIN_HOST 0
-#define SWIN_TASKBAR 1
-#define SWIN_ICON_TRAY 2
-#define SWIN_NONE 3
+enum class SWIN : LONG {
+   NIL = 0,
+   HOST = 0,
+   TASKBAR = 1,
+   ICON_TRAY = 2,
+   NONE = 3,
+};
 
-#define RNF_TRANSPARENT 0x00000001
-#define RNF_STICK_TO_BACK 0x00000002
-#define RNF_STICK_TO_FRONT 0x00000004
-#define RNF_VISIBLE 0x00000008
-#define RNF_STICKY 0x00000010
-#define RNF_GRAB_FOCUS 0x00000020
-#define RNF_HAS_FOCUS 0x00000040
-#define RNF_DISABLED 0x00000080
-#define RNF_AUTO_QUIT 0x00000100
-#define RNF_HOST 0x00000200
-#define RNF_PRECOPY 0x00000400
-#define RNF_WRITE_ONLY 0x00000800
-#define RNF_VIDEO 0x00000800
-#define RNF_NO_HORIZONTAL 0x00001000
-#define RNF_NO_VERTICAL 0x00002000
-#define RNF_CURSOR 0x00004000
-#define RNF_POINTER 0x00004000
-#define RNF_SCROLL_CONTENT 0x00008000
-#define RNF_AFTER_COPY 0x00010000
-#define RNF_READ_ONLY 0x00014040
-#define RNF_VOLATILE 0x00014400
-#define RNF_FIXED_BUFFER 0x00020000
-#define RNF_PERVASIVE_COPY 0x00040000
-#define RNF_NO_FOCUS 0x00080000
-#define RNF_FIXED_DEPTH 0x00100000
-#define RNF_TOTAL_REDRAW 0x00200000
-#define RNF_POST_COMPOSITE 0x00400000
-#define RNF_COMPOSITE 0x00400000
-#define RNF_NO_PRECOMPOSITE 0x00400000
-#define RNF_FULL_SCREEN 0x00800000
-#define RNF_IGNORE_FOCUS 0x01000000
-#define RNF_INIT_ONLY 0x01960e81
-#define RNF_ASPECT_RATIO 0x02000000
+// Switches for the Surface class' Flags field.
 
-#define HOST_TRAY_ICON 1
-#define HOST_TASKBAR 2
-#define HOST_STICK_TO_FRONT 3
-#define HOST_TRANSLUCENCE 4
-#define HOST_TRANSPARENT 5
+enum class RNF : ULONG {
+   NIL = 0,
+   TRANSPARENT = 0x00000001,
+   STICK_TO_BACK = 0x00000002,
+   STICK_TO_FRONT = 0x00000004,
+   VISIBLE = 0x00000008,
+   STICKY = 0x00000010,
+   GRAB_FOCUS = 0x00000020,
+   HAS_FOCUS = 0x00000040,
+   DISABLED = 0x00000080,
+   AUTO_QUIT = 0x00000100,
+   HOST = 0x00000200,
+   PRECOPY = 0x00000400,
+   WRITE_ONLY = 0x00000800,
+   VIDEO = 0x00000800,
+   NO_HORIZONTAL = 0x00001000,
+   NO_VERTICAL = 0x00002000,
+   CURSOR = 0x00004000,
+   POINTER = 0x00004000,
+   SCROLL_CONTENT = 0x00008000,
+   AFTER_COPY = 0x00010000,
+   READ_ONLY = 0x00014040,
+   VOLATILE = 0x00014400,
+   FIXED_BUFFER = 0x00020000,
+   PERVASIVE_COPY = 0x00040000,
+   NO_FOCUS = 0x00080000,
+   FIXED_DEPTH = 0x00100000,
+   TOTAL_REDRAW = 0x00200000,
+   POST_COMPOSITE = 0x00400000,
+   COMPOSITE = 0x00400000,
+   NO_PRECOMPOSITE = 0x00400000,
+   FULL_SCREEN = 0x00800000,
+   IGNORE_FOCUS = 0x01000000,
+   INIT_ONLY = 0x01960e81,
+   ASPECT_RATIO = 0x02000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RNF)
+
+enum class HOST : LONG {
+   NIL = 0,
+   TRAY_ICON = 1,
+   TASKBAR = 2,
+   STICK_TO_FRONT = 3,
+   TRANSLUCENCE = 4,
+   TRANSPARENT = 5,
+};
 
 // Flags for the Pointer class.
 
-#define PF_UNUSED 0x00000001
-#define PF_VISIBLE 0x00000002
-#define PF_ANCHOR 0x00000004
+enum class PF : ULONG {
+   NIL = 0,
+   UNUSED = 0x00000001,
+   VISIBLE = 0x00000002,
+   ANCHOR = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PF)
 
 // Acceleration flags for GetDisplayInfo().
 
-#define ACF_VIDEO_BLIT 0x00000001
-#define ACF_SOFTWARE_BLIT 0x00000002
+enum class ACF : ULONG {
+   NIL = 0,
+   VIDEO_BLIT = 0x00000001,
+   SOFTWARE_BLIT = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ACF)
 
 // Flags for the SetCursor() function.
 
-#define CRF_LMB 0x00000001
-#define CRF_MMB 0x00000002
-#define CRF_RMB 0x00000004
-#define CRF_RESTRICT 0x00000008
-#define CRF_BUFFER 0x00000010
-#define CRF_NO_BUTTONS 0x00000020
+enum class CRF : ULONG {
+   NIL = 0,
+   LMB = 0x00000001,
+   MMB = 0x00000002,
+   RMB = 0x00000004,
+   RESTRICT = 0x00000008,
+   BUFFER = 0x00000010,
+   NO_BUTTONS = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CRF)
 
 // Instructions for basic graphics operations.
 
-#define BAF_DITHER 0x00000001
-#define BAF_FILL 0x00000001
-#define BAF_BLEND 0x00000002
-#define BAF_COPY 0x00000004
-#define BAF_LINEAR 0x00000008
+enum class BAF : ULONG {
+   NIL = 0,
+   DITHER = 0x00000001,
+   FILL = 0x00000001,
+   BLEND = 0x00000002,
+   COPY = 0x00000004,
+   LINEAR = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(BAF)
 
 // Flags for CopySurface().
 
-#define CSRF_TRANSPARENT 0x00000001
-#define CSRF_ALPHA 0x00000002
-#define CSRF_TRANSLUCENT 0x00000004
-#define CSRF_DEFAULT_FORMAT 0x00000008
-#define CSRF_CLIP 0x00000010
-#define CSRF_OFFSET 0x00000020
+enum class CSRF : ULONG {
+   NIL = 0,
+   TRANSPARENT = 0x00000001,
+   ALPHA = 0x00000002,
+   TRANSLUCENT = 0x00000004,
+   DEFAULT_FORMAT = 0x00000008,
+   CLIP = 0x00000010,
+   OFFSET = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CSRF)
 
 // Bitmap types
 
-#define BMP_PLANAR 2
-#define BMP_CHUNKY 3
+enum class BMP : LONG {
+   NIL = 0,
+   PLANAR = 2,
+   CHUNKY = 3,
+};
 
 // Bitmap flags
 
-#define BMF_BLANK_PALETTE 0x00000001
-#define BMF_COMPRESSED 0x00000002
-#define BMF_NO_DATA 0x00000004
-#define BMF_TRANSPARENT 0x00000008
-#define BMF_MASK 0x00000010
-#define BMF_INVERSE_ALPHA 0x00000020
-#define BMF_QUERIED 0x00000040
-#define BMF_CLEAR 0x00000080
-#define BMF_USER 0x00000100
-#define BMF_ACCELERATED_2D 0x00000200
-#define BMF_ACCELERATED_3D 0x00000400
-#define BMF_ALPHA_CHANNEL 0x00000800
-#define BMF_NEVER_SHRINK 0x00001000
-#define BMF_X11_DGA 0x00002000
-#define BMF_FIXED_DEPTH 0x00004000
-#define BMF_NO_BLEND 0x00008000
-#define BMF_PREMUL 0x00010000
+enum class BMF : ULONG {
+   NIL = 0,
+   BLANK_PALETTE = 0x00000001,
+   COMPRESSED = 0x00000002,
+   NO_DATA = 0x00000004,
+   TRANSPARENT = 0x00000008,
+   MASK = 0x00000010,
+   INVERSE_ALPHA = 0x00000020,
+   QUERIED = 0x00000040,
+   CLEAR = 0x00000080,
+   USER = 0x00000100,
+   ACCELERATED_2D = 0x00000200,
+   ACCELERATED_3D = 0x00000400,
+   ALPHA_CHANNEL = 0x00000800,
+   NEVER_SHRINK = 0x00001000,
+   X11_DGA = 0x00002000,
+   FIXED_DEPTH = 0x00004000,
+   NO_BLEND = 0x00008000,
+   PREMUL = 0x00010000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(BMF)
 
 // Flags for the bitmap Flip method.
 
-#define FLIP_HORIZONTAL 1
-#define FLIP_VERTICAL 2
+enum class FLIP : LONG {
+   NIL = 0,
+   HORIZONTAL = 1,
+   VERTICAL = 2,
+};
 
 // Display flags.
 
-#define SCR_READ_ONLY 0xfe300019
-#define SCR_VISIBLE 0x00000001
-#define SCR_AUTO_SAVE 0x00000002
-#define SCR_BUFFER 0x00000004
-#define SCR_NO_ACCELERATION 0x00000008
-#define SCR_BIT_6 0x00000010
-#define SCR_BORDERLESS 0x00000020
-#define SCR_COMPOSITE 0x00000040
-#define SCR_ALPHA_BLEND 0x00000040
-#define SCR_MAXSIZE 0x00100000
-#define SCR_REFRESH 0x00200000
-#define SCR_HOSTED 0x02000000
-#define SCR_POWERSAVE 0x04000000
-#define SCR_DPMS_ENABLED 0x08000000
-#define SCR_GTF_ENABLED 0x10000000
-#define SCR_FLIPPABLE 0x20000000
-#define SCR_CUSTOM_WINDOW 0x40000000
-#define SCR_MAXIMISE 0x80000000
+enum class SCR : ULONG {
+   NIL = 0,
+   READ_ONLY = 0xfe300019,
+   VISIBLE = 0x00000001,
+   AUTO_SAVE = 0x00000002,
+   BUFFER = 0x00000004,
+   NO_ACCELERATION = 0x00000008,
+   BIT_6 = 0x00000010,
+   BORDERLESS = 0x00000020,
+   COMPOSITE = 0x00000040,
+   ALPHA_BLEND = 0x00000040,
+   MAXSIZE = 0x00100000,
+   REFRESH = 0x00200000,
+   HOSTED = 0x02000000,
+   POWERSAVE = 0x04000000,
+   DPMS_ENABLED = 0x08000000,
+   GTF_ENABLED = 0x10000000,
+   FLIPPABLE = 0x20000000,
+   CUSTOM_WINDOW = 0x40000000,
+   MAXIMISE = 0x80000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SCR)
 
 // Flags for the Display class SetMonitor() method.
 
-#define SMF_AUTO_DETECT 0x00000001
-#define SMF_BIT_6 0x00000002
+enum class MON : ULONG {
+   NIL = 0,
+   AUTO_DETECT = 0x00000001,
+   BIT_6 = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MON)
 
 // Flags for gamma operations.
 
-#define GMF_SAVE 0x00000001
+enum class GMF : ULONG {
+   NIL = 0,
+   SAVE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(GMF)
 
 // Flags for GetDisplayType().
 
-#define DT_NATIVE 1
-#define DT_X11 2
-#define DT_WINDOWS 3
-#define DT_GLES 4
+enum class DT : LONG {
+   NIL = 0,
+   NATIVE = 1,
+   X11 = 2,
+   WINDOWS = 3,
+   GLES = 4,
+};
 
-// Possible modes for the Display class' DPMS field.
+// Possible modes for the Display class' PowerMode field.
 
-#define DPMS_DEFAULT 0
-#define DPMS_OFF 1
-#define DPMS_SUSPEND 2
-#define DPMS_STANDBY 3
+enum class DPMS : LONG {
+   NIL = 0,
+   DEFAULT = 0,
+   OFF = 1,
+   SUSPEND = 2,
+   STANDBY = 3,
+};
 
-#define CT_DATA 0
-#define CT_AUDIO 1
-#define CT_IMAGE 2
-#define CT_FILE 3
-#define CT_OBJECT 4
-#define CT_TEXT 5
-#define CT_END 6
+enum class CT : LONG {
+   NIL = 0,
+   DATA = 0,
+   AUDIO = 1,
+   IMAGE = 2,
+   FILE = 3,
+   OBJECT = 4,
+   TEXT = 5,
+   END = 6,
+};
 
 // Clipboard types
 
-#define CLIPTYPE_DATA 0x00000001
-#define CLIPTYPE_AUDIO 0x00000002
-#define CLIPTYPE_IMAGE 0x00000004
-#define CLIPTYPE_FILE 0x00000008
-#define CLIPTYPE_OBJECT 0x00000010
-#define CLIPTYPE_TEXT 0x00000020
+enum class CLIPTYPE : ULONG {
+   NIL = 0,
+   DATA = 0x00000001,
+   AUDIO = 0x00000002,
+   IMAGE = 0x00000004,
+   FILE = 0x00000008,
+   OBJECT = 0x00000010,
+   TEXT = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLIPTYPE)
 
 // Clipboard flags
 
-#define CLF_DRAG_DROP 0x00000001
-#define CLF_HOST 0x00000002
-#define CLF_HISTORY_BUFFER 0x00000004
+enum class CPF : ULONG {
+   NIL = 0,
+   DRAG_DROP = 0x00000001,
+   HOST = 0x00000002,
+   HISTORY_BUFFER = 0x00000004,
+};
 
-#define CEF_DELETE 0x00000001
-#define CEF_EXTEND 0x00000002
+DEFINE_ENUM_FLAG_OPERATORS(CPF)
+
+enum class CEF : ULONG {
+   NIL = 0,
+   DELETE = 0x00000001,
+   EXTEND = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CEF)
 
 #define VER_SURFACEINFO 2
 
@@ -258,7 +386,7 @@ typedef struct SurfaceInfoV2 {
    OBJECTID ParentID;    // Object that contains the surface area
    OBJECTID BitmapID;    // Surface bitmap buffer
    OBJECTID DisplayID;   // Refers to the display if this object is at root level
-   LONG     Flags;       // Surface flags
+   RNF      Flags;       // Surface flags
    LONG     X;           // Horizontal coordinate
    LONG     Y;           // Vertical coordinate
    LONG     Width;       // Width of the surface area
@@ -269,6 +397,10 @@ typedef struct SurfaceInfoV2 {
    BYTE     BitsPerPixel; // Bits per pixel of the bitmap
    BYTE     BytesPerPixel; // Bytes per pixel of the bitmap
    LONG     LineWidth;   // Line width of the bitmap, in bytes
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
 } SURFACEINFO;
 
 struct SurfaceCallback {
@@ -304,12 +436,12 @@ typedef struct PixelFormat {
 
 typedef struct DisplayInfoV3 {
    OBJECTID DisplayID;                // Object ID related to the display
-   LONG     Flags;                    // Display flags
+   SCR      Flags;                    // Display flags
    WORD     Width;                    // Pixel width of the display
    WORD     Height;                   // Pixel height of the display
    WORD     BitsPerPixel;             // Bits per pixel
    WORD     BytesPerPixel;            // Bytes per pixel
-   LARGE    AccelFlags;               // Flags describing supported hardware features.
+   ACF      AccelFlags;               // Flags describing supported hardware features.
    LONG     AmtColours;               // Total number of supported colours.
    struct PixelFormat PixelFormat;    // The colour format to use for each pixel.
    FLOAT    MinRefresh;               // Minimum refresh rate
@@ -336,13 +468,13 @@ typedef struct BitmapSurfaceV2 {
    LONG  LineWidth;              // The distance between bitmap lines, measured in bytes.
    UBYTE BitsPerPixel;           // The number of bits per pixel (8, 15, 16, 24, 32).
    UBYTE BytesPerPixel;          // The number of bytes per pixel (1, 2, 3, 4).
-   UBYTE Opacity;                // Opacity level of the source if CSRF_TRANSLUCENT is used.
+   UBYTE Opacity;                // Opacity level of the source if CSRF::TRANSLUCENT is used.
    UBYTE Version;                // Version of this structure.
-   LONG  Colour;                 // Colour index to use if CSRF_TRANSPARENT is used.
-   struct ClipRectangle Clip;    // A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.
+   LONG  Colour;                 // Colour index to use if CSRF::TRANSPARENT is used.
+   struct ClipRectangle Clip;    // A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
    WORD  XOffset;                // Offset all X coordinate references by the given value.
    WORD  YOffset;                // Offset all Y coordinate references by the given value.
-   struct ColourFormat Format;   // The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.
+   struct ColourFormat Format;   // The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
    APTR  Private;                // A private pointer reserved for internal usage
 } BITMAPSURFACE;
 
@@ -364,15 +496,15 @@ typedef struct BitmapSurfaceV2 {
 #define MT_BmpConvertToLinear -12
 #define MT_BmpConvertToRGB -13
 
-struct bmpCopyArea { objBitmap * DestBitmap; LONG Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
+struct bmpCopyArea { objBitmap * DestBitmap; BAF Flags; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 struct bmpCompress { LONG Level;  };
 struct bmpDecompress { LONG RetainData;  };
-struct bmpFlip { LONG Orientation;  };
-struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; LONG Flags;  };
+struct bmpFlip { FLIP Orientation;  };
+struct bmpDrawRectangle { LONG X; LONG Y; LONG Width; LONG Height; ULONG Colour; BAF Flags;  };
 struct bmpSetClipRegion { LONG Number; LONG Left; LONG Top; LONG Right; LONG Bottom; LONG Terminate;  };
 struct bmpGetColour { LONG Red; LONG Green; LONG Blue; LONG Alpha; ULONG Colour;  };
 
-INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
+INLINE ERROR bmpCopyArea(APTR Ob, objBitmap * DestBitmap, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
    struct bmpCopyArea args = { DestBitmap, Flags, X, Y, Width, Height, XDest, YDest };
    return(Action(MT_BmpCopyArea, (OBJECTPTR)Ob, &args));
 }
@@ -387,12 +519,12 @@ INLINE ERROR bmpDecompress(APTR Ob, LONG RetainData) {
    return(Action(MT_BmpDecompress, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpFlip(APTR Ob, LONG Orientation) {
+INLINE ERROR bmpFlip(APTR Ob, FLIP Orientation) {
    struct bmpFlip args = { Orientation };
    return(Action(MT_BmpFlip, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) {
+INLINE ERROR bmpDrawRectangle(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) {
    struct bmpDrawRectangle args = { X, Y, Width, Height, Colour, Flags };
    return(Action(MT_BmpDrawRectangle, (OBJECTPTR)Ob, &args));
 }
@@ -430,14 +562,14 @@ class objBitmap : public BaseClass {
    LONG    Width;                                                    // The width of the bitmap, in pixels.
    LONG    ByteWidth;                                                // The width of the bitmap, in bytes.
    LONG    Height;                                                   // The height of the bitmap, in pixels.
-   LONG    Type;                                                     // Defines the data type of the bitmap.
+   BMP     Type;                                                     // Defines the data type of the bitmap.
    LONG    LineWidth;                                                // Line differential in bytes
    LONG    PlaneMod;                                                 // The differential between each bitmap plane.
    struct ClipRectangle Clip;                                        // Defines the bitmap's clipping region.
    LONG    Size;                                                     // The total size of the bitmap, in bytes.
-   LONG    DataFlags;                                                // Defines the memory flags to use in allocating a bitmap's data area.
+   MEM     DataFlags;                                                // Defines the memory flags to use in allocating a bitmap's data area.
    LONG    AmtColours;                                               // The maximum number of displayable colours.
-   LONG    Flags;                                                    // Optional flags.
+   BMF     Flags;                                                    // Optional flags.
    LONG    TransIndex;                                               // The transparent colour of the bitmap, represented as an index.
    LONG    BytesPerPixel;                                            // The number of bytes per pixel.
    LONG    BitsPerPixel;                                             // The number of bits per pixel
@@ -448,7 +580,7 @@ class objBitmap : public BaseClass {
    struct RGB8 TransRGB;                                             // The transparent colour of the bitmap, in RGB format.
    struct RGB8 BkgdRGB;                                              // Background colour (for clearing, resizing)
    LONG    BkgdIndex;                                                // The bitmap's background colour is defined here as a colour index.
-   LONG    ColourSpace;                                              // Defines the colour space for RGB values.
+   CS      ColourSpace;                                              // Defines the colour space for RGB values.
    public:
    inline ULONG getColour(UBYTE Red, UBYTE Green, UBYTE Blue, UBYTE Alpha) {
       if (BitsPerPixel > 8) return packPixel(Red, Green, Blue, Alpha);
@@ -520,8 +652,8 @@ class objBitmap : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR copyData(OBJECTID DestID) {
-      struct acCopyData args = { .DestID = DestID };
+   inline ERROR copyData(OBJECTPTR Dest) {
+      struct acCopyData args = { .Dest = Dest };
       return Action(AC_CopyData, this, &args);
    }
    inline ERROR draw() { return Action(AC_Draw, this, NULL); }
@@ -530,7 +662,7 @@ class objBitmap : public BaseClass {
       return Action(AC_Draw, this, &args);
    }
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR lock() { return Action(AC_Lock, this, NULL); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
@@ -553,17 +685,17 @@ class objBitmap : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR unlock() { return Action(AC_Unlock, this, NULL); }
    inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
@@ -588,6 +720,149 @@ class objBitmap : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setPalette(struct RGBPalette * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[31];
+      return field->WriteValue(target, field, 0x08000300, Value, 1);
+   }
+
+   inline ERROR setData(UBYTE * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Width = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Height = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const BMP Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClip(struct ClipRectangle * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   inline ERROR setDataFlags(const MEM Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->DataFlags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAmtColours(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->AmtColours = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const BMF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTransIndex(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[30];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBytesPerPixel(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BytesPerPixel = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitsPerPixel(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BitsPerPixel = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setXOffset(const LONG Value) {
+      this->XOffset = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setYOffset(const LONG Value) {
+      this->YOffset = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOpacity(const LONG Value) {
+      this->Opacity = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTransRGB(const struct RGB8 * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setBkgdIndex(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setColourSpace(const CS Value) {
+      this->ColourSpace = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClipLeft(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipRight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipBottom(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setClipTop(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBkgd(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
+   }
+
+   inline ERROR setHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08010300, Value, 1);
+   }
+
 };
 
 // Display class definition
@@ -604,16 +879,14 @@ class objBitmap : public BaseClass {
 #define MT_GfxSetGammaLinear -6
 #define MT_GfxSetMonitor -7
 #define MT_GfxMinimise -8
-#define MT_GfxUpdateDisplay -9
-#define MT_GfxCheckXWindow -10
+#define MT_GfxCheckXWindow -9
 
 struct gfxUpdatePalette { struct RGBPalette * NewPalette;  };
 struct gfxSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
-struct gfxSizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight;  };
-struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; LONG Flags;  };
-struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; LONG Flags;  };
-struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; LONG Flags;  };
-struct gfxUpdateDisplay { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
+struct gfxSizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeight; LONG EnforceAspect;  };
+struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
+struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
+struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags;  };
 
 #define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
 
@@ -627,32 +900,27 @@ INLINE ERROR gfxSetDisplay(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LON
    return(Action(MT_GfxSetDisplay, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight) {
-   struct gfxSizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight };
+INLINE ERROR gfxSizeHints(APTR Ob, LONG MinWidth, LONG MinHeight, LONG MaxWidth, LONG MaxHeight, LONG EnforceAspect) {
+   struct gfxSizeHints args = { MinWidth, MinHeight, MaxWidth, MaxHeight, EnforceAspect };
    return(Action(MT_GfxSizeHints, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags) {
+INLINE ERROR gfxSetGamma(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) {
    struct gfxSetGamma args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGamma, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, LONG Flags) {
+INLINE ERROR gfxSetGammaLinear(APTR Ob, DOUBLE Red, DOUBLE Green, DOUBLE Blue, GMF Flags) {
    struct gfxSetGammaLinear args = { Red, Green, Blue, Flags };
    return(Action(MT_GfxSetGammaLinear, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, LONG Flags) {
+INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG MinV, LONG MaxV, MON Flags) {
    struct gfxSetMonitor args = { Name, MinH, MaxH, MinV, MaxV, Flags };
    return(Action(MT_GfxSetMonitor, (OBJECTPTR)Ob, &args));
 }
 
 #define gfxMinimise(obj) Action(MT_GfxMinimise,(obj),0)
-
-INLINE ERROR gfxUpdateDisplay(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
-   struct gfxUpdateDisplay args = { Bitmap, X, Y, Width, Height, XDest, YDest };
-   return(Action(MT_GfxUpdateDisplay, (OBJECTPTR)Ob, &args));
-}
 
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
 
@@ -666,7 +934,7 @@ class objDisplay : public BaseClass {
 
    DOUBLE   RefreshRate;  // This field manages the display refresh rate.
    objBitmap * Bitmap;    // Reference to the display's bitmap information.
-   LONG     Flags;        // Optional flag settings.
+   SCR      Flags;        // Optional flag settings.
    LONG     Width;        // Defines the width of the display.
    LONG     Height;       // Defines the height of the display.
    LONG     X;            // Defines the horizontal coordinate of the display.
@@ -679,8 +947,8 @@ class objDisplay : public BaseClass {
    LONG     MaxHScan;     // The maximum horizontal scan rate of the display output device.
    LONG     MinVScan;     // The minimum vertical scan rate of the display output device.
    LONG     MaxVScan;     // The maximum vertical scan rate of the display output device.
-   LONG     DisplayType;  // In hosted mode, indicates the bottom margin of the client window.
-   LONG     DPMS;         // Holds the default display power management method.
+   DT       DisplayType;  // In hosted mode, indicates the bottom margin of the client window.
+   DPMS     PowerMode;    // The display's power management method.
    OBJECTID PopOverID;    // Enables pop-over support for hosted display windows.
    LONG     LeftMargin;   // In hosted mode, indicates the left-hand margin of the client window.
    LONG     RightMargin;  // In hosted mode, indicates the pixel margin between the client window and right window edge.
@@ -691,8 +959,8 @@ class objDisplay : public BaseClass {
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -711,14 +979,14 @@ class objDisplay : public BaseClass {
       return error;
    }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
       struct acMove args = { X, Y, Z };
       return Action(AC_Move, this, &args);
    }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
@@ -734,12 +1002,114 @@ class objDisplay : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setRefreshRate(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[43];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setFlags(const SCR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setX(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setY(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBmpX(const LONG Value) {
+      this->BmpX = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBmpY(const LONG Value) {
+      this->BmpY = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPowerMode(const DPMS Value) {
+      this->PowerMode = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPopOver(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setGamma(const DOUBLE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x80001508, Value, Elements);
+   }
+
+   inline ERROR setHDensity(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setVDensity(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setResizeFeedback(const FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setWindowHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08000308, Value, 1);
+   }
+
+   template <class T> inline ERROR setTitle(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800308, to_cstring(Value), 1);
+   }
+
 };
 
 // Clipboard class definition
@@ -754,24 +1124,24 @@ class objDisplay : public BaseClass {
 #define MT_ClipAddText -4
 #define MT_ClipRemove -5
 
-struct clipAddFile { LONG Datatype; CSTRING Path; LONG Flags;  };
-struct clipAddObjects { LONG Datatype; OBJECTID * Objects; LONG Flags;  };
-struct clipGetFiles { LONG Datatype; LONG Index; CSTRING * Files; LONG Flags;  };
+struct clipAddFile { CLIPTYPE Datatype; CSTRING Path; CEF Flags;  };
+struct clipAddObjects { CLIPTYPE Datatype; OBJECTID * Objects; CEF Flags;  };
+struct clipGetFiles { CLIPTYPE Datatype; LONG Index; CSTRING * Files; CEF Flags;  };
 struct clipAddText { CSTRING String;  };
-struct clipRemove { LONG Datatype;  };
+struct clipRemove { CLIPTYPE Datatype;  };
 
-INLINE ERROR clipAddFile(APTR Ob, LONG Datatype, CSTRING Path, LONG Flags) {
+INLINE ERROR clipAddFile(APTR Ob, CLIPTYPE Datatype, CSTRING Path, CEF Flags) {
    struct clipAddFile args = { Datatype, Path, Flags };
    return(Action(MT_ClipAddFile, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipAddObjects(APTR Ob, LONG Datatype, OBJECTID * Objects, LONG Flags) {
+INLINE ERROR clipAddObjects(APTR Ob, CLIPTYPE Datatype, OBJECTID * Objects, CEF Flags) {
    struct clipAddObjects args = { Datatype, Objects, Flags };
    return(Action(MT_ClipAddObjects, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipGetFiles(APTR Ob, LONG * Datatype, LONG Index, CSTRING ** Files, LONG * Flags) {
-   struct clipGetFiles args = { 0, Index, 0, 0 };
+INLINE ERROR clipGetFiles(APTR Ob, CLIPTYPE * Datatype, LONG Index, CSTRING ** Files, CEF * Flags) {
+   struct clipGetFiles args = { (CLIPTYPE)0, Index, (CSTRING *)0, (CEF)0 };
    ERROR error = Action(MT_ClipGetFiles, (OBJECTPTR)Ob, &args);
    if (Datatype) *Datatype = args.Datatype;
    if (Files) *Files = args.Files;
@@ -784,7 +1154,7 @@ INLINE ERROR clipAddText(APTR Ob, CSTRING String) {
    return(Action(MT_ClipAddText, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR clipRemove(APTR Ob, LONG Datatype) {
+INLINE ERROR clipRemove(APTR Ob, CLIPTYPE Datatype) {
    struct clipRemove args = { Datatype };
    return(Action(MT_ClipRemove, (OBJECTPTR)Ob, &args));
 }
@@ -797,7 +1167,7 @@ class objClipboard : public BaseClass {
 
    using create = pf::Create<objClipboard>;
 
-   LONG Flags;    // Optional flags.
+   CPF Flags;    // Optional flags.
 
 #ifdef PRV_CLIPBOARD
    FUNCTION RequestHandler;
@@ -806,11 +1176,26 @@ class objClipboard : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setFlags(const CPF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRequestHandler(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // Pointer class definition
@@ -837,17 +1222,96 @@ class objPointer : public BaseClass {
    OBJECTID InputID;       // Declares the I/O object to read movement from.
    OBJECTID SurfaceID;     // The top-most surface that is under the pointer's hot spot.
    OBJECTID AnchorID;      // Can refer to a surface that the pointer has been anchored to.
-   LONG     CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
+   PTC      CursorID;      // Sets the user's cursor image, selected from the pre-defined graphics bank.
    OBJECTID CursorOwnerID; // The current owner of the cursor, as defined by SetCursor().
-   LONG     Flags;         // Optional flags.
+   PF       Flags;         // Optional flags.
    OBJECTID RestrictID;    // Refers to a surface when the pointer is restricted.
    LONG     HostX;         // Indicates the current position of the host cursor on Windows or X11
    LONG     HostY;         // Indicates the current position of the host cursor on Windows or X11
-   OBJECTID BitmapID;      // Refers to bitmap in which custom cursor images can be drawn.
+   objBitmap * Bitmap;     // Refers to bitmap in which custom cursor images can be drawn.
    OBJECTID DragSourceID;  // The object managing the current drag operation, as defined by StartCursorDrag().
    LONG     DragItem;      // The currently dragged item, as defined by StartCursorDrag().
    OBJECTID OverObjectID;  // Readable field that gives the ID of the object under the pointer.
    LONG     ClickSlop;     // A leniency value that assists in determining if the user intended to click or drag.
+
+   // Customised field setting
+
+   inline ERROR setSpeed(const DOUBLE Value) {
+      this->Speed = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAcceleration(const DOUBLE Value) {
+      this->Acceleration = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDoubleClick(const DOUBLE Value) {
+      this->DoubleClick = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setWheelSpeed(const DOUBLE Value) {
+      this->WheelSpeed = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setX(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setY(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setMaxSpeed(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInput(const OBJECTID Value) {
+      this->InputID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSurface(const OBJECTID Value) {
+      this->SurfaceID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursor(const PTC Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->CursorID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursorOwner(const OBJECTID Value) {
+      this->CursorOwnerID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const PF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClickSlop(const LONG Value) {
+      this->ClickSlop = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setButtonOrder(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
 // Surface class definition
@@ -867,8 +1331,8 @@ class objPointer : public BaseClass {
 #define MT_DrwRemoveCallback -9
 #define MT_DrwScheduleRedraw -10
 
-struct drwInheritedFocus { OBJECTID FocusID; LONG Flags;  };
-struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; LONG Flags;  };
+struct drwInheritedFocus { OBJECTID FocusID; RNF Flags;  };
+struct drwExpose { LONG X; LONG Y; LONG Width; LONG Height; EXF Flags;  };
 struct drwInvalidateRegion { LONG X; LONG Y; LONG Width; LONG Height;  };
 struct drwSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
 struct drwSetOpacity { DOUBLE Value; DOUBLE Adjustment;  };
@@ -876,12 +1340,12 @@ struct drwAddCallback { FUNCTION * Callback;  };
 struct drwResetDimensions { DOUBLE X; DOUBLE Y; DOUBLE XOffset; DOUBLE YOffset; DOUBLE Width; DOUBLE Height; LONG Dimensions;  };
 struct drwRemoveCallback { FUNCTION * Callback;  };
 
-INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, LONG Flags) {
+INLINE ERROR drwInheritedFocus(APTR Ob, OBJECTID FocusID, RNF Flags) {
    struct drwInheritedFocus args = { FocusID, Flags };
    return(Action(MT_DrwInheritedFocus, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+INLINE ERROR drwExpose(APTR Ob, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return(Action(MT_DrwExpose, (OBJECTPTR)Ob, &args));
 }
@@ -935,18 +1399,18 @@ class objSurface : public BaseClass {
    LONG     TopLimit;   // Prevents a surface object from moving beyond a given point at the top of its container.
    LONG     BottomLimit; // Prevents a surface object from moving beyond a given point at the bottom of its container.
    OBJECTID DisplayID;  // Refers to the @Display object that is managing the surface's graphics.
-   LONG     Flags;      // Optional flags.
+   RNF      Flags;      // Optional flags.
    LONG     X;          // Determines the horizontal position of a surface object.
    LONG     Y;          // Determines the vertical position of a surface object.
    LONG     Width;      // Defines the width of a surface object.
    LONG     Height;     // Defines the height of a surface object.
    OBJECTID RootID;     // Surface that is acting as a root for many surface children (useful when applying translucency)
-   LONG     Align;      // This field allows you to align a surface area within its owner.
+   ALIGN    Align;      // This field allows you to align a surface area within its owner.
    LONG     Dimensions; // Indicates currently active dimension settings.
-   LONG     DragStatus; // Indicates the draggable state when dragging is enabled.
-   LONG     Cursor;     // A default cursor image can be set here for changing the mouse pointer.
+   DRAG     DragStatus; // Indicates the draggable state when dragging is enabled.
+   PTC      Cursor;     // A default cursor image can be set here for changing the mouse pointer.
    struct RGB8 Colour;  // String-based field for setting the background colour.
-   LONG     Type;       // Internal surface type flags
+   RT       Type;       // Internal surface type flags
    LONG     Modal;      // Sets the surface as modal (prevents user interaction with other surfaces).
 
 #ifdef PRV_SURFACE
@@ -957,6 +1421,13 @@ class objSurface : public BaseClass {
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
 #endif
+   public:
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
+   inline bool disabled() const { return (Flags & RNF::DISABLED) != RNF::NIL; }
+   inline bool isCursor() const { return (Flags & RNF::CURSOR) != RNF::NIL; }
 
    // Action stubs
 
@@ -970,7 +1441,7 @@ class objSurface : public BaseClass {
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
    inline ERROR focus() { return Action(AC_Focus, this, NULL); }
    inline ERROR hide() { return Action(AC_Hide, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR lostFocus() { return Action(AC_LostFocus, this, NULL); }
    inline ERROR move(DOUBLE X, DOUBLE Y, DOUBLE Z) {
       struct acMove args = { X, Y, Z };
@@ -978,7 +1449,7 @@ class objSurface : public BaseClass {
    }
    inline ERROR moveToBack() { return Action(AC_MoveToBack, this, NULL); }
    inline ERROR moveToFront() { return Action(AC_MoveToFront, this, NULL); }
-   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR moveToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
       struct acMoveToPoint moveto = { X, Y, Z, Flags };
       return Action(AC_MoveToPoint, this, &moveto);
    }
@@ -994,114 +1465,359 @@ class objSurface : public BaseClass {
       struct acResize args = { Width, Height, Depth };
       return Action(AC_Resize, this, &args);
    }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
    inline ERROR scroll(DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
       struct acScroll args = { X, Y, Z };
       return Action(AC_Scroll, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }
    inline ERROR show() { return Action(AC_Show, this, NULL); }
+
+   // Customised field setting
+
+   inline ERROR setDrag(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[29];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setParent(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPopOver(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[40];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTopMargin(const LONG Value) {
+      this->TopMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBottomMargin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[43];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftMargin(const LONG Value) {
+      this->LeftMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRightMargin(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMinWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[37];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMinHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[33];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMaxWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMaxHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRightLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setTopLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[52];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBottomLimit(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[50];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const RNF Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setX(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setY(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setAlign(const ALIGN Value) {
+      this->Align = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDimensions(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[35];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setCursor(const PTC Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[53];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setColour(const struct RGB8 Value) {
+      this->Colour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setType(const RT Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Type = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setModal(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRootLayer(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[39];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAbsX(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setAbsY(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBitsPerPixel(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[41];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInsideHeight(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[47];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInsideWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[36];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setMovement(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[34];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOpacity(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[25];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setRevertFocus(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setVisible(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[26];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWindowType(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setWindowHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, 0x08000308, Value, 1);
+   }
+
+   inline ERROR setXOffset(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setYOffset(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[24];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
 };
 
-extern struct DisplayBase *DisplayBase;
 struct DisplayBase {
    objPointer * (*_AccessPointer)(void);
    ERROR (*_CheckIfChild)(OBJECTID Parent, OBJECTID Child);
-   ERROR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
-   ERROR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERROR (*_CopyArea)(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERROR (*_CopyRawBitmap)(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
+   ERROR (*_CopySurface)(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
    void (*_DrawPixel)(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour);
    void (*_DrawRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB);
-   void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags);
-   ERROR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags);
-   void (*_FlipBitmap)(objBitmap * Bitmap, LONG Orientation);
+   void (*_DrawRectangle)(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags);
+   ERROR (*_ExposeSurface)(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags);
+   void (*_FlipBitmap)(objBitmap * Bitmap, FLIP Orientation);
    void (*_GetColourFormat)(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask);
    ERROR (*_GetCursorInfo)(struct CursorInfo * Info, LONG Size);
    ERROR (*_GetCursorPos)(DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetDisplayInfo)(OBJECTID Display, struct DisplayInfoV3 ** Info);
-   LONG (*_GetDisplayType)(void);
-   CSTRING (*_GetInputTypeName)(LONG Type);
+   DT (*_GetDisplayType)(void);
+   CSTRING (*_GetInputTypeName)(JET Type);
    OBJECTID (*_GetModalSurface)(void);
    ERROR (*_GetRelativeCursorPos)(OBJECTID Surface, DOUBLE * X, DOUBLE * Y);
    ERROR (*_GetSurfaceCoords)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-   ERROR (*_GetSurfaceFlags)(OBJECTID Surface, LONG * Flags);
+   ERROR (*_GetSurfaceFlags)(OBJECTID Surface, RNF * Flags);
    ERROR (*_GetSurfaceInfo)(OBJECTID Surface, struct SurfaceInfoV2 ** Info);
    OBJECTID (*_GetUserFocus)(void);
    ERROR (*_GetVisibleArea)(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height);
-   ERROR (*_LockBitmap)(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info);
+   ERROR (*_LockBitmap)(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info);
    ERROR (*_LockCursor)(OBJECTID Surface);
    ULONG (*_ReadPixel)(objBitmap * Bitmap, LONG X, LONG Y);
    void (*_ReadRGBPixel)(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB);
    ERROR (*_Resample)(objBitmap * Bitmap, struct ColourFormat * ColourFormat);
-   ERROR (*_RestoreCursor)(LONG Cursor, OBJECTID Owner);
+   ERROR (*_RestoreCursor)(PTC Cursor, OBJECTID Owner);
    DOUBLE (*_ScaleToDPI)(DOUBLE Value);
    ERROR (*_ScanDisplayModes)(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size);
    void (*_SetClipRegion)(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate);
-   ERROR (*_SetCursor)(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner);
+   ERROR (*_SetCursor)(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner);
    ERROR (*_SetCursorPos)(DOUBLE X, DOUBLE Y);
-   ERROR (*_SetCustomCursor)(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
-   ERROR (*_SetHostOption)(LONG Option, LARGE Value);
+   ERROR (*_SetCustomCursor)(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner);
+   ERROR (*_SetHostOption)(HOST Option, LARGE Value);
    OBJECTID (*_SetModalSurface)(OBJECTID Surface);
    ERROR (*_StartCursorDrag)(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface);
-   ERROR (*_SubscribeInput)(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle);
+   ERROR (*_SubscribeInput)(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle);
    void (*_Sync)(objBitmap * Bitmap);
    ERROR (*_UnlockBitmap)(OBJECTID Surface, objBitmap * Bitmap);
    ERROR (*_UnlockCursor)(OBJECTID Surface);
    ERROR (*_UnsubscribeInput)(LONG Handle);
-   ERROR (*_WindowHook)(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback);
+   ERROR (*_WindowHook)(OBJECTID SurfaceID, WH Event, FUNCTION * Callback);
 };
 
 #ifndef PRV_DISPLAY_MODULE
+extern struct DisplayBase *DisplayBase;
 inline objPointer * gfxAccessPointer(void) { return DisplayBase->_AccessPointer(); }
 inline ERROR gfxCheckIfChild(OBJECTID Parent, OBJECTID Child) { return DisplayBase->_CheckIfChild(Parent,Child); }
-inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
-inline ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, LONG Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERROR gfxCopyArea(objBitmap * Bitmap, objBitmap * Dest, BAF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyArea(Bitmap,Dest,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERROR gfxCopyRawBitmap(struct BitmapSurfaceV2 * Surface, objBitmap * Bitmap, CSRF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopyRawBitmap(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
+inline ERROR gfxCopySurface(OBJECTID Surface, objBitmap * Bitmap, BDF Flags, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) { return DisplayBase->_CopySurface(Surface,Bitmap,Flags,X,Y,Width,Height,XDest,YDest); }
 inline void gfxDrawPixel(objBitmap * Bitmap, LONG X, LONG Y, ULONG Colour) { return DisplayBase->_DrawPixel(Bitmap,X,Y,Colour); }
 inline void gfxDrawRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 * RGB) { return DisplayBase->_DrawRGBPixel(Bitmap,X,Y,RGB); }
-inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, LONG Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
-inline ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
-inline void gfxFlipBitmap(objBitmap * Bitmap, LONG Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
+inline void gfxDrawRectangle(objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, ULONG Colour, BAF Flags) { return DisplayBase->_DrawRectangle(Bitmap,X,Y,Width,Height,Colour,Flags); }
+inline ERROR gfxExposeSurface(OBJECTID Surface, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) { return DisplayBase->_ExposeSurface(Surface,X,Y,Width,Height,Flags); }
+inline void gfxFlipBitmap(objBitmap * Bitmap, FLIP Orientation) { return DisplayBase->_FlipBitmap(Bitmap,Orientation); }
 inline void gfxGetColourFormat(struct ColourFormat * Format, LONG BitsPerPixel, LONG RedMask, LONG GreenMask, LONG BlueMask, LONG AlphaMask) { return DisplayBase->_GetColourFormat(Format,BitsPerPixel,RedMask,GreenMask,BlueMask,AlphaMask); }
 inline ERROR gfxGetCursorInfo(struct CursorInfo * Info, LONG Size) { return DisplayBase->_GetCursorInfo(Info,Size); }
 inline ERROR gfxGetCursorPos(DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetCursorPos(X,Y); }
 inline ERROR gfxGetDisplayInfo(OBJECTID Display, struct DisplayInfoV3 ** Info) { return DisplayBase->_GetDisplayInfo(Display,Info); }
-inline LONG gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
-inline CSTRING gfxGetInputTypeName(LONG Type) { return DisplayBase->_GetInputTypeName(Type); }
+inline DT gfxGetDisplayType(void) { return DisplayBase->_GetDisplayType(); }
+inline CSTRING gfxGetInputTypeName(JET Type) { return DisplayBase->_GetInputTypeName(Type); }
 inline OBJECTID gfxGetModalSurface(void) { return DisplayBase->_GetModalSurface(); }
 inline ERROR gfxGetRelativeCursorPos(OBJECTID Surface, DOUBLE * X, DOUBLE * Y) { return DisplayBase->_GetRelativeCursorPos(Surface,X,Y); }
 inline ERROR gfxGetSurfaceCoords(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetSurfaceCoords(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERROR gfxGetSurfaceFlags(OBJECTID Surface, LONG * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
+inline ERROR gfxGetSurfaceFlags(OBJECTID Surface, RNF * Flags) { return DisplayBase->_GetSurfaceFlags(Surface,Flags); }
 inline ERROR gfxGetSurfaceInfo(OBJECTID Surface, struct SurfaceInfoV2 ** Info) { return DisplayBase->_GetSurfaceInfo(Surface,Info); }
 inline OBJECTID gfxGetUserFocus(void) { return DisplayBase->_GetUserFocus(); }
 inline ERROR gfxGetVisibleArea(OBJECTID Surface, LONG * X, LONG * Y, LONG * AbsX, LONG * AbsY, LONG * Width, LONG * Height) { return DisplayBase->_GetVisibleArea(Surface,X,Y,AbsX,AbsY,Width,Height); }
-inline ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LONG * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
+inline ERROR gfxLockBitmap(OBJECTID Surface, objBitmap ** Bitmap, LVF * Info) { return DisplayBase->_LockBitmap(Surface,Bitmap,Info); }
 inline ERROR gfxLockCursor(OBJECTID Surface) { return DisplayBase->_LockCursor(Surface); }
 inline ULONG gfxReadPixel(objBitmap * Bitmap, LONG X, LONG Y) { return DisplayBase->_ReadPixel(Bitmap,X,Y); }
 inline void gfxReadRGBPixel(objBitmap * Bitmap, LONG X, LONG Y, struct RGB8 ** RGB) { return DisplayBase->_ReadRGBPixel(Bitmap,X,Y,RGB); }
 inline ERROR gfxResample(objBitmap * Bitmap, struct ColourFormat * ColourFormat) { return DisplayBase->_Resample(Bitmap,ColourFormat); }
-inline ERROR gfxRestoreCursor(LONG Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
+inline ERROR gfxRestoreCursor(PTC Cursor, OBJECTID Owner) { return DisplayBase->_RestoreCursor(Cursor,Owner); }
 inline DOUBLE gfxScaleToDPI(DOUBLE Value) { return DisplayBase->_ScaleToDPI(Value); }
 inline ERROR gfxScanDisplayModes(CSTRING Filter, struct DisplayInfoV3 * Info, LONG Size) { return DisplayBase->_ScanDisplayModes(Filter,Info,Size); }
 inline void gfxSetClipRegion(objBitmap * Bitmap, LONG Number, LONG Left, LONG Top, LONG Right, LONG Bottom, LONG Terminate) { return DisplayBase->_SetClipRegion(Bitmap,Number,Left,Top,Right,Bottom,Terminate); }
-inline ERROR gfxSetCursor(OBJECTID Surface, LONG Flags, LONG Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
+inline ERROR gfxSetCursor(OBJECTID Surface, CRF Flags, PTC Cursor, CSTRING Name, OBJECTID Owner) { return DisplayBase->_SetCursor(Surface,Flags,Cursor,Name,Owner); }
 inline ERROR gfxSetCursorPos(DOUBLE X, DOUBLE Y) { return DisplayBase->_SetCursorPos(X,Y); }
-inline ERROR gfxSetCustomCursor(OBJECTID Surface, LONG Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
-inline ERROR gfxSetHostOption(LONG Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
+inline ERROR gfxSetCustomCursor(OBJECTID Surface, CRF Flags, objBitmap * Bitmap, LONG HotX, LONG HotY, OBJECTID Owner) { return DisplayBase->_SetCustomCursor(Surface,Flags,Bitmap,HotX,HotY,Owner); }
+inline ERROR gfxSetHostOption(HOST Option, LARGE Value) { return DisplayBase->_SetHostOption(Option,Value); }
 inline OBJECTID gfxSetModalSurface(OBJECTID Surface) { return DisplayBase->_SetModalSurface(Surface); }
 inline ERROR gfxStartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface) { return DisplayBase->_StartCursorDrag(Source,Item,Datatypes,Surface); }
-inline ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, LONG Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
+inline ERROR gfxSubscribeInput(FUNCTION * Callback, OBJECTID SurfaceFilter, JTYPE Mask, OBJECTID DeviceFilter, LONG * Handle) { return DisplayBase->_SubscribeInput(Callback,SurfaceFilter,Mask,DeviceFilter,Handle); }
 inline void gfxSync(objBitmap * Bitmap) { return DisplayBase->_Sync(Bitmap); }
 inline ERROR gfxUnlockBitmap(OBJECTID Surface, objBitmap * Bitmap) { return DisplayBase->_UnlockBitmap(Surface,Bitmap); }
 inline ERROR gfxUnlockCursor(OBJECTID Surface) { return DisplayBase->_UnlockCursor(Surface); }
 inline ERROR gfxUnsubscribeInput(LONG Handle) { return DisplayBase->_UnsubscribeInput(Handle); }
-inline ERROR gfxWindowHook(OBJECTID SurfaceID, LONG Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
+inline ERROR gfxWindowHook(OBJECTID SurfaceID, WH Event, FUNCTION * Callback) { return DisplayBase->_WindowHook(SurfaceID,Event,Callback); }
 #endif
 
 // Direct ColourFormat versions
@@ -1125,7 +1841,7 @@ INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width
    return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
 }
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return ActionMsg(MT_DrwExpose, ObjectID, &args);
 }

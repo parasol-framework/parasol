@@ -22,7 +22,7 @@ responded.  Retaining dialog boxes consumes resources with no descernible speed 
 
 Valid options to use when creating the dialog are as follows:
 
-   popover:    Place the dialog window over the referenced surface.
+   popOver:    Place the dialog window over the referenced surface.
    target:     Open the dialog window within the referenced surface.
    modal:      Set to true if the dialog box needs to be modal (prevents interaction with other windows).
    okText:     Text to display in the OK button.
@@ -290,7 +290,7 @@ local function buildLayout(self, Options)
                         type    = 'error',
                         buttons = 'okay',
                         title   = 'Out of Palette Space',
-                        popover = self._window.surface,
+                        popOver = self._window.surface,
                         string  = 'You have run out of space for adding new colours to your personal palette.  Please delete some of your existing colours before adding new ones.',
                      })
                   end
@@ -359,8 +359,8 @@ local function buildLayout(self, Options)
    -- The picker selects colours in the rainbow palette and is only visible if the user activates it.
 
    self.vecPicker = self.viewport.new('VectorEllipse', {
-      cx      = self._rainbowX,
-      cy      = self._rainbowY,
+      cX      = self._rainbowX,
+      cY      = self._rainbowY,
       radiusX = 4,
       radiusY = 4,
       visibility = VIS_HIDDEN
@@ -447,8 +447,8 @@ local function arrangePicker(self)
       local val = (self._picker.y * 255) / (getRainbowBitmap().height * 0.75)
       if (val > 255) then val = 255 end
 
-      self.vecPicker.cx = self._rainbowX + self._picker.x
-      self.vecPicker.cy = self._rainbowY + self._picker.y
+      self.vecPicker.cX = self._rainbowX + self._picker.x
+      self.vecPicker.cY = self._rainbowY + self._picker.y
 
       self.vecPicker.stroke   = 'rgb(' .. val .. ',' .. val .. ',' .. val .. ',255)'
       self.vecPicker.visibility = VIS_VISIBLE
@@ -580,7 +580,7 @@ gui.dialog.colour = function(Options)
       center       = true,
       stickToFront = true,
       aspectRatio  = true,
-      popover      = Options.popover,
+      popOver      = Options.popOver,
       parent       = Options.target,
       icon         = 'tools/palette',
       title        = nz(Options.title, 'Select a colour'),
@@ -636,7 +636,7 @@ end
       local state = getExecutionState()
       if (state.inRequire != true) then
          local dlg = colour.dialog({
-            popover    = arg('popover'),
+            popOver    = arg('popOver'),
             target     = arg('target'),
             modal      = arg('modal'),
             okText     = arg('okText'),

@@ -18,11 +18,28 @@
 #include <bit>
 #endif
 
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
+// used as an approximation of std::underlying_type<T>
+template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
+
+#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
+inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+#endif
+class objMetaClass;
 class objStorageDevice;
 class objFile;
 class objConfig;
 class objScript;
-class objMetaClass;
 class objTask;
 class objThread;
 class objModule;
@@ -30,61 +47,75 @@ class objTime;
 class objCompression;
 class objCompressedStream;
 
-#ifdef _WIN32
-
 #define NETMSG_START 0
 #define NETMSG_END 1
 
-#endif
-
 // Clipboard modes
 
-#define CLIPMODE_CUT 0x00000001
-#define CLIPMODE_COPY 0x00000002
-#define CLIPMODE_PASTE 0x00000004
+enum class CLIPMODE : ULONG {
+   NIL = 0,
+   CUT = 0x00000001,
+   COPY = 0x00000002,
+   PASTE = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLIPMODE)
 
 // Seek positions
 
-#define SEEK_START 0
-#define SEEK_CURRENT 1
-#define SEEK_END 2
-#define SEEK_RELATIVE 3
+enum class SEEK : LONG {
+   NIL = 0,
+   START = 0,
+   CURRENT = 1,
+   END = 2,
+   RELATIVE = 3,
+};
 
-#define DEVICE_COMPACT_DISC 0x00000001
-#define DEVICE_HARD_DISK 0x00000002
-#define DEVICE_FLOPPY_DISK 0x00000004
-#define DEVICE_READ 0x00000008
-#define DEVICE_WRITE 0x00000010
-#define DEVICE_REMOVEABLE 0x00000020
-#define DEVICE_REMOVABLE 0x00000020
-#define DEVICE_SOFTWARE 0x00000040
-#define DEVICE_NETWORK 0x00000080
-#define DEVICE_TAPE 0x00000100
-#define DEVICE_PRINTER 0x00000200
-#define DEVICE_SCANNER 0x00000400
-#define DEVICE_TEMPORARY 0x00000800
-#define DEVICE_MEMORY 0x00001000
-#define DEVICE_MODEM 0x00002000
-#define DEVICE_USB 0x00004000
-#define DEVICE_PRINTER_3D 0x00008000
-#define DEVICE_SCANNER_3D 0x00010000
+enum class DEVICE : LARGE {
+   NIL = 0,
+   COMPACT_DISC = 0x00000001,
+   HARD_DISK = 0x00000002,
+   FLOPPY_DISK = 0x00000004,
+   READ = 0x00000008,
+   WRITE = 0x00000010,
+   REMOVEABLE = 0x00000020,
+   REMOVABLE = 0x00000020,
+   SOFTWARE = 0x00000040,
+   NETWORK = 0x00000080,
+   TAPE = 0x00000100,
+   PRINTER = 0x00000200,
+   SCANNER = 0x00000400,
+   TEMPORARY = 0x00000800,
+   MEMORY = 0x00001000,
+   MODEM = 0x00002000,
+   USB = 0x00004000,
+   PRINTER_3D = 0x00008000,
+   SCANNER_3D = 0x00010000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DEVICE)
 
 // Class categories
 
-#define CCF_COMMAND 0x00000001
-#define CCF_DRAWABLE 0x00000002
-#define CCF_EFFECT 0x00000004
-#define CCF_FILESYSTEM 0x00000008
-#define CCF_GRAPHICS 0x00000010
-#define CCF_GUI 0x00000020
-#define CCF_IO 0x00000040
-#define CCF_SYSTEM 0x00000080
-#define CCF_TOOL 0x00000100
-#define CCF_AUDIO 0x00000200
-#define CCF_DATA 0x00000400
-#define CCF_MISC 0x00000800
-#define CCF_NETWORK 0x00001000
-#define CCF_MULTIMEDIA 0x00002000
+enum class CCF : ULONG {
+   NIL = 0,
+   COMMAND = 0x00000001,
+   DRAWABLE = 0x00000002,
+   EFFECT = 0x00000004,
+   FILESYSTEM = 0x00000008,
+   GRAPHICS = 0x00000010,
+   GUI = 0x00000020,
+   IO = 0x00000040,
+   SYSTEM = 0x00000080,
+   TOOL = 0x00000100,
+   AUDIO = 0x00000200,
+   DATA = 0x00000400,
+   MISC = 0x00000800,
+   NETWORK = 0x00001000,
+   MULTIMEDIA = 0x00002000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CCF)
 
 // Action identifiers.
 
@@ -144,194 +175,223 @@ class objCompressedStream;
 
 // Permission flags
 
-#define PERMIT_READ 0x00000001
-#define PERMIT_USER_READ 0x00000001
-#define PERMIT_WRITE 0x00000002
-#define PERMIT_USER_WRITE 0x00000002
-#define PERMIT_EXEC 0x00000004
-#define PERMIT_USER_EXEC 0x00000004
-#define PERMIT_DELETE 0x00000008
-#define PERMIT_USER 0x0000000f
-#define PERMIT_GROUP_READ 0x00000010
-#define PERMIT_GROUP_WRITE 0x00000020
-#define PERMIT_GROUP_EXEC 0x00000040
-#define PERMIT_GROUP_DELETE 0x00000080
-#define PERMIT_GROUP 0x000000f0
-#define PERMIT_OTHERS_READ 0x00000100
-#define PERMIT_EVERYONE_READ 0x00000111
-#define PERMIT_ALL_READ 0x00000111
-#define PERMIT_OTHERS_WRITE 0x00000200
-#define PERMIT_ALL_WRITE 0x00000222
-#define PERMIT_EVERYONE_WRITE 0x00000222
-#define PERMIT_EVERYONE_READWRITE 0x00000333
-#define PERMIT_OTHERS_EXEC 0x00000400
-#define PERMIT_ALL_EXEC 0x00000444
-#define PERMIT_EVERYONE_EXEC 0x00000444
-#define PERMIT_OTHERS_DELETE 0x00000800
-#define PERMIT_EVERYONE_DELETE 0x00000888
-#define PERMIT_ALL_DELETE 0x00000888
-#define PERMIT_OTHERS 0x00000f00
-#define PERMIT_EVERYONE_ACCESS 0x00000fff
-#define PERMIT_HIDDEN 0x00001000
-#define PERMIT_ARCHIVE 0x00002000
-#define PERMIT_PASSWORD 0x00004000
-#define PERMIT_USERID 0x00008000
-#define PERMIT_GROUPID 0x00010000
-#define PERMIT_INHERIT 0x00020000
-#define PERMIT_OFFLINE 0x00040000
-#define PERMIT_NETWORK 0x00080000
+enum class PERMIT : ULONG {
+   NIL = 0,
+   READ = 0x00000001,
+   USER_READ = 0x00000001,
+   WRITE = 0x00000002,
+   USER_WRITE = 0x00000002,
+   EXEC = 0x00000004,
+   USER_EXEC = 0x00000004,
+   DELETE = 0x00000008,
+   USER = 0x0000000f,
+   GROUP_READ = 0x00000010,
+   GROUP_WRITE = 0x00000020,
+   GROUP_EXEC = 0x00000040,
+   GROUP_DELETE = 0x00000080,
+   GROUP = 0x000000f0,
+   OTHERS_READ = 0x00000100,
+   EVERYONE_READ = 0x00000111,
+   ALL_READ = 0x00000111,
+   OTHERS_WRITE = 0x00000200,
+   ALL_WRITE = 0x00000222,
+   EVERYONE_WRITE = 0x00000222,
+   EVERYONE_READWRITE = 0x00000333,
+   OTHERS_EXEC = 0x00000400,
+   ALL_EXEC = 0x00000444,
+   EVERYONE_EXEC = 0x00000444,
+   OTHERS_DELETE = 0x00000800,
+   EVERYONE_DELETE = 0x00000888,
+   ALL_DELETE = 0x00000888,
+   OTHERS = 0x00000f00,
+   EVERYONE_ACCESS = 0x00000fff,
+   HIDDEN = 0x00001000,
+   ARCHIVE = 0x00002000,
+   PASSWORD = 0x00004000,
+   USERID = 0x00008000,
+   GROUPID = 0x00010000,
+   INHERIT = 0x00020000,
+   OFFLINE = 0x00040000,
+   NETWORK = 0x00080000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PERMIT)
 
 // Special qualifier flags
 
-#define KQ_L_SHIFT 0x00000001
-#define KQ_R_SHIFT 0x00000002
-#define KQ_SHIFT 0x00000003
-#define KQ_CAPS_LOCK 0x00000004
-#define KQ_L_CONTROL 0x00000008
-#define KQ_L_CTRL 0x00000008
-#define KQ_R_CTRL 0x00000010
-#define KQ_R_CONTROL 0x00000010
-#define KQ_CTRL 0x00000018
-#define KQ_CONTROL 0x00000018
-#define KQ_L_ALT 0x00000020
-#define KQ_ALTGR 0x00000040
-#define KQ_R_ALT 0x00000040
-#define KQ_ALT 0x00000060
-#define KQ_INSTRUCTION_KEYS 0x00000078
-#define KQ_L_COMMAND 0x00000080
-#define KQ_R_COMMAND 0x00000100
-#define KQ_COMMAND 0x00000180
-#define KQ_QUALIFIERS 0x000001fb
-#define KQ_NUM_PAD 0x00000200
-#define KQ_REPEAT 0x00000400
-#define KQ_RELEASED 0x00000800
-#define KQ_PRESSED 0x00001000
-#define KQ_NOT_PRINTABLE 0x00002000
-#define KQ_INFO 0x00003c04
-#define KQ_SCR_LOCK 0x00004000
-#define KQ_NUM_LOCK 0x00008000
-#define KQ_DEAD_KEY 0x00010000
-#define KQ_WIN_CONTROL 0x00020000
+enum class KQ : ULONG {
+   NIL = 0,
+   L_SHIFT = 0x00000001,
+   R_SHIFT = 0x00000002,
+   SHIFT = 0x00000003,
+   CAPS_LOCK = 0x00000004,
+   L_CONTROL = 0x00000008,
+   L_CTRL = 0x00000008,
+   R_CTRL = 0x00000010,
+   R_CONTROL = 0x00000010,
+   CTRL = 0x00000018,
+   CONTROL = 0x00000018,
+   L_ALT = 0x00000020,
+   ALTGR = 0x00000040,
+   R_ALT = 0x00000040,
+   ALT = 0x00000060,
+   INSTRUCTION_KEYS = 0x00000078,
+   L_COMMAND = 0x00000080,
+   R_COMMAND = 0x00000100,
+   COMMAND = 0x00000180,
+   QUALIFIERS = 0x000001fb,
+   NUM_PAD = 0x00000200,
+   REPEAT = 0x00000400,
+   RELEASED = 0x00000800,
+   PRESSED = 0x00001000,
+   NOT_PRINTABLE = 0x00002000,
+   INFO = 0x00003c04,
+   SCR_LOCK = 0x00004000,
+   NUM_LOCK = 0x00008000,
+   DEAD_KEY = 0x00010000,
+   WIN_CONTROL = 0x00020000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(KQ)
 
 // Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.
 
-#define MEM_DATA 0x00000000
-#define MEM_MANAGED 0x00000001
-#define MEM_VIDEO 0x00000002
-#define MEM_TEXTURE 0x00000004
-#define MEM_AUDIO 0x00000008
-#define MEM_CODE 0x00000010
-#define MEM_NO_POOL 0x00000020
-#define MEM_TMP_LOCK 0x00000040
-#define MEM_UNTRACKED 0x00000080
-#define MEM_STRING 0x00000100
-#define MEM_OBJECT 0x00000200
-#define MEM_NO_LOCK 0x00000400
-#define MEM_EXCLUSIVE 0x00000800
-#define MEM_DELETE 0x00001000
-#define MEM_NO_BLOCKING 0x00002000
-#define MEM_NO_BLOCK 0x00002000
-#define MEM_READ 0x00010000
-#define MEM_WRITE 0x00020000
-#define MEM_READ_WRITE 0x00030000
-#define MEM_NO_CLEAR 0x00040000
-#define MEM_HIDDEN 0x00100000
-#define MEM_CALLER 0x00800000
+enum class MEM : ULONG {
+   NIL = 0,
+   DATA = 0x00000000,
+   MANAGED = 0x00000001,
+   VIDEO = 0x00000002,
+   TEXTURE = 0x00000004,
+   AUDIO = 0x00000008,
+   CODE = 0x00000010,
+   NO_POOL = 0x00000020,
+   TMP_LOCK = 0x00000040,
+   UNTRACKED = 0x00000080,
+   STRING = 0x00000100,
+   OBJECT = 0x00000200,
+   NO_LOCK = 0x00000400,
+   EXCLUSIVE = 0x00000800,
+   DELETE = 0x00001000,
+   NO_BLOCKING = 0x00002000,
+   NO_BLOCK = 0x00002000,
+   READ = 0x00010000,
+   WRITE = 0x00020000,
+   READ_WRITE = 0x00030000,
+   NO_CLEAR = 0x00040000,
+   HIDDEN = 0x00100000,
+   CALLER = 0x00800000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MEM)
 
 // Event categories.
 
-#define EVG_FILESYSTEM 1
-#define EVG_NETWORK 2
-#define EVG_SYSTEM 3
-#define EVG_GUI 4
-#define EVG_DISPLAY 5
-#define EVG_IO 6
-#define EVG_HARDWARE 7
-#define EVG_AUDIO 8
-#define EVG_USER 9
-#define EVG_POWER 10
-#define EVG_CLASS 11
-#define EVG_APP 12
-#define EVG_ANDROID 13
-#define EVG_END 14
+enum class EVG : LONG {
+   NIL = 0,
+   FILESYSTEM = 1,
+   NETWORK = 2,
+   SYSTEM = 3,
+   GUI = 4,
+   DISPLAY = 5,
+   IO = 6,
+   HARDWARE = 7,
+   AUDIO = 8,
+   USER = 9,
+   POWER = 10,
+   CLASS = 11,
+   APP = 12,
+   ANDROID = 13,
+   END = 14,
+};
 
 // Data codes
 
-#define DATA_TEXT 1
-#define DATA_RAW 2
-#define DATA_DEVICE_INPUT 3
-#define DATA_XML 4
-#define DATA_AUDIO 5
-#define DATA_RECORD 6
-#define DATA_IMAGE 7
-#define DATA_REQUEST 8
-#define DATA_RECEIPT 9
-#define DATA_FILE 10
-#define DATA_CONTENT 11
-#define DATA_INPUT_READY 12
+enum class DATA : LONG {
+   NIL = 0,
+   TEXT = 1,
+   RAW = 2,
+   DEVICE_INPUT = 3,
+   XML = 4,
+   AUDIO = 5,
+   RECORD = 6,
+   IMAGE = 7,
+   REQUEST = 8,
+   RECEIPT = 9,
+   FILE = 10,
+   CONTENT = 11,
+   INPUT_READY = 12,
+};
 
 // JTYPE flags are used to categorise input types.
 
-#define JTYPE_SECONDARY 0x0001
-#define JTYPE_ANCHORED 0x0002
-#define JTYPE_DRAGGED 0x0004
-#define JTYPE_FEEDBACK 0x0008
-#define JTYPE_DIGITAL 0x0010
-#define JTYPE_ANALOG 0x0020
-#define JTYPE_EXT_MOVEMENT 0x0040
-#define JTYPE_BUTTON 0x0080
-#define JTYPE_MOVEMENT 0x0100
-#define JTYPE_DBL_CLICK 0x0200
-#define JTYPE_REPEATED 0x0400
-#define JTYPE_DRAG_ITEM 0x0800
+enum class JTYPE : ULONG {
+   NIL = 0,
+   SECONDARY = 0x00000001,
+   ANCHORED = 0x00000002,
+   DRAGGED = 0x00000004,
+   FEEDBACK = 0x00000008,
+   DIGITAL = 0x00000010,
+   ANALOG = 0x00000020,
+   EXT_MOVEMENT = 0x00000040,
+   BUTTON = 0x00000080,
+   MOVEMENT = 0x00000100,
+   DBL_CLICK = 0x00000200,
+   REPEATED = 0x00000400,
+   DRAG_ITEM = 0x00000800,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(JTYPE)
 
 // JET constants are documented in GetInputEvent()
 
-#define JET_DIGITAL_X 1
-#define JET_DIGITAL_Y 2
-#define JET_BUTTON_1 3
-#define JET_LMB 3
-#define JET_BUTTON_2 4
-#define JET_RMB 4
-#define JET_BUTTON_3 5
-#define JET_MMB 5
-#define JET_BUTTON_4 6
-#define JET_BUTTON_5 7
-#define JET_BUTTON_6 8
-#define JET_BUTTON_7 9
-#define JET_BUTTON_8 10
-#define JET_BUTTON_9 11
-#define JET_BUTTON_10 12
-#define JET_TRIGGER_LEFT 13
-#define JET_TRIGGER_RIGHT 14
-#define JET_BUTTON_START 15
-#define JET_BUTTON_SELECT 16
-#define JET_LEFT_BUMPER_1 17
-#define JET_LEFT_BUMPER_2 18
-#define JET_RIGHT_BUMPER_1 19
-#define JET_RIGHT_BUMPER_2 20
-#define JET_ANALOG_X 21
-#define JET_ANALOG_Y 22
-#define JET_ANALOG_Z 23
-#define JET_ANALOG2_X 24
-#define JET_ANALOG2_Y 25
-#define JET_ANALOG2_Z 26
-#define JET_WHEEL 27
-#define JET_WHEEL_TILT 28
-#define JET_PEN_TILT_VERTICAL 29
-#define JET_PEN_TILT_HORIZONTAL 30
-#define JET_ABS_X 31
-#define JET_ABS_Y 32
-#define JET_ENTERED_SURFACE 33
-#define JET_ENTERED 33
-#define JET_LEFT_SURFACE 34
-#define JET_LEFT 34
-#define JET_PRESSURE 35
-#define JET_DEVICE_TILT_X 36
-#define JET_DEVICE_TILT_Y 37
-#define JET_DEVICE_TILT_Z 38
-#define JET_DISPLAY_EDGE 39
-#define JET_END 40
+enum class JET : LONG {
+   NIL = 0,
+   DIGITAL_X = 1,
+   DIGITAL_Y = 2,
+   BUTTON_1 = 3,
+   LMB = 3,
+   BUTTON_2 = 4,
+   RMB = 4,
+   BUTTON_3 = 5,
+   MMB = 5,
+   BUTTON_4 = 6,
+   BUTTON_5 = 7,
+   BUTTON_6 = 8,
+   BUTTON_7 = 9,
+   BUTTON_8 = 10,
+   BUTTON_9 = 11,
+   BUTTON_10 = 12,
+   TRIGGER_LEFT = 13,
+   TRIGGER_RIGHT = 14,
+   BUTTON_START = 15,
+   BUTTON_SELECT = 16,
+   LEFT_BUMPER_1 = 17,
+   LEFT_BUMPER_2 = 18,
+   RIGHT_BUMPER_1 = 19,
+   RIGHT_BUMPER_2 = 20,
+   ANALOG_X = 21,
+   ANALOG_Y = 22,
+   ANALOG_Z = 23,
+   ANALOG2_X = 24,
+   ANALOG2_Y = 25,
+   ANALOG2_Z = 26,
+   WHEEL = 27,
+   WHEEL_TILT = 28,
+   PEN_TILT_VERTICAL = 29,
+   PEN_TILT_HORIZONTAL = 30,
+   ABS_X = 31,
+   ABS_Y = 32,
+   ENTERED_SURFACE = 33,
+   ENTERED = 33,
+   LEFT_SURFACE = 34,
+   LEFT = 34,
+   PRESSURE = 35,
+   DEVICE_TILT_X = 36,
+   DEVICE_TILT_Y = 37,
+   DEVICE_TILT_Z = 38,
+   DISPLAY_EDGE = 39,
+   END = 40,
+};
 
 // Field descriptors.
 
@@ -396,86 +456,37 @@ class objCompressedStream;
 #define FD_PTR_LONGRESULT 0x48000100
 #define FD_DOUBLE 0x80000000
 
-struct InputEvent {
-   const struct InputEvent * Next;    // Next event in the chain
-   DOUBLE   Value;                    // The value associated with the Type
-   LARGE    Timestamp;                // PreciseTime() of the recorded input
-   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
-   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
-   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor
-   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor
-   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
-   OBJECTID DeviceID;                 // The hardware device that this event originated from
-   UWORD    Type;                     // JET constant
-   UWORD    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Mask;                     // Mask to use for checking against subscribers
-};
-
-struct dcRequest {
-   LONG Item;             // Identifier for retrieval from the source
-   char Preference[4];    // Data preferences for the returned item(s)
-};
-
-struct dcAudio {
-   LONG Size;    // Byte size of this structure
-   LONG Format;  // Format of the audio data
-};
-
-struct dcKeyEntry {
-   LONG  Flags;        // Shift/Control/CapsLock...
-   LONG  Value;        // ASCII value of the key A/B/C/D...
-   LARGE Timestamp;    // PreciseTime() at which the keypress was recorded
-   LONG  Unicode;      // Unicode value for pre-calculated key translations
-};
-
-struct dcDeviceInput {
-   DOUBLE   Value;     // The value associated with the Type
-   LARGE    Timestamp; // PreciseTime() of the recorded input
-   OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
-   LONG     Flags;     // Broad descriptors for the given Type (see JTYPE flags).  Automatically set by the system when sent to the pointer object
-   UWORD    Type;      // JET constant
-   UWORD    Unused;    // Unused value for 32-bit padding
-};
-
-struct DateTime {
-   LONG Year;        // Year
-   LONG Month;       // Month 1 to 12
-   LONG Day;         // Day 1 to 31
-   LONG Hour;        // Hour 0 to 23
-   LONG Minute;      // Minute 0 to 59
-   LONG Second;      // Second 0 to 59
-   LONG TimeZone;    // TimeZone -13 to +13
-};
-
 // Predefined cursor styles
 
-#define PTR_NO_CHANGE 0
-#define PTR_DEFAULT 1
-#define PTR_SIZE_BOTTOM_LEFT 2
-#define PTR_SIZE_BOTTOM_RIGHT 3
-#define PTR_SIZE_TOP_LEFT 4
-#define PTR_SIZE_TOP_RIGHT 5
-#define PTR_SIZE_LEFT 6
-#define PTR_SIZE_RIGHT 7
-#define PTR_SIZE_TOP 8
-#define PTR_SIZE_BOTTOM 9
-#define PTR_CROSSHAIR 10
-#define PTR_SLEEP 11
-#define PTR_SIZING 12
-#define PTR_SPLIT_VERTICAL 13
-#define PTR_SPLIT_HORIZONTAL 14
-#define PTR_MAGNIFIER 15
-#define PTR_HAND 16
-#define PTR_HAND_LEFT 17
-#define PTR_HAND_RIGHT 18
-#define PTR_TEXT 19
-#define PTR_PAINTBRUSH 20
-#define PTR_STOP 21
-#define PTR_INVISIBLE 22
-#define PTR_CUSTOM 23
-#define PTR_DRAGGABLE 24
-#define PTR_END 25
+enum class PTC : LONG {
+   NIL = 0,
+   NO_CHANGE = 0,
+   DEFAULT = 1,
+   SIZE_BOTTOM_LEFT = 2,
+   SIZE_BOTTOM_RIGHT = 3,
+   SIZE_TOP_LEFT = 4,
+   SIZE_TOP_RIGHT = 5,
+   SIZE_LEFT = 6,
+   SIZE_RIGHT = 7,
+   SIZE_TOP = 8,
+   SIZE_BOTTOM = 9,
+   CROSSHAIR = 10,
+   SLEEP = 11,
+   SIZING = 12,
+   SPLIT_VERTICAL = 13,
+   SPLIT_HORIZONTAL = 14,
+   MAGNIFIER = 15,
+   HAND = 16,
+   HAND_LEFT = 17,
+   HAND_RIGHT = 18,
+   TEXT = 19,
+   PAINTBRUSH = 20,
+   STOP = 21,
+   INVISIBLE = 22,
+   CUSTOM = 23,
+   DRAGGABLE = 24,
+   END = 25,
+};
 
 #define DMF_RELATIVE_X 0x00000001
 #define DMF_RELATIVE_Y 0x00000002
@@ -519,63 +530,839 @@ struct DateTime {
 
 // Compass directions.
 
-#define DRL_NORTH 0
-#define DRL_UP 0
-#define DRL_SOUTH 1
-#define DRL_DOWN 1
-#define DRL_EAST 2
-#define DRL_RIGHT 2
-#define DRL_WEST 3
-#define DRL_LEFT 3
-#define DRL_NORTH_EAST 4
-#define DRL_NORTH_WEST 5
-#define DRL_SOUTH_EAST 6
-#define DRL_SOUTH_WEST 7
+enum class DRL : LONG {
+   NIL = 0,
+   NORTH = 0,
+   UP = 0,
+   SOUTH = 1,
+   DOWN = 1,
+   EAST = 2,
+   RIGHT = 2,
+   WEST = 3,
+   LEFT = 3,
+   NORTH_EAST = 4,
+   NORTH_WEST = 5,
+   SOUTH_EAST = 6,
+   SOUTH_WEST = 7,
+};
 
 // Generic flags for controlling movement.
 
-#define MOVE_DOWN 0x00000001
-#define MOVE_UP 0x00000002
-#define MOVE_LEFT 0x00000004
-#define MOVE_RIGHT 0x00000008
-#define MOVE_ALL 0x0000000f
+enum class MOVE : ULONG {
+   NIL = 0,
+   DOWN = 0x00000001,
+   UP = 0x00000002,
+   LEFT = 0x00000004,
+   RIGHT = 0x00000008,
+   ALL = 0x0000000f,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MOVE)
 
 // Edge flags
 
-#define EDGE_TOP 0x00000001
-#define EDGE_LEFT 0x00000002
-#define EDGE_RIGHT 0x00000004
-#define EDGE_BOTTOM 0x00000008
-#define EDGE_TOP_LEFT 0x00000010
-#define EDGE_TOP_RIGHT 0x00000020
-#define EDGE_BOTTOM_LEFT 0x00000040
-#define EDGE_BOTTOM_RIGHT 0x00000080
-#define EDGE_ALL 0x000000ff
+enum class EDGE : ULONG {
+   NIL = 0,
+   TOP = 0x00000001,
+   LEFT = 0x00000002,
+   RIGHT = 0x00000004,
+   BOTTOM = 0x00000008,
+   TOP_LEFT = 0x00000010,
+   TOP_RIGHT = 0x00000020,
+   BOTTOM_LEFT = 0x00000040,
+   BOTTOM_RIGHT = 0x00000080,
+   ALL = 0x000000ff,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(EDGE)
 
 // Universal values for alignment of graphics and text
 
-#define ALIGN_LEFT 0x00000001
-#define ALIGN_RIGHT 0x00000002
-#define ALIGN_HORIZONTAL 0x00000004
-#define ALIGN_VERTICAL 0x00000008
-#define ALIGN_MIDDLE 0x0000000c
-#define ALIGN_CENTER 0x0000000c
-#define ALIGN_TOP 0x00000010
-#define ALIGN_BOTTOM 0x00000020
+enum class ALIGN : ULONG {
+   NIL = 0,
+   LEFT = 0x00000001,
+   RIGHT = 0x00000002,
+   HORIZONTAL = 0x00000004,
+   VERTICAL = 0x00000008,
+   MIDDLE = 0x0000000c,
+   CENTER = 0x0000000c,
+   TOP = 0x00000010,
+   BOTTOM = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ALIGN)
 
 // Universal values for alignment of graphic layouts in documents.
 
-#define LAYOUT_SQUARE 0x00000000
-#define LAYOUT_TIGHT 0x00000001
-#define LAYOUT_LEFT 0x00000002
-#define LAYOUT_RIGHT 0x00000004
-#define LAYOUT_WIDE 0x00000006
-#define LAYOUT_BACKGROUND 0x00000008
-#define LAYOUT_FOREGROUND 0x00000010
-#define LAYOUT_EMBEDDED 0x00000020
-#define LAYOUT_LOCK 0x00000040
-#define LAYOUT_IGNORE_CURSOR 0x00000080
-#define LAYOUT_TILE 0x00000100
+enum class LAYOUT : ULONG {
+   NIL = 0,
+   SQUARE = 0x00000000,
+   TIGHT = 0x00000001,
+   LEFT = 0x00000002,
+   RIGHT = 0x00000004,
+   WIDE = 0x00000006,
+   BACKGROUND = 0x00000008,
+   FOREGROUND = 0x00000010,
+   EMBEDDED = 0x00000020,
+   LOCK = 0x00000040,
+   IGNORE_CURSOR = 0x00000080,
+   TILE = 0x00000100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(LAYOUT)
+
+// Script flags
+
+enum class SCF : ULONG {
+   NIL = 0,
+   EXIT_ON_ERROR = 0x00000001,
+   LOG_ALL = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SCF)
+
+enum class STR : ULONG {
+   NIL = 0,
+   MATCH_CASE = 0x00000001,
+   CASE = 0x00000001,
+   MATCH_LEN = 0x00000002,
+   WILDCARD = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(STR)
+
+// Message flags.
+
+enum class MSF : ULONG {
+   NIL = 0,
+   WAIT = 0x00000001,
+   UPDATE = 0x00000002,
+   NO_DUPLICATE = 0x00000004,
+   ADD = 0x00000008,
+   ADDRESS = 0x00000010,
+   MESSAGE_ID = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MSF)
+
+// Flags for ProcessMessages
+
+enum class PMF : ULONG {
+   NIL = 0,
+   SYSTEM_NO_BREAK = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(PMF)
+
+// Flags for RegisterFD()
+
+enum class RFD : ULONG {
+   NIL = 0,
+   WRITE = 0x00000001,
+   EXCEPT = 0x00000002,
+   READ = 0x00000004,
+   REMOVE = 0x00000008,
+   STOP_RECURSE = 0x00000010,
+   ALLOW_RECURSION = 0x00000020,
+   SOCKET = 0x00000040,
+   RECALL = 0x00000080,
+   ALWAYS_CALL = 0x00000100,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RFD)
+
+// Task flags
+
+enum class TSF : ULONG {
+   NIL = 0,
+   FOREIGN = 0x00000001,
+   WAIT = 0x00000002,
+   RESET_PATH = 0x00000004,
+   PRIVILEGED = 0x00000008,
+   SHELL = 0x00000010,
+   LOG_ALL = 0x00000020,
+   QUIET = 0x00000040,
+   DETACHED = 0x00000080,
+   ATTACHED = 0x00000100,
+   PIPE = 0x00000200,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(TSF)
+
+// Internal options for requesting function tables from modules.
+
+enum class MHF : ULONG {
+   NIL = 0,
+   STATIC = 0x00000001,
+   STRUCTURE = 0x00000002,
+   DEFAULT = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MHF)
+
+// ScrollToPoint flags
+
+enum class STP : ULONG {
+   NIL = 0,
+   X = 0x00000001,
+   Y = 0x00000002,
+   Z = 0x00000004,
+   ANIM = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(STP)
+
+// MoveToPoint flags
+
+enum class MTF : ULONG {
+   NIL = 0,
+   X = 0x00000001,
+   Y = 0x00000002,
+   Z = 0x00000004,
+   ANIM = 0x00000008,
+   RELATIVE = 0x00000010,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MTF)
+
+// VlogF flags
+
+enum class VLF : ULONG {
+   NIL = 0,
+   BRANCH = 0x00000001,
+   ERROR = 0x00000002,
+   WARNING = 0x00000004,
+   CRITICAL = 0x00000008,
+   INFO = 0x00000010,
+   API = 0x00000020,
+   EXTAPI = 0x00000040,
+   DEBUG = 0x00000080,
+   TRACE = 0x00000100,
+   FUNCTION = 0x00000200,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VLF)
+
+// Module flags
+
+enum class MOF : ULONG {
+   NIL = 0,
+   LINK_LIBRARY = 0x00000001,
+   STATIC = 0x00000002,
+   SYSTEM_PROBE = 0x00000004,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MOF)
+
+// Thread flags
+
+enum class THF : ULONG {
+   NIL = 0,
+   AUTO_FREE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(THF)
+
+// Flags for the SetDate() file method.
+
+enum class FDT : LONG {
+   NIL = 0,
+   MODIFIED = 0,
+   CREATED = 1,
+   ACCESSED = 2,
+   ARCHIVED = 3,
+};
+
+// Options for SetVolume()
+
+enum class VOLUME : ULONG {
+   NIL = 0,
+   REPLACE = 0x00000001,
+   PRIORITY = 0x00000002,
+   HIDDEN = 0x00000004,
+   SYSTEM = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(VOLUME)
+
+// Options for the File Delete() method.
+
+enum class FDL : ULONG {
+   NIL = 0,
+   FEEDBACK = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FDL)
+
+// Compression flags
+
+enum class CMF : ULONG {
+   NIL = 0,
+   PASSWORD = 0x00000001,
+   NEW = 0x00000002,
+   CREATE_FILE = 0x00000004,
+   READ_ONLY = 0x00000008,
+   NO_LINKS = 0x00000010,
+   APPLY_SECURITY = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CMF)
+
+// Flags for ResolvePath()
+
+enum class RSF : ULONG {
+   NIL = 0,
+   NO_FILE_CHECK = 0x00000001,
+   CHECK_VIRTUAL = 0x00000002,
+   APPROXIMATE = 0x00000004,
+   NO_DEEP_SCAN = 0x00000008,
+   PATH = 0x00000010,
+   CASE_SENSITIVE = 0x00000020,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RSF)
+
+// Flags for the File Watch() method.
+
+enum class MFF : ULONG {
+   NIL = 0,
+   READ = 0x00000001,
+   MODIFY = 0x00000002,
+   WRITE = 0x00000002,
+   CREATE = 0x00000004,
+   DELETE = 0x00000008,
+   MOVED = 0x00000010,
+   RENAME = 0x00000010,
+   ATTRIB = 0x00000020,
+   OPENED = 0x00000040,
+   CLOSED = 0x00000080,
+   UNMOUNT = 0x00000100,
+   FOLDER = 0x00000200,
+   FILE = 0x00000400,
+   SELF = 0x00000800,
+   DEEP = 0x00001000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(MFF)
+
+// Types for StrDatatype().
+
+enum class STT : LONG {
+   NIL = 0,
+   NUMBER = 1,
+   FLOAT = 2,
+   HEX = 3,
+   STRING = 4,
+};
+
+enum class OPF : ULONG {
+   NIL = 0,
+   DEPRECATED = 0x00000001,
+   CORE_VERSION = 0x00000002,
+   OPTIONS = 0x00000004,
+   MAX_DEPTH = 0x00000008,
+   DETAIL = 0x00000010,
+   SHOW_MEMORY = 0x00000020,
+   SHOW_IO = 0x00000040,
+   SHOW_ERRORS = 0x00000080,
+   ARGS = 0x00000100,
+   ERROR = 0x00000200,
+   COMPILED_AGAINST = 0x00000400,
+   PRIVILEGED = 0x00000800,
+   SYSTEM_PATH = 0x00001000,
+   MODULE_PATH = 0x00002000,
+   ROOT_PATH = 0x00004000,
+   SCAN_MODULES = 0x00008000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(OPF)
+
+enum class TOI : LONG {
+   NIL = 0,
+   LOCAL_CACHE = 0,
+   LOCAL_STORAGE = 1,
+   ANDROID_ENV = 2,
+   ANDROID_CLASS = 3,
+   ANDROID_ASSETMGR = 4,
+};
+
+// Flags for the OpenDir() function.
+
+enum class RDF : ULONG {
+   NIL = 0,
+   SIZE = 0x00000001,
+   DATE = 0x00000002,
+   TIME = 0x00000002,
+   PERMISSIONS = 0x00000004,
+   FILES = 0x00000008,
+   FILE = 0x00000008,
+   FOLDERS = 0x00000010,
+   FOLDER = 0x00000010,
+   READ_ALL = 0x0000001f,
+   VOLUME = 0x00000020,
+   LINK = 0x00000040,
+   TAGS = 0x00000080,
+   HIDDEN = 0x00000100,
+   QUALIFY = 0x00000200,
+   QUALIFIED = 0x00000200,
+   VIRTUAL = 0x00000400,
+   STREAM = 0x00000800,
+   READ_ONLY = 0x00001000,
+   ARCHIVE = 0x00002000,
+   OPENDIR = 0x00004000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RDF)
+
+// File flags
+
+enum class FL : ULONG {
+   NIL = 0,
+   WRITE = 0x00000001,
+   NEW = 0x00000002,
+   READ = 0x00000004,
+   DIRECTORY = 0x00000008,
+   FOLDER = 0x00000008,
+   APPROXIMATE = 0x00000010,
+   LINK = 0x00000020,
+   BUFFER = 0x00000040,
+   LOOP = 0x00000080,
+   FILE = 0x00000100,
+   RESET_DATE = 0x00000200,
+   DEVICE = 0x00000400,
+   STREAM = 0x00000800,
+   EXCLUDE_FILES = 0x00001000,
+   EXCLUDE_FOLDERS = 0x00002000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FL)
+
+// AnalysePath() values
+
+enum class LOC : LONG {
+   NIL = 0,
+   DIRECTORY = 1,
+   FOLDER = 1,
+   VOLUME = 2,
+   FILE = 3,
+};
+
+// Flags for LoadFile()
+
+enum class LDF : ULONG {
+   NIL = 0,
+   CHECK_EXISTS = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(LDF)
+
+// Flags for file feedback.
+
+enum class FBK : LONG {
+   NIL = 0,
+   MOVE_FILE = 1,
+   COPY_FILE = 2,
+   DELETE_FILE = 3,
+};
+
+// Return codes available to the feedback routine
+
+enum class FFR : LONG {
+   NIL = 0,
+   OKAY = 0,
+   CONTINUE = 0,
+   SKIP = 1,
+   ABORT = 2,
+};
+
+// For use by VirtualVolume()
+
+enum class VAS : LONG {
+   NIL = 0,
+   DEREGISTER = 1,
+   SCAN_DIR = 2,
+   DELETE = 3,
+   RENAME = 4,
+   OPEN_DIR = 5,
+   CLOSE_DIR = 6,
+   TEST_PATH = 7,
+   WATCH_PATH = 8,
+   IGNORE_FILE = 9,
+   GET_INFO = 10,
+   GET_DEVICE_INFO = 11,
+   IDENTIFY_FILE = 12,
+   MAKE_DIR = 13,
+   SAME_FILE = 14,
+   CASE_SENSITIVE = 15,
+   READ_LINK = 16,
+   CREATE_LINK = 17,
+   DRIVER_SIZE = 18,
+};
+
+// Feedback event indicators.
+
+enum class FDB : LONG {
+   NIL = 0,
+   DECOMPRESS_FILE = 1,
+   COMPRESS_FILE = 2,
+   REMOVE_FILE = 3,
+   DECOMPRESS_OBJECT = 4,
+};
+
+// Compression stream formats
+
+enum class CF : LONG {
+   NIL = 0,
+   GZIP = 1,
+   ZLIB = 2,
+   DEFLATE = 3,
+};
+
+// Flags that can be passed to FindObject()
+
+enum class FOF : ULONG {
+   NIL = 0,
+   SMART_NAMES = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(FOF)
+
+// Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
+
+enum class NF : ULONG {
+   NIL = 0,
+   PRIVATE = 0x00000000,
+   UNTRACKED = 0x00000001,
+   INITIALISED = 0x00000002,
+   INTEGRAL = 0x00000004,
+   UNLOCK_FREE = 0x00000008,
+   FREE = 0x00000010,
+   TIMER_SUB = 0x00000020,
+   SUPPRESS_LOG = 0x00000040,
+   COLLECT = 0x00000080,
+   RECLASSED = 0x00000100,
+   MESSAGE = 0x00000200,
+   SIGNALLED = 0x00000400,
+   UNIQUE = 0x40000000,
+   NAME = 0x80000000,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(NF)
+
+#define MAX_FILENAME 256
+
+// Module file header constants
+
+#define MODULE_HEADER_V1 1297040385
+#define MODULE_HEADER_V2 1297040386
+#define MODULE_HEADER_VERSION 1297040386
+#define MODULE_HEADER EXPORT struct ModHeader ModHeader
+
+#define MAX_NAME_LEN 32
+
+// Reserved message ID's that are handled internally.
+
+#define MSGID_WAIT_FOR_OBJECTS 90
+#define MSGID_THREAD_ACTION 91
+#define MSGID_THREAD_CALLBACK 92
+#define MSGID_VALIDATE_PROCESS 93
+#define MSGID_EVENT 94
+#define MSGID_DEBUG 95
+#define MSGID_FREE 98
+#define MSGID_ACTION 99
+#define MSGID_BREAK 100
+#define MSGID_CORE_END 100
+#define MSGID_COMMAND 101
+#define MSGID_QUIT 1000
+
+// Types for AllocateID()
+
+enum class IDTYPE : LONG {
+   NIL = 0,
+   MESSAGE = 1,
+   GLOBAL = 2,
+   FUNCTION = 3,
+};
+
+// Indicates the state of a process.
+
+enum class TSTATE : BYTE {
+   NIL = 0,
+   RUNNING = 0,
+   PAUSED = 1,
+   STOPPING = 2,
+   TERMINATED = 3,
+};
+
+enum class RES : LONG {
+   NIL = 0,
+   MESSAGE_QUEUE = 1,
+   CONSOLE_FD = 2,
+   KEY_STATE = 3,
+   USER_ID = 4,
+   DISPLAY_DRIVER = 5,
+   PRIVILEGED_USER = 6,
+   PRIVILEGED = 7,
+   CORE_IDL = 8,
+   PARENT_CONTEXT = 9,
+   LOG_LEVEL = 10,
+   TOTAL_SHARED_MEMORY = 11,
+   MAX_PROCESSES = 12,
+   LOG_DEPTH = 13,
+   JNI_ENV = 14,
+   THREAD_ID = 15,
+   CURRENT_MSG = 16,
+   OPEN_INFO = 17,
+   EXCEPTION_HANDLER = 18,
+   NET_PROCESSING = 19,
+   PROCESS_STATE = 20,
+   TOTAL_MEMORY = 21,
+   TOTAL_SWAP = 22,
+   CPU_SPEED = 23,
+   FREE_MEMORY = 24,
+   FREE_SWAP = 25,
+};
+
+// Path types for SetResourcePath()
+
+enum class RP : LONG {
+   NIL = 0,
+   MODULE_PATH = 1,
+   SYSTEM_PATH = 2,
+   ROOT_PATH = 3,
+};
+
+// Flags for the MetaClass.
+
+enum class CLF : ULONG {
+   NIL = 0,
+   PROMOTE_INTEGRAL = 0x00000001,
+   NO_OWNERSHIP = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CLF)
+
+// Flags for the Config class.
+
+enum class CNF : ULONG {
+   NIL = 0,
+   STRIP_QUOTES = 0x00000001,
+   AUTO_SAVE = 0x00000002,
+   OPTIONAL_FILES = 0x00000004,
+   NEW = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CNF)
+
+// Raw key codes
+
+enum class KEY : LONG {
+   NIL = 0,
+   A = 1,
+   B = 2,
+   C = 3,
+   D = 4,
+   E = 5,
+   F = 6,
+   G = 7,
+   H = 8,
+   I = 9,
+   J = 10,
+   K = 11,
+   L = 12,
+   M = 13,
+   N = 14,
+   O = 15,
+   P = 16,
+   Q = 17,
+   R = 18,
+   S = 19,
+   T = 20,
+   U = 21,
+   V = 22,
+   W = 23,
+   X = 24,
+   Y = 25,
+   Z = 26,
+   ONE = 27,
+   TWO = 28,
+   THREE = 29,
+   FOUR = 30,
+   FIVE = 31,
+   SIX = 32,
+   SEVEN = 33,
+   EIGHT = 34,
+   NINE = 35,
+   ZERO = 36,
+   REVERSE_QUOTE = 37,
+   MINUS = 38,
+   EQUALS = 39,
+   L_SQUARE = 40,
+   R_SQUARE = 41,
+   SEMI_COLON = 42,
+   APOSTROPHE = 43,
+   COMMA = 44,
+   DOT = 45,
+   PERIOD = 45,
+   SLASH = 46,
+   BACK_SLASH = 47,
+   SPACE = 48,
+   NP_0 = 49,
+   NP_1 = 50,
+   NP_2 = 51,
+   NP_3 = 52,
+   NP_4 = 53,
+   NP_5 = 54,
+   NP_6 = 55,
+   NP_7 = 56,
+   NP_8 = 57,
+   NP_9 = 58,
+   NP_MULTIPLY = 59,
+   NP_PLUS = 60,
+   NP_BAR = 61,
+   NP_SEPARATOR = 61,
+   NP_MINUS = 62,
+   NP_DECIMAL = 63,
+   NP_DOT = 63,
+   NP_DIVIDE = 64,
+   L_CONTROL = 65,
+   R_CONTROL = 66,
+   HELP = 67,
+   L_SHIFT = 68,
+   R_SHIFT = 69,
+   CAPS_LOCK = 70,
+   PRINT = 71,
+   L_ALT = 72,
+   R_ALT = 73,
+   L_COMMAND = 74,
+   R_COMMAND = 75,
+   F1 = 76,
+   F2 = 77,
+   F3 = 78,
+   F4 = 79,
+   F5 = 80,
+   F6 = 81,
+   F7 = 82,
+   F8 = 83,
+   F9 = 84,
+   F10 = 85,
+   F11 = 86,
+   F12 = 87,
+   F13 = 88,
+   F14 = 89,
+   F15 = 90,
+   F16 = 91,
+   F17 = 92,
+   MACRO = 93,
+   NP_PLUS_MINUS = 94,
+   LESS_GREATER = 95,
+   UP = 96,
+   DOWN = 97,
+   RIGHT = 98,
+   LEFT = 99,
+   SCR_LOCK = 100,
+   PAUSE = 101,
+   WAKE = 102,
+   SLEEP = 103,
+   POWER = 104,
+   BACKSPACE = 105,
+   TAB = 106,
+   ENTER = 107,
+   ESCAPE = 108,
+   DELETE = 109,
+   CLEAR = 110,
+   HOME = 111,
+   PAGE_UP = 112,
+   PAGE_DOWN = 113,
+   END = 114,
+   SELECT = 115,
+   EXECUTE = 116,
+   INSERT = 117,
+   UNDO = 118,
+   REDO = 119,
+   MENU = 120,
+   FIND = 121,
+   CANCEL = 122,
+   BREAK = 123,
+   NUM_LOCK = 124,
+   PRT_SCR = 125,
+   NP_ENTER = 126,
+   SYSRQ = 127,
+   F18 = 128,
+   F19 = 129,
+   F20 = 130,
+   WIN_CONTROL = 131,
+   VOLUME_UP = 132,
+   VOLUME_DOWN = 133,
+   BACK = 134,
+   CALL = 135,
+   END_CALL = 136,
+   CAMERA = 137,
+   AT = 138,
+   PLUS = 139,
+   LENS_FOCUS = 140,
+   STOP = 141,
+   NEXT = 142,
+   PREVIOUS = 143,
+   FORWARD = 144,
+   REWIND = 145,
+   MUTE = 146,
+   STAR = 147,
+   POUND = 148,
+   PLAY = 149,
+   LIST_END = 150,
+};
+
+struct InputEvent {
+   const struct InputEvent * Next;    // Next event in the chain
+   DOUBLE   Value;                    // The value associated with the Type
+   LARGE    Timestamp;                // PreciseTime() of the recorded input
+   OBJECTID RecipientID;              // Surface that the input message is being conveyed to
+   OBJECTID OverID;                   // Surface that is directly under the mouse pointer at the time of the event
+   DOUBLE   AbsX;                     // Absolute horizontal position of mouse cursor (relative to the top left of the display)
+   DOUBLE   AbsY;                     // Absolute vertical position of mouse cursor (relative to the top left of the display)
+   DOUBLE   X;                        // Horizontal position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   DOUBLE   Y;                        // Vertical position relative to the surface that the pointer is over - unless a mouse button is held or pointer is anchored - then the coordinates are relative to the click-held surface
+   OBJECTID DeviceID;                 // The hardware device that this event originated from
+   JET      Type;                     // JET constant that describes the event
+   JTYPE    Flags;                    // Broad descriptors for the given Type (see JTYPE flags).  Automatically defined when delivered to the pointer object
+   JTYPE    Mask;                     // Mask to use for checking against subscribers
+};
+
+struct dcRequest {
+   LONG Item;             // Identifier for retrieval from the source
+   char Preference[4];    // Data preferences for the returned item(s)
+};
+
+struct dcAudio {
+   LONG Size;    // Byte size of this structure
+   LONG Format;  // Format of the audio data
+};
+
+struct dcKeyEntry {
+   LONG  Flags;        // Shift/Control/CapsLock...
+   LONG  Value;        // ASCII value of the key A/B/C/D...
+   LARGE Timestamp;    // PreciseTime() at which the keypress was recorded
+   LONG  Unicode;      // Unicode value for pre-calculated key translations
+};
+
+struct dcDeviceInput {
+   DOUBLE   Value;     // The value associated with the Type
+   LARGE    Timestamp; // PreciseTime() of the recorded input
+   OBJECTID DeviceID;  // The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
+   JTYPE    Flags;     // Broad descriptors for the given Type.  Automatically defined when delivered to the pointer object
+   JET      Type;      // JET constant
+};
+
+struct DateTime {
+   LONG Year;        // Year
+   LONG Month;       // Month 1 to 12
+   LONG Day;         // Day 1 to 31
+   LONG Hour;        // Hour 0 to 23
+   LONG Minute;      // Minute 0 to 59
+   LONG Second;      // Second 0 to 59
+   LONG TimeZone;    // TimeZone -13 to +13
+};
 
 struct HSV {
    DOUBLE Hue;           // Between 0 and 359.999
@@ -652,87 +1439,6 @@ struct Edges {
    LONG Bottom;  // Bottom coordinate
 };
 
-#ifndef DEFINE_ENUM_FLAG_OPERATORS
-template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
-template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
-// used as an approximation of std::underlying_type<T>
-template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
-
-#define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
-inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
-inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
-#endif
-// Script flags
-
-#define SCF_EXIT_ON_ERROR 0x00000001
-#define SCF_DEBUG 0x00000002
-
-#define STR_MATCH_CASE 0x0001
-#define STR_CASE 0x0001
-#define STR_MATCH_LEN 0x0002
-#define STR_WILDCARD 0x0004
-
-// Message flags.
-
-#define MSF_WAIT 0x00000001
-#define MSF_UPDATE 0x00000002
-#define MSF_NO_DUPLICATE 0x00000004
-#define MSF_ADD 0x00000008
-#define MSF_ADDRESS 0x00000010
-#define MSF_MESSAGE_ID 0x00000020
-
-// Flags for ProcessMessages
-
-#define PMF_SYSTEM_NO_BREAK 0x00000001
-
-#define ALF_SHARED 0x0001
-#define ALF_RECURSIVE 0x0002
-
-// Flags for semaphores
-
-#define SMF_NO_BLOCKING 0x00000001
-#define SMF_NON_BLOCKING 0x00000001
-#define SMF_EXISTS 0x00000002
-
-// Flags for RegisterFD()
-
-#define RFD_WRITE 0x0001
-#define RFD_EXCEPT 0x0002
-#define RFD_READ 0x0004
-#define RFD_REMOVE 0x0008
-#define RFD_STOP_RECURSE 0x0010
-#define RFD_ALLOW_RECURSION 0x0020
-#define RFD_SOCKET 0x0040
-#define RFD_RECALL 0x0080
-#define RFD_ALWAYS_CALL 0x0100
-
-// Flags for StrBuildArray()
-
-#define SBF_NO_DUPLICATES 0x00000001
-#define SBF_SORT 0x00000002
-#define SBF_CASE 0x00000004
-#define SBF_DESC 0x00000008
-#define SBF_CSV 0x00000010
-
-// Task flags
-
-#define TSF_FOREIGN 0x00000001
-#define TSF_WAIT 0x00000002
-#define TSF_RESET_PATH 0x00000004
-#define TSF_PRIVILEGED 0x00000008
-#define TSF_SHELL 0x00000010
-#define TSF_DEBUG 0x00000020
-#define TSF_QUIET 0x00000040
-#define TSF_DETACHED 0x00000080
-#define TSF_ATTACHED 0x00000100
-#define TSF_PIPE 0x00000200
-
 #define AHASH_ACTIVATE 0xdbaf4876
 #define AHASH_ACCESSOBJECT 0xbcf3b98e
 #define AHASH_CLEAR 0x0f3b6d8c
@@ -789,551 +1495,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define AHASH_SIGNAL 0x1bc6ade3
 #define AHASH_UNDO 0x7c9f191b
 
-// Internal style notifications
-
-#define STYLE_ENABLED 1
-#define STYLE_DISABLED 2
-#define STYLE_FOCUS 3
-#define STYLE_LOST_FOCUS 4
-#define STYLE_RESIZE 5
-#define STYLE_CONTENT 6
-
-// Internal options for requesting function tables from modules.
-
-#define MHF_NULL 0x00000001
-#define MHF_DEFAULT 0x00000002
-#define MHF_STRUCTURE 0x00000002
-#define MHF_STATIC 0x00000004
-
-// Registered CPU ID's
-
-#define CPU_M68K 1
-#define CPU_I486 2
-#define CPU_I586 3
-#define CPU_I686 4
-#define CPU_X64 5
-#define CPU_ARMEABI 6
-
-// ScrollToPoint flags
-
-#define STP_X 0x00000001
-#define STP_Y 0x00000002
-#define STP_Z 0x00000004
-#define STP_ANIM 0x00000008
-
-// MoveToPoint flags
-
-#define MTF_X 0x00000001
-#define MTF_Y 0x00000002
-#define MTF_Z 0x00000004
-#define MTF_ANIM 0x00000008
-#define MTF_RELATIVE 0x00000010
-
-// VlogF flags
-
-#define VLF_BRANCH 0x00000001
-#define VLF_ERROR 0x00000002
-#define VLF_WARNING 0x00000004
-#define VLF_CRITICAL 0x00000008
-#define VLF_INFO 0x00000010
-#define VLF_API 0x00000020
-#define VLF_EXTAPI 0x00000040
-#define VLF_DEBUG 0x00000080
-#define VLF_TRACE 0x00000100
-#define VLF_FUNCTION 0x00000200
-
-// Module flags
-
-#define MOF_LINK_LIBRARY 0x00000001
-#define MOF_STATIC 0x00000002
-#define MOF_SYSTEM_PROBE 0x00000004
-
-// Thread flags
-
-#define THF_AUTO_FREE 0x00000001
-
-// Flags for the SetDate() file method.
-
-#define FDT_MODIFIED 0
-#define FDT_CREATED 1
-#define FDT_ACCESSED 2
-#define FDT_ARCHIVED 3
-
-// Options for SetVolume()
-
-#define VOLUME_REPLACE 0x00000001
-#define VOLUME_PRIORITY 0x00000002
-#define VOLUME_HIDDEN 0x00000004
-#define VOLUME_SYSTEM 0x00000008
-
-// Options for the File Delete() method.
-
-#define FDL_FEEDBACK 0x00000001
-
-// Compression flags
-
-#define CMF_PASSWORD 0x00000001
-#define CMF_NEW 0x00000002
-#define CMF_CREATE_FILE 0x00000004
-#define CMF_READ_ONLY 0x00000008
-#define CMF_NO_LINKS 0x00000010
-#define CMF_APPLY_SECURITY 0x00000020
-
-// Flags for ResolvePath()
-
-#define RSF_NO_FILE_CHECK 0x00000001
-#define RSF_CHECK_VIRTUAL 0x00000002
-#define RSF_APPROXIMATE 0x00000004
-#define RSF_NO_DEEP_SCAN 0x00000008
-#define RSF_PATH 0x00000010
-#define RSF_CASE_SENSITIVE 0x00000020
-
-// Flags for the File Watch() method.
-
-#define MFF_READ 0x00000001
-#define MFF_MODIFY 0x00000002
-#define MFF_WRITE 0x00000002
-#define MFF_CREATE 0x00000004
-#define MFF_DELETE 0x00000008
-#define MFF_MOVED 0x00000010
-#define MFF_RENAME 0x00000010
-#define MFF_ATTRIB 0x00000020
-#define MFF_OPENED 0x00000040
-#define MFF_CLOSED 0x00000080
-#define MFF_UNMOUNT 0x00000100
-#define MFF_FOLDER 0x00000200
-#define MFF_FILE 0x00000400
-#define MFF_SELF 0x00000800
-#define MFF_DEEP 0x00001000
-
-// Types for StrDatatype().
-
-#define STT_NUMBER 1
-#define STT_FLOAT 2
-#define STT_HEX 3
-#define STT_STRING 4
-
-#define OPF_DEPRECATED 0x00000001
-#define OPF_CORE_VERSION 0x00000002
-#define OPF_OPTIONS 0x00000004
-#define OPF_MAX_DEPTH 0x00000008
-#define OPF_DETAIL 0x00000010
-#define OPF_SHOW_MEMORY 0x00000020
-#define OPF_SHOW_IO 0x00000040
-#define OPF_SHOW_ERRORS 0x00000080
-#define OPF_ARGS 0x00000100
-#define OPF_ERROR 0x00000200
-#define OPF_COMPILED_AGAINST 0x00000400
-#define OPF_PRIVILEGED 0x00000800
-#define OPF_SYSTEM_PATH 0x00001000
-#define OPF_MODULE_PATH 0x00002000
-#define OPF_ROOT_PATH 0x00004000
-#define OPF_SCAN_MODULES 0x00008000
-
-#define TOI_LOCAL_CACHE 0
-#define TOI_LOCAL_STORAGE 1
-#define TOI_ANDROID_ENV 2
-#define TOI_ANDROID_CLASS 3
-#define TOI_ANDROID_ASSETMGR 4
-
-// Universal flag values used for searching text
-
-#define STF_CASE 0x00000001
-#define STF_MOVE_CURSOR 0x00000002
-#define STF_SCAN_SELECTION 0x00000004
-#define STF_BACKWARDS 0x00000008
-#define STF_EXPRESSION 0x00000010
-#define STF_WRAP 0x00000020
-
-// Flags for the OpenDir() function.
-
-#define RDF_SIZE 0x00000001
-#define RDF_DATE 0x00000002
-#define RDF_TIME 0x00000002
-#define RDF_PERMISSIONS 0x00000004
-#define RDF_FILES 0x00000008
-#define RDF_FILE 0x00000008
-#define RDF_FOLDERS 0x00000010
-#define RDF_FOLDER 0x00000010
-#define RDF_READ_ALL 0x0000001f
-#define RDF_VOLUME 0x00000020
-#define RDF_LINK 0x00000040
-#define RDF_TAGS 0x00000080
-#define RDF_HIDDEN 0x00000100
-#define RDF_QUALIFY 0x00000200
-#define RDF_QUALIFIED 0x00000200
-#define RDF_VIRTUAL 0x00000400
-#define RDF_STREAM 0x00000800
-#define RDF_READ_ONLY 0x00001000
-#define RDF_ARCHIVE 0x00002000
-#define RDF_OPENDIR 0x00004000
-
-// File flags
-
-#define FL_WRITE 0x00000001
-#define FL_NEW 0x00000002
-#define FL_READ 0x00000004
-#define FL_DIRECTORY 0x00000008
-#define FL_FOLDER 0x00000008
-#define FL_APPROXIMATE 0x00000010
-#define FL_LINK 0x00000020
-#define FL_BUFFER 0x00000040
-#define FL_LOOP 0x00000080
-#define FL_FILE 0x00000100
-#define FL_RESET_DATE 0x00000200
-#define FL_DEVICE 0x00000400
-#define FL_STREAM 0x00000800
-#define FL_EXCLUDE_FILES 0x00001000
-#define FL_EXCLUDE_FOLDERS 0x00002000
-
-// AnalysePath() values
-
-#define LOC_DIRECTORY 1
-#define LOC_FOLDER 1
-#define LOC_VOLUME 2
-#define LOC_FILE 3
-
-// IdentifyFile() values
-
-#define IDF_SECTION 0x00000001
-#define IDF_HOST 0x00000002
-#define IDF_IGNORE_HOST 0x00000004
-
-// Flags for LoadFile()
-
-#define LDF_CHECK_EXISTS 0x00000001
-
-// Flags for file feedback.
-
-#define FBK_MOVE_FILE 1
-#define FBK_COPY_FILE 2
-#define FBK_DELETE_FILE 3
-
-// Return codes available to the feedback routine
-
-#define FFR_OKAY 0
-#define FFR_CONTINUE 0
-#define FFR_SKIP 1
-#define FFR_ABORT 2
-
-// For use by VirtualVolume()
-
-#define VAS_DEREGISTER 1
-#define VAS_SCAN_DIR 2
-#define VAS_DELETE 3
-#define VAS_RENAME 4
-#define VAS_OPEN_DIR 5
-#define VAS_CLOSE_DIR 6
-#define VAS_TEST_PATH 7
-#define VAS_WATCH_PATH 8
-#define VAS_IGNORE_FILE 9
-#define VAS_GET_INFO 10
-#define VAS_GET_DEVICE_INFO 11
-#define VAS_IDENTIFY_FILE 12
-#define VAS_MAKE_DIR 13
-#define VAS_SAME_FILE 14
-#define VAS_CASE_SENSITIVE 15
-#define VAS_READ_LINK 16
-#define VAS_CREATE_LINK 17
-#define VAS_DRIVER_SIZE 18
-
-// Feedback event indicators.
-
-#define FDB_DECOMPRESS_FILE 1
-#define FDB_COMPRESS_FILE 2
-#define FDB_REMOVE_FILE 3
-#define FDB_DECOMPRESS_OBJECT 4
-
-// Compression stream formats
-
-#define CF_GZIP 1
-#define CF_ZLIB 2
-#define CF_DEFLATE 3
-
-// Flags that can be passed to FindObject()
-
-#define FOF_SMART_NAMES 0x00000001
-
-// Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.
-
-enum class NF : ULONG {
-   NIL = 0,
-   PRIVATE = 0x00000000,
-   UNTRACKED = 0x00000001,
-   INITIALISED = 0x00000002,
-   INTEGRAL = 0x00000004,
-   UNLOCK_FREE = 0x00000008,
-   FREE = 0x00000010,
-   TIMER_SUB = 0x00000020,
-   SUPPRESS_LOG = 0x00000040,
-   COLLECT = 0x00000080,
-   RECLASSED = 0x00000100,
-   MESSAGE = 0x00000200,
-   SIGNALLED = 0x00000400,
-   UNIQUE = 0x40000000,
-   NAME = 0x80000000,
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(NF)
-
-#define MAX_FILENAME 256
-
-// Module file header constants
-
-#define MODULE_HEADER_V1 1297040385
-#define MODULE_HEADER_V2 1297040386
-#define MODULE_HEADER_VERSION 1297040386
-#define MODULE_HEADER EXPORT struct ModHeader ModHeader
-
-#define MAX_NAME_LEN 32
-
-// Reserved message ID's that are handled internally.
-
-#define MSGID_WAIT_FOR_OBJECTS 90
-#define MSGID_THREAD_ACTION 91
-#define MSGID_THREAD_CALLBACK 92
-#define MSGID_VALIDATE_PROCESS 93
-#define MSGID_EVENT 94
-#define MSGID_DEBUG 95
-#define MSGID_ACTION 99
-#define MSGID_BREAK 100
-#define MSGID_CORE_END 100
-#define MSGID_COMMAND 101
-#define MSGID_QUIT 1000
-
-// Types for AllocateID()
-
-#define IDTYPE_MESSAGE 1
-#define IDTYPE_GLOBAL 2
-#define IDTYPE_FUNCTION 3
-
-#define SEM_GET_VAL 1
-#define SEM_GET_COUNTER 2
-#define SEM_GET_DATA_PTR 3
-#define SEM_GET_DATA_LONG 4
-#define SEM_GET_DATA_LARGE 5
-#define SEM_GET_DATA_DOUBLE 6
-#define SEM_SET_DATA_PTR 7
-#define SEM_SET_DATA_LONG 8
-#define SEM_SET_DATA_LARGE 9
-#define SEM_SET_DATA_DOUBLE 10
-
-// Indicates the state of a process.
-
-#define TSTATE_RUNNING 0
-#define TSTATE_PAUSED 1
-#define TSTATE_STOPPING 2
-#define TSTATE_TERMINATED 3
-
-#define RES_MESSAGE_QUEUE 1
-#define RES_CONSOLE_FD 2
-#define RES_SHARED_CONTROL 3
-#define RES_USER_ID 4
-#define RES_DISPLAY_DRIVER 5
-#define RES_PRIVILEGED_USER 6
-#define RES_PRIVILEGED 7
-#define RES_CORE_IDL 8
-#define RES_PARENT_CONTEXT 9
-#define RES_LOG_LEVEL 10
-#define RES_TOTAL_SHARED_MEMORY 11
-#define RES_MAX_PROCESSES 12
-#define RES_LOG_DEPTH 13
-#define RES_JNI_ENV 14
-#define RES_THREAD_ID 15
-#define RES_CURRENT_MSG 16
-#define RES_OPEN_INFO 17
-#define RES_EXCEPTION_HANDLER 18
-#define RES_NET_PROCESSING 19
-#define RES_PROCESS_STATE 20
-#define RES_TOTAL_MEMORY 21
-#define RES_TOTAL_SWAP 22
-#define RES_CPU_SPEED 23
-#define RES_FREE_MEMORY 24
-#define RES_FREE_SWAP 25
-#define RES_KEY_STATE 26
-
-// Path types for SetResourcePath()
-
-#define RP_MODULE_PATH 1
-#define RP_SYSTEM_PATH 2
-#define RP_ROOT_PATH 3
-
-// Flags for the MetaClass.
-
-#define CLF_PROMOTE_INTEGRAL 0x00000001
-#define CLF_NO_OWNERSHIP 0x00000002
-
-// Flags for the Config class.
-
-#define CNF_STRIP_QUOTES 0x00000001
-#define CNF_AUTO_SAVE 0x00000002
-#define CNF_OPTIONAL_FILES 0x00000004
-#define CNF_NEW 0x00000008
-
-// Flags for VarNew()
-
-#define KSF_CASE 0x00000001
-#define KSF_THREAD_SAFE 0x00000002
-#define KSF_UNTRACKED 0x00000004
-#define KSF_AUTO_REMOVE 0x00000008
-#define KSF_INTERNAL 0x00000010
-
-// Raw key codes
-
-#define K_A 1
-#define K_B 2
-#define K_C 3
-#define K_D 4
-#define K_E 5
-#define K_F 6
-#define K_G 7
-#define K_H 8
-#define K_I 9
-#define K_J 10
-#define K_K 11
-#define K_L 12
-#define K_M 13
-#define K_N 14
-#define K_O 15
-#define K_P 16
-#define K_Q 17
-#define K_R 18
-#define K_S 19
-#define K_T 20
-#define K_U 21
-#define K_V 22
-#define K_W 23
-#define K_X 24
-#define K_Y 25
-#define K_Z 26
-#define K_ONE 27
-#define K_TWO 28
-#define K_THREE 29
-#define K_FOUR 30
-#define K_FIVE 31
-#define K_SIX 32
-#define K_SEVEN 33
-#define K_EIGHT 34
-#define K_NINE 35
-#define K_ZERO 36
-#define K_REVERSE_QUOTE 37
-#define K_MINUS 38
-#define K_EQUALS 39
-#define K_L_SQUARE 40
-#define K_R_SQUARE 41
-#define K_SEMI_COLON 42
-#define K_APOSTROPHE 43
-#define K_COMMA 44
-#define K_DOT 45
-#define K_PERIOD 45
-#define K_SLASH 46
-#define K_BACK_SLASH 47
-#define K_SPACE 48
-#define K_NP_0 49
-#define K_NP_1 50
-#define K_NP_2 51
-#define K_NP_3 52
-#define K_NP_4 53
-#define K_NP_5 54
-#define K_NP_6 55
-#define K_NP_7 56
-#define K_NP_8 57
-#define K_NP_9 58
-#define K_NP_MULTIPLY 59
-#define K_NP_PLUS 60
-#define K_NP_BAR 61
-#define K_NP_SEPARATOR 61
-#define K_NP_MINUS 62
-#define K_NP_DECIMAL 63
-#define K_NP_DOT 63
-#define K_NP_DIVIDE 64
-#define K_L_CONTROL 65
-#define K_R_CONTROL 66
-#define K_HELP 67
-#define K_L_SHIFT 68
-#define K_R_SHIFT 69
-#define K_CAPS_LOCK 70
-#define K_PRINT 71
-#define K_L_ALT 72
-#define K_R_ALT 73
-#define K_L_COMMAND 74
-#define K_R_COMMAND 75
-#define K_F1 76
-#define K_F2 77
-#define K_F3 78
-#define K_F4 79
-#define K_F5 80
-#define K_F6 81
-#define K_F7 82
-#define K_F8 83
-#define K_F9 84
-#define K_F10 85
-#define K_F11 86
-#define K_F12 87
-#define K_F13 88
-#define K_F14 89
-#define K_F15 90
-#define K_F16 91
-#define K_F17 92
-#define K_MACRO 93
-#define K_NP_PLUS_MINUS 94
-#define K_LESS_GREATER 95
-#define K_UP 96
-#define K_DOWN 97
-#define K_RIGHT 98
-#define K_LEFT 99
-#define K_SCR_LOCK 100
-#define K_PAUSE 101
-#define K_WAKE 102
-#define K_SLEEP 103
-#define K_POWER 104
-#define K_BACKSPACE 105
-#define K_TAB 106
-#define K_ENTER 107
-#define K_ESCAPE 108
-#define K_DELETE 109
-#define K_CLEAR 110
-#define K_HOME 111
-#define K_PAGE_UP 112
-#define K_PAGE_DOWN 113
-#define K_END 114
-#define K_SELECT 115
-#define K_EXECUTE 116
-#define K_INSERT 117
-#define K_UNDO 118
-#define K_REDO 119
-#define K_MENU 120
-#define K_FIND 121
-#define K_CANCEL 122
-#define K_BREAK 123
-#define K_NUM_LOCK 124
-#define K_PRT_SCR 125
-#define K_NP_ENTER 126
-#define K_SYSRQ 127
-#define K_F18 128
-#define K_F19 129
-#define K_F20 130
-#define K_WIN_CONTROL 131
-#define K_VOLUME_UP 132
-#define K_VOLUME_DOWN 133
-#define K_BACK 134
-#define K_CALL 135
-#define K_END_CALL 136
-#define K_CAMERA 137
-#define K_AT 138
-#define K_PLUS 139
-#define K_LENS_FOCUS 140
-#define K_STOP 141
-#define K_NEXT 142
-#define K_PREVIOUS 143
-#define K_FORWARD 144
-#define K_REWIND 145
-#define K_MUTE 146
-#define K_STAR 147
-#define K_POUND 148
-#define K_PLAY 149
-#define K_LIST_END 150
-
 
 #ifndef __GNUC__
 #define __attribute__(a)
@@ -1342,20 +1503,18 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 #define VER_CORE (1.0f)  // Core version + revision
 #define REV_CORE (0)     // Core revision as a whole number
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #endif
 
-typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
-
 #define MOD_IDL NULL
+
+extern "C" {
+
+#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
 
 #ifdef MOD_NAME
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
@@ -1364,7 +1523,7 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 #define MOD_NAME NULL
 #endif
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define MSG(...)  LogF(0,__VA_ARGS__)
  #define FMSG(...) LogF(__VA_ARGS__)
 #else
@@ -1372,22 +1531,15 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
  #define FMSG(...)
 #endif
 
-#ifdef  __cplusplus
 }
-#endif
 
-#define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
+#define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
 
-#define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
+namespace pf {
 
-#define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
-
-#define ALIGN64(a) (((a) + 7) & (~7))
-#define ALIGN32(a) (((a) + 3) & (~3))
-#define ALIGN16(a) (((a) + 1) & (~1))
-
-#define CODE_MEMH 0x4D454D48L
-#define CODE_MEMT 0x4D454D54L
+template <class T> T roundup(T Num, LONG Alignment) {
+   return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
+}
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -1400,7 +1552,7 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
@@ -1438,12 +1590,12 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
    }
 }
 
-//#define F2T(a) LONG(a)
+} // namespace
 
 // Structures to pass to OpenCore()
 
 struct OpenTag {
-   LONG Tag;
+   TOI Tag;
    union {
       LONG Long;
       LARGE Large;
@@ -1453,19 +1605,19 @@ struct OpenTag {
 };
 
 struct OpenInfo {
-   CSTRING Name;            // OPF_NAME
-   CSTRING *Args;           // OPF_ARGS
-   CSTRING SystemPath;      // OPF_SYSTEM_PATH
-   CSTRING ModulePath;      // OPF_MODULE_PATH
-   CSTRING RootPath;        // OPF_ROOT_PATH
-   struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
-   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
-   LONG    MaxDepth;        // OPF_MAX_DEPTH
-   LONG    Detail;          // OPF_DETAIL
-   LONG    ArgCount;        // OPF_ARGS
-   ERROR   Error;           // OPF_ERROR
-   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF_CORE_VERSION
+   CSTRING Name;            // OPF::NAME
+   CSTRING *Args;           // OPF::ARGS
+   CSTRING SystemPath;      // OPF::SYSTEM_PATH
+   CSTRING ModulePath;      // OPF::MODULE_PATH
+   CSTRING RootPath;        // OPF::ROOT_PATH
+   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
+   LONG    MaxDepth;        // OPF::MAX_DEPTH
+   LONG    Detail;          // OPF::DETAIL
+   LONG    ArgCount;        // OPF::ARGS
+   ERROR   Error;           // OPF::ERROR
+   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
+   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -1553,10 +1705,6 @@ struct OpenInfo {
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
-template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
-   return APTR(((BYTE *)Pointer) + Offset);
-}
-
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
 //********************************************************************************************************************
@@ -1598,8 +1746,8 @@ struct ObjectSignal {
 };
 
 struct ResourceManager {
-   CSTRING Name;           // The name of the resource.
-   void (*Free)(APTR);     // A function that will remove the resource's content when terminated.
+   CSTRING Name;            // The name of the resource.
+   ERROR (*Free)(APTR);     // A function that will remove the resource's content when terminated.
 };
 
 typedef struct pfBase64Decode {
@@ -1629,7 +1777,7 @@ struct Function {
 
 struct ModHeader {
    LONG    HeaderVersion;                           // The version of this structure.
-   LONG    Flags;                                   // Special flags, type of function table wanted from the Core
+   MHF     Flags;                                   // Special flags, type of function table wanted from the Core
    FLOAT   ModVersion;                              // Version of this module
    FLOAT   CoreVersion;                             // Core version compiled against
    CSTRING Definitions;                             // Module definition string, usable by run-time languages such as Fluid
@@ -1650,7 +1798,7 @@ struct ModHeader {
       CSTRING pName) {
 
       HeaderVersion = MODULE_HEADER_VERSION;
-      Flags         = MHF_DEFAULT;
+      Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;
       CoreVersion   = VER_CORE;
       Definitions   = pDef;
@@ -1678,6 +1826,7 @@ struct FieldArray {
 struct FieldDef {
    CSTRING Name;    // The name of the constant.
    LONG    Value;   // The value of the constant.
+   template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(LONG(pValue)) { }
 };
 
 struct SystemState {
@@ -1694,6 +1843,11 @@ struct Variable {
    LARGE  Large;     // The value as a 64-bit integer.
    DOUBLE Double;    // The value as a 64-bit float-point number.
    APTR   Pointer;   // The value as an address pointer.
+   Variable(LONG Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(LARGE Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
+   Variable(APTR Value) : Type(FD_POINTER), Pointer(Value) { }
+   Variable() { }
 };
 
 struct ActionArray {
@@ -1702,12 +1856,15 @@ struct ActionArray {
   template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
 };
 
-struct MethodArray {
+struct MethodEntry {
    LONG    MethodID;                     // Unique method identifier
    APTR    Routine;                      // The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
    CSTRING Name;                         // Name of the method
    const struct FunctionField * Args;    // List of parameters accepted by the method
    LONG    Size;                         // Total byte-size of all accepted parameters when they are assembled as a C structure.
+   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+      MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
 };
 
 struct ActionTable {
@@ -1729,30 +1886,14 @@ struct Message {
    LONG  Size;       // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
 };
 
-struct ThreadMessage {
-   OBJECTID ThreadID;    // Internal
-};
-
-struct ThreadActionMessage {
-   OBJECTPTR Object;    // Direct pointer to a target object.
-   LONG      ActionID;  // The action to execute.
-   LONG      Key;       // Internal
-   ERROR     Error;     // The error code resulting from the action's execution.
-   FUNCTION  Callback;  // Callback function to execute on action completion.
-};
-
 typedef struct MemInfo {
    APTR     Start;       // The starting address of the memory block (does not apply to shared blocks).
    OBJECTID ObjectID;    // The object that owns the memory block.
    LONG     Size;        // The size of the memory block.
-   WORD     AccessCount; // Total number of active locks on this block.
-   WORD     Flags;       // The type of memory.
+   MEM      Flags;       // The type of memory.
    MEMORYID MemoryID;    // The unique ID for this block.
+   WORD     AccessCount; // Total number of active locks on this block.
 } MEMINFO;
-
-struct ActionEntry {
-   ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
-};
 
 struct MsgHandler {
    struct MsgHandler * Prev;    // Previous message handler in the chain
@@ -1771,7 +1912,7 @@ struct CacheFile {
 };
 
 struct CompressionFeedback {
-   LONG    FeedbackID;    // Set to one of the FDB event indicators
+   FDB     FeedbackID;    // Set to one of the FDB event indicators
    LONG    Index;         // Index of the current file
    CSTRING Path;          // Name of the current file/path in the archive
    CSTRING Dest;          // Destination file/path during decompression
@@ -1791,11 +1932,11 @@ struct CompressedItem {
    LARGE   CompressedSize;          // Compressed size of the file
    struct CompressedItem * Next;    // Used only if this is a linked-list.
    CSTRING Path;                    // Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.
-   LONG    Permissions;             // Original permissions - see PERMIT flags.
+   PERMIT  Permissions;             // Original permissions - see PERMIT flags.
    LONG    UserID;                  // Original user ID
    LONG    GroupID;                 // Original group ID
    LONG    OthersID;                // Original others ID
-   LONG    Flags;                   // FL flags
+   FL      Flags;                   // FL flags
    struct DateTime Created;         // Date and time of the file's creation.
    struct DateTime Modified;        // Date and time last modified.
     std::unordered_map<std::string, std::string> *Tags;
@@ -1806,8 +1947,8 @@ struct FileInfo {
    LARGE  TimeStamp;          // 64-bit time stamp - usable only for comparison (e.g. sorting).
    struct FileInfo * Next;    // Next structure in the list, or NULL.
    STRING Name;               // The name of the file.  This string remains valid until the next call to GetFileInfo().
-   LONG   Flags;              // Additional flags to describe the file.
-   LONG   Permissions;        // Standard permission flags.
+   RDF    Flags;              // Additional flags to describe the file.
+   PERMIT Permissions;        // Standard permission flags.
    LONG   UserID;             // User  ID (Unix systems only).
    LONG   GroupID;            // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
@@ -1822,7 +1963,7 @@ struct DirInfo {
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
-   LONG   prvFlags;         // OpenFolder() RDF flags
+   RDF    prvFlags;         // OpenFolder() RDF flags
    LONG   prvTotal;         // Total number of items in the folder
    ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {
@@ -1838,7 +1979,7 @@ struct FileFeedback {
    LARGE  Position;      // Current seek position within the file if moving or copying
    STRING Path;          // Path to the file
    STRING Dest;          // Destination file/path if moving or copying
-   LONG   FeedbackID;    // Set to one of the FDB integers
+   FBK    FeedbackID;    // Set to one of the FBK values
    char   Reserved[32];  // Reserved in case of future expansion
 };
 
@@ -1865,53 +2006,52 @@ struct ScriptArg { // For use with scExec
    };
 };
 
-extern struct CoreBase *CoreBase;
 struct CoreBase {
-   ERROR (*_AccessMemoryID)(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result);
+   ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
    ERROR (*_ActionMsg)(LONG Action, OBJECTID Object, APTR Args);
    CSTRING (*_ResolveClassID)(CLASSID ID);
-   LONG (*_AllocateID)(LONG Type);
-   ERROR (*_AllocMemory)(LONG Size, LONG Flags, APTR Address, MEMORYID * ID);
-   ERROR (*_AccessObjectID)(OBJECTID Object, LONG MilliSeconds, APTR Result);
+   LONG (*_AllocateID)(IDTYPE Type);
+   ERROR (*_AllocMemory)(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
+   ERROR (*_AccessObject)(OBJECTID Object, LONG MilliSeconds, APTR Result);
    ERROR (*_CheckAction)(OBJECTPTR Object, LONG Action);
    ERROR (*_CheckMemoryExists)(MEMORYID ID);
    ERROR (*_CheckObjectExists)(OBJECTID Object);
-   ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
+   ERROR (*_InitObject)(OBJECTPTR Object);
    ERROR (*_VirtualVolume)(CSTRING Name, ...);
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
    void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
-   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID);
+   ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
-   ERROR (*_AnalysePath)(CSTRING Path, LONG * Type);
-   ERROR (*_FreeResource)(const void * Address);
-   ERROR (*_FreeResourceID)(MEMORYID ID);
+   ERROR (*_AnalysePath)(CSTRING Path, LOC * Type);
+   LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+   ERROR (*_FreeResource)(MEMORYID ID);
    CLASSID (*_GetClassID)(OBJECTID Object);
    OBJECTID (*_GetOwnerID)(OBJECTID Object);
    ERROR (*_GetField)(OBJECTPTR Object, FIELD Field, APTR Result);
    ERROR (*_GetFieldVariable)(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
-   LONG (*_TotalChildren)(OBJECTID Object);
-   CSTRING (*_GetName)(OBJECTPTR Object);
+   ERROR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
+   const struct SystemState * (*_GetSystemState)(void);
    ERROR (*_ListChildren)(OBJECTID Object, pf::vector<ChildEntry> * List);
    ERROR (*_Base64Decode)(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
-   ERROR (*_RegisterFD)(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
-   ERROR (*_ResolvePath)(CSTRING Path, LONG Flags, STRING * Result);
+   ERROR (*_RegisterFD)(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
+   ERROR (*_ResolvePath)(CSTRING Path, RSF Flags, STRING * Result);
    ERROR (*_MemoryIDInfo)(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_MemoryPtrInfo)(APTR Address, struct MemInfo * MemInfo, LONG Size);
    ERROR (*_NewObject)(LARGE ClassID, NF Flags, APTR Object);
    void (*_NotifySubscribers)(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
    ERROR (*_StrReadLocale)(CSTRING Key, CSTRING * Value);
    CSTRING (*_UTF8ValidEncoding)(CSTRING String, CSTRING Encoding);
-   ERROR (*_ProcessMessages)(LONG Flags, LONG TimeOut);
+   ERROR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
    ERROR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
-   ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size);
-   MEMORYID (*_ReleaseMemory)(APTR Address);
+   ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size);
+   ERROR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
-   ERROR (*_SendMessage)(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size);
+   ERROR (*_SendMessage)(LONG Type, MSF Flags, APTR Data, LONG Size);
    ERROR (*_SetOwner)(OBJECTPTR Object, OBJECTPTR Owner);
    OBJECTPTR (*_SetContext)(OBJECTPTR Object);
    ERROR (*_SetField)(OBJECTPTR Object, FIELD Field, ...);
@@ -1919,59 +2059,53 @@ struct CoreBase {
    ERROR (*_ScanDir)(struct DirInfo * Info);
    ERROR (*_SetName)(OBJECTPTR Object, CSTRING Name);
    void (*_LogReturn)(void);
-   ERROR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, LONG Flags);
+   ERROR (*_StrCompare)(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
    ERROR (*_SubscribeAction)(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
    ERROR (*_SubscribeEvent)(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
    ERROR (*_SubscribeTimer)(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
    ERROR (*_UpdateTimer)(APTR Subscription, DOUBLE Interval);
    ERROR (*_UnsubscribeAction)(OBJECTPTR Object, LONG Action);
-   void (*_UnsubscribeEvent)(APTR Event);
+   void (*_UnsubscribeEvent)(APTR Handle);
    ERROR (*_BroadcastEvent)(APTR Event, LONG EventSize);
    void (*_WaitTime)(LONG Seconds, LONG MicroSeconds);
-   LARGE (*_GetEventID)(LONG Group, CSTRING SubGroup, CSTRING Event);
+   LARGE (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
-   LARGE (*_GetResource)(LONG Resource);
-   LARGE (*_SetResource)(LONG Resource, LARGE Value);
+   LARGE (*_GetResource)(RES Resource);
+   LARGE (*_SetResource)(RES Resource, LARGE Value);
    ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
-   ERROR (*_SysLock)(LONG Index, LONG MilliSeconds);
-   ERROR (*_SysUnlock)(LONG Index);
-   ERROR (*_CreateFolder)(CSTRING Path, LONG Permissions);
-   ERROR (*_LoadFile)(CSTRING Path, LONG Flags, struct CacheFile ** Cache);
-   ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags);
+   STT (*_StrDatatype)(CSTRING String);
+   void (*_UnloadFile)(struct CacheFile * Cache);
+   ERROR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
+   ERROR (*_LoadFile)(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
+   ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
    ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
-   ERROR (*_OpenDir)(CSTRING Path, LONG Flags, struct DirInfo ** Info);
+   ERROR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo ** Info);
    OBJECTPTR (*_GetObjectPtr)(OBJECTID Object);
    struct Field * (*_FindField)(OBJECTPTR Object, ULONG FieldID, APTR Target);
    CSTRING (*_GetErrorMsg)(ERROR Error);
    struct Message * (*_GetActionMsg)(void);
    ERROR (*_FuncError)(CSTRING Header, ERROR Error);
    ERROR (*_SetArray)(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
-   ERROR (*_ReleaseMemoryID)(MEMORYID MemoryID);
+   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
    ERROR (*_LockObject)(OBJECTPTR Object, LONG MilliSeconds);
    void (*_ReleaseObject)(OBJECTPTR Object);
-   ERROR (*_AllocMutex)(LONG Flags, APTR Result);
-   void (*_FreeMutex)(APTR Mutex);
-   ERROR (*_LockMutex)(APTR Mutex, LONG MilliSeconds);
-   void (*_UnlockMutex)(APTR Mutex);
    ERROR (*_ActionThread)(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
-   ERROR (*_AllocSharedMutex)(CSTRING Name, APTR Mutex);
-   void (*_FreeSharedMutex)(APTR Mutex);
-   ERROR (*_LockSharedMutex)(APTR Mutex, LONG MilliSeconds);
-   void (*_UnlockSharedMutex)(APTR Mutex);
-   void (*_VLogF)(int Flags, const char *Header, const char *Message, va_list Args);
+   ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+   void (*_SetDefaultPermissions)(LONG User, LONG Group, PERMIT Permissions);
+   void (*_VLogF)(VLF Flags, const char *Header, const char *Message, va_list Args);
    LONG (*_Base64Encode)(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
    ERROR (*_ReadInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
-   ERROR (*_SetResourcePath)(LONG PathType, CSTRING Path);
-   OBJECTPTR (*_CurrentTask)(void);
+   ERROR (*_SetResourcePath)(RP PathType, CSTRING Path);
+   objTask * (*_CurrentTask)(void);
    CSTRING (*_ResolveGroupID)(LONG Group);
    CSTRING (*_ResolveUserID)(LONG User);
    ERROR (*_CreateLink)(CSTRING From, CSTRING To);
-   STRING * (*_StrBuildArray)(STRING List, LONG Size, LONG Total, LONG Flags);
+   ERROR (*_DeleteFile)(CSTRING Path, FUNCTION * Callback);
    LONG (*_UTF8CharOffset)(CSTRING String, LONG Offset);
    LONG (*_UTF8Length)(CSTRING String);
    LONG (*_UTF8OffsetToChar)(CSTRING String, LONG Offset);
@@ -1980,64 +2114,57 @@ struct CoreBase {
    ULONG (*_UTF8ReadValue)(CSTRING String, LONG * Length);
    LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   ERROR (*_WaitForObjects)(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
+   ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
-   LONG (*_StrDatatype)(CSTRING String);
-   void (*_UnloadFile)(struct CacheFile * Cache);
-   void (*_SetDefaultPermissions)(LONG User, LONG Group, LONG Permissions);
-   ERROR (*_CompareFilePaths)(CSTRING PathA, CSTRING PathB);
-   const struct SystemState * (*_GetSystemState)(void);
-   ULONG (*_StrHash)(CSTRING String, LONG CaseSensitive);
-   ERROR (*_AddInfoTag)(struct FileInfo * Info, CSTRING Name, CSTRING Value);
-   LONG (*_UTF8Copy)(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
 };
 
 #ifndef PRV_CORE_MODULE
-inline ERROR AccessMemoryID(MEMORYID Memory, LONG Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemoryID(Memory,Flags,MilliSeconds,Result); }
+extern struct CoreBase *CoreBase;
+inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
 inline void ActionList(struct ActionTable ** Actions, LONG * Size) { return CoreBase->_ActionList(Actions,Size); }
 inline ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_ActionMsg(Action,Object,Args); }
 inline CSTRING ResolveClassID(CLASSID ID) { return CoreBase->_ResolveClassID(ID); }
-inline LONG AllocateID(LONG Type) { return CoreBase->_AllocateID(Type); }
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
-inline ERROR AccessObjectID(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObjectID(Object,MilliSeconds,Result); }
+inline LONG AllocateID(IDTYPE Type) { return CoreBase->_AllocateID(Type); }
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID) { return CoreBase->_AllocMemory(Size,Flags,Address,ID); }
+inline ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessObject(Object,MilliSeconds,Result); }
 inline ERROR CheckAction(OBJECTPTR Object, LONG Action) { return CoreBase->_CheckAction(Object,Action); }
 inline ERROR CheckMemoryExists(MEMORYID ID) { return CoreBase->_CheckMemoryExists(ID); }
 inline ERROR CheckObjectExists(OBJECTID Object) { return CoreBase->_CheckObjectExists(Object); }
-inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
+inline ERROR InitObject(OBJECTPTR Object) { return CoreBase->_InitObject(Object); }
 template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return CoreBase->_VirtualVolume(Name,Tags...); }
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
 template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
-inline ERROR FindObject(CSTRING Name, CLASSID ClassID, LONG Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
+inline ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
-inline ERROR AnalysePath(CSTRING Path, LONG * Type) { return CoreBase->_AnalysePath(Path,Type); }
-inline ERROR FreeResource(const void * Address) { return CoreBase->_FreeResource(Address); }
-inline ERROR FreeResourceID(MEMORYID ID) { return CoreBase->_FreeResourceID(ID); }
+inline ERROR AnalysePath(CSTRING Path, LOC * Type) { return CoreBase->_AnalysePath(Path,Type); }
+inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
+inline ERROR FreeResource(MEMORYID ID) { return CoreBase->_FreeResource(ID); }
 inline CLASSID GetClassID(OBJECTID Object) { return CoreBase->_GetClassID(Object); }
 inline OBJECTID GetOwnerID(OBJECTID Object) { return CoreBase->_GetOwnerID(Object); }
 inline ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result) { return CoreBase->_GetField(Object,Field,Result); }
 inline ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size) { return CoreBase->_GetFieldVariable(Object,Field,Buffer,Size); }
-inline LONG TotalChildren(OBJECTID Object) { return CoreBase->_TotalChildren(Object); }
-inline CSTRING GetName(OBJECTPTR Object) { return CoreBase->_GetName(Object); }
+inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
+inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
 inline ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List) { return CoreBase->_ListChildren(Object,List); }
 inline ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written) { return CoreBase->_Base64Decode(State,Input,InputSize,Output,Written); }
-inline ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
-inline ERROR ResolvePath(CSTRING Path, LONG Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
+inline ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data) { return CoreBase->_RegisterFD(FD,Flags,Routine,Data); }
+inline ERROR ResolvePath(CSTRING Path, RSF Flags, STRING * Result) { return CoreBase->_ResolvePath(Path,Flags,Result); }
 inline ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryIDInfo(ID,MemInfo,Size); }
 inline ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size) { return CoreBase->_MemoryPtrInfo(Address,MemInfo,Size); }
 inline ERROR NewObject(LARGE ClassID, NF Flags, APTR Object) { return CoreBase->_NewObject(ClassID,Flags,Object); }
 inline void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error) { return CoreBase->_NotifySubscribers(Object,Action,Args,Error); }
 inline ERROR StrReadLocale(CSTRING Key, CSTRING * Value) { return CoreBase->_StrReadLocale(Key,Value); }
 inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return CoreBase->_UTF8ValidEncoding(String,Encoding); }
-inline ERROR ProcessMessages(LONG Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
+inline ERROR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
-inline ERROR GetMessage(MEMORYID Queue, LONG Type, LONG Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
-inline MEMORYID ReleaseMemory(APTR Address) { return CoreBase->_ReleaseMemory(Address); }
+inline ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
+inline ERROR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
-inline ERROR SendMessage(OBJECTID Task, LONG Type, LONG Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Task,Type,Flags,Data,Size); }
+inline ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
 inline ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner) { return CoreBase->_SetOwner(Object,Owner); }
 inline OBJECTPTR SetContext(OBJECTPTR Object) { return CoreBase->_SetContext(Object); }
 template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags) { return CoreBase->_SetField(Object,Field,Tags...); }
@@ -2045,59 +2172,53 @@ inline CSTRING FieldName(ULONG FieldID) { return CoreBase->_FieldName(FieldID); 
 inline ERROR ScanDir(struct DirInfo * Info) { return CoreBase->_ScanDir(Info); }
 inline ERROR SetName(OBJECTPTR Object, CSTRING Name) { return CoreBase->_SetName(Object,Name); }
 inline void LogReturn(void) { return CoreBase->_LogReturn(); }
-inline ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
+inline ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags) { return CoreBase->_StrCompare(String1,String2,Length,Flags); }
 inline ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback) { return CoreBase->_SubscribeAction(Object,Action,Callback); }
 inline ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle) { return CoreBase->_SubscribeEvent(Event,Callback,Custom,Handle); }
 inline ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription) { return CoreBase->_SubscribeTimer(Interval,Callback,Subscription); }
 inline ERROR UpdateTimer(APTR Subscription, DOUBLE Interval) { return CoreBase->_UpdateTimer(Subscription,Interval); }
 inline ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
-inline void UnsubscribeEvent(APTR Event) { return CoreBase->_UnsubscribeEvent(Event); }
+inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERROR BroadcastEvent(APTR Event, LONG EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
 inline void WaitTime(LONG Seconds, LONG MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
-inline LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
+inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
-inline LARGE GetResource(LONG Resource) { return CoreBase->_GetResource(Resource); }
-inline LARGE SetResource(LONG Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
+inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
+inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
 inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
-inline ERROR SysLock(LONG Index, LONG MilliSeconds) { return CoreBase->_SysLock(Index,MilliSeconds); }
-inline ERROR SysUnlock(LONG Index) { return CoreBase->_SysUnlock(Index); }
-inline ERROR CreateFolder(CSTRING Path, LONG Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
-inline ERROR LoadFile(CSTRING Path, LONG Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
-inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, LONG Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
+inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
+inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
+inline ERROR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
+inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { return CoreBase->_LoadFile(Path,Flags,Cache); }
+inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
-inline ERROR OpenDir(CSTRING Path, LONG Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
+inline ERROR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
 inline OBJECTPTR GetObjectPtr(OBJECTID Object) { return CoreBase->_GetObjectPtr(Object); }
 inline struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target) { return CoreBase->_FindField(Object,FieldID,Target); }
 inline CSTRING GetErrorMsg(ERROR Error) { return CoreBase->_GetErrorMsg(Error); }
 inline struct Message * GetActionMsg(void) { return CoreBase->_GetActionMsg(); }
 inline ERROR FuncError(CSTRING Header, ERROR Error) { return CoreBase->_FuncError(Header,Error); }
 inline ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements) { return CoreBase->_SetArray(Object,Field,Array,Elements); }
-inline ERROR ReleaseMemoryID(MEMORYID MemoryID) { return CoreBase->_ReleaseMemoryID(MemoryID); }
+inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
 inline ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds) { return CoreBase->_LockObject(Object,MilliSeconds); }
 inline void ReleaseObject(OBJECTPTR Object) { return CoreBase->_ReleaseObject(Object); }
-inline ERROR AllocMutex(LONG Flags, APTR Result) { return CoreBase->_AllocMutex(Flags,Result); }
-inline void FreeMutex(APTR Mutex) { return CoreBase->_FreeMutex(Mutex); }
-inline ERROR LockMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockMutex(Mutex,MilliSeconds); }
-inline void UnlockMutex(APTR Mutex) { return CoreBase->_UnlockMutex(Mutex); }
 inline ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key) { return CoreBase->_ActionThread(Action,Object,Args,Callback,Key); }
-inline ERROR AllocSharedMutex(CSTRING Name, APTR Mutex) { return CoreBase->_AllocSharedMutex(Name,Mutex); }
-inline void FreeSharedMutex(APTR Mutex) { return CoreBase->_FreeSharedMutex(Mutex); }
-inline ERROR LockSharedMutex(APTR Mutex, LONG MilliSeconds) { return CoreBase->_LockSharedMutex(Mutex,MilliSeconds); }
-inline void UnlockSharedMutex(APTR Mutex) { return CoreBase->_UnlockSharedMutex(Mutex); }
-inline void VLogF(int Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
+inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
+inline void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
+inline void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args) { return CoreBase->_VLogF(Flags,Header,Message,Args); }
 inline LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize) { return CoreBase->_Base64Encode(State,Input,InputSize,Output,OutputSize); }
 inline ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value) { return CoreBase->_ReadInfoTag(Info,Name,Value); }
-inline ERROR SetResourcePath(LONG PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
-inline OBJECTPTR CurrentTask(void) { return CoreBase->_CurrentTask(); }
+inline ERROR SetResourcePath(RP PathType, CSTRING Path) { return CoreBase->_SetResourcePath(PathType,Path); }
+inline objTask * CurrentTask(void) { return CoreBase->_CurrentTask(); }
 inline CSTRING ResolveGroupID(LONG Group) { return CoreBase->_ResolveGroupID(Group); }
 inline CSTRING ResolveUserID(LONG User) { return CoreBase->_ResolveUserID(User); }
 inline ERROR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
-inline STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags) { return CoreBase->_StrBuildArray(List,Size,Total,Flags); }
+inline ERROR DeleteFile(CSTRING Path, FUNCTION * Callback) { return CoreBase->_DeleteFile(Path,Callback); }
 inline LONG UTF8CharOffset(CSTRING String, LONG Offset) { return CoreBase->_UTF8CharOffset(String,Offset); }
 inline LONG UTF8Length(CSTRING String) { return CoreBase->_UTF8Length(String); }
 inline LONG UTF8OffsetToChar(CSTRING String, LONG Offset) { return CoreBase->_UTF8OffsetToChar(String,Offset); }
@@ -2106,16 +2227,8 @@ inline LONG UTF8CharLength(CSTRING String) { return CoreBase->_UTF8CharLength(St
 inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UTF8ReadValue(String,Length); }
 inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
-inline ERROR WaitForObjects(LONG Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
+inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
-inline LONG StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
-inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
-inline void SetDefaultPermissions(LONG User, LONG Group, LONG Permissions) { return CoreBase->_SetDefaultPermissions(User,Group,Permissions); }
-inline ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB) { return CoreBase->_CompareFilePaths(PathA,PathB); }
-inline const struct SystemState * GetSystemState(void) { return CoreBase->_GetSystemState(); }
-inline ULONG StrHash(CSTRING String, LONG CaseSensitive) { return CoreBase->_StrHash(String,CaseSensitive); }
-inline ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value) { return CoreBase->_AddInfoTag(Info,Name,Value); }
-inline LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size) { return CoreBase->_UTF8Copy(Src,Dest,Chars,Size); }
 #endif
 
 
@@ -2129,17 +2242,20 @@ template <class T> inline MEMORYID GetMemoryID(T &&A) {
    return ((MEMORYID *)A)[-2];
 }
 
-#define DeregisterFD(a) RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
+inline ERROR DeregisterFD(HOSTHANDLE Handle) {
+   return RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL, 0, 0);
+}
+
 #define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
 
-inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
-inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
+inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
+inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
-   return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+   return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
 }
 
 template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
@@ -2163,7 +2279,17 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 
 #ifndef PRV_CORE_DATA
 
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+inline ERROR ReleaseMemory(const void *Address) {
+   if (!Address) return ERR_NullArgs;
+   return ReleaseMemory(((MEMORYID *)Address)[-2]);
+}
+
+inline ERROR FreeResource(const void *Address) {
+   if (!Address) return ERR_NullArgs;
+   return FreeResource(((LONG *)Address)[-2]);
+}
+
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -2183,12 +2309,12 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
-template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
+template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
 inline ULONG StrHash(const std::string Value) {
-   return CoreBase->_StrHash(Value.c_str(), FALSE);
+   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
@@ -2243,7 +2369,7 @@ inline STRING StrClone(CSTRING String)
 
    LONG len = strlen(String);
    STRING newstr;
-   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }
@@ -2327,16 +2453,16 @@ class Log { // C++ wrapper for Parasol's log functionality
       void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::API|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::TRACE|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
@@ -2352,64 +2478,64 @@ class Log { // C++ wrapper for Parasol's log functionality
       void app(CSTRING Message, ...) { // Info level, recommended for applications only
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_INFO, header, Message, arg);
+         VLogF(VLF::INFO, header, Message, arg);
          va_end(arg);
       }
 
       void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, header, Message, arg);
+         VLogF(VLF::API, header, Message, arg);
          va_end(arg);
       }
 
-      void msg(LONG Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
+      void msg(VLF Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
          VLogF(Flags, header, Message, arg);
          va_end(arg);
-         if (Flags & VLF_BRANCH) branches++;
+         if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
       void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_EXTAPI, header, Message, arg);
+         VLogF(VLF::EXTAPI, header, Message, arg);
          va_end(arg);
       }
 
       void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, NULL, Message, arg);
+         VLogF(VLF::API, NULL, Message, arg);
          va_end(arg);
       }
 
       void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_WARNING, header, Message, arg);
+         VLogF(VLF::WARNING, header, Message, arg);
          va_end(arg);
       }
 
       void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_ERROR, header, Message, arg);
+         VLogF(VLF::ERROR, header, Message, arg);
          va_end(arg);
       }
 
       void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, header, Message, arg);
+         VLogF(VLF::DEBUG, header, Message, arg);
          va_end(arg);
       }
 
       void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
+         VLogF(VLF::API|VLF::FUNCTION, header, Message, arg);
          va_end(arg);
       }
 
@@ -2424,19 +2550,19 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void trace(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_TRACE, header, Message, arg);
+            VLogF(VLF::TRACE, header, Message, arg);
             va_end(arg);
          #endif
       }
 
       void traceWarning(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_WARNING, header, Message, arg);
+            VLogF(VLF::WARNING, header, Message, arg);
             va_end(arg);
          #endif
       }
@@ -2454,8 +2580,6 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -2465,12 +2589,12 @@ struct BaseClass { // Must be 64-bit aligned
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   volatile bool Locked;        // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
+   inline bool isSubClass();
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 
@@ -2697,11 +2821,15 @@ class Create {
                      if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
-               else { error = log.warning(ERR_UnsupportedField); return; }
+               else {
+                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  error = log.warning(ERR_UnsupportedField);
+                  return;
+               }
             }
 
-            if ((error = acInit(obj))) {
-               acFree(obj);
+            if ((error = InitObject(obj))) {
+               FreeResource(obj->UID);
                obj = NULL;
             }
          }
@@ -2715,7 +2843,7 @@ class Create {
                   return; // Detected a successfully created unscoped object
                }
             }
-            acFree(obj);
+            FreeResource(obj->UID);
             obj = NULL;
          }
       }
@@ -2728,31 +2856,31 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 
-struct acClipboard     { LONG Mode; };
-struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
+struct acClipboard     { CLIPMODE Mode; };
+struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
-struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
+struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
+struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
 struct acNewChild      { OBJECTPTR Object; };
-struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
+struct acNewOwner      { OBJECTPTR NewOwner; };
 struct acRead          { APTR Buffer; LONG Length; LONG Result; };
 struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acRedo          { LONG Steps; };
 struct acRename        { CSTRING Name; };
 struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
+struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
 struct acUndo          { LONG Steps; };
@@ -2768,9 +2896,7 @@ inline ERROR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
 inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
 inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
 inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
-inline ERROR acFree(OBJECTPTR Object) { return Action(AC_Free,Object,NULL); }
 inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
-inline ERROR acInit(OBJECTPTR Object) { return Action(AC_Init,Object,NULL); }
 inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
 inline ERROR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
 inline ERROR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
@@ -2785,12 +2911,12 @@ inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
 
-inline ERROR acDragDrop(OBJECTPTR Object, OBJECTID Source, LONG Item, CSTRING Datatype) {
+inline ERROR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
    return Action(AC_DragDrop, Object, &args);
 }
@@ -2800,8 +2926,8 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
    return Action(AC_Draw, Object, &args);
 }
 
-inline ERROR acDataFeed(OBJECTPTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-   struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
+   struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
 }
 
@@ -2823,7 +2949,7 @@ inline ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    }
 }
 
-inline ERROR acRedo(OBJECTPTR Object, LONG Steps) {
+inline ERROR acRedo(OBJECTPTR Object, LONG Steps = 1) {
    struct acRedo args = { Steps };
    return Action(AC_Redo, Object, &args);
 }
@@ -2848,7 +2974,7 @@ inline ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    return Action(AC_Scroll, Object, &args);
 }
 
-inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
    return Action(AC_ScrollToPoint, Object, &args);
 }
@@ -2865,22 +2991,22 @@ inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG S
    return error;
 }
 
-inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
 }
 
-inline ERROR acSaveImage(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveImage args = { { DestID }, { ClassID } };
+inline ERROR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+   struct acSaveImage args = { Dest, { ClassID } };
    return Action(AC_SaveImage, Object, &args);
 }
 
-inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveToObject args = { { DestID }, { ClassID } };
+inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+   struct acSaveToObject args = { Dest, { ClassID } };
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
@@ -2917,9 +3043,9 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
 inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
@@ -2934,6 +3060,144 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
 #define SetVar(a,b,c)    acSetVar(a,b,c)
 
+// MetaClass class definition
+
+#define VER_METACLASS (1.000000)
+
+// MetaClass methods
+
+#define MT_mcFindField -1
+
+struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+
+INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
+   struct mcFindField args = { ID, (struct Field *)0, (objMetaClass *)0 };
+   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
+   if (Field) *Field = args.Field;
+   if (Source) *Source = args.Source;
+   return(error);
+}
+
+
+class objMetaClass : public BaseClass {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_METACLASS;
+   static constexpr CSTRING CLASS_NAME = "MetaClass";
+
+   using create = pf::Create<objMetaClass>;
+
+   DOUBLE  ClassVersion;                // The version number of the class.
+   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
+   struct Field * Dictionary;           // Returns a field lookup table sorted by field IDs.
+   CSTRING ClassName;                   // The name of the represented class.
+   CSTRING FileExtension;               // Describes the file extension represented by the class.
+   CSTRING FileDescription;             // Describes the file type represented by the class.
+   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
+   CSTRING Path;                        // The path to the module binary that represents the class.
+   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
+   CLF     Flags;                       // Optional flag settings.
+   CLASSID ClassID;                     // Specifies the ID of a class object.
+   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
+   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
+   CCF     Category;                    // The system category that a class belongs to.
+
+   // Customised field setting
+
+   inline ERROR setClassVersion(const DOUBLE Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassVersion = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFields(const struct FieldArray * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
+   }
+
+   template <class T> inline ERROR setClassName(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassName = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setFileExtension(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileExtension = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setFileDescription(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileDescription = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setFileHeader(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FileHeader = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Path = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSize(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Size = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const CLF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClass(const CLASSID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ClassID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBaseClass(const CLASSID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BaseClassID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCategory(const CCF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Category = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMethods(const APTR Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x00001510, Value, Elements);
+   }
+
+   inline ERROR setActions(APTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08000400, Value, 1);
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08810500, to_cstring(Value), 1);
+   }
+
+};
+
+inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassID; }
+
 // StorageDevice class definition
 
 #define VER_STORAGEDEVICE (1.000000)
@@ -2945,10 +3209,19 @@ class objStorageDevice : public BaseClass {
 
    using create = pf::Create<objStorageDevice>;
 
-   LARGE DeviceFlags;    // These read-only flags identify the type of device and its features.
-   LARGE DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
-   LARGE BytesFree;      // Total amount of storage space that is available, measured in bytes.
-   LARGE BytesUsed;      // Total amount of storage space in use.
+   DEVICE DeviceFlags;    // These read-only flags identify the type of device and its features.
+   LARGE  DeviceSize;     // The storage size of the device in bytes, without accounting for the file system format.
+   LARGE  BytesFree;      // Total amount of storage space that is available, measured in bytes.
+   LARGE  BytesUsed;      // Total amount of storage space in use.
+
+   // Customised field setting
+
+   template <class T> inline ERROR setVolume(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, 0x08800504, to_cstring(Value), 1);
+   }
+
 };
 
 // File class definition
@@ -2968,16 +3241,16 @@ class objStorageDevice : public BaseClass {
 #define MT_FlNext -9
 #define MT_FlWatch -10
 
-struct flStartStream { OBJECTID SubscriberID; LONG Flags; LONG Length;  };
+struct flStartStream { OBJECTID SubscriberID; FL Flags; LONG Length;  };
 struct flDelete { FUNCTION * Callback;  };
 struct flMove { CSTRING Dest; FUNCTION * Callback;  };
 struct flCopy { CSTRING Dest; FUNCTION * Callback;  };
-struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; LONG Type;  };
+struct flSetDate { LONG Year; LONG Month; LONG Day; LONG Hour; LONG Minute; LONG Second; FDT Type;  };
 struct flReadLine { STRING Result;  };
 struct flNext { objFile * File;  };
-struct flWatch { FUNCTION * Callback; LARGE Custom; LONG Flags;  };
+struct flWatch { FUNCTION * Callback; LARGE Custom; MFF Flags;  };
 
-INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, LONG Flags, LONG Length) {
+INLINE ERROR flStartStream(APTR Ob, OBJECTID SubscriberID, FL Flags, LONG Length) {
    struct flStartStream args = { SubscriberID, Flags, Length };
    return(Action(MT_FlStartStream, (OBJECTPTR)Ob, &args));
 }
@@ -2999,7 +3272,7 @@ INLINE ERROR flCopy(APTR Ob, CSTRING Dest, FUNCTION * Callback) {
    return(Action(MT_FlCopy, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, LONG Type) {
+INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG Minute, LONG Second, FDT Type) {
    struct flSetDate args = { Year, Month, Day, Hour, Minute, Second, Type };
    return(Action(MT_FlSetDate, (OBJECTPTR)Ob, &args));
 }
@@ -3007,13 +3280,13 @@ INLINE ERROR flSetDate(APTR Ob, LONG Year, LONG Month, LONG Day, LONG Hour, LONG
 #define flBufferContent(obj) Action(MT_FlBufferContent,(obj),0)
 
 INLINE ERROR flNext(APTR Ob, objFile ** File) {
-   struct flNext args = { 0 };
+   struct flNext args = { (objFile *)0 };
    ERROR error = Action(MT_FlNext, (OBJECTPTR)Ob, &args);
    if (File) *File = args.File;
    return(error);
 }
 
-INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, LONG Flags) {
+INLINE ERROR flWatch(APTR Ob, FUNCTION * Callback, LARGE Custom, MFF Flags) {
    struct flWatch args = { Callback, Custom, Flags };
    return(Action(MT_FlWatch, (OBJECTPTR)Ob, &args));
 }
@@ -3027,7 +3300,7 @@ class objFile : public BaseClass {
    using create = pf::Create<objFile>;
 
    LARGE    Position; // The current read/write byte position in a file.
-   LONG     Flags;    // File flags and options.
+   FL       Flags;    // File flags and options.
    LONG     Static;   // Set to TRUE if a file object should be static.
    OBJECTID TargetID; // Specifies a surface ID to target for user feedback and dialog boxes.
    BYTE *   Buffer;   // Points to the internal data buffer if the file content is held in memory.
@@ -3035,11 +3308,11 @@ class objFile : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR query() { return Action(AC_Query, this, NULL); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
@@ -3062,13 +3335,13 @@ class objFile : public BaseClass {
       return Action(AC_Rename, this, &args);
    }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR write(CPTR Buffer, LONG Size, LONG *Result = NULL) {
       ERROR error;
       struct acWrite write = { (BYTE *)Buffer, Size };
@@ -3092,6 +3365,80 @@ class objFile : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setPosition(const LARGE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+   }
+
+   inline ERROR setFlags(const FL Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setStatic(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Static = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTarget(const OBJECTID Value) {
+      this->TargetID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDate(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   inline ERROR setCreated(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08000310, Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPermissions(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setSize(const LARGE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+   }
+
+   template <class T> inline ERROR setLink(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setUser(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setGroup(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // Config class definition
@@ -3121,7 +3468,7 @@ struct cfgMergeFile { CSTRING Path;  };
 struct cfgMerge { OBJECTPTR Source;  };
 
 INLINE ERROR cfgReadValue(APTR Ob, CSTRING Group, CSTRING Key, CSTRING * Data) {
-   struct cfgReadValue args = { Group, Key, 0 };
+   struct cfgReadValue args = { Group, Key, (CSTRING)0 };
    ERROR error = Action(MT_CfgReadValue, (OBJECTPTR)Ob, &args);
    if (Data) *Data = args.Data;
    return(error);
@@ -3148,7 +3495,7 @@ INLINE ERROR cfgDeleteGroup(APTR Ob, CSTRING Group) {
 }
 
 INLINE ERROR cfgGetGroupFromIndex(APTR Ob, LONG Index, CSTRING * Group) {
-   struct cfgGetGroupFromIndex args = { Index, 0 };
+   struct cfgGetGroupFromIndex args = { Index, (CSTRING)0 };
    ERROR error = Action(MT_CfgGetGroupFromIndex, (OBJECTPTR)Ob, &args);
    if (Group) *Group = args.Group;
    return(error);
@@ -3180,7 +3527,7 @@ class objConfig : public BaseClass {
    STRING Path;         // Set this field to the location of the source configuration file.
    STRING KeyFilter;    // Set this field to enable key filtering.
    STRING GroupFilter;  // Set this field to enable group filtering.
-   LONG   Flags;        // Optional flags may be set here.
+   CNF    Flags;        // Optional flags may be set here.
    public:
    ConfigGroups *Groups;
 
@@ -3252,18 +3599,44 @@ class objConfig : public BaseClass {
    // Action stubs
 
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
    inline ERROR sort() { return Action(AC_Sort, this, NULL); }
+
+   // Customised field setting
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setKeyFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setGroupFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setFlags(const CNF Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
 };
 
 inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, DOUBLE *Value)
@@ -3314,14 +3687,14 @@ INLINE ERROR scDerefProcedure(APTR Ob, FUNCTION * Procedure) {
 }
 
 INLINE ERROR scCallback(APTR Ob, LARGE ProcedureID, const struct ScriptArg * Args, LONG TotalArgs, LONG * Error) {
-   struct scCallback args = { ProcedureID, Args, TotalArgs, 0 };
+   struct scCallback args = { ProcedureID, Args, TotalArgs, (LONG)0 };
    ERROR error = Action(MT_ScCallback, (OBJECTPTR)Ob, &args);
    if (Error) *Error = args.Error;
    return(error);
 }
 
 INLINE ERROR scGetProcedureID(APTR Ob, CSTRING Procedure, LARGE * ProcedureID) {
-   struct scGetProcedureID args = { Procedure, 0 };
+   struct scGetProcedureID args = { Procedure, (LARGE)0 };
    ERROR error = Action(MT_ScGetProcedureID, (OBJECTPTR)Ob, &args);
    if (ProcedureID) *ProcedureID = args.ProcedureID;
    return(error);
@@ -3336,7 +3709,7 @@ class objScript : public BaseClass {
    using create = pf::Create<objScript>;
 
    OBJECTID TargetID;  // Reference to the default container that new script objects will be initialised to.
-   LONG     Flags;     // Optional flags.
+   SCF      Flags;     // Optional flags.
    ERROR    Error;     // If a script fails during execution, an error code may be readable here.
    LONG     CurrentLine; // Indicates the current line being executed when in debug mode.
    LONG     LineOffset; // For debugging purposes, this value is added to any message referencing a line number.
@@ -3363,8 +3736,8 @@ class objScript : public BaseClass {
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR getVar(CSTRING FieldName, STRING Buffer, LONG Size) {
@@ -3373,56 +3746,85 @@ class objScript : public BaseClass {
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR reset() { return Action(AC_Reset, this, NULL); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
-};
 
-// MetaClass class definition
+   // Customised field setting
 
-#define VER_METACLASS (1.000000)
+   inline ERROR setTarget(const OBJECTID Value) {
+      this->TargetID = Value;
+      return ERR_Okay;
+   }
 
-// MetaClass methods
+   inline ERROR setFlags(const SCF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
 
-#define MT_mcFindField -1
+   inline ERROR setLineOffset(const LONG Value) {
+      this->LineOffset = Value;
+      return ERR_Okay;
+   }
 
-struct mcFindField { LONG ID; struct Field * Field; objMetaClass * Source;  };
+   template <class T> inline ERROR setCacheFile(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
 
-INLINE ERROR mcFindField(APTR Ob, LONG ID, struct Field ** Field, objMetaClass ** Source) {
-   struct mcFindField args = { ID, 0, 0 };
-   ERROR error = Action(MT_mcFindField, (OBJECTPTR)Ob, &args);
-   if (Field) *Field = args.Field;
-   if (Source) *Source = args.Source;
-   return(error);
-}
+   template <class T> inline ERROR setErrorString(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
 
+   template <class T> inline ERROR setWorkingPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
 
-class objMetaClass : public BaseClass {
-   public:
-   static constexpr CLASSID CLASS_ID = ID_METACLASS;
-   static constexpr CSTRING CLASS_NAME = "MetaClass";
+   template <class T> inline ERROR setProcedure(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
 
-   using create = pf::Create<objMetaClass>;
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
+   }
 
-   DOUBLE  ClassVersion;                // The version number of the class.
-   struct MethodArray * Methods;        // Set this field to define the methods supported by the class.
-   const struct FieldArray * Fields;    // Points to a field array that describes the class' object structure.
-   CSTRING ClassName;                   // The name of the represented class.
-   CSTRING FileExtension;               // Describes the file extension represented by the class.
-   CSTRING FileDescription;             // Describes the file type represented by the class.
-   CSTRING FileHeader;                  // Defines a string expression that will allow relevant file data to be matched to the class.
-   CSTRING Path;                        // The path to the module binary that represents the class.
-   LONG    Size;                        // The total size of the object structure represented by the MetaClass.
-   LONG    Flags;                       // Optional flag settings.
-   CLASSID SubClassID;                  // Specifies the sub-class ID of a class object.
-   CLASSID BaseClassID;                 // Specifies the base class ID of a class object.
-   LONG    OpenCount;                   // The total number of active objects that are linked back to the MetaClass.
-   LONG    TotalMethods;                // The total number of methods supported by a class.
-   LONG    TotalFields;                 // The total number of fields defined by a class.
-   LONG    Category;                    // The system category that a class belongs to.
+   inline ERROR setOwner(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setResults(STRING * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, 0x08801300, Value, Elements);
+   }
+
+   template <class T> inline ERROR setStatement(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
 // Task class definition
@@ -3451,7 +3853,7 @@ INLINE ERROR taskAddArgument(APTR Ob, CSTRING Argument) {
 #define taskQuit(obj) Action(MT_TaskQuit,(obj),0)
 
 INLINE ERROR taskGetEnv(APTR Ob, CSTRING Name, CSTRING * Value) {
-   struct taskGetEnv args = { Name, 0 };
+   struct taskGetEnv args = { Name, (CSTRING)0 };
    ERROR error = Action(MT_TaskGetEnv, (OBJECTPTR)Ob, &args);
    if (Value) *Value = args.Value;
    return(error);
@@ -3471,7 +3873,7 @@ class objTask : public BaseClass {
    using create = pf::Create<objTask>;
 
    DOUBLE TimeOut;    // Limits the amount of time to wait for a launched process to return.
-   LONG   Flags;      // Optional flags.
+   TSF    Flags;      // Optional flags.
    LONG   ReturnCode; // The task's return code can be retrieved following execution.
    LONG   ProcessID;  // Reflects the process ID when an executable is launched.
 
@@ -3484,7 +3886,7 @@ class objTask : public BaseClass {
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
@@ -3512,6 +3914,98 @@ class objTask : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setTimeOut(const DOUBLE Value) {
+      this->TimeOut = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const TSF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setReturnCode(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setProcess(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->ProcessID = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setArgs(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
+   inline ERROR setParameters(pf::vector<std::string> *Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08805300, Value, Value->size());
+   }
+
+   inline ERROR setErrorCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setExitCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setInputCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setLaunchPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setLocation(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setOutputCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPriority(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // Thread class definition
@@ -3548,13 +4042,39 @@ class objThread : public BaseClass {
    LONG  DataSize;   // The size of the buffer referenced in the Data field.
    LONG  StackSize;  // The stack size to allocate for the thread.
    ERROR Error;      // Reflects the error code returned by the thread routine.
-   LONG  Flags;      // Optional flags can be defined here.
+   THF   Flags;      // Optional flags can be defined here.
 
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setStackSize(const LONG Value) {
+      this->StackSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const THF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setRoutine(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // Module class definition
@@ -3568,7 +4088,7 @@ class objThread : public BaseClass {
 struct modResolveSymbol { CSTRING Name; APTR Address;  };
 
 INLINE ERROR modResolveSymbol(APTR Ob, CSTRING Name, APTR * Address) {
-   struct modResolveSymbol args = { Name, 0 };
+   struct modResolveSymbol args = { Name, (APTR)0 };
    ERROR error = Action(MT_ModResolveSymbol, (OBJECTPTR)Ob, &args);
    if (Address) *Address = args.Address;
    return(error);
@@ -3587,7 +4107,7 @@ class objModule : public BaseClass {
    APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
    struct RootModule * Root;                // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
-   LONG   Flags;                            // Optional flags.
+   MOF    Flags;                            // Optional flags.
    public:
    static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
@@ -3604,7 +4124,39 @@ class objModule : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setVersion(const DOUBLE Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Version = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFunctionList(const struct Function * Value) {
+      this->FunctionList = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHeader(struct ModHeader * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setFlags(const MOF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
 };
 
 // Time class definition
@@ -3640,7 +4192,65 @@ class objTime : public BaseClass {
    // Action stubs
 
    inline ERROR query() { return Action(AC_Query, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setSystemTime(const LARGE Value) {
+      this->SystemTime = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setYear(const LONG Value) {
+      this->Year = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMonth(const LONG Value) {
+      this->Month = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDay(const LONG Value) {
+      this->Day = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHour(const LONG Value) {
+      this->Hour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMinute(const LONG Value) {
+      this->Minute = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSecond(const LONG Value) {
+      this->Second = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTimeZone(const LONG Value) {
+      this->TimeZone = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDayOfWeek(const LONG Value) {
+      this->DayOfWeek = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMilliSecond(const LONG Value) {
+      this->MilliSecond = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMicroSecond(const LONG Value) {
+      this->MicroSecond = Value;
+      return ERR_Okay;
+   }
+
 };
 
 // Compression class definition
@@ -3675,10 +4285,10 @@ struct cmpCompressStreamEnd { FUNCTION * Callback; APTR Output; LONG OutputSize;
 struct cmpDecompressStreamEnd { FUNCTION * Callback;  };
 struct cmpDecompressObject { CSTRING Path; OBJECTPTR Object;  };
 struct cmpScan { CSTRING Folder; CSTRING Filter; FUNCTION * Callback;  };
-struct cmpFind { CSTRING Path; LONG Flags; struct CompressedItem * Item;  };
+struct cmpFind { CSTRING Path; STR Flags; struct CompressedItem * Item;  };
 
 INLINE ERROR cmpCompressBuffer(APTR Ob, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result) {
-   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, 0 };
+   struct cmpCompressBuffer args = { Input, InputSize, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpCompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -3690,7 +4300,7 @@ INLINE ERROR cmpCompressFile(APTR Ob, CSTRING Location, CSTRING Path) {
 }
 
 INLINE ERROR cmpDecompressBuffer(APTR Ob, APTR Input, APTR Output, LONG OutputSize, LONG * Result) {
-   struct cmpDecompressBuffer args = { Input, Output, OutputSize, 0 };
+   struct cmpDecompressBuffer args = { Input, Output, OutputSize, (LONG)0 };
    ERROR error = Action(MT_CmpDecompressBuffer, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -3740,8 +4350,8 @@ INLINE ERROR cmpScan(APTR Ob, CSTRING Folder, CSTRING Filter, FUNCTION * Callbac
    return(Action(MT_CmpScan, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR cmpFind(APTR Ob, CSTRING Path, LONG Flags, struct CompressedItem ** Item) {
-   struct cmpFind args = { Path, Flags, 0 };
+INLINE ERROR cmpFind(APTR Ob, CSTRING Path, STR Flags, struct CompressedItem ** Item) {
+   struct cmpFind args = { Path, Flags, (struct CompressedItem *)0 };
    ERROR error = Action(MT_CmpFind, (OBJECTPTR)Ob, &args);
    if (Item) *Item = args.Item;
    return(error);
@@ -3758,16 +4368,76 @@ class objCompression : public BaseClass {
    LARGE    TotalOutput;     // The total number of bytes that have been output during the compression or decompression of streamed data.
    OBJECTID OutputID;        // Resulting messages will be sent to the object referred to in this field.
    LONG     CompressionLevel; // The compression level to use when compressing data.
-   LONG     Flags;           // Optional flags.
+   CMF      Flags;           // Optional flags.
    LONG     SegmentSize;     // Private. Splits the compressed file if it surpasses a set byte limit.
-   LONG     Permissions;     // Default permissions for decompressed files are defined here.
+   PERMIT   Permissions;     // Default permissions for decompressed files are defined here.
    LONG     MinOutputSize;   // Indicates the minimum output buffer size that will be needed during de/compression.
    LONG     WindowBits;      // Special option for certain compression formats.
 
    // Action stubs
 
    inline ERROR flush() { return Action(AC_Flush, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setOutput(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->OutputID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCompressionLevel(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const CMF Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSegmentSize(const LONG Value) {
+      this->SegmentSize = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPermissions(const PERMIT Value) {
+      this->Permissions = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setWindowBits(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setArchiveName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setFeedback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPassword(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
 // CompressedStream class definition
@@ -3784,7 +4454,28 @@ class objCompressedStream : public BaseClass {
    LARGE     TotalOutput; // A live counter of total bytes that have been output by the stream.
    OBJECTPTR Input;      // An input object that will supply data for decompression.
    OBJECTPTR Output;     // A target object that will receive data compressed by the stream.
-   LONG      Format;     // The format of the compressed stream.  The default is GZIP.
+   CF        Format;     // The format of the compressed stream.  The default is GZIP.
+
+   // Customised field setting
+
+   inline ERROR setInput(OBJECTPTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Input = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOutput(OBJECTPTR Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Output = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFormat(const CF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Format = Value;
+      return ERR_Okay;
+   }
+
 };
 
 #ifndef PRV_CORE
@@ -3792,22 +4483,22 @@ class objCompressedStream : public BaseClass {
 // Note that the length of the data is only needed when messaging between processes, so we can skip it for these
 // direct-access data channel macros.
 
-#define acDataContent(a,b)  acDataFeed((a),0,DATA_CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA_XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA_TEXT,(b),0)
+#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
+#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
+#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
 
 inline ERROR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
    struct acCustom args = { Number, String };
    return ActionMsg(AC_Custom, ObjectID, &args);
 }
 
-inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTID SenderID, LONG Datatype, const APTR Data, LONG Size) {
-   struct acDataFeed channel = { { SenderID }, { Datatype }, Data, Size };
+inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
+   struct acDataFeed channel = { Sender, Datatype, Data, Size };
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }
 
-inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTID Source, LONG Item, CSTRING Datatype) {
-   struct acDragDrop args = { { Source }, Item, Datatype };
+inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+   struct acDragDrop args = { Source, Item, Datatype };
    return ActionMsg(AC_DragDrop, ObjectID, &args);
 }
 
@@ -3821,7 +4512,7 @@ inline ERROR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
    return ActionMsg(AC_Move, ObjectID, &move);
 }
 
-inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = MTF_X|MTF_Y) {
+inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
 }
@@ -3836,7 +4527,7 @@ inline ERROR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Dep
    return ActionMsg(AC_Resize, ObjectID, &resize);
 }
 
-inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = STP_X|STP_Y) {
+inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
    struct acScrollToPoint scroll = { X, Y, Z, Flags };
    return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
 }
@@ -3858,9 +4549,7 @@ inline ERROR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NUL
 inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
 inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
 inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERROR acFree(OBJECTID ObjectID) { return ActionMsg(AC_Free, ObjectID, NULL); }
 inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERROR acInit(OBJECTID ObjectID) { return ActionMsg(AC_Init, ObjectID, NULL); }
 inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
 inline ERROR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
 inline ERROR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }
@@ -3886,29 +4575,6 @@ inline FIELD ResolveField(CSTRING Field) {
 
 #ifdef __system__
 
-// Semaphore management structure.
-
-#define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
-
-struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
-   ULONG NameID;          // Hashed name of the semaphore
-   LONG  BlockingProcess; // Process ID of the blocker
-   LONG  BlockingThread;  // Global thread ID of the blocker
-   LARGE Data;            // User configurable 64-bit data
-   WORD  Flags;           // Status flags
-   WORD  BlockingValue;   // Value used for blocking access
-   WORD  MaxValue;        // Semaphore maximum value
-   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
-   struct SemProcess {
-      LONG ProcessID;
-      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
-      UBYTE BlockCount;      // Count of blocking locks currently recorded
-      UBYTE AccessCount;     // Count of access locks currently recorded
-      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
-   } Processes[20];
-   //LONG     FIFO[10];       // List of processes currently queued for access
-};
-
 struct ActionMessage {
    OBJECTID ObjectID;        // The object that is to receive the action
    LONG  Time;
@@ -3920,34 +4586,6 @@ struct ActionMessage {
 
 #endif
 
-enum { // For SysLock()
-   PL_WAITLOCKS=1,
-   PL_FORBID,
-   PL_SEMAPHORES,
-   #ifdef _WIN32
-      CN_SEMAPHORES,
-   #endif
-   PL_END
-};
-
-struct SharedControl {
-   volatile LONG ValidateProcess;
-   WORD SystemState;
-   volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
-   LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG SemaphoreOffset;            // Offset to the semaphore control array
-   LONG TaskOffset;                 // Offset to the task control array
-   LONG WLOffset;                   // Offset to the wait-lock array
-   #ifdef __unix__
-      struct {
-         pthread_mutex_t Mutex;
-         pthread_cond_t Cond;
-         LONG PID;               // Resource tracking: Process that has the current lock.
-         WORD Count;             // Resource tracking: Count of all locks (nesting)
-      } PublicLocks[PL_END];
-   #endif
-};
-
 // Event support
 
 struct rkEvent {
@@ -3955,34 +4593,34 @@ struct rkEvent {
    // Data follows
 };
 
-#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
+#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG::DISPLAY, "resolution", "change")
 
-#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
+#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG::GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
-#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG::FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG::FILESYSTEM, "volume", "deleted")
 
-#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
-#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
+#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG::SYSTEM, "task", "created")
+#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG::SYSTEM, "task", "removed")
 
-#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG_POWER, "state", "suspending")
-#define EVID_POWER_STATE_RESUMED        GetEventID(EVG_POWER, "state", "resumed")
-#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG_POWER, "display", "standby")
-#define EVID_POWER_BATTERY_LOW          GetEventID(EVG_POWER, "battery", "low")
-#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG_POWER, "battery", "critical")
-#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG_POWER, "cputemp", "high")
-#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
-#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
-#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
+#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG::POWER, "state", "suspending")
+#define EVID_POWER_STATE_RESUMED        GetEventID(EVG::POWER, "state", "resumed")
+#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG::POWER, "display", "standby")
+#define EVID_POWER_BATTERY_LOW          GetEventID(EVG::POWER, "battery", "low")
+#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG::POWER, "battery", "critical")
+#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG::POWER, "cputemp", "high")
+#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG::POWER, "cputemp", "critical")
+#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG::POWER, "screensaver", "on")
+#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG::POWER, "screensaver", "off")
 
-#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
-#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")
+#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG::IO, "keymap", "change")
+#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG::IO, "keyboard", "keypress")
 
-#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG_AUDIO, "volume", "master")
-#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG_AUDIO, "volume", "linein")
-#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG_AUDIO, "volume", "mic")
-#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG_AUDIO, "volume", "muted") // All volumes have been muted
-#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG_AUDIO, "volume", "unmuted") // All volumes have been unmuted
+#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG::AUDIO, "volume", "master")
+#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG::AUDIO, "volume", "linein")
+#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG::AUDIO, "volume", "mic")
+#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG::AUDIO, "volume", "muted") // All volumes have been muted
+#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG::AUDIO, "volume", "unmuted") // All volumes have been unmuted
 
 // Event structures.
 
@@ -3997,7 +4635,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

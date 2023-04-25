@@ -16,8 +16,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
       return ERR_Args|ERF_Notified;
    }
 
-   Message *msg;
-   if ((msg = GetActionMsg())) { // If this action was called as a message, then it could have been delayed and thus superseded by a more recent call.
+   if (auto msg = GetActionMsg()) { // If this action was called as a message, then it could have been delayed and thus superseded by a more recent call.
       if (msg->Time < Self->LastRedimension) {
          log.trace("Ignoring superseded redimension message (%" PF64 " < %" PF64 ").", msg->Time, Self->LastRedimension);
          return ERR_Okay|ERF_Notified;
@@ -27,9 +26,9 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
    // 2013-12: For a long time this sub-routine was commented out.  Have brought it back to try and keep the queue
    // clear of redundant redimension messages.  Seems fine...
 
-   if (Self->Flags & RNF_VISIBLE) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
+   if (Self->visible()) { // Visibility check because this sub-routine doesn't play nice with hidden surfaces.
       APTR queue;
-      if (!AccessMemoryID(GetResource(RES_MESSAGE_QUEUE), MEM_READ_WRITE, 3000, &queue)) {
+      if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ_WRITE, 3000, &queue)) {
          UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage)];
          LONG index = 0;
          while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
@@ -91,7 +90,7 @@ static ERROR SURFACE_Redimension(extSurface *Self, struct acRedimension *Args)
       return ERR_Okay|ERF_Notified;
    }
 
-   log.traceBranch("%dx%d %dx%d (req. %dx%d, %dx%d) Depth: %.0f $%.8x", newx, newy, newwidth, newheight, F2T(Args->X), F2T(Args->Y), F2T(Args->Width), F2T(Args->Height), Args->Depth, Self->Flags);
+   log.traceBranch("%dx%d %dx%d (req. %dx%d, %dx%d) Depth: %.0f $%.8x", newx, newy, newwidth, newheight, F2T(Args->X), F2T(Args->Y), F2T(Args->Width), F2T(Args->Height), Args->Depth, LONG(Self->Flags));
 
    ERROR error = resize_layer(Self, newx, newy, newwidth, newheight, newwidth, newheight, F2T(Args->Depth), 0.0, 0);
    return error|ERF_Notified;

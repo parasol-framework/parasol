@@ -63,13 +63,13 @@ The Cursor field may be written with valid cursor names or their ID's, as you pr
 
 *********************************************************************************************************************/
 
-static ERROR SET_Cursor(extSurface *Self, LONG Value)
+static ERROR SET_Cursor(extSurface *Self, PTC Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {
       UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
       OBJECTID pointer_id;
-      if (!FindObject("SystemPointer", ID_POINTER, 0, &pointer_id)) {
+      if (!FindObject("SystemPointer", ID_POINTER, FOF::NIL, &pointer_id)) {
          acRefresh(pointer_id);
       }
    }
@@ -102,7 +102,7 @@ static ERROR SET_Drag(extSurface *Self, OBJECTID Value)
 {
    if (Value) {
       auto callback = make_function_stdc(consume_input_events);
-      if (!gfxSubscribeInput(&callback, Self->UID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle)) {
+      if (!gfxSubscribeInput(&callback, Self->UID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle)) {
          Self->DragID = Value;
          return ERR_Okay;
       }
@@ -131,11 +131,11 @@ field so that existing flags are not overwritten.  To not do so can produce unex
 
 *********************************************************************************************************************/
 
-static ERROR SET_Flags(extSurface *Self, LONG Value)
+static ERROR SET_Flags(extSurface *Self, RNF Value)
 {
-   LONG flags = (Self->Flags & RNF_READ_ONLY) | (Value & (~RNF_READ_ONLY));
+   auto flags = (Self->Flags & RNF::READ_ONLY) | (Value & (~RNF::READ_ONLY));
 
-   if (Self->initialised()) flags = flags & (~RNF_INIT_ONLY);
+   if (Self->initialised()) flags = flags & (~RNF::INIT_ONLY);
 
    if (flags != Self->Flags) {
       Self->Flags = flags;
@@ -184,10 +184,10 @@ setting the coordinate fields directly.
 
 static ERROR SET_Movement(extSurface *Self, LONG Flags)
 {
-   if (Flags IS MOVE_HORIZONTAL) Self->Flags = (Self->Flags & RNF_NO_HORIZONTAL) | RNF_NO_VERTICAL;
-   else if (Flags IS MOVE_VERTICAL) Self->Flags = (Self->Flags & RNF_NO_VERTICAL) | RNF_NO_HORIZONTAL;
-   else if (Flags IS (MOVE_HORIZONTAL|MOVE_VERTICAL)) Self->Flags &= ~(RNF_NO_VERTICAL | RNF_NO_HORIZONTAL);
-   else Self->Flags |= RNF_NO_HORIZONTAL|RNF_NO_VERTICAL;
+   if (Flags IS MOVE_HORIZONTAL) Self->Flags = (Self->Flags & RNF::NO_HORIZONTAL) | RNF::NO_VERTICAL;
+   else if (Flags IS MOVE_VERTICAL) Self->Flags = (Self->Flags & RNF::NO_VERTICAL) | RNF::NO_HORIZONTAL;
+   else if (Flags IS (MOVE_HORIZONTAL|MOVE_VERTICAL)) Self->Flags &= ~(RNF::NO_VERTICAL | RNF::NO_HORIZONTAL);
+   else Self->Flags |= RNF::NO_HORIZONTAL|RNF::NO_VERTICAL;
 
    UpdateSurfaceField(Self, &SurfaceRecord::Flags, Self->Flags);
    return ERR_Okay;
@@ -225,13 +225,13 @@ static ERROR SET_Opacity(extSurface *Self, DOUBLE Value)
    if (Value >= 100) {
       opacity = 255;
       if (opacity IS Self->Opacity) return ERR_Okay;
-      Self->Flags &= ~RNF_AFTER_COPY;
+      Self->Flags &= ~RNF::AFTER_COPY;
    }
    else {
       if (Value < 0) opacity = 0;
       else opacity = (Value * 255) / 100;
       if (opacity IS Self->Opacity) return ERR_Okay;
-      Self->Flags |= RNF_AFTER_COPY; // See PrepareBackground() to see what these flags are for
+      Self->Flags |= RNF::AFTER_COPY; // See PrepareBackground() to see what these flags are for
 
       // NB: Currently the combination of PRECOPY and AFTERCOPY at the same time is permissible,
       // e.g. icons need this feature so that they can fade in and out of the desktop.
@@ -318,7 +318,7 @@ static ERROR SET_PopOver(extSurface *Self, OBJECTID Value)
       CLASSID class_id = GetClassID(Value);
       if (class_id != ID_SURFACE) {
          OBJECTPTR obj;
-         if (!AccessObjectID(Value, 3000, &obj)) {
+         if (!AccessObject(Value, 3000, &obj)) {
             obj->get(FID_Surface, &Value);
             ReleaseObject(obj);
          }
@@ -385,7 +385,7 @@ Visibility is directly affected by the Hide and Show actions if you wish to chan
 
 static ERROR GET_Visible(extSurface *Self, LONG *Value)
 {
-   if (Self->Flags & RNF_VISIBLE) *Value = TRUE;
+   if (Self->visible()) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
@@ -412,19 +412,16 @@ custom surfaces.
 
 *********************************************************************************************************************/
 
-static ERROR GET_WindowType(extSurface *Self, LONG *Value)
+static ERROR GET_WindowType(extSurface *Self, SWIN *Value)
 {
    *Value = Self->WindowType;
    return ERR_Okay;
 }
 
-static ERROR SET_WindowType(extSurface *Self, LONG Value)
+static ERROR SET_WindowType(extSurface *Self, SWIN Value)
 {
    if (Self->initialised()) {
       pf::Log log;
-      bool border;
-      LONG flags;
-      objDisplay *display;
 
       if (Self->WindowType IS Value) {
          log.trace("WindowType == %d", Value);
@@ -432,13 +429,15 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
       }
 
       if (Self->DisplayID) {
-         if (!AccessObjectID(Self->DisplayID, 2000, &display)) {
+         objDisplay *display;
+         if (!AccessObject(Self->DisplayID, 2000, &display)) {
             log.trace("Changing window type to %d.", Value);
 
+            bool border;
             switch(Value) {
-               case SWIN_TASKBAR:
-               case SWIN_ICON_TRAY:
-               case SWIN_NONE:
+               case SWIN::TASKBAR:
+               case SWIN::ICON_TRAY:
+               case SWIN::NONE:
                   border = false;
                   break;
                default:
@@ -446,15 +445,16 @@ static ERROR SET_WindowType(extSurface *Self, LONG Value)
                   break;
             }
 
+            SCR flags;
             if (border) {
-               if (display->Flags & SCR_BORDERLESS) {
-                  flags = display->Flags & (~SCR_BORDERLESS);
-                  display->set(FID_Flags, flags);
+               if ((display->Flags & SCR::BORDERLESS) != SCR::NIL) {
+                  flags = display->Flags & (~SCR::BORDERLESS);
+                  display->setFlags(flags);
                }
             }
-            else if (!(display->Flags & SCR_BORDERLESS)) {
-               flags = display->Flags | SCR_BORDERLESS;
-               display->set(FID_Flags, flags);
+            else if ((display->Flags & SCR::BORDERLESS) IS SCR::NIL) {
+               flags = display->Flags | SCR::BORDERLESS;
+               display->setFlags(flags);
             }
 
             Self->WindowType = Value;

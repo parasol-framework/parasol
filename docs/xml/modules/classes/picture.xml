@@ -1,0 +1,242 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Picture</name>
+    <type>class</type>
+    <module>Picture</module>
+    <comment>Loads and saves picture files in a variety of different data formats.</comment>
+    <fileExtension>*.png</fileExtension>
+    <fileDescription>PNG Picture</fileDescription>
+    <version>1</version>
+    <id>ad68f281</id>
+    <idstring>ID_PICTURE</idstring>
+    <category>Graphics</category>
+    <include>modules/picture.h</include>
+    <copyright>Paul Manias © 2001-2023</copyright>
+    <description>
+<p>The Picture class provides a standard API for programs to load picture files of any supported data type.  It is future proof in that future data formats can be supported by installing class drivers on the user's system.</p>
+<p>The default file format for loading and saving pictures is PNG.  Other formats such as JPEG are supported via sub-classes, which can be loaded into the system at boot time or on demand.  Some rare formats such as TIFF are also supported, but user preference may dictate whether or not the necessary driver is installed.</p>
+<header>Technical Notes</header>
+<p>The Picture class will clip any loaded picture so that it fits the size given in the <field>Bitmap</field>'s Width and Height. If you specify the <code>RESIZE</code> flag, the picture will be shrunk or enlarged to fit the given dimensions. If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information about a picture before initialising it, <action>Query</action> it first so that the picture object can load initial details on the file format.</p>
+<p>Images are also remapped automatically if the source palette and destination palettes do not match, or if there are significant differences between the source and destination bitmap types.</p></description>
+    <source>
+      <file>picture.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Loads image data into a picture object.</comment>
+      <description>
+<p>In order to load an image file into a picture object you will need to Activate it after initialisation.  So long as the <field>Path</field> field refers to a recognised image file, it will be loaded into the picture object and the fields will be filled out to reflect the image content.</p>
+<p>If you have preset the values of certain fields prior to activation, you will be placing restrictions on the image file that is to be loaded.  For example, if the source image is wider than a restricted Bitmap Width, the image will have its right edge clipped.  The same is true for the Bitmap Height and other restrictions apply to fields such as the Bitmap Palette.</p>
+<p>Once the picture is loaded, the image data will be held in the picture's Bitmap object.  You can draw to and from the Bitmap using its available drawing methods.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Init</name>
+      <comment>Prepares the object for use.</comment>
+      <description>
+<p>Objects that belong to the Picture class can be initialised in two possible ways.  If you have not set the <field>Path</field> field or have chosen to use the NEW flag, the initialisation routine will create a <field>Bitmap</field> area that contains no image data.  This allows you to fill the picture with your own image data and save it using the <action>SaveImage</action> or <action>SaveToObject</action> actions.  You must set the bitmap width, height and colour specifications at a minimum, or the initialisation process will fail.</p>
+<p>If you have set the <field>Path</field> field and avoided the NEW flag, the initialisation process will analyse the file location to determine whether or not the data is in fact a valid image file.  If the file does not match up with a registered data format, an error code of ERR_NoSupport is returned.  You will need to use the Activate or Query actions to load or find out more information about the image format.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Query</name>
+      <comment>Retrieves the latest information from an object.</comment>
+    </action>
+
+    <action>
+      <name>Read</name>
+      <comment>Reads raw image data from a Picture object.</comment>
+    </action>
+
+    <action>
+      <name>Refresh</name>
+      <comment>Refreshes a loaded picture - draws the next frame.</comment>
+    </action>
+
+    <action>
+      <name>SaveImage</name>
+      <comment>Saves the picture image to a data object.</comment>
+      <description>
+<p>If no destination is specified then the image will be saved as a new file targeting <field>Path</field>.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>SaveToObject</name>
+      <comment>Saves the picture image to a data object.</comment>
+    </action>
+
+    <action>
+      <name>Seek</name>
+      <comment>Seeks to a new read/write position within a Picture object.</comment>
+    </action>
+
+    <action>
+      <name>Write</name>
+      <comment>Writes raw image data to a picture object.</comment>
+    </action>
+
+  </actions>
+
+  <fields>
+    <field>
+      <name>Author</name>
+      <comment>The name of the person or company that created the image.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>Bitmap</name>
+      <comment>Represents a picture's image data.</comment>
+      <access read="R">Read</access>
+      <type class="Bitmap">*Bitmap</type>
+      <description>
+<p>The details of a picture's graphical image and data are defined in its associated bitmap object.  It contains information on the image dimensions and palette for example.  When loading a picture, you can place certain constraints on the image by presetting Bitmap fields such as the Width and Height (this will have the effect of clipping or resizing the source image). The Palette can also be preset if you want to remap the source image to a specific set of colour values.</p>
+<p>Please refer to the <class name="Bitmap">Bitmap</class> class for more details on the structure of bitmap objects.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Copyright</name>
+      <comment>Copyright details of an image.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Copyright details related to an image may be specified here.  The copyright should be short and to the point, for example "Copyright H.R. Giger (c) 1992."</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Description</name>
+      <comment>Long description for an image.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>A long description for an image may be entered in this field.  There is no strict limit on the length of the description.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Disclaimer</name>
+      <comment>The disclaimer associated with an image.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>If it is necessary to associate a disclaimer with an image, the legal text may be entered in this field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplayHeight</name>
+      <comment>The preferred height to use when displaying the image.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If the source does not specify a suitable value for these fields, they may be initialised to a value based on the picture's <field>Bitmap</field> Width and Height.</p>
+<p>In the case of a scalable image source such as SVG, the DisplayWidth and DisplayHeight can be pre-configured by the client, and the loader will scale the source image to the preferred dimensions on load.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DisplayWidth</name>
+      <comment>The preferred width to use when displaying the image.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The DisplayWidth and DisplayHeight fields define the preferred pixel dimensions to use for the display when viewing the image in a 96DPI environment.  Both fields will be set automatically when the picture source is loaded.  If the source does not specify a suitable value for these fields, they may be initialised to a value based on the picture's <field>Bitmap</field> Width and Height.</p>
+<p>In the case of a scalable image source such as SVG, the DisplayWidth and DisplayHeight can be pre-configured by the client, and the loader will scale the source image to the preferred dimensions on load.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional initialisation flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="PCF">PCF</type>
+      <description>
+<types lookup="PCF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Header</name>
+      <comment>Contains the first 32 bytes of data in a picture's file header.</comment>
+      <access read="G" write="I">Get/Init</access>
+      <type>APTR</type>
+      <description>
+<p>The Header field is a pointer to a 32 byte buffer that contains the first 32 bytes of information read from a picture file on initialisation.  This special field is considered to be helpful only to developers writing add on components for the picture class.</p>
+<p>The buffer that is referred to by the Header field is not populated until the Init action is called on the picture object.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Mask</name>
+      <comment>Refers to a Bitmap that imposes a mask on the image.</comment>
+      <access read="R">Read</access>
+      <type class="Bitmap">*Bitmap</type>
+      <description>
+<p>If a source picture includes a mask, the Mask field will refer to a Bitmap object that contains the mask image once the picture source has been loaded.  The mask will be expressed as either a 256 colour alpha bitmap, or a 1-bit mask with 8 pixels per byte.</p>
+<p>If creating a picture from scratch that needs to support a mask, set the <code>MASK</code> flag prior to initialisation and the picture class will allocate the mask bitmap automatically.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>The location of source image data.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>Quality</name>
+      <comment>Defines the quality level to use when saving the image.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The quality level to use when saving the image is defined here.  The value is expressed as a percentage between 0 and 100%, with 100% being of the highest quality.  If the picture format is loss-less, such as PNG, then the quality level may be used to determine the compression factor.</p>
+<p>In all cases, the impact of selecting a high level of quality will increase the time it takes to save the image.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Software</name>
+      <comment>The name of the application that was used to draw the image.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>Title</name>
+      <comment>The title of the image.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="PCF" comment="Flags for the Picture class.">
+      <const name="ALPHA">If a picture supports an alpha channel, this field will be set (if you will be saving a Picture with an alpha channel, set this flag prior to initialisation and build the channel using the object provided in the Mask field).</const>
+      <const name="FORCE_ALPHA_32">If the picture source includes an alpha channel mask, it will normally be separated out and stored in the Mask field.  If you set the FORCE_ALPHA_32 option before loading, the image will be forced into 32-bit graphics mode with alpha channel.  The mask information will be stored in the alpha byte and the Mask field will not be set.</const>
+      <const name="LAZY">Prevents automatic loading of the picture image.  Use the Query action to process the picture header or Activate to load the image data.</const>
+      <const name="MASK">A mask has been generated for the image.</const>
+      <const name="NEW">Indicates that the picture image will be created from scratch.</const>
+      <const name="NO_PALETTE">Automatically upgrade palette based images to 32 bit colour.</const>
+      <const name="RESIZE">Synonym for RESIZE_X | RESIZE_Y</const>
+      <const name="RESIZE_X">Resizes the image on the horizontal axis if the Bitmap Width is preset and does not match the width of the image source.</const>
+      <const name="RESIZE_Y">Resizes the image on the vertical axis if the Bitmap Height is preset and does not match the height of the image source.</const>
+      <const name="SCALABLE">This read-only flag is automatically set if the image source is scalable (such as SVG).</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

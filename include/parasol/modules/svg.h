@@ -12,8 +12,13 @@ class objSVG;
 
 // SVG flags.
 
-#define SVF_AUTOSCALE 0x00000001
-#define SVF_ALPHA 0x00000002
+enum class SVF : ULONG {
+   NIL = 0,
+   AUTOSCALE = 0x00000001,
+   ALPHA = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SVF)
 
 // SVG class definition
 
@@ -42,25 +47,68 @@ class objSVG : public BaseClass {
    STRING    Path;      // The location of the source SVG data.
    STRING    Title;     // The title of the SVG document.
    LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
-   LONG      Flags;     // Optional flags.
+   SVF       Flags;     // Optional flags.
    LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.
 
    // Action stubs
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
-   inline ERROR saveImage(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveImage args = { { DestID }, { ClassID } };
+   inline ERROR init() { return InitObject(this); }
+   inline ERROR saveImage(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveImage args = { Dest, { ClassID } };
       return Action(AC_SaveImage, this, &args);
    }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setTarget(OBJECTPTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08000501, Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setTitle(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setFrame(const LONG Value) {
+      this->Frame = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const SVF Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFrameRate(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFrameCallback(const FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 

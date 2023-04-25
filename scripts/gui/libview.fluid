@@ -17,7 +17,7 @@
 
 local function checkCursorImage(View)
    if View.pointerLocked and not View.activeZone then
-      mGfx.restoreCursor(PTR_DEFAULT, View.scene.surface)
+      mGfx.restoreCursor(PTC_DEFAULT, View.scene.surface)
       View.pointerLocked = nil
    end
 end
@@ -170,10 +170,10 @@ gui.initView = function(Options, BuildUI, NewItems)
                Item._vectors.viewport = nil
 
                for k, v in pairs(Item._vectors) do
-                  v.acFree()
+                  v.free()
                end
 
-               if vp then vp.acFree() end
+               if vp then vp.free() end
 
                Item._vectors = { }
             end
@@ -534,9 +534,9 @@ gui.initView = function(Options, BuildUI, NewItems)
 
    vw.viewport.mtSubscribeKeyboard(function(Viewport, Qualifiers, Code, Unicode)
       if bit.band(Qualifiers, KQ_PRESSED) != 0 then
-         if (Code == K_ENTER) or (Code == K_NP_ENTER) or (Code == K_SPACE) then
+         if (Code == KEY_ENTER) or (Code == KEY_NP_ENTER) or (Code == KEY_SPACE) then
             -- TODO: item activation
-         elseif (Code == K_UP) or (Code == K_LEFT) then
+         elseif (Code == KEY_UP) or (Code == KEY_LEFT) then
             if vw.hItem then
                local scan = vw.hItem.prev
                while scan do
@@ -547,7 +547,7 @@ gui.initView = function(Options, BuildUI, NewItems)
             else
                highlightItem(vw, vw.items)
             end
-         elseif (Code == K_DOWN) or (Code == K_RIGHT) then
+         elseif (Code == KEY_DOWN) or (Code == KEY_RIGHT) then
             if vw.hItem then
                local scan = vw.hItem.next
                while scan do

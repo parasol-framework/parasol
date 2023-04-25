@@ -41,7 +41,7 @@ static ERROR PATTERN_Draw(extVectorPattern *Self, struct acDraw *Args)
    else if (!(Self->Bitmap = objBitmap::create::integral(
       fl::Width(Self->Scene->PageWidth),
       fl::Height(Self->Scene->PageHeight),
-      fl::Flags(BMF_ALPHA_CHANNEL),
+      fl::Flags(BMF::ALPHA_CHANNEL),
       fl::BitsPerPixel(32)))) return ERR_CreateObject;
 
    ClearMemory(Self->Bitmap->Data, Self->Bitmap->LineWidth * Self->Bitmap->Height);
@@ -62,8 +62,8 @@ static ERROR PATTERN_Free(extVectorPattern *Self, APTR Void)
    }
    Self->Matrices = NULL;
 
-   if (Self->Bitmap) { acFree(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Scene)  { acFree(Self->Scene); Self->Scene = NULL; }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Scene)  { FreeResource(Self->Scene); Self->Scene = NULL; }
 
    return ERR_Okay;
 }
@@ -74,12 +74,12 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((Self->SpreadMethod <= 0) or (Self->SpreadMethod >= VSPREAD_END)) {
+   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return log.warning(ERR_OutOfRange);
    }
 
-   if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
@@ -94,8 +94,8 @@ static ERROR PATTERN_Init(extVectorPattern *Self, APTR Void)
       Self->Dimensions |= DMF_FIXED_HEIGHT;
    }
 
-   if (acInit(Self->Scene)) return ERR_Init;
-   if (acInit(Self->Viewport)) return ERR_Init;
+   if (InitObject(Self->Scene)) return ERR_Init;
+   if (InitObject(Self->Viewport)) return ERR_Init;
 
    return ERR_Okay;
 }
@@ -107,9 +107,9 @@ static ERROR PATTERN_NewObject(extVectorPattern *Self, APTR Void)
    if (!NewObject(ID_VECTORSCENE, NF::INTEGRAL, &Self->Scene)) {
       if (!NewObject(ID_VECTORVIEWPORT, &Self->Viewport)) {
          SetOwner(Self->Viewport, Self->Scene);
-         Self->SpreadMethod = VSPREAD_REPEAT;
-         Self->Units        = VUNIT_BOUNDING_BOX;
-         Self->ContentUnits = VUNIT_USERSPACE;
+         Self->SpreadMethod = VSPREAD::REPEAT;
+         Self->Units        = VUNIT::BOUNDING_BOX;
+         Self->ContentUnits = VUNIT::USERSPACE;
          Self->Opacity      = 1.0;
          return ERR_Okay;
       }
@@ -141,7 +141,6 @@ then the dimension is calculated relative to the bounding box or viewport applyi
 static ERROR PATTERN_GET_Height(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Height;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -154,10 +153,7 @@ static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->Height = val;
@@ -178,7 +174,7 @@ penalty.
 static ERROR PATTERN_SET_Inherit(extVectorPattern *Self, extVectorPattern *Value)
 {
    if (Value) {
-      if (Value->ClassID IS ID_VECTORPATTERN) {
+      if (Value->Class->ClassID IS ID_VECTORPATTERN) {
          Self->Inherit = Value;
       }
       else return ERR_InvalidValue;
@@ -210,7 +206,7 @@ static ERROR VECTORPATTERN_SET_Matrices(extVectorPattern *Self, VectorMatrix *Va
       auto hook = &Self->Matrices;
       while (Value) {
          VectorMatrix *matrix;
-         if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix)) {
+         if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
             matrix->Vector = NULL;
             matrix->Next   = NULL;
             matrix->ScaleX = Value->ScaleX;
@@ -286,7 +282,7 @@ static ERROR PATTERN_SET_Transform(extVectorPattern *Self, CSTRING Commands)
 
    if (!Self->Matrices) {
       VectorMatrix *matrix;
-      if (!AllocMemory(sizeof(VectorMatrix), MEM_DATA|MEM_NO_CLEAR, &matrix)) {
+      if (!AllocMemory(sizeof(VectorMatrix), MEM::DATA|MEM::NO_CLEAR, &matrix)) {
          matrix->Vector = NULL;
          matrix->Next   = Self->Matrices;
          matrix->ScaleX = 1.0;
@@ -344,7 +340,6 @@ then the dimension is calculated relative to the bounding box or viewport applyi
 static ERROR PATTERN_GET_Width(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -357,10 +352,7 @@ static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->Width = val;
@@ -379,7 +371,6 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 static ERROR PATTERN_GET_X(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -392,10 +383,7 @@ static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->X = val;
@@ -415,7 +403,6 @@ The (X,Y) field values define the starting coordinate for mapping patterns.
 static ERROR PATTERN_GET_Y(extVectorPattern *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -428,10 +415,7 @@ static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->Y = val;
@@ -461,17 +445,17 @@ static const FieldDef clPatternDimensions[] = {
 };
 
 static const FieldDef clPatternUnits[] = {
-   { "BoundingBox", VUNIT_BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
-   { "UserSpace",   VUNIT_USERSPACE },    // Coordinates are relative to the current viewport
+   { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
+   { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
    { NULL, 0 }
 };
 
 static const FieldDef clPatternSpread[] = {
-   { "Pad",      VSPREAD_PAD },
-   { "Reflect",  VSPREAD_REFLECT },
-   { "Repeat",   VSPREAD_REPEAT },
-   { "ReflectX", VSPREAD_REFLECT_X },
-   { "ReflectY", VSPREAD_REFLECT_Y },
+   { "Pad",      VSPREAD::PAD },
+   { "Reflect",  VSPREAD::REFLECT },
+   { "Repeat",   VSPREAD::REPEAT },
+   { "ReflectX", VSPREAD::REFLECT_X },
+   { "ReflectY", VSPREAD::REFLECT_Y },
    { NULL, 0 }
 };
 
@@ -500,8 +484,8 @@ ERROR init_pattern(void) // The pattern is a definition type for creating patter
    clVectorPattern = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORPATTERN),
       fl::Name("VectorPattern"),
-      fl::Category(CCF_GRAPHICS),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Category(CCF::GRAPHICS),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clPatternActions),
       fl::Fields(clPatternFields),
       fl::Size(sizeof(extVectorPattern)),

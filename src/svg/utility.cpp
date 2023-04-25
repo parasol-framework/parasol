@@ -14,11 +14,11 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG *Level)
    spacing[i] = 0;
 
    while (Vector) {
-      if (Vector->ClassID IS ID_VECTORSCENE) {
+      if (Vector->Class->ClassID IS ID_VECTORSCENE) {
          log.msg("Scene: %p", Vector);
          if (((objVectorScene *)Vector)->Viewport) debug_branch(Header, ((objVectorScene *)Vector)->Viewport, Level);
       }
-      else if (Vector->ClassID IS ID_VECTOR) {
+      else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          objVector *shape = (objVector *)Vector;
          log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, shape->className());
          if (shape->Child) debug_branch(Header, shape->Child, Level);
@@ -35,7 +35,7 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
    LONG level = 0;
    while (Vector) {
       debug_branch(Header, Vector, &level);
-      if (Vector->ClassID IS ID_VECTOR) {
+      if (Vector->Class->BaseClassID IS ID_VECTOR) {
          Vector = (((objVector *)Vector)->Next);
       }
       else break;
@@ -49,11 +49,11 @@ static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 
 static ERROR current_colour(extSVG *Self, objVector *Vector, FRGB &RGB)
 {
-   if (Vector->ClassID != ID_VECTOR) return ERR_Failed;
+   if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
 
    Vector = (objVector *)Vector->Parent;
    while (Vector) {
-      if (Vector->ClassID != ID_VECTOR) return ERR_Failed;
+      if (Vector->Class->BaseClassID != ID_VECTOR) return ERR_Failed;
 
       if (!GetFieldArray(Vector, FID_FillColour|TFLOAT, &RGB, NULL)) {
          if (RGB.Alpha != 0) return ERR_Okay;
@@ -78,12 +78,12 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
    switch (StrHash(Input)) {
-      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, VSF_GRAPHIC); break;
-      case SVF_SOURCEALPHA:     Effect->set(SourceField, VSF_ALPHA); break;
-      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, VSF_BKGD); break;
-      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, VSF_BKGD_ALPHA); break;
-      case SVF_FILLPAINT:       Effect->set(SourceField, VSF_FILL); break;
-      case SVF_STROKEPAINT:     Effect->set(SourceField, VSF_STROKE); break;
+      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, LONG(VSF::GRAPHIC)); break;
+      case SVF_SOURCEALPHA:     Effect->set(SourceField, LONG(VSF::ALPHA)); break;
+      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, LONG(VSF::BKGD)); break;
+      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, LONG(VSF::BKGD_ALPHA)); break;
+      case SVF_FILLPAINT:       Effect->set(SourceField, LONG(VSF::FILL)); break;
+      case SVF_STROKEPAINT:     Effect->set(SourceField, LONG(VSF::STROKE)); break;
       default:  {
          if (Self->Effects.contains(Input)) {
             Effect->set(RefField, Self->Effects[Input]);
@@ -170,7 +170,7 @@ static CSTRING folder(extSVG *Self)
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
    STRING folder;
-   if (!ResolvePath(Self->Path, RSF_NO_FILE_CHECK, &folder)) {
+   if (!ResolvePath(Self->Path, RSF::NO_FILE_CHECK, &folder)) {
       WORD last = 0;
       for (WORD i=0; folder[i]; i++) {
          if ((folder[i] IS '/') or (folder[i] IS '\\')) last = i + 1;
@@ -193,7 +193,7 @@ static const std::string uri_name(const std::string Ref)
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
-   else if (!StrCompare("url(#", Ref.c_str() + skip, 5, 0)) {
+   else if (!StrCompare("url(#", Ref.c_str() + skip, 5)) {
       LONG i;
       skip += 5;
       for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
@@ -316,6 +316,7 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 
       if (*str IS '%') {
          *FieldID |= TPERCENT;
+         multiplier = 0.01;
          str++;
       }
       else if ((str[0] IS 'p') and (str[1] IS 'x')); // Pixel.  This is the default type
@@ -344,16 +345,11 @@ template <class T> static inline void set_double(T Object, FIELD FieldID, const 
 //********************************************************************************************************************
 // This version forces all coordinates to be interpreted as relative when in BOUNDINGBOX mode.
 
-INLINE void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, LONG Units)
+inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string Value, VUNIT Units)
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
-   if (Units IS VUNIT_BOUNDING_BOX) {
-      if (!(field & TPERCENT)) {
-         num *= 100.0;
-         field |= TPERCENT;
-      }
-   }
+   if (Units IS VUNIT::BOUNDING_BOX) field |= TPERCENT;
    SetField(Object, field, num);
 }
 
@@ -443,29 +439,29 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    objXML *xml;
    ERROR error = ERR_Okay;
    if (!NewObject(ID_XML, NF::INTEGRAL, &xml)) {
-      OBJECTPTR task = CurrentTask();
+      objTask *task = CurrentTask();
       STRING working_path = NULL;
 
       if (Path) {
-         if (!StrCompare("*.svgz", Path, 0, STR_WILDCARD)) {
-            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL_READ))) {
+         if (!StrCompare("*.svgz", Path, 0, STR::WILDCARD)) {
+            if (auto file = objFile::create::global(fl::Owner(xml->UID), fl::Path(Path), fl::Flags(FL::READ))) {
                if (auto stream = objCompressedStream::create::global(fl::Owner(file->UID), fl::Input(file))) {
-                  xml->set(FID_Source, stream);
+                  xml->setSource(stream);
                }
                else {
-                  acFree(xml);
-                  acFree(file);
+                  FreeResource(xml);
+                  FreeResource(file);
                   error = ERR_CreateObject;
                   goto end;
                }
             }
             else {
-               acFree(xml);
+               FreeResource(xml);
                error = ERR_CreateObject;
                goto end;
             }
          }
-         else xml->set(FID_Path, Path);
+         else xml->setPath(Path);
 
          if (!task->get(FID_Path, &working_path)) working_path = StrClone(working_path);
 
@@ -478,11 +474,11 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
          folder[last] = 0;
-         if (last) task->set(FID_Path, folder);
+         if (last) task->setPath(folder);
       }
-      else if (Buffer) xml->set(FID_Statement, Buffer);
+      else if (Buffer) xml->setStatement(Buffer);
 
-      if (!acInit(xml)) {
+      if (!InitObject(xml)) {
          Self->SVGVersion = 1.0;
 
          convert_styles(xml->Tags);
@@ -506,22 +502,22 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             else log.warning("Failed to resolve ID %s for inheritance.", inherit.ID.c_str());
          }
 
-         if (Self->Flags & SVF_AUTOSCALE) {
+         if ((Self->Flags & SVF::AUTOSCALE) != SVF::NIL) {
             // If auto-scale is enabled, access the top-level viewport and set the Width and Height to 100%
 
             auto view = Self->Scene->Viewport;
-            while ((view) and (view->SubID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
-            if (view) view->setFields(fl::Width(PERCENT(100.0)), fl::Height(PERCENT(100.0)));
+            while ((view) and (view->Class->ClassID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
+            if (view) view->setFields(fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)));
          }
       }
       else error = ERR_Init;
 
       if (working_path) {
-         task->set(FID_Path, working_path);
+         task->setPath(working_path);
          FreeResource(working_path);
       }
 
-      acFree(xml);
+      FreeResource(xml);
    }
    else error = ERR_NewObject;
 

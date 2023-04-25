@@ -2,10 +2,9 @@
 //********************************************************************************************************************
 // Executes the target.
 
-ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
+ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 {
    pf::Log log(__FUNCTION__);
-   LONG i, j;
    ERROR error;
 
    log.msg("Identifying file '%s'", TargetFile);
@@ -20,15 +19,15 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
    if (class_id IS ID_PARC) glSandbox = TRUE;
 
    if (glSandbox) {
-      CSTRING *args = NULL;
-      glTask->getPtr(FID_Parameters, &args);
+      pf::vector<std::string> *params = NULL;
+      glTask->getPtr(FID_Parameters, &params);
 
       #ifdef _WIN32
          IntegrityLevel il = get_integrity_level();
          if (il < INTEGRITY_LEVEL_LOW) {
             // If running with an integrity better than 'low', re-run the process with a low integrity.
 
-            if (glRelaunched) return(ERR_Security);
+            if (glRelaunched) return ERR_Security;
 
             log.msg("Inappropriate integrity level %d (must be %d or higher), re-launching...\n", il, INTEGRITY_LEVEL_LOW);
 
@@ -36,20 +35,23 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
 
             cmdline[0] = '"';
             ULONG i = get_exe(cmdline+1, sizeof(cmdline));
-            if ((!i) or (i >= sizeof(cmdline)-30)) return(ERR_Failed);
+            if ((!i) or (i >= sizeof(cmdline)-30)) return ERR_Failed;
             i++;
 
             i += StrCopy("\" --relaunch", cmdline+i, sizeof(cmdline)-i);
-            if (GetResource(RES_LOG_LEVEL) >= 5) i += StrCopy(" --log-debug", cmdline+i, sizeof(cmdline)-i);
-            else if (GetResource(RES_LOG_LEVEL) >= 3) i += StrCopy(" --log-info", cmdline+i, sizeof(cmdline)-i);
+            if (GetResource(RES::LOG_LEVEL) >= 5) i += StrCopy(" --log-debug", cmdline+i, sizeof(cmdline)-i);
+            else if (GetResource(RES::LOG_LEVEL) >= 3) i += StrCopy(" --log-info", cmdline+i, sizeof(cmdline)-i);
 
-            for (; *args; args++) {
-               if (!StrMatch("--sandbox", *args)) continue;
+            pf::vector<std::string> &args = *params;
+            for (unsigned a=0; a < args.size(); a++) {
+               if (!StrMatch("--sandbox", args[a])) continue;
+
                if (i < sizeof(cmdline)-2) {
                   cmdline[i++] = ' ';
                   cmdline[i++] ='"';
                }
-               CSTRING arg = *args;
+
+               auto arg = args[a].c_str();
                while ((*arg) and (i < sizeof(cmdline)-2)) {
                   if (*arg IS '"') cmdline[i++] = '\\'; // Escape '"'
                   cmdline[i++] = *arg++;
@@ -57,18 +59,18 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
                if (i < sizeof(cmdline)-1) cmdline[i++] = '"';
             }
             cmdline[i] = 0;
-            if (i >= sizeof(cmdline)-3) return(ERR_BufferOverflow);
+            if (i >= sizeof(cmdline)-3) return ERR_BufferOverflow;
 
             // Temporarily switch off debug messages until the child process returns.
 
-            LONG log_level = GetResource(RES_LOG_LEVEL);
-            SetResource(RES_LOG_LEVEL, 1);
+            LONG log_level = GetResource(RES::LOG_LEVEL);
+            SetResource(RES::LOG_LEVEL, 1);
 
             create_low_process(cmdline, TRUE);
 
-            SetResource(RES_LOG_LEVEL, log_level);
+            SetResource(RES::LOG_LEVEL, log_level);
 
-            return(ERR_LimitedSuccess);
+            return ERR_LimitedSuccess;
          }
 
       #else
@@ -76,16 +78,16 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          error = init_sandbox(args, glRelaunched ? FALSE : TRUE);
          if (error IS ERR_LimitedSuccess) {
             // Limited success means that the process was re-launched with a lower priority.
-            return(error);
+            return error;
          }
          else if (error) {
             print("Sandbox initialisation failed.");
-            return(error);
+            return error;
          }
 */
       #endif
    }
-
+#if 0
    if (class_id IS ID_PARC) {
       objParc::create parc = { fl::Path(TargetFile), fl::Allow(glAllow) };
 
@@ -109,79 +111,84 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, CSTRING Procedure)
          error = ERR_CreateObject;
       }
 
-      return(error);
+      return error;
    }
-
+#endif
    if (!NewObject(subclass ? subclass : class_id, &glScript)) {
-      glScript->setFields(fl::Path(TargetFile),
-                          fl::Target(glTarget ? glTarget->UID : CurrentTaskID()),
-                          fl::Procedure(Procedure));
+      glScript->setTarget(glTarget ? glTarget->UID : CurrentTaskID());
+      glScript->setPath(TargetFile);
 
-      if (glArgs) {
-         BYTE argbuffer[100];
-         STRING argname = argbuffer;
-         for (i=0; glArgs[i]; i++) {
-            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
-            argname[j] = 0;
-            LONG al = j;
+      if (!Procedure.empty()) glScript->setProcedure(Procedure);
 
-            if (glArgs[i][j] IS '=') {
-               j++;
-               if (glArgs[i][j] IS '{') {
+      if (glArgsIndex) {
+         pf::vector<std::string> &args = *glArgs;
+
+         for (unsigned i=glArgsIndex; i < args.size(); i++) {
+            auto eq = args[i].find('=');
+            if (eq IS std::string::npos) SetVar(glScript, args[i].c_str(), "1");
+            else {
+               auto argname = std::string(args[i], 0, eq);
+               eq++;
+               if (args[i][eq] IS '{') {
                   // Array definition, e.g. files={ file1.txt file2.txt }
                   // This will be converted to files(0)=file.txt files(1)=file2.txt
 
-                  j++;
-                  if (glArgs[i][j] > 0x20) SetVar(glScript, argname, glArgs[i] + j);
+                  if (args[i][eq+1] > 0x20) SetVar(glScript, argname.c_str(), args[i].c_str() + eq);
+                  else {
+                     unsigned arg_index = 0;
+                     for (++i; (i < args.size()) and (args[i][0] != '}'); i++) {
+                        auto argindex = argname + '(' + std::to_string(arg_index) + ')';
+                        SetVar(glScript, argindex.c_str(), args[i].c_str());
+                        arg_index++;
+                     }
 
-                  i++;
-                  LONG arg_index = 0;
-                  while ((glArgs[i]) and (glArgs[i][0] != '}')) {
-                     snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
-                     SetVar(glScript, argname, glArgs[i]);
-                     arg_index++;
-                     i++;
+                     if (i >= args.size()) break;
+
+                     // Note that the last arg in the array will be the "}" that closes it
+
+                     SetVar(glScript, (argname + ":size").c_str(), std::to_string(arg_index).c_str());
                   }
-                  if (!glArgs[i]) break;
-                  // Note that the last arg in the array will be the "}" that closes it
-
-                  char array_size[16];
-                  StrCopy(":size", argname+al, sizeof(argbuffer)-al);
-                  IntToStr(arg_index, array_size, sizeof(array_size));
-                  SetVar(glScript, argname, array_size);
                }
-               else SetVar(glScript, argname, glArgs[i]+j);
+               else SetVar(glScript, argname.c_str(), args[i].c_str() + eq);
             }
-            else SetVar(glScript, argname, "1");
          }
       }
 
       LARGE start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
-      if (!(error = acInit(glScript))) {
-         if (!(error = acActivate(glScript))) {
+      if (auto error = InitObject(glScript); !error) {
+         if (auto error = acActivate(glScript); !error) {
             if (ShowTime) { // Print the execution time of the script
-               DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;
-               DOUBLE endseconds   = (DOUBLE)PreciseTime() / 1000000.0;
-               print("Script executed in %f seconds.\n\n", endseconds - startseconds);
+               auto start_seconds = (DOUBLE)start_time / 1000000.0;
+               auto end_seconds   = (DOUBLE)PreciseTime() / 1000000.0;
+               print("Script executed in %f seconds.\n\n", end_seconds - start_seconds);
             }
+
+            if (glScript->Error) {
+               log.msg("Script returned an error code of %d: %s", glScript->Error, GetErrorMsg(glScript->Error));
+               return glScript->Error;
+            }
+
+            STRING msg;
+            if ((!glScript->get(FID_ErrorString, &msg)) and (msg)) {
+               log.msg("Script returned error message: %s", msg);
+               return ERR_Failed;
+            }
+            else return ERR_Okay;
          }
          else {
             print("Script failed during processing.  Use the --log-error option to examine the failure.");
-            return(ERR_Failed);
+            return ERR_Failed;
          }
       }
       else {
          print("Failed to load / initialise the script.");
-         return(ERR_Failed);
+         return ERR_Failed;
       }
-
-      log.msg("Script initialised.");
-      return(ERR_Okay);
    }
    else {
       print("Internal Failure: Failed to create a new Script object for file processing.");
-      return(ERR_Failed);
+      return ERR_Failed;
    }
 }

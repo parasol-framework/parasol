@@ -37,7 +37,7 @@
 #define AND &&
 #define OR ||
 
-#ifdef DEBUG
+#ifdef _DEBUG
 #define MSG(...) printf(__VA_ARGS__)
 #else
 #define MSG(...)
@@ -59,8 +59,6 @@ static HANDLE glInstance = 0;
 static HANDLE glMsgWindow = 0;
 HANDLE glValidationSemaphore = 0;
 
-LONG glMutexLockSize = sizeof(CRITICAL_SECTION);
-
 WINBASEAPI VOID WINAPI InitializeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable, PSRWLOCK SRWLock, DWORD dwMilliseconds, ULONG Flags);
@@ -69,8 +67,6 @@ WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariab
 
 LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue);
 void plFreePrivateSemaphore(HANDLE *Semaphore);
-LONG plLockSemaphore(HANDLE *Semaphore, LONG TimeOut);
-void plUnlockSemaphore(HANDLE *Semaphore);
 long long winGetTickCount(void);
 
 static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
@@ -303,7 +299,7 @@ static inline unsigned int LCASEHASH(char *String)
 
 //********************************************************************************************************************
 
-#ifdef DEBUG
+#ifdef _DEBUG
 static char glSymbolsLoaded = FALSE;
 static void windows_print_stacktrace(CONTEXT* context)
 {
@@ -374,7 +370,7 @@ LONG winInitialise(unsigned int *PathHash, void *BreakHandler)
    char path[255];
    LONG len;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       // This is only needed if the application crashes and a stack trace is printed.
       SymSetOptions(SymGetOptions() | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
       if (SymInitialize(GetCurrentProcess(), 0, TRUE)) glSymbolsLoaded = TRUE;
@@ -458,22 +454,6 @@ void plFreePrivateSemaphore(HANDLE *Semaphore)
    if (*Semaphore) { CloseHandle(*Semaphore); *Semaphore = 0; }
 }
 
-LONG plLockSemaphore(HANDLE *Semaphore, LONG TimeOut)
-{
-   switch(WaitForSingleObject(*Semaphore, TimeOut)) {
-      case WAIT_OBJECT_0:  return ERR_Okay;
-      case WAIT_TIMEOUT:   return ERR_TimeOut;
-      case WAIT_ABANDONED: return ERR_DoesNotExist;
-      default: return ERR_SystemCall;
-   }
-}
-
-void plUnlockSemaphore(HANDLE *Semaphore)
-{
-   LONG prev;
-   ReleaseSemaphore(*Semaphore, 1, &prev);
-}
-
 //********************************************************************************************************************
 // Broadcast a message saying that our process is dying.  Status should be 0 for an initial broadcast (closure is
 // starting) and 1 if the process has finished and closed the Core cleanly.
@@ -518,7 +498,7 @@ void winShutdown(void)
 
 //********************************************************************************************************************
 // Return a duplicate handle linked to some other process.  A cache is used so that re-duplication is minimised.
-
+/*
 static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 {
    HANDLE result = 0;
@@ -555,59 +535,7 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
    LeaveCriticalSection(&csHandleBank);
    return result;
 }
-
-//********************************************************************************************************************
-// Windows compatible locking allocation functions.  See lib_locking.c for the POSIX versions.
-
-int alloc_public_lock(HANDLE *Lock, const char *Name)
-{
-   HANDLE mutex;
-
-   if ((mutex = OpenMutex(SYNCHRONIZE, FALSE, Name))) {
-      *Lock = mutex;
-      return ERR_Okay;
-   }
-
-   if ((mutex = CreateMutex(NULL, FALSE, Name))) {
-      *Lock = mutex;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
-int open_public_lock(HANDLE *Lock, const char *Name)
-{
-   HANDLE mutex;
-
-   if ((mutex = OpenMutex(SYNCHRONIZE, FALSE, Name))) {
-      *Lock = mutex;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
-void free_public_lock(HANDLE Lock)
-{
-   CloseHandle(Lock);
-}
-
-int public_thread_lock(HANDLE Lock, LONG TimeOut)
-{
-   if (TimeOut < 1) TimeOut = 1;
-
-   switch(WaitForSingleObject(Lock, TimeOut)) {
-      case WAIT_OBJECT_0:  return ERR_Okay;
-      case WAIT_TIMEOUT:   return ERR_TimeOut;
-      case WAIT_ABANDONED: return ERR_DoesNotExist;
-      default: return ERR_SystemCall;
-   }
-}
-
-void public_thread_unlock(HANDLE Lock)
-{
-   ReleaseMutex(Lock);
-}
-
+*/
 //********************************************************************************************************************
 // The SysLock() function uses these publicly accessible handles for synchronising Core processes.
 
@@ -660,14 +588,11 @@ void free_public_waitlock(HANDLE Lock)
    CloseHandle(Lock);
 }
 
-LONG wake_waitlock(HANDLE Lock, LONG ProcessID, LONG TotalSleepers)
+LONG wake_waitlock(HANDLE Lock, LONG TotalSleepers)
 {
    if (!Lock) return ERR_NullArgs;
 
    LONG error = ERR_Okay;
-   BYTE free;
-   Lock = handle_cache(ProcessID, Lock, &free);
-   if (!Lock) return ERR_Failed;
 
    #ifdef WAITLOCK_EVENTS
       while (TotalSleepers-- > 0) {
@@ -683,7 +608,6 @@ LONG wake_waitlock(HANDLE Lock, LONG ProcessID, LONG TotalSleepers)
       if (!ReleaseSemaphore(Lock, 1, &prev)) error = ERR_SystemCall;
    #endif
 
-   if (free) CloseHandle(Lock);
    return error;
 }
 
@@ -993,14 +917,6 @@ LONG winGetCurrentProcessId(void)
 }
 
 //********************************************************************************************************************
-// Returns a handle if successful, otherwise NULL.
-
-HANDLE winOpenSemaphore(unsigned char *Name)
-{
-   return OpenSemaphore(SEMAPHORE_ALL_ACCESS, FALSE, Name);
-}
-
-//********************************************************************************************************************
 
 static BYTE glConsoleMode = TRUE; // Assume running from a terminal by default.
 
@@ -1306,7 +1222,7 @@ LONG ExceptionFilter(LPEXCEPTION_POINTERS Args)
 {
    LONG continuable, code, err;
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    if (Args->ExceptionRecord->ExceptionCode != EXCEPTION_STACK_OVERFLOW) {
       windows_print_stacktrace(Args->ContextRecord);
    }
@@ -1425,105 +1341,6 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT msgcode, WPARAM wPara
       return 0;
    }
    else return DefWindowProc(window, msgcode, wParam, lParam);
-}
-
-//********************************************************************************************************************
-
-int AllocMutex(int Flags, CRITICAL_SECTION **Result)
-{
-   CRITICAL_SECTION *cs;
-   if (!Result) return ERR_NullArgs;
-
-   //if (!(Flags & ALF_RECURSIVE)) {
-      // TODO: Non-recursive mutexes can be supported by using InitialiseSRWLock(), AcquireSRWLockExclusive(), etc...
-   //}
-
-   if ((cs = calloc(1, sizeof(CRITICAL_SECTION)))) {
-      InitializeCriticalSection(cs);
-      *Result = cs;
-      return ERR_Okay;
-   }
-   else return ERR_AllocMemory;
-}
-
-//********************************************************************************************************************
-
-void FreeMutex(void *Mutex)
-{
-   if (Mutex) {
-      DeleteCriticalSection(Mutex);
-      free(Mutex);
-   }
-}
-
-//********************************************************************************************************************
-// Calls to TryEnterCriticalSection() will nest.
-
-int LockMutex(void *Mutex, int MilliSeconds)
-{
-   if (!Mutex) return ERR_NullArgs;
-   if (MilliSeconds IS 0) {
-      if (!TryEnterCriticalSection(Mutex)) return ERR_Okay; // May nest.
-      else return ERR_TimeOut;
-   }
-   else EnterCriticalSection(Mutex); // Always succeeds if it returns.  May nest
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-void UnlockMutex(void *Mutex)
-{
-   if (Mutex) LeaveCriticalSection(Mutex);
-}
-
-//********************************************************************************************************************
-
-int AllocSharedMutex(const char *Name, void **Result)
-{
-   if (!Result) return ERR_NullArgs;
-
-   HANDLE mutex;
-   if (Name) {
-      if ((mutex = OpenMutex(SYNCHRONIZE, FALSE, Name))) {
-         *Result = mutex;
-         return ERR_Okay;
-      }
-   }
-
-   if ((mutex = CreateMutex(NULL, FALSE, Name))) {
-      *Result = mutex;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
-//********************************************************************************************************************
-
-void FreeSharedMutex(void *Mutex)
-{
-   if (Mutex) CloseHandle(Mutex);
-}
-
-//********************************************************************************************************************
-
-int LockSharedMutex(void *Mutex, int Timeout)
-{
-   if (Timeout < 1) Timeout = 1;
-
-   switch (WaitForSingleObject(Mutex, Timeout)) { // Will return WAIT_OBJECT_0 if ownership was granted.
-      case WAIT_OBJECT_0:  return ERR_Okay;
-      case WAIT_TIMEOUT:   return ERR_TimeOut;
-      case WAIT_ABANDONED: return ERR_DoesNotExist;
-      default: return ERR_SystemCall;
-   }
-}
-
-//********************************************************************************************************************
-
-void UnlockSharedMutex(APTR Mutex)
-{
-   ReleaseMutex(Mutex);
 }
 
 //********************************************************************************************************************

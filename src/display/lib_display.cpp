@@ -40,9 +40,9 @@ ERROR gfxGetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
    if (!Result) return ERR_NullArgs;
 
    if (!t_info) {
-      // Each thread gets an allocation that can't be resource tracked, so MEM_HIDDEN is used in this case.
+      // Each thread gets an allocation that can't be resource tracked, so MEM::HIDDEN is used in this case.
       // Note that this could conceivably cause memory leaks if temporary threads were to use this function.
-      if (AllocMemory(sizeof(DISPLAYINFO), MEM_NO_CLEAR|MEM_HIDDEN, &t_info)) {
+      if (AllocMemory(sizeof(DISPLAYINFO), MEM::NO_CLEAR|MEM::HIDDEN, &t_info)) {
          return ERR_AllocMemory;
       }
    }
@@ -69,16 +69,16 @@ int(DT): Returns an integer indicating the display type.
 
 *********************************************************************************************************************/
 
-LONG gfxGetDisplayType(void)
+DT gfxGetDisplayType(void)
 {
 #ifdef _WIN32
-   return DT_WINDOWS;
+   return DT::WINDOWS;
 #elif __xwindows__
-   return DT_X11;
+   return DT::X11;
 #elif _GLES_
-   return DT_GLES;
+   return DT::GLES;
 #else
-   return DT_NATIVE;
+   return DT::NATIVE;
 #endif
 }
 
@@ -143,13 +143,13 @@ ERROR gfxScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
          while (*Filter IS ',') Filter++;
          while ((*Filter) and (*Filter <= 0x20)) Filter++;
 
-         if (!StrCompare("depth", Filter, 5, 0))   extract_value(Filter, &f_depth, &c_depth);
-         if (!StrCompare("bytes", Filter, 5, 0))   extract_value(Filter, &f_bytes, &c_bytes);
-         if (!StrCompare("width", Filter, 5, 0))   extract_value(Filter, &f_width, &c_width);
-         if (!StrCompare("height", Filter, 6, 0))  extract_value(Filter, &f_height, &c_height);
-         if (!StrCompare("refresh", Filter, 7, 0)) extract_value(Filter, &f_refresh, &c_refresh);
-         if (!StrCompare("minrefresh", Filter, 10, 0)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
-         if (!StrCompare("maxrefresh", Filter, 10, 0)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
+         if (!StrCompare("depth", Filter, 5))   extract_value(Filter, &f_depth, &c_depth);
+         if (!StrCompare("bytes", Filter, 5))   extract_value(Filter, &f_bytes, &c_bytes);
+         if (!StrCompare("width", Filter, 5))   extract_value(Filter, &f_width, &c_width);
+         if (!StrCompare("height", Filter, 6))  extract_value(Filter, &f_height, &c_height);
+         if (!StrCompare("refresh", Filter, 7)) extract_value(Filter, &f_refresh, &c_refresh);
+         if (!StrCompare("minrefresh", Filter, 10)) extract_value(Filter, &f_minrefresh, &c_minrefresh);
+         if (!StrCompare("maxrefresh", Filter, 10)) extract_value(Filter, &f_maxrefresh, &c_maxrefresh);
 
          while ((*Filter) and (*Filter != ',')) Filter++;
       }
@@ -236,7 +236,7 @@ SetHostOption: Alter options associated with the host display system.
 For internal usage only.
 
 -INPUT-
-int(HOST) Option: One of HOST_TRAY_ICON, HOST_TASKBAR or HOST_STICK_TO_FRONT.
+int(HOST) Option: One of TRAY_ICON, TASKBAR or STICK_TO_FRONT.
 large Value: The value to be applied to the option.
 
 -ERRORS-
@@ -244,28 +244,28 @@ Okay
 
 *********************************************************************************************************************/
 
-ERROR gfxSetHostOption(LONG Option, LARGE Value)
+ERROR gfxSetHostOption(HOST Option, LARGE Value)
 {
 #if defined(_WIN32) || defined(__xwindows__)
    pf::Log log(__FUNCTION__);
 
    switch (Option) {
-      case HOST_TRAY_ICON:
+      case HOST::TRAY_ICON:
          glTrayIcon += Value;
          if (glTrayIcon) glTaskBar = 0;
          break;
 
-      case HOST_TASKBAR:
+      case HOST::TASKBAR:
          glTaskBar = Value;
          if (glTaskBar) glTrayIcon = 0;
          break;
 
-      case HOST_STICK_TO_FRONT:
+      case HOST::STICK_TO_FRONT:
          glStickToFront += Value;
          break;
 
       default:
-         log.warning("Invalid option %d, Data %" PF64, Option, Value);
+         log.warning("Invalid option %d, Data %" PF64, LONG(Option), Value);
    }
 #endif
 

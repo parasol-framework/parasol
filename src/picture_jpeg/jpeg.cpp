@@ -1,14 +1,11 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-This software is based in part on the work of the Independent JPEG Group.
-Source code has been derived from the libjpeg archive, a separate package
-copyright to Thomas G. Lane.  Libjpeg is publicly available on terms that
-are not related to this Package.  The original libjpeg source code can be
-obtained from http://www.ijg.org.
+This software is based in part on the work of the Independent JPEG Group.  Source code has been derived from the
+libjpeg archive, a separate package copyright to Thomas G. Lane.  Libjpeg is publicly available on terms that are not
+related to this Package.  The original libjpeg source code can be obtained from http://www.ijg.org.
 
 *********************************************************************************************************************/
 
@@ -29,16 +26,16 @@ struct DisplayBase *DisplayBase = NULL;
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 
-static ERROR JPEG_Activate(prvPicture *, APTR);
-static ERROR JPEG_Init(prvPicture *, APTR);
-static ERROR JPEG_Query(prvPicture *, APTR);
-static ERROR JPEG_SaveImage(prvPicture *, struct acSaveImage *);
+static ERROR JPEG_Activate(extPicture *, APTR);
+static ERROR JPEG_Init(extPicture *, APTR);
+static ERROR JPEG_Query(extPicture *, APTR);
+static ERROR JPEG_SaveImage(extPicture *, struct acSaveImage *);
 
-static void decompress_jpeg(prvPicture *, objBitmap *, struct jpeg_decompress_struct *);
+static void decompress_jpeg(extPicture *, objBitmap *, struct jpeg_decompress_struct *);
 
 //********************************************************************************************************************
 
-static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
+static ERROR JPEG_Activate(extPicture *Self, APTR Void)
 {
    pf::Log log;
    struct jpeg_decompress_struct cinfo;
@@ -52,7 +49,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          log.warning("Failed to open file \"%s\".", path);
          return ERR_File;
       }
@@ -60,7 +57,7 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
 
    // Read the JPEG file
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
+   acSeek(Self->prvFile, 0.0, SEEK::START);
 
    auto bmp = Self->Bitmap;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
@@ -68,19 +65,19 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
    jpeg_stdio_src(&cinfo, Self->prvFile);
    jpeg_read_header(&cinfo, TRUE);
 
-   if (!bmp->Width)          bmp->Width          = cinfo.image_width;
-   if (!bmp->Height)         bmp->Height         = cinfo.image_height;
-   if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;
-   if (!Self->DisplayHeight) Self->DisplayHeight = bmp->Height;
-   if (!bmp->Type)           bmp->Type           = BMP_CHUNKY;
-   if (!bmp->BitsPerPixel)   bmp->BitsPerPixel   = 32;
+   if (!bmp->Width)           bmp->Width          = cinfo.image_width;
+   if (!bmp->Height)          bmp->Height         = cinfo.image_height;
+   if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
+   if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
+   if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
+   if (!bmp->BitsPerPixel)    bmp->BitsPerPixel   = 32;
 
-   if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
+   if (((Self->Flags & PCF::NO_PALETTE) != PCF::NIL) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
    }
 
    if (!acQuery(bmp)) {
-      if (acInit(bmp) != ERR_Okay) {
+      if (InitObject(bmp) != ERR_Okay) {
          jpeg_destroy_decompress(&cinfo);
          return ERR_Init;
       }
@@ -90,8 +87,8 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
       return ERR_Query;
    }
 
-   if (Self->Flags & PCF_RESIZE_X) cinfo.output_width = bmp->Width;
-   if (Self->Flags & PCF_RESIZE_Y) cinfo.output_height = bmp->Height;
+   if ((Self->Flags & PCF::RESIZE_X) != PCF::NIL) cinfo.output_width = bmp->Width;
+   if ((Self->Flags & PCF::RESIZE_Y) != PCF::NIL) cinfo.output_height = bmp->Height;
 
    if (bmp->BitsPerPixel >= 24) {
       decompress_jpeg(Self, bmp, &cinfo);
@@ -102,17 +99,17 @@ static ERROR JPEG_Activate(prvPicture *Self, APTR Void)
       objBitmap::create tmp = { fl::Width(bmp->Width), fl::Height(bmp->Height), fl::BitsPerPixel(24) };
       if (tmp.ok()) {
          decompress_jpeg(Self, *tmp, &cinfo);
-         gfxCopyArea(*tmp, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+         gfxCopyArea(*tmp, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
       }
    }
 
-   acFree(Self->prvFile);
+   FreeResource(Self->prvFile);
    Self->prvFile = NULL;
 
    return ERR_Okay;
 }
 
-static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
+static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_decompress_struct *Cinfo)
 {
    pf::Log log;
    RGB8 rgb;
@@ -165,7 +162,7 @@ static void decompress_jpeg(prvPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 ** Picture: Init
 */
 
-static ERROR JPEG_Init(prvPicture *Self, APTR Void)
+static ERROR JPEG_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
    UBYTE *buffer;
@@ -173,7 +170,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
 
    Self->get(FID_Location, &path);
 
-   if ((!path) or (Self->Flags & PCF_NEW)) {
+   if ((!path) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no location has been specified, assume that the picture is being created from scratch (e.g. to save an image to disk).  The
       // programmer is required to specify the dimensions and colours of the Bitmap so that we can initialise it.
 
@@ -181,7 +178,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
-         if (!acInit(Self->Bitmap)) {
+         if (!InitObject(Self->Bitmap)) {
             return ERR_Okay;
          }
          else return log.warning(ERR_Init);
@@ -192,7 +189,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
       if ((buffer[0] IS 0xff) and (buffer[1] IS 0xd8) and (buffer[2] IS 0xff) and
           ((buffer[3] IS 0xe0) or (buffer[3] IS 0xe1) or (buffer[3] IS 0xfe))) {
          log.msg("The file is a JPEG picture.");
-         if (!(Self->Flags & PCF_LAZY)) acActivate(Self);
+         if ((Self->Flags & PCF::LAZY) IS PCF::NIL) acActivate(Self);
          return ERR_Okay;
       }
       else log.msg("The file is not a JPEG picture.");
@@ -203,7 +200,7 @@ static ERROR JPEG_Init(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR JPEG_Query(prvPicture *Self, APTR Void)
+static ERROR JPEG_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    struct jpeg_decompress_struct *cinfo;
@@ -215,24 +212,24 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
          return log.warning(ERR_CreateObject);
       }
    }
 
-   acSeek(Self->prvFile, 0.0, SEEK_START);
-   if (!AllocMemory(sizeof(struct jpeg_decompress_struct), MEM_DATA, &cinfo)) {
+   acSeek(Self->prvFile, 0.0, SEEK::START);
+   if (!AllocMemory(sizeof(struct jpeg_decompress_struct), MEM::DATA, &cinfo)) {
       auto bmp = Self->Bitmap;
       cinfo->err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
       jpeg_create_decompress(cinfo);
       jpeg_stdio_src(cinfo, Self->prvFile);
       jpeg_read_header(cinfo, FALSE);
 
-      if (!bmp->Width)          bmp->Width          = cinfo->image_width;
-      if (!bmp->Height)         bmp->Height         = cinfo->image_height;
-      if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;
-      if (!Self->DisplayHeight) Self->DisplayHeight = bmp->Height;
-      if (!bmp->Type)           bmp->Type           = BMP_CHUNKY;
+      if (!bmp->Width)           bmp->Width          = cinfo->image_width;
+      if (!bmp->Height)          bmp->Height         = cinfo->image_height;
+      if (!Self->DisplayWidth)   Self->DisplayWidth  = bmp->Width;
+      if (!Self->DisplayHeight)  Self->DisplayHeight = bmp->Height;
+      if (bmp->Type IS BMP::NIL) bmp->Type           = BMP::CHUNKY;
       if (!bmp->BitsPerPixel) {
          bmp->BitsPerPixel = 24;
          bmp->BytesPerPixel = 3;
@@ -249,22 +246,20 @@ static ERROR JPEG_Query(prvPicture *Self, APTR Void)
 ** Picture: SaveImage
 */
 
-static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
+static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    pf::Log log;
 
    log.branch();
 
-   objFile *file = NULL;
+   OBJECTPTR file = NULL;
 
-   if ((Args) and (Args->DestID)) {
-      if (AccessObjectID(Args->DestID, 3000, &file)) return log.warning(ERR_AccessObject);
-   }
+   if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
       STRING path;
       if (Self->get(FID_Location, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
 
-      if (!(file = objFile::create::integral(fl::Path(path), fl::Flags(FL_NEW|FL_WRITE)))) {
+      if (!(file = objFile::create::integral(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) {
          return log.warning(ERR_CreateObject);
       }
    }
@@ -275,7 +270,7 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    struct jpeg_error_mgr jerr;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_compress(&cinfo);
-   jpeg_stdio_dest(&cinfo, file);
+   jpeg_stdio_dest(&cinfo, (objFile *)file);
 
    cinfo.image_width      = Self->Bitmap->Width; 	// image width and height, in pixels
    cinfo.image_height     = Self->Bitmap->Height;
@@ -309,8 +304,8 @@ static ERROR JPEG_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    jpeg_destroy_compress(&cinfo);
 
    if (file) {
-      if ((Args) and (Args->DestID)) ReleaseObject(file);
-      else acFree(file);
+      if ((Args) and (Args->Dest));
+      else FreeResource(file);
    }
 
    return ERR_Okay;
@@ -338,9 +333,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    clJPEG = objMetaClass::create::global(
       fl::BaseClassID(ID_PICTURE),
-      fl::SubClassID(ID_JPEG),
+      fl::ClassID(ID_JPEG),
       fl::Name("JPEG"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.jpeg|*.jpeg|*.jfif"),
       fl::FileDescription("JPEG Picture"),
       fl::FileHeader("[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]"),
@@ -354,8 +349,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
-   if (clJPEG)     { acFree(clJPEG);     clJPEG = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (clJPEG)     { FreeResource(clJPEG);     clJPEG = NULL; }
    return ERR_Okay;
 }
 

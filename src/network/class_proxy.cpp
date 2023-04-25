@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -61,7 +60,7 @@ static LONG StrShrink(STRING String, LONG Offset, LONG TotalBytes)
 /*
 static void free_proxy(void)
 {
- if (glConfig) { acFree(glConfig); glConfig = NULL; }
+ if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 }
 */
 
@@ -93,7 +92,7 @@ static ERROR PROXY_Delete(extProxy *Self, APTR Void)
       #endif
    }
 
-   if (glConfig) { acFree(glConfig); glConfig = NULL; }
+   if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    if ((glConfig = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg")))) {
       cfgDeleteGroup(glConfig, Self->GroupName);
@@ -174,7 +173,7 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
 
    // Remove the previous cache of the proxy database
 
-   if (glConfig) { acFree(glConfig); glConfig = NULL; }
+   if (glConfig) { FreeResource(glConfig); glConfig = NULL; }
 
    // Load the current proxy database into the cache
 
@@ -219,17 +218,17 @@ static ERROR PROXY_Find(extProxy *Self, struct prxFind *Args)
                LONG i     = 0;
                LONG index = 0;
                while (true) {
-                  if (!StrCompare("ftp=", servers+i, 4, 0)) {
+                  if (!StrCompare("ftp=", servers+i, 4)) {
                      name = "Windows FTP";
                      port = 21;
                      index = i + 4;
                   }
-                  else if (!StrCompare("http=", servers+i, 5, 0)) {
+                  else if (!StrCompare("http=", servers+i, 5)) {
                      name = "Windows HTTP";
                      port = 80;
                      index = i + 5;
                   }
-                  else if (!StrCompare("https=", servers+i, 6, 0)) {
+                  else if (!StrCompare("https=", servers+i, 6)) {
                      name = "Windows HTTPS";
                      port = 443;
                      index = i + 6;
@@ -383,7 +382,7 @@ static ERROR find_proxy(extProxy *Self)
 
             if (!port.compare("0")) { } // Port is set to 'All' (0) so the match is automatic.
             else {
-               if (StrCompare(port.c_str(), Self->FindPort, 0, STR_WILDCARD) != ERR_Okay) {
+               if (StrCompare(port.c_str(), Self->FindPort, 0, STR::WILDCARD) != ERR_Okay) {
                   log.trace("Port '%s' doesn't match requested port '%s'", port.c_str(), Self->FindPort);
                   match = false;
                }
@@ -530,7 +529,7 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
                len = snprintf(buffer, sizeof(buffer), "%s=%s:%d", portname, Self->Server, Self->ServerPort);
                end = StrLength(server_buffer);
-               if (!AllocMemory(end + len + 2, MEM_STRING|MEM_NO_CLEAR, &newlist)) {
+               if (!AllocMemory(end + len + 2, MEM::STRING|MEM::NO_CLEAR, &newlist)) {
                   if (end > 0) {
                      CopyMemory(server_buffer, newlist, end);
                      newlist[end++] = ';';
@@ -578,11 +577,11 @@ static ERROR PROXY_SaveSettings(extProxy *Self, APTR Void)
 
       objFile::create file = {
          fl::Path("user:config/network/proxies.cfg"),
-         fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE),
-         fl::Flags(FL_NEW|FL_WRITE)
+         fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE),
+         fl::Flags(FL::NEW|FL::WRITE)
       };
 
-      if (file.ok()) return config->saveToObject(file->UID, 0);
+      if (file.ok()) return config->saveToObject(*file);
       else return ERR_CreateObject;
    }
    else return ERR_CreateObject;
@@ -894,7 +893,7 @@ ERROR init_proxy(void)
    clProxy = objMetaClass::create::global(
       fl::ClassVersion(VER_PROXY),
       fl::Name("Proxy"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clProxyActions),
       fl::Methods(clProxyMethods),
       fl::Fields(clProxyFields),

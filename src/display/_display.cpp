@@ -180,7 +180,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Determine what module to load
 
    CSTRING driver_name;
-   if ((driver_name = GetResourcePtr(RES_DISPLAY_DRIVER))) {
+   if ((driver_name = GetResourcePtr(RES::DISPLAY_DRIVER))) {
       if (!StrMatch(driver_name, "native"))     display = DISPLAY_NATIVE;
       else if (!StrMatch(driver_name, "vesa"))  display = DISPLAY_NATIVE;
       else if (!StrMatch(driver_name, "vga"))   display = DISPLAY_NATIVE;
@@ -271,7 +271,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
 
 static ERROR CMDExpunge(void)
 {
-   if (modDriver) { acFree(modDriver); modDriver = NULL; }
+   if (modDriver) { FreeResource(modDriver); modDriver = NULL; }
    return ERR_Okay;
 }
 

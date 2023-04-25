@@ -141,7 +141,7 @@ function zipPackage()
       return
    end
 
-   zip.acFree() -- Release the target file
+   zip.free() -- Release the target file
 end
 
 ------------------------------------------------------------------------------
@@ -218,7 +218,7 @@ function verifyPackage()
 
    local fileObject = obj.new("file", { flags="!NEW|BUFFER|WRITE|READ" } )
    zip.mtDecompressObject("parc.xml", fileObject)
-   zip.acFree()
+   zip.free()
 
    -- Parse the parc.xml data into an XML object
 

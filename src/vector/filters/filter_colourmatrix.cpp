@@ -13,23 +13,18 @@ http://www.quasimondo.com
 
 Copyright (c) 2008 Mario Klingemann
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************************************************************
 
@@ -331,7 +326,7 @@ class extColourFX : public extFilterEffect {
    DOUBLE Values[CM_SIZE];
    ColourMatrix *Matrix;
    LONG TotalValues;
-   UBYTE Mode;
+   CM Mode;
 };
 
 /*********************************************************************************************************************
@@ -411,54 +406,54 @@ static ERROR COLOURFX_Init(extColourFX *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->SourceType) return log.warning(ERR_UndefinedField);
+   if (Self->SourceType IS VSF::NIL) return log.warning(ERR_UndefinedField);
 
    // If a special colour mode was selected, convert the provided value(s) to the matrix format.
 
    ColourMatrix *matrix;
 
    switch (Self->Mode) {
-      case CM_SATURATE:
+      case CM::SATURATE:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->adjustSaturation(Self->Values[0]);
          break;
 
-      case CM_HUE_ROTATE:
+      case CM::HUE_ROTATE:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->rotateHue(Self->Values[0]);
          break;
 
-      case CM_LUMINANCE_ALPHA:
+      case CM::LUMINANCE_ALPHA:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->luminance2Alpha();
          break;
 
-      case CM_CONTRAST:
+      case CM::CONTRAST:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->adjustContrast(Self->Values[0]);
          break;
 
-      case CM_BRIGHTNESS:
+      case CM::BRIGHTNESS:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->adjustBrightness(Self->Values[0]);
          break;
 
-      case CM_HUE:
+      case CM::HUE:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->adjustHue(Self->Values[0]);
          break;
 
-      case CM_COLOURISE:
+      case CM::COLOURISE:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->colourise(Self->Values[0], Self->Values[1], Self->Values[2], Self->Values[3] < 0.001 ? 1.0 : Self->Values[3]);
          break;
 
-      case CM_DESATURATE:
+      case CM::DESATURATE:
          matrix = new (std::nothrow) ColourMatrix();
          if (matrix) matrix->adjustSaturation(0);
          break;
 
-      case CM_NONE: // Accept default of identity matrix
+      case CM::NONE: // Accept default of identity matrix
          matrix = new (std::nothrow) ColourMatrix();
          break;
 
@@ -493,13 +488,13 @@ Lookup: CM
 
 *********************************************************************************************************************/
 
-static ERROR COLOURFX_GET_Mode(extColourFX *Self, LONG *Value)
+static ERROR COLOURFX_GET_Mode(extColourFX *Self, CM *Value)
 {
    *Value = Self->Mode;
    return ERR_Okay;
 }
 
-static ERROR COLOURFX_SET_Mode(extColourFX *Self, LONG Value)
+static ERROR COLOURFX_SET_Mode(extColourFX *Self, CM Value)
 {
    Self->Mode = Value;
    return ERR_Okay;
@@ -555,15 +550,15 @@ static ERROR COLOURFX_GET_XMLDef(extColourFX *Self, STRING *Value)
 #include "filter_colourmatrix_def.c"
 
 static const FieldDef clMode[] = {
-   { "None",           CM_NONE },
-   { "Saturate",       CM_SATURATE },
-   { "HueRotate",      CM_HUE_ROTATE },
-   { "LuminanceAlpha", CM_LUMINANCE_ALPHA },
-   { "Contrast",       CM_CONTRAST },
-   { "Brightness",     CM_BRIGHTNESS },
-   { "Hue",            CM_HUE },
-   { "Desaturate",     CM_DESATURATE },
-   { "Colourise",      CM_COLOURISE },
+   { "None",           CM::NONE },
+   { "Saturate",       CM::SATURATE },
+   { "HueRotate",      CM::HUE_ROTATE },
+   { "LuminanceAlpha", CM::LUMINANCE_ALPHA },
+   { "Contrast",       CM::CONTRAST },
+   { "Brightness",     CM::BRIGHTNESS },
+   { "Hue",            CM::HUE },
+   { "Desaturate",     CM::DESATURATE },
+   { "Colourise",      CM::COLOURISE },
    { NULL, 0 }
 };
 
@@ -580,9 +575,9 @@ ERROR init_colourfx(void)
 {
    clColourFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_COLOURFX),
+      fl::ClassID(ID_COLOURFX),
       fl::Name("ColourFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clColourFXActions),
       fl::Fields(clColourFXFields),
       fl::Size(sizeof(extColourFX)),

@@ -16,9 +16,9 @@ static ERROR init_group(void)
 {
    clVectorGroup = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORGROUP),
+      fl::ClassID(ID_VECTORGROUP),
       fl::Name("VectorGroup"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Size(sizeof(extVector)),
       fl::Path(MOD_PATH));
 

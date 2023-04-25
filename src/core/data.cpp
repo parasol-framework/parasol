@@ -9,54 +9,55 @@
 #ifdef __unix__
 // In Unix/Linux builds it is assumed that the install location is static.  Dynamic loading is enabled
 // during the build by setting the ROOT_PATH definition to a blank string.
-   #ifndef ROOT_PATH
-      #define ROOT_PATH /usr/local/
+   #ifndef _ROOT_PATH
+      #define _ROOT_PATH /usr/local/
    #endif
-   #ifndef SYSTEM_PATH
-      #define SYSTEM_PATH /usr/local/share/parasol/
+   #ifndef _SYSTEM_PATH
+      #define _SYSTEM_PATH /usr/local/share/parasol/
    #endif
-   #ifndef MODULE_PATH
-      #define MODULE_PATH /usr/local/lib/parasol/
+   #ifndef _MODULE_PATH
+      #define _MODULE_PATH /usr/local/lib/parasol/
    #endif
 #else
 // In Windows, path information is read from the registry.  If there are no registry entries, the system
 // path is the program's working folder.
-   #ifndef ROOT_PATH
-      #define ROOT_PATH ""
+   #ifndef _ROOT_PATH
+      #define _ROOT_PATH ""
    #endif
-   #ifndef SYSTEM_PATH
-      #define SYSTEM_PATH ""
+   #ifndef _SYSTEM_PATH
+      #define _SYSTEM_PATH ""
    #endif
-   #ifndef MODULE_PATH
-      #define MODULE_PATH ""
+   #ifndef _MODULE_PATH
+      #define _MODULE_PATH ""
    #endif
 #endif
 
-std::string glRootPath = "" ROOT_PATH "";
-std::string glSystemPath = "" SYSTEM_PATH "";
-std::string glModulePath = "" MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
+std::string glRootPath   = "" _ROOT_PATH "";
+std::string glSystemPath = "" _SYSTEM_PATH "";
+std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated to its resolved-form during Core initialisation.
 
 char glDisplayDriver[28] = "";
 
 CSTRING glClassBinPath = "system:config/classes.bin";
-objMetaClass *glRootModuleClass = 0;
-objMetaClass *glModuleClass = 0;
-objMetaClass *glTaskClass = 0;
-objMetaClass *glThreadClass = 0;
-objMetaClass *glTimeClass = 0;
-objMetaClass *glConfigClass = 0;
-objMetaClass *glFileClass = 0;
-objMetaClass *glScriptClass = 0;
-objMetaClass *glArchiveClass = 0;
+objMetaClass *glRootModuleClass  = 0;
+objMetaClass *glModuleClass      = 0;
+objMetaClass *glTaskClass        = 0;
+objMetaClass *glThreadClass      = 0;
+objMetaClass *glTimeClass        = 0;
+objMetaClass *glConfigClass      = 0;
+objMetaClass *glFileClass        = 0;
+objMetaClass *glScriptClass      = 0;
+objMetaClass *glArchiveClass     = 0;
+objMetaClass *glStorageClass     = 0;
 objMetaClass *glCompressionClass = 0;
 objMetaClass *glCompressedStreamClass = 0;
 #ifdef __ANDROID__
 objMetaClass *glAssetClass = 0;
 #endif
-objMetaClass *glStorageClass = NULL;
 BYTE fs_initialised = FALSE;
 APTR glPageFault = NULL;
 bool glScanClasses = false;
+bool glJanitorActive = false;
 LONG glDebugMemory = FALSE;
 struct CoreBase *LocalCoreBase = NULL;
 
@@ -73,14 +74,14 @@ std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
 std::list<FDRecord> glFDTable;
 std::list<CoreTimer> glTimers;
 std::vector<TaskRecord> glTasks;
+std::vector<FDRecord> glRegisterFD;
 
 struct RootModule     *glModuleList    = NULL;
-struct SharedControl  *glSharedControl = NULL;
 struct OpenInfo       *glOpenInfo      = NULL;
 struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
-objTask *glCurrentTask = NULL;
+extTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
@@ -90,7 +91,7 @@ TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
 LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
-LONG glProcessID  = 0;
+LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
 LONG glPrivateIDCounter = 500;
 LONG glMessageIDCount = 10000;
@@ -98,20 +99,13 @@ LONG glGlobalIDCount = 1;
 LONG glEventMask = 0;
 TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
+BYTE glFDProtected = 0;
 CSTRING glIDL = MOD_IDL;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
-  sem_t glObjectSemaphore;
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
-  struct public_lock glPublicLocks[PL_END] = {
-     { "", 0, 0, 0, FALSE }, // 0
-     { "rka", 0, 0, 0, FALSE }, // PL_WAITLOCKS
-     { "rkc", 0, 0, 0, FALSE }, // PL_FORBID
-     { "rke", 0, 0, 0, FALSE }, // PL_SEMAPHORES
-     { "rkg", 0, 0, 0, TRUE }   // CN_SEMAPHORES
-  };
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
@@ -120,8 +114,8 @@ LARGE glTimeLog      = 0;
 WORD glCrashStatus   = 0;
 WORD glCodeIndex     = CP_FINISHED;
 WORD glLastCodeIndex = 0;
-WORD glFunctionIndex = 0;
-#ifdef DEBUG
+WORD glSystemState   = -1; // Initialisation state is -1
+#ifdef _DEBUG
    WORD glLogLevel = 8; // Thread global
 #else
    WORD glLogLevel  = 0;
@@ -132,7 +126,7 @@ bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 BYTE glProgramStage = STAGE_STARTUP;
-UBYTE glTaskState   = TSTATE_RUNNING;
+TSTATE glTaskState  = TSTATE::RUNNING;
 LONG glInotify = -1;
 
 const struct virtual_drive glFSDefault = {
@@ -163,12 +157,12 @@ const struct virtual_drive glFSDefault = {
 std::unordered_map<ULONG, virtual_drive> glVirtual;
 
 #ifdef __unix__
-LONG glMutexLockSize = sizeof(THREADLOCK);
 struct FileMonitor *glFileMonitor = NULL;
 #endif
 
 THREADVAR char tlFieldName[10]; // $12345678\0
-THREADVAR LONG glForceUID = -1, glForceGID = -1, glDefaultPermissions = 0;
+THREADVAR LONG glForceUID = -1, glForceGID = -1;
+THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
 THREADVAR WORD tlDepth     = 0;
 THREADVAR WORD tlLogStatus = 1;
 THREADVAR BYTE tlMainThread = FALSE; // Will be set to TRUE on open, any other threads will remain FALSE.
@@ -184,9 +178,8 @@ OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
-THREADVAR struct Message *tlCurrentMsg   = 0;
+THREADVAR struct Message *tlCurrentMsg = 0;
 
-std::array<LONG (*)(struct BaseClass *, APTR), AC_END> ManagedActions;
 ERROR (*glMessageHandler)(struct Message *) = 0;
 void (*glVideoRecovery)(void) = 0;
 void (*glKeyboardRecovery)(void) = 0;

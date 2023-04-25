@@ -197,7 +197,7 @@ static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args
 
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
 
-   if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger)) {
+   if (!AllocMemory(sizeof(DocTrigger), MEM::DATA|MEM::NO_CLEAR, &trigger)) {
       trigger->Function = *Args->Function;
       trigger->Next = Self->Triggers[Args->Trigger];
       Self->Triggers[Args->Trigger] = trigger;
@@ -240,8 +240,8 @@ static ERROR DOCUMENT_ApplyFontStyle(extDocument *Self, struct docApplyFontStyle
       font->Underline = style->FontUnderline;
    }
    else {
-      font->set(FID_Face, style->Font->Face);
-      font->set(FID_Style, style->Font->Style);
+      font->setFace(style->Font->Face);
+      font->setStyle(style->Font->Style);
       font->Point     = style->Font->Point;
       font->Colour    = style->FontColour;
       font->Underline = style->FontUnderline;
@@ -308,7 +308,7 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
 
    log.branch();
    unload_doc(Self, 0);
-   if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
+   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
    redraw(Self, FALSE);
    return ERR_Okay;
 }
@@ -329,14 +329,14 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
    if ((!Args) or (!Args->Mode)) return log.warning(ERR_NullArgs);
 
-   if ((Args->Mode IS CLIPMODE_CUT) or (Args->Mode IS CLIPMODE_COPY)) {
-      if (Args->Mode IS CLIPMODE_CUT) log.branch("Operation: Cut");
+   if ((Args->Mode IS CLIPMODE::CUT) or (Args->Mode IS CLIPMODE::COPY)) {
+      if (Args->Mode IS CLIPMODE::CUT) log.branch("Operation: Cut");
       else log.branch("Operation: Copy");
 
       // Calculate the length of the highlighted document
 
       if (Self->SelectEnd != Self->SelectStart) {
-         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM_STRING|MEM_NO_CLEAR, &buffer)) {
+         if (!AllocMemory(Self->SelectEnd - Self->SelectStart + 1, MEM::STRING|MEM::NO_CLEAR, &buffer)) {
             // Copy the selected area into the buffer
 
             LONG i = Self->SelectStart;
@@ -355,7 +355,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
             if (clipboard.ok()) {
                if (!clipAddText(*clipboard, buffer)) {
                   // Delete the highlighted document if the CUT mode was used
-                  if (Args->Mode IS CLIPMODE_CUT) {
+                  if (Args->Mode IS CLIPMODE::CUT) {
                      //delete_selection(Self);
                   }
                }
@@ -369,7 +369,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       return ERR_Okay;
    }
-   else if (Args->Mode IS CLIPMODE_PASTE) {
+   else if (Args->Mode IS CLIPMODE::PASTE) {
       log.branch("Operation: Paste");
 
       if (!(Self->Flags & DCF_EDIT)) {
@@ -379,9 +379,9 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
-         struct clipGetFiles get = { .Datatype = CLIPTYPE_TEXT, .Index = 0 };
+         struct clipGetFiles get = { .Datatype = CLIPTYPE::TEXT, .Index = 0 };
          if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
-            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL_READ) };
+            objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                if ((!file->get(FID_Size, &size)) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
@@ -434,7 +434,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR_NullArgs);
 
-   if ((Args->DataType IS DATA_TEXT) or (Args->DataType IS DATA_XML)) {
+   if ((Args->Datatype IS DATA_TEXT) or (Args->Datatype IS DATA_XML)) {
       // Incoming data is translated on the fly and added to the end of the current document page.  The original XML
       // information is retained in case of refresh.
       //
@@ -467,7 +467,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       return ERR_Okay;
    }
    else {
-      log.msg("Datatype %d not supported.", Args->DataType);
+      log.msg("Datatype %d not supported.", Args->Datatype);
       return ERR_Mismatch;
    }
 }
@@ -674,13 +674,13 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if (Self->PageID)    { acFree(Self->PageID); Self->PageID = 0; }
-   if (Self->ViewID)    { acFree(Self->ViewID); Self->ViewID = 0; }
-   if (Self->InsertXML) { acFree(Self->InsertXML); Self->InsertXML = NULL; }
+   if (Self->PageID)    { FreeResource(Self->PageID); Self->PageID = 0; }
+   if (Self->ViewID)    { FreeResource(Self->ViewID); Self->ViewID = 0; }
+   if (Self->InsertXML) { FreeResource(Self->InsertXML); Self->InsertXML = NULL; }
 
    if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
       OBJECTPTR object;
-      if (!AccessObjectID(Self->FocusID, 5000, &object)) {
+      if (!AccessObject(Self->FocusID, 5000, &object)) {
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
       }
@@ -688,7 +688,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->SurfaceID) {
       OBJECTPTR object;
-      if (!AccessObjectID(Self->SurfaceID, 5000, &object)) {
+      if (!AccessObject(Self->SurfaceID, 5000, &object)) {
          drwRemoveCallback(object, NULL);
          UnsubscribeAction(object, 0);
          ReleaseObject(object);
@@ -707,12 +707,12 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->TBuffer)     { FreeResource(Self->TBuffer); Self->TBuffer = NULL; }
    if (Self->Path)        { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->XML)         { acFree(Self->XML); Self->XML = NULL; }
+   if (Self->XML)         { FreeResource(Self->XML); Self->XML = NULL; }
    if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }
    if (Self->Buffer)      { FreeResource(Self->Buffer); Self->Buffer = NULL; }
    if (Self->Temp)        { FreeResource(Self->Temp); Self->Temp = NULL; }
    if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
-   if (Self->Templates)   { acFree(Self->Templates); Self->Templates = NULL; }
+   if (Self->Templates)   { FreeResource(Self->Templates); Self->Templates = NULL; }
    if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
 
    Self->~extDocument();
@@ -753,7 +753,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    if (!Self->FocusID) Self->FocusID = Self->SurfaceID;
 
    objSurface *surface;
-   if (!AccessObjectID(Self->FocusID, 5000, &surface)) {
+   if (!AccessObject(Self->FocusID, 5000, &surface)) {
       if (surface->ClassID != ID_SURFACE) {
          ReleaseObject(surface);
          return log.warning(ERR_WrongObjectType);
@@ -777,11 +777,11 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Setup the target surface
 
-   if (!AccessObjectID(Self->SurfaceID, 5000, &surface)) {
+   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
       Self->SurfaceWidth = surface->Width;
       Self->SurfaceHeight = surface->Height;
 
-      surface->set(FID_Colour, "255,255,255");
+      surface->setColour("255,255,255");
 
       auto callback = make_function_stdc(notify_disable_surface);
       SubscribeAction(surface, AC_Disable, &callback);
@@ -829,7 +829,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
       drwAddCallback(surface, (APTR)&draw_document);
       auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->PageID, JTYPE_MOVEMENT|JTYPE_BUTTON, 0, &Self->InputHandle);
+      gfxSubscribeInput(&callback, Self->PageID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
       Self->PageID = surface->UID;
    }
    else return ERR_CreateObject;
@@ -1009,25 +1009,25 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!Self->InsertXML) {
       if (!(Self->InsertXML = objXML::create::integral(fl::Statement(Args->XML)))) error = ERR_CreateObject;
    }
-   else error = Self->InsertXML->set(FID_Statement, Args->XML);
+   else error = Self->InsertXML->setStatement(Args->XML);
 
    if (!error) {
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer) != ERR_Okay) {
+         if (AllocMemory(Self->BufferSize, MEM::NO_CLEAR, &Self->Buffer) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->Temp) {
          Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp) != ERR_Okay) {
+         if (AllocMemory(Self->TempSize, MEM::NO_CLEAR, &Self->Temp) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg) != ERR_Okay) {
+         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM::NO_CLEAR, &Self->VArg) != ERR_Okay) {
             return ERR_AllocMemory;
          }
       }
@@ -1157,7 +1157,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
 {
    if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwnerID;
+      OBJECTID owner_id = Args->NewOwner->UID;
       while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
          owner_id = GetOwnerID(owner_id);
       }
@@ -1208,7 +1208,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
    if (Args->Format IS DATA_TEXT) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output)) {
+      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
          LONG j = 0;
          LONG i = Args->Start;
          while (i < Args->End) {
@@ -1232,7 +1232,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    }
    else if (Args->Format IS DATA_RAW) {
       STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM_NO_CLEAR, &output)) {
+      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
          CopyMemory(Self->Stream + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;
@@ -1409,17 +1409,11 @@ SaveToObject: Use this action to save edited information as an XML document file
 static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
-   OBJECTPTR Object;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Destination: %d, Lines: %d", Args->DestID, Self->SegCount);
-
-   if (!AccessObjectID(Args->DestID, 5000, &Object)) {
-      acWrite(Object, "Save not supported.", 0, NULL);
-      ReleaseObject(Object);
-   }
-
+   log.branch("Destination: %d, Lines: %d", Args->Dest->UID, Self->SegCount);
+   acWrite(Args->Dest, "Save not supported.", 0, NULL);
    return ERR_Okay;
 }
 
@@ -1447,7 +1441,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
-   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF_X|MTF_Y);
+   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
    return ERR_Okay;
 }
 

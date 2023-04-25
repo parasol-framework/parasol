@@ -11,15 +11,15 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     c_include("<X11/Xlib.h>", "<X11/extensions/XShm.h>")
   end)
 
-  enum("DRAG", { start=0, flags="Flags for the DragStatus field." },
+  enum("DRAG", { type="int", start=0, flags="Flags for the DragStatus field." },
     "NONE: The surface is not being dragged.",
     "ANCHOR: The surface is being dragged and the mouse pointer is anchored to the surface.",
     "NORMAL: The surface is being dragged.")
 
-  enum("WH", { start=1, comment="Events for WindowHook()" },
+  enum("WH", { type="int", start=1, comment="Events for WindowHook()" },
     "CLOSE")
 
-  enum("CS", { start=1, comment="Colour space options." },
+  enum("CS", { type="int", start=1, comment="Colour space options." },
     "SRGB: The default colour-space is sRGB.",
     "LINEAR_RGB: Linear RGB is used to improve colour balance in blending operations.",
     "CIE_LAB: Cartesian L*a*b* colour space defined by CIE 15.",
@@ -43,7 +43,8 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "IGNORE_CHILDREN: Do not draw child surfaces (this includes volatile children).",
     "SINGLE_BITMAP: Only draw children and/or siblings when they share our bitmap space.",
     "RELATIVE: Coordinate arguments are expressed in relative format.  Right and Bottom reflect Width and Height respectively.",
-    "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).")
+    "FORCE_DRAW: Forces redrawing to the surface buffer (overrides visibility checks).",
+    "REDRAWS_CHILDREN: Private.")
 
   flags("BDF", { comment="CopySurface() flags" },
     "REDRAW: Redraw the surface before performing the copy operation.",
@@ -53,13 +54,13 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "NO_DRAW: Drawing and exposures are disabled",
     "NO_EXPOSE: Drawing is enabled, exposures are disabled")
 
-  enum("SWIN", { start=0, comment="Options for the Surface WindowType field." },
+  enum("SWIN", { type="int", start=0, comment="Options for the Surface WindowType field." },
     "HOST: Default to the standard hosted window mode with full titlebar, borders and taskbar representation.",
     "TASKBAR: Create a borderless (custom) window with taskbar representation.",
     "ICON_TRAY: Create a borderless (custom) window with icon tray representation.",
     "NONE: Create a borderless (custom) window with no UI representation.")
 
-  flags("RNF", { "Switches for the Surface class' Flags field." },
+  flags("RNF", { comment="Switches for the Surface class' Flags field." },
     "TRANSPARENT: Enables transparency, which means that the internal graphics routines will ignore this surface during redraws.  It is typically used when creating containers that will host other surfaces.",
     "STICK_TO_BACK: Enable if the surface object must stick to the back of its container.",
     "STICK_TO_FRONT: Enable if the surface object must stick to the front of its container.",
@@ -90,7 +91,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { READ_ONLY = "HAS_FOCUS|CURSOR|AFTER_COPY" },
     { INIT_ONLY = "HOST|TRANSPARENT|DISABLED|PRECOPY|VIDEO|FIXED_BUFFER|PERVASIVE_COPY|FIXED_DEPTH|FULL_SCREEN|IGNORE_FOCUS" })
 
-  enum("HOST", { start=1 },
+  enum("HOST", { type="int", start=1 },
     "TRAY_ICON: All new displays are represented in the system tray when this option is active.",
     "TASKBAR: The hosted display is given a taskbar button.",
     "STICK_TO_FRONT: The hosted display sticks to the front.",
@@ -132,7 +133,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "CLIP: Enable clipping of the source coordinates.",
     "OFFSET: Adjust X and Y coordinates by the offset values defined in the Surface' XOffset and YOffset fields.")
 
-  enum("BMP", { start=2, comment="Bitmap types" },
+  enum("BMP", { type="int", start=2, comment="Bitmap types" },
      "PLANAR: Planar pixel mode separates pixel bits across multiple planes.  Commonly used for single bit bitmap masks.",
      "CHUNKY: Chunky pixel mode (default).")
 
@@ -156,7 +157,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "PREMUL: The RGB values are premultiplied (32-bit only)."
   )
 
-  enum("FLIP", { start=1, comment="Flags for the bitmap Flip method." },
+  enum("FLIP", { type="int", start=1, comment="Flags for the bitmap Flip method." },
     "HORIZONTAL: Flip the bitmap from top to bottom.",
     "VERTICAL: Flip the bitmap from left to right.")
 
@@ -170,7 +171,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     "ALPHA_BLEND|COMPOSITE: Enables alpha channel blending (if display is hosted and 32-bit).",
     { MAXIMISE        = "0x80000000: Special win32 flag." },
     { CUSTOM_WINDOW   = "0x40000000: The display has been created with a custom window reference." },
-    { FLIPPABLE       = "0x20000000: If SCR_BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer." },
+    { FLIPPABLE       = "0x20000000: If SCR::BUFFER is used, this flag may be set by the display manager if it is possible to flip the buffer." },
     { GTF_ENABLED     = "0x10000000: GTF frequency timings are supported." },
     { DPMS_ENABLED    = "0x08000000: Power saving through DPMS is supported." },
     { POWERSAVE       = "0x04000000: Power saving is active (read-only)." },
@@ -180,26 +181,26 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { READ_ONLY       = "MAXIMISE|CUSTOM_WINDOW|FLIPPABLE|GTF_ENABLED|DPMS_ENABLED|POWERSAVE|HOSTED|MAXSIZE|REFRESH|BIT_6|VISIBLE|NO_ACCELERATION" }
   )
 
-  flags("SMF", { comment="Flags for the Display class SetMonitor() method." },
+  flags("MON", { comment="Flags for the Display class SetMonitor() method." },
      "AUTO_DETECT: Monitor settings to be auto-detected on startup.",
      "BIT_6: The device is limited to 6-bit colour production in real terms.")
 
   flags("GMF", { comment="Flags for gamma operations." },
      "SAVE: Save the provided settings permanently.")
 
-  enum("DT", { start=1, comment="Flags for GetDisplayType()." },
+  enum("DT", { type="int", start=1, comment="Flags for GetDisplayType()." },
     "NATIVE: The display is native (supported by internal drivers).",
     "X11: The display is driven by the X Window System (X11, X.Org, XFree86)",
     "WINDOWS: The display is driven by Microsoft Windows drivers.",
     "GLES: The display is driven by OpenGLES.")
 
-  enum("DPMS", { start=0, comment="Possible modes for the Display class' DPMS field." },
+  enum("DPMS", { type="int", start=0, comment="Possible modes for the Display class' PowerMode field." },
     "DEFAULT: Use the default DPMS mode as defined by the display driver.",
     "OFF: Stop sending power to the display in order to turn it off (it may not be possible to restart the display without the user's intervention).",
     "SUSPEND: Puts the display into suspend mode (blanks the display output while maintaining normal power levels).",
     "STANDBY: Puts the display into standby (reduced power) mode.")
 
-  enum('CT', { start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
+  enum('CT', { type="int", start=0 }, 'DATA', 'AUDIO', 'IMAGE', 'FILE', 'OBJECT', 'TEXT', 'END')
 
   -- Note: It is intentional that the CLIP types are expressed as flags and not constants.
 
@@ -211,7 +212,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     'OBJECT: An object that has been deserialised into binary form.',
     'TEXT: Plain text files such as ASCII and UTF-8 must be identified through this clip type.')
 
-  flags('CLF', { comment='Clipboard flags' },
+  flags('CPF', { comment='Clipboard flags' },
     'DRAG_DROP: Enables drag and drop mode.  The clipboard content will be private and not share data with the host system in this mode.',
     'HOST: This indicator is automatically set when a clipboard was created due to incoming content from the host system.',
     'HISTORY_BUFFER: Enables the history buffer.  Note that this results in active clipboard monitoring and the program will make copies of all potential clipboard content - whether it is used or not.')
@@ -236,6 +237,12 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     char BitsPerPixel   # Bits per pixel of the bitmap
     char BytesPerPixel  # Bytes per pixel of the bitmap
     int LineWidth       # Line width of the bitmap, in bytes
+  ]],
+  [[
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
   ]])
 
   struct("SurfaceCallback", { restrict="c", comment="Private structure for managing surface callbacks." }, [[
@@ -301,13 +308,13 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int   LineWidth      # The distance between bitmap lines, measured in bytes.
     uchar BitsPerPixel   # The number of bits per pixel (8, 15, 16, 24, 32).
     uchar BytesPerPixel  # The number of bytes per pixel (1, 2, 3, 4).
-    uchar Opacity        # Opacity level of the source if CSRF_TRANSLUCENT is used.
+    uchar Opacity        # Opacity level of the source if CSRF::TRANSLUCENT is used.
     uchar Version        # Version of this structure.
-    int   Colour         # Colour index to use if CSRF_TRANSPARENT is used.
-    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if CSRF_CLIP is used.
+    int   Colour         # Colour index to use if CSRF::TRANSPARENT is used.
+    struct(ClipRectangle) Clip  # A clipping rectangle will restrict drawing operations to this region if CSRF::CLIP is used.
     short XOffset        # Offset all X coordinate references by the given value.
     short YOffset        # Offset all Y coordinate references by the given value.
-    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF_DEFAULT_FORMAT.
+    struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
     ptr  Private        # A private pointer reserved for internal usage
   ]])
 
@@ -343,7 +350,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int   PlaneMod              # Plane differential in bytes
     struct(ClipRectangle) Clip  # Clipping rectangle
     int   Size                  # Total size of the bitmap in bytes
-    int   DataFlags             # Memory flags to use in allocation
+    int(MEM) DataFlags          # Memory flags to use in allocation
     int   AmtColours            # Maximum amount of colours available
     int(BMF) Flags              # Optional flags
     int   TransIndex            # Colour index or packed colour value that acts as the background/transparency
@@ -437,8 +444,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { id=6, name="SetGammaLinear" },
     { id=7, name="SetMonitor" },
     { id=8, name="Minimise" },
-    { id=9, name="UpdateDisplay" },
-    { id=10, name="CheckXWindow" }
+    { id=9, name="CheckXWindow" }
   })
 
   class("Display", { version=1.0, src="class_display.cpp", output="class_display_def.c" }, [[
@@ -458,7 +464,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int MinVScan         # The minimum vertical scan rate of the display output device.
     int MaxVScan         # The maximum vertical scan rate of the display output device.
     int(DT) DisplayType  # Indicates the display type.
-    int(DPMS) DPMS       # Optional display power modes.
+    int(DPMS) PowerMode  # Optional display power modes.
     oid PopOver          # For hosted displays, PopOver can refer to another display that should always remain behind us
     int LeftMargin       # Left window margin, if hosted
     int RightMargin      # Right window margin, if hosted
@@ -475,7 +481,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
   })
 
   class('Clipboard', { src='class_clipboard.cpp', output='class_clipboard_def.c' }, [[
-    int(CLF) Flags      # Optional flags
+    int(CPF) Flags      # Optional flags
   ]],
   [[
    FUNCTION RequestHandler;
@@ -495,13 +501,13 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     oid    Input           # Indicates where pointer input comes from (usually SystemMouse)
     oid    Surface         # Top-most surface that contains the pointer
     oid    Anchor          # Surface object that the pointer is anchored to
-    int(PTR) CursorID      # Current cursor image
+    int(PTC) CursorID      # Current cursor image
     oid    CursorOwner     # Who owns the currently active cursor status
     int(PF) Flags          # Optional flags
     oid    Restrict        # Surface object that the pointer is restricted to
     int    HostX           # Indicates the current position of the host cursor on Windows or X11
     int    HostY           # Indicates the current position of the host cursor on Windows or X11
-    oid    Bitmap          # Bitmap to use for custom cursor images
+    obj(Bitmap) Bitmap     # Bitmap to use for custom cursor images
     oid    DragSource      # If drag & drop is active, refers to the object managing the draggable item
     int    DragItem        # If drag & drop is active, refers to the custom ID of the item being dragged
     oid    OverObject      # Object positioned under the pointer
@@ -554,9 +560,9 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     int(ALIGN) Align      # Alignment flags
     int(DMF) Dimensions   # Dimension flags
     int(DRAG) DragStatus  # Indicates the draggable state when dragging is enabled.
-    int(PTR) Cursor       # The preferred cursor image to use when the pointer is over the surface
+    int(PTC) Cursor       # The preferred cursor image to use when the pointer is over the surface
     struct(RGB8) Colour   # Background colour specification
-    int Type              # Internal surface type flags
+    int(RT) Type          # Internal surface type flags
     int Modal             # Set to 1 to enable modal mode
   ]],
   [[
@@ -566,6 +572,14 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
    DOUBLE   YOffsetPercent;       // Relative vertical offset
    DOUBLE   WidthPercent, HeightPercent; // Relative width and height
    DOUBLE   XPercent, YPercent;   // Relative coordinate
+  ]],
+  [[
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
+   inline bool disabled() const { return (Flags & RNF::DISABLED) != RNF::NIL; }
+   inline bool isCursor() const { return (Flags & RNF::CURSOR) != RNF::NIL; }
   ]])
 
   functionNames("gfx",
@@ -636,7 +650,7 @@ INLINE ERROR drwInvalidateRegionID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width
    return ActionMsg(MT_DrwInvalidateRegion, ObjectID, &args);
 }
 
-INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, LONG Flags) {
+INLINE ERROR drwExposeID(OBJECTID ObjectID, LONG X, LONG Y, LONG Width, LONG Height, EXF Flags) {
    struct drwExpose args = { X, Y, Width, Height, Flags };
    return ActionMsg(MT_DrwExpose, ObjectID, &args);
 }

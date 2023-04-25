@@ -10,14 +10,14 @@ private:
    inline static UBYTE conv_r2l(DOUBLE X) {
       if (X <= 0.04045) X /= 12.92;
       else X = std::pow((X + 0.055) / 1.055, 2.4);
-      return F2T((X * 255.0) + 0.5);
+      return pf::F2T((X * 255.0) + 0.5);
    }
 
    inline static UBYTE conv_l2r(DOUBLE X) {
       LONG ix;
 
-      if (X < 0.0031308) ix = F2T(((X * 12.92) * 255.0) + 0.5);
-      else ix = F2T(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
+      if (X < 0.0031308) ix = pf::F2T(((X * 12.92) * 255.0) + 0.5);
+      else ix = pf::F2T(((std::pow(X, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
 
       return (ix < 0) ? 0 : (ix > 255) ? 255 : ix;
    }

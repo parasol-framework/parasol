@@ -60,7 +60,7 @@ ERROR validate_process(LONG ProcessID)
 
    if (!task_id) return ERR_False;
 
-   evTaskRemoved task_removed = { GetEventID(EVG_SYSTEM, "task", "removed"), task_id, ProcessID };
+   evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
 
    glValidating = 0;
@@ -81,6 +81,11 @@ TaskRecord * find_process(LONG ProcessID)
 
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
+   if (glTasks.empty()) {
+      glJanitorActive = false;
+      return ERR_Terminate;
+   }
+
 #ifdef __unix__
    pf::Log log(__FUNCTION__);
 
@@ -242,7 +247,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                if (memsize > 0) {
                   if (Args[i].Type & FD_RESULT) { // "Receive" pointer type: Prepare a buffer so that we can accept a result
                      APTR mem;
-                     if (!AllocMemory(memsize, MEM_NO_CLEAR, &mem, NULL)) {
+                     if (!AllocMemory(memsize, MEM::NO_CLEAR, &mem, NULL)) {
                         ((APTR *)(Buffer + pos))[0] = mem;
                      }
                      else { error = ERR_AllocMemory; goto looperror; }
@@ -252,7 +257,7 @@ ERROR copy_args(const struct FunctionField *Args, LONG ArgsSize, BYTE *ArgsBuffe
                      if ((src = ((BYTE **)(ArgsBuffer + pos))[0])) { // Get the data source pointer
                         if (memsize > MSG_MAXARGSIZE) {
                            // For large data areas, we need to allocate them as public memory blocks
-                           if (!AllocMemory(memsize, MEM_NO_CLEAR, (void **)&data, NULL)) {
+                           if (!AllocMemory(memsize, MEM::NO_CLEAR, (void **)&data, NULL)) {
                               ((APTR *)(Buffer + pos))[0] = data;
                               CopyMemory(src, data, memsize);
                            }
@@ -341,18 +346,7 @@ ERROR resolve_args(APTR Parameters, const struct FunctionField *Args)
             // The memory block will need to be released by the routine that called our function.
 
             MEMORYID mid = ((MEMORYID *)(Buffer + pos))[0];
-            if (mid < 0) {
-               APTR memory;
-               if (!AccessMemoryID(mid, MEM_READ_WRITE, 3000, &memory)) {
-                  ((APTR *)(Buffer + pos))[0] = memory;
-               }
-               else {
-                  log.warning("Failed to gain access to memory block #%d.", mid);
-                  error = ERR_AccessMemory;
-                  goto looperror;
-               }
-            }
-            else if (mid > 0) {
+            if (mid) {
                log.warning("Bad memory ID #%d for arg \"%s\", not a public allocation.", mid, Args[i].Name);
                error = ERR_AccessMemory;
                goto looperror;

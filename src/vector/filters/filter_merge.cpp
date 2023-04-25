@@ -42,7 +42,7 @@ Draw: Render the effect to the target bitmap.
 static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 {
    objBitmap *bmp;
-   LONG copy_flags = (Self->Filter->ColourSpace IS VCS_LINEAR_RGB) ? BAF_LINEAR : 0;
+   BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
    for (auto source : Self->List) {
       if (source.Effect) bmp = source.Effect->Target;
       else bmp = get_source_graphic(Self->Filter);
@@ -50,7 +50,7 @@ static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 
       gfxCopyArea(bmp, Self->Target, copy_flags, 0, 0, bmp->Width, bmp->Height, 0, 0);
 
-      copy_flags |= BAF_BLEND|BAF_COPY; // Any subsequent copies are to be blended
+      copy_flags |= BAF::BLEND|BAF::COPY; // Any subsequent copies are to be blended
    }
 
    return ERR_Okay;
@@ -60,7 +60,7 @@ static ERROR MERGEFX_Draw(extMergeFX *Self, struct acDraw *Args)
 
 static ERROR MERGEFX_NewObject(extMergeFX *Self, APTR Void)
 {
-   Self->SourceType = VSF_IGNORE;
+   Self->SourceType = VSF::IGNORE;
    return ERR_Okay;
 }
 
@@ -84,7 +84,7 @@ static ERROR MERGEFX_SET_SourceList(extMergeFX *Self, MergeSource *Value, LONG E
    }
 
    for (LONG i=0; i < Elements; i++) {
-      if (Value[i].SourceType IS VSF_REFERENCE) {
+      if (Value[i].SourceType IS VSF::REFERENCE) {
          if (Value[i].Effect) ((extFilterEffect *)Value[i].Effect)->UsageCount++;
          else return ERR_InvalidData;
       }
@@ -125,9 +125,9 @@ ERROR init_mergefx(void)
 {
    clMergeFX = objMetaClass::create::global(
       fl::BaseClassID(ID_FILTEREFFECT),
-      fl::SubClassID(ID_MERGEFX),
+      fl::ClassID(ID_MERGEFX),
       fl::Name("MergeFX"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clMergeFXActions),
       fl::Fields(clMergeFXFields),
       fl::Size(sizeof(extMergeFX)),

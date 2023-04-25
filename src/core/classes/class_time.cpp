@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -256,9 +255,9 @@ static const ActionArray clActions[] = {
    { 0, NULL }
 };
 
-static const MethodArray clMethods[] = {
+static const MethodEntry clMethods[] = {
    { MT_TmSetTime, (APTR)TIME_SetTime, "SetTime", 0, 0 },
-   { 0, NULL, NULL }
+   { 0, NULL, NULL, NULL, 0 }
 };
 
 //********************************************************************************************************************
@@ -269,7 +268,7 @@ extern "C" ERROR add_time_class(void)
       fl::BaseClassID(ID_TIME),
       fl::ClassVersion(VER_TIME),
       fl::Name("Time"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clActions),
       fl::Methods(clMethods),
       fl::Fields(clFields),

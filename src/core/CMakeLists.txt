@@ -4,7 +4,7 @@
 
 set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies to work correctly
    "${CMAKE_CURRENT_SOURCE_DIR}/core.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_actions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/lib_objects.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_base64.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_events.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_fields_read.cpp"
@@ -15,7 +15,6 @@ set (FUNCTIONS  # Full paths are required for add_custom_command() dependencies 
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_log.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_messages.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_memory.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_newobject.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_strings.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_unicode.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/fs_folders.cpp"
@@ -85,7 +84,7 @@ target_sources (core PRIVATE
    "data.cpp"
    "data_actionlist.cpp"
    "internal.cpp"
-   "lib_actions.cpp"
+   "lib_objects.cpp"
    "lib_events.cpp"
    "lib_log.cpp"
    "lib_fields_read.cpp"
@@ -95,8 +94,6 @@ target_sources (core PRIVATE
    "lib_locking.cpp"
    "lib_memory.cpp"
    "lib_messages.cpp"
-   "lib_newobject.cpp"
-   "lib_semaphores.cpp"
    "lib_strings.cpp"
    "classes/class_config.cpp"
    "classes/class_file.cpp"
@@ -126,11 +123,11 @@ add_definitions("-D__system__" "-DDBG_DIAGNOSTICS")
 # These definitions tell the Core where the system files are installed.
 
 if (RUN_ANYWHERE)
-   add_definitions("-DROOT_PATH=" "-DSYSTEM_PATH=" "-DMODULE_PATH=\"parasol:lib/\"")
+   add_definitions("-D_ROOT_PATH=" "-D_SYSTEM_PATH=" "-D_MODULE_PATH=\"parasol:lib/\"")
 else ()
-   add_definitions("-DROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
-      "-DSYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
-      "-DMODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
+   add_definitions("-D_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
+      "-D_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
+      "-D_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
 endif ()
 
 target_link_libraries (core PRIVATE zlib)

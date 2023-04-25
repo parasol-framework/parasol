@@ -39,14 +39,14 @@ static void * test_locking(struct thread_info *info)
    ERROR error;
    BYTE *memory;
 
-   info->index = GetResource(RES_THREAD_ID);
+   info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
    for (i=0; i < glLockAttempts; i++) {
       if (!glMemoryID) break;
       //LogF("~","Attempt %d.%d: Acquiring the memory.", info->index, i);
 
-      if (!(error = AccessMemoryID(glMemoryID, MEM_READ_WRITE, 30000, &memory))) {
+      if (!(error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory))) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
@@ -58,13 +58,13 @@ static void * test_locking(struct thread_info *info)
          if (glTerminateMemory) {
             if (i >= glLockAttempts-2) {
                FreeResource(memory);
-               ReleaseMemoryID(glMemoryID);
+               ReleaseMemory(glMemoryID);
                memory = NULL;
                break;
             }
          }
 
-         ReleaseMemoryID(glMemoryID);
+         ReleaseMemory(glMemoryID);
 
          log.msg("%d: Memory released.", info->index);
 
@@ -92,7 +92,7 @@ static void * test_allocation(struct thread_info *info)
    LONG i, j, start;
    start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
-      AllocMemory(1024, MEM_DATA|MEM_NO_CLEAR, &memory[i], NULL);
+      AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], NULL);
       if (rand() % 10 > 7) {
          for (j=start; j < i; j++) {
             FreeResource(memory[j]);
@@ -115,8 +115,8 @@ void program(void)
    LONG i;
    STRING *args;
 
-   StringsBase = GetResourcePtr(RES_STRINGS);
-   FileSystemBase = GetResourcePtr(RES_FILESYSTEM);
+   StringsBase = GetResourcePtr(RES::STRINGS);
+   FileSystemBase = GetResourcePtr(RES::FILESYSTEM);
 
    if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
       for (i=0; args[i]; i++) {
@@ -137,7 +137,7 @@ void program(void)
       }
    }
 
-   AllocMemory(10000, MEM_DATA, NULL, (MEMORYID *)&glMemoryID);
+   AllocMemory(10000, MEM::DATA, NULL, (MEMORYID *)&glMemoryID);
 
    print("Spawning %d threads...\n", glTotalThreads);
 
@@ -158,7 +158,7 @@ void program(void)
       pthread_join(glThreads[i].thread, NULL);
    }
 
-   FreeResourceID(glMemoryID);
+   FreeResource(glMemoryID);
 
    print("Testing complete.\n");
 }

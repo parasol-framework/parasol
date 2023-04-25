@@ -105,7 +105,7 @@ static LONG read_stream(LONG Handle, LONG Offset, APTR Buffer, LONG Length)
 {
    auto Self = (extSound *)CurrentContext();
 
-   if ((Offset >= 0) and (Self->Position != Offset)) Self->seek(Offset, SEEK_START);
+   if ((Offset >= 0) and (Self->Position != Offset)) Self->seek(Offset, SEEK::START);
 
    if (Length > 0) {
       LONG result;
@@ -169,7 +169,7 @@ static ERROR set_playback_trigger(extSound *Self)
 #ifdef _WIN32
 void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 {
-   if (Object->ClassID IS ID_SOUND) {
+   if (Object->Class->BaseClassID IS ID_SOUND) {
       auto Self = (extSound *)Object;
       if (Self->OnStop.Type) {
          pf::Log log(__FUNCTION__);
@@ -195,18 +195,18 @@ void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 //********************************************************************************************************************
 // Stubs.
 
-static LONG sample_format(extSound *Self) __attribute__((unused));
-static LONG sample_format(extSound *Self)
+static SFM sample_format(extSound *Self) __attribute__((unused));
+static SFM sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
-      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM_U8_BIT_STEREO;
-      else return SFM_U8_BIT_MONO;
+      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM::U8_BIT_STEREO;
+      else return SFM::U8_BIT_MONO;
    }
    else if (Self->BitsPerSample IS 16) {
-      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM_S16_BIT_STEREO;
-      else return SFM_S16_BIT_MONO;
+      if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM::S16_BIT_STEREO;
+      else return SFM::S16_BIT_MONO;
    }
-   return 0;
+   return SFM::NIL;
 }
 
 static ERROR snd_init_audio(extSound *Self) __attribute__((unused));
@@ -214,7 +214,7 @@ static ERROR snd_init_audio(extSound *Self)
 {
    pf::Log log;
 
-   if (!FindObject("SystemAudio", ID_AUDIO, 0, &Self->AudioID)) return ERR_Okay;
+   if (!FindObject("SystemAudio", ID_AUDIO, FOF::NIL, &Self->AudioID)) return ERR_Okay;
 
    extAudio *audio;
    ERROR error;
@@ -222,14 +222,14 @@ static ERROR snd_init_audio(extSound *Self)
       SetName(audio, "SystemAudio");
       SetOwner(audio, CurrentTask());
 
-      if (!acInit(audio)) {
+      if (!InitObject(audio)) {
          if (!(error = acActivate(audio))) {
             Self->AudioID = audio->UID;
          }
-         else acFree(audio);
+         else FreeResource(audio);
       }
       else {
-         acFree(audio);
+         FreeResource(audio);
          error = ERR_Init;
       }
    }
@@ -292,9 +292,9 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
          buffer_len = Self->Length;
          Self->Flags &= ~SDF::STREAM;
          auto client_pos = Self->Position; // Save the seek cursor from pollution
-         if (client_pos) Self->seek(0, SEEK_START);
+         if (client_pos) Self->seek(0, SEEK::START);
          strerr = sndCreateBuffer(Self, &wave, buffer_len, Self->Length, (PlatformData *)Self->PlatformData, FALSE);
-         Self->seek(client_pos, SEEK_START);
+         Self->seek(client_pos, SEEK::START);
       }
 
       if (strerr) {
@@ -329,17 +329,17 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
    if (!Self->Active) {
       // Determine the sample type
 
-      LONG sampleformat = 0;
+      auto sampleformat = SFM::NIL;
       if (Self->BitsPerSample IS 8) {
-         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM_U8_BIT_STEREO;
-         else sampleformat = SFM_U8_BIT_MONO;
+         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM::U8_BIT_STEREO;
+         else sampleformat = SFM::U8_BIT_MONO;
       }
       else if (Self->BitsPerSample IS 16) {
-         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM_S16_BIT_STEREO;
-         else sampleformat = SFM_S16_BIT_MONO;
+         if ((Self->Flags & SDF::STEREO) != SDF::NIL) sampleformat = SFM::S16_BIT_STEREO;
+         else sampleformat = SFM::S16_BIT_MONO;
       }
 
-      if (!sampleformat) return log.warning(ERR_InvalidData);
+      if (sampleformat IS SFM::NIL) return log.warning(ERR_InvalidData);
 
       // Create the audio buffer and fill it with sample data
 
@@ -348,7 +348,7 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
 
       BYTE *buffer;
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
-         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", sampleformat, Self->Length);
+         log.msg("Streaming enabled for playback in format $%.8x; Length: %d", LONG(sampleformat), Self->Length);
 
          struct sndAddStream stream;
          AudioLoop loop;
@@ -383,15 +383,15 @@ static ERROR SOUND_Activate(extSound *Self, APTR Void)
             return ERR_Failed;
          }
       }
-      else if (!AllocMemory(Self->Length, MEM_DATA|MEM_NO_CLEAR, &buffer)) {
+      else if (!AllocMemory(Self->Length, MEM::DATA|MEM::NO_CLEAR, &buffer)) {
          auto client_pos = Self->Position;
-         if (Self->Position) Self->seek(0, SEEK_START); // Ensure we're reading the entire sample from the start
+         if (Self->Position) Self->seek(0, SEEK::START); // Ensure we're reading the entire sample from the start
 
          LONG result;
          if (!Self->read(buffer, Self->Length, &result)) {
             if (result != Self->Length) log.warning("Expected %d bytes, read %d", Self->Length, result);
 
-            Self->seek(client_pos, SEEK_START);
+            Self->seek(client_pos, SEEK::START);
 
             struct sndAddSample add;
             AudioLoop loop;
@@ -624,7 +624,7 @@ static ERROR SOUND_Free(extSound *Self, APTR Void)
    }
 
    if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->File) { acFree(Self->File); Self->File = NULL; }
+   if (Self->File) { FreeResource(Self->File); Self->File = NULL; }
 
    Self->~extSound();
    return ERR_Okay;
@@ -706,12 +706,12 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
-   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
       Self->File->read(Self->Header, (LONG)sizeof(Self->Header));
 
-      if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
-          (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
-         acFree(Self->File);
+      if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR_Okay) or
+          (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR_Okay)) {
+         FreeResource(Self->File);
          Self->File = NULL;
          return ERR_NoSupport;
       }
@@ -720,7 +720,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Read the RIFF header
 
-   Self->File->seek(12.0, SEEK_START);
+   Self->File->seek(12.0, SEEK::START);
    if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
    if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
@@ -810,10 +810,10 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Load the sound file's header and test it to see if it matches our supported file format.
 
-   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
+   if ((Self->File = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
       if (!Self->File->read(Self->Header, sizeof(Self->Header))) {
-         if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR_CASE) != ERR_Okay) or
-             (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR_CASE) != ERR_Okay)) {
+         if ((StrCompare((CSTRING)Self->Header, "RIFF", 4, STR::CASE) != ERR_Okay) or
+             (StrCompare((CSTRING)Self->Header + 8, "WAVE", 4, STR::CASE) != ERR_Okay)) {
             return ERR_NoSupport;
          }
       }
@@ -826,7 +826,7 @@ static ERROR SOUND_Init(extSound *Self, APTR Void)
 
    // Read the FMT header
 
-   Self->File->seek(12, SEEK_START);
+   Self->File->seek(12, SEEK::START);
    if (flReadLE(Self->File, &id)) return ERR_Read; // Contains the characters "fmt "
    if (flReadLE(Self->File, &len)) return ERR_Read; // Length of data in this chunk
 
@@ -1001,10 +1001,10 @@ static ERROR SOUND_Seek(extSound *Self, struct acSeek *Args)
    if (!Args) return log.warning(ERR_NullArgs);
    if (!Self->initialised()) return log.warning(ERR_NotInitialised);
 
-   if (Args->Position IS SEEK_START)         Self->Position = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_END)      Self->Position = Self->Length - F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT)  Self->Position += F2T(Args->Offset);
-   else if (Args->Position IS SEEK_RELATIVE) Self->Position = Self->Length * Args->Offset;
+   if (Args->Position IS SEEK::START)         Self->Position = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::END)      Self->Position = Self->Length - F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT)  Self->Position += F2T(Args->Offset);
+   else if (Args->Position IS SEEK::RELATIVE) Self->Position = Self->Length * Args->Offset;
    else return log.warning(ERR_Args);
 
    if (Self->Position < 0) Self->Position = 0;
@@ -1533,7 +1533,7 @@ static ERROR SOUND_SET_Path(extSound *Self, CSTRING Value)
 
    if ((Value) and (*Value)) {
       LONG i = strlen(Value);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, (void **)&Self->Path)) {
+      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, (void **)&Self->Path)) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
       }
@@ -1590,7 +1590,7 @@ playback position, either when the sample is next played, or immediately if it i
 
 static ERROR SOUND_SET_Position(extSound *Self, LARGE Value)
 {
-   return Self->seek(Value, SEEK_START);
+   return Self->seek(Value, SEEK::START);
 }
 
 /*********************************************************************************************************************
@@ -1665,10 +1665,10 @@ static ERROR find_chunk(extSound *Self, objFile *File, CSTRING ChunkName)
          return ERR_Read;
       }
 
-      if (!StrCompare(ChunkName, chunk, 4, STR_CASE)) return ERR_Okay;
+      if (!StrCompare(ChunkName, chunk, 4, STR::CASE)) return ERR_Okay;
 
       flReadLE(Self->File, &len); // Length of data in this chunk
-      Self->File->seek(len, SEEK_CURRENT);
+      Self->File->seek(len, SEEK::CURRENT);
    }
 }
 
@@ -1772,7 +1772,7 @@ ERROR add_sound_class(void)
       fl::FileDescription("Sound Sample"),
       fl::FileHeader("[0:$52494646][8:$57415645]"),
       fl::Name("Sound"),
-      fl::Category(CCF_AUDIO),
+      fl::Category(CCF::AUDIO),
       fl::Actions(clActions),
       fl::Fields(clFields),
       fl::Size(sizeof(extSound)),
@@ -1783,5 +1783,5 @@ ERROR add_sound_class(void)
 
 void free_sound_class(void)
 {
-   if (clSound) { acFree(clSound); clSound = 0; }
+   if (clSound) { FreeResource(clSound); clSound = 0; }
 }

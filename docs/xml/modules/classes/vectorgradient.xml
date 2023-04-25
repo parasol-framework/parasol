@@ -1,0 +1,317 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorGradient</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Provides support for the filling and stroking of vectors with colour gradients.</comment>
+    <version>1</version>
+    <id>e81ac386</id>
+    <idstring>ID_VECTORGRADIENT</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorgradient.h</include>
+    <copyright>Paul Manias © 2010-2023</copyright>
+    <description>
+<p>The VectorGradient class is used by Vector painting algorithms to fill and stroke vectors with gradients.  This is achieved by initialising a VectorGradient object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
+<p>Any vector within the target scene will be able to utilise the gradient for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#redgradient)'.</p>
+<p>It is strongly recommended that the VectorGradient is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorGradient is de-allocated when the scene is destroyed.</p></description>
+    <source>
+      <file path="defs/">gradient.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+  </actions>
+
+  <fields>
+    <field>
+      <name>CenterX</name>
+      <comment>The horizontal center point of the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CenterY</name>
+      <comment>The vertical center point of the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (CenterX,CenterY) coordinates define the center point of the gradient.  The center point will only be used if the gradient type requires it (such as the radial type).  By default, the center point is set to 50%.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ColourSpace</name>
+      <comment>Defines the colour space to use when interpolating gradient colours.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="VCS">VCS</type>
+      <description>
+<p>By default, gradients are rendered using the standard RGB colour space and alpha blending rules.  Changing the colour space to <code>LINEAR_RGB</code> will force the renderer to automatically convert sRGB values to linear RGB when blending.</p>
+<types lookup="VCS"/>
+      </description>
+    </field>
+
+    <field>
+      <name>FX</name>
+      <comment>The horizontal focal point for radial gradients.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FY</name>
+      <comment>The vertical focal point for radial gradients.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (FX,FY) coordinates define the focal point for radial gradients.  If left undefined, the focal point will match the center of the gradient.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Dimension flags are stored here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VGF">VGF</type>
+      <description>
+<p>Dimension flags that indicate whether field values are fixed or relative are defined here.</p>
+<types lookup="VGF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>ID</name>
+      <comment>String identifier for a vector.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The ID field is provided for the purpose of SVG support.  Where possible we would recommend that you use the existing object name and automatically assigned ID's for identifiers.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Inherit</name>
+      <comment>Inherit attributes from the VectorGradient referenced here.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="VectorGradient">*VectorGradient</type>
+      <description>
+<p>Attributes can be inherited from another gradient by referencing that gradient in this field.  This feature is provided primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Matrices</name>
+      <comment>A linked list of transform matrices that have been applied to the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+      <description>
+<p>All transforms that have been applied to the gradient can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the gradient.</p>
+<struct lookup="VectorMatrix"/>
+      </description>
+    </field>
+
+    <field>
+      <name>NumericID</name>
+      <comment>A unique identifier for the vector.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>INT</type>
+      <description>
+<p>This field assigns a numeric ID to a vector.  Alternatively it can also reflect a case-sensitive hash of the <field>ID</field> field if that has been defined previously.</p>
+<p>If NumericID is set by the client, then any value in <field>ID</field> will be immediately cleared.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Radius</name>
+      <comment>The radius of the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The radius of the gradient can be defined in fixed units or relative terms to its container.  A default radius of 50% (0.5) applies if this field is not set.</p>
+<p>The Radius value has no effect if the gradient is linear.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SpreadMethod</name>
+      <comment>The behaviour to use when the gradient bounds do not match the vector path.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VSPREAD">VSPREAD</type>
+      <description>
+<p>Indicates what happens if the gradient starts or ends inside the bounds of the target vector.  The default is <code>VSPREAD::PAD</code>.</p>
+<types lookup="VSPREAD"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Stops</name>
+      <comment>Defines the colours to use for the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRUCT []</type>
+      <description>
+<p>The colours that will be used for drawing a gradient are defined by the Stops array.  At least two stops are required to define a start and end point for interpolating the gradient colours.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>TotalStops</name>
+      <comment>Total number of stops defined in the Stops array.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>This read-only field indicates the total number of stops that have been defined in the <field>Stops</field> array.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Transform</name>
+      <comment>Applies a transform to the gradient.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>A transform can be applied to the gradient by setting this field with an SVG compliant transform string.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Type</name>
+      <comment>Specifies the type of gradient (e.g. RADIAL, LINEAR)</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="VGT">VGT</type>
+      <description>
+<p>The type of the gradient to be drawn is specified here.</p>
+<types lookup="VGT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Units</name>
+      <comment>Defines the coordinate system for fields X1, Y1, X2 and Y2.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="VUNIT">VUNIT</type>
+      <description>
+<p>The default coordinate system for gradients is <code>BOUNDING_BOX</code>, which positions the gradient around the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the gradient relative to the current viewport.</p>
+<types lookup="VUNIT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>X1</name>
+      <comment>Initial X coordinate for the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
+<p>Coordinate values can be expressed as percentages that are relative to the target space.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X2</name>
+      <comment>Final X coordinate for the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
+<p>Coordinate values can be expressed as percentages that are relative to the target space.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y1</name>
+      <comment>Initial Y coordinate for the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y2</name>
+      <comment>Final Y coordinate for the gradient.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
+<p>Coordinate values can be expressed as percentages that are relative to the target space.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VCS" comment="Colour space options.">
+      <const name="INHERIT">Inherit the colour space option from the parent vector.</const>
+      <const name="LINEAR_RGB">Linear RGB is the default colour space for SVG and produces the best results.</const>
+      <const name="SRGB">The default colour-space is sRGB, recommended for its speed.</const>
+    </constants>
+
+    <constants lookup="VGF" comment="Gradient flags">
+      <const name="FIXED_CX">CX is fixed</const>
+      <const name="FIXED_CY">CY is fixed</const>
+      <const name="FIXED_FX">FX is fixed</const>
+      <const name="FIXED_FY">FY is fixed</const>
+      <const name="FIXED_RADIUS">is fixed</const>
+      <const name="FIXED_X1">X1 is fixed</const>
+      <const name="FIXED_X2">X2 is fixed</const>
+      <const name="FIXED_Y1">Y1 is fixed</const>
+      <const name="FIXED_Y2">Y2 is fixed</const>
+      <const name="RELATIVE_CX">CX is relative</const>
+      <const name="RELATIVE_CY">CY is relative</const>
+      <const name="RELATIVE_FX">FX is relative</const>
+      <const name="RELATIVE_FY">FY is relative</const>
+      <const name="RELATIVE_RADIUS">Radius is relative</const>
+      <const name="RELATIVE_X1">X1 is relative</const>
+      <const name="RELATIVE_X2">X2 is relative</const>
+      <const name="RELATIVE_Y1">Y1 is relative</const>
+      <const name="RELATIVE_Y2">Y2 is relative</const>
+    </constants>
+
+    <constants lookup="VGT" comment="VectorGradient options.">
+      <const name="CONIC">The conic gradient is a variant on the radial type, whereby the colour values are drawn as a line that revolves around the cone's center point.</const>
+      <const name="CONTOUR">Contoured gradients follow the contours of the vector path in which they are rendered.</const>
+      <const name="DIAMOND">A diamond gradient is drawn as a square emanating from the center point.</const>
+      <const name="LINEAR">A linear gradient is drawn from (X1,Y1) to (X2,Y2).</const>
+      <const name="RADIAL">A radial gradient is drawn from CenterX,CenterY to Radius.  An optional focal point can be expressed with FX and FY.</const>
+    </constants>
+
+    <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
+      <const name="PAD">Scale the graphic to the object bounds.</const>
+      <const name="REFLECT">Tile the graphic, reflecting the image alternately on the X and Y axis.</const>
+      <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
+      <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
+      <const name="REPEAT">Tile the graphic repeatedly.</const>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+    </constants>
+
+    <constants lookup="VUNIT">
+      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="UNDEFINED"/>
+      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="objVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
+  </structs>
+</book>

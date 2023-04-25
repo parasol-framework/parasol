@@ -51,7 +51,7 @@ static ERROR resolve_name_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    extNetLookup *nl;
-   if (!AccessObjectID(r->NetLookupID, 2000, &nl)) {
+   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -80,7 +80,7 @@ static ERROR resolve_addr_receiver(APTR Custom, LONG MsgID, LONG MsgType, APTR M
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s, Thread: %d", MsgID, MsgType, (CSTRING)(r + 1), r->ThreadID);
 
    extNetLookup *nl;
-   if (!AccessObjectID(r->NetLookupID, 2000, &nl)) {
+   if (!AccessObject(r->NetLookupID, 2000, &nl)) {
       {
          std::lock_guard<std::mutex> lock(*nl->ThreadLock);
          nl->Threads->erase(r->ThreadID);
@@ -112,7 +112,7 @@ static ERROR thread_resolve_name(objThread *Thread)
    DNSEntry *dummy;
    rb->Error = resolve_name((CSTRING)(rb + 1), &dummy);
 
-   SendMessage(0, glResolveNameMsgID, MSF_WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
+   SendMessage(glResolveNameMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_name_receiver()
    return ERR_Okay;
 }
 
@@ -130,7 +130,7 @@ static ERROR thread_resolve_addr(objThread *Thread)
    auto ip_address = (const IPAddress *)(rb + 1);
    rb->Error = resolve_address((CSTRING)(ip_address + 1), ip_address, &dummy);
 
-   SendMessage(0, glResolveAddrMsgID, MSF_WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
+   SendMessage(glResolveAddrMsgID, MSF::WAIT, rb, Thread->DataSize); // See resolve_addr_receiver()
    return ERR_Okay;
 }
 
@@ -315,7 +315,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
 
    log.branch("Address: %s", Args->Address);
 
-   if (!(Self->Flags & NLF_NO_CACHE)) { // Use the cache if available.
+   if ((Self->Flags & NLF::NO_CACHE) IS NLF::NIL) { // Use the cache if available.
       auto it = glAddresses.find(Args->Address);
       if (it != glAddresses.end()) {
          Self->Info = it->second;
@@ -329,7 +329,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
    if (!netStrToAddress(Args->Address, &ip)) {
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
-      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF_AUTO_FREE))) {
+      if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
          char buffer[pkg_size];
          auto rb = (resolve_buffer *)&buffer;
          rb->NetLookupID = Self->UID;
@@ -342,7 +342,7 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
             return ERR_Okay;
          }
          else {
-            acFree(th);
+            FreeResource(th);
             return log.warning(ERR_Failed);
          }
       }
@@ -381,7 +381,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
 
    log.branch("Host: %s", Args->HostName);
 
-   if (!(Self->Flags & NLF_NO_CACHE)) { // Use the cache if available.
+   if ((Self->Flags & NLF::NO_CACHE) IS NLF::NIL) { // Use the cache if available.
       auto it = glHosts.find(Args->HostName);
       if (it != glHosts.end()) {
          Self->Info = it->second;
@@ -394,7 +394,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
    ERROR error;
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
    if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
-         fl::Flags(THF_AUTO_FREE))) {
+         fl::Flags(THF::AUTO_FREE))) {
       char buffer[pkg_size];
       auto rb = (resolve_buffer *)&buffer;
       rb->NetLookupID = Self->UID;
@@ -406,7 +406,7 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
          return ERR_Okay;
       }
       else {
-         acFree(th);
+         FreeResource(th);
          error = ERR_Failed;
       }
    }
@@ -513,14 +513,14 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEn
    if (Host->h_addrtype IS AF_INET) {
       for (unsigned i=0; Host->h_addr_list[i]; i++) {
          auto addr = *((ULONG *)Host->h_addr_list[i]);
-         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR_V4 });
+         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR::V4 });
       }
    }
    else if (Host->h_addrtype IS AF_INET6) {
       for (unsigned i=0; Host->h_addr_list[i]; i++) {
          auto addr = ((struct in6_addr **)Host->h_addr_list)[i];
          cache.Addresses.push_back({
-            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR_V6
+            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR::V6
          });
       }
    }
@@ -556,12 +556,12 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSE
 
       if (scan->ai_family IS AF_INET) {
          auto addr = ((struct sockaddr_in *)scan->ai_addr)->sin_addr.s_addr;
-         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR_V4 });
+         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR::V4 });
       }
       else if (scan->ai_family IS AF_INET6) {
          auto addr = (struct sockaddr_in6 *)scan->ai_addr;
          cache.Addresses.push_back({
-            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR_V6
+            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR::V6
          });
       }
    }
@@ -585,7 +585,7 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
    char host_name[256], service[128];
    int result;
 
-   if (IP->Type IS IPADDR_V4) {
+   if (IP->Type IS IPADDR::V4) {
       const struct sockaddr_in sa = {
          .sin_family = AF_INET,
          .sin_port = 0,
@@ -608,7 +608,7 @@ static ERROR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **In
       case 0: {
          struct hostent host = {
             .h_name      = host_name,
-            .h_addrtype  = (IP->Type IS IPADDR_V4) ? AF_INET : AF_INET6,
+            .h_addrtype  = (IP->Type IS IPADDR::V4) ? AF_INET : AF_INET6,
             .h_length    = 0,
             .h_addr_list = NULL
          };
@@ -709,7 +709,7 @@ ERROR init_netlookup(void)
    clNetLookup = objMetaClass::create::global(
       fl::ClassVersion(VER_NETLOOKUP),
       fl::Name("NetLookup"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clNetLookupActions),
       fl::Methods(clNetLookupMethods),
       fl::Fields(clNetLookupFields),

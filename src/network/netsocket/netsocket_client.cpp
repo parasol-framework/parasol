@@ -19,7 +19,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    // Remove the write callback
 
-   RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_REMOVE, &client_connect, NULL);
+   RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::REMOVE, &client_connect, NULL);
 
    #ifdef ENABLE_SSL
    if ((Self->SSL) and (!result)) {
@@ -30,8 +30,8 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       sslConnect(Self);
       if (Self->Error) return;
 
-      if (Self->State IS NTC_CONNECTING_SSL) {
-         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+      if (Self->State IS NTC::CONNECTING_SSL) {
+         RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       }
       return;
    }
@@ -39,8 +39,8 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    if (!result) {
       log.traceBranch("Connection succesful.");
-      Self->set(FID_State, NTC_CONNECTED);
-      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+      Self->setState(NTC::CONNECTED);
+      RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
       return;
    }
    else {
@@ -54,7 +54,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
       log.error(Self->Error);
 
-      Self->set(FID_State, NTC_DISCONNECTED);
+      Self->setState(NTC::DISCONNECTED);
    }
 }
 #endif
@@ -82,7 +82,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
    }
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC_CONNECTING_SSL)) {
+   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.traceBranch("Continuing SSL communication...");
       sslConnect(Self);
       return;
@@ -173,7 +173,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
    if (Self->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Self->SSL) and (Self->State IS NTC_CONNECTING_SSL)) {
+   if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }
@@ -250,7 +250,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       if ((Self->Outgoing.Type IS CALL_NONE) and (!Self->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
+            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);
          #elif _WIN32
             win_socketstate(Self->SocketHandle, -1, 0);
             Self->WriteSocket = NULL;

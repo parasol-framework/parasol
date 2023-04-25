@@ -1,0 +1,354 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Config</name>
+    <type>class</type>
+    <module>Core</module>
+    <comment>Manages the reading and writing of configuration files.</comment>
+    <fileExtension>*.cfg|*.cnf|*.config</fileExtension>
+    <fileDescription>Config File</fileDescription>
+    <version>1</version>
+    <id>f6e46c7b</id>
+    <idstring>ID_CONFIG</idstring>
+    <category>Data</category>
+    <include>modules/config.h</include>
+    <copyright>Paul Manias 1996-2023</copyright>
+    <description>
+<p>The Config class is provided for reading text based key-values in a simple structured format.  Although basic and lacking support for trees and types, they are reliable, easy to support and use minimal resources.</p>
+<p>The following segment of a config file illustrates:</p>
+<pre>[Action]
+ClassID  = 5800
+Path = modules:action
+
+[Animation]
+ClassID  = 1000
+Path = modules:animation
+
+[Arrow]
+ClassID  = 3200
+Path = modules:arrow
+</pre>
+<p>Notice the text enclosed in square brackets, such as <code>[Action]</code>. These are referred to as 'groups', which are responsible for holding groups of key values expressed as strings.  In the above example, keys are defined by the ClassID and Path identifiers.</p>
+<p>The following source code illustrates how to open the classes.cfg file and read a key from it:</p>
+<pre>local cfg = obj.new('config', { path='config:classes.cfg' })
+local err, str = cfg.mtReadValue('Action', 'Path')
+print('The Action class is located at ' .. str)
+</pre>
+<p>Please note that internal string comparisons of group and key names are case sensitive by default.  Use of camel-case is recommended as the default naming format.</p></description>
+    <source>
+      <file path="../classes/">class_config.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Clear</name>
+      <comment>Clears all configuration data.</comment>
+    </action>
+
+    <action>
+      <name>DataFeed</name>
+      <comment>Data can be added to a Config object through this action.</comment>
+      <description>
+<p>This action will accept configuration data in TEXT format.  Any existing data that matches to the new group keys will be overwritten with new values.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Flush</name>
+      <comment>Diverts to <action>SaveSettings</action>.</comment>
+    </action>
+
+    <action>
+      <name>SaveSettings</name>
+      <comment>Saves data to the file that the configuration data was loaded from.</comment>
+      <description>
+<p>This action will save the configuration data back to its original file source (assuming the <field>Path</field> remains unchanged).</p>
+      </description>
+    </action>
+
+    <action>
+      <name>SaveToObject</name>
+      <comment>Saves configuration data to an object, using standard config text format.</comment>
+    </action>
+
+    <action>
+      <name>Sort</name>
+      <comment>Sorts config groups into alphabetical order.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>DeleteGroup</name>
+      <comment>Deletes entire groups of configuration data.</comment>
+      <prototype>ERROR cfgDeleteGroup(OBJECTPTR Object, CSTRING Group)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The name of the group that will be deleted.</param>
+      </input>
+      <description>
+<p>This method will delete an entire group of key-values from a config object if a matching group name is provided.</p>
+      </description>
+      <result>
+        <error code="Okay">The group was deleted or does not exist.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DeleteKey</name>
+      <comment>Deletes single key entries.</comment>
+      <prototype>ERROR cfgDeleteKey(OBJECTPTR Object, CSTRING Group, CSTRING Key)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The name of the targeted group.</param>
+        <param type="CSTRING" name="Key">The name of the targeted key.</param>
+      </input>
+      <description>
+<p>This method deletes a single key from the config object.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">A search routine in this function failed.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetGroupFromIndex</name>
+      <comment>Converts an index number into its matching group string.</comment>
+      <prototype>ERROR cfgGetGroupFromIndex(OBJECTPTR Object, LONG Index, CSTRING * Group)</prototype>
+      <input>
+        <param type="LONG" name="Index">The group index that you want to identify.</param>
+        <param type="CSTRING *" name="Group">Points to the group string that matches the index number.</param>
+      </input>
+      <description>
+<p>Use GetGroupFromIndex to convert a group index number to its matching name.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">There is no data loaded into the config object.</error>
+        <error code="OutOfRange">The index number is out of range of the available groups.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Merge</name>
+      <comment>Merges two config objects together.</comment>
+      <prototype>ERROR cfgMerge(OBJECTPTR Object, OBJECTPTR Source)</prototype>
+      <input>
+        <param type="OBJECTPTR" name="Source">The ID of the config object to be merged.</param>
+      </input>
+      <description>
+<p>The Merge method is used to merge configuration data from one config object provided as a source, into the target object. Existing data in the target will be overwritten by the source in cases where there matching set of group keys.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="AccessObject">The source configuration object could not be accessed.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>MergeFile</name>
+      <comment>Merges a foreign configuration file into existing configuration data.</comment>
+      <prototype>ERROR cfgMergeFile(OBJECTPTR Object, CSTRING Path)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">The location of the configuration file that you want to merge.</param>
+      </input>
+      <description>
+<p>The MergeFile method is used to pull configuration data from a file and merge it into the target config object. The path to the configuration file is all that is required.  Existing data in the target will be overwritten by the source in cases where there matching set of group keys.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="File">Failed to load the source file.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>ReadValue</name>
+      <comment>Reads a key-value string.</comment>
+      <prototype>ERROR cfgReadValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING * Data)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The name of a group to examine for a key.  If NULL, all groups are scanned.</param>
+        <param type="CSTRING" name="Key">The name of a key to retrieve (case sensitive).</param>
+        <param type="CSTRING *" name="Data">The key value will be stored in this parameter on returning.</param>
+      </input>
+      <description>
+<p>This function retrieves key values in their original string format.  On success, the resulting string remains valid only for as long as the client has exclusive access to the config object.  The pointer can also be invalidated if more information is written to the config object.  For this reason, consider copying the result if it will be used extensively.</p>
+<p>If the Group parameter is set to NULL, the scan routine will treat all of the config data as a one dimensional array. If the Key parameter is set to NULL then the first key in the requested group is returned.  If both parameters are NULL then the first known key value will be returned.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">The requested configuration entry does not exist.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Set</name>
+      <comment>Sets keys in existing config groups (aborts if the group does not exist).</comment>
+      <prototype>ERROR cfgSet(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The name of the group.  Wildcards are supported.</param>
+        <param type="CSTRING" name="Key">The name of the key.</param>
+        <param type="CSTRING" name="Data">The data that will be added to the given group/key.</param>
+      </input>
+      <description>
+<p>This method is identical to <method>WriteValue</method> except it will abort if the name of the referred group does not exist in the config object.  The error code ERR_Search is returned if this is the case.  Please refer to <method>WriteValue</method> for further information on the behaviour of this function.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">The referred group does not exist.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="GetField">The Entries field could not be retrieved.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SortByKey</name>
+      <comment>Sorts config data using a sequence of sort instructions.</comment>
+      <prototype>ERROR cfgSortByKey(OBJECTPTR Object, CSTRING Key, LONG Descending)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the key to sort on.</param>
+        <param type="LONG" name="Descending">Set to TRUE if a descending sort is required.</param>
+      </input>
+      <description>
+<p>The SortByKey method sorts the groups of a config object by key values (the named key value should be present in every group).</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NoData">No data is available for use.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>WriteValue</name>
+      <comment>Adds new entries to config objects.</comment>
+      <prototype>ERROR cfgWriteValue(OBJECTPTR Object, CSTRING Group, CSTRING Key, CSTRING Data)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The name of the group.</param>
+        <param type="CSTRING" name="Key">The name of the key.</param>
+        <param type="CSTRING" name="Data">The data that will be added to the given group/key.</param>
+      </input>
+      <description>
+<p>Use the WriteValue method to add or update information in a config object.  A Group name, Key name, and Data value are required.  If the Group and Key arguments match an existing entry in the config object, the data of that entry will be replaced with the new Data value.</p>
+<p>The Group string may refer to an index if the hash <code>#</code> character is used to precede a target index number.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="AllocMemory">The additional memory required for the new entry could not be allocated.</error>
+        <error code="GetField">The Entries field could not be retrieved.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Data</name>
+      <comment>Reference to the raw data values.</comment>
+      <access read="G">Get</access>
+      <type>APTR</type>
+      <description>
+<p>This field points to C++ object that contains all key-values for the config object.  It is intended to be used only by system code that is included with the standard framework.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags may be set here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="CNF">CNF</type>
+      <description>
+<types lookup="CNF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>GroupFilter</name>
+      <comment>Set this field to enable group filtering.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>When dealing with large configuration files, filtering out unrelated data may be useful.  By setting the GroupFilter field, it is possible to filter out entire groups that don't match the criteria.</p>
+<p>Group filters are created using the format <code>[Group1], [Group2], [Group3], ...</code>.</p>
+<p>Here are some examples:</p>
+<list type="unsorted">
+<li>Program, Application, Game</li>
+<li>Apple, Banana</li>
+</list>
+<p>You can also reverse the filter so that only the groups matching your criteria are filtered out.  To do this, use the exclamation character, as in the following examples:</p>
+<list type="unsorted">
+<li>!Program, Application, Game</li>
+<li>!Apple, Banana</li>
+</list>
+<p>To create a filter based on key names, refer to the <field>KeyFilter</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>KeyFilter</name>
+      <comment>Set this field to enable key filtering.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>When dealing with large configuration files it may be useful to filter out groups of key-values that are not needed. The KeyFilter field allows simple filters to be defined that will perform this task for you.  It is recommended that it is set prior to parsing new data for best performance, but can be set or changed at any time to apply a new filter.</p>
+<p>Key filters are created in the format <code>[Key] = [Data1], [Data2], ...</code></p>
+<p>Here are some examples:</p>
+<list type="unsorted">
+<li>Group = Sun, Light</li>
+<li>Path = documents:</li>
+<li>Name = Parasol</li>
+</list>
+<p>You can also 'reverse' the filter so that only the keys matching your specifications are filtered out.  To do this use the exclamation character as shown in these examples:</p>
+<list type="unsorted">
+<li>!Group = Sun, Light</li>
+<li>!Path = documents:</li>
+<li>!Name = Parasol</li>
+</list>
+<p>To create a filter based on group names, refer to the <field>GroupFilter</field> field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>Set this field to the location of the source configuration file.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>TotalGroups</name>
+      <comment>Returns the total number of groups in a config object.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>TotalKeys</name>
+      <comment>The total number of key values loaded into the config object.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="CNF" comment="Flags for the Config class.">
+      <const name="AUTO_SAVE">When the configuration object is freed, automatically save the configuration data back to the original file source.</const>
+      <const name="NEW">On initialisation, do not load any data from the referenced configuration file.</const>
+      <const name="OPTIONAL_FILES">Files are optional (do not fail if a requested file does not exist).</const>
+      <const name="STRIP_QUOTES">Removes quotes from key values that are quote-encapsulated.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

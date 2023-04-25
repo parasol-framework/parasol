@@ -1,3 +1,4 @@
+// DEPRECATED
 
 #include <parasol/main.h>
 #include <startup.h>
@@ -96,7 +97,7 @@ static LONG run_script(objScript *Script)
    DOUBLE start_time = (DOUBLE)PreciseTime() / 1000000.0;
    ERROR error;
 
-   if (!(error = acInit(Script))) {
+   if (!(error = InitObject(Script))) {
       if (!(error = acActivate(Script))) {
          if (glTime) { // Print the execution time of the script
             DOUBLE end_time = (DOUBLE)PreciseTime() / 1000000.0;
@@ -171,13 +172,13 @@ static ERROR process_args(void)
 
             struct DirInfo *dir;
             LONG total = 0;
-            if (!OpenDir("modules:", RDF_QUALIFY, &dir)) {
+            if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
                while (!ScanDir(dir)) {
                   struct FileInfo *folder = dir->Info;
-                  if (folder->Flags & RDF_FILE) {
+                  if (folder->Flags & RDF::FILE) {
                      LONG m;
                      for (m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name, 0, 0)) total++;
+                        if (!StrCompare(modules[m], folder->Name)) total++;
                      }
                   }
                }
@@ -205,7 +206,7 @@ static ERROR process_args(void)
             else {
                // Assume this arg is the target file.
 
-               if (ResolvePath(args[i], RSF_APPROXIMATE, &glTargetFile)) {
+               if (ResolvePath(args[i], RSF::APPROXIMATE, &glTargetFile)) {
                   print("Unable to find file '%s'", args[i]);
                   return ERR_Terminate;
                }
@@ -232,7 +233,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    pf::Log log(__FUNCTION__);
 
    if (Status IS ERR_Finished) {
-      SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
+      SendMessage(glScriptReceivedMsg, MSF::WAIT, NULL, 0);
       log.msg("Input pipe closed.");
       return;
    }
@@ -240,7 +241,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    glScriptBuffer.write(Buffer, Size);
 
    if (Buffer[Size-1] IS 0x1a) { // Ctrl-Z
-      SendMessage(0, glScriptReceivedMsg, MSF_WAIT, NULL, 0);
+      SendMessage(glScriptReceivedMsg, MSF::WAIT, NULL, 0);
       log.msg("EOF received.");
       return;
    }
@@ -269,7 +270,7 @@ int main(int argc, CSTRING *argv)
    int result = 0;
    if (!process_args()) {
       if (glTargetFile) {
-         LONG type;
+         LOC type;
          if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC_FILE)) {
             print("File '%s' does not exist.", glTargetFile);
             result = -1;
@@ -284,8 +285,7 @@ int main(int argc, CSTRING *argv)
          auto call = make_function_stdc(msg_script_received);
          AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
 
-         call = make_function_stdc(read_stdin);
-         CurrentTask()->set(FID_InputCallback, &call);
+         CurrentTask()->setInputCallback(make_function_stdc(read_stdin));
 
          ProcessMessages(0, -1);
 
@@ -293,11 +293,11 @@ int main(int argc, CSTRING *argv)
          if (str.length() > 0) {
             objScript *script;
             if (!NewObject(ID_FLUID, &script)) {
-               script->set(FID_Statement, str);
-               if (glProcedure) script->set(FID_Procedure, glProcedure);
+               script->setStatement(str);
+               if (glProcedure) script->setProcedure(glProcedure);
                if (glArgs) set_script_args(script, glArgs);
                result = run_script(script);
-               acFree(script);
+               FreeResource(script);
             }
             else {
                print("Internal Failure: Failed to create a new Script object for file processing.");

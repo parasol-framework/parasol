@@ -52,7 +52,7 @@ FDEF maReplaceLine[] = { { "Line", FD_LONG }, { "String", FD_STR }, { "Length", 
 FDEF maGotoLine[] = { { "Line", FD_LONG }, { 0, 0 } };
 FDEF maGetPos[] = { { "Line", FD_LONG }, { "Column", FD_LONG }, { "Pos", FD_LONG|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clScintillaMethods[] = {
+static const struct MethodEntry clScintillaMethods[] = {
    { -1, (APTR)SCINTILLA_SetFont, "SetFont", maSetFont, sizeof(struct sciSetFont) },
    { -2, (APTR)SCINTILLA_ReplaceText, "ReplaceText", maReplaceText, sizeof(struct sciReplaceText) },
    { -3, (APTR)SCINTILLA_DeleteLine, "DeleteLine", maDeleteLine, sizeof(struct sciDeleteLine) },

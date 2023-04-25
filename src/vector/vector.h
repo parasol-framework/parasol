@@ -23,6 +23,8 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/font.h>
 
+using namespace pf;
+
 #include "agg_alpha_mask_u8.h"
 #include "agg_basics.h"
 #include "agg_bounding_rect.h"
@@ -79,26 +81,19 @@ typedef class extVectorClip;
 class InputBoundary {
 public:
    OBJECTID VectorID;
-   LONG Cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
+   PTC Cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
    DOUBLE BX1, BY1, BX2, BY2; // Collision boundary
    DOUBLE X, Y; // Absolute X,Y without collision
 
-   InputBoundary(OBJECTID pV, LONG pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
+   InputBoundary(OBJECTID pV, PTC pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
       VectorID(pV), Cursor(pC), BX1(p1), BY1(p2), BX2(p3), BY2(p4), X(p5), Y(p6) {};
 };
 
 class InputSubscription {
 public:
    FUNCTION Callback;
-   LONG Mask;
-   InputSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
-};
-
-class FeedbackSubscription {
-public:
-   FUNCTION Callback;
-   LONG Mask;
-   FeedbackSubscription(FUNCTION pCallback, LONG pMask) : Callback(pCallback), Mask(pMask) { }
+   JTYPE Mask;
+   InputSubscription(FUNCTION pCallback, JTYPE pMask) : Callback(pCallback), Mask(pMask) { }
 };
 
 class KeyboardSubscription {
@@ -129,7 +124,7 @@ public:
    filter_bitmap() : Bitmap(NULL), Data(NULL), DataSize(0) { };
 
    ~filter_bitmap() {
-      if (Bitmap) { acFree(Bitmap); Bitmap = NULL; }
+      if (Bitmap) { FreeResource(Bitmap); Bitmap = NULL; }
       if (Data) { FreeResource(Data); Data = NULL; }
    };
 
@@ -158,7 +153,7 @@ public:
          Bitmap = objBitmap::create::integral(
             fl::Name("dummy_fx_bitmap"),
             fl::Width(Width), fl::Height(Height), fl::BitsPerPixel(32),
-            fl::Flags(Debug ? BMF_ALPHA_CHANNEL : (BMF_ALPHA_CHANNEL|BMF_NO_DATA)));
+            fl::Flags(Debug ? BMF::ALPHA_CHANNEL : (BMF::ALPHA_CHANNEL|BMF::NO_DATA)));
          if (!Bitmap) return NULL;
       }
 
@@ -178,7 +173,7 @@ public:
          }
 
          if (!Bitmap->Data) {
-            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM_DATA|MEM_NO_CLEAR, &Data)) {
+            if (!AllocMemory(Bitmap->LineWidth * canvas_height, MEM::DATA|MEM::NO_CLEAR, &Data)) {
                DataSize = Bitmap->LineWidth * canvas_height;
             }
             else {
@@ -198,6 +193,13 @@ public:
 #define TB_NOISE 1
 
 #include <parasol/modules/vector.h>
+
+class FeedbackSubscription {
+public:
+   FUNCTION Callback;
+   FM Mask;
+   FeedbackSubscription(FUNCTION pCallback, FM pMask) : Callback(pCallback), Mask(pMask) { }
+};
 
 //********************************************************************************************************************
 
@@ -298,13 +300,13 @@ class extVector : public objVector {
    DashedStroke        *DashArray;
    GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
    FRGB StrokeColour, FillColour;
-   LONG   InputMask;
+   JTYPE  InputMask;
    LONG   NumericID;
    LONG   PathLength;
-   UBYTE  MorphFlags;
-   UBYTE  FillRule;
-   UBYTE  ClipRule;
-   UBYTE  Dirty;
+   VMF    MorphFlags;
+   VFR    FillRule;
+   VFR    ClipRule;
+   RC     Dirty;
    UBYTE  TabOrder;
    UBYTE  EnableBkgd:1;
    UBYTE  DisableFillColour:1;
@@ -317,6 +319,7 @@ class extVector : public objVector {
    agg::inner_join_e InnerJoin;
    // Methods
    DOUBLE fixed_stroke_width();
+   inline bool dirty() { return Dirty != RC::NIL; }
 };
 
 struct TabOrderedVector {
@@ -338,14 +341,14 @@ class extVectorScene : public objVectorScene {
    APTR KeyHandle; // Keyboard subscription
    std::unordered_map<std::string, OBJECTPTR> Defs;
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
-   std::unordered_map<extVector *, LONG> InputSubscriptions;
+   std::unordered_map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
    std::vector<struct InputBoundary> InputBoundaries;
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    LONG InputHandle;
-   LONG Cursor; // Current cursor image
+   PTC Cursor; // Current cursor image
    UBYTE AdaptorType;
 };
 
@@ -367,9 +370,9 @@ class extVectorViewport : public extVector {
    DOUBLE vpAlignX, vpAlignY;
    extVectorClip *vpClipMask; // Automatically generated if the viewport is rotated or sheared.  This is in addition to the Vector ClipMask, which can be user-defined.
    LONG  vpDimensions;
-   LONG  vpAspectRatio;
+   ARF   vpAspectRatio;
+   VOF   vpOverflowX, vpOverflowY;
    UBYTE vpDragging:1;
-   UBYTE vpOverflowX, vpOverflowY;
 };
 
 //********************************************************************************************************************
@@ -425,7 +428,7 @@ class extVectorClip : public extVector {
    agg::path_storage *ClipPath; // Internally generated path
    agg::rendering_buffer ClipRenderer;
    extVector *TargetVector;
-   LONG ClipUnits;
+   VUNIT ClipUnits;
    LONG ClipSize;
 };
 
@@ -462,17 +465,17 @@ extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
 extern GRADIENT_TABLE * get_fill_gradient_table(extVector &, DOUBLE);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
-extern void apply_parent_transforms(extVector *Start, agg::trans_affine &);
+extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
 extern void apply_transition_xy(objVectorTransition *, DOUBLE, DOUBLE *, DOUBLE *);
-extern void calc_aspectratio(CSTRING, LONG, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
+extern void calc_aspectratio(CSTRING, ARF, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE *X, DOUBLE *Y, DOUBLE *, DOUBLE *);
 extern void calc_full_boundary(extVector *, std::array<DOUBLE, 4> &, bool IncludeSiblings = true, bool IncludeTransforms = true);
 extern void convert_to_aggpath(std::vector<PathCommand> &, agg::path_storage *);
 extern void gen_vector_path(extVector *);
 extern void gen_vector_tree(extVector *);
-extern void send_feedback(extVector *, LONG);
+extern void send_feedback(extVector *, FM);
 extern void setRasterClip(agg::rasterizer_scanline_aa<> &, LONG, LONG, LONG, LONG);
-extern void set_filter(agg::image_filter_lut &, UBYTE);
+extern void set_filter(agg::image_filter_lut &, VSM);
 extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, objBitmap *, objBitmap **);
 extern objBitmap * get_source_graphic(extVectorFilter *);
 
@@ -483,7 +486,7 @@ extern std::vector<extVector *> glFocusList; // The first reference is the most 
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
 
-inline static void mark_dirty(objVector *Vector, const UBYTE Flags)
+inline static void mark_dirty(objVector *Vector, const RC Flags)
 {
    ((extVector *)Vector)->Dirty |= Flags;
    for (auto scan=(extVector *)Vector->Child; scan; scan=(extVector *)scan->Next) {
@@ -510,8 +513,8 @@ inline static agg::path_storage basic_path(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUB
 
 inline static void reset_path(objVector *Vector)
 {
-   ((extVector *)Vector)->Dirty |= RC_BASE_PATH;
-   mark_dirty(Vector, RC_FINAL_PATH);
+   ((extVector *)Vector)->Dirty |= RC::BASE_PATH;
+   mark_dirty(Vector, RC::FINAL_PATH);
 }
 
 //********************************************************************************************************************
@@ -520,7 +523,7 @@ inline static void reset_path(objVector *Vector)
 
 inline static void reset_final_path(objVector *Vector)
 {
-   mark_dirty(Vector, RC_FINAL_PATH);
+   mark_dirty(Vector, RC::FINAL_PATH);
 }
 
 //********************************************************************************************************************
@@ -774,17 +777,17 @@ inline static void save_bitmap(objBitmap *Bitmap, std::string Name)
       fl::Width(Bitmap->Clip.Right - Bitmap->Clip.Left),
       fl::Height(Bitmap->Clip.Bottom - Bitmap->Clip.Top),
       fl::BitsPerPixel(32),
-      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Flags(PCF::FORCE_ALPHA_32|PCF::NEW),
       fl::Path(path),
       fl::ColourSpace(Bitmap->ColourSpace) };
 
    if (pic.ok()) {
-      gfxCopyArea(Bitmap, pic->Bitmap, 0, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
-      acSaveImage(*pic, 0, 0);
+      gfxCopyArea(Bitmap, pic->Bitmap, BAF::NIL, Bitmap->Clip.Left, Bitmap->Clip.Top, pic->Bitmap->Width, pic->Bitmap->Height, 0, 0);
+      pic->saveImage(NULL);
    }
 }
 
-// Raw version of save_bitmap()
+// Raw-copy version of save_bitmap()
 
 inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG Height, LONG BPP = 32)
 {
@@ -794,7 +797,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
       fl::Width(Width),
       fl::Height(Height),
       fl::BitsPerPixel(BPP),
-      fl::Flags(PCF_FORCE_ALPHA_32|PCF_NEW),
+      fl::Flags(PCF::FORCE_ALPHA_32|PCF::NEW),
       fl::Path(path)
    };
 
@@ -806,7 +809,7 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
          out  += pic->Bitmap->LineWidth;
          Data += Width * pic->Bitmap->BytesPerPixel;
       }
-      acSaveImage(*pic, 0, 0);
+      pic->saveImage(NULL);
    }
 }
 
@@ -815,10 +818,10 @@ inline static void save_bitmap(std::string Name, UBYTE *Data, LONG Width, LONG H
 
 inline static extVector * get_parent(const extVector *Vector)
 {
-   if (Vector->ClassID != ID_VECTOR) return NULL;
+   if (Vector->Class->BaseClassID != ID_VECTOR) return NULL;
    while (Vector) {
       if (!Vector->Parent) Vector = (extVector *)Vector->Prev; // Scan back to the first sibling to find the parent
-      else if (Vector->Parent->ClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
+      else if (Vector->Parent->Class->BaseClassID IS ID_VECTOR) return (extVector *)(Vector->Parent);
       else return NULL;
    }
 
@@ -877,15 +880,15 @@ void configure_stroke(extVector &Vector, T &Stroke)
    //     stroke-dashoffset="10" fill="lightslategray" stroke-linejoin="round" />
 
    if (Vector.LineJoin) {
-      if (Vector.SubID IS ID_VECTORPOLYGON) {
+      if (Vector.Class->ClassID IS ID_VECTORPOLYGON) {
          if (((extVectorPoly &)Vector).Closed) {
             switch(Vector.LineJoin) {
-               case VLJ_MITER:        Stroke.line_cap(agg::square_cap); break;
-               case VLJ_BEVEL:        Stroke.line_cap(agg::square_cap); break;
-               case VLJ_MITER_REVERT: Stroke.line_cap(agg::square_cap); break;
-               case VLJ_ROUND:        Stroke.line_cap(agg::round_cap); break;
-               case VLJ_MITER_ROUND:  Stroke.line_cap(agg::round_cap); break;
-               case VLJ_INHERIT: break;
+               case agg::miter_join:        Stroke.line_cap(agg::square_cap); break;
+               case agg::bevel_join:        Stroke.line_cap(agg::square_cap); break;
+               case agg::miter_join_revert: Stroke.line_cap(agg::square_cap); break;
+               case agg::round_join:        Stroke.line_cap(agg::round_cap); break;
+               case agg::miter_join_round:  Stroke.line_cap(agg::round_cap); break;
+               case agg::inherit_join:      break;
             }
          }
       }
@@ -898,7 +901,7 @@ void configure_stroke(extVector &Vector, T &Stroke)
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
 extern void get_text_xy(extVectorText *);
-extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags);
+extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
 extern ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
 extern void  vecClosePath(class SimpleVector *);
 extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);

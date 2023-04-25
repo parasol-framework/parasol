@@ -57,7 +57,7 @@ static ERROR close_folder(DirInfo *);
 static ERROR open_folder(DirInfo *);
 static ERROR get_info(CSTRING, FileInfo *, LONG);
 static ERROR scan_folder(DirInfo *);
-static ERROR test_path(STRING, LONG, LONG *);
+static ERROR test_path(STRING, RSF, LOC *);
 
 //********************************************************************************************************************
 
@@ -90,7 +90,7 @@ static ERROR seek_to_item(extFile *Self)
    if (acSeekStart(prv->FileStream, stream_start) != ERR_Okay) return ERR_Seek;
 
    if (item.CompressedSize > 0) {
-      Self->Flags |= FL_FILE;
+      Self->Flags |= FL::FILE;
 
       if (item.DeflateMethod IS 0) { // The file is stored rather than compressed
          Self->Size = item.CompressedSize;
@@ -104,8 +104,8 @@ static ERROR seek_to_item(extFile *Self)
       else return ERR_Failed;
    }
    else { // Folder or empty file
-      if (item.IsFolder) Self->Flags |= FL_FOLDER;
-      else Self->Flags |= FL_FILE;
+      if (item.IsFolder) Self->Flags |= FL::FOLDER;
+      else Self->Flags |= FL::FILE;
       Self->Size = 0;
       return ERR_Okay;
    }
@@ -172,7 +172,7 @@ static ERROR ARCHIVE_Activate(extFile *Self, APTR Void)
    if ((prv->FileStream = extFile::create::integral(
       fl::Name("ArchiveFileStream"),
       fl::Path(prv->Archive->Path),
-      fl::Flags(FL_READ)))) {
+      fl::Flags(FL::READ)))) {
 
       ERROR error = seek_to_item(Self);
       if (error) log.warning(error);
@@ -188,7 +188,7 @@ static ERROR ARCHIVE_Free(extFile *Self, APTR Void)
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      if (prv->FileStream) { acFree(prv->FileStream); prv->FileStream = NULL; }
+      if (prv->FileStream) { FreeResource(prv->FileStream); prv->FileStream = NULL; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
       prv->~prvFileArchive();
    }
@@ -204,12 +204,12 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 
    if (!Self->Path) return ERR_FieldNotSet;
 
-   if (StrCompare("archive:", Self->Path, LEN_ARCHIVE, 0) != ERR_Okay) return ERR_NoSupport;
+   if (StrCompare("archive:", Self->Path, LEN_ARCHIVE) != ERR_Okay) return ERR_NoSupport;
 
-   if (Self->Flags & (FL_NEW|FL_WRITE)) return log.warning(ERR_ReadOnly);
+   if ((Self->Flags & (FL::NEW|FL::WRITE)) != FL::NIL) return log.warning(ERR_ReadOnly);
 
    ERROR error = ERR_Search;
-   if (!AllocMemory(sizeof(prvFileArchive), MEM_DATA, &Self->ChildPrivate, NULL)) {
+   if (!AllocMemory(sizeof(prvFileArchive), MEM::DATA, &Self->ChildPrivate, NULL)) {
       auto prv = (prvFileArchive *)Self->ChildPrivate;
       new (prv) prvFileArchive;
 
@@ -227,13 +227,13 @@ static ERROR ARCHIVE_Init(extFile *Self, APTR Void)
 
             auto it = prv->Archive->Files.begin();
             for (; it != prv->Archive->Files.end(); it++) {
-               if (!StrCompare(file_path, it->Name, 0, STR_CASE|STR_MATCH_LEN)) break;
+               if (!StrCompare(file_path, it->Name, 0, STR::CASE|STR::MATCH_LEN)) break;
             }
 
-            if ((it IS prv->Archive->Files.end()) and (Self->Flags & FL_APPROXIMATE)) {
+            if ((it IS prv->Archive->Files.end()) and ((Self->Flags & FL::APPROXIMATE) != FL::NIL)) {
                file_path.append(".*");
                for (it = prv->Archive->Files.begin(); it != prv->Archive->Files.end(); it++) {
-                  if (!StrCompare(file_path, it->Name, 0, STR_WILDCARD)) break;
+                  if (!StrCompare(file_path, it->Name, 0, STR::WILDCARD)) break;
                }
             }
 
@@ -275,18 +275,18 @@ static ERROR ARCHIVE_Query(extFile *Self, APTR Void)
 
    auto &item = prv->Info;
    if (item.Flags & ZIP_SECURITY) {
-      LONG permissions = 0;
-      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      PERMIT permissions = PERMIT::NIL;
+      if (item.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+      if (item.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+      if (item.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-      if (item.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (item.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (item.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (item.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+      if (item.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+      if (item.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (item.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+      if (item.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+      if (item.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
 
       Self->Permissions = permissions;
    }
@@ -401,11 +401,11 @@ static ERROR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
    Log log;
    LARGE pos;
 
-   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, Args->Position);
+   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, LONG(Args->Position));
 
-   if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_END) pos = Self->Size - F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) pos = Self->Position + F2T(Args->Offset);
+   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::END) pos = Self->Size - F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->Position + F2T(Args->Offset);
    else return log.warning(ERR_Args);
 
    if (pos < 0) return log.warning(ERR_OutOfRange);
@@ -473,7 +473,7 @@ static ERROR scan_folder(DirInfo *Dir)
    while ((*name) and (*name != '/') and (*name != '\\')) name++;
    if ((*name IS '/') or (*name IS '\\')) name++;
 
-   log.traceBranch("Path: \"%s\", Flags: $%.8x", name, Dir->prvFlags);
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", name, LONG(Dir->prvFlags));
 
    std::string path(name);
 
@@ -489,7 +489,7 @@ static ERROR scan_folder(DirInfo *Dir)
       ZipFile &zf = *it;
 
       if (!path.empty()) {
-         if (StrCompare(path, zf.Name, 0, 0) != ERR_Okay) continue;
+         if (StrCompare(path, zf.Name) != ERR_Okay) continue;
       }
 
       // Single folders will appear as 'ABCDEF/'
@@ -505,20 +505,20 @@ static ERROR scan_folder(DirInfo *Dir)
          if (zf.Name[i]) continue;
       }
 
-      if ((Dir->prvFlags & RDF_FILE) and (!zf.IsFolder)) {
+      if (((Dir->prvFlags & RDF::FILE) != RDF::NIL) and (!zf.IsFolder)) {
 
-         if (Dir->prvFlags & RDF_PERMISSIONS) {
-            Dir->Info->Flags |= RDF_PERMISSIONS;
-            Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+         if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::PERMISSIONS;
+            Dir->Info->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
          }
 
-         if (Dir->prvFlags & RDF_SIZE) {
-            Dir->Info->Flags |= RDF_SIZE;
+         if ((Dir->prvFlags & RDF::SIZE) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::SIZE;
             Dir->Info->Size = zf.OriginalSize;
          }
 
-         if (Dir->prvFlags & RDF_DATE) {
-            Dir->Info->Flags |= RDF_DATE;
+         if ((Dir->prvFlags & RDF::DATE) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::DATE;
             Dir->Info->Modified.Year   = zf.Year;
             Dir->Info->Modified.Month  = zf.Month;
             Dir->Info->Modified.Day    = zf.Day;
@@ -527,7 +527,7 @@ static ERROR scan_folder(DirInfo *Dir)
             Dir->Info->Modified.Second = 0;
          }
 
-         Dir->Info->Flags |= RDF_FILE;
+         Dir->Info->Flags |= RDF::FILE;
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
          StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME);
@@ -537,21 +537,21 @@ static ERROR scan_folder(DirInfo *Dir)
          return ERR_Okay;
       }
 
-      if ((Dir->prvFlags & RDF_FOLDER) and (zf.IsFolder)) {
-         Dir->Info->Flags |= RDF_FOLDER;
+      if (((Dir->prvFlags & RDF::FOLDER) != RDF::NIL) and (zf.IsFolder)) {
+         Dir->Info->Flags |= RDF::FOLDER;
 
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
          LONG i = StrCopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
 
-         if (Dir->prvFlags & RDF_QUALIFY) {
+         if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
             Dir->Info->Name[i++] = '/';
             Dir->Info->Name[i++] = 0;
          }
 
-         if (Dir->prvFlags & RDF_PERMISSIONS) {
-            Dir->Info->Flags |= RDF_PERMISSIONS;
-            Dir->Info->Permissions = PERMIT_READ|PERMIT_GROUP_READ|PERMIT_OTHERS_READ;
+         if ((Dir->prvFlags & RDF::PERMISSIONS) != RDF::NIL) {
+            Dir->Info->Flags |= RDF::PERMISSIONS;
+            Dir->Info->Permissions = PERMIT::READ|PERMIT::GROUP_READ|PERMIT::OTHERS_READ;
          }
 
          ((ArchiveDriver *)Dir->Driver)->Index = it;
@@ -582,19 +582,19 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    log.traceBranch("%s", Path);
 
    if (auto cmp = find_archive(Path, file_path)) {
-      struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR_CASE|STR_MATCH_LEN };
+      struct cmpFind find = { .Path=file_path.c_str(), .Flags=STR::CASE|STR::MATCH_LEN };
       if ((error = Action(MT_CmpFind, cmp, &find))) return error;
       item = find.Item;
    }
    else return ERR_DoesNotExist;
 
    Info->Size     = item->OriginalSize;
-   Info->Flags    = 0;
+   Info->Flags    = RDF::NIL;
    Info->Created  = item->Created;
    Info->Modified = item->Modified;
 
-   if (item->Flags & FL_FOLDER) Info->Flags |= RDF_FOLDER;
-   else Info->Flags |= RDF_FILE|RDF_SIZE;
+   if ((item->Flags & FL::FOLDER) != FL::NIL) Info->Flags |= RDF::FOLDER;
+   else Info->Flags |= RDF::FILE|RDF::SIZE;
 
    // Extract the file name
 
@@ -604,7 +604,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
    while ((i > 0) and (Path[i-1] != '/') and (Path[i-1] != '\\') and (Path[i-1] != ':')) i--;
    i = StrCopy(Path + i, Info->Name, MAX_FILENAME-2);
 
-   if (Info->Flags & RDF_FOLDER) {
+   if ((Info->Flags & RDF::FOLDER) != RDF::NIL) {
       if (Info->Name[i-1] IS '\\') Info->Name[i-1] = '/';
       else if (Info->Name[i-1] != '/') {
          Info->Name[i++] = '/';
@@ -622,7 +622,7 @@ static ERROR get_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an archive: location.
 
-static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
+static ERROR test_path(STRING Path, RSF Flags, LOC *Type)
 {
    Log log(__FUNCTION__);
 
@@ -633,16 +633,16 @@ static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
    if (!(cmp = find_archive(Path, file_path))) return ERR_DoesNotExist;
 
    if (file_path.empty()) {
-      *Type = LOC_VOLUME;
+      *Type = LOC::VOLUME;
       return ERR_Okay;
    }
 
    CompressedItem *item;
-   ERROR error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_MATCH_LEN, &item);
+   ERROR error = cmpFind(cmp, file_path.c_str(), STR::CASE|STR::MATCH_LEN, &item);
 
-   if ((error) and (Flags & RSF_APPROXIMATE)) {
+   if ((error) and ((Flags & RSF::APPROXIMATE) != RSF::NIL)) {
       file_path.append(".*");
-      if (!(error = cmpFind(cmp, file_path.c_str(), STR_CASE|STR_WILDCARD, &item))) {
+      if (!(error = cmpFind(cmp, file_path.c_str(), STR::CASE|STR::WILDCARD, &item))) {
          // Point the path to the discovered item
          LONG i;
          for (i=0; (Path[i] != '/') and (Path[i]); i++);
@@ -657,8 +657,8 @@ static ERROR test_path(STRING Path, LONG Flags, LONG *Type)
       else return error;
    }
 
-   if (item->Flags & FL_FOLDER) *Type = LOC_FOLDER;
-   else *Type = LOC_FILE;
+   if ((item->Flags & FL::FOLDER) != FL::NIL) *Type = LOC::FOLDER;
+   else *Type = LOC::FILE;
 
    return ERR_Okay;
 }
@@ -676,7 +676,7 @@ static const ActionArray clArchiveActions[] = {
    { 0, NULL }
 };
 
-static const MethodArray clArchiveMethods[] = {
+static const MethodEntry clArchiveMethods[] = {
    { 0, NULL, NULL, NULL, 0 }
 };
 
@@ -691,7 +691,7 @@ extern "C" ERROR add_archive_class(void)
 {
    glArchiveClass = extMetaClass::create::global(
       fl::BaseClassID(ID_FILE),
-      fl::SubClassID(ID_FILEARCHIVE),
+      fl::ClassID(ID_FILEARCHIVE),
       fl::Name("FileArchive"),
       fl::Actions(clArchiveActions),
       fl::Methods(clArchiveMethods),
@@ -706,11 +706,11 @@ extern "C" ERROR add_archive_class(void)
 extern "C" ERROR create_archive_volume(void)
 {
    return VirtualVolume("archive",
-      VAS_DRIVER_SIZE, sizeof(ArchiveDriver),
-      VAS_OPEN_DIR,    &open_folder,
-      VAS_SCAN_DIR,    &scan_folder,
-      VAS_CLOSE_DIR,   &close_folder,
-      VAS_TEST_PATH,   &test_path,
-      VAS_GET_INFO,    &get_info,
+      VAS::DRIVER_SIZE, sizeof(ArchiveDriver),
+      VAS::OPEN_DIR,    &open_folder,
+      VAS::SCAN_DIR,    &scan_folder,
+      VAS::CLOSE_DIR,   &close_folder,
+      VAS::TEST_PATH,   &test_path,
+      VAS::GET_INFO,    &get_info,
       0);
 }

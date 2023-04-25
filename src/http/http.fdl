@@ -7,11 +7,11 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
 
   c_include("<parasol/modules/network.h>")
 
-  enum("HOM", { start=0, comment="Output mode." },
+  enum("HOM", { type="int", start=0, comment="Output mode." },
     "DATA_FEED",
     "READ_WRITE|READ|WRITE")
 
-  enum("HGS", { start=0, comment="Options for defining an HTTP object's state." },
+  enum("HGS", { type="int", start=0, comment="Options for defining an HTTP object's state." },
    "READING_HEADER: The default state - this value will be indicated when no data is being written to the server and the client is waiting for a complete header from the server.",
    "AUTHENTICATING: If authentication is requested from the server, the HTTP object will enter this state.",
    "AUTHENTICATED: Following successful authentication, this state value will be set.",
@@ -23,7 +23,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
    "TERMINATED: If an HTTP command failes to complete normally - for instance if the connection is broken before completion - then the state is set to TERMINATED.",
    "END: Private")
 
-  enum("HTM", { start=0, comment="The HTTP Method to use when the object is activated." },
+  enum("HTM", { type="int", start=0, comment="The HTTP Method to use when the object is activated." },
     "GET: Retrieves files from the HTTP server.  The Path field will indicate which file to retrieve.",
     "POST: Sends information to the HTTP server.",
     "PUT: Uploads a file to the HTTP server.  The data will be drawn from a source defined in the File or Object fields.",
@@ -39,7 +39,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
     "COPY", "LOCK", "MOVE", "NOTIFY", "OPTIONS", "POLL", "PROP_FIND", "PROP_PATCH", "SEARCH", "SUBSCRIBE", "UNLOCK",
     "UNSUBSCRIBE")
 
-  const("HTS", { comment="HTTP status codes" }, {
+  const("HTS", { type="int", comment="HTTP status codes" }, {
     CONTINUE             = 100,
     SWITCH_PROTOCOLS     = 101,
     OKAY                 = 200,
@@ -92,7 +92,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2023", version=1.0 }, funct
     "RAW: Forcibly turns off chunk detection and chunk handling on incoming data.  Also turns off automatic chunk encoding for outgoing data.",
     "DEBUG_SOCKET: Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.",
     "RECV_BUFFER: Enables buffering of all received HTTP content into a local buffer.  The buffer information can be read at any time during and after the transaction through the RecvBuffer field.  Note that this option should only be used for limited data transfers to avoid excessive memory usage.",
-    "DEBUG: Print extra log messages during HTTP processing.",
+    "LOG_ALL: Print extra log messages during HTTP processing.",
     "SSL: Force SSL connectivity, irrespective of the HTTP port.  Note that this flag is automatically set (and remains set for all future transfers) if the Port field is set to 443.")
 
   class("HTTP", { src="http.cpp", output="http_def.c" }, [[

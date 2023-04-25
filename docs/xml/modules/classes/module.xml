@@ -1,0 +1,142 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Module</name>
+    <type>class</type>
+    <module>Core</module>
+    <comment>Manages the loading of system libraries.</comment>
+    <fileExtension>*.mod|*.so|*.dll</fileExtension>
+    <fileDescription>System Module</fileDescription>
+    <version>1</version>
+    <id>0e32c72b</id>
+    <idstring>ID_MODULE</idstring>
+    <category>System</category>
+    <include>modules/module.h</include>
+    <copyright>Paul Manias 1996-2023</copyright>
+    <description>
+<p>The Module class is used to load and maintain the modules that are installed on the user's system.  A number of modules are available in the core platform as standard, which you can use in the development of your programs.  Examples of existing modules can be found in both the <code>modules:</code> folder.</p>
+<p>To load a module and interact with its API, create a module object and initialise it.  The following code segment illustrates in C++:</p>
+<pre>DisplayBase *DisplayBase;
+auto modDisplay = objModule::create::global(fl::Name("display"));
+if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
+</pre>
+<p>To do the same in Fluid:</p>
+<pre>mGfx = mod.load('display')
+</pre>
+<p>It is critical that the module object is permanently retained until the program no longer needs its functionality.</p></description>
+    <source>
+      <file path="../classes/">class_module.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+  </actions>
+
+  <methods>
+    <method>
+      <name>ResolveSymbol</name>
+      <comment>Resolves the symbol names in loaded link libraries to address pointers.</comment>
+      <prototype>ERROR modResolveSymbol(OBJECTPTR Object, CSTRING Name, APTR * Address)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The name of the symbol to resolve.</param>
+        <param type="APTR *" name="Address">The address of the symbol will be returned in this parameter.</param>
+      </input>
+      <description>
+<p>This method will convert symbol names to their respective address pointers.  The module code must have been successfully loaded into memory or an ERR_FieldNotSet error will be returned.  If the symbol was not found then ERR_NotFound is returned.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NotFound">The symbol was not found.</error>
+        <error code="NoSupport">The host platform does not support this method.</error>
+        <error code="FieldNotSet">The module has not been successfully initialised.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="MOF">MOF</type>
+      <description>
+<types lookup="MOF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>FunctionList</name>
+      <comment>Refers to a list of public functions exported by the module.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>const struct Function *</type>
+      <description>
+<p>After initialisation, the FunctionList will refer to an array of public functions that are exported by the module.  The FunctionList array consists of Function structs, which are in the following format:</p>
+<pre>struct Function {
+   APTR Address;  // Address of the function routine.
+   CSTRING Name;  // Name of the function.
+   const struct FunctionField *Args; // Descriptor array for the function arguments.
+};
+</pre>
+      </description>
+    </field>
+
+    <field>
+      <name>ModBase</name>
+      <comment>The Module's function base (jump table) must be read from this field.</comment>
+      <access read="R">Read</access>
+      <type>APTR</type>
+      <description>
+<p>Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains vectors that point to all functions that are published by the module.</p>
+<p>The jump table is unique to the instance of the module. This allows each module to use a different function model between versions, without losing backwards compatibility.  When a module is opened, it can check the requested <field>Version</field> and return a custom-built jump table to the program.  Thus if a function were changed in a future module version, older programs would be re-routed to a routine that provides backwards compatibility to the newer function model.</p>
+<p>By default, jump tables are arranged as an array of function pointers accessible through a well defined structure. The template for making calls is <code>FunctionBase-&gt;FunctionCall()</code></p>
+<p>Header files will normally include macros to simplify the function call:</p>
+<pre>#define FunctionCall      FunctionBase-&gt;FunctionCall</pre>
+<p>The jump table is invalid once the module is destroyed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Name</name>
+      <comment>The name of the module.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This string pointer specifies the name of the Module.  This name will be used to load the module from the <code>modules:</code> folder, so this field actually reflects part of the module file name.  It is also possible to specify sub-directories before the module name itself - this could become more common in module loading in future.</p>
+<p>It is critical that file extensions do not appear in the Name string, e.g. <code>screen.dll</code> as not all systems may use a <code>.dll</code> extension.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Version</name>
+      <comment>Minimum required version number.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>DOUBLE</type>
+      <description>
+<p>When opening a module, the value that you insert in the Version field will reflect the minimum version and revision number required of the module file.  If the module's version number is less than the version that you specify, then the initialisation procedure will be aborted.</p>
+<p>The Version field is also useful for ensuring that the function base returned by a module matches your program's expectations.  For instance, if you write your program against a 1.0 version of a module but the user's machine has a 2.0 version installed, there could be incompatibilities.  By specifying the required version number, the module can provide backwards-compatible functionality for your software.</p>
+<p>After initialisation, the Version field will be updated to reflect the actual version of the Module.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="MOF" comment="Module flags">
+      <const name="LINK_LIBRARY">Module refers to a symbolic link library (e.g. libz DLL or SO)</const>
+      <const name="STATIC">This flag prevents the loaded module code from being unloaded when the module object is freed.  This may be needed in cases where a module is designed with the presumption that it will remain in memory after being loaded by the developer.</const>
+      <const name="SYSTEM_PROBE">Indicates that the module is being probed.  Do not use outside of the core library.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="Function" comment="Function list array structure">
+      <field name="Address" type="APTR">Pointer to the function entry point</field>
+      <field name="Name" type="CSTRING">Name of the function</field>
+      <field name="Args" type="const struct FunctionField *">A list of parameters accepted by the function</field>
+    </struct>
+
+  </structs>
+</book>

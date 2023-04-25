@@ -351,7 +351,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
    if (!modIconv) {
       #ifdef _WIN32
-         modIconv = objModule::create::global(fl::Name("libiconv2.dll"), fl::Flags(MOF_LINK_LIBRARY|MOF_STATIC));
+         modIconv = objModule::create::global(fl::Name("libiconv2.dll"), fl::Flags(MOF::LINK_LIBRARY|MOF::STATIC));
 
          if (!modIconv) {
             init_failed = true;
@@ -364,14 +364,14 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
          modResolveSymbol(modIconv, "libiconv", (APTR *)&iconv);
 
          if ((!iconv) or (!iconv_open) or (!iconv_close)) {
-            acFree(modIconv);
+            FreeResource(modIconv);
             modIconv    = NULL;
             tlContext   = context;
             init_failed = true;
             return NULL;
          }
       #else
-         modIconv = objModule::create::global(fl::Name("libiconv2"), fl::Flags(MOF_LINK_LIBRARY));
+         modIconv = objModule::create::global(fl::Name("libiconv2"), fl::Flags(MOF::LINK_LIBRARY));
 
          if (!modIconv) {
             init_failed = true;
@@ -418,7 +418,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
             buffersize = 4096;
             if (buffersize < in) buffersize = in + 1024;
 
-            if (AllocMemory(buffersize, MEM_STRING|MEM_NO_CLEAR, (APTR *)&glIconvBuffer, NULL) != ERR_Okay) {
+            if (AllocMemory(buffersize, MEM::STRING|MEM::NO_CLEAR, (APTR *)&glIconvBuffer, NULL) != ERR_Okay) {
                tlContext = context;
                return NULL;
             }

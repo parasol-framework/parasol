@@ -18,53 +18,6 @@ extern "C" {
 #include "defs.h"
 
 //********************************************************************************************************************
-
-void clear_subscriptions(objScript *Self)
-{
-   auto prv = (prvFluid *)Self->ChildPrivate;
-   if (!prv) return;
-
-   // Free action subscriptions
-
-   auto action = prv->ActionList;
-   while (action) {
-      auto nextaction = action->Next;
-
-      if (action->ObjectID) {
-         OBJECTPTR object;
-         if (!AccessObjectID(action->ObjectID, 3000, &object)) {
-            UnsubscribeAction(object, action->ActionID);
-            ReleaseObject(object);
-         }
-      }
-      FreeResource(action);
-      action = nextaction;
-   }
-   prv->ActionList = NULL;
-
-   // Free event subscriptions
-
-   auto event = prv->EventList;
-   while (event) {
-      auto nextevent = event->Next;
-      if (event->EventHandle) UnsubscribeEvent(event->EventHandle);
-      FreeResource(event);
-      event = nextevent;
-   }
-   prv->EventList = NULL;
-
-   // Free data requests
-
-   auto dr = prv->Requests;
-   while (dr) {
-      auto next = dr->Next;
-      FreeResource(dr);
-      dr = next;
-   }
-   prv->Requests = NULL;
-}
-
-//********************************************************************************************************************
 // check() is the equivalent of an assert() for error codes.  Any major error code will be converted to an
 // exception containing a readable string for the error code.  It is most powerful when used in conjunction with
 // the catch() function, which will apply the line number of the exception to the result.  The error code will
@@ -76,7 +29,7 @@ void clear_subscriptions(objScript *Self)
 int fcmd_check(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERROR error = lua_tonumber(Lua, 1);
+      ERROR error = lua_tointeger(Lua, 1);
       if (error >= ERR_ExceptionThreshold) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
@@ -93,7 +46,7 @@ int fcmd_check(lua_State *Lua)
 int fcmd_raise(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
-      ERROR error = lua_tonumber(Lua, 1);
+      ERROR error = lua_tointeger(Lua, 1);
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       prv->CaughtError = error;
       luaL_error(prv->Lua, GetErrorMsg(error));
@@ -335,21 +288,14 @@ int fcmd_unsubscribe_event(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
    if (!prv) return 0;
 
-   APTR handle;
-   if ((handle = lua_touserdata(Lua, 1))) {
+   if (auto handle = lua_touserdata(Lua, 1)) {
       pf::Log log("unsubscribe_event");
-      if (Lua->Script->Flags & SCF_DEBUG) log.msg("Handle: %p", handle);
+      if ((Lua->Script->Flags & SCF::LOG_ALL) != SCF::NIL) log.msg("Handle: %p", handle);
 
-      for (auto event=prv->EventList; event; event=event->Next) {
-         if (event->EventHandle IS handle) {
-            UnsubscribeEvent(event->EventHandle);
-            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, event->Function);
-
-            if (event->Prev) event->Prev->Next = event->Next;
-            if (event->Next) event->Next->Prev = event->Prev;
-            if (event IS prv->EventList) prv->EventList = event->Next;
-
-            FreeResource(event);
+      for (auto it=prv->EventList.begin(); it != prv->EventList.end(); it++) {
+         if (it->EventHandle IS handle) {
+            luaL_unref(prv->Lua, LUA_REGISTRYINDEX, it->Function);
+            prv->EventList.erase(it);
             return 0;
          }
       }
@@ -407,59 +353,52 @@ int fcmd_subscribe_event(lua_State *Lua)
       }
    }
 
-   LONG group_id = 0;
+   EVG group_id = EVG::NIL;
    if ((group_hash) and (subgroup_hash)) {
       switch (group_hash) {
-         case HASH_FILESYSTEM: group_id = EVG_FILESYSTEM; break;
-         case HASH_NETWORK:    group_id = EVG_NETWORK; break;
-         case HASH_USER:       group_id = EVG_USER; break;
-         case HASH_SYSTEM:     group_id = EVG_SYSTEM; break;
-         case HASH_GUI:        group_id = EVG_GUI; break;
-         case HASH_DISPLAY:    group_id = EVG_DISPLAY; break;
-         case HASH_IO:         group_id = EVG_IO; break;
-         case HASH_HARDWARE:   group_id = EVG_HARDWARE; break;
-         case HASH_AUDIO:      group_id = EVG_AUDIO; break;
-         case HASH_POWER:      group_id = EVG_POWER; break;
-         case HASH_CLASS:      group_id = EVG_CLASS; break;
-         case HASH_APP:        group_id = EVG_APP; break;
+         case HASH_FILESYSTEM: group_id = EVG::FILESYSTEM; break;
+         case HASH_NETWORK:    group_id = EVG::NETWORK; break;
+         case HASH_USER:       group_id = EVG::USER; break;
+         case HASH_SYSTEM:     group_id = EVG::SYSTEM; break;
+         case HASH_GUI:        group_id = EVG::GUI; break;
+         case HASH_DISPLAY:    group_id = EVG::DISPLAY; break;
+         case HASH_IO:         group_id = EVG::IO; break;
+         case HASH_HARDWARE:   group_id = EVG::HARDWARE; break;
+         case HASH_AUDIO:      group_id = EVG::AUDIO; break;
+         case HASH_POWER:      group_id = EVG::POWER; break;
+         case HASH_CLASS:      group_id = EVG::CLASS; break;
+         case HASH_APP:        group_id = EVG::APP; break;
       }
    }
 
-   if (!group_id) {
+   if (group_id IS EVG::NIL) {
       luaL_error(Lua, "Invalid group name '%s' in event string.", event);
       return 0;
    }
 
    EVENTID event_id = GetEventID(group_id, group, event);
 
-   struct eventsub *es;
-   ERROR error;
    if (!event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
       lua_pushinteger(Lua, ERR_Failed);
       return 1;
    }
-   else if (!(error = AllocMemory(sizeof(struct eventsub), MEM_DATA, &es))) {
+   else {
       auto call = make_function_stdc(receive_event);
-      if (!(error = SubscribeEvent(event_id, &call, es, &es->EventHandle))) {
+      APTR handle;
+      if (auto error = SubscribeEvent(event_id, &call, NULL, &handle); !error) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          lua_settop(Lua, 2);
-         es->Function = luaL_ref(Lua, LUA_REGISTRYINDEX);
-         es->EventID  = event_id;
-         es->Next     = prv->EventList;
-         if (prv->EventList) prv->EventList->Prev = es;
-         prv->EventList = es;
-
-         lua_pushlightuserdata(Lua, es->EventHandle); // 1: Handle
+         prv->EventList.emplace_back(luaL_ref(Lua, LUA_REGISTRYINDEX), event_id, handle);
+         lua_pushlightuserdata(Lua, handle); // 1: Handle
          lua_pushinteger(Lua, error); // 2: Error code
-         return 2;
       }
-      else FreeResource(es);
+      else {
+         lua_pushnil(Lua); // Handle
+         lua_pushinteger(Lua, error); // Error code
+      }
+      return 2;
    }
-
-   lua_pushnil(Lua); // Handle
-   lua_pushinteger(Lua, error); // Error code
-   return 2;
 }
 
 //********************************************************************************************************************
@@ -582,7 +521,7 @@ int fcmd_require(lua_State *Lua)
 
       auto path = std::string("scripts:") + module + ".fluid";
 
-      objFile::create file = { fl::Path(path), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
@@ -681,10 +620,10 @@ int fcmd_loadfile(lua_State *Lua)
          }
       }
 
-      objFile::create file = { fl::Path(src), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
          APTR buffer;
-         if (!AllocMemory(SIZE_READ, MEM_NO_CLEAR, &buffer)) {
+         if (!AllocMemory(SIZE_READ, MEM::NO_CLEAR, &buffer)) {
             struct code_reader_handle handle = { *file, buffer };
 
             // Check for the presence of a compiled header and skip it if present
@@ -693,7 +632,7 @@ int fcmd_loadfile(lua_State *Lua)
                LONG len, i;
                char header[256];
                if (!file->read(header, sizeof(header), &len)) {
-                  if (!StrCompare(LUA_COMPILED, header, 0, 0)) {
+                  if (!StrCompare(LUA_COMPILED, header)) {
                      recompile = FALSE; // Do not recompile that which is already compiled
                      for (i=sizeof(LUA_COMPILED)-1; (i < len) and (header[i]); i++);
                      if (!header[i]) i++;
@@ -703,7 +642,7 @@ int fcmd_loadfile(lua_State *Lua)
                }
                else i = 0;
 
-               file->set(FID_Position, i);
+               file->setPosition(i);
             }
 
             LONG i;
@@ -717,8 +656,8 @@ int fcmd_loadfile(lua_State *Lua)
                if (recompile) {
                   objFile::create cachefile = {
                      fl::Path(fbpath),
-                     fl::Flags(FL_NEW|FL_WRITE),
-                     fl::Permissions(PERMIT_USER_READ|PERMIT_USER_WRITE)
+                     fl::Flags(FL::NEW|FL::WRITE),
+                     fl::Permissions(PERMIT::USER_READ|PERMIT::USER_WRITE)
                   };
 
                   if (cachefile.ok()) {
@@ -727,7 +666,7 @@ int fcmd_loadfile(lua_State *Lua)
                      f = clvalue(prv->Lua->top + (-1))->l.p;
                      luaU_dump(prv->Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
                      if (!file.obj->getPtr(FID_Date, &date)) {
-                        cachefile->set(FID_Date, date);
+                        cachefile->setDate(date);
                      }
                   }
                }
@@ -783,7 +722,7 @@ int fcmd_exec(lua_State *Lua)
 
          // Check for the presence of a compiled header and skip it if present
 
-         if (!StrCompare(LUA_COMPILED, statement, 0, 0)) {
+         if (!StrCompare(LUA_COMPILED, statement)) {
             size_t i;
             for (i=sizeof(LUA_COMPILED)-1; statement[i]; i++);
             if (!statement[i]) statement += i + 1;

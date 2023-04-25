@@ -409,10 +409,10 @@ local function createFileItem(self, Info)
       local total_size = nil
       local free_space = nil
       local device = obj.new('storagedevice', { volume = Info.name } )
-      if bit.band(device.DeviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
+      if bit.band(device.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_HARD_DISK, DEVICE_COMPACT_DISC)) != 0 then
          colour = 'green'
-         if (device.DeviceSize >= 1) then total_size = sortNum(device.DeviceSize) end
-         if (device.BytesFree >= 1) then free_space = sortNum(device.BytesFree) end
+         if (device.deviceSize >= 1) then total_size = sortNum(device.deviceSize) end
+         if (device.bytesFree >= 1) then free_space = sortNum(device.bytesFree) end
       end
 
       local display_name = Info.name
@@ -1149,10 +1149,10 @@ gui.fileview = function(View, Options)
 
       local err
       if self.deviceInfo and not self.watch and self.path then
-         if bit.band(self.deviceInfo.DeviceFlags, DEVICE_REMOVEABLE) != 0 then
-            if bit.band(self.deviceInfo.DeviceFlags, DEVICE_WRITE) == 0 then
+         if bit.band(self.deviceInfo.deviceFlags, DEVICE_REMOVEABLE) != 0 then
+            if bit.band(self.deviceInfo.deviceFlags, DEVICE_WRITE) == 0 then
                -- Read only device, do not refresh
-            elseif bit.band(self.deviceInfo.DeviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_USB)) then
+            elseif bit.band(self.deviceInfo.deviceFlags, bit.bor(DEVICE_FLOPPY_DISK, DEVICE_USB)) then
                -- Slow device, do not refresh
             else
                err, self.timer = mSys.SubscribeTimer(2.0, incrementalRefresh) -- Write/Read access to removable device
@@ -1250,16 +1250,16 @@ gui.fileview = function(View, Options)
          -- NB: Sys-keys should only be enabled if cut/copy/paste support is not implemented in the core
          -- application.
 
-         if (Value == K_C) then
+         if (Value == KEY_C) then
             copy_files()
-         elseif (Value == K_X) then
+         elseif (Value == KEY_X) then
             cut_files()
-         elseif (Value == K_V) then
+         elseif (Value == KEY_V) then
             paste_files()
-         elseif (Value == K_A) then
+         elseif (Value == KEY_A) then
             self.view.selectAll()
          end
-      elseif (Value == K_DELETE) then
+      elseif (Value == KEY_DELETE) then
          self.deleteFiles()
       end
    end)

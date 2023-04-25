@@ -137,7 +137,7 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       if (!List) {
          Cache = false;
          alloc = true;
-         if (AllocMemory(array_size, MEM_DATA, &List) != ERR_Okay) {
+         if (AllocMemory(array_size, MEM::DATA, &List) != ERR_Okay) {
             lua_pushnil(Lua);
             return;
          }
@@ -335,7 +335,7 @@ static int array_get(lua_State *Lua)
       pf::Log log(__FUNCTION__);
       CSTRING field;
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array reference discovered, e.g. myarray[18]
-         LONG index = lua_tonumber(Lua, 2);
+         LONG index = lua_tointeger(Lua, 2);
 
          if ((index < 1) or (index > a->Total)) {
             luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
@@ -427,7 +427,7 @@ static int array_set(lua_State *Lua)
       if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array index
-         LONG index = lua_tonumber(Lua, 2);
+         LONG index = lua_tointeger(Lua, 2);
          if ((index < 1) or (index > a->Total)) {
             luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
             return 0;

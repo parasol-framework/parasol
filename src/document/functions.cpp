@@ -830,7 +830,7 @@ static ERROR eval(extDocument *Self, STRING Buffer, LONG BufferLength, LONG Flag
                         field[j++] = Buffer[i++];
                      }
                      field[j] = 0;
-                     if (!AccessObjectID(objectid, 2000, &object)) {
+                     if (!AccessObject(objectid, 2000, &object)) {
                         OBJECTPTR target;
                         if (((classfield = find_field(object, field, &target))) and (classfield->Flags & FD_STRING)) {
                            error = GetField(object, (FIELD)classfield->FieldID|TSTR, &Self->TBuffer);
@@ -843,7 +843,7 @@ repeat:
 
                            if (Self->TBuffer[Self->TBufferSize-1]) {
                               STRING newbuf;
-                              if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING, &newbuf)) {
+                              if (!AllocMemory(Self->TBufferSize + 1024, MEM::STRING, &newbuf)) {
                                  FreeResource(Self->TBuffer);
                                  Self->TBuffer = newbuf;
                                  Self->TBufferSize = Self->TBufferSize + 1024;
@@ -1029,8 +1029,8 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (extDocument *)CurrentContext();
 
    for (auto input=Events; input; input=input->Next) {
-      if (input->Flags & JTYPE_MOVEMENT) {
-         for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE_MOVEMENT); scan=scan->Next) {
+      if (input->Flags & JTYPE::MOVEMENT) {
+         for (auto scan=input->Next; (scan) and (scan->Flags & JTYPE::MOVEMENT); scan=scan->Next) {
             input = scan;
          }
 
@@ -1042,7 +1042,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
          // Note that this code has to 'drop through' due to the movement consolidation loop earlier in this subroutine.
       }
 
-      if (input->Type IS JET_LMB) {
+      if (input->Type IS JET::LMB) {
          if (input->Value > 0) {
             Self->LMB = TRUE;
             check_mouse_click(Self, input->X, input->Y);
@@ -1236,7 +1236,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag *Tag, LONG Index,
       STRING content;
       LONG length = Self->StreamLen - start;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", Index, length);
-      if (!AllocMemory(length, MEM_DATA|MEM_NO_CLEAR, &content)) {
+      if (!AllocMemory(length, MEM::DATA|MEM::NO_CLEAR, &content)) {
          CopyMemory(Self->Stream + start, content, length); // Take a copy of the inserted data
          CopyMemory(Self->Stream + Index, Self->Stream + Index + length, start - Index); // Make room for the data at the insertion point
          CopyMemory(content, Self->Stream + Index, length); // Copy data to the insertion point
@@ -1292,7 +1292,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
       return 0;
    }
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       char tagarg[30];
 
       if (Tag->Attrib->Name) {
@@ -1319,7 +1319,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag *Tag, LONG *Index, 
    while (Tag) {
       SAVE_ARGS(Tag);
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
           if (Tag->Attrib->Name) log.trace("Tag: %s", Tag->Attrib->Name);
           else if (Tag->Attrib->Value) {
              for (i=0; ((size_t)i < sizeof(tagarg)-1) and (Tag->Attrib->Value[i]); i++) {
@@ -1545,7 +1545,7 @@ process_object:
             // Check if the tagname refers to a class.  For security reasons, we limit the classes that can be embedded
             // in functional pages.
 
-            if (!StrCompare("obj:", tagname, 4, 0)) tagname += 4;
+            if (!StrCompare("obj:", tagname, 4)) tagname += 4;
 
             CSTRING pagetarget = NULL;
             CLASSID class_id = 0;
@@ -1637,7 +1637,7 @@ static ERROR insert_text(extDocument *Self, LONG *Index, CSTRING Text, LONG Leng
       // The size of the text extends past the stream buffer, so allocate more space.
 
       size += (BUFFER_BLOCK > Length) ? BUFFER_BLOCK : Length;
-      if (!AllocMemory(size, MEM_NO_CLEAR, &stream)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR, &stream)) {
          if (*Index > 0) CopyMemory(Self->Stream, stream, *Index);
 
          pos = *Index;
@@ -1744,7 +1744,7 @@ static ERROR insert_escape(extDocument *Self, LONG *Index, WORD EscapeCode, APTR
    LONG total_length = Length + ESC_LEN;
    if (size >= Self->StreamSize) {
       size += BUFFER_BLOCK;
-      if (!AllocMemory(size, MEM_NO_CLEAR, &stream)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR, &stream)) {
          if (*Index > 0) CopyMemory(Self->Stream, stream, *Index);
 
          LONG pos = *Index;
@@ -2576,7 +2576,7 @@ list_repass:
                LONG width_check = 0;
                LONG dimensions = 0;
                LONG layoutflags = 0;
-               if (!(error = AccessObjectID(object_id, 5000, &object))) {
+               if (!(error = AccessObject(object_id, 5000, &object))) {
                   LAYOUT("layout_object:","[Idx:%d] The %s's available page area is %d-%d,%d-%d, margins %dx%d,%d, cursor %dx%d", i, object->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, l.left_margin-AbsX, l.right_margin, TopMargin, l.cursorx, l.cursory);
 
                   LONG cellwidth, cellheight, align, leftmargin, lineheight, zone_height;
@@ -2589,7 +2589,7 @@ list_repass:
                      // This layout method is used for objects that do not have a Layout object for graphics management and
                      // simply rely on a Surface object instead.
 
-                     if (!(error = AccessObjectID(layout_surface_id, 3000, &surface))) {
+                     if (!(error = AccessObject(layout_surface_id, 3000, &surface))) {
                         leftmargin    = l.left_margin - AbsX;
                         lineheight    = (l.base_line) ? l.base_line : l.font->Ascent;
 
@@ -3108,7 +3108,7 @@ list_repass:
 
                   if ((cell.Bottom <= cell.Top) or (cell.Right <= cell.Left)) {
                      CSTRING name;
-                     if ((name = GetName(object))) log.warning("%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
+                     if ((name = object->Name)) log.warning("%s object %s returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
                      else log.warning("%s object #%d returned an invalid clip region of %dx%d,%dx%d", object->Class->ClassName, object->UID, cell.Left, cell.Top, cell.Right, cell.Bottom);
                      break;
                   }
@@ -3804,7 +3804,7 @@ repass_row_height_ext:
 
                   if (Self->ECIndex >= Self->ECMax) {
                      EditCell *cells;
-                     if (!AllocMemory(sizeof(Self->EditCells[0]) * (Self->ECMax + 10), MEM_NO_CLEAR, &cells)) {
+                     if (!AllocMemory(sizeof(Self->EditCells[0]) * (Self->ECMax + 10), MEM::NO_CLEAR, &cells)) {
                         if (Self->EditCells) {
                            CopyMemory(Self->EditCells, cells, sizeof(Self->EditCells[0]) * Self->ECMax);
                            FreeResource(Self->EditCells);
@@ -3970,7 +3970,7 @@ repass_row_height_ext:
          else if (Self->Stream[i] <= 0x20) {
             if (Self->Stream[i] IS '\t') {
                LONG tabwidth = (l.spacewidth + l.font->GlyphSpacing) * l.font->TabSize;
-               if (tabwidth) l.cursorx += ROUNDUP(l.cursorx, tabwidth);
+               if (tabwidth) l.cursorx += pf::roundup(l.cursorx, tabwidth);
                i++;
             }
             else {
@@ -4102,7 +4102,7 @@ static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
    if (!Self->Links) {
       Self->TotalLinks = 0;
       Self->MaxLinks = 20;
-      if (!AllocMemory(sizeof(DocLink) * Self->MaxLinks, MEM_DATA|MEM_NO_CLEAR, &Self->Links)) {
+      if (!AllocMemory(sizeof(DocLink) * Self->MaxLinks, MEM::DATA|MEM::NO_CLEAR, &Self->Links)) {
 
       }
       else return;
@@ -4132,7 +4132,7 @@ static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
 
 static void draw_background(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
-   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF_FILL);
+   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF::FILL);
 }
 
 //********************************************************************************************************************
@@ -4167,7 +4167,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
       return;
    }
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    if ((!Self->Stream[0]) or (!Self->SegCount)) {
       //log.traceWarning("No content in stream or no segments.");
       return;
@@ -4247,20 +4247,20 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
             if ((select_start > segment->Index) and (select_start < segment->Stop)) {
                if (select_end < segment->Stop) {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     select_endx - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                     select_endx - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
                }
                else {
                   gfxDrawRectangle(Bitmap, segment->X + select_startx, segment->Y,
-                     segment->Width - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                     segment->Width - select_startx, segment->Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
                }
             }
             else if (select_end < segment->Stop) {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, select_endx, segment->Height,
-                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF::FILL);
             }
             else {
                gfxDrawRectangle(Bitmap, segment->X, segment->Y, segment->Width, segment->Height,
-                  Bitmap->packPixel(0, 128, 0), BAF_FILL);
+                  Bitmap->packPixel(0, 128, 0), BAF::FILL);
             }
             Bitmap->Opacity = 255;
          }
@@ -4272,7 +4272,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
             else {
                if (gfxGetUserFocus() IS Self->PageID) { // Standard text cursor
                   gfxDrawRectangle(Bitmap, segment->X + Self->CursorCharX, segment->Y, 2, segment->BaseLine,
-                     Bitmap->packPixel(255, 0, 0), BAF_FILL);
+                     Bitmap->packPixel(255, 0, 0), BAF::FILL);
                   cursor_drawn = TRUE;
                }
             }
@@ -4305,7 +4305,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                   if ((escobject->Graphical) and (!escobject->Owned)) {
                      if (escobject->ObjectID < 0) {
                         object = NULL;
-                        AccessObjectID(escobject->ObjectID, 3000, &object);
+                        AccessObject(escobject->ObjectID, 3000, &object);
                      }
                      else object = GetObjectPtr(escobject->ObjectID);
 /*
@@ -4389,7 +4389,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                            font->X = fx - escpara->ItemIndent;
                            font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                            font->AlignWidth = segment->AlignWidth;
-                           font->set(FID_String, (STRING)(escpara + 1));
+                           font->setString((STRING)(escpara + 1));
                            font->draw();
                         }
                      }
@@ -4421,7 +4421,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                      gfxDrawRectangle(Bitmap,
                         esctable->X+esctable->Thickness, esctable->Y+esctable->Thickness,
                         esctable->Width-(esctable->Thickness<<1), esctable->Height-(esctable->Thickness<<1),
-                        Bitmap->packPixel(esctable->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esctable->Colour), BAF::FILL|BAF::BLEND);
                   }
 
                   if (esctable->Shadow.Alpha > 0) {
@@ -4451,7 +4451,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 
                   if (escrow->Colour.Alpha) {
                      gfxDrawRectangle(Bitmap, esctable->X, escrow->Y, esctable->Width, escrow->RowHeight,
-                        Bitmap->packPixel(escrow->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(escrow->Colour), BAF::FILL|BAF::BLEND);
                   }
                   break;
                }
@@ -4477,7 +4477,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 
                      gfxDrawRectangle(Bitmap, esccell->AbsX+border, esccell->AbsY+border,
                         esctable->Columns[esccell->Column].Width-border, escrow->RowHeight-border,
-                        Bitmap->packPixel(esccell->Colour), BAF_FILL|BAF_BLEND);
+                        Bitmap->packPixel(esccell->Colour), BAF::FILL|BAF::BLEND);
                   }
 
                   if (esccell->Shadow.Alpha > 0) { // Border colour
@@ -4526,7 +4526,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
                font->X = fx;
                font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
                font->AlignWidth = segment->AlignWidth;
-               font->set(FID_String, strbuffer);
+               font->setString(strbuffer);
                font->draw();
                fx = font->EndX;
                si = 0;
@@ -4541,7 +4541,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
          font->X = fx;
          font->Y = segment->Y + font->Leading + (segment->BaseLine - font->Ascent);
          font->AlignWidth = segment->AlignWidth;
-         font->set(FID_String, strbuffer);
+         font->setString(strbuffer);
          font->draw();
          fx = font->EndX;
       }
@@ -4553,20 +4553,20 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 static void draw_border(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
 {
    if ((!Self->BorderEdge) or (Self->BorderEdge IS (DBE_TOP|DBE_BOTTOM|DBE_LEFT|DBE_RIGHT))) {
-      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), 0);
+      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
    }
    else {
       if (Self->BorderEdge & DBE_TOP) {
-         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
       if (Self->BorderEdge & DBE_LEFT) {
-         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
       if (Self->BorderEdge & DBE_RIGHT) {
-         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
       if (Self->BorderEdge & DBE_BOTTOM) {
-         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), 0);
+         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), BAF::NIL);
       }
    }
 }
@@ -4674,7 +4674,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
             log.branch("Key: Tab");
             if (Self->TabFocusID) acFocus(Self->TabFocusID);
             else {
-               if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
+               if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
                else advance_tabfocus(Self, 1);
             }
             break;
@@ -4879,7 +4879,7 @@ static ERROR keypress(extDocument *Self, LONG Flags, LONG Value, LONG Unicode)
       case K_TAB:
          log.branch("Key: Tab");
          if (Self->TabFocusID) acFocus(Self->TabFocusID);
-         else if (Flags & KQ_SHIFT) advance_tabfocus(Self, -1);
+         else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
          else advance_tabfocus(Self, 1);
          break;
 
@@ -4971,13 +4971,13 @@ static ERROR load_doc(extDocument *Self, CSTRING Path, BYTE Unload, BYTE UnloadF
 
    if (!AnalysePath(path, NULL)) {
       OBJECTPTR task;
-      if ((task = CurrentTask())) task->set(FID_Path, path);
+      if ((task = CurrentTask())) task->setPath(path);
 
       if (auto xml = objXML::create::integral(
          fl::Flags(XMF_ALL_CONTENT|XMF_PARSE_HTML|XMF_STRIP_HEADERS|XMF_WELL_FORMED),
          fl::Path(path), fl::ReadOnly(TRUE))) {
 
-         if (Self->XML) acFree(Self->XML);
+         if (Self->XML) FreeResource(Self->XML);
          Self->XML = xml;
 
          AdjustLogLevel(3);
@@ -5130,7 +5130,7 @@ restart:
       }
 
       if (Self->SegCount) {
-         if (!AllocMemory(sizeof(Self->SortSegments[0]) * Self->SegCount, MEM_NO_CLEAR, &Self->SortSegments)) {
+         if (!AllocMemory(sizeof(Self->SortSegments[0]) * Self->SegCount, MEM::NO_CLEAR, &Self->SortSegments)) {
             LONG seg, i, j;
 
             for (i=0, seg=0; seg < Self->SegCount; seg++) {
@@ -5264,20 +5264,20 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
       if (!Self->Buffer) {
          Self->BufferSize = 65536;
-         if (AllocMemory(Self->BufferSize, MEM_NO_CLEAR, &Self->Buffer)) {
+         if (AllocMemory(Self->BufferSize, MEM::NO_CLEAR, &Self->Buffer)) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->Temp) {
          Self->TempSize = 65536;
-         if (AllocMemory(Self->TempSize, MEM_NO_CLEAR, &Self->Temp)) {
+         if (AllocMemory(Self->TempSize, MEM::NO_CLEAR, &Self->Temp)) {
             return ERR_AllocMemory;
          }
       }
 
       if (!Self->VArg) {
-         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM_NO_CLEAR, &Self->VArg)) {
+         if (AllocMemory(sizeof(Self->VArg[0]) * MAX_ARGS, MEM::NO_CLEAR, &Self->VArg)) {
             return ERR_AllocMemory;
          }
       }
@@ -5414,7 +5414,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       if (Self->VArg)   { FreeResource(Self->VArg); Self->VArg = NULL; }
 
       #ifdef RAW_OUTPUT
-         objFile::create file = { fl::Path("drive1:doc-stream.bin"), fl::Flags(FL_NEW|FL_WRITE) };
+         objFile::create file = { fl::Path("drive1:doc-stream.bin"), fl::Flags(FL::NEW|FL::WRITE) };
          file->write(Self->Stream, Self->StreamLen);
       #endif
    }
@@ -5463,7 +5463,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
 {
    docresource *r;
-   if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r)) {
+   if (!AllocMemory(sizeof(docresource), MEM::NO_CLEAR, &r)) {
       r->ObjectID = ID;
       r->Type     = Type;
       r->ClassID  = 0;
@@ -5481,7 +5481,7 @@ static docresource * add_resource_id(extDocument *Self, LONG ID, LONG Type)
 static docresource * add_resource_ptr(extDocument *Self, APTR Address, LONG Type)
 {
    docresource *r;
-   if (!AllocMemory(sizeof(docresource), MEM_NO_CLEAR, &r)) {
+   if (!AllocMemory(sizeof(docresource), MEM::NO_CLEAR, &r)) {
       r->Address = Address;
       r->Type    = Type;
       r->Prev    = NULL;
@@ -5608,7 +5608,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    if (!(Flags & ULD_TERMINATE)) {
       Self->MaxSegments = 100;
-      if (AllocMemory(sizeof(Self->Segments[0]) * Self->MaxSegments, MEM_NO_CLEAR, &Self->Segments) != ERR_Okay) {
+      if (AllocMemory(sizeof(Self->Segments[0]) * Self->MaxSegments, MEM::NO_CLEAR, &Self->Segments) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -5658,7 +5658,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    if (Self->Templates) {
       if (Self->TemplatesModified != Self->Templates->Modified) {
-         acFree(Self->Templates);
+         FreeResource(Self->Templates);
          Self->Templates = NULL;
       }
    }
@@ -5687,14 +5687,14 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
                resource = resource->Next;
                continue;
             }
-            else if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else QueueAction(AC_Free, resource->ObjectID);
+            else if (Flags & ULD_TERMINATE) FreeResource(resource->ObjectID);
+            else SendMessage(MSGID_FREE, MSF::NIL, &resource->ObjectID, sizeof(OBJECTID));
          }
          else if (resource->Type IS RT_OBJECT_UNLOAD_DELAY) {
-            if (Flags & ULD_TERMINATE) acFree(resource->ObjectID);
-            else QueueAction(AC_Free, resource->ObjectID);
+            if (Flags & ULD_TERMINATE) FreeResource(resource->ObjectID);
+            else SendMessage(MSGID_FREE, MSF::NIL, &resource->ObjectID, sizeof(OBJECTID));
          }
-         else acFree(resource->ObjectID);
+         else FreeResource(resource->ObjectID);
 
          if (resource IS Self->Resources) Self->Resources = resource->Next;
          if (resource->Prev) resource->Prev->Next = resource->Next;
@@ -5715,7 +5715,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    Self->NoWhitespace = TRUE; // Reset whitespace flag
 
-   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF_X|MTF_Y);
+   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF::X|MTF::Y);
 
    //drwPermitDrawing();
 
@@ -5803,7 +5803,7 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
       }
       else acSetVar(dialog, "message", Message);
 
-      if ((!acInit(dialog)) and (!acActivate(dialog))) {
+      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
          CSTRING *results;
          LONG size;
          if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
@@ -5906,7 +5906,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
       for (i=0; i < glTotalFonts; i++) {
          if ((!StrMatch(font->Face, glFonts[i].Font->Face)) and (!StrMatch(font->Style, glFonts[i].Font->Style)) and (font->Point IS glFonts[i].Point)) {
             log.trace("Match %d = %s(%s,%d)", i, Face, Style, Point);
-            acFree(font);
+            FreeResource(font);
             AdjustLogLevel(-2);
             return i;
          }
@@ -5915,7 +5915,7 @@ static LONG create_font(CSTRING Face, CSTRING Style, LONG Point)
       if (glTotalFonts IS glMaxFonts) {
          log.msg("Extending font array.");
          FontEntry *array;
-         if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(FontEntry), MEM_UNTRACKED, &array)) {
+         if (!AllocMemory((glMaxFonts + FONT_BLOCK_SIZE) * sizeof(FontEntry), MEM::UNTRACKED, &array)) {
             glMaxFonts += FONT_BLOCK_SIZE;
             if (glFonts) {
                CopyMemory(glFonts, array, sizeof(FontEntry) * glTotalFonts);
@@ -6060,7 +6060,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 
    if (segment >= Self->MaxSegments) {
       DocSegment *lines;
-      if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM_NO_CLEAR, &lines)) {
+      if (!AllocMemory(sizeof(Self->Segments[0]) * (Self->MaxSegments + 100), MEM::NO_CLEAR, &lines)) {
          CopyMemory(Self->Segments, lines, sizeof(Self->Segments[0]) * Self->MaxSegments);
          FreeResource(Self->Segments);
          Self->Segments = lines;
@@ -6069,7 +6069,7 @@ static LONG add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
       else return -1;
    }
 
-#ifdef DEBUG
+#ifdef _DEBUG
    // If this is a segmented line, check if any previous entries have greater
    // heights.  If so, this is considered an internal programming error.
 
@@ -6195,7 +6195,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
    if (!Self->TBuffer) {
       Self->TBufferSize = 0xffff;
-      if (AllocMemory(Self->TBufferSize, MEM_STRING|MEM_NO_CLEAR, &Self->TBuffer)) {
+      if (AllocMemory(Self->TBufferSize, MEM::STRING|MEM::NO_CLEAR, &Self->TBuffer)) {
          Self->Error = ERR_AllocMemory;
          return ERR_AllocMemory;
       }
@@ -6212,7 +6212,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
       for (i=0; src[i]; i++) {
          if (src[i] IS '[') break;
-         if ((src[i] IS '&') and ((!StrCompare("&lsqr;", src+i, 0, 0)) or (!StrCompare("&rsqr;", src+i, 0, 0)))) break;
+         if ((src[i] IS '&') and ((!StrCompare("&lsqr;", src+i)) or (!StrCompare("&rsqr;", src+i)))) break;
       }
       if (!src[i]) continue;
 
@@ -6229,12 +6229,12 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
       while ((pos >= Self->BufferIndex) and (!error)) {
          if (Buffer[pos] IS '&') {
-            if (!StrCompare("&lsqr;", Buffer+pos, 0, 0)) {
+            if (!StrCompare("&lsqr;", Buffer+pos)) {
                Buffer[pos] = '[';
                CopyMemory(Buffer+pos+6, Buffer+pos+1, StrLength(Buffer+pos+6)+1);
                mod = true;
             }
-            else if (!StrCompare("&rsqr;", Buffer+pos, 0, 0)) {
+            else if (!StrCompare("&rsqr;", Buffer+pos)) {
                Buffer[pos] = ']';
                CopyMemory(Buffer+pos+6, Buffer+pos+1, StrLength(Buffer+pos+6)+1);
                mod = true;
@@ -6274,32 +6274,32 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                BYTE savemod = mod;
                mod = true;
                str = Buffer + pos + 2;
-               if (!StrCompare("index]", str, 0, 0)) {
+               if (!StrCompare("index]", str)) {
                   error = insert_string(std::to_string(Self->LoopIndex).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%index]")-1);
                }
-               else if (!StrCompare("id]", str, 0, 0)) {
+               else if (!StrCompare("id]", str)) {
                   error = insert_string(std::to_string(Self->GeneratedID).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%id]")-1);
                }
-               else if (!StrCompare("self]", str, 0, 0)) {
+               else if (!StrCompare("self]", str)) {
                   error = insert_string(std::to_string(Self->UID).c_str(), Buffer, Self->BufferSize, pos, sizeof("[%self]")-1);
                }
-               else if (!StrCompare("platform]", str, 0, 0)) {
+               else if (!StrCompare("platform]", str)) {
                   auto state = GetSystemState();
                   insert_string(state->Platform, Buffer, Self->BufferSize, pos, sizeof("[%platform]")-1);
                }
-               else if (!StrCompare("random]", str, 0, 0)) {
+               else if (!StrCompare("random]", str)) {
                   // Generate a random string of digits
                   char random[10];
                   for (j=0; (size_t)j < sizeof(random)-1; j++) random[j] = '0' + (rand() % 10);
                   random[j] = 0;
                   insert_string(random, Buffer, Self->BufferSize, i, sizeof("[%random]")-1);
                }
-               else if (!StrCompare("currentpage]", str, 0, 0)) {
+               else if (!StrCompare("currentpage]", str)) {
                   str = "";
                   if (Self->PageTag) str = XMLATTRIB(Self->PageTag, "name");
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%currentpage]")-1);
                }
-               else if (!StrCompare("nextpage]", str, 0, 0)) {
+               else if (!StrCompare("nextpage]", str)) {
                   str = "";
                   if (Self->PageTag) {
                      for (auto tag=Self->PageTag->Next; tag; tag=tag->Next) {
@@ -6314,7 +6314,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%nextpage]")-1);
                }
-               else if (!StrCompare("prevpage]", str, 0, 0)) {
+               else if (!StrCompare("prevpage]", str)) {
                   str = "";
                   if (Self->PageTag) {
                      for (auto tag=Self->PageTag->Prev; tag; tag=tag->Prev) {
@@ -6329,28 +6329,28 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
 
                   insert_string(str, Buffer, Self->BufferSize, pos, sizeof("[%prevpage]")-1);
                }
-               else if (!StrCompare("path]", str, 0, 0)) {
+               else if (!StrCompare("path]", str)) {
                   CSTRING workingpath = "";
                   GET_WorkingPath(Self, &workingpath);
                   if (!workingpath) workingpath = "";
                   error = insert_string(workingpath, Buffer, Self->BufferSize, pos, sizeof("[%path]")-1);
                }
-               else if (!StrCompare("author]", str, 0, 0)) {
+               else if (!StrCompare("author]", str)) {
                   error = insert_string(Self->Author, Buffer, Self->BufferSize, pos, sizeof("[%author]")-1);
                }
-               else if (!StrCompare("description]", str, 0, 0)) {
+               else if (!StrCompare("description]", str)) {
                   error = insert_string(Self->Description, Buffer, Self->BufferSize, pos, sizeof("[%description]")-1);
                }
-               else if (!StrCompare("copyright]", str, 0, 0)) {
+               else if (!StrCompare("copyright]", str)) {
                   error = insert_string(Self->Copyright, Buffer, Self->BufferSize, pos, sizeof("[%copyright]")-1);
                }
-               else if (!StrCompare("keywords]", str, 0, 0)) {
+               else if (!StrCompare("keywords]", str)) {
                   error = insert_string(Self->Keywords, Buffer, Self->BufferSize, pos, sizeof("[%keywords]")-1);
                }
-               else if (!StrCompare("title]", str, 0, 0)) {
+               else if (!StrCompare("title]", str)) {
                   error = insert_string(Self->Title, Buffer, Self->BufferSize, pos, sizeof("[%title]")-1);
                }
-               else if (!StrCompare("font]", str, 0, 0)) {
+               else if (!StrCompare("font]", str)) {
                   objFont *font;
                   char fullfont[256];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
@@ -6358,13 +6358,13 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      error = insert_string(fullfont, Buffer, Self->BufferSize, pos, sizeof("[%font]")-1);
                   }
                }
-               else if (!StrCompare("fontface]", str, 0, 0)) {
+               else if (!StrCompare("fontface]", str)) {
                   objFont *font;
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
                      error = insert_string(font->Face, Buffer, Self->BufferSize, pos, sizeof("[%fontface]")-1);
                   }
                }
-               else if (!StrCompare("fontcolour]", str, 0, 0)) {
+               else if (!StrCompare("fontcolour]", str)) {
                   objFont *font;
                   char colour[28];
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
@@ -6372,7 +6372,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      error = insert_string(colour, Buffer, Self->BufferSize, pos, sizeof("[%fontcolour]")-1);
                   }
                }
-               else if (!StrCompare("fontsize]", str, 0, 0)) {
+               else if (!StrCompare("fontsize]", str)) {
                   objFont *font;
                   if ((font = lookup_font(Self->Style.FontStyle.Index, "convert_xml"))) {
                      char num[28];
@@ -6380,12 +6380,12 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%fontsize]")-1);
                   }
                }
-               else if (!StrCompare("lineno]", str, 0, 0)) {
+               else if (!StrCompare("lineno]", str)) {
                   char num[28];
                   IntToStr(Self->SegCount, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%lineno]")-1);
                }
-               else if (!StrCompare("content]", str, 0, 0)) {
+               else if (!StrCompare("content]", str)) {
                   if ((Self->InTemplate) and (Self->InjectTag)) {
                      if (!xmlGetContent(Self->InjectXML, Self->InjectTag->Index, Self->Temp, Self->TempSize)) {
                         STRING tmp;
@@ -6396,33 +6396,33 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                      }
                   }
                }
-               else if (!StrCompare("tm-day]", str, 0, 0)) {
+               else if (!StrCompare("tm-day]", str)) {
 
                }
-               else if (!StrCompare("tm-month]", str, 0, 0)) {
+               else if (!StrCompare("tm-month]", str)) {
 
                }
-               else if (!StrCompare("tm-year]", str, 0, 0)) {
+               else if (!StrCompare("tm-year]", str)) {
 
                }
-               else if (!StrCompare("tm-hour]", str, 0, 0)) {
+               else if (!StrCompare("tm-hour]", str)) {
 
                }
-               else if (!StrCompare("tm-minute]", str, 0, 0)) {
+               else if (!StrCompare("tm-minute]", str)) {
 
                }
-               else if (!StrCompare("tm-second]", str, 0, 0)) {
+               else if (!StrCompare("tm-second]", str)) {
 
                }
-               else if (!StrCompare("version]", str, 0, 0)) {
+               else if (!StrCompare("version]", str)) {
                   error = insert_string(RIPPLE_VERSION, Buffer, Self->BufferSize, pos, sizeof("[%version]")-1);
                }
-               else if (!StrCompare("viewheight]", str, 0, 0)) {
+               else if (!StrCompare("viewheight]", str)) {
                   char num[28];
                   IntToStr(Self->AreaHeight, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%viewheight]")-1);
                }
-               else if (!StrCompare("viewwidth]", str, 0, 0)) {
+               else if (!StrCompare("viewwidth]", str)) {
                   char num[28];
                   IntToStr(Self->AreaWidth, num, sizeof(num));
                   error = insert_string(num, Buffer, Self->BufferSize, pos, sizeof("[%viewwidth]")-1);
@@ -6435,7 +6435,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                for (WORD ni=Self->ArgNestIndex-1; (ni >= 0) and (!processed); ni--) {
                   XMLTag *args = Self->ArgNest[ni];
                   for (arg=1; arg < args->TotalAttrib; arg++) {
-                     if (!StrCompare(args->Attrib[arg].Name, Buffer+pos+2, 0, 0)) {
+                     if (!StrCompare(args->Attrib[arg].Name, Buffer+pos+2)) {
                         end = pos + 2 + StrLength(args->Attrib[arg].Name);
                         if ((Buffer[end] IS ']') or (Buffer[end] IS ':')) {
 
@@ -6580,7 +6580,7 @@ static ERROR convert_xml_args(extDocument *Self, XMLAttrib *Attrib, LONG Total)
                            LONG j = 0;
                            while ((i < end-1) and ((size_t)j < sizeof(name)-1)) name[j++] = Buffer[i++];
                            name[j] = 0;
-                           if (!AccessObjectID(objectid, 2000, &object)) {
+                           if (!AccessObject(objectid, 2000, &object)) {
                               if (((classfield = FindField(object, StrHash(name, FALSE), &target))) and (classfield->Flags & FD_STRING)) {
                                  error = object->get(classfield->FieldID, &strbuf);
                               }
@@ -6591,7 +6591,7 @@ repeat:
                                  if (Self->TBuffer[Self->TBufferSize-1]) {
                                     STRING newbuf;
                                     pf::SwitchContext context(modDocument);
-                                    if (!AllocMemory(Self->TBufferSize + 1024, MEM_STRING|MEM_NO_CLEAR, &newbuf)) {
+                                    if (!AllocMemory(Self->TBufferSize + 1024, MEM::STRING|MEM::NO_CLEAR, &newbuf)) {
                                        FreeResource(Self->TBuffer);
                                        Self->TBuffer = newbuf;
                                        Self->TBufferSize = Self->TBufferSize + 1024;
@@ -6983,14 +6983,14 @@ static ERROR add_clip(extDocument *Self, SurfaceClip *Clip, LONG Index, CSTRING 
 
    if (!Self->Clips) {
       Self->MaxClips = CLIP_BLOCK;
-      if (AllocMemory(sizeof(DocClip) * Self->MaxClips, MEM_NO_CLEAR, &Self->Clips) != ERR_Okay) return ERR_AllocMemory;
+      if (AllocMemory(sizeof(DocClip) * Self->MaxClips, MEM::NO_CLEAR, &Self->Clips) != ERR_Okay) return ERR_AllocMemory;
    }
    else if (Self->TotalClips >= Self->MaxClips) {
       DocClip *clip;
 
       // Extend the size of the clip array if we're out of space.
 
-      if (!AllocMemory(sizeof(DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM_NO_CLEAR, &clip)) {
+      if (!AllocMemory(sizeof(DocClip) * (Self->MaxClips + CLIP_BLOCK), MEM::NO_CLEAR, &clip)) {
          CopyMemory(Self->Clips, clip, sizeof(DocClip) * Self->MaxClips);
          FreeResource(Self->Clips);
          Self->Clips = clip;
@@ -7057,7 +7057,7 @@ static void pointer_enter(extDocument *Self, LONG Index, CSTRING Function, LONG 
 
    log.traceBranch("%s, %dx%d to %dx%d", Function, Left, Top, Right, Bottom);
 
-   if (!AllocMemory(sizeof(*mouseover) + StrLength(Function) + 1, MEM_DATA, &mouseover)) {
+   if (!AllocMemory(sizeof(*mouseover) + StrLength(Function) + 1, MEM::DATA, &mouseover)) {
       mouseover->Left      = Left;
       mouseover->Top       = Top;
       mouseover->Right     = Right;
@@ -7320,7 +7320,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
             // The mouse pointer is inside a link
 
             if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF_BUFFER, PTR_HAND, 0, Self->UID);
+               gfxSetCursor(0, CRF::BUFFER, PTR_HAND, 0, Self->UID);
                Self->CursorSet = TRUE;
             }
 
@@ -7344,7 +7344,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->MouseOverSegment != -1) {
       if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
+         gfxSetCursor(0, CRF::BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
       }
       return;
@@ -7353,7 +7353,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
    for (LONG i=0; i < Self->ECIndex; i++) {
       if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
           (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-         gfxSetCursor(0, CRF_BUFFER, PTR_TEXT, 0, Self->UID);
+         gfxSetCursor(0, CRF::BUFFER, PTR_TEXT, 0, Self->UID);
          Self->CursorSet = TRUE;
          return;
       }
@@ -7626,7 +7626,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 
    if (!Self->Tabs) {
       Self->MaxTabs = TAB_BLOCK;
-      if (!AllocMemory(sizeof(Self->Tabs[0]) * Self->MaxTabs, MEM_DATA|MEM_NO_CLEAR, &Self->Tabs)) {
+      if (!AllocMemory(sizeof(Self->Tabs[0]) * Self->MaxTabs, MEM::DATA|MEM::NO_CLEAR, &Self->Tabs)) {
          Self->TabIndex = 0;
       }
       else return -1;
@@ -7664,7 +7664,7 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
       // Find out if the object has a surface and if so, place it in the XRef field.
 
       if (GetClassID(Reference) != ID_SURFACE) {
-         if (!AccessObjectID(Reference, 3000, &object)) {
+         if (!AccessObject(Reference, 3000, &object)) {
             regionid = 0;
             if (FindField(object, FID_Region, NULL)) {
                if (!object->get(FID_Region, &regionid)) {
@@ -7743,7 +7743,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
          CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
          OBJECTPTR input;
          if (class_id IS ID_VECTORTEXT) {
-            if (!AccessObjectID(Self->Tabs[Index].Ref, 1000, &input)) {
+            if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
                acFocus(input);
                //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
                //   txtSelectArea(text, 0,0, 200000, 200000);
@@ -7957,7 +7957,7 @@ static void process_parameters(extDocument *Self, CSTRING String)
 
          String++;
          setsize = 0xffff;
-         if (!AllocMemory(setsize, MEM_STRING|MEM_NO_CLEAR, &set)) { // Allocation is temporary
+         if (!AllocMemory(setsize, MEM::STRING|MEM::NO_CLEAR, &set)) { // Allocation is temporary
             char arg[80];
 
             while (*String) {
@@ -8039,7 +8039,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
 
    if (len > exsbuffer_size) {
       if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
-      if (AllocMemory(len, MEM_STRING|MEM_UNTRACKED, &exsbuffer) != ERR_Okay) return ERR_AllocMemory;
+      if (AllocMemory(len, MEM::STRING|MEM::UNTRACKED, &exsbuffer) != ERR_Okay) return ERR_AllocMemory;
       exsbuffer_size = len;
    }
 
@@ -8081,7 +8081,7 @@ static ERROR extract_script(extDocument *Self, CSTRING Link, OBJECTPTR *Script, 
    }
    else pos += StrCopy(Link+dot, exsbuffer+pos);
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
    if (pos > len) {
       log.warning("Buffer overflow (%d > %d) translating: %s", pos, len, Link);
    }
@@ -8214,9 +8214,9 @@ static void exec_link(extDocument *Self, LONG Index)
                      if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
                   }
                   auto path = std::string(Self->Path, end) + strlink;
-                  Self->set(FID_Path, path);
+                  Self->setPath(path);
                }
-               else Self->set(FID_Path, strlink);
+               else Self->setPath(strlink);
 
                if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
             }
@@ -8251,7 +8251,7 @@ static void exec_link(extDocument *Self, LONG Index)
 
                if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
                   if (class_id IS ID_DOCUMENT) {
-                     Self->set(FID_Path, lk);
+                     Self->setPath(lk);
 
                      if (Self->Bookmark) show_bookmark(Self, Self->Bookmark);
                      else log.msg("No bookmark was preset.");
@@ -8341,7 +8341,7 @@ static void show_bookmark(extDocument *Self, CSTRING Bookmark)
       // Get the vertical position of the index and scroll to it
 
       auto esc_index = escape_data<escIndex>(Self->Stream, start);
-      acScrollToPoint(Self,  0, esc_index->Y - 4, 0, MTF_Y);
+      acScrollToPoint(Self,  0, esc_index->Y - 4, 0, MTF::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark);
 }
@@ -8350,7 +8350,7 @@ static void show_bookmark(extDocument *Self, CSTRING Bookmark)
 
 static void key_event(extDocument *Self, evKey *Event, LONG Size)
 {
-   if (Event->Qualifiers & KQ_PRESSED) {
+   if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
       keypress(Self, Event->Qualifiers, Event->Code, Event->Unicode);
    }
 }

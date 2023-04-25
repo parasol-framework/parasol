@@ -13,7 +13,7 @@ function netAddressToString(IP)
 end
 
 function name_resolved(NetLookup, Error)
-   local host = nz(NetLookup.HostName,'NIL')
+   local host = nz(NetLookup.hostName,'NIL')
 
    assert(Error == ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
 
@@ -22,7 +22,7 @@ function name_resolved(NetLookup, Error)
    print('Resolved host name "' .. host .. '" (' .. (glTotalResolved+1) .. '/' .. #glDomains .. ')')
 
    local ip_list = nil
-   local addresses = NetLookup.Addresses
+   local addresses = NetLookup.addresses
    if (addresses != nil) then
       total_ips = #addresses
       for index, ip in pairs(addresses) do
@@ -59,9 +59,9 @@ function testDuplication()
 
    local domains = { 'google.com', 'reddit.com' }
    function duplicate_resolved(NetLookup, Error)
-      assert(Error == ERR_Okay, 'Failed to resolve ' .. NetLookup.HostName .. ', error ' ..mSys.GetErrorMsg(Error))
+      assert(Error == ERR_Okay, 'Failed to resolve ' .. NetLookup.hostName .. ', error ' ..mSys.GetErrorMsg(Error))
 
-      print('Resolved: ' .. NetLookup.HostName)
+      print('Resolved: ' .. NetLookup.hostName)
 
       resolved = resolved + 1
 
@@ -124,7 +124,7 @@ function testBlockingAddressResolution()
    local address_resolved = false
    local nl = obj.new('NetLookup', {
       callback = function(NetLookup, Error)
-         local host = nz(NetLookup.HostName,'NIL')
+         local host = nz(NetLookup.hostName,'NIL')
          assert(Error == ERR_Okay, 'Failed to resolve ' .. host .. ', error ' ..mSys.GetErrorMsg(Error))
          assert(host == 'dns.google', 'IP resolved to ' .. host)
          address_resolved = true

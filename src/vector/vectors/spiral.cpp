@@ -82,7 +82,6 @@ The horizontal center of the spiral is defined here as either a fixed or relativ
 static ERROR SPIRAL_GET_CenterX(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CX;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -97,10 +96,7 @@ static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
 
    Self->CX = val;
@@ -120,7 +116,6 @@ The vertical center of the spiral is defined here as either a fixed or relative 
 static ERROR SPIRAL_GET_CenterY(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->CY;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_CENTER_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -135,10 +130,7 @@ static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->CY = val;
@@ -157,7 +149,6 @@ The height of the spiral is expressed as '#Radius * 2.0'.
 static ERROR SPIRAL_GET_Height(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -238,7 +229,6 @@ The radius of the spiral is defined here as either a fixed or relative value.
 static ERROR SPIRAL_GET_Radius(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_RADIUS)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -253,10 +243,7 @@ static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
 
    Self->Radius = val;
@@ -327,7 +314,6 @@ The width of the spiral is expressed as '#Radius * 2.0'.
 static ERROR SPIRAL_GET_Width(extVectorSpiral *Self, Variable *Value)
 {
    DOUBLE val = Self->Radius * 2.0;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -376,9 +362,9 @@ static ERROR init_spiral(void)
 {
    clVectorSpiral = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORSPIRAL),
+      fl::ClassID(ID_VECTORSPIRAL),
       fl::Name("VectorSpiral"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorSpiralActions),
       fl::Fields(clVectorSpiralFields),
       fl::Size(sizeof(extVectorSpiral)),

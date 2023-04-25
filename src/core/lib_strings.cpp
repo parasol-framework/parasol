@@ -231,236 +231,9 @@ void free_iconv(void)
       if (glIconv) { iconv_close(glIconv); glIconv = NULL; }
       if (glIconvBuffer) { FreeResource(glIconvBuffer); glIconvBuffer = NULL; }
 
-      acFree(modIconv);
+      FreeResource(modIconv);
       modIconv = NULL;
    }
-}
-
-//********************************************************************************************************************
-
-static LONG str_cmp(CSTRING Name1, CSTRING Name2)
-{
-   if ((!Name1) or (!Name2)) return 0;
-
-   while ((*Name1) and (*Name2)) {
-      UBYTE char1 = *Name1;
-      UBYTE char2 = *Name2;
-
-      if ((char1 >= '0') and (char1 <= '9') and (char2 >= '0') and (char2 <= '9')) {
-         // This integer comparison is for human readable sorting
-         ULONG val1 = 0;
-         while (*Name1 IS '0') Name1++;
-         while ((*Name1) and (*Name1 >= '0') and (*Name1 <= '9')) {
-            val1 = (val1 * 10) + (*Name1 - '0');
-            Name1++;
-         }
-
-         ULONG val2 = 0;
-         while (*Name2 IS '0') Name2++;
-         while ((*Name2) and (*Name2 >= '0') and (*Name2 <= '9')) {
-            val2 = (val2 * 10) + (*Name2 - '0');
-            Name2++;
-         }
-
-         if (val1 > val2) return 1; // Name1 is greater
-         else if (val1 < val2) return -1; // Name1 is lesser
-         else {
-            while ((*Name1 >= '0') and (*Name1 <= '9')) Name1++;
-            while ((*Name2 >= '0') and (*Name2 <= '9')) Name2++;
-            continue;
-         }
-      }
-
-      if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
-      if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-
-      if (char1 > char2) return 1; // Name1 is greater
-      else if (char1 < char2) return -1; // Name1 is lesser
-
-      Name1++;
-      Name2++;
-   }
-
-   if ((!*Name1) and (!*Name2)) return 0;
-   else if (!*Name1) return -1;
-   else return 1;
-}
-
-//********************************************************************************************************************
-
-static ERROR str_sort(CSTRING *List, LONG Flags)
-{
-   if (!List) return ERR_NullArgs;
-
-   // Shell sort.  Similar to bubble sort but much faster because it can copy records over larger distances.
-
-   LONG total, j;
-
-   for (total=0; List[total]; total++);
-
-   LONG h = 1;
-   while (h < total / 9) h = 3 * h + 1;
-
-   if (Flags & SBF_DESC) {
-      for (; h > 0; h /= 3) {
-         for (LONG i=h; i < total; i++) {
-            auto temp = List[i];
-            for (j=i; (j >= h) and (str_cmp(List[j - h], temp) < 0); j -= h) {
-               List[j] = List[j - h];
-            }
-            List[j] = temp;
-         }
-      }
-   }
-   else {
-      for (; h > 0; h /= 3) {
-         for (LONG i=h; i < total; i++) {
-            auto temp = List[i];
-            for (j=i; (j >= h) and (str_cmp(List[j - h], temp) > 0); j -= h) {
-               List[j] = List[j - h];
-            }
-            List[j] = temp;
-         }
-      }
-   }
-
-   if (Flags & SBF_NO_DUPLICATES) {
-      LONG strflags = STR_MATCH_LEN;
-      if (Flags & SBF_CASE) strflags |= STR_MATCH_CASE;
-
-      for (LONG i=1; List[i]; i++) {
-         if (!StrCompare(List[i-1], List[i], 0, strflags)) {
-            for (j=i; List[j]; j++) List[j] = List[j+1];
-            i--;
-         }
-      }
-   }
-
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-StrBuildArray: Builds an array of strings from a sequential string list.
-
-This function is helpful for converting a buffer of sequential values into a more easily managed string array.  A
-"sequential list of values" is any number of strings arranged one after the other in a single byte array.  It is
-similar in arrangement to a CSV file, but null-terminators signal an end to each string value.
-
-To convert such a string list into an array, you need to know the total byte size of the list, as well as the total
-number of strings in the list. If you don't know this information, you can either alter your routine to make provisions
-for it, or you can pass the `SBF_CSV` flag if the List is in CSV format.  CSV mode incurs a performance hit as the string
-needs to be analysed first.
-
-Once you call this function, it will allocate a memory block to contain the array and string information.  The list
-will then be converted into the array, which will be terminated with a NULL pointer at its end.  If you have specified
-the `SBF_SORT` or `SBF_NO_DUPLICATES` Flags then the array will be sorted into alphabetical order for your convenience.  The
-`SBF_NO_DUPLICATES` flag also removes duplicated strings from the array.
-
-Remember to free the allocated array when it is no longer required.
-
--INPUT-
-str List:  Pointer to a string of sequentially arranged values.
-int Size:  The total byte size of the List, not including the terminating byte.
-int Total: The total number of strings specified in the List.
-int(SBF) Flags: Set to SBF_SORT to sort the list, SBF_NO_DUPLICATES to sort the list and remove duplicated strings, Use SBF_CSV if the List is in CSV format, in which case the Size and Total values are ignored (note - the string will be modified if in CSV).
-
--RESULT-
-!array(str): Returns an array of STRING pointers, or NULL on failure.  The pointer is a memory block that must be freed after use.
-
-*********************************************************************************************************************/
-
-STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!List) return NULL;
-
-   LONG i;
-   char *csvbuffer_alloc = NULL;
-   char csvbuffer[1024]= { 0 };
-   if (Flags & SBF_CSV) {
-      // Note that empty strings (commas following no content) are allowed and are treated as null strings.
-
-      // We are going to modify the string with some nulls, so make a copy of it
-
-      i = StrLength(List);
-      if ((size_t)i < sizeof(csvbuffer)) {
-         CopyMemory(List, csvbuffer, i+1);
-         List = csvbuffer;
-      }
-      else if ((csvbuffer_alloc = (char *)malloc(i+1))) {
-         CopyMemory(List, csvbuffer_alloc, i+1);
-         List = csvbuffer_alloc;
-      }
-
-      Size = 0;
-      Total = 0;
-      for (i=0; List[i];) {
-         while ((List[i]) and (List[i] <= 0x20)) i++; // Skip leading whitespace
-         if (!List[i]) break;
-         Total++;
-
-         if (List[i] IS '"') {
-            i++;
-            while ((List[i]) and (List[i] != '"')) i++;
-            if (List[i] IS '"') i++;
-         }
-         else if (List[i] IS '\'') {
-            i++;
-            while ((List[i]) and (List[i] != '\'')) i++;
-            if (List[i] IS '\'') i++;
-         }
-         else while ((List[i]) and (List[i] != ',') and (List[i] != '\n')) i++;
-
-         if ((List[i] IS ',') or (List[i] IS '\n')) List[i++] = 0;
-      }
-      Size = i;
-   }
-
-   if ((Size) and (Total > 0)) {
-      CSTRING *array;
-      if (!AllocMemory(Size + 1 + ((Total + 1) * sizeof(STRING)), MEM_DATA, (APTR *)&array, NULL)) {
-         // Build the array
-
-         STRING str = (STRING)(array + Total + 1);
-         for (i=0; i < Size; i++) str[i] = List[i];
-         LONG pos = 0;
-         for (i=0; i < Total; i++) {
-            array[i] = str+pos;
-            while ((str[pos]) and (pos < Size)) pos++;
-            if (str[pos]) {
-               log.warning("The string buffer exceeds its specified length of %d bytes.", Size);
-               break;
-            }
-            pos++;
-         }
-         array[i] = NULL;
-
-         // Remove duplicate strings and/or do sorting
-
-         if (Flags & SBF_NO_DUPLICATES) {
-            str_sort(array, 0);
-            for (i=1; array[i]; i++) {
-               if (!StrMatch(array[i-1], array[i])) {
-                  LONG j;
-                  for (j=i; array[j]; j++) array[j] = array[j+1];
-                  i--;
-                  Total--;
-               }
-            }
-            array[Total] = NULL;
-         }
-         else if (Flags & SBF_SORT) str_sort(array, 0);
-
-         if (csvbuffer_alloc) free(csvbuffer_alloc);
-         return (STRING *)array;
-      }
-   }
-
-   if (csvbuffer_alloc) free(csvbuffer_alloc);
-   return NULL;
 }
 
 /*********************************************************************************************************************
@@ -468,22 +241,22 @@ STRING * StrBuildArray(STRING List, LONG Size, LONG Total, LONG Flags)
 -FUNCTION-
 StrCompare: Compares strings to see if they are identical.
 
-This function compares two strings against each other.  If the strings match then it returns ERR_Okay, otherwise it
-returns ERR_False.  By default the function is not case sensitive, but you can turn on case sensitivity by
-specifying the `STR_CASE` flag.
+This function compares two strings against each other.  If the strings match then it returns `ERR_Okay`, otherwise it
+returns `ERR_False`.  By default the function is not case sensitive, but you can turn on case sensitivity by
+specifying the `STR::CASE` flag.
 
 If you set the Length to 0, the function will compare both strings for differences until a string terminates.  If all
-characters matched up until the termination, ERR_Okay will be returned regardless of whether or not one of the strings
+characters matched up until the termination, `ERR_Okay` will be returned regardless of whether or not one of the strings
 happened to be longer than the other.
 
 If the Length is not 0, then the comparison will stop once the specified number of characters to match has been
-reached.  If one of the strings terminates before the specified Length is matched, ERR_False will be returned.
+reached.  If one of the strings terminates before the specified Length is matched, `ERR_False` will be returned.
 
-If the `STR_MATCH_LEN` flag is specified, you can force the function into returning an ERR_Okay code only on the
+If the `STR::MATCH_LEN` flag is specified, you can force the function into returning an `ERR_Okay` code only on the
 condition that both strings are of matching lengths.  This flag is typically specified if the Length argument has
 been set to 0.
 
-If the `STR_WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
+If the `STR::WILDCARD` flag is set, the first string that is passed may contain wild card characters, which gives special
 meaning to the asterisk and question mark characters.  This allows you to make abstract comparisons, for instance
 `ABC*` would match to `ABCDEF` and `1?3` would match to `1x3`.
 
@@ -500,10 +273,11 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
+ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags)
 {
    LONG len, i, j;
-   UBYTE char1, char2, fail;
+   UBYTE char1, char2;
+   bool fail;
    CSTRING Original;
    #define Wildcard String1
 
@@ -516,11 +290,11 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 
    Original = String2;
 
-   if (Flags & STR_WILDCARD) {
+   if ((Flags & STR::WILDCARD) != STR::NIL) {
       if (!Wildcard[0]) return ERR_Okay;
 
       while ((*Wildcard) and (*String2)) {
-         fail = FALSE;
+         fail = false;
          if (*Wildcard IS '*') {
             while (*Wildcard IS '*') Wildcard++;
 
@@ -532,14 +306,14 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
                // Scan to the end of the string for wildcard situation like "*.txt"
 
                for (j=0; String2[j]; j++); // Get the number of characters left in the second string
-               if (j < i) fail = TRUE; // Quit if the second string has run out of characters to cover itself for the wildcard
+               if (j < i) fail = true; // Quit if the second string has run out of characters to cover itself for the wildcard
                else String2 += j - i; // Skip everything in the second string that covers us for the '*' character
             }
             else {
                // Scan to the first matching wildcard character in the string, for handling wildcards like "*.1*.2"
 
                while (*String2) {
-                  if (Flags & STR_CASE) {
+                  if ((Flags & STR::CASE) != STR::NIL) {
                      if (*Wildcard IS *String2) break;
                   }
                   else {
@@ -558,13 +332,13 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
          }
          else if ((*Wildcard IS '\\') and (Wildcard[1])) {
             Wildcard++;
-            if (Flags & STR_CASE) {
-               if (*Wildcard++ != *String2++) fail = TRUE;
+            if ((Flags & STR::CASE) != STR::NIL) {
+               if (*Wildcard++ != *String2++) fail = true;
             }
             else {
                char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
                char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-               if (char1 != char2) fail = TRUE;
+               if (char1 != char2) fail = true;
             }
          }
          else if ((*Wildcard IS '|') and (Wildcard[1])) {
@@ -572,13 +346,13 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
             String2 = Original; // Restart the comparison
          }
          else {
-            if (Flags & STR_CASE) {
-               if (*Wildcard++ != *String2++) fail = TRUE;
+            if ((Flags & STR::CASE) != STR::NIL) {
+               if (*Wildcard++ != *String2++) fail = true;
             }
             else {
                char1 = *String1++; if ((char1 >= 'A') and (char1 <= 'Z')) char1 = char1 - 'A' + 'a';
                char2 = *String2++; if ((char2 >= 'A') and (char2 <= 'Z')) char2 = char2 - 'A' + 'a';
-               if (char1 != char2) fail = TRUE;
+               if (char1 != char2) fail = true;
             }
          }
 
@@ -604,7 +378,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 
       return ERR_False;
    }
-   else if (Flags & STR_CASE) {
+   else if ((Flags & STR::CASE) != STR::NIL) {
       while ((len) and (*String1) and (*String2)) {
          if (*String1++ != *String2++) return ERR_False;
          len--;
@@ -626,7 +400,7 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
    // If we get here, one of strings has terminated or we have exhausted the number of characters that we have been
    // requested to check.
 
-   if (Flags & (STR_MATCH_LEN|STR_WILDCARD)) {
+   if ((Flags & (STR::MATCH_LEN|STR::WILDCARD)) != STR::NIL) {
       if ((*String1 IS 0) and (*String2 IS 0)) return ERR_Okay;
       else return ERR_False;
    }
@@ -639,8 +413,8 @@ ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, LONG Flags)
 -FUNCTION-
 StrDatatype: Determines the data type of a string.
 
-This function analyses a string and returns its data type.  Valid return values are `STT_FLOAT` for floating point
-numbers, `STT_NUMBER` for whole numbers, `STT_HEX` for hexadecimal (e.g. 0x1) and `STT_STRING` for any other string type.
+This function analyses a string and returns its data type.  Valid return values are `STT::FLOAT` for floating point
+numbers, `STT::NUMBER` for whole numbers, `STT::HEX` for hexadecimal (e.g. 0x1) and `STT::STRING` for any other string type.
 In order for the string to be recognised as one of the number types, it must be limited to numbers and qualification
 characters, such as a decimal point or negative sign.
 
@@ -650,13 +424,13 @@ Any white-space at the start of the string will be skipped.
 cstr String: The string that you want to analyse.
 
 -RESULT-
-int(STT): Returns STT_FLOAT, STT_NUMBER, STT_HEX or STT_STRING.
+int(STT): Returns FLOAT, NUMBER, HEX or STRING.
 
 *********************************************************************************************************************/
 
-LONG StrDatatype(CSTRING String)
+STT StrDatatype(CSTRING String)
 {
-   if (!String) return 0;
+   if (!String) return STT::NIL;
 
    while ((*String) and (*String <= 0x20)) String++; // Skip white-space
 
@@ -666,9 +440,9 @@ LONG StrDatatype(CSTRING String)
          if (((String[i] >= '0') and (String[i] <= '9')) or
              ((String[i] >= 'A') and (String[i] <= 'F')) or
              ((String[i] >= 'a') and (String[i] <= 'f')));
-         else return STT_STRING;
+         else return STT::STRING;
       }
-      return STT_HEX;
+      return STT::HEX;
    }
 
    bool is_number = true;
@@ -679,9 +453,9 @@ LONG StrDatatype(CSTRING String)
       if (String[i] IS '.') is_float = true;
    }
 
-   if ((is_float) and (is_number)) return STT_FLOAT;
-   else if (is_number) return STT_NUMBER;
-   else return STT_STRING;
+   if ((is_float) and (is_number)) return STT::FLOAT;
+   else if (is_number) return STT::NUMBER;
+   else return STT::STRING;
 }
 
 /*********************************************************************************************************************

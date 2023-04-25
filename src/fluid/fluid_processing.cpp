@@ -58,7 +58,7 @@ static int processing_new(lua_State *Lua)
                         while (lua_next(Lua, -2)) {
                            struct object *obj;
                            if ((obj = (struct object *)get_meta(Lua, -1, "Fluid.obj"))) {
-                              ObjectSignal sig = { .Object = obj->prvObject };
+                              ObjectSignal sig = { .Object = obj->ObjectPtr };
                               fp->Signals->push_back(sig);
                            }
                            else {
@@ -144,7 +144,7 @@ static int processing_sleep(lua_State *Lua)
          signal_list_c[i].Object = NULL;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(0, timeout, signal_list_c);
+         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
          ObjectSignal signal_list_c[2];
@@ -152,7 +152,7 @@ static int processing_sleep(lua_State *Lua)
          signal_list_c[1].Object   = NULL;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(0, timeout, signal_list_c);
+         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
       }
    }
    else {
@@ -186,12 +186,12 @@ static int processing_get(lua_State *Lua)
    if (fp) {
       CSTRING fieldname;
       if ((fieldname = luaL_checkstring(Lua, 2))) {
-         if (!StrCompare("sleep", fieldname, 0, STR_MATCH_CASE)) {
+         if (!StrCompare("sleep", fieldname, 0, STR::MATCH_CASE)) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &processing_sleep, 1);
             return 1;
          }
-         else if (!StrCompare("signal", fieldname, 0, STR_MATCH_CASE)) {
+         else if (!StrCompare("signal", fieldname, 0, STR::MATCH_CASE)) {
             lua_pushvalue(Lua, 1);
             lua_pushcclosure(Lua, &processing_signal, 1);
             return 1;

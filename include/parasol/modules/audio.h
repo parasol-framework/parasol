@@ -13,13 +13,18 @@ class objSound;
 
 // Optional flags for the Audio object.
 
-#define ADF_OVER_SAMPLING 0x00000001
-#define ADF_FILTER_LOW 0x00000002
-#define ADF_FILTER_HIGH 0x00000004
-#define ADF_STEREO 0x00000008
-#define ADF_VOL_RAMPING 0x00000010
-#define ADF_AUTO_SAVE 0x00000020
-#define ADF_SYSTEM_WIDE 0x00000040
+enum class ADF : ULONG {
+   NIL = 0,
+   OVER_SAMPLING = 0x00000001,
+   FILTER_LOW = 0x00000002,
+   FILTER_HIGH = 0x00000004,
+   STEREO = 0x00000008,
+   VOL_RAMPING = 0x00000010,
+   AUTO_SAVE = 0x00000020,
+   SYSTEM_WIDE = 0x00000040,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ADF)
 
 // Volume control flags
 
@@ -74,12 +79,15 @@ DEFINE_ENUM_FLAG_OPERATORS(SDF)
 
 // These audio bit formats are supported by AddSample and AddStream.
 
-#define SFM_BIG_ENDIAN 0x80000000
-#define SFM_U8_BIT_MONO 1
-#define SFM_S16_BIT_MONO 2
-#define SFM_U8_BIT_STEREO 3
-#define SFM_S16_BIT_STEREO 4
-#define SFM_END 5
+enum class SFM : ULONG {
+   NIL = 0,
+   F_BIG_ENDIAN = 0x80000000,
+   U8_BIT_MONO = 1,
+   S16_BIT_MONO = 2,
+   U8_BIT_STEREO = 3,
+   S16_BIT_STEREO = 4,
+   END = 5,
+};
 
 // Loop modes for the AudioLoop structure.
 
@@ -163,15 +171,15 @@ struct AudioLoop {
 
 struct sndOpenChannels { LONG Total; LONG Result;  };
 struct sndCloseChannels { LONG Handle;  };
-struct sndAddSample { FUNCTION OnStop; LONG SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddSample { FUNCTION OnStop; SFM SampleFormat; APTR Data; LONG DataSize; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndRemoveSample { LONG Handle;  };
 struct sndSetSampleLength { LONG Sample; LARGE Length;  };
-struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; LONG SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
+struct sndAddStream { FUNCTION Callback; FUNCTION OnStop; SFM SampleFormat; LONG SampleLength; LONG PlayOffset; struct AudioLoop * Loop; LONG LoopSize; LONG Result;  };
 struct sndBeep { LONG Pitch; LONG Duration; LONG Volume;  };
 struct sndSetVolume { LONG Index; CSTRING Name; SVF Flags; LONG Channel; DOUBLE Volume;  };
 
 INLINE ERROR sndOpenChannels(APTR Ob, LONG Total, LONG * Result) {
-   struct sndOpenChannels args = { Total, 0 };
+   struct sndOpenChannels args = { Total, (LONG)0 };
    ERROR error = Action(MT_SndOpenChannels, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -182,8 +190,8 @@ INLINE ERROR sndCloseChannels(APTR Ob, LONG Handle) {
    return(Action(MT_SndCloseChannels, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, LONG SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, 0 };
+INLINE ERROR sndAddSample(APTR Ob, FUNCTION OnStop, SFM SampleFormat, APTR Data, LONG DataSize, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddSample args = { OnStop, SampleFormat, Data, DataSize, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddSample, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -199,8 +207,8 @@ INLINE ERROR sndSetSampleLength(APTR Ob, LONG Sample, LARGE Length) {
    return(Action(MT_SndSetSampleLength, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, LONG SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
-   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, 0 };
+INLINE ERROR sndAddStream(APTR Ob, FUNCTION Callback, FUNCTION OnStop, SFM SampleFormat, LONG SampleLength, LONG PlayOffset, struct AudioLoop * Loop, LONG LoopSize, LONG * Result) {
+   struct sndAddStream args = { Callback, OnStop, SampleFormat, SampleLength, PlayOffset, Loop, LoopSize, (LONG)0 };
    ERROR error = Action(MT_SndAddStream, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -227,7 +235,7 @@ class objAudio : public BaseClass {
    LONG OutputRate;    // Determines the frequency to use for the output of audio data.
    LONG InputRate;     // Determines the frequency to use when recording audio data.
    LONG Quality;       // Determines the quality of the audio mixing.
-   LONG Flags;         // Special audio flags can be set here.
+   ADF  Flags;         // Special audio flags can be set here.
    LONG BitDepth;      // The bit depth affects the overall quality of audio input and output.
    LONG Periods;       // Defines the number of periods that make up the internal audio buffer.
    LONG PeriodSize;    // Defines the byte size of each period allocated to the internal audio buffer.
@@ -236,12 +244,81 @@ class objAudio : public BaseClass {
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR deactivate() { return Action(AC_Deactivate, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setOutputRate(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setInputRate(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->InputRate = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setQuality(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const ADF Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitDepth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPeriods(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPeriodSize(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   template <class T> inline ERROR setDevice(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setMasterVolume(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setMute(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setStereo(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // Sound class definition
@@ -286,7 +363,7 @@ class objSound : public BaseClass {
       if ((error) and (Buffer)) Buffer[0] = 0;
       return error;
    }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
@@ -303,24 +380,134 @@ class objSound : public BaseClass {
       struct acRead read = { (BYTE *)Buffer, bytes };
       return Action(AC_Read, this, &read);
    }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR seek(DOUBLE Offset, LONG Position = SEEK_CURRENT) {
+   inline ERROR seek(DOUBLE Offset, SEEK Position = SEEK::CURRENT) {
       struct acSeek args = { Offset, Position };
       return Action(AC_Seek, this, &args);
    }
-   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK_START); }
-   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK_END); }
-   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK_CURRENT); }
+   inline ERROR seekStart(DOUBLE Offset)   { return seek(Offset, SEEK::START); }
+   inline ERROR seekEnd(DOUBLE Offset)     { return seek(Offset, SEEK::END); }
+   inline ERROR seekCurrent(DOUBLE Offset) { return seek(Offset, SEEK::CURRENT); }
    inline ERROR acSetVar(CSTRING FieldName, CSTRING Value) {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
+
+   // Customised field setting
+
+   inline ERROR setVolume(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setPan(const DOUBLE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
+   }
+
+   inline ERROR setPosition(const LARGE Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, FD_LARGE, &Value, 1);
+   }
+
+   inline ERROR setPriority(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLength(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setOctave(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFlags(const SDF Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFrequency(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Frequency = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setPlayback(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setCompression(const LONG Value) {
+      this->Compression = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBytesPerSecond(const LONG Value) {
+      this->BytesPerSecond = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBitsPerSample(const LONG Value) {
+      this->BitsPerSample = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setAudio(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->AudioID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLoopStart(const LONG Value) {
+      this->LoopStart = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLoopEnd(const LONG Value) {
+      this->LoopEnd = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setStream(const STREAM Value) {
+      this->Stream = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setOnStop(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[21];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setNote(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
 };
 
-extern struct AudioBase *AudioBase;
 struct AudioBase {
    ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
    ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
@@ -337,6 +524,7 @@ struct AudioBase {
 };
 
 #ifndef PRV_AUDIO_MODULE
+extern struct AudioBase *AudioBase;
 inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
 inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
 inline ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute) { return AudioBase->_MixMute(Audio,Handle,Mute); }

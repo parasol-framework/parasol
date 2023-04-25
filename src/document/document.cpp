@@ -197,6 +197,8 @@ enum {
 
 #include "hashes.h"
 
+using namespace pf;
+
 struct CoreBase  *CoreBase;
 struct FontBase    *FontBase;
 struct DisplayBase *DisplayBase;
@@ -754,7 +756,7 @@ static void   notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Resul
 static void   notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args);
 static void   notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args);
 static LONG   parse_tag(extDocument *, objXML *, XMLTag *, LONG *, LONG);
-#ifdef DEBUG
+#ifdef _DEBUG
 static void   print_xmltree(XMLTag *, LONG *) __attribute__ ((unused));
 #endif
 #ifdef DBG_LINES
@@ -853,7 +855,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    FID_LayoutSurface = StrHash("LayoutSurface", 0);
 
    OBJECTID style_id;
-   if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
+   if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
       char buffer[32];
       if (!acGetVar(GetObjectPtr(style_id), "/colours/@DocumentHighlight", buffer, sizeof(buffer))) {
          read_rgb8(buffer, &glHighlight);
@@ -868,17 +870,17 @@ ERROR CMDExpunge(void)
    {
       pf::Log log;
       log.msg("Freeing %d internally allocated fonts.", glTotalFonts);
-      for (LONG i=0; i < glTotalFonts; i++) acFree(glFonts[i].Font);
+      for (LONG i=0; i < glTotalFonts; i++) FreeResource(glFonts[i].Font);
    }
 
    if (exsbuffer) { FreeResource(exsbuffer); exsbuffer = NULL; }
    if (glFonts)   { FreeResource(glFonts);   glFonts   = NULL; }
 
-   if (modVector)  { acFree(modVector);   modVector  = NULL; }
-   if (modDisplay) { acFree(modDisplay);  modDisplay = NULL; }
-   if (modFont)    { acFree(modFont);     modFont    = NULL; }
+   if (modVector)  { FreeResource(modVector);   modVector  = NULL; }
+   if (modDisplay) { FreeResource(modDisplay);  modDisplay = NULL; }
+   if (modFont)    { FreeResource(modFont);     modFont    = NULL; }
 
-   if (clDocument) { acFree(clDocument);  clDocument = NULL; }
+   if (clDocument) { FreeResource(clDocument);  clDocument = NULL; }
    return ERR_Okay;
 }
 
@@ -975,8 +977,8 @@ static ERROR add_document_class(void)
       fl::BaseClassID(ID_DOCUMENT),
       fl::ClassVersion(VER_DOCUMENT),
       fl::Name("Document"),
-      fl::Category(CCF_GUI),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Category(CCF::GUI),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Actions(clDocumentActions),
       fl::Methods(clDocumentMethods),
       fl::Fields(clFields),

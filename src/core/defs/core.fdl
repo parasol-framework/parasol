@@ -10,15 +10,13 @@ module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
 
   privateNames({ "ScriptArg", "CoreBase", "RootModule" })
 
-  loadFile(glPath .. 'common.fdl')
-  loadFile(glPath .. 'common-graphics.fdl')
-
-  c_insert([[
+  priority([[
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<1> { typedef BYTE type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<2> { typedef WORD type; };
 template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<4> { typedef LONG type; };
+template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef LARGE type; };
 // used as an approximation of std::underlying_type<T>
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
 
@@ -32,11 +30,14 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #endif
   ]])
 
+  loadFile(glPath .. 'common.fdl')
+  loadFile(glPath .. 'common-graphics.fdl')
+
   flags("SCF", { comment="Script flags" },
      "EXIT_ON_ERROR: The script will automatically terminate its execution process if an error is detected.",
-     "DEBUG: Enables execution debugging.  More information will be printed to the console in this mode.")
+     "LOG_ALL: Enables execution debugging.  More information will be printed to the console in this mode.")
 
-  flags("STR", { bits=16 },
+  flags("STR", { bits=32 },
      "MATCH_CASE|CASE: Perform a case-sensitive match.",
      "MATCH_LEN: The strings must be of equal length to be matched.",
      "WILDCARD: Allow the use of wildcard characters '|', '?' and '*'.")
@@ -52,15 +53,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("PMF", { comment="Flags for ProcessMessages" },
      "SYSTEM_NO_BREAK: Private.  For system calls that need to avoid early termination.")
 
-  flags("ALF", { bits=16 },
-     "SHARED: The lock will be shared between foreign processes.",
-     "RECURSIVE: Set if support for recursive locking within the same thread is required.")
-
-  flags("SMF", { comment="Flags for semaphores" },
-     "NO_BLOCKING|NON_BLOCKING: Do not block when locking the semaphore unless its counter has reached zero.",
-     "EXISTS: When allocating a semaphore, declares that the named semaphore already exists and should not be recreated.")
-
-  flags("RFD", { bits=16, comment="Flags for RegisterFD()" },
+  flags("RFD", { bits=32, comment="Flags for RegisterFD()" },
      "WRITE: Activate the callback if there is room to write to the FD's buffer.",
      "EXCEPT: Activate the callback if error conditions are pending.",
      "READ: Activate the callback if there is data available to read.",
@@ -71,20 +64,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      "RECALL: Set if the subscriber needs to manually check for incoming/outgoing data.  This is supported as a one-off check, so the flag will be disabled automatically when the subscriber is called.",
      "ALWAYS_CALL: Always call this FD's handler prior to the process going to sleep.")
 
-  flags("SBF", { comment="Flags for StrBuildArray()" },
-    "NO_DUPLICATES: Sort the resulting list and remove duplicated strings.",
-    "SORT: Sort the resulting list.",
-    "CASE: Use case-sensitivity when comparing strings in the list.",
-    "DESC: Sort in descending order.",
-    "CSV: The list is in CSV format and the Size and Total parameters should be ignored. Note that the source string will be modified in this mode.")
-
   flags("TSF", { comment="Task flags" },
     "FOREIGN: Set this flag when using the task object to execute a foreign process - that is an executable that does not use the Parasol API.",
     "WAIT: This flag will cause the parent process to halt when the task is activated.  Control is returned to the parent process once the child process terminates.",
     "RESET_PATH: If set, the executed process will start in its own folder rather than the folder of the parent process.",
     "PRIVILEGED: During a normal execution process, any privileges of the parent process will be dropped so that the child process runs unprivileged.  This behaviour can be reversed if he PRIVILEGED flag is set, in which case the child process has the same privileges as the parent.",
     "SHELL: Enables shell mode.  On Unix systems, this means that a shell (usually BASH) will be used to launch the process.",
-    "DEBUG: Additional debug messages will be printed during normal usage of the task class when this flag is set.",
+    "LOG_ALL: Additional debug messages will be printed during normal usage of the task class when this flag is set.",
     "QUIET: Setting this flag will divert all process output to /dev/null or the nearest equivalent for non-Unix systems.",
     "DETACHED: Forces new task to be detached from the parent.",
     "ATTACHED: Forces new task to be attached to the parent (child will close when parent closes).",
@@ -101,16 +87,9 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "MOVETOPOINT",  "SCROLLTOPOINT", "CUSTOM",    "SORT",        "SAVESETTINGS", "SELECTAREA",   "SIGNAL",
     "UNDO")
 
-  enum("STYLE", { start=1, comment="Internal style notifications" },
-     "ENABLED", "DISABLED", "FOCUS", "LOST_FOCUS", "RESIZE", "CONTENT")
-
   flags("MHF", { comment="Internal options for requesting function tables from modules." },
-    "NULL",
-    "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)",
-    "STATIC: Keep the module code in memory")
-
-  enum("CPU", { start=1, comment="Registered CPU ID's", restrict="c" },
-    "M68K", "I486", "I586", "I686", "X64", "ARMEABI")
+    "STATIC: Keep the module code in memory",
+    "STRUCTURE|DEFAULT: Use structures to group exported functions (Linux, C/C++ standard)")
 
   flags("STP", { comment="ScrollToPoint flags" }, "X", "Y", "Z", "ANIM")
 
@@ -126,7 +105,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("THF", { comment="Thread flags" },
     "AUTO_FREE: Automatically destroy the Thread object when the user routine has completed.")
 
-  enum("FDT", { start=0, comment="Flags for the SetDate() file method." },
+  enum("FDT", { type="int", start=0, comment="Flags for the SetDate() file method." },
     "MODIFIED: The date on which the file was last modified.",
     "CREATED: The date on which the file was created.  On some host platforms this datestamp may be read-only.",
     "ACCESSED: The date on which the file was last accessed by a user or application.",
@@ -174,7 +153,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SELF: Event applies to the monitored folder and not a contained item",
     "DEEP: Receive notifications from sub-folders (Windows only).")
 
-  enum("STT", { start=1, comment="Types for StrDatatype()." },
+  enum("STT", { type="int", start=1, comment="Types for StrDatatype()." },
     "NUMBER: The string represents a whole number.",
     "FLOAT: The string represents a floating point number.",
     "HEX: The string represents a hexadecimal number.",
@@ -198,20 +177,12 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "ROOT_PATH",
     "SCAN_MODULES")
 
-  enum("TOI", { },
+  enum("TOI", { type="int" },
     "LOCAL_CACHE",        -- For Android.  Defines the path of the local cache for assignment to localcache:
     "LOCAL_STORAGE",      -- For Android.  Defines the path of the local storage for assignment to localstorage:
     "ANDROID_ENV",        -- For Android.
     "ANDROID_CLASS",      -- For Android.
     "ANDROID_ASSETMGR")   -- For Android.  Permanent pointer to the AssetManager
-
-  flags("STF", { comment="Universal flag values used for searching text" },
-    "CASE: Case sensitive search",
-    "MOVE_CURSOR: The cursor is moved to the text.  If not set, the text is auto-selected",
-    "SCAN_SELECTION: Limit search to within the user's current selection",
-    "BACKWARDS: Search backwards",
-    "EXPRESSION: Search text is a regular expression",
-    "WRAP: Wrap search at the end of the document")
 
   flags("RDF", { comment="Flags for the OpenDir() function." },
     "SIZE: Retrieve the byte size of each file.",
@@ -247,30 +218,25 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "EXCLUDE_FILES: Exclude files when scanning this folder.",
     "EXCLUDE_FOLDERS: Exclude folders when scanning this folder.")
 
-  enum("LOC", { start=1, comment="AnalysePath() values" },
+  enum("LOC", { type="int", start=1, comment="AnalysePath() values" },
     "DIRECTORY|FOLDER: The path refers to a folder.",
     "VOLUME: The path refers to a volume name.",
     "FILE: The path refers to a file.")
 
-  flags("IDF", { comment="IdentifyFile() values" },
-    "SECTION: Return the name of the Config group that supports the file association, rather than an executable command.",
-    "HOST: Query the host platform's file associations only.",
-    "IGNORE_HOST: Ignore the host platform's file assocations.")
-
   flags("LDF", { comment="Flags for LoadFile()" },
     "CHECK_EXISTS: Limits the routine to checking the file cache for the existence of the file.  If found, the relevant cache entry is returned. The open count is not incremented by this action (it is therefore unnecessary to follow-up with a call to UnloadFile()).  If no up-to-date cache entry is available, ERR_Search is returned.")
 
-  enum("FBK", { start=1, comment="Flags for file feedback." },
+  enum("FBK", { type="int", start=1, comment="Flags for file feedback." },
     "MOVE_FILE: A file is to be, or has been moved.",
     "COPY_FILE: A file is to be, or has been copied.",
     "DELETE_FILE: A file is to be, or has been deleted.")
 
-  enum("FFR", { start=0, comment="Return codes available to the feedback routine" },
+  enum("FFR", { type="int", start=0, comment="Return codes available to the feedback routine" },
     "OKAY|CONTINUE: Continue processing uninterrupted.",
     "SKIP: Skip processing of this entity.",
     "ABORT: Abort the entire operation.")
 
-  enum("VAS", { start=1, comment="For use by VirtualVolume()" },
+  enum("VAS", { type="int", start=1, comment="For use by VirtualVolume()" },
     "DEREGISTER: Remove the virtual volume from the system.",
     "SCAN_DIR",
     "DELETE",
@@ -290,13 +256,13 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "CREATE_LINK",
     "DRIVER_SIZE")
 
-  enum("FDB", { start=1, comment="Feedback event indicators." },
+  enum("FDB", { type="int", start=1, comment="Feedback event indicators." },
     "DECOMPRESS_FILE",
     "COMPRESS_FILE",
     "REMOVE_FILE",
     "DECOMPRESS_OBJECT")
 
-  enum("CF", { start=1, comment="Compression stream formats" },
+  enum("CF", { type="int", start=1, comment="Compression stream formats" },
     "GZIP: The 'gzip' format",
     "ZLIB: The 'zlib' format",
     "DEFLATE: The 'deflate' format")
@@ -304,7 +270,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
   flags("FOF", { comment="Flags that can be passed to FindObject()" },
     "SMART_NAMES: Parse numeric object names as ID references and support use of the 'Owner' reserved keyword.")
 
-  flags("NF", { strict=true, comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
+  flags("NF", { comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word." },
     "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
@@ -339,6 +305,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      BREAK            = 100,
      CORE_END         = 100,    -- End marker for Core generated messages
      ACTION           = 99,     -- Start from 99 descending (lower risk of accidental ID matches)
+     FREE             = 98,
      DEBUG            = 95,
      EVENT            = 94,
      VALIDATE_PROCESS = 93,
@@ -347,34 +314,22 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
      WAIT_FOR_OBJECTS = 90
   })
 
-  enum("IDTYPE", { start=1, comment="Types for AllocateID()" },
+  enum("IDTYPE", { type="int", start=1, comment="Types for AllocateID()" },
     "MESSAGE: Message ID's are allocated for the purpose of sending uniquely identifiable messages between tasks.",
     "GLOBAL: Global ID's have no specific association with anything.",
     "FUNCTION: Function ID's are used to track FUNCTION types and are assigned to the function ID field."
   )
 
-  enum("SEM", { start=1 },
-    "GET_VAL: Get the maximum value for the counter, as originally set in AllocSemaphore.  Associated tag must be a pointer to a 32-bit integer.",
-    "GET_COUNTER: Get the current counter value (affected by AccessSemaphore and ReleaseSemaphore).  Associated tag must be a pointer to a 32-bit integer.",
-    "GET_DATA_PTR: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to an address pointer.",
-    "GET_DATA_LONG: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 32-bit integer.",
-    "GET_DATA_LARGE: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit integer.",
-    "GET_DATA_DOUBLE: Get the user customisable data value associated with the semaphore.  The subsequent tag must be a pointer to a 64-bit float point number.",
-    "SET_DATA_PTR: Set the user customisable data value associated with the semaphore.  The subsequent tag must be an address pointer.",
-    "SET_DATA_LONG: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 32-bit integer.",
-    "SET_DATA_LARGE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit integer.",
-    "SET_DATA_DOUBLE: Set the user customisable data value associated with the semaphore.  The subsequent tag must be a 64-bit floating point number.")
-
-  enum("TSTATE", { comment="Indicates the state of a process." },
+  enum("TSTATE", { type="char", comment="Indicates the state of a process." },
     "RUNNING: The process is currently executing code.",
     "PAUSED: The process is asleep.",
     "STOPPING: The process is in its termination phase.",
     "TERMINATED: The process has closed.")
 
-  enum("RES", { start=1 },
+  enum("RES", { type="int", start=1 },
     "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
-    "SHARED_CONTROL: Internal pointer to the SharedControl structure.",
+    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
     "USER_ID: Internal",
     "DISPLAY_DRIVER: Internal.  Passes the name of the preferred display driver to the display module.",
     "PRIVILEGED_USER: If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.",
@@ -396,11 +351,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
     "FREE_MEMORY: The total amount of free memory.",
-    "FREE_SWAP: The total amount of free swap memory.",
-    "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys."
+    "FREE_SWAP: The total amount of free swap memory."
   )
 
-  enum("RP", { start=1, comment="Path types for SetResourcePath()" },
+  enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
     "MODULE_PATH: An alternative path leading to the system modules (normally 'system:modules/').  Introduced for platforms such as Android, where modules are stored in asset folders.",
     "SYSTEM_PATH: The path of the 'system:' volume, which otherwise defaults to '[root]:system/'.",
     "ROOT_PATH: Overrides the root path, which defaults to the location at which Parasol is installed.")
@@ -415,17 +369,10 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "OPTIONAL_FILES: Files are optional (do not fail if a requested file does not exist).",
     "NEW: On initialisation, do not load any data from the referenced configuration file.")
 
-  flags("KSF", { comment="Flags for VarNew()" },
-    "CASE: Enable case-sensitive keys.",
-    "THREAD_SAFE: Enable thread safety for a small performance penalty.",
-    "UNTRACKED: Do not track the key-store to the object with the current context.",
-    "AUTO_REMOVE: Automatically call FreeResource() on remaining key values when FreeResource() is called for the key-store.",
-    "INTERNAL: Private.")
-
 -- Please note that when the user is using an international keyboard, the name of the key will not
 -- actually match what the symbol represents for some key types.
 
-  const("K", { comment="Raw key codes" }, {
+  const("KEY", { type="int", comment="Raw key codes" }, {
     A = 1,
     B = 2,
     C = 3,
@@ -593,20 +540,18 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define VER_CORE (1.0f)  // Core version + revision
 #define REV_CORE (0)     // Core revision as a whole number
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #endif
 
-typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
-
 #define MOD_IDL NULL
+
+extern "C" {
+
+#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
 
 #ifdef MOD_NAME
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
@@ -615,7 +560,7 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 #define MOD_NAME NULL
 #endif
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define MSG(...)  LogF(0,__VA_ARGS__)
  #define FMSG(...) LogF(__VA_ARGS__)
 #else
@@ -623,22 +568,15 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
  #define FMSG(...)
 #endif
 
-#ifdef  __cplusplus
 }
-#endif
 
-#define skipwhitespace(a) while ((*(a) > 0) && (*(a) <= 0x20)) (a)++;
+#define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
 
-#define ARRAYSIZE(a) ((LONG)(sizeof(a)/sizeof(a[0])))
+namespace pf {
 
-#define ROUNDUP(a,b) (((a) + (b)) - ((a) % (b))) // ROUNDUP(Number, Alignment) e.g. (14,8) = 16
-
-#define ALIGN64(a) (((a) + 7) & (~7))
-#define ALIGN32(a) (((a) + 3) & (~3))
-#define ALIGN16(a) (((a) + 1) & (~1))
-
-#define CODE_MEMH 0x4D454D48L
-#define CODE_MEMT 0x4D454D54L
+template <class T> T roundup(T Num, LONG Alignment) {
+   return (Num + Alignment) - (Num % Alignment); // Round up to Alignment value, e.g. (14,8) = 16
+}
 
 #ifdef PRINTF64I
   #define PF64 "I64d"
@@ -651,7 +589,7 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 // Use DEBUG_BREAK in critical areas where you would want to break in gdb.  This feature will only be compiled
 // in to debug builds.
 
-#ifdef DEBUG
+#ifdef _DEBUG
  #define DEBUG_BREAK asm("int $3");
 #else
  #define DEBUG_BREAK
@@ -689,12 +627,12 @@ inline LONG F2T(DOUBLE val) // For numbers no larger than 16 bit, standard (LONG
    }
 }
 
-//#define F2T(a) LONG(a)
+} // namespace
 
 // Structures to pass to OpenCore()
 
 struct OpenTag {
-   LONG Tag;
+   TOI Tag;
    union {
       LONG Long;
       LARGE Large;
@@ -704,19 +642,19 @@ struct OpenTag {
 };
 
 struct OpenInfo {
-   CSTRING Name;            // OPF_NAME
-   CSTRING *Args;           // OPF_ARGS
-   CSTRING SystemPath;      // OPF_SYSTEM_PATH
-   CSTRING ModulePath;      // OPF_MODULE_PATH
-   CSTRING RootPath;        // OPF_ROOT_PATH
-   struct OpenTag *Options; // OPF_OPTIONS Typecast to va_list (defined in stdarg.h)
-   LONG    Flags;           // OPF flags need to be set for fields that have been defined in this structure.
-   LONG    MaxDepth;        // OPF_MAX_DEPTH
-   LONG    Detail;          // OPF_DETAIL
-   LONG    ArgCount;        // OPF_ARGS
-   ERROR   Error;           // OPF_ERROR
-   FLOAT   CompiledAgainst; // OPF_COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF_CORE_VERSION
+   CSTRING Name;            // OPF::NAME
+   CSTRING *Args;           // OPF::ARGS
+   CSTRING SystemPath;      // OPF::SYSTEM_PATH
+   CSTRING ModulePath;      // OPF::MODULE_PATH
+   CSTRING RootPath;        // OPF::ROOT_PATH
+   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
+   LONG    MaxDepth;        // OPF::MAX_DEPTH
+   LONG    Detail;          // OPF::DETAIL
+   LONG    ArgCount;        // OPF::ARGS
+   ERROR   Error;           // OPF::ERROR
+   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
+   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -804,10 +742,6 @@ struct OpenInfo {
 #define TSTRING   TSTR
 #define TREL      TRELATIVE
 
-template <class T> inline APTR ResolveAddress(T *Pointer, LONG Offset) {
-   return APTR(((BYTE *)Pointer) + Offset);
-}
-
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
 //********************************************************************************************************************
@@ -849,9 +783,9 @@ struct FieldValue {
      obj Object
   ]])
 
-  struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM_MANAGED flag.", restrict="c" }, [[
+  struct("ResourceManager", { comment="This structure must be placed at the start of any memory block allocated with the MEM::MANAGED flag.", restrict="c" }, [[
      cstr Name            # The name of the resource.
-     fptr(void ptr) Free  # A function that will remove the resource's content when terminated.
+     fptr(error ptr) Free  # A function that will remove the resource's content when terminated.
   ]])
 
   struct("pfBase64Decode", { type="base64decode", comment="Private structure for the Base64Decode() function." }, [[
@@ -908,7 +842,7 @@ struct FieldValue {
       CSTRING pName) {
 
       HeaderVersion = MODULE_HEADER_VERSION;
-      Flags         = MHF_DEFAULT;
+      Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;
       CoreVersion   = VER_CORE;
       Definitions   = pDef;
@@ -938,6 +872,9 @@ struct FieldValue {
   struct("FieldDef", { comment="Used to define constants for field references." }, [[
     cstr Name  # The name of the constant.
     int Value  # The value of the constant.
+  ]],
+  [[
+   template <class T> FieldDef(CSTRING pName, T pValue) : Name(pName), Value(LONG(pValue)) { }
   ]])
 
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
@@ -954,6 +891,13 @@ struct FieldValue {
     large  Large    # The value as a 64-bit integer.
     double Double   # The value as a 64-bit float-point number.
     ptr    Pointer  # The value as an address pointer.
+  ]],
+  [[
+   Variable(LONG Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(LARGE Value) : Type(FD_LARGE), Large(Value) { }
+   Variable(DOUBLE Value) : Type(FD_DOUBLE), Double(Value) { }
+   Variable(APTR Value) : Type(FD_POINTER), Pointer(Value) { }
+   Variable() { }
   ]])
 
   -- Structures for defining method and action invocations.
@@ -966,12 +910,17 @@ struct FieldValue {
   template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
   ]])
 
-  struct("MethodArray", { restrict="c" }, [[
+  struct("MethodEntry", { restrict="c" }, [[
     int  MethodID   # Unique method identifier
     ptr  Routine    # The method entry point, defined as ERROR (*Routine)(OBJECTPTR, APTR);
     cstr Name       # Name of the method
     cstruct(*FunctionField) Args  # List of parameters accepted by the method
     int  Size       # Total byte-size of all accepted parameters when they are assembled as a C structure.
+  ]],
+  [[
+   MethodEntry() : MethodID(0), Routine(NULL), Name(NULL) { }
+   MethodEntry(LONG pID, APTR pRoutine, CSTRING pName, const struct FunctionField *pArgs, LONG pSize) :
+      MethodID(pID), Routine(pRoutine), Name(pName), Args(pArgs), Size(pSize) { }
   ]])
 
   struct("ActionTable", { comment="Structure for ActionList" }, [[
@@ -993,26 +942,14 @@ struct FieldValue {
      int Size      # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
   ]])
 
-  struct("ThreadMessage", { restrict="c" }, [[ oid ThreadID # Internal ]])
-
-  struct("ThreadActionMessage", { restrict="c", comment="An internal structure for managing actions executed via threads." }, [[
-     obj   Object    # Direct pointer to a target object.
-     int   ActionID  # The action to execute.
-     int   Key       # Internal
-     error Error     # The error code resulting from the action's execution.
-     func  Callback  # Callback function to execute on action completion.
-  ]])
-
   struct("MemInfo", { type="meminfo" }, [[
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
     int  Size          # The size of the memory block.
-    short AccessCount  # Total number of active locks on this block.
-    short Flags        # The type of memory.
+    int(MEM) Flags     # The type of memory.
     mem  MemoryID      # The unique ID for this block.
+    short AccessCount  # Total number of active locks on this block.
   ]])
-
-  struct("ActionEntry", { restrict="c" }, [[ fptr(error obj ptr) PerformAction # Internal ]])
 
   struct("MsgHandler", { restrict="c" }, [[
     ptr(struct(MsgHandler)) Prev  # Previous message handler in the chain
@@ -1068,7 +1005,7 @@ struct FieldValue {
     large TimeStamp            # 64-bit time stamp - usable only for comparison (e.g. sorting).
     struct(*FileInfo) Next     # Next structure in the list, or NULL.
     str Name                   # The name of the file.  This string remains valid until the next call to GetFileInfo().
-    int(FL) Flags              # Additional flags to describe the file.
+    int(RDF) Flags             # Additional flags to describe the file.
     int(PERMIT) Permissions    # Standard permission flags.
     int UserID                 # User  ID (Unix systems only).
     int GroupID                # Group ID (Unix systems only).
@@ -1088,7 +1025,7 @@ struct FieldValue {
    APTR   prvHandle;        // Directory handle.  If virtual, may store a private data address
    STRING prvPath;          // Original folder location string
    STRING prvResolvedPath;  // Resolved folder location
-   LONG   prvFlags;         // OpenFolder() RDF flags
+   RDF    prvFlags;         // OpenFolder() RDF flags
    LONG   prvTotal;         // Total number of items in the folder
    ULONG  prvVirtualID;     // Unique ID (name hash) for a virtual device
    union {
@@ -1105,7 +1042,7 @@ struct FieldValue {
     large Position      # Current seek position within the file if moving or copying
     str Path            # Path to the file
     str Dest            # Destination file/path if moving or copying
-    int(FDB) FeedbackID # Set to one of the FDB integers
+    int(FBK) FeedbackID # Set to one of the FBK values
     char(32) Reserved   # Reserved in case of future expansion
   ]])
 
@@ -1135,18 +1072,18 @@ struct ScriptArg { // For use with scExec
 ]])
 
   functionNames(nil,
-    "AccessMemoryID",
+    "AccessMemory",
     "Action",
     "ActionList",
     "ActionMsg",
     "ResolveClassID",
     "AllocateID",
     "AllocMemory",
-    "AccessObjectID",
+    "AccessObject",
     "CheckAction",
     "CheckMemoryExists",
     "CheckObjectExists",
-    "DeleteFile",
+    "InitObject",
     "VirtualVolume",
     "CurrentContext",
     "GetFieldArray",
@@ -1155,14 +1092,14 @@ struct ScriptArg { // For use with scExec
     "FindObject",
     "FindClass",
     "AnalysePath",
+    "UTF8Copy",
     "FreeResource",
-    "FreeResourceID",
     "GetClassID",
     "GetOwnerID",
     "GetField",
     "GetFieldVariable",
-    "TotalChildren",
-    "GetName",
+    "CompareFilePaths",
+    "GetSystemState",
     "ListChildren",
     "Base64Decode",
     "RegisterFD",
@@ -1201,8 +1138,8 @@ struct ScriptArg { // For use with scExec
     "GetResource",
     "SetResource",
     "ScanMessages",
-    "SysLock",
-    "SysUnlock",
+    "StrDatatype",
+    "UnloadFile",
     "CreateFolder",
     "LoadFile",
     "SetVolume",
@@ -1219,18 +1156,12 @@ struct ScriptArg { // For use with scExec
     "GetActionMsg",
     "FuncError",
     "SetArray",
-    "ReleaseMemoryID",
+    "StrHash",
     "LockObject",
     "ReleaseObject",
-    "AllocMutex",
-    "FreeMutex",
-    "LockMutex",
-    "UnlockMutex",
     "ActionThread",
-    "AllocSharedMutex",
-    "FreeSharedMutex",
-    "LockSharedMutex",
-    "UnlockSharedMutex",
+    "AddInfoTag",
+    "SetDefaultPermissions",
     "VLogF",
     "Base64Encode",
     "ReadInfoTag",
@@ -1239,7 +1170,7 @@ struct ScriptArg { // For use with scExec
     "ResolveGroupID",
     "ResolveUserID",
     "CreateLink",
-    "StrBuildArray",
+    "DeleteFile",
     "UTF8CharOffset",
     "UTF8Length",
     "UTF8OffsetToChar",
@@ -1249,15 +1180,7 @@ struct ScriptArg { // For use with scExec
     "UTF8WriteValue",
     "CopyFile",
     "WaitForObjects",
-    "ReadFileToBuffer",
-    "StrDatatype",
-    "UnloadFile",
-    "SetDefaultPermissions",
-    "CompareFilePaths",
-    "GetSystemState",
-    "StrHash",
-    "AddInfoTag",
-    "UTF8Copy")
+    "ReadFileToBuffer")
 
   c_insert([[
 
@@ -1271,17 +1194,20 @@ template <class T> inline MEMORYID GetMemoryID(T &&A) {
    return ((MEMORYID *)A)[-2];
 }
 
-#define DeregisterFD(a) RegisterFD((a), RFD_REMOVE|RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL, 0, 0)
+inline ERROR DeregisterFD(HOSTHANDLE Handle) {
+   return RegisterFD(Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL, 0, 0);
+}
+
 #define DeleteMsg(a,b)  UpdateMessage(a,b,(APTR)-1,0,0)
 
-inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES_PARENT_CONTEXT); }
-inline APTR GetResourcePtr(LONG ID) { return (APTR)(MAXINT)GetResource(ID); }
+inline OBJECTPTR GetParentContext() { return (OBJECTPTR)(MAXINT)GetResource(RES::PARENT_CONTEXT); }
+inline APTR GetResourcePtr(RES ID) { return (APTR)(MAXINT)GetResource(ID); }
 
 inline CSTRING to_cstring(const std::string &A) { return A.c_str(); }
 constexpr inline CSTRING to_cstring(CSTRING A) { return A; }
 
 template <class T, class U> inline ERROR StrMatch(T &&A, U &&B) {
-   return StrCompare(to_cstring(A), to_cstring(B), 0, STR_MATCH_LEN);
+   return StrCompare(to_cstring(A), to_cstring(B), 0, STR::MATCH_LEN);
 }
 
 template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff)
@@ -1305,7 +1231,17 @@ template <class T> inline LONG StrCopy(T &&Source, STRING Dest, LONG Length = 0x
 
 #ifndef PRV_CORE_DATA
 
-inline ERROR AllocMemory(LONG Size, LONG Flags, APTR Address) {
+inline ERROR ReleaseMemory(const void *Address) {
+   if (!Address) return ERR_NullArgs;
+   return ReleaseMemory(((MEMORYID *)Address)[-2]);
+}
+
+inline ERROR FreeResource(const void *Address) {
+   if (!Address) return ERR_NullArgs;
+   return FreeResource(((LONG *)Address)[-2]);
+}
+
+inline ERROR AllocMemory(LONG Size, MEM Flags, APTR Address) {
    return AllocMemory(Size, Flags, (APTR *)Address, NULL);
 }
 
@@ -1325,12 +1261,12 @@ inline ERROR QueueAction(LONG Action, OBJECTID ObjectID) {
    return QueueAction(Action, ObjectID, NULL);
 }
 
-template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length, LONG Flags) {
+template <class T, class U> inline ERROR StrCompare(T &&A, U &&B, LONG Length = 0, STR Flags = STR::NIL) {
    return StrCompare(to_cstring(A), to_cstring(B), Length, Flags);
 }
 
 inline ULONG StrHash(const std::string Value) {
-   return CoreBase->_StrHash(Value.c_str(), FALSE);
+   return StrHash(Value.c_str(), FALSE);
 }
 
 template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
@@ -1385,7 +1321,7 @@ inline STRING StrClone(CSTRING String)
 
    LONG len = strlen(String);
    STRING newstr;
-   if (!AllocMemory(len+1, MEM_STRING, (APTR *)&newstr, NULL)) {
+   if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
       return newstr;
    }
@@ -1469,16 +1405,16 @@ class Log { // C++ wrapper for Parasol's log functionality
       void branch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::API|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
 
-      #ifdef DEBUG
+      #ifdef _DEBUG
       void traceBranch(CSTRING Message = "", ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_TRACE|VLF_BRANCH, header, Message, arg);
+         VLogF(VLF::TRACE|VLF::BRANCH, header, Message, arg);
          va_end(arg);
          branches++;
       }
@@ -1494,64 +1430,64 @@ class Log { // C++ wrapper for Parasol's log functionality
       void app(CSTRING Message, ...) { // Info level, recommended for applications only
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_INFO, header, Message, arg);
+         VLogF(VLF::INFO, header, Message, arg);
          va_end(arg);
       }
 
       void msg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, header, Message, arg);
+         VLogF(VLF::API, header, Message, arg);
          va_end(arg);
       }
 
-      void msg(LONG Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
+      void msg(VLF Flags, CSTRING Message, ...) __attribute__((format(printf, 3, 4))) { // Defaults to API level, recommended for modules
          va_list arg;
          va_start(arg, Message);
          VLogF(Flags, header, Message, arg);
          va_end(arg);
-         if (Flags & VLF_BRANCH) branches++;
+         if ((Flags & VLF::BRANCH) != VLF::NIL) branches++;
       }
 
       void extmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Extended API message
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_EXTAPI, header, Message, arg);
+         VLogF(VLF::EXTAPI, header, Message, arg);
          va_end(arg);
       }
 
       void pmsg(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // "Parent message", uses the scope of the caller
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API, NULL, Message, arg);
+         VLogF(VLF::API, NULL, Message, arg);
          va_end(arg);
       }
 
       void warning(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_WARNING, header, Message, arg);
+         VLogF(VLF::WARNING, header, Message, arg);
          va_end(arg);
       }
 
       void error(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // NB: Use for messages intended for the user, not the developer
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_ERROR, header, Message, arg);
+         VLogF(VLF::ERROR, header, Message, arg);
          va_end(arg);
       }
 
       void debug(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) {
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_DEBUG, header, Message, arg);
+         VLogF(VLF::DEBUG, header, Message, arg);
          va_end(arg);
       }
 
       void function(CSTRING Message, ...) __attribute__((format(printf, 2, 3))) { // Equivalent to branch() but without a new branch being created
          va_list arg;
          va_start(arg, Message);
-         VLogF(VLF_API|VLF_FUNCTION, header, Message, arg);
+         VLogF(VLF::API|VLF::FUNCTION, header, Message, arg);
          va_end(arg);
       }
 
@@ -1566,19 +1502,19 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 
       void trace(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_TRACE, header, Message, arg);
+            VLogF(VLF::TRACE, header, Message, arg);
             va_end(arg);
          #endif
       }
 
       void traceWarning(CSTRING Message, ...) {
-         #ifdef DEBUG
+         #ifdef _DEBUG
             va_list arg;
             va_start(arg, Message);
-            VLogF(VLF_WARNING, header, Message, arg);
+            VLogF(VLF::WARNING, header, Message, arg);
             va_end(arg);
          #endif
       }
@@ -1596,8 +1532,6 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   CLASSID  ClassID;            // The object's class ID
-   CLASSID  SubID;              // The object's sub-class ID, or zero if irrelevant.
    OBJECTID UID;                // Unique object identifier
    OBJECTID OwnerID;            // The owner of this object
    NF       Flags;              // Object flags
@@ -1607,12 +1541,12 @@ struct BaseClass { // Must be 64-bit aligned
    UBYTE ThreadPending;         // ActionThread() increments this.
    volatile BYTE Queue;         // Managed by locking functions
    volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObjectID()/LockObject()
+   volatile bool Locked;        // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;            // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
-   inline bool isSubClass() { return SubID != 0; }
+   inline bool isSubClass();
    inline OBJECTID ownerID() { return OwnerID; }
    inline NF flags() { return Flags; }
 
@@ -1839,11 +1773,15 @@ class Create {
                      if ((error) and (error != ERR_NoSupport)) return;
                   }
                }
-               else { error = log.warning(ERR_UnsupportedField); return; }
+               else {
+                  log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), T::CLASS_NAME);
+                  error = log.warning(ERR_UnsupportedField);
+                  return;
+               }
             }
 
-            if ((error = acInit(obj))) {
-               acFree(obj);
+            if ((error = InitObject(obj))) {
+               FreeResource(obj->UID);
                obj = NULL;
             }
          }
@@ -1857,7 +1795,7 @@ class Create {
                   return; // Detected a successfully created unscoped object
                }
             }
-            acFree(obj);
+            FreeResource(obj->UID);
             obj = NULL;
          }
       }
@@ -1870,31 +1808,31 @@ class Create {
 }
 
 inline OBJECTID CurrentTaskID() { return ((OBJECTPTR)CurrentTask())->UID; }
-inline APTR SetResourcePtr(LONG Res, APTR Value) { return (APTR)(MAXINT)(CoreBase->_SetResource(Res, (MAXINT)Value)); }
+inline APTR SetResourcePtr(RES Res, APTR Value) { return (APTR)(MAXINT)(SetResource(Res, (MAXINT)Value)); }
 
 // Action and Notification Structures
 
-struct acClipboard     { LONG Mode; };
-struct acCopyData      { union { OBJECTID DestID; OBJECTID Dest; }; };
+struct acClipboard     { CLIPMODE Mode; };
+struct acCopyData      { OBJECTPTR Dest; };
 struct acCustom        { LONG Number; CSTRING String; };
-struct acDataFeed      { union { OBJECTID ObjectID; OBJECTID Object; }; union { LONG DataType; LONG Datatype; }; const void *Buffer; LONG Size; };
-struct acDragDrop      { union { OBJECTID SourceID; OBJECTID Source; }; LONG Item; CSTRING Datatype; };
+struct acDataFeed      { OBJECTPTR Object; DATA Datatype; const void *Buffer; LONG Size; };
+struct acDragDrop      { OBJECTPTR Source; LONG Item; CSTRING Datatype; };
 struct acDraw          { LONG X; LONG Y; LONG Width; LONG Height; };
 struct acGetVar        { CSTRING Field; STRING Buffer; LONG Size; };
 struct acMove          { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
+struct acMoveToPoint   { DOUBLE X; DOUBLE Y; DOUBLE Z; MTF Flags; };
 struct acNewChild      { OBJECTPTR Object; };
-struct acNewOwner      { union { OBJECTID NewOwnerID; OBJECTID NewOwner; }; CLASSID ClassID; };
+struct acNewOwner      { OBJECTPTR NewOwner; };
 struct acRead          { APTR Buffer; LONG Length; LONG Result; };
 struct acRedimension   { DOUBLE X; DOUBLE Y; DOUBLE Z; DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
 struct acRedo          { LONG Steps; };
 struct acRename        { CSTRING Name; };
 struct acResize        { DOUBLE Width; DOUBLE Height; DOUBLE Depth; };
-struct acSaveImage     { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
-struct acSaveToObject  { union { OBJECTID DestID; OBJECTID Dest; }; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveImage     { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
+struct acSaveToObject  { OBJECTPTR Dest; union { CLASSID ClassID; CLASSID Class; }; };
 struct acScroll        { DOUBLE DeltaX; DOUBLE DeltaY; DOUBLE DeltaZ; };
-struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; LONG Flags; };
-struct acSeek          { DOUBLE Offset; LONG Position; };
+struct acScrollToPoint { DOUBLE X; DOUBLE Y; DOUBLE Z; STP Flags; };
+struct acSeek          { DOUBLE Offset; SEEK Position; };
 struct acSelectArea    { DOUBLE X; DOUBLE Y; DOUBLE Width; DOUBLE Height; };
 struct acSetVar        { CSTRING Field; CSTRING Value; };
 struct acUndo          { LONG Steps; };
@@ -1910,9 +1848,7 @@ inline ERROR acDraw(OBJECTPTR Object) { return Action(AC_Draw,Object,NULL); }
 inline ERROR acEnable(OBJECTPTR Object) { return Action(AC_Enable,Object,NULL); }
 inline ERROR acFlush(OBJECTPTR Object) { return Action(AC_Flush,Object,NULL); }
 inline ERROR acFocus(OBJECTPTR Object) { return Action(AC_Focus,Object,NULL); }
-inline ERROR acFree(OBJECTPTR Object) { return Action(AC_Free,Object,NULL); }
 inline ERROR acHide(OBJECTPTR Object) { return Action(AC_Hide,Object,NULL); }
-inline ERROR acInit(OBJECTPTR Object) { return Action(AC_Init,Object,NULL); }
 inline ERROR acLock(OBJECTPTR Object) { return Action(AC_Lock,Object,NULL); }
 inline ERROR acLostFocus(OBJECTPTR Object) { return Action(AC_LostFocus,Object,NULL); }
 inline ERROR acMoveToBack(OBJECTPTR Object) { return Action(AC_MoveToBack,Object,NULL); }
@@ -1927,12 +1863,12 @@ inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
-inline ERROR acClipboard(OBJECTPTR Object, LONG Mode) {
+inline ERROR acClipboard(OBJECTPTR Object, CLIPMODE Mode) {
    struct acClipboard args = { Mode };
    return Action(AC_Clipboard, Object, &args);
 }
 
-inline ERROR acDragDrop(OBJECTPTR Object, OBJECTID Source, LONG Item, CSTRING Datatype) {
+inline ERROR acDragDrop(OBJECTPTR Object, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
    struct acDragDrop args = { Source, Item, Datatype };
    return Action(AC_DragDrop, Object, &args);
 }
@@ -1942,8 +1878,8 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
    return Action(AC_Draw, Object, &args);
 }
 
-inline ERROR acDataFeed(OBJECTPTR Object, OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-   struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
+   struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
 }
 
@@ -1965,7 +1901,7 @@ inline ERROR acRead(OBJECTPTR Object, APTR Buffer, LONG Bytes, LONG *Read) {
    }
 }
 
-inline ERROR acRedo(OBJECTPTR Object, LONG Steps) {
+inline ERROR acRedo(OBJECTPTR Object, LONG Steps = 1) {
    struct acRedo args = { Steps };
    return Action(AC_Redo, Object, &args);
 }
@@ -1990,7 +1926,7 @@ inline ERROR acScroll(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
    return Action(AC_Scroll, Object, &args);
 }
 
-inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
    struct acScrollToPoint args = { X, Y, Z, Flags };
    return Action(AC_ScrollToPoint, Object, &args);
 }
@@ -2007,22 +1943,22 @@ inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG S
    return error;
 }
 
-inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
 }
 
-inline ERROR acSaveImage(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveImage args = { { DestID }, { ClassID } };
+inline ERROR acSaveImage(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+   struct acSaveImage args = { Dest, { ClassID } };
    return Action(AC_SaveImage, Object, &args);
 }
 
-inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTID DestID, CLASSID ClassID) {
-   struct acSaveToObject args = { { DestID }, { ClassID } };
+inline ERROR acSaveToObject(OBJECTPTR Object, OBJECTPTR Dest, CLASSID ClassID = 0) {
+   struct acSaveToObject args = { Dest, { ClassID } };
    return Action(AC_SaveToObject, Object, &args);
 }
 
-inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, LONG Position) {
+inline ERROR acSeek(OBJECTPTR Object, DOUBLE Offset, SEEK Position) {
    struct acSeek args = { Offset, Position };
    return Action(AC_Seek, Object, &args);
 }
@@ -2059,9 +1995,9 @@ inline LONG acWriteResult(OBJECTPTR Object, CPTR Buffer, LONG Bytes) {
    else return 0;
 }
 
-#define acSeekStart(a,b)    acSeek((a),(b),SEEK_START)
-#define acSeekEnd(a,b)      acSeek((a),(b),SEEK_END)
-#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK_CURRENT)
+#define acSeekStart(a,b)    acSeek((a),(b),SEEK::START)
+#define acSeekEnd(a,b)      acSeek((a),(b),SEEK::END)
+#define acSeekCurrent(a,b)  acSeek((a),(b),SEEK::CURRENT)
 
 inline ERROR acSelectArea(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) {
    struct acSelectArea area = { X, Y, Width, Height };
@@ -2075,6 +2011,31 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
 #define SetVar(a,b,c)    acSetVar(a,b,c)
+]])
+
+  methods("MetaClass", "mc", {
+    { id=1, name="FindField" }
+  })
+
+  class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
+    double ClassVersion    # Version of the class
+    cstruct(*FieldArray) Fields  # Original field array supplied by the module.
+    array(struct(Field)) Dictionary # Field lookup by ID
+    cstr ClassName         # Name of the class
+    cstr FileExtension     # File extension that is supported by this class.
+    cstr FileDescription   # File description
+    cstr FileHeader        # Internal file header for identifying the file
+    cstr Path              # Module path to the class
+    int Size               # Byte-size of the class when produced as an object
+    int(CLF) Flags         # Special flags
+    cid ClassID            # ID of this class
+    cid BaseClassID        # Base-class ID
+    int OpenCount          # Number of objects allocated to this class
+    int(CCF) Category      # Assigned category
+  ]])
+
+c_insert([[
+inline bool BaseClass::isSubClass() { return Class->ClassID != Class->BaseClassID; }
 ]])
 
   class("StorageDevice", { src="../classes/class_storagedevice.cpp" }, [[
@@ -2250,29 +2211,6 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    OBJECTID ScriptOwnerID;
   ]])
 
-  methods("MetaClass", "mc", {
-    { id=1, name="FindField" }
-  })
-
-  class("MetaClass", { src="../classes/class_metaclass.cpp" }, [[
-    double ClassVersion    # Version of the class
-    struct(*MethodArray) Methods # Original method array supplied by the module.
-    cstruct(*FieldArray) Fields  # Original field array supplied by the module.
-    cstr ClassName         # Name of the class
-    cstr FileExtension     # File extension that is supported by this class.
-    cstr FileDescription   # File description
-    cstr FileHeader        # Internal file header for identifying the file
-    cstr Path              # Module path to the class
-    int Size               # Byte-size of the class when produced as an object
-    int(CLF) Flags         # Special flags
-    cid SubClassID         # Sub-class ID
-    cid BaseClassID        # Base-class ID
-    int OpenCount          # Number of objects allocated to this class
-    int TotalMethods       # Total number of methods
-    int TotalFields        # Total number of fields, including any additional standard fields like 'Name'
-    int(CCF) Category      # Assigned category
-  ]])
-
   methods("Task", "Task", {
     { id=1, name="Expunge" },
     { id=2, name="AddArgument" },
@@ -2283,7 +2221,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 
   class("Task", { src="../classes/class_task.cpp", output="../classes/class_task_def.c" }, [[
     double TimeOut
-    int Flags
+    int(TSF) Flags
     int ReturnCode
     int ProcessID    # Native process ID of the activated task
   ]])
@@ -2298,7 +2236,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
    int   DataSize     # Size of user data.
    int   StackSize    # Pre-set stack size
    error Error        # Error code returned by the thread on completion.
-   int   Flags        # Optional flags.
+   int(THF) Flags     # Optional flags.
   ]])
 
   methods("Module", "Mod", {
@@ -2390,22 +2328,22 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
 // Note that the length of the data is only needed when messaging between processes, so we can skip it for these
 // direct-access data channel macros.
 
-#define acDataContent(a,b)  acDataFeed((a),0,DATA_CONTENT,(b),0)
-#define acDataXML(a,b)      acDataFeed((a),0,DATA_XML,(b),0)
-#define acDataText(a,b)     acDataFeed((a),0,DATA_TEXT,(b),0)
+#define acDataContent(a,b)  acDataFeed((a),0,DATA::CONTENT,(b),0)
+#define acDataXML(a,b)      acDataFeed((a),0,DATA::XML,(b),0)
+#define acDataText(a,b)     acDataFeed((a),0,DATA::TEXT,(b),0)
 
 inline ERROR acCustom(OBJECTID ObjectID, LONG Number, CSTRING String) {
    struct acCustom args = { Number, String };
    return ActionMsg(AC_Custom, ObjectID, &args);
 }
 
-inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTID SenderID, LONG Datatype, const APTR Data, LONG Size) {
-   struct acDataFeed channel = { { SenderID }, { Datatype }, Data, Size };
+inline ERROR acDataFeed(OBJECTID ObjectID, OBJECTPTR Sender, DATA Datatype, const APTR Data, LONG Size) {
+   struct acDataFeed channel = { Sender, Datatype, Data, Size };
    return ActionMsg(AC_DataFeed, ObjectID, &channel);
 }
 
-inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTID Source, LONG Item, CSTRING Datatype) {
-   struct acDragDrop args = { { Source }, Item, Datatype };
+inline ERROR acDragDrop(OBJECTID ObjectID, OBJECTPTR Source, LONG Item, CSTRING Datatype) {
+   struct acDragDrop args = { Source, Item, Datatype };
    return ActionMsg(AC_DragDrop, ObjectID, &args);
 }
 
@@ -2419,7 +2357,7 @@ inline ERROR acMove(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0) {
    return ActionMsg(AC_Move, ObjectID, &move);
 }
 
-inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = MTF_X|MTF_Y) {
+inline ERROR acMoveToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, MTF Flags = MTF::X|MTF::Y) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return ActionMsg(AC_MoveToPoint, ObjectID, &moveto);
 }
@@ -2434,7 +2372,7 @@ inline ERROR acResize(OBJECTID ObjectID, DOUBLE Width, DOUBLE Height, DOUBLE Dep
    return ActionMsg(AC_Resize, ObjectID, &resize);
 }
 
-inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, LONG Flags = STP_X|STP_Y) {
+inline ERROR acScrollToPoint(OBJECTID ObjectID, DOUBLE X, DOUBLE Y, DOUBLE Z = 0, STP Flags = STP::X|STP::Y) {
    struct acScrollToPoint scroll = { X, Y, Z, Flags };
    return ActionMsg(AC_ScrollToPoint, ObjectID, &scroll);
 }
@@ -2456,9 +2394,7 @@ inline ERROR acDraw(OBJECTID ObjectID) { return ActionMsg(AC_Draw, ObjectID, NUL
 inline ERROR acEnable(OBJECTID ObjectID) { return ActionMsg(AC_Enable, ObjectID, NULL); }
 inline ERROR acFlush(OBJECTID ObjectID) { return ActionMsg(AC_Flush, ObjectID, NULL); }
 inline ERROR acFocus(OBJECTID ObjectID) { return ActionMsg(AC_Focus, ObjectID, NULL); }
-inline ERROR acFree(OBJECTID ObjectID) { return ActionMsg(AC_Free, ObjectID, NULL); }
 inline ERROR acHide(OBJECTID ObjectID) { return ActionMsg(AC_Hide, ObjectID, NULL); }
-inline ERROR acInit(OBJECTID ObjectID) { return ActionMsg(AC_Init, ObjectID, NULL); }
 inline ERROR acLostFocus(OBJECTID ObjectID) { return ActionMsg(AC_LostFocus, ObjectID, NULL); }
 inline ERROR acMoveToBack(OBJECTID ObjectID) { return ActionMsg(AC_MoveToBack, ObjectID, NULL); }
 inline ERROR acMoveToFront(OBJECTID ObjectID) { return ActionMsg(AC_MoveToFront, ObjectID, NULL); }
@@ -2484,29 +2420,6 @@ inline FIELD ResolveField(CSTRING Field) {
 
 #ifdef __system__
 
-// Semaphore management structure.
-
-#define MAX_SEMAPHORES  40  // Maximum number of semaphores that can be allocated in the system
-
-struct SemaphoreEntry {   // The index of each semaphore in the array indicates their IDs
-   ULONG NameID;          // Hashed name of the semaphore
-   LONG  BlockingProcess; // Process ID of the blocker
-   LONG  BlockingThread;  // Global thread ID of the blocker
-   LARGE Data;            // User configurable 64-bit data
-   WORD  Flags;           // Status flags
-   WORD  BlockingValue;   // Value used for blocking access
-   WORD  MaxValue;        // Semaphore maximum value
-   WORD  Counter;         // When the counter reaches zero, the semaphore is blocked
-   struct SemProcess {
-      LONG ProcessID;
-      UBYTE AllocCount;      // Number of times that this process has allocated the semaphore with AllocSemaphore()
-      UBYTE BlockCount;      // Count of blocking locks currently recorded
-      UBYTE AccessCount;     // Count of access locks currently recorded
-      UBYTE BufferCount;     // Buffered accesses (this value increases instead of AccessCount when the BlockCount is set)
-   } Processes[20];
-   //LONG     FIFO[10];       // List of processes currently queued for access
-};
-
 struct ActionMessage {
    OBJECTID ObjectID;        // The object that is to receive the action
    LONG  Time;
@@ -2518,34 +2431,6 @@ struct ActionMessage {
 
 #endif
 
-enum { // For SysLock()
-   PL_WAITLOCKS=1,
-   PL_FORBID,
-   PL_SEMAPHORES,
-   #ifdef _WIN32
-      CN_SEMAPHORES,
-   #endif
-   PL_END
-};
-
-struct SharedControl {
-   volatile LONG ValidateProcess;
-   WORD SystemState;
-   volatile WORD WLIndex;           // Current insertion point for the wait-lock array.
-   LONG MagicKey;                   // This magic key is set to the semaphore key (used only as an indicator for initialisation)
-   LONG SemaphoreOffset;            // Offset to the semaphore control array
-   LONG TaskOffset;                 // Offset to the task control array
-   LONG WLOffset;                   // Offset to the wait-lock array
-   #ifdef __unix__
-      struct {
-         pthread_mutex_t Mutex;
-         pthread_cond_t Cond;
-         LONG PID;               // Resource tracking: Process that has the current lock.
-         WORD Count;             // Resource tracking: Count of all locks (nesting)
-      } PublicLocks[PL_END];
-   #endif
-};
-
 // Event support
 
 struct rkEvent {
@@ -2553,34 +2438,34 @@ struct rkEvent {
    // Data follows
 };
 
-#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG_DISPLAY, "resolution", "change")
+#define EVID_DISPLAY_RESOLUTION_CHANGE  GetEventID(EVG::DISPLAY, "resolution", "change")
 
-#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG_GUI, "surface", "focus")
+#define EVID_GUI_SURFACE_FOCUS          GetEventID(EVG::GUI, "surface", "focus")
 
-#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG_FILESYSTEM, "volume", "created")
-#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG_FILESYSTEM, "volume", "deleted")
+#define EVID_FILESYSTEM_VOLUME_CREATED  GetEventID(EVG::FILESYSTEM, "volume", "created")
+#define EVID_FILESYSTEM_VOLUME_DELETED  GetEventID(EVG::FILESYSTEM, "volume", "deleted")
 
-#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG_SYSTEM, "task", "created")
-#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG_SYSTEM, "task", "removed")
+#define EVID_SYSTEM_TASK_CREATED        GetEventID(EVG::SYSTEM, "task", "created")
+#define EVID_SYSTEM_TASK_REMOVED        GetEventID(EVG::SYSTEM, "task", "removed")
 
-#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG_POWER, "state", "suspending")
-#define EVID_POWER_STATE_RESUMED        GetEventID(EVG_POWER, "state", "resumed")
-#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG_POWER, "display", "standby")
-#define EVID_POWER_BATTERY_LOW          GetEventID(EVG_POWER, "battery", "low")
-#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG_POWER, "battery", "critical")
-#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG_POWER, "cputemp", "high")
-#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG_POWER, "cputemp", "critical")
-#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG_POWER, "screensaver", "on")
-#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG_POWER, "screensaver", "off")
+#define EVID_POWER_STATE_SUSPENDING     GetEventID(EVG::POWER, "state", "suspending")
+#define EVID_POWER_STATE_RESUMED        GetEventID(EVG::POWER, "state", "resumed")
+#define EVID_POWER_DISPLAY_STANDBY      GetEventID(EVG::POWER, "display", "standby")
+#define EVID_POWER_BATTERY_LOW          GetEventID(EVG::POWER, "battery", "low")
+#define EVID_POWER_BATTERY_CRITICAL     GetEventID(EVG::POWER, "battery", "critical")
+#define EVID_POWER_CPUTEMP_HIGH         GetEventID(EVG::POWER, "cputemp", "high")
+#define EVID_POWER_CPUTEMP_CRITICAL     GetEventID(EVG::POWER, "cputemp", "critical")
+#define EVID_POWER_SCREENSAVER_ON       GetEventID(EVG::POWER, "screensaver", "on")
+#define EVID_POWER_SCREENSAVER_OFF      GetEventID(EVG::POWER, "screensaver", "off")
 
-#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG_IO, "keymap", "change")
-#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG_IO, "keyboard", "keypress")
+#define EVID_IO_KEYMAP_CHANGE           GetEventID(EVG::IO, "keymap", "change")
+#define EVID_IO_KEYBOARD_KEYPRESS       GetEventID(EVG::IO, "keyboard", "keypress")
 
-#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG_AUDIO, "volume", "master")
-#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG_AUDIO, "volume", "linein")
-#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG_AUDIO, "volume", "mic")
-#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG_AUDIO, "volume", "muted") // All volumes have been muted
-#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG_AUDIO, "volume", "unmuted") // All volumes have been unmuted
+#define EVID_AUDIO_VOLUME_MASTER        GetEventID(EVG::AUDIO, "volume", "master")
+#define EVID_AUDIO_VOLUME_LINEIN        GetEventID(EVG::AUDIO, "volume", "linein")
+#define EVID_AUDIO_VOLUME_MIC           GetEventID(EVG::AUDIO, "volume", "mic")
+#define EVID_AUDIO_VOLUME_MUTED         GetEventID(EVG::AUDIO, "volume", "muted") // All volumes have been muted
+#define EVID_AUDIO_VOLUME_UNMUTED       GetEventID(EVG::AUDIO, "volume", "unmuted") // All volumes have been unmuted
 
 // Event structures.
 
@@ -2595,7 +2480,7 @@ typedef struct { EVENTID EventID; } evKeymapChange;
 typedef struct { EVENTID EventID; } evScreensaverOn;
 typedef struct { EVENTID EventID; } evScreensaverOff;
 typedef struct { EVENTID EventID; DOUBLE Volume; LONG Muted; } evVolume;
-typedef struct { EVENTID EventID; LONG Qualifiers; LONG Code; LONG Unicode; } evKey;
+typedef struct { EVENTID EventID; KQ Qualifiers; KEY Code; LONG Unicode; } evKey;
 typedef struct { EVENTID EventID; WORD TotalWithFocus; WORD TotalLostFocus; OBJECTID FocusList[1]; } evFocus;
 
 // Hotplug event structure.  The hotplug event is sent whenever a new hardware device is inserted by the user.

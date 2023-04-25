@@ -502,7 +502,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -754,7 +754,7 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR_Okay) {
          return ERR_AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -877,7 +877,7 @@ cstr Path:     The path that is prefixed to the file name when added to the comp
 Okay: The file was added to the compression object.
 Args:
 File: An error was encountered when trying to open the source file.
-NoPermission: The CMF_READ_ONLY flag has been set on the compression object.
+NoPermission: The READ_ONLY flag has been set on the compression object.
 NoSupport: The sub-class does not support this method.
 
 *********************************************************************************************************************/
@@ -889,9 +889,9 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
    if ((!Args) or (!Args->Location) or (!*Args->Location)) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
 
-   if (Self->Flags & CMF_READ_ONLY) return log.warning(ERR_NoPermission);
+   if ((Self->Flags & CMF::READ_ONLY) != CMF::NIL) return log.warning(ERR_NoPermission);
 
-   if (Self->SubID) return log.warning(ERR_NoSupport);
+   if (Self->isSubClass()) return log.warning(ERR_NoSupport);
 
    if (Self->OutputID) {
       std::ostringstream out;
@@ -976,10 +976,10 @@ static ERROR COMPRESSION_CompressFile(extCompression *Self, struct cmpCompressFi
       std::string srcfolder(src, pathlen); // Extract the path without the file name
 
       DirInfo *dir;
-      if (!OpenDir(srcfolder.c_str(), RDF_FILE, &dir)) {
+      if (!OpenDir(srcfolder.c_str(), RDF::FILE, &dir)) {
          while (!ScanDir(dir)) {
             FileInfo *scan = dir->Info;
-            if (!StrCompare(filename, scan->Name, 0, STR_WILDCARD)) {
+            if (!StrCompare(filename, scan->Name, 0, STR::WILDCARD)) {
                auto folder = src.substr(0, pathlen);
                folder.append(scan->Name);
                error = compress_file(Self, folder, path, FALSE);
@@ -1123,7 +1123,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    // If the object belongs to a Compression sub-class, return ERR_NoSupport
 
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    // Tell the user what we are doing
 
@@ -1135,7 +1135,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    // Search for the file(s) in our archive that match the given name and extract them to the destination folder.
 
-   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, Self->Permissions);
+   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, LONG(Self->Permissions));
 
    std::string destpath(Args->Dest);
 
@@ -1151,7 +1151,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
    for (auto &zf : Self->Files) {
       log.trace("Found %s", zf.Name);
-      if (!StrCompare(Args->Path, zf.Name, 0, STR_WILDCARD)) {
+      if (!StrCompare(Args->Path, zf.Name, 0, STR::WILDCARD)) {
          log.trace("Extracting \"%s\"", zf.Name);
 
          if (Self->OutputID) {
@@ -1170,8 +1170,8 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          // If the destination is a folder that already exists, skip this compression entry
 
          if ((destpath.back() IS '/') or (destpath.back() IS '\\')) {
-            LONG result;
-            if ((!AnalysePath(destpath.c_str(), &result)) and (result IS LOC_DIRECTORY)) {
+            LOC result;
+            if ((!AnalysePath(destpath.c_str(), &result)) and (result IS LOC::DIRECTORY)) {
                Self->FileIndex++;
                continue;
             }
@@ -1185,7 +1185,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          feedback.Hour   = (zf.TimeStamp>>11) & 0x1f;
          feedback.Minute = (zf.TimeStamp>>5)  & 0x3f;
          feedback.Second = (zf.TimeStamp>>1)  & 0x0f;
-         feedback.FeedbackID     = FDB_DECOMPRESS_FILE;
+         feedback.FeedbackID     = FDB::DECOMPRESS_FILE;
          feedback.Index          = Self->FileIndex;
          feedback.Path           = zf.Name.c_str();
          feedback.Dest           = destpath.c_str();
@@ -1207,7 +1207,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
          // Seek to the start of the compressed data
 
-         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
+         if (acSeek(Self->FileIO, zf.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
          }
@@ -1215,7 +1215,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          UWORD namelen, extralen;
          if (flReadLE(Self->FileIO, &namelen)) { error = ERR_Read; goto exit; }
          if (flReadLE(Self->FileIO, &extralen)) { error = ERR_Read; goto exit; }
-         if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
+         if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
             error = log.warning(ERR_Seek);
             goto exit;
          }
@@ -1282,29 +1282,29 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
          else {
             // Create the destination file or folder
 
-            LONG permissions;
+            PERMIT permissions;
 
-            if (Self->Flags & CMF_APPLY_SECURITY) {
+            if ((Self->Flags & CMF::APPLY_SECURITY) != CMF::NIL) {
                if (zf.Flags & ZIP_SECURITY) {
-                  permissions = 0;
-                  if (zf.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-                  if (zf.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-                  if (zf.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+                  permissions = PERMIT::NIL;
+                  if (zf.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+                  if (zf.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+                  if (zf.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-                  if (zf.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-                  if (zf.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-                  if (zf.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+                  if (zf.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+                  if (zf.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+                  if (zf.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-                  if (zf.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-                  if (zf.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-                  if (zf.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+                  if (zf.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+                  if (zf.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+                  if (zf.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
                }
                else permissions = Self->Permissions;
             }
             else permissions = Self->Permissions;
 
             objFile::create file = {
-               fl::Path(destpath), fl::Flags(FL_NEW|FL_WRITE), fl::Permissions(permissions)
+               fl::Path(destpath), fl::Flags(FL::NEW|FL::WRITE), fl::Permissions(permissions)
             };
 
             if (!file.ok()) {
@@ -1318,7 +1318,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
             Self->Zip.next_out  = 0;
             Self->Zip.avail_out = 0;
 
-            if ((zf.CompressedSize > 0) and (file->Flags & FL_FILE)) {
+            if ((zf.CompressedSize > 0) and ((file->Flags & FL::FILE) != FL::NIL)) {
                if (zf.DeflateMethod IS 0) {
                   // This routine is used if the file is stored rather than compressed
 
@@ -1420,7 +1420,7 @@ static ERROR COMPRESSION_DecompressFile(extCompression *Self, struct cmpDecompre
 
             // Give the file a date that matches the original
 
-            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, 0);
+            flSetDate(*file, feedback.Year, feedback.Month, feedback.Day, feedback.Hour, feedback.Minute, feedback.Second, FDT::NIL);
          }
 
          if (feedback.Progress < feedback.OriginalSize) {
@@ -1479,9 +1479,9 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    if ((!Args) or (!Args->Path) or (!Args->Path[0])) return log.warning(ERR_NullArgs);
    if (!Args->Object) return log.warning(ERR_NullArgs);
    if (!Self->FileIO) return log.warning(ERR_MissingPath);
-   if (Self->SubID) return ERR_NoSupport; // Object belongs to a Compression sub-class
+   if (Self->isSubClass()) return ERR_NoSupport; // Object belongs to a Compression sub-class
 
-   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, Self->Permissions);
+   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, LONG(Self->Permissions));
 
    bool inflate_end = false;
    Self->FileIndex = 0;
@@ -1493,7 +1493,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
    LONG total_scanned = 0;
    for (auto &list : Self->Files) {
       total_scanned++;
-      if (StrCompare(Args->Path, list.Name, 0, STR_WILDCARD)) continue;
+      if (StrCompare(Args->Path, list.Name, 0, STR::WILDCARD)) continue;
 
       log.trace("Decompressing \"%s\"", list.Name);
 
@@ -1505,7 +1505,7 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
       fb.Hour   = (list.TimeStamp>>11) & 0x1f;
       fb.Minute = (list.TimeStamp>>5)  & 0x3f;
       fb.Second = (list.TimeStamp>>1)  & 0x0f;
-      fb.FeedbackID     = FDB_DECOMPRESS_OBJECT;
+      fb.FeedbackID     = FDB::DECOMPRESS_OBJECT;
       fb.Index          = Self->FileIndex;
       fb.Path           = list.Name.c_str();
       fb.Dest           = NULL;
@@ -1517,14 +1517,14 @@ static ERROR COMPRESSION_DecompressObject(extCompression *Self, struct cmpDecomp
 
       // Seek to the start of the compressed data
 
-      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) {
+      if (acSeek(Self->FileIO, list.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
 
       UWORD namelen, extralen;
       if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
       if (flReadLE(Self->FileIO, &extralen)) return ERR_Read;
-      if (acSeek(Self->FileIO, namelen + extralen, SEEK_CURRENT) != ERR_Okay) {
+      if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR_Okay) {
          return log.warning(ERR_Seek);
       }
 
@@ -1658,7 +1658,7 @@ Find: Find the first item that matches a given filter.
 
 Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that
 matches the Path parameter string in conjunction with the options in Flags.  The options match those in the
-~Core.StrCompare() function - in particular `STR_CASE`, `STR_MATCH_LEN` and `STR_WILDCARD` are the most
+~Core.StrCompare() function - in particular `STR::CASE`, `STR::MATCH_LEN` and `STR::WILDCARD` are the most
 useful.
 
 Please refer to the #Scan() method for a break-down of the CompressedItem structure that is returned by this
@@ -1685,9 +1685,9 @@ static ERROR COMPRESSION_Find(extCompression *Self, struct cmpFind *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
-   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, Args->Flags);
+   log.traceBranch("Path: %s, Flags: $%.8x", Args->Path, LONG(Args->Flags));
    for (auto &item : Self->Files) {
       if (StrCompare(Args->Path, item.Name, 0, Args->Flags)) continue;
 
@@ -1707,7 +1707,7 @@ Flush: Flushes all pending actions.
 
 static ERROR COMPRESSION_Flush(extCompression *Self, APTR Void)
 {
-   if (Self->SubID) return ERR_Okay;
+   if (Self->isSubClass()) return ERR_Okay;
 
    Self->Zip.avail_in = 0;
 
@@ -1765,7 +1765,7 @@ static ERROR COMPRESSION_Free(extCompression *Self, APTR Void)
    if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
    if (Self->Input)        { FreeResource(Self->Input); Self->Input = NULL; }
    if (Self->Output)       { FreeResource(Self->Output); Self->Output = NULL; }
-   if (Self->FileIO)       { acFree(Self->FileIO); Self->FileIO = NULL; }
+   if (Self->FileIO)       { FreeResource(Self->FileIO); Self->FileIO = NULL; }
    if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
 
    Self->~extCompression();
@@ -1787,10 +1787,10 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
 
       return ERR_Okay;
    }
-   else if (Self->Flags & CMF_NEW) {
+   else if ((Self->Flags & CMF::NEW) != CMF::NIL) {
       // If the NEW flag is set then create a new archive, destroying any file already at that location
 
-      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_WRITE|FL_NEW)))) {
+      if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
          return ERR_Okay;
       }
       else {
@@ -1805,23 +1805,23 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
    }
    else {
       ERROR error = ERR_Okay;
-      LONG type;
-      bool exists = ((!AnalysePath(path, &type)) and (type IS LOC_FILE));
+      LOC type;
+      bool exists = ((!AnalysePath(path, &type)) and (type IS LOC::FILE));
 
       if (exists) {
          pf::Create<objFile> file({
             fl::Path(path),
-            fl::Flags(FL_READ|FL_APPROXIMATE|((Self->Flags & CMF_READ_ONLY) ? 0 : FL_WRITE))
+            fl::Flags(FL::READ|FL::APPROXIMATE|(((Self->Flags & CMF::READ_ONLY) != CMF::NIL) ? FL::NIL : FL::WRITE))
          }, NF::INTEGRAL);
 
          // Try switching to read-only access if we were denied permission.
 
          if (file.ok()) Self->FileIO = *file;
-         else if ((file.error IS ERR_NoPermission) and (!(Self->Flags & CMF_READ_ONLY))) {
+         else if ((file.error IS ERR_NoPermission) and ((Self->Flags & CMF::READ_ONLY) IS CMF::NIL)) {
             log.trace("Trying read-only access...");
 
-            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) {
-               Self->Flags |= CMF_READ_ONLY;
+            if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) {
+               Self->Flags |= CMF::READ_ONLY;
             }
             else error = ERR_File;
          }
@@ -1847,12 +1847,12 @@ static ERROR COMPRESSION_Init(extCompression *Self, APTR Void)
          }
          else return ERR_NoSupport;
       }
-      else if ((!exists) and (Self->Flags & CMF_CREATE_FILE)) {
+      else if ((!exists) and ((Self->Flags & CMF::CREATE_FILE) != CMF::NIL)) {
          // Create a new file if the requested location does not exist
 
          log.extmsg("Creating a new file because the location does not exist.");
 
-         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_WRITE|FL_NEW)))) {
+         if ((Self->FileIO = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::WRITE|FL::NEW)))) {
             return ERR_Okay;
          }
          else {
@@ -1882,10 +1882,10 @@ static ERROR COMPRESSION_NewObject(extCompression *Self, APTR Void)
 
    new (Self) extCompression;
 
-   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Output, NULL)) {
-      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM_DATA, (APTR *)&Self->Input, NULL)) {
+   if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL)) {
+      if (!AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL)) {
          Self->CompressionLevel = 60; // 60% compression by default
-         Self->Permissions      = 0; // Inherit permissions by default. PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
+         Self->Permissions      = PERMIT::NIL; // Inherit permissions by default. PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
          Self->MinOutputSize    = (32 * 1024) + 2048; // Has to at least match the minimum 'window size' of each compression block, plus extra in case of overflow.  Min window size is typically 16k
          Self->WindowBits = MAX_WBITS; // If negative then you get raw compression when dealing with buffers and stream data, i.e. no header information
          return ERR_Okay;
@@ -1926,14 +1926,14 @@ static ERROR COMPRESSION_RemoveFile(extCompression *Self, struct cmpRemoveFile *
 
    if ((!Args) or (!Args->Path)) return log.warning(ERR_NullArgs);
 
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    // Search for the file(s) in our archive that match the given name and delete them.
 
    log.msg("%s", Args->Path);
 
    for (auto it = Self->Files.begin(); it != Self->Files.end(); ) {
-      if (!StrCompare(Args->Path, it->Name, 0, STR_WILDCARD)) {
+      if (!StrCompare(Args->Path, it->Name, 0, STR::WILDCARD)) {
          // Delete the file from the archive
 
          if (Self->OutputID) {
@@ -1986,7 +1986,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 
    if ((!Args) or (!Args->Callback)) return log.warning(ERR_NullArgs);
 
-   if (Self->SubID) return ERR_NoSupport;
+   if (Self->isSubClass()) return ERR_NoSupport;
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 
@@ -2003,7 +2003,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 
       if (Args->Folder) {
          if ((LONG)item.Name.size() > folder_len) {
-            if (!StrCompare(Args->Folder, item.Name, 0, 0)) {
+            if (!StrCompare(Args->Folder, item.Name)) {
                if ((folder_len > 0) and (item.Name[folder_len] != '/')) continue;
                if ((item.Name[folder_len] IS '/') and (!item.Name[folder_len+1])) continue;
 
@@ -2021,7 +2021,7 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
       }
 
       if ((Args->Filter) and (Args->Filter[0])) {
-         if (!StrCompare(Args->Filter, item.Name, 0, STR_WILDCARD)) break;
+         if (!StrCompare(Args->Filter, item.Name, 0, STR::WILDCARD)) break;
          else continue;
       }
 
@@ -2059,27 +2059,27 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
 #include "compression_func.cpp"
 
 static const FieldDef clPermissionFlags[] = {
-   { "Read",         PERMIT_READ },
-   { "Write",        PERMIT_WRITE },
-   { "Exec",         PERMIT_EXEC },
-   { "Executable",   PERMIT_EXEC },
-   { "Delete",       PERMIT_DELETE },
-   { "Hidden",       PERMIT_HIDDEN },
-   { "Archive",      PERMIT_ARCHIVE },
-   { "Password",     PERMIT_PASSWORD },
-   { "UserID",       PERMIT_USERID },
-   { "GroupID",      PERMIT_GROUPID },
-   { "OthersRead",   PERMIT_OTHERS_READ },
-   { "OthersWrite",  PERMIT_OTHERS_WRITE },
-   { "OthersExec",   PERMIT_OTHERS_EXEC },
-   { "OthersDelete", PERMIT_OTHERS_DELETE },
-   { "GroupRead",    PERMIT_GROUP_READ },
-   { "GroupWrite",   PERMIT_GROUP_WRITE },
-   { "GroupExec",    PERMIT_GROUP_EXEC },
-   { "GroupDelete",  PERMIT_GROUP_DELETE },
-   { "AllRead",      PERMIT_ALL_READ },
-   { "AllWrite",     PERMIT_ALL_WRITE },
-   { "AllExec",      PERMIT_ALL_EXEC },
+   { "Read",         PERMIT::READ },
+   { "Write",        PERMIT::WRITE },
+   { "Exec",         PERMIT::EXEC },
+   { "Executable",   PERMIT::EXEC },
+   { "Delete",       PERMIT::DELETE },
+   { "Hidden",       PERMIT::HIDDEN },
+   { "Archive",      PERMIT::ARCHIVE },
+   { "Password",     PERMIT::PASSWORD },
+   { "UserID",       PERMIT::USERID },
+   { "GroupID",      PERMIT::GROUPID },
+   { "OthersRead",   PERMIT::OTHERS_READ },
+   { "OthersWrite",  PERMIT::OTHERS_WRITE },
+   { "OthersExec",   PERMIT::OTHERS_EXEC },
+   { "OthersDelete", PERMIT::OTHERS_DELETE },
+   { "GroupRead",    PERMIT::GROUP_READ },
+   { "GroupWrite",   PERMIT::GROUP_WRITE },
+   { "GroupExec",    PERMIT::GROUP_EXEC },
+   { "GroupDelete",  PERMIT::GROUP_DELETE },
+   { "AllRead",      PERMIT::ALL_READ },
+   { "AllWrite",     PERMIT::ALL_WRITE },
+   { "AllExec",      PERMIT::ALL_EXEC },
    { NULL, 0 }
 };
 
@@ -2116,7 +2116,7 @@ extern "C" ERROR add_compression_class(void)
       fl::FileExtension("*.zip"),
       fl::FileDescription("ZIP File"),
       fl::FileHeader("[0:$504b0304]"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Actions(clCompressionActions),
       fl::Methods(clCompressionMethods),
       fl::Fields(clFields),

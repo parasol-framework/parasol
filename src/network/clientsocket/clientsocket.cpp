@@ -87,7 +87,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
    if (Socket->Terminating) return;
 
 #ifdef ENABLE_SSL
-   if ((Socket->SSL) and (Socket->State IS NTC_CONNECTING_SSL)) {
+   if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
    }
@@ -169,7 +169,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       if ((ClientSocket->Outgoing.Type IS CALL_NONE) and (!ClientSocket->WriteQueue.Buffer)) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD_REMOVE|RFD_WRITE|RFD_SOCKET, NULL, NULL);
+            RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, NULL, NULL);
          #elif _WIN32
             win_socketstate(ClientSocket->SocketHandle, -1, 0);
          #endif
@@ -237,7 +237,7 @@ static ERROR CLIENTSOCKET_Init(extClientSocket *Self, APTR Void)
    Self->Client->TotalSockets++;
 
 #ifdef __linux__
-   RegisterFD(Self->Handle, RFD_READ|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_incoming), Self);
+   RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_incoming), Self);
 #elif _WIN32
    win_socket_reference(Self->Handle, Self);
 #endif
@@ -317,7 +317,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
 
    if (!queue->Buffer) {
       queue->Length = 2048;
-      if (AllocMemory(queue->Length, MEM_NO_CLEAR, &queue->Buffer) != ERR_Okay) {
+      if (AllocMemory(queue->Length, MEM::NO_CLEAR, &queue->Buffer) != ERR_Okay) {
          return ERR_AllocMemory;
       }
    }
@@ -357,7 +357,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
             if (total_length > queue->Length) {
                MSG("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
-               if (!AllocMemory(total_length, MEM_NO_CLEAR, &buffer)) {
+               if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
                   if (queue->Buffer) {
                      CopyMemory(queue->Buffer, buffer, queue->Index);
                      FreeResource(queue->Buffer);
@@ -445,7 +445,7 @@ static ERROR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
       if ((error IS ERR_DataSize) or (error IS ERR_BufferOverflow) or (len > 0))  {
          write_queue((extNetSocket *)(Self->Client->NetSocket), &Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD_WRITE|RFD_SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
             win_socketstate(Self->SocketHandle, -1, TRUE);
          #endif
@@ -526,7 +526,7 @@ static ERROR init_clientsocket(void)
       fl::BaseClassID(ID_CLIENTSOCKET),
       fl::ClassVersion(1.0),
       fl::Name("ClientSocket"),
-      fl::Category(CCF_NETWORK),
+      fl::Category(CCF::NETWORK),
       fl::Actions(clClientSocketActions),
       fl::Fields(clClientSocketFields),
       fl::Size(sizeof(extClientSocket)),

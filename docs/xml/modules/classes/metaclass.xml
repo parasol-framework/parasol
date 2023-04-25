@@ -1,0 +1,321 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>MetaClass</name>
+    <type>class</type>
+    <module>Core</module>
+    <comment>The MetaClass is used to manage all classes supported by the system core.</comment>
+    <version>1</version>
+    <id>8bf5f002</id>
+    <idstring>ID_METACLASS</idstring>
+    <category>System</category>
+    <include>modules/metaclass.h</include>
+    <copyright>Paul Manias 1996-2023</copyright>
+    <description>
+<p>The MetaClass is at the root of the Core's object oriented design and is responsible for managing the construction of new classes.  All classes that are created within the system at run-time are represented by a MetaClass object.  Each MetaClass object can be inspected to discover detailed information about the class that has been declared.  Most of the interesting structural data can be gleaned from the <field>Fields</field> array.</p>
+<p>A number of functions are available in the Core for the purpose of class management.  The Core maintains its own list of MetaClass objects, which you can search by calling the <function module="Core">FindClass</function> function.  The <function module="Core">CheckAction</function> function provides a way of checking if a particular pre-defined action is supported by a class.</p>
+<p>Classes are almost always encapsulated by shared modules, although it is possible to create private classes inside executable programs.  For information on the creation of classes, refer to the Class Development Guide for a complete run-down on class development.</p></description>
+    <source>
+      <file path="../classes/">class_metaclass.cpp</file>
+    </source>
+  </info>
+
+  <methods>
+    <method>
+      <name>FindField</name>
+      <comment>Search a class definition for a specific field.</comment>
+      <prototype>ERROR mcFindField(OBJECTPTR Object, LONG ID, struct Field ** Field, objMetaClass ** Source)</prototype>
+      <input>
+        <param type="LONG" name="ID">The field ID to search for.  Field names can be converted to ID's by using the <function module="Core">StrHash</function> function.</param>
+        <param type="struct Field **" name="Field">Pointer to the field if discovered, otherwise NULL.</param>
+        <param type="objMetaClass **" name="Source">Pointer to the class that is associated with the field (which can match the caller), or NULL if the field was not found.</param>
+      </input>
+      <description>
+<p>This method checks if a class has defined a given field by scanning its blueprint for a matching ID.</p>
+<p>If the field is present in an integral class, a reference to that class will be returned in the Source parameter.</p>
+      </description>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>ActionTable</name>
+      <comment>This field can be read to retrieve a MetaClass object's internal action table.</comment>
+      <access read="G">Get</access>
+      <type>APTR []</type>
+      <description>
+<p>This field retrieves the internal action table of a class. The action table is arranged into a jump table of action routines, with each routine pointing directly to the object support functions.  The size of the jump table is defined by the global constant <code>AC_END</code>.  The table is sorted by action ID.</p>
+<p>It is possible to check if an action is supported by a class by looking up its index within the ActionTable, for example <code>Routine[AC_Read]</code>.  Calling an action routine directly is an illegal operation unless A) The call is made from an action support function in a class module and B) Special circumstances allow for such a call, as documented in the Action Support Guide.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Actions</name>
+      <comment>Defines the actions supported by the class.</comment>
+      <access write="I">Init</access>
+      <type>APTR</type>
+      <description>
+<p>It is common practice when developing classes to write code for actions that will enhance class functionality. Action support is defined by listing a series of action ID's paired with customised routines.  The list will be copied to a jump table that is used internally.  After this operation, the original action list will serve no further purpose.</p>
+<p>The following example shows an action list array borrowed from the <class name="Picture">Picture</class> class:</p>
+<pre>ActionArray clActions[] = {
+   { AC_Free,          PIC_Free },
+   { AC_NewObject,     PIC_NewObject },
+   { AC_Init,          PIC_Init },
+   { AC_Query,         PIC_Query },
+   { AC_Read,          PIC_Read },
+   { AC_SaveToObject,  PIC_SaveToObject },
+   { AC_Seek,          PIC_Seek },
+   { AC_Write,         PIC_Write },
+   { 0, NULL }
+};
+</pre>
+<p>Never define method ID's in an action list - the <field>Methods</field> field is provided for this purpose.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>BaseClassID</name>
+      <comment>Specifies the base class ID of a class object.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CLASSID</type>
+      <description>
+<p>Prior to the initialisation of a MetaClass object, this field must be set to the base class ID that the class will represent.  Class ID's are generated as a hash from the class <field>Name</field>, so if this field is undefined then it is generated from the Name automatically.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Category</name>
+      <comment>The system category that a class belongs to.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="CCF">CCF</type>
+      <description>
+<p>When designing a new class it is recommended that a suitable category is chosen and declared in this field. It is acceptable for a class to be a member of multiple categories by combining category flags together.</p>
+<types lookup="CCF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>ClassID</name>
+      <comment>Specifies the ID of a class object.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CLASSID</type>
+      <description>
+<p>The ClassID uniquely identifies a class.  If this value differs from the BaseClassID, then the class is determined to be a sub-class.  The ClassID must be a value that is hashed from the class <field>Name</field> using <function module="Core">StrHash</function>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ClassName</name>
+      <comment>The name of the represented class.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CSTRING</type>
+      <description>
+<p>This field specifies the name of the represented class.  Characters should be limited to those in the range of A-Z and written in camel case, e.g. <code>KeyValue</code> and not <code>Keyvalue</code> or <code>KEYVALUE</code>.  Setting this field value is compulsory prior to initialisation.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ClassVersion</name>
+      <comment>The version number of the class.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field value must reflect the version of the class structure.  Legal version numbers start from 1.0 and ascend.  Revision numbers can be used to indicate bug-fixes or very minor changes.</p>
+<p>If declaring a sub-class then this value can be 0, but base classes must set a value here.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Dictionary</name>
+      <comment>Returns a field lookup table sorted by field IDs.</comment>
+      <access read="G">Get</access>
+      <type>struct Field *</type>
+      <description>
+<p>Following initialisation of the MetaClass, the Dictionary can be read to retrieve the internal field lookup table. For base-classes, the client can use the binary search technique to find fields by their ID.  For sub-classes, use linear scanning.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Fields</name>
+      <comment>Points to a field array that describes the class' object structure.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>const struct FieldArray *</type>
+      <description>
+<p>This field points to an array that describes the structural arrangement of the objects that will be generated from the class.  If creating a base class then it must be provided, while sub-classes will inherit this array from their base.</p>
+<p>The Class Development Guide has a section devoted to the configuration of this array. Please read the guide for more information.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FileDescription</name>
+      <comment>Describes the file type represented by the class.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CSTRING</type>
+      <description>
+<p>This field allows you to specify a description of the class' file type, if the class is designed to be file related. This setting can be important, as it helps to distinguish your class from the other file based classes.  Always make sure that your file description is short, descriptive and unique.  A file description such as "JPEG" is not acceptable, but "JPEG Picture" would be appropriate.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FileExtension</name>
+      <comment>Describes the file extension represented by the class.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CSTRING</type>
+      <description>
+<p>This field describes the file extension/s that the class will recognise.  For example: <code>*.wav|*.wave|*.snd</code>.</p>
+<p>Use of the vertical bar allows more than one file extension to be supported by the class. The file extension that is preferred for saving data must come first.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FileHeader</name>
+      <comment>Defines a string expression that will allow relevant file data to be matched to the class.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CSTRING</type>
+      <description>
+<p>If a class supports file data, then the FileHeader field is used to identify the types of data that the class supports. This feature is used by routines that need to analyse files and determine which classes support them.</p>
+<p>For example, the JPEG class supports files that start with a 32-bit token to identify them as JPEG.  Declaring a FileHeader expression to match these tokens will allow the FileView feature to detect JPEG files and display an appropriate icon for each JPEG entry in the file list.</p>
+<p>The expression format is <code>[Offset:Value]...</code></p>
+<p>The offset is an integer that identifies the byte position at which the given Value will be present.  The Value is expressed as a hexadecimal number if it is prefixed with a dollar sign $, otherwise the Value is treated as case-sensitive text.  Multiple expressions can be specified in sequence if there is more than one comparison to be made - so <code>[0:$ff][8:$fe]</code> would require $ff at offset 0 and $fe at offset 8 in order to generate a match.</p>
+<p>In some cases, a series of unrelated token sequences may need to be used to match against files.  This is true for the JPEG class, which supports three different tokens all at offset 0 for identification.  Each matching sequence must be separated with an OR symbol | as demonstrated in this example for the JPEG header: <code>[0:$ffd8ffe0]|[0:$ffd8ffe1]|[0:$ffd8fffe]</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flag settings.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="CLF">CLF</type>
+      <description>
+<types lookup="CLF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Location</name>
+      <comment>Returns the path from which the class binary is loaded.</comment>
+      <access read="R">Read</access>
+      <type>STRING</type>
+      <description>
+<p>The path from which the class binary was loaded is readable from this field.  The path may not necessarily include the file extension of the source binary.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Methods</name>
+      <comment>Set this field to define the methods supported by the class.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRUCT []</type>
+      <description>
+<p>If a class design will include support for methods, create a MethodEntry and set this field prior to initialisation. A method array provides information on each method's ID, name, arguments, and structure size.</p>
+<p>The Class Development Guide has a section devoted to method configuration.  Please read the guide for further information.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Module</name>
+      <comment>The name of the module binary that initialised the class.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>OpenCount</name>
+      <comment>The total number of active objects that are linked back to the MetaClass.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>Reading this field will reveal how many objects are currently using the class.  This figure will fluctuate over time as new objects are created and old ones are destroyed.  When the OpenCount reaches zero, the system may flush the <class name="Module">Module</class> that the class is related to, so long as no more programs are using it or any other classes created by the module.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>The path to the module binary that represents the class.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>CSTRING</type>
+      <description>
+<p>The Path field must be set on initialisation and refers to the default location of the class' module binary, for example <code>modules:display</code>. For reasons of platform portability, the file extension must not be specified at the end of the file name.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>PrivateObjects</name>
+      <comment>Returns an allocated list of all objects that belong to this class.</comment>
+      <access read="G">Get</access>
+      <type>LONG []</type>
+      <description>
+<p>This field will compile a list of all objects that belong to the class.  The list is sorted with the oldest object appearing first.</p>
+<p>The resulting array must be terminated with <function module="Core">FreeResource</function> after use.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>RootModule</name>
+      <comment>Returns a direct reference to the RootModule object that hosts the class.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+    </field>
+
+    <field>
+      <name>Size</name>
+      <comment>The total size of the object structure represented by the MetaClass.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field value must indicate the byte size of the objects that will be created from the MetaClass.  For example, the <class name="Picture">Picture</class> class defines this value as <code>sizeof(objPicture)</code>.</p>
+<p>If the size is not explicitly defined, the initialisation process will determine the structure size by evaluating the field definitions that have been provided.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="CCF" comment="Class categories">
+      <const name="AUDIO">Audio classes interface with audio hardware and drivers for audio playback and recording purposes.</const>
+      <const name="COMMAND">Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.</const>
+      <const name="DATA">Data classes parse, query and manipulate data.</const>
+      <const name="DRAWABLE">Drawable classes provide graphical areas that are designed to be drawn to.</const>
+      <const name="EFFECT">Effect classes draw graphics and/or play audio for non-productive demonstration purposes.</const>
+      <const name="FILESYSTEM">FileSystem classes are based on file management and interaction with file based data.</const>
+      <const name="GRAPHICS">Graphics classes provide graphical manipulation and drawing services to developers.</const>
+      <const name="GUI">GUI classes are used in the development of graphical user interfaces.</const>
+      <const name="IO">IO classes manage hardware and software based input and output.</const>
+      <const name="MISC">Miscellaneous classes do not fit into any of the other available categories.</const>
+      <const name="MULTIMEDIA"/>
+      <const name="NETWORK">Network classes interface with network drivers to simplify network communications for the developer.</const>
+      <const name="SYSTEM">System classes are designed to provide low-level services related to system management.</const>
+      <const name="TOOL">Tool classes are focussed on providing interactive services to the user.</const>
+    </constants>
+
+    <constants lookup="CLF" comment="Flags for the MetaClass.">
+      <const name="NO_OWNERSHIP">Objects created will not be tracked to the creating process, nor any parent object (SetOwner() will not work either).</const>
+      <const name="PROMOTE_INTEGRAL">Promote class support for any integral object defined in the class definition structure.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="Field" comment="Used to describe the public fields of a class.">
+      <field name="Arg" type="MAXINT">An option to complement the field type.  Can be a pointer or an integer value</field>
+      <field name="GetValue" type="FUNCTION *" prototype="ERROR (*GetValue)(APTR, APTR)">A virtual function that will retrieve the value for this field.</field>
+      <field name="SetValue" type="APTR">A virtual function that will set the value for this field.</field>
+      <field name="WriteValue" type="FUNCTION *" prototype="ERROR (*WriteValue)(OBJECTPTR, struct Field *, LONG, const void *, LONG)">An internal function for writing to this field.</field>
+      <field name="Name" type="CSTRING">The English name for the field, e.g. "Width"</field>
+      <field name="FieldID" type="ULONG">Provides a fast way of finding fields, e.g. FID_WIDTH</field>
+      <field name="Offset" type="UWORD">Field offset within the object</field>
+      <field name="Index" type="UWORD">Field array index</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+    </struct>
+
+    <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
+      <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
+      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
+      <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
+      <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+    </struct>
+
+  </structs>
+</book>

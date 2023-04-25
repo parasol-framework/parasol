@@ -63,7 +63,7 @@ static ERROR SVG_DataFeed(extSVG *Self, struct acDataFeed *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->DataType IS DATA_XML) {
+   if (Args->Datatype IS DATA::XML) {
       return load_svg(Self, 0, (CSTRING)Args->Buffer);
    }
 
@@ -81,8 +81,13 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
       Self->AnimationTimer = 0;
    }
 
+   if (Self->FrameCallback.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->FrameCallback.Script.Script, AC_Free);
+      Self->FrameCallback.Type = CALL_NONE;
+   }
+
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->ownerID() IS Self->UID)) {
-      acFree(Self->Target);
+      FreeResource(Self->Target);
       Self->Target = NULL;
    }
 
@@ -161,13 +166,13 @@ static ERROR SVG_Render(extSVG *Self, struct svgRender *Args)
    LONG page_width = Args->Width;
    LONG page_height = Args->Height;
 
-   Self->Scene->set(FID_Bitmap, bmp);
+   Self->Scene->setBitmap(bmp);
 
-   Self->Scene->set(FID_PageWidth, page_width);
-   Self->Scene->set(FID_PageHeight, page_height);
+   Self->Scene->setPageWidth(page_width);
+   Self->Scene->setPageHeight(page_height);
 
-//   Self->Scene->Viewport->set(FID_ViewX, Args->X);
-//   Self->Scene->Viewport->set(FID_ViewY, Args->Y);
+//   Self->Scene->Viewport->setViewX(Args->X);
+//   Self->Scene->Viewport->setViewY(Args->Y);
 
    bmp->XOffset += Args->X;
    bmp->YOffset += Args->Y;
@@ -207,10 +212,10 @@ static ERROR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
    if (!width) width = 1920;
    if (!height) height = 1080;
 
-   objPicture::create pic = { fl::Width(width), fl::Height(height), fl::Flags(PCF_ALPHA|PCF_NEW) };
+   objPicture::create pic = { fl::Width(width), fl::Height(height), fl::Flags(PCF::ALPHA|PCF::NEW) };
    if (pic.ok()) {
       if (!(error = svgRender(Self, pic->Bitmap, 0, 0, width, height))) {
-         if (!(error = acSaveImage(*pic, Args->DestID, Args->ClassID))) {
+         if (!(error = acSaveImage(*pic, Args->Dest, Args->ClassID))) {
             return ERR_Okay;
          }
       }
@@ -243,7 +248,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
             return routine[AC_SaveToObject](Self, Args);
          }
          else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)SVG_SaveImage)) {
-            struct acSaveImage saveimage = { .DestID = Args->DestID };
+            struct acSaveImage saveimage = { .Dest = Args->Dest };
             return routine[AC_SaveImage](Self, &saveimage);
          }
          else return log.warning(ERR_NoSupport);
@@ -251,14 +256,14 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       else return log.warning(ERR_GetField);
    }
    else {
-      objXML::create xml = { fl::Flags(XMF_NEW|XMF_READABLE) };
+      objXML::create xml = { fl::Flags(XMF::NEW|XMF::READABLE) };
 
       if (xml.ok()) {
-         ERROR error = xmlInsertXML(*xml, 0, 0, header, NULL);
+         ERROR error = xmlInsertXML(*xml, 0, XMI::NIL, header, NULL);
          LONG index = xml->Tags.back().ID;
 
          XMLTag *tag;
-         if (!(error = xmlInsertXML(*xml, index, XMI_NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
+         if (!(error = xmlInsertXML(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {
@@ -267,7 +272,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                      save_svg_scan(Self, *xml, scan, index);
                   }
 
-                  error = xml->saveToObject(Args->DestID, 0);
+                  error = xml->saveToObject(Args->Dest);
                }
             }
             else {
@@ -305,7 +310,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                         save_svg_scan(Self, *xml, scan, index);
                      }
 
-                     error = xml->saveToObject(Args->DestID, 0);
+                     error = xml->saveToObject(Args->Dest);
                   }
                }
             }
@@ -448,7 +453,7 @@ referenced by the Target field.
 
 static ERROR SET_Target(extSVG *Self, OBJECTPTR Value)
 {
-   if (Value->ClassID IS ID_VECTORSCENE) {
+   if (Value->Class->ClassID IS ID_VECTORSCENE) {
       Self->Target = Value;
       Self->Scene = (objVectorScene *)Value;
       if (Self->Scene->Viewport) Self->Viewport = Self->Scene->Viewport;
@@ -535,11 +540,11 @@ static ERROR init_svg(void)
    clSVG = objMetaClass::create::global(
       fl::ClassVersion(VER_SVG),
       fl::Name("SVG"),
-      fl::Category(CCF_GUI),
+      fl::Category(CCF::GUI),
       fl::Actions(clSVGActions),
       fl::Methods(clSVGMethods),
       fl::Fields(clSVGFields),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::Size(sizeof(extSVG)),
       fl::Path(MOD_PATH));
 

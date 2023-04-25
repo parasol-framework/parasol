@@ -62,85 +62,25 @@ int: A unique ID matching the requested type will be returned.  This function ca
 
 *********************************************************************************************************************/
 
-LONG AllocateID(LONG Type)
+LONG AllocateID(IDTYPE Type)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Type IS IDTYPE_MESSAGE) {
+   if (Type IS IDTYPE::MESSAGE) {
       LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
       log.function("MessageID: %d", id);
       return id;
    }
-   else if (Type IS IDTYPE_GLOBAL) {
+   else if (Type IS IDTYPE::GLOBAL) {
       LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
       return id;
    }
-   else if (Type IS IDTYPE_FUNCTION) {
+   else if (Type IS IDTYPE::FUNCTION) {
       UWORD id = __sync_add_and_fetch(&glFunctionID, 1);
       return id;
    }
 
    return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-CheckObjectExists: Checks if a particular object is still available in the system.
-Category: Objects
-
-The CheckObjectExists() function verifies the presence of any object created by ~NewObject().
-
--INPUT-
-oid Object: The object identity to verify.
-
--ERRORS-
-True:  The object exists.
-False: The object ID does not exist.
-LockFailed:
-
-*********************************************************************************************************************/
-
-ERROR CheckObjectExists(OBJECTID ObjectID)
-{
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      LONG result = ERR_False;
-      auto mem = glPrivateMemory.find(ObjectID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-         if (mem->second.Object->defined(NF::UNLOCK_FREE));
-         else result = ERR_True;
-      }
-      return result;
-   }
-   else {
-      pf::Log log(__FUNCTION__);
-      return log.warning(ERR_LockFailed);
-   }
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-CurrentContext: Returns a pointer to the object that has the current context.
-Category: Objects
-
-This function returns a pointer to the object that has the current context.  Context is primarily used to manage
-resource allocations.  Manipulating the context is sometimes necessary to ensure that a resource is tracked to
-the correct object.
-
-To get the parent context (technically the 'context of the current context'), use GetParentContext(), which is
-implemented as a macro.  This is used in method and action routines where the context of the object's caller may be
-needed.
-
--RESULT-
-obj: Returns an object pointer (of which the Task has exclusive access to).  Cannot return NULL except in the initial start-up and late shut-down sequence of the Core.
-
-*********************************************************************************************************************/
-
-OBJECTPTR CurrentContext(void)
-{
-   return tlContext->object();
 }
 
 /*********************************************************************************************************************
@@ -154,202 +94,13 @@ If there is a legitimate circumstance where there is no current task (e.g. if th
 Core initialisation) then the "system task" may be returned, which has ownership of Core resources.
 
 -RESULT-
-obj: Returns a pointer to the current Task object or NULL if failure.
+obj(Task): Returns a pointer to the current Task object or NULL if failure.
 
 *********************************************************************************************************************/
 
-OBJECTPTR CurrentTask(void)
+objTask * CurrentTask(void)
 {
    return glCurrentTask;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FindClass: Returns all class objects for a given class ID.
-Category: Objects
-
-This function will find a specific class by ID and return its @MetaClass.  If the class is not in memory, the internal
-dictionary is checked to discover a module binary registered with that ID.  If this succeeds, the module is loaded
-into memory and the class will be returned.  In any event of failure, NULL is returned.
-
-If the ID of a named class is not known, call ~ResolveClassName() first and pass the resulting ID to this function.
-
--INPUT-
-cid ClassID: A class ID such as one retrieved from ~ResolveClassName().
-
--RESULT-
-obj(MetaClass): Returns a pointer to the MetaClass structure that has been found as a result of the search, or NULL if no matching class was found.
-
-*********************************************************************************************************************/
-
-objMetaClass * FindClass(CLASSID ClassID)
-{
-   auto it = glClassMap.find(ClassID);
-   if (it != glClassMap.end()) return it->second;
-
-   if (glProgramStage IS STAGE_SHUTDOWN) return NULL; // No new module loading during shutdown
-
-   // Class is not loaded.  Try and find a master in the dictionary.  If we find one, we can
-   // initialise the module and then find the new Class.
-   //
-   // Note: Children of the class are not automatically loaded into memory if they are unavailable at the time.  Doing so
-   // would result in lost CPU and memory resources due to loading code that may not be needed.
-
-   pf::Log log(__FUNCTION__);
-   if (glClassDB.contains(ClassID)) {
-      auto &path = glClassDB[ClassID].Path;
-
-      if (!path.empty()) {
-         // Load the module from the associated location and then find the class that it contains.  If the module fails,
-         // we keep on looking for other installed modules that may handle the class.
-
-         log.branch("Attempting to load module \"%s\" for class $%.8x.", path.c_str(), ClassID);
-
-         objModule::create mod = { fl::Name(path) };
-         if (mod.ok()) {
-            it = glClassMap.find(ClassID);
-            if (it != glClassMap.end()) return it->second;
-            else log.warning("Module \"%s\" did not configure class \"%s\"", path.c_str(), glClassDB[ClassID].Name.c_str());
-         }
-         else log.warning("Failed to load module \"%s\"", path.c_str());
-      }
-      else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
-   }
-   else log.warning("Could not find class $%.8x in memory or in dictionary.", ClassID);
-
-   return NULL;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-FindObject: Searches for objects by name.
-Category: Objects
-
-The FindObject() function searches for all objects that match a given name and can filter by class.
-
-The following example is a typical illustration of this function's use.  It finds the most recent object created
-with a given name:
-
-<pre>
-OBJECTID id;
-FindObject("SystemPointer", ID_POINTER, 0, &id);
-</pre>
-
-If FindObject() cannot find any matching objects then it will return an error code.
-
--INPUT-
-cstr Name:      The name of an object to search for.
-cid ClassID:    Optional.  Set to a class ID to filter the results down to a specific class type.
-int(FOF) Flags: Optional flags.
-&oid ObjectID:  An object id variable for storing the result.
-
--ERRORS-
-Okay: At least one matching object was found and stored in the ObjectID.
-Args:
-Search: No objects matching the given name could be found.
-LockFailed:
-EmptyString:
-DoesNotExist:
--END-
-
-*********************************************************************************************************************/
-
-ERROR FindObject(CSTRING InitialName, CLASSID ClassID, LONG Flags, OBJECTID *Result)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!Result) or (!InitialName)) return ERR_NullArgs;
-   if (!InitialName[0]) return log.warning(ERR_EmptyString);
-
-   if (Flags & FOF_SMART_NAMES) {
-      // If an integer based name (defined by #num) is passed, we translate it to an ObjectID rather than searching for
-      // an object of name "#1234".
-
-      bool number = false;
-      if (InitialName[0] IS '#') number = true;
-      else {
-         // If the name consists entirely of numbers, it must be considered an object ID (we can make this check because
-         // it is illegal for a name to consist entirely of digits).
-
-         LONG i = (InitialName[0] IS '-') ? 1 : 0;
-         for (; InitialName[i]; i++) {
-            if (InitialName[i] < '0') break;
-            if (InitialName[i] > '9') break;
-         }
-         if (!InitialName[i]) number = true;
-      }
-
-      if (number) {
-         if (auto objectid = (OBJECTID)StrToInt(InitialName)) {
-            if (!CheckObjectExists(objectid)) {
-               *Result = objectid;
-               return ERR_Okay;
-            }
-            else return ERR_Search;
-         }
-         else return ERR_Search;
-      }
-
-      if (!StrMatch("owner", InitialName)) {
-         if ((tlContext != &glTopContext) and (tlContext->object()->OwnerID)) {
-            if (!CheckObjectExists(tlContext->object()->OwnerID)) {
-               *Result = tlContext->object()->OwnerID;
-               return ERR_Okay;
-            }
-            else return ERR_DoesNotExist;
-         }
-         else return ERR_DoesNotExist;
-      }
-   }
-
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (lock.granted()) {
-      if (glObjectLookup.contains(InitialName)) {
-         auto &list = glObjectLookup[InitialName];
-         if (!ClassID) {
-            *Result = list.back()->UID;
-            return ERR_Okay;
-         }
-
-         for (auto it=list.rbegin(); it != list.rend(); it++) {
-            auto obj = *it;
-            if (obj->ClassID IS ClassID) {
-               *Result = obj->UID;
-               return ERR_Okay;
-            }
-         }
-      }
-   }
-
-   return ERR_Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetClassID: Returns the class ID of an ID-referenced object.
-Category: Objects
-
-Call this function with any valid object ID to learn the identifier for its base class.  This is the quickest way to
-retrieve the class of an object without having to gain exclusive access to the object first.
-
-Note that if the object's pointer is already known, the quickest way to learn of its class is to read the ClassID
-field in the object header.
-
--INPUT-
-oid Object: The object to be examined.
-
--RESULT-
-cid: Returns the base class ID of the object or NULL if failure.
-
-*********************************************************************************************************************/
-
-CLASSID GetClassID(OBJECTID ObjectID)
-{
-   if (auto object = GetObjectPtr(ObjectID)) return object->ClassID;
-   else return 0;
 }
 
 /*********************************************************************************************************************
@@ -634,94 +385,6 @@ static ULONG crc32_big(ULONG crc, const UBYTE *buf, unsigned len)
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetName: Retrieves object names.
-Category: Objects
-
-This function will return the name of the object referenced by the Object pointer. If the target object has not been
-assigned a name then a null-string is returned.
-
--INPUT-
-obj Object: An object to query.
-
--RESULT-
-cstr: A string containing the object name is returned.  If the object has no name or the parameter is invalid, a null-terminated string is returned.
-
-*********************************************************************************************************************/
-
-CSTRING GetName(OBJECTPTR Object)
-{
-   if (Object) return Object->Name;
-   else return "";
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetObjectPtr: Returns the object address for any private object ID.
-Category: Objects
-
-This function translates private object ID's (owned by the process) to their respective address pointers.  Public
-object ID's are not supported.
-
--INPUT-
-oid Object: The ID of the object to lookup.
-
--RESULT-
-obj: The address of the object is returned, or NULL if the ID does not relate to an object.
-
-*********************************************************************************************************************/
-
-OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
-{
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
-         if ((mem->second.Flags & MEM_OBJECT) and (mem->second.Object)) {
-            if (mem->second.Object->UID IS ObjectID) {
-               return mem->second.Object;
-            }
-         }
-      }
-   }
-
-   return NULL;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-GetOwnerID: Returns the unique ID of an object's owner.
-Category: Objects
-
-This function returns an identifier for the owner of any valid object.  This is the fastest way to retrieve the
-owner of an object if only the ID is known.
-
-If the object address is already known then the fastest means of retrieval is via the ownerID() C++ class method.
-
--INPUT-
-oid Object: The ID of an object to query.
-
--RESULT-
-oid: Returns the ID of the object's owner.  If the object does not have a owner (i.e. if it is untracked) or if the provided ID is invalid, this function will return NULL.
-
-*********************************************************************************************************************/
-
-OBJECTID GetOwnerID(OBJECTID ObjectID)
-{
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if (mem != glPrivateMemory.end()) {
-         if (mem->second.Object) return mem->second.Object->OwnerID;
-      }
-   }
-   return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 GetResource: Retrieves miscellaneous resource identifiers.
 
 The GetResource() function is used to retrieve miscellaneous resource information from the system core.  Refer to the
@@ -738,28 +401,27 @@ large: Returns the value of the resource that you have requested.  If the resour
 
 *********************************************************************************************************************/
 
-LARGE GetResource(LONG Resource)
+LARGE GetResource(RES Resource)
 {
 #ifdef __linux__
    struct sysinfo sys;
 #endif
 
    switch(Resource) {
-      case RES_MESSAGE_QUEUE:   return glTaskMessageMID;
-      case RES_SHARED_CONTROL:  return (MAXINT)glSharedControl;
-      case RES_PRIVILEGED:      return glPrivileged;
-      case RES_LOG_LEVEL:       return glLogLevel;
-      case RES_PROCESS_STATE:   return (MAXINT)glTaskState;
-      case RES_MAX_PROCESSES:   return MAX_TASKS;
-      case RES_LOG_DEPTH:       return tlDepth;
-      case RES_CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
-      case RES_OPEN_INFO:       return (MAXINT)glOpenInfo;
-      case RES_JNI_ENV:         return (MAXINT)glJNIEnv;
-      case RES_THREAD_ID:       return (MAXINT)get_thread_id();
-      case RES_CORE_IDL:        return (MAXINT)glIDL;
-      case RES_DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+      case RES::MESSAGE_QUEUE:   return glTaskMessageMID;
+      case RES::PRIVILEGED:      return glPrivileged;
+      case RES::LOG_LEVEL:       return glLogLevel;
+      case RES::PROCESS_STATE:   return MAXINT(glTaskState);
+      case RES::MAX_PROCESSES:   return MAX_TASKS;
+      case RES::LOG_DEPTH:       return tlDepth;
+      case RES::CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
+      case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
+      case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
+      case RES::THREAD_ID:       return (MAXINT)get_thread_id();
+      case RES::CORE_IDL:        return (MAXINT)glIDL;
+      case RES::DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
 
-      case RES_PARENT_CONTEXT: {
+      case RES::PARENT_CONTEXT: {
          // Return the first parent context that differs to the current context.  This avoids any confusion
          // arising from the the current object making calls to itself.
          auto parent = tlContext->Stack;
@@ -771,12 +433,12 @@ LARGE GetResource(LONG Resource)
       // NB: This value is not cached.  Although unlikely, it is feasible that the total amount of physical RAM could
       // change during runtime.
 
-      case RES_TOTAL_MEMORY: {
+      case RES::TOTAL_MEMORY: {
          if (!sysinfo(&sys)) return (LARGE)sys.totalram * (LARGE)sys.mem_unit;
          else return -1;
       }
 
-      case RES_FREE_MEMORY: {
+      case RES::FREE_MEMORY: {
    #if 0
          // Unfortunately sysinfo() does not report on cached ram, which can be significant
          if (!sysinfo(&sys)) return (LARGE)(sys.freeram + sys.bufferram) * (LARGE)sys.mem_unit; // Buffer RAM is considered as 'free'
@@ -787,13 +449,13 @@ LARGE GetResource(LONG Resource)
          if (!ReadFileToBuffer("/proc/meminfo", str, sizeof(str)-1, &result)) {
             LONG i = 0;
             while (i < result) {
-               if (!StrCompare("Cached", str+i, sizeof("Cached")-1, 0)) {
+               if (!StrCompare("Cached", str+i, sizeof("Cached")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1, 0)) {
+               else if (!StrCompare("Buffers", str+i, sizeof("Buffers")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
-               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1, 0)) {
+               else if (!StrCompare("MemFree", str+i, sizeof("MemFree")-1)) {
                   freemem += (LARGE)StrToInt(str+i) * 1024LL;
                }
 
@@ -806,29 +468,29 @@ LARGE GetResource(LONG Resource)
    #endif
       }
 
-      case RES_TOTAL_SHARED_MEMORY:
+      case RES::TOTAL_SHARED_MEMORY:
          if (!sysinfo(&sys)) return (LARGE)sys.sharedram * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_TOTAL_SWAP:
+      case RES::TOTAL_SWAP:
          if (!sysinfo(&sys)) return (LARGE)sys.totalswap * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_FREE_SWAP:
+      case RES::FREE_SWAP:
          if (!sysinfo(&sys)) return (LARGE)sys.freeswap * (LARGE)sys.mem_unit;
          else return -1;
 
-      case RES_CPU_SPEED: {
+      case RES::CPU_SPEED: {
          CSTRING line;
          static LONG cpu_mhz = 0;
 
          if (cpu_mhz) return cpu_mhz;
 
-         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL_READ|FL_BUFFER) };
+         objFile::create file = { fl::Path("drive1:proc/cpuinfo"), fl::Flags(FL::READ|FL::BUFFER) };
 
          if (file.ok()) {
             while ((line = flReadLine(*file))) {
-               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1, 0)) {
+               if (!StrCompare("cpu Mhz", line, sizeof("cpu Mhz")-1)) {
                   cpu_mhz = StrToInt(line);
                }
             }
@@ -881,56 +543,8 @@ const SystemState * GetSystemState(void)
       #endif
    }
 
-   state.Stage = glSharedControl->SystemState;
+   state.Stage = glSystemState;
    return &state;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-ListChildren: Returns a list of all children belonging to an object.
-Category: Objects
-
-The ListChildren() function returns a list of all children belonging to an object.  The client must provide an empty
-vector of ChildEntry structures to host the results, which include unique object ID's and their class identifiers.
-
-Note that any child objects marked with the `INTEGRAL` flag will be excluded because they are private members of the
-targeted object.
-
--INPUT-
-oid Object: An object to query.
-ptr(cpp(array(resource(ChildEntry)))) List: Must refer to an array of ChildEntry structures.
-
--ERRORS-
-Okay: Zero or more children were found and listed.
-Args
-NullArgs
-
-*********************************************************************************************************************/
-
-ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!ObjectID) or (!List)) return log.warning(ERR_NullArgs);
-
-   log.trace("#%d, List: %p", ObjectID, List);
-
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      for (const auto id : glObjectChildren[ObjectID]) {
-         auto mem = glPrivateMemory.find(id);
-         if (mem IS glPrivateMemory.end()) continue;
-
-         if (auto child = mem->second.Object) {
-            if (!child->defined(NF::INTEGRAL)) {
-               List->emplace_back(child->UID, child->ClassID);
-            }
-         }
-      }
-      return ERR_Okay;
-   }
-   else return ERR_LockFailed;
 }
 
 /*********************************************************************************************************************
@@ -976,10 +590,10 @@ The file descriptor should be configured as non-blocking before registration.  B
 program to hang if not handled carefully.
 
 File descriptors support read and write states simultaneously and a callback routine can be applied to either state.
-Set the `RFD_READ` flag to apply the Routine to the read callback and `RFD_WRITE` for the write callback.  If neither
-flag is specified, `RFD_READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
+Set the `RFD::READ` flag to apply the Routine to the read callback and `RFD::WRITE` for the write callback.  If neither
+flag is specified, `RFD::READ` is assumed.  A file descriptor may have up to 1 subscription per flag, for example a read
 callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by
-combining the read/write flags with `RFD_REMOVE`.
+combining the read/write flags with `RFD::REMOVE`.
 
 The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
@@ -989,7 +603,7 @@ Call the DeregisterFD() macro to simplify unsubscribing once the file descriptor
 
 -INPUT-
 hhandle FD: The file descriptor that is to be watched.
-int(RFD) Flags: Set to one or more of the flags RFD_READ, RFD_WRITE, RFD_EXCEPT, RFD_REMOVE.
+int(RFD) Flags: Set to at least one of READ, WRITE, EXCEPT, REMOVE.
 fptr(void hhandle ptr) Routine: The routine that will read from the descriptor when data is detected on it.  The template for the function is "void Routine(LONG FD, APTR Data)".
 ptr Data: User specific data pointer that will be passed to the Routine.  Separate data pointers apply to the read and write states of operation.
 
@@ -1002,27 +616,32 @@ NoSupport: The host platform does not support file descriptors.
 *********************************************************************************************************************/
 
 #ifdef _WIN32
-ERROR RegisterFD(HOSTHANDLE FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #else
-ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
+ERROR RegisterFD(LONG FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 #endif
 {
    pf::Log log(__FUNCTION__);
 
-   // Note that FD's < -1 are permitted for the registering of functions marked with RFD_ALWAYS_CALL
+   // Note that FD's < -1 are permitted for the registering of functions marked with RFD::ALWAYS_CALL
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR_Args);
-   if (Flags & RFD_SOCKET) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
+   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR_NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
 #else
    if (FD IS -1) return log.warning(ERR_Args);
 #endif
 
-   if (Flags & RFD_REMOVE) {
-      if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL))) Flags |= RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL;
+   if (glFDProtected) { // Cache the request while glFDTable is in use.
+      glRegisterFD.emplace_back(FD, Routine, Data, Flags);
+      return ERR_Okay;
+   }
+
+   if ((Flags & RFD::REMOVE) != RFD::NIL) {
+      if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL;
 
       for (auto it = glFDTable.begin(); it != glFDTable.end();) {
-         if ((it->FD IS FD) and ((it->Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)) & Flags)) {
+         if ((it->FD IS FD) and (((it->Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL)) & Flags) != RFD::NIL)) {
             if ((Routine) and (it->Routine != Routine)) it++;
             else it = glFDTable.erase(it);
          }
@@ -1031,10 +650,10 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       return ERR_Okay;
    }
 
-   if (!(Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_REMOVE|RFD_ALWAYS_CALL))) Flags |= RFD_READ;
+   if ((Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::REMOVE|RFD::ALWAYS_CALL)) IS RFD::NIL) Flags |= RFD::READ;
 
    for (auto &fd : glFDTable) {
-      if ((fd.FD IS FD) and (Flags & (fd.Flags & (RFD_READ|RFD_WRITE|RFD_EXCEPT|RFD_ALWAYS_CALL)))) {
+      if ((fd.FD IS FD) and ((Flags & (fd.Flags & (RFD::READ|RFD::WRITE|RFD::EXCEPT|RFD::ALWAYS_CALL))) != RFD::NIL)) {
          fd.Routine = Routine;
          fd.Flags   = Flags;
          fd.Data    = Data;
@@ -1042,7 +661,7 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
       }
    }
 
-   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, Flags);
+   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, LONG(Flags));
 
 #ifdef _WIN32
    // Nothing to do for Win32
@@ -1051,220 +670,6 @@ ERROR RegisterFD(LONG FD, LONG Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Da
 #endif
 
    glFDTable.emplace_back(FD, Routine, Data, Flags);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetOwner: Changes object ownership dynamically.
-Category: Objects
-
-This function changes the ownership of an existing object.  Ownership is an attribute that affects an object's
-placement within the object hierarchy as well as impacting on the resource tracking of the object in question.
-Internally, setting a new owner will cause three things to happen:
-
-<list type="sorted">
-<li>The new owner's class will receive notification via the #NewChild() action.  If the owner rejects the object by sending back an error, SetOwner() will fail immediately.</li>
-<li>The object's class will then receive notification via the #NewOwner() action.</li>
-<li>The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.</li>
-</list>
-
-If the Object does not support the NewOwner action, or the Owner does not support the NewChild action, then the
-process will not fail.  It will continue on the assumption that neither party is concerned about ownership management.
-
--INPUT-
-obj Object: Pointer to the object to modify.
-obj Owner: Pointer to the new owner for the object.
-
--ERRORS-
-Okay
-NullArgs
-Args
--END-
-
-*********************************************************************************************************************/
-
-ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!Object) or (!Owner)) return log.warning(ERR_NullArgs);
-
-   if (Object->OwnerID IS Owner->UID) return ERR_Okay;
-
-   if (Object->ExtClass->Flags & CLF_NO_OWNERSHIP) {
-      log.traceWarning("Cannot set the object owner as CLF_NO_OWNERSHIP is set in its class.");
-      return ERR_Okay;
-   }
-
-   if (Object IS Owner) return log.warning(ERR_Recursion);
-
-   //log.msg("Object: %d, New Owner: %d, Current Owner: %d", Object->UID, Owner->UID, Object->OwnerID);
-
-   // Send a new child alert to the owner.  If the owner returns an error then we return immediately.
-
-   ScopedObjectAccess objlock(Object);
-
-   if (!CheckAction(Owner, AC_NewChild)) {
-      struct acNewChild newchild = { .Object = Object };
-      if (auto error = Action(AC_NewChild, Owner, &newchild); error != ERR_NoSupport) {
-         if (error) { // If the owner has passed the object through to another owner, return ERR_Okay, otherwise error.
-            if (error IS ERR_OwnerPassThrough) return ERR_Okay;
-            else return error;
-         }
-      }
-   }
-
-   struct acNewOwner newowner = {
-      .NewOwnerID = Owner->UID, // Send a owner alert to the object
-      .ClassID    = Owner->ClassID
-   };
-   Action(AC_NewOwner, Object, &newowner);
-
-   // Make the change
-
-   //if (Object->OwnerID) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->OwnerID, Owner->UID);
-
-   // Track the object's memory header to the new owner
-
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      auto mem = glPrivateMemory.find(Object->UID);
-      if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
-      mem->second.OwnerID = Owner->UID;
-
-      // Remove reference from the now previous owner
-      if (Object->OwnerID) glObjectChildren[Object->OwnerID].erase(Object->UID);
-
-      Object->OwnerID = Owner->UID;
-
-      glObjectChildren[Owner->UID].insert(Object->UID);
-   }
-   else return log.warning(ERR_Lock);
-
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetContext: Alters the nominated owner of newly created objects.
-Category: Objects
-
-This function defines the object that has control of the current thread.  Once called, all further resource
-allocations are assigned to that object.  This is significant for the automatic collection of memory and object
-allocations.  For example:
-
-<pre>
-acInit(display);
-auto ctx = SetContext(display);
-
-   NewObject(ID_BITMAP, &bitmap);
-   AllocMemory(1000, MEM_DATA, &memory, NULL);
-
-SetContext(ctx);
-acFree(display);
-</pre>
-
-The above code allocates a Bitmap and a memory block, both of which will be contained by the display. When the #Free()
-action is called, both the bitmap and memory block will be automatically removed as they have a dependency on the
-display's existence.  Please keep in mind that the following is incorrect:
-
-<pre>
-acInit(display);
-auto ctx = SetContext(display);
-
-   NewObject(ID_BITMAP, &bitmap);
-   AllocMemory(1000, MEM_DATA, &memory, NULL);
-
-SetContext(ctx);
-acFree(display); // The bitmap and memory would be auto-collected
-acFree(bitmap); // Reference is no longer valid
-FreeResource(memory); // Reference is no longer valid
-</pre>
-
-As the bitmap and memory block would have been freed as members of the display, their references are invalid when
-manually terminated in the following instructions.
-
-SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions
-necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive
-fields.
-
--INPUT-
-obj Object: Pointer to the object that will take on the new context.  If NULL, no change to the context will be made.
-
--RESULT-
-obj: Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.
-
-*********************************************************************************************************************/
-
-OBJECTPTR SetContext(OBJECTPTR Object)
-{
-   if (Object) return tlContext->setContext(Object);
-   else return tlContext->object();
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-SetName: Sets the name of an object.
-Category: Objects
-
-This function sets the name of an object.  This enhances log messages and allows the object to be found in searches.
-Please note that the length of the Name will be limited to the value indicated in the core header file, under
-the `MAX_NAME_LEN` definition.  Names exceeding the allowed length are trimmed to fit.
-
-Object names are limited to alpha-numeric characters and the underscore symbol.  Invalid characters are replaced with
-an underscore.
-
--INPUT-
-obj Object: The target object.
-cstr Name: The new name for the object.
-
--ERRORS-
-Okay:
-NullArgs:
-Search:       The Object is not recognised by the system - the address may be invalid.
-LockFailed:
-
-*********************************************************************************************************************/
-
-static const char sn_lookup[256] = {
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '_', '_', '_', '_', '_', '_', '_', '_', 'a',
-   'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
-   'x', 'y', '_', '_', '_', '_', '_', '_', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
-};
-
-ERROR SetName(OBJECTPTR Object, CSTRING NewName)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
-
-   ScopedObjectAccess objlock(Object);
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (!lock.granted()) return log.warning(ERR_LockFailed);
-
-   // Remove any existing name first.
-
-   if (Object->Name[0]) remove_object_hash(Object);
-
-   LONG i;
-   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
-   Object->Name[i] = 0;
-
-   if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
-
    return ERR_Okay;
 }
 
@@ -1287,16 +692,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR SetResourcePath(LONG PathType, CSTRING Path)
+ERROR SetResourcePath(RP PathType, CSTRING Path)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!PathType) return ERR_NullArgs;
-
-   log.function("Type: %d, Path: %s", PathType, Path);
+   log.function("Type: %d, Path: %s", LONG(PathType), Path);
 
    switch(PathType) {
-      case RP_ROOT_PATH:
+      case RP::ROOT_PATH:
          if (Path) {
             glRootPath = Path;
             if ((glRootPath.back() != '/') and (glRootPath.back() != '\\')) {
@@ -1309,7 +712,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
          }
          return ERR_Okay;
 
-      case RP_SYSTEM_PATH:
+      case RP::SYSTEM_PATH:
          if (Path) {
             glSystemPath = Path;
             if ((glSystemPath.back() != '/') and (glSystemPath.back() != '\\')) {
@@ -1322,7 +725,7 @@ ERROR SetResourcePath(LONG PathType, CSTRING Path)
          }
          return ERR_Okay;
 
-      case RP_MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
+      case RP::MODULE_PATH: // An alternative path to the system modules.  This was introduced for Android, which holds the module binaries in the assets folders.
          if (Path) {
             glModulePath = Path;
             if ((glModulePath.back() != '/') and (glModulePath.back() != '\\')) {
@@ -1348,7 +751,7 @@ SetResource: Sets miscellaneous resource identifiers.
 The SetResource() function is used to manipulate miscellaneous system resources.  Currently the following resources
 are supported:
 
-<types prefix="RES" type="Resource">
+<types lookup="RES" type="Resource">
 <type name="ALLOC_MEM_LIMIT">Adjusts the memory limit imposed on AllocMemory().  The Value specifies the memory limit in bytes.</>
 <type name="LOG_LEVEL">Adjusts the current debug level.  The Value must be between 0 and 9, where 1 is the lowest level of debug output (errors only) and 0 is off.</>
 <type name="PRIVILEGED_USER">If the Value is set to 1, this resource option puts the process in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</>
@@ -1364,7 +767,7 @@ large: Returns the previous value used for the resource that you have set.  If t
 
 *********************************************************************************************************************/
 
-LARGE SetResource(LONG Resource, LARGE Value)
+LARGE SetResource(RES Resource, LARGE Value)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1375,9 +778,9 @@ LARGE SetResource(LONG Resource, LARGE Value)
    LARGE oldvalue = 0;
 
    switch(Resource) {
-      case RES_CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
+      case RES::CONSOLE_FD: glConsoleFD = (HOSTHANDLE)(MAXINT)Value; break;
 
-      case RES_EXCEPTION_HANDLER:
+      case RES::EXCEPTION_HANDLER:
          // Note: You can set your own crash handler, or set a value of NULL - this resets the existing handler which is useful if an external DLL function is suspected to have changed the filter.
 
          #ifdef _WIN32
@@ -1385,21 +788,21 @@ LARGE SetResource(LONG Resource, LARGE Value)
          #endif
          break;
 
-      case RES_LOG_LEVEL:
+      case RES::LOG_LEVEL:
          if ((Value >= 0) and (Value <= 9)) glLogLevel = Value;
          break;
 
-      case RES_LOG_DEPTH: tlDepth = Value; break;
+      case RES::LOG_DEPTH: tlDepth = Value; break;
 
 #ifdef _WIN32
-      case RES_NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
+      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(LONG, APTR))L64PTR(Value); break;
 #else
-      case RES_NET_PROCESSING: break;
+      case RES::NET_PROCESSING: break;
 #endif
 
-      case RES_JNI_ENV: glJNIEnv = L64PTR(Value); break;
+      case RES::JNI_ENV: glJNIEnv = L64PTR(Value); break;
 
-      case RES_PRIVILEGED_USER:
+      case RES::PRIVILEGED_USER:
 #ifdef __unix__
          log.trace("Privileged User: %s, Current UID: %d, Depth: %d", (Value) ? "TRUE" : "FALSE", geteuid(), privileged);
 
@@ -1437,7 +840,7 @@ LARGE SetResource(LONG Resource, LARGE Value)
          break;
 
       default:
-         log.warning("Unrecognised resource ID: %d, Value: %" PF64, Resource, Value);
+         log.warning("Unrecognised resource ID: %d, Value: %" PF64, LONG(Resource), Value);
    }
 
    return oldvalue;
@@ -1490,8 +893,8 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    auto subscriber = tlContext->object();
    if (subscriber->collecting()) return log.warning(ERR_InvalidState);
 
-   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Interval: %.3fs", Interval);
-   else log.msg(VLF_BRANCH|VLF_FUNCTION|VLF_DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
+   if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
+   else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -1529,30 +932,6 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
 /*********************************************************************************************************************
 
 -FUNCTION-
-TotalChildren: Returns the total number of children owned by an object.
-
-This function returns the total number of children that are owned by an object.  It is normally called as a precursor
-to ~ListChildren().
-
--INPUT-
-oid Object: The object to query.
-
--RESULT-
-int: The total number of children belonging to the object.  Returns zero if the object does not exist.
-
-*********************************************************************************************************************/
-
-LONG TotalChildren(OBJECTID ObjectID)
-{
-   if (glObjectChildren.contains(ObjectID)) {
-      return glObjectChildren[ObjectID].size();
-   }
-   else return 0;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 UpdateTimer: Modify or remove a subscription created by SubscribeTimer().
 
 This function complements ~SubscribeTimer().  It can change the interval for an existing timer subscription,
@@ -1576,7 +955,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    if (!Subscription) return log.warning(ERR_NullArgs);
 
-   log.msg(VLF_EXTAPI|VLF_BRANCH|VLF_FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
+   log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
    ThreadLock lock(TL_TIMER, 200);
    if (lock.granted()) {
@@ -1665,7 +1044,7 @@ void WaitTime(LONG Seconds, LONG MicroSeconds)
       LARGE current = PreciseTime() / 1000LL;
       LARGE end = current + (Seconds * 1000) + (MicroSeconds / 1000);
       do {
-         if (ProcessMessages(0, end - current) IS ERR_Terminate) break;
+         if (ProcessMessages(PMF::NIL, end - current) IS ERR_Terminate) break;
          current = (PreciseTime() / 1000LL);
       } while (current < end);
    }

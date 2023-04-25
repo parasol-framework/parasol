@@ -17,8 +17,8 @@ static void print(extCompression *Self, CSTRING Buffer)
 
    if (Self->OutputID) {
       struct acDataFeed feed = {
-         .ObjectID = Self->UID,
-         .DataType = DATA_TEXT,
+         .Object   = Self,
+         .Datatype = DATA::TEXT,
          .Buffer   = Buffer
       };
       feed.Size = StrLength(Buffer) + 1;
@@ -33,8 +33,8 @@ static void print(extCompression *Self, std::string Buffer)
 
    if (Self->OutputID) {
       struct acDataFeed feed = {
-         .ObjectID = Self->UID,
-         .DataType = DATA_TEXT,
+         .Object   = Self,
+         .Datatype = DATA::TEXT,
          .Buffer   = Buffer.c_str()
       };
       feed.Size = Buffer.length() + 1;
@@ -54,7 +54,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
    objFile::create file = { fl::Path(Location) };
    if (!file.ok()) return log.warning(ERR_File);
 
-   if ((file->Flags & FL_LINK) and (!(Self->Flags & CMF_NO_LINKS))) {
+   if (((file->Flags & FL::LINK) != FL::NIL) and ((Self->Flags & CMF::NO_LINKS) IS CMF::NIL)) {
       log.msg("Folder is a link.");
       return compress_file(Self, Location, Path, true);
    }
@@ -68,7 +68,7 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
    // Send feedback if requested to do so
 
    CompressionFeedback feedback = {
-      .FeedbackID     = FDB_COMPRESS_FILE,
+      .FeedbackID     = FDB::COMPRESS_FILE,
       .Index          = Self->FileIndex,
       .Path           = Location.c_str(),
       .Dest           = Path.c_str(),
@@ -151,17 +151,17 @@ static ERROR compress_folder(extCompression *Self, std::string Location, std::st
    // Enter the directory and compress its contents
 
    DirInfo *dir;
-   if (!OpenDir(Location.c_str(), RDF_FILE|RDF_FOLDER|RDF_QUALIFY, &dir)) {
+   if (!OpenDir(Location.c_str(), RDF::FILE|RDF::FOLDER|RDF::QUALIFY, &dir)) {
       while (!ScanDir(dir)) { // Recurse for each directory in the list
          FileInfo *scan = dir->Info;
-         if ((scan->Flags & RDF_FOLDER) and (!(scan->Flags & RDF_LINK))) {
+         if (((scan->Flags & RDF::FOLDER) != RDF::NIL) and ((scan->Flags & RDF::LINK) IS RDF::NIL)) {
             std::string location = Location + scan->Name;
             std::string path = Path + scan->Name;
             compress_folder(Self, location, path);
          }
-         else if (scan->Flags & (RDF_FILE|RDF_LINK)) {
+         else if ((scan->Flags & (RDF::FILE|RDF::LINK)) != RDF::NIL) {
             std::string location = Location + scan->Name;
-            compress_file(Self, location, Path, (scan->Flags & RDF_LINK) ? true : false);
+            compress_file(Self, location, Path, ((scan->Flags & RDF::LINK) != RDF::NIL) ? true : false);
          }
       }
 
@@ -197,7 +197,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    // Open the source file for reading only
 
-   objFile::create file = { fl::Path(Location), fl::Flags(Link ? 0 : FL_READ) };
+   objFile::create file = { fl::Path(Location), fl::Flags(Link ? FL::NIL : FL::READ) };
 
    if (!file.ok()) {
       if (Self->OutputID) {
@@ -209,7 +209,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    }
 
 
-   if ((Link) and (!(file->Flags & FL_LINK))) {
+   if ((Link) and ((file->Flags & FL::LINK) IS FL::NIL)) {
       log.warning("Internal Error: Expected a link, but the file is not.");
       return ERR_Failed;
    }
@@ -231,7 +231,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    // Send feedback
 
    CompressionFeedback fb;
-   fb.FeedbackID     = FDB_COMPRESS_FILE;
+   fb.FeedbackID     = FDB::COMPRESS_FILE;
    fb.Index          = Self->FileIndex;
    fb.Path           = Location.c_str();
    fb.Dest           = filename.c_str();
@@ -260,7 +260,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    if (!Self->Files.empty()) {
       auto &chain = Self->Files.back();
 
-      if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
+      if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK::START) != ERR_Okay) return log.warning(ERR_Seek);
 
       UWORD namelen, extralen;
       if (flReadLE(Self->FileIO, &namelen)) return ERR_Read;
@@ -268,7 +268,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
       dataoffset = chain.Offset + HEAD_LENGTH + namelen + extralen + chain.CompressedSize;
    }
 
-   if (acSeek(Self->FileIO, dataoffset, SEEK_START) != ERR_Okay) return ERR_Seek;
+   if (acSeek(Self->FileIO, dataoffset, SEEK::START) != ERR_Okay) return ERR_Seek;
 
    // Initialise the compression algorithm
 
@@ -292,7 +292,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    auto replace_file = Self->Files.begin();
    for (; replace_file != Self->Files.end(); replace_file++) {
-      if (!StrCompare(replace_file->Name, filename, 0, STR_MATCH_LEN)) break;
+      if (!StrCompare(replace_file->Name, filename, 0, STR::MATCH_LEN)) break;
    }
 
    // Allocate the file entry structure and set up some initial variables.
@@ -301,7 +301,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
 
    entry.Offset = dataoffset;
 
-   if ((!(Self->Flags & CMF_NO_LINKS)) and (file->Flags & FL_LINK)) {
+   if (((Self->Flags & CMF::NO_LINKS) IS CMF::NIL) and ((file->Flags & FL::LINK) != FL::NIL)) {
       if (!file->get(FID_Link, &symlink)) {
          log.msg("Note: File \"%s\" is a symbolic link to \"%s\"", filename.c_str(), symlink);
          entry.Flags |= ZIP_LINK;
@@ -316,19 +316,19 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
       else entry.TimeStamp = ((time->Year-1980)<<25) | (time->Month<<21) | (time->Day<<16) | (time->Hour<<11) | (time->Minute<<5) | (time->Second>>1);
    }
 
-   LONG permissions;
-   if (!file->get(FID_Permissions, &permissions)) {
-      if (permissions & PERMIT_USER_READ)   entry.Flags |= ZIP_UREAD;
-      if (permissions & PERMIT_GROUP_READ)  entry.Flags |= ZIP_GREAD;
-      if (permissions & PERMIT_OTHERS_READ) entry.Flags |= ZIP_OREAD;
+   PERMIT permissions;
+   if (!file->get(FID_Permissions, (LONG *)&permissions)) {
+      if ((permissions & PERMIT::USER_READ) != PERMIT::NIL)   entry.Flags |= ZIP_UREAD;
+      if ((permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  entry.Flags |= ZIP_GREAD;
+      if ((permissions & PERMIT::OTHERS_READ) != PERMIT::NIL) entry.Flags |= ZIP_OREAD;
 
-      if (permissions & PERMIT_USER_WRITE)   entry.Flags |= ZIP_UWRITE;
-      if (permissions & PERMIT_GROUP_WRITE)  entry.Flags |= ZIP_GWRITE;
-      if (permissions & PERMIT_OTHERS_WRITE) entry.Flags |= ZIP_OWRITE;
+      if ((permissions & PERMIT::USER_WRITE) != PERMIT::NIL)   entry.Flags |= ZIP_UWRITE;
+      if ((permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL)  entry.Flags |= ZIP_GWRITE;
+      if ((permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) entry.Flags |= ZIP_OWRITE;
 
-      if (permissions & PERMIT_USER_EXEC)   entry.Flags |= ZIP_UEXEC;
-      if (permissions & PERMIT_GROUP_EXEC)  entry.Flags |= ZIP_GEXEC;
-      if (permissions & PERMIT_OTHERS_EXEC) entry.Flags |= ZIP_OEXEC;
+      if ((permissions & PERMIT::USER_EXEC) != PERMIT::NIL)   entry.Flags |= ZIP_UEXEC;
+      if ((permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)  entry.Flags |= ZIP_GEXEC;
+      if ((permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL) entry.Flags |= ZIP_OEXEC;
    }
 
    entry.Flags &= 0xffffff00; // Do not write anything to the low order bits, they have meaning exclusive to MSDOS
@@ -404,7 +404,7 @@ static ERROR compress_file(extCompression *Self, std::string Location, std::stri
    // Update the header that we earlier wrote for our file entry.  Note that the header stores only some of the file's
    // meta information.  The majority is stored in the directory at the end of the zip file.
 
-   if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK_START) != ERR_Okay) return ERR_Seek;
+   if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK::START) != ERR_Okay) return ERR_Seek;
 
    UBYTE header[sizeof(glHeader)];
    CopyMemory(glHeader, header, sizeof(glHeader));
@@ -490,7 +490,7 @@ static ERROR fast_scan_zip(extCompression *Self)
 
    log.traceBranch("");
 
-   if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK_END) != ERR_Okay) return ERR_Seek; // Surface error, fail
+   if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK::END) != ERR_Okay) return ERR_Seek; // Surface error, fail
    if (acRead(Self->FileIO, &tail, TAIL_LENGTH, NULL) != ERR_Okay) return ERR_Read; // Surface error, fail
 
    if (0x06054b50 != ((ULONG *)&tail)[0]) {
@@ -504,11 +504,11 @@ static ERROR fast_scan_zip(extCompression *Self)
    tail.listoffset = le32_cpu(tail.listoffset);
 #endif
 
-   if (acSeek(Self->FileIO, tail.listoffset, SEEK_START) != ERR_Okay) return ERR_Seek;
+   if (acSeek(Self->FileIO, tail.listoffset, SEEK::START) != ERR_Okay) return ERR_Seek;
 
    zipentry *list, *scan;
    LONG total_files = 0;
-   if (!AllocMemory(tail.listsize, MEM_DATA|MEM_NO_CLEAR, (APTR *)&list, NULL)) {
+   if (!AllocMemory(tail.listsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&list, NULL)) {
       log.trace("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
       if (acRead(Self->FileIO, list, tail.listsize, NULL) != ERR_Okay) {
          FreeResource(list);
@@ -592,7 +592,7 @@ static ERROR scan_zip(extCompression *Self)
 
    log.traceBranch("");
 
-   if (acSeek(Self->FileIO, 0.0, SEEK_START) != ERR_Okay) return log.warning(ERR_Seek);
+   if (acSeek(Self->FileIO, 0.0, SEEK::START) != ERR_Okay) return log.warning(ERR_Seek);
 
    LONG type, result;
    LONG total_files = 0;
@@ -600,7 +600,7 @@ static ERROR scan_zip(extCompression *Self)
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected
 
-         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK_CURRENT) != ERR_Okay) return log.warning(ERR_Seek);
+         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK::CURRENT) != ERR_Okay) return log.warning(ERR_Seek);
 
          struct {
             ULONG compressedsize;
@@ -741,7 +741,7 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
 
 static void write_eof(extCompression *Self)
 {
-   if ((Self->FileIO) and (!Self->SubID) and (Self->CompressionCount > 0)) {
+   if ((Self->FileIO) and (!Self->isSubClass()) and (Self->CompressionCount > 0)) {
       if (!Self->Files.empty()) {
          // Calculate the start of the list offset
 
@@ -815,28 +815,28 @@ void zipfile_to_item(ZipFile &ZF, CompressedItem &Item)
    Item.OriginalSize    = ZF.OriginalSize;
    Item.CompressedSize  = ZF.CompressedSize;
 
-   if (ZF.Flags & ZIP_LINK) Item.Flags |= FL_LINK;
+   if (ZF.Flags & ZIP_LINK) Item.Flags |= FL::LINK;
    else {
       if (!Item.OriginalSize) {
-         if (ZF.Name.back() IS '/') Item.Flags |= FL_FOLDER;
-         else Item.Flags |= FL_FOLDER;
+         if (ZF.Name.back() IS '/') Item.Flags |= FL::FOLDER;
+         else Item.Flags |= FL::FOLDER;
       }
-      else Item.Flags |= FL_FILE;
+      else Item.Flags |= FL::FILE;
    }
 
    if (ZF.Flags & ZIP_SECURITY) {
-      LONG permissions = 0;
-      if (ZF.Flags & ZIP_UEXEC) permissions |= PERMIT_USER_EXEC;
-      if (ZF.Flags & ZIP_GEXEC) permissions |= PERMIT_GROUP_EXEC;
-      if (ZF.Flags & ZIP_OEXEC) permissions |= PERMIT_OTHERS_EXEC;
+      auto permissions = PERMIT::NIL;
+      if (ZF.Flags & ZIP_UEXEC) permissions |= PERMIT::USER_EXEC;
+      if (ZF.Flags & ZIP_GEXEC) permissions |= PERMIT::GROUP_EXEC;
+      if (ZF.Flags & ZIP_OEXEC) permissions |= PERMIT::OTHERS_EXEC;
 
-      if (ZF.Flags & ZIP_UREAD) permissions |= PERMIT_USER_READ;
-      if (ZF.Flags & ZIP_GREAD) permissions |= PERMIT_GROUP_READ;
-      if (ZF.Flags & ZIP_OREAD) permissions |= PERMIT_OTHERS_READ;
+      if (ZF.Flags & ZIP_UREAD) permissions |= PERMIT::USER_READ;
+      if (ZF.Flags & ZIP_GREAD) permissions |= PERMIT::GROUP_READ;
+      if (ZF.Flags & ZIP_OREAD) permissions |= PERMIT::OTHERS_READ;
 
-      if (ZF.Flags & ZIP_UWRITE) permissions |= PERMIT_USER_WRITE;
-      if (ZF.Flags & ZIP_GWRITE) permissions |= PERMIT_GROUP_WRITE;
-      if (ZF.Flags & ZIP_OWRITE) permissions |= PERMIT_OTHERS_WRITE;
+      if (ZF.Flags & ZIP_UWRITE) permissions |= PERMIT::USER_WRITE;
+      if (ZF.Flags & ZIP_GWRITE) permissions |= PERMIT::GROUP_WRITE;
+      if (ZF.Flags & ZIP_OWRITE) permissions |= PERMIT::OTHERS_WRITE;
 
       Item.Permissions = permissions;
    }

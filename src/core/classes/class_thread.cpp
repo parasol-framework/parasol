@@ -19,7 +19,7 @@ static ERROR thread_entry(objThread *Thread) {
    return ERR_Okay;
 }
 
-objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF_AUTO_FREE) };
+objThread::create thread = { fl::Routine(thread_entry), fl::Flags(THF::AUTO_FREE) };
 if (thread.ok()) thread->activate(thread);
 
 </pre>
@@ -127,7 +127,7 @@ void threadpool_release(extThread *Thread)
       // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
 
       lock.release();
-      acFree(Thread);
+      FreeResource(Thread);
    }
 }
 
@@ -187,7 +187,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
 
    extThread *thread;
-   if (!AccessObjectID(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
+   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
       thread->Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->Callback.Type IS CALL_STDC) {
@@ -205,7 +205,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
          }
       }
 
-      if (thread->Flags & THF_AUTO_FREE) acFree(thread);
+      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(thread);
 
       ReleaseObject(thread);
    }
@@ -263,13 +263,13 @@ static void * thread_entry(extThread *Self)
 
             ThreadMessage msg;
             msg.ThreadID = Self->UID;
-            SendMessage(0, MSGID_THREAD_CALLBACK, MSF_ADD|MSF_WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
+            SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
 
             //Self->Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
          }
-         else if (Self->Flags & THF_AUTO_FREE) {
+         else if ((Self->Flags & THF::AUTO_FREE) != THF::NIL) {
             Self->Active = FALSE;
-            acFree(Self);
+            FreeResource(Self);
          }
          else Self->Active = FALSE;
 
@@ -408,7 +408,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
    if (!Self->Active) return ERR_Okay;
 
    if (!tlMainThread) { // Only the main thread should be terminating child threads.
-      Self->Flags |= THF_AUTO_FREE;
+      Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }
 
@@ -418,7 +418,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 
    if (Self->Active) {
       log.warning("Thread #%d still in use - marking it for automatic termination.", Self->UID);
-      Self->Flags |= THF_AUTO_FREE;
+      Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }
    else return ERR_Okay;
@@ -490,7 +490,7 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
       Self->Data = Args->Data;
       return ERR_Okay;
    }
-   else if (!AllocMemory(Args->Size, MEM_DATA, &Self->Data, NULL)) {
+   else if (!AllocMemory(Args->Size, MEM::DATA, &Self->Data, NULL)) {
       Self->DataSize = Args->Size;
       CopyMemory(Args->Data, Self->Data, Args->Size);
       return ERR_Okay;
@@ -525,7 +525,7 @@ static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
    if (!Args) return log.warning(ERR_NullArgs);
 
    ObjectSignal sig[2] = { { .Object = Self }, { 0 } };
-   return WaitForObjects(PMF_SYSTEM_NO_BREAK, Args->TimeOut, sig);
+   return WaitForObjects(PMF::SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
 /*********************************************************************************************************************
@@ -623,10 +623,7 @@ On some platforms it may not be possible to preset the stack size and the provid
 -END-
 *********************************************************************************************************************/
 
-static const FieldDef clThreadFlags[] = {
-   { "AutoFree",   THF_AUTO_FREE },
-   { NULL, 0 }
-};
+#include "class_thread_def.c"
 
 static const FieldArray clFields[] = {
    { "Data",      FDF_ARRAY|FDF_BYTE|FDF_R, GET_Data },
@@ -640,8 +637,6 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-#include "class_thread_def.c"
-
 //********************************************************************************************************************
 
 extern "C" ERROR add_thread_class(void)
@@ -649,7 +644,7 @@ extern "C" ERROR add_thread_class(void)
    glThreadClass = objMetaClass::create::global(
       fl::ClassVersion(VER_THREAD),
       fl::Name("Thread"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clThreadActions),
       fl::Methods(clThreadMethods),
       fl::Fields(clFields),

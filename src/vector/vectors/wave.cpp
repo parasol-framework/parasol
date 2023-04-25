@@ -30,7 +30,7 @@ class extVectorWave : public extVector {
    DOUBLE wDegree;
    DOUBLE wThickness;
    LONG   wDimensions;
-   UBYTE  wClose;
+   WVC    wClose;
    UBYTE  wStyle;
 };
 
@@ -57,15 +57,15 @@ static void generate_wave(extVectorWave *Vector)
    DOUBLE x = 0, y = sin(DEG2RAD * Vector->wDegree) * amp + (height * 0.5);
    if (Vector->Transition) apply_transition_xy(Vector->Transition, 0, &x, &y);
 
-   if ((!Vector->wClose) or (Vector->wThickness > 0)) {
+   if ((Vector->wClose IS WVC::NIL) or (Vector->wThickness > 0)) {
       Vector->BasePath.move_to(ox + x, oy + y);
    }
-   else if (Vector->wClose IS WVC_TOP) {
+   else if (Vector->wClose IS WVC::TOP) {
       Vector->BasePath.move_to(ox + width, oy); // Top right
       Vector->BasePath.line_to(ox, oy); // Top left
       Vector->BasePath.line_to(ox + x, oy + y);
    }
-   else if (Vector->wClose IS WVC_BOTTOM) {
+   else if (Vector->wClose IS WVC::BOTTOM) {
       Vector->BasePath.move_to(ox + width, oy + height); // Bottom right
       Vector->BasePath.line_to(ox, oy + height); // Bottom left
       Vector->BasePath.line_to(ox + x, oy + y);
@@ -146,7 +146,7 @@ static void generate_wave(extVectorWave *Vector)
       Vector->BasePath.translate(0, -Vector->wThickness * 0.5); // Ensure that the wave is centered vertically.
    }
 
-   if ((Vector->wClose) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
+   if ((Vector->wClose != WVC::NIL) or (Vector->wThickness > 0)) Vector->BasePath.close_polygon();
 
    bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
@@ -181,9 +181,9 @@ static ERROR WAVE_MoveToPoint(extVectorWave *Self, struct acMoveToPoint *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->Flags & MTF_X) Self->wX = Args->X;
-   if (Args->Flags & MTF_Y) Self->wY = Args->Y;
-   if (Args->Flags & MTF_RELATIVE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
+   if ((Args->Flags & MTF::X) != MTF::NIL) Self->wX = Args->X;
+   if ((Args->Flags & MTF::Y) != MTF::NIL) Self->wY = Args->Y;
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X | DMF_RELATIVE_Y) & ~(DMF_FIXED_X | DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X | DMF_FIXED_Y) & ~(DMF_RELATIVE_X | DMF_RELATIVE_Y);
    reset_path(Self);
    return ERR_Okay;
@@ -245,18 +245,18 @@ static ERROR WAVE_SET_Amplitude(extVectorWave *Self, DOUBLE Value)
 -FIELD-
 Close: Closes the generated wave path at either the top or bottom.
 
-Setting the Close field to TOP or BOTTOM will close the generated wave's path so that it is suitable for being
+Setting the Close field to `TOP` or `BOTTOM` will close the generated wave's path so that it is suitable for being
 filled.
 
 *********************************************************************************************************************/
 
-static ERROR WAVE_GET_Close(extVectorWave *Self, LONG *Value)
+static ERROR WAVE_GET_Close(extVectorWave *Self, WVC *Value)
 {
    *Value = Self->wClose;
    return ERR_Okay;
 }
 
-static ERROR WAVE_SET_Close(extVectorWave *Self, LONG Value)
+static ERROR WAVE_SET_Close(extVectorWave *Self, WVC Value)
 {
    Self->wClose = Value;
    reset_path(Self);
@@ -379,7 +379,6 @@ The height of the area containing the wave is defined here as a fixed or relativ
 static ERROR WAVE_GET_Height(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wHeight;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -392,10 +391,7 @@ static ERROR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->wHeight = val;
@@ -458,7 +454,6 @@ The width of the area containing the wave is defined here as a fixed or relative
 static ERROR WAVE_GET_Width(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wWidth;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -471,10 +466,7 @@ static ERROR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->wWidth = val;
@@ -493,7 +485,6 @@ The x coordinate of the wave is defined here as either a fixed or relative value
 static ERROR WAVE_GET_X(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wX;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -506,10 +497,7 @@ static ERROR WAVE_SET_X(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->wX = val;
@@ -528,7 +516,6 @@ The y coordinate of the wave is defined here as either a fixed or relative value
 static ERROR WAVE_GET_Y(extVectorWave *Self, Variable *Value)
 {
    DOUBLE val = Self->wY;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -541,10 +528,7 @@ static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->wY = val;
@@ -555,16 +539,16 @@ static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clWaveClose[] = {
-   { "None",   WVC_NONE },
-   { "Top",    WVC_TOP },
-   { "Bottom", WVC_BOTTOM },
+   { "None",   WVC::NONE },
+   { "Top",    WVC::TOP },
+   { "Bottom", WVC::BOTTOM },
    { NULL, 0 }
 };
 
 static const FieldDef clWaveStyle[] = {
-   { "Curved",   WVS_CURVED },
-   { "Angled",   WVS_ANGLED },
-   { "Sawtooth", WVS_SAWTOOTH },
+   { "Curved",   WVS::CURVED },
+   { "Angled",   WVS::ANGLED },
+   { "Sawtooth", WVS::SAWTOOTH },
    { NULL, 0 }
 };
 
@@ -609,9 +593,9 @@ static ERROR init_wave(void)
 {
    clVectorWave = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORWAVE),
+      fl::ClassID(ID_VECTORWAVE),
       fl::Name("VectorWave"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clWaveActions),
       fl::Fields(clWaveFields),
       fl::Size(sizeof(extVectorWave)),

@@ -106,16 +106,16 @@ static ERROR sslSetup(extNetSocket *Self)
    log.traceBranch("");
 
    if ((Self->CTX = SSL_CTX_new(SSLv23_client_method()))) {
-      //if (GetResource(RES_LOG_LEVEL > 3)) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
+      //if (GetResource(RES::LOG_LEVEL) > 3) SSL_CTX_set_info_callback(Self->CTX, (void *)&sslCtxMsgCallback);
 
-      if (!ResolvePath("config:ssl/certs", RSF_NO_FILE_CHECK, &path)) {
+      if (!ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path)) {
          if (SSL_CTX_load_verify_locations(Self->CTX, NULL, path)) {
             FreeResource(path);
 
             if ((Self->SSL = SSL_new(Self->CTX))) {
                log.msg("SSL connectivity has been configured successfully.");
 
-               if (GetResource(RES_LOG_LEVEL > 3)) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
+               if (GetResource(RES::LOG_LEVEL) > 3) SSL_set_info_callback(Self->SSL, &sslMsgCallback);
 
                return ERR_Okay;
             }
@@ -164,9 +164,9 @@ static ERROR sslLinkSocket(extNetSocket *Self)
 // NetSocket has the NSF_SSL flag set, then the connection is handled automatically.  Otherwise a plain text socket
 // connection can be converted to SSL at any time (if the server is ready for it) by calling this function.
 //
-// The state will be changed to NTC_CONNECTED if the SSL connection is established immediately, otherwise
-// NTC_CONNECTING_SSL may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
-// NTC_DISCONNECTED and the Error field is set appropriately.
+// The state will be changed to NTC::CONNECTED if the SSL connection is established immediately, otherwise
+// NTC::CONNECTING_SSL may be used to indicate that the connection is ongoing.  If a failure occurs, the state is set to
+// NTC::DISCONNECTED and the Error field is set appropriately.
 
 static ERROR sslConnect(extNetSocket *Self)
 {
@@ -190,10 +190,10 @@ static ERROR sslConnect(extNetSocket *Self)
 
          case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR_Disconnected; break;
 
-         case SSL_ERROR_WANT_READ:        Self->set(FID_State, NTC_CONNECTING_SSL);
+         case SSL_ERROR_WANT_READ:        Self->setState(NTC::CONNECTING_SSL);
                                           return ERR_Okay;
 
-         case SSL_ERROR_WANT_WRITE:       Self->set(FID_State, NTC_CONNECTING_SSL);
+         case SSL_ERROR_WANT_WRITE:       Self->setState(NTC::CONNECTING_SSL);
                                           return ERR_Okay;
 
          case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR_WouldBlock; break;
@@ -209,12 +209,12 @@ static ERROR sslConnect(extNetSocket *Self)
       }
 
       log.warning("SSL_connect: %s (%s)", ERR_error_string(result, NULL), GetErrorMsg(Self->Error));
-      Self->set(FID_State, NTC_DISCONNECTED);
+      Self->setState(NTC::DISCONNECTED);
       return Self->Error;
    }
    else {
       log.trace("sslConnect:","SSL server connection successful.");
-      Self->set(FID_State, NTC_CONNECTED);
+      Self->setState(NTC::CONNECTED);
       return ERR_Okay;
    }
 }
@@ -235,7 +235,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
-         RegisterFD((HOSTHANDLE)Socket, RFD_WRITE|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_write, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_write, Self);
       #elif _WIN32
          if ((Self->WriteSocket) or (Self->Outgoing.Type != CALL_NONE) or (Self->WriteQueue.Buffer)) {
             // Do nothing, we are already listening for writes
@@ -277,7 +277,7 @@ static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 
    if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
       #ifdef __linux__
-         RegisterFD((HOSTHANDLE)Socket, RFD_READ|RFD_REMOVE|RFD_SOCKET, &ssl_handshake_read, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
       #elif _WIN32
          // No need to remove any handle monitoring, client_server_incoming() will do so automatically if
          // necessary when new data arrives.

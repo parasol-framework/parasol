@@ -71,14 +71,14 @@ extern "C" void program(void)
    LONG i, j;
 
    glTask = CurrentTask();
-   BYTE time       = FALSE;
+   bool time       = false;
    LONG winhandle  = 0;
    STRING procedure  = NULL;
    STRING scriptfile = NULL;
    LONG width      = 0;
    LONG height     = 0;
 
-   FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES_FILESYSTEM);
+   FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES::FILESYSTEM);
 
    // Process arguments
 
@@ -91,10 +91,10 @@ extern "C" void program(void)
             goto exit;
          }
          else if (!StrMatch(Args[i], "--time")) {
-            time = TRUE;
+            time = true;
          }
          else if (!StrMatch(Args[i], "--info")) {
-            print("Instance: %d", GetResource(RES_INSTANCE));
+            print("Instance: %d", GetResource(RES::INSTANCE));
          }
          else if (!StrMatch(Args[i], "--instance")) {
             glTask->get(FID_Instance, &j);
@@ -120,7 +120,7 @@ extern "C" void program(void)
 
             if (Args[i+1]) {
                for (j=0; Args[i+1][j]; j++);
-               if (!AllocMemory(j+1, MEM_STRING|MEM_NO_CLEAR, &procedure)) {
+               if (!AllocMemory(j+1, MEM::STRING|MEM::NO_CLEAR, &procedure)) {
                   for (j=0; Args[i+1][j]; j++) procedure[j] = Args[i+1][j];
                   procedure[j] = 0;
                }
@@ -129,7 +129,7 @@ extern "C" void program(void)
          }
          else if (!StrMatch(Args[i], "--target")) {
             if (Args[i+1]) {
-               if (FindObject(Args[i+1], 0, FOF_SMART_NAMES, &TargetID) != ERR_Okay) {
+               if (FindObject(Args[i+1], 0, FOF::SMART_NAMES, &TargetID) != ERR_Okay) {
                   print("Warning - could not find target object \"%s\".", Args[i+1]);
                }
                else log.msg("Using target %d", TargetID);
@@ -144,7 +144,7 @@ extern "C" void program(void)
          }
          else {
             // If argument not recognised, assume this arg is the script file.
-            if (ResolvePath(Args[i], RSF_APPROXIMATE, &scriptfile)) {
+            if (ResolvePath(Args[i], RSF::APPROXIMATE, &scriptfile)) {
                print("Unable to find file '%s'", Args[i]);
                goto exit;
             }
@@ -170,7 +170,8 @@ extern "C" void program(void)
       }
    }
 
-   if ((AnalysePath(scriptfile, &i) != ERR_Okay) or (i != LOC_FILE)) {
+   LOC path_type;
+   if ((AnalysePath(scriptfile, &path_type) != ERR_Okay) or (path_type != LOC::FILE)) {
       print("File '%s' does not exist.", scriptfile);
       goto exit;
    }
@@ -186,7 +187,7 @@ exit:
 
    if (CoreObjectID) {
       OBJECTPTR object;
-      if (!AccessObjectID(CoreObjectID, 5000, &object)) {
+      if (!AccessObject(CoreObjectID, 5000, &object)) {
          UnsubscribeAction(object, 0, glTask->UniqueID);
          ReleaseObject(object);
       }
@@ -203,13 +204,13 @@ exit:
       OBJECTPTR file;
       if (!PrivateObject(ID_FILE, 0, &file, FID_Path|TSTR, glDirectory, TAGEND)) {
          flDelete(file, 0);
-         acFree(file);
+         FreeResource(file);
       }
 
       FreeResource(glDirectory);
    }
 
-   if (glScript) acFree(glScript);
+   if (glScript) FreeResource(glScript);
 }
 
 /*********************************************************************************************************************
@@ -305,7 +306,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
             }
 
             acActivate(run);
-            acFree(run);
+            FreeResource(run);
          }
 
          return(ERR_LimitedSuccess);
@@ -364,7 +365,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
       LARGE start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
-      if (!(error = acInit(glScript))) {
+      if (!(error = InitObject(glScript))) {
          if (!(error = acActivate(glScript))) {
             if (ShowTime) {
                DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;
@@ -405,7 +406,7 @@ static ERROR decompress_archive(STRING Location)
 
    objCompression::create compress = { fl::Path(Location) };
    if (compress.ok()) {
-      if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM_STRING, &glDirectory))) {
+      if (!(error = AllocMemory(sizeof(STR_UNPACK) + len + sizeof(STR_MAIN) + 2, MEM::STRING, &glDirectory))) {
          for (i=0; STR_UNPACK[i]; i++) glDirectory[i] = STR_UNPACK[i];
          for (j=len; (j > 1) and (Location[j-1] != '/') and (Location[j-1] != '\\') and (Location[j-1] != ':'); j--);
          while (Location[j]) {

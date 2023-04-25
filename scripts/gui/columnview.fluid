@@ -226,7 +226,7 @@ local function highlightItem(View, Item, Highlighted)
       end
 
       if Item._vectors.highlight then
-         Item._vectors.highlight.acFree()
+         Item._vectors.highlight.free()
          Item._vectors.highlight = nil
       end
    end
@@ -273,7 +273,7 @@ local function bannerZoneClick(View, Col, X, Y, Value)
    if (Value == 1) then return end
 
    if View._sort and View._sort.icon then
-      View._sort.icon.acFree()
+      View._sort.icon.free()
       View._sort.icon = nil
    end
 
@@ -326,10 +326,10 @@ gui.columnView = function(Options)
 
       if View.columns then -- Clear any existing banner allocations
          for _, col in pairs(View.columns) do
-            if col.vecViewport then col.vecViewport.acFree() end
-            if col.vecGradient then col.vecGradient.acFree() end
-            if col.vecGradientSelect then col.vecGradientSelect.acFree() end
-            if col.vecTitle then col.vecTitle.acFree() end
+            if col.vecViewport then col.vecViewport.free() end
+            if col.vecGradient then col.vecGradient.free() end
+            if col.vecGradientSelect then col.vecGradientSelect.free() end
+            if col.vecTitle then col.vecTitle.free() end
          end
       end
 
@@ -422,7 +422,7 @@ gui.columnView = function(Options)
 
             col.resizeVP = View.banner.viewport.new('VectorViewport', {
                x = x + col.width - (MARGIN * 0.5), y = 0,
-               width = MARGIN, height = '100%', cursor = PTR_SPLIT_HORIZONTAL
+               width = MARGIN, height = '100%', cursor = PTC_SPLIT_HORIZONTAL
             })
 
             col.resizeVP.dragCallback = function(SizeVP, X, Y)

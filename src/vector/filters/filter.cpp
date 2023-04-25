@@ -36,7 +36,7 @@ struct target {
    DOUBLE x, y, width, height;
 };
 
-static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, UBYTE, objFilterEffect *, bool);
+static ERROR get_source_bitmap(extVectorFilter *, objBitmap **, VSF, objFilterEffect *, bool);
 
 //********************************************************************************************************************
 
@@ -75,7 +75,7 @@ static void compute_target_area(extVectorFilter *Self)
    Self->BoundWidth  = bounds[2] - bounds[0];
    Self->BoundHeight = bounds[3] - bounds[1];
 
-   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+   if (Self->Units IS VUNIT::BOUNDING_BOX) {
       if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = boundX;
       else if (Self->Dimensions & DMF_RELATIVE_X) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
       else Self->TargetX = boundX;
@@ -132,8 +132,8 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
    #endif
 
    if (bmp) {
-      bmp->ColourSpace = CS_SRGB;
-      bmp->Flags &= ~BMF_PREMUL;
+      bmp->ColourSpace = CS::SRGB;
+      bmp->Flags &= ~BMF::PREMUL;
       *BitmapResult = bmp;
       Self->BankIndex++;
       return ERR_Okay;
@@ -146,7 +146,7 @@ static ERROR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 // reference will be returned.  Otherwise a new bitmap is allocated and rendered with the effect.  The bitmap must
 // not be freed as they are permanently maintained until the VectorFilter is destroyed.
 
-static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, UBYTE SourceType, objFilterEffect *Effect, bool Premultiply)
+static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VSF SourceType, objFilterEffect *Effect, bool Premultiply)
 {
    pf::Log log(__FUNCTION__);
 
@@ -154,16 +154,16 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
 
    pf::SwitchContext ctx(Self);
 
-   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, SourceType);
+   log.branch("%s #%d <- ID: #%u, Type: %d", Self->ActiveEffect->Class->ClassName, Self->ActiveEffect->UID, Effect ? Effect->UID : 0, LONG(SourceType));
 
    objBitmap *bmp = NULL;
-   if (SourceType IS VSF_GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
+   if (SourceType IS VSF::GRAPHIC) { // SourceGraphic: Render the source vector without transformations (transforms will be applied in the final steps).
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
-         gfxCopyArea(sg, bmp, 0, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
+         gfxCopyArea(sg, bmp, BAF::NIL, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0, 0);
       }
    }
-   else if (SourceType IS VSF_ALPHA) { // SourceAlpha
+   else if (SourceType IS VSF::ALPHA) { // SourceAlpha
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
       if (auto sg = get_source_graphic(Self)) {
          LONG dy = bmp->Clip.Top;
@@ -178,7 +178,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          }
       }
    }
-   else if (SourceType IS VSF_BKGD) {
+   else if (SourceType IS VSF::BKGD) {
       // "Represents an image snapshot of the canvas under the filter region at the time that the filter element is invoked."
       // NOTE: The client needs to specify 'enable-background' in the nearest container element in order to indicate where the background is coming from;
       // additionally it serves as a marker for graphics to be rendered to a separate bitmap (essential for coping with any transformations in the scene graph).
@@ -187,15 +187,15 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
 
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
 
-      if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
-         gfxCopyArea(Self->BkgdBitmap, bmp, 0, Self->VectorClip.Left, Self->VectorClip.Top,
+      if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
+         gfxCopyArea(Self->BkgdBitmap, bmp, BAF::NIL, Self->VectorClip.Left, Self->VectorClip.Top,
             Self->VectorClip.Right - Self->VectorClip.Left, Self->VectorClip.Bottom - Self->VectorClip.Top,
             bmp->Clip.Left, bmp->Clip.Top);
       }
    }
-   else if (SourceType IS VSF_BKGD_ALPHA) {
+   else if (SourceType IS VSF::BKGD_ALPHA) {
       if (auto error = get_banked_bitmap(Self, &bmp)) return log.warning(error);
-      if ((Self->BkgdBitmap) and (Self->BkgdBitmap->Flags & BMF_ALPHA_CHANNEL)) {
+      if ((Self->BkgdBitmap) and ((Self->BkgdBitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
          LONG dy = bmp->Clip.Top;
          for (LONG sy=Self->BkgdBitmap->Clip.Top; sy < Self->BkgdBitmap->Clip.Bottom; sy++) {
             ULONG *src = (ULONG *)(Self->BkgdBitmap->Data + (sy * Self->BkgdBitmap->LineWidth));
@@ -208,7 +208,7 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          }
       }
    }
-   else if (SourceType IS VSF_REFERENCE) {
+   else if (SourceType IS VSF::REFERENCE) {
       if (auto e = Effect) {
          // Find first effect in the hierarchy that outputs a bitmap.
 
@@ -227,12 +227,12 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          return ERR_NoData;
       }
   }
-   else if (SourceType IS VSF_NONE) {
+   else if (SourceType IS VSF::NONE) {
       *BitmapResult = NULL;
       return ERR_Continue;
    }
    else {
-      log.warning("Effect source %d is not supported.", SourceType);
+      log.warning("Effect source %d is not supported.", LONG(SourceType));
       return ERR_Failed;
    }
 
@@ -272,8 +272,8 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
          fl::Width(Self->ClientViewport->Scene->PageWidth),
          fl::Height(Self->ClientViewport->Scene->PageHeight),
          fl::BitsPerPixel(32),
-         fl::Flags(BMF_ALPHA_CHANNEL),
-         fl::ColourSpace(CS_SRGB)))) return NULL;
+         fl::Flags(BMF::ALPHA_CHANNEL),
+         fl::ColourSpace(CS::SRGB)))) return NULL;
    }
    else if ((Self->ClientViewport->Scene->PageWidth > Self->SourceGraphic->Width) or
             (Self->ClientViewport->Scene->PageHeight > Self->SourceGraphic->Height)) {
@@ -311,7 +311,7 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    Self->ClientVector->Next = NULL;
    Self->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
-   gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF_FILL);
+   gfxDrawRectangle(Self->SourceGraphic, 0, 0, Self->SourceGraphic->Width, Self->SourceGraphic->Height, 0x00000000, BAF::FILL);
    Self->SourceScene->Bitmap = Self->SourceGraphic;
    acDraw(Self->SourceScene);
 
@@ -336,7 +336,7 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
       return ERR_NothingDone;
    }
 
-   if (Self->Units IS VUNIT_BOUNDING_BOX) {
+   if (Self->Units IS VUNIT::BOUNDING_BOX) {
       // All coordinates are relative to the client vector, or vectors if we are applied to a group.
       // The bounds are oriented to the client vector's transforms.
 
@@ -422,9 +422,9 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
    pf::SwitchContext context(Self);
 
-   auto filter_name = GetName(Self);
+   CSTRING filter_name = Self->Name;
    if ((!filter_name) or (!filter_name[0])) filter_name = "Unnamed";
-   auto vector_name = GetName(Vector);
+   CSTRING vector_name = Vector->Name;
    if ((!vector_name) or (!vector_name[0])) vector_name = "Unnamed";
    log.branch("Rendering '%s' filter content for %s #%d '%s'.", filter_name, Vector->Class->ClassName, Vector->UID, vector_name);
 
@@ -457,12 +457,12 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
 
       if (e->UsageCount > 0) { // This effect is an input to something else
          if (auto error = get_banked_bitmap(Self, &e->Target)) return error;
-         gfxDrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF_FILL);
+         gfxDrawRectangle(e->Target, 0, 0, e->Target->Width, e->Target->Height, 0x00000000, BAF::FILL);
       }
       else { // This effect can render directly to the shared output bitmap
          if (!out) {
             if (auto error = get_banked_bitmap(Self, &out)) return error;
-            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+            gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
          }
          e->Target = out;
       }
@@ -474,7 +474,7 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
    if (!out) {
       log.warning("Effect pipeline did not produce an output bitmap.");
       if (auto error = get_banked_bitmap(Self, &out)) return error;
-      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF_FILL);
+      gfxDrawRectangle(out, 0, 0, out->Width, out->Height, 0x00000000, BAF::FILL);
    }
 
    #if defined(EXPORT_FILTER_BITMAP) && defined (DEBUG_FILTER_BITMAP)
@@ -482,7 +482,7 @@ ERROR render_filter(extVectorFilter *Self, extVectorViewport *Viewport, extVecto
    #endif
 
    #ifdef DEBUG_FILTER_BITMAP
-      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, 0);
+      gfxDrawRectangle(out, out->Clip.Left, out->Clip.Top, out->Clip.Right-out->Clip.Left, out->Clip.Bottom-out->Clip.Top, 0xff0000ff, BAF::NIL);
    #endif
 
    *Output = out;
@@ -500,7 +500,7 @@ static ERROR VECTORFILTER_Clear(extVectorFilter *Self, APTR Void)
    pf::Log log;
 
    log.branch("");
-   while (Self->Effects) acFree(Self->Effects);
+   while (Self->Effects) FreeResource(Self->Effects);
 
    Self->Bank.clear();
    Self->BankIndex = 0;
@@ -514,8 +514,8 @@ static ERROR VECTORFILTER_Free(extVectorFilter *Self, APTR Void)
 {
    acClear(Self);
 
-   if (Self->SourceGraphic) { acFree(Self->SourceGraphic); Self->SourceGraphic = NULL; }
-   if (Self->SourceScene)   { acFree(Self->SourceScene);   Self->SourceScene = NULL; }
+   if (Self->SourceGraphic) { FreeResource(Self->SourceGraphic); Self->SourceGraphic = NULL; }
+   if (Self->SourceScene)   { FreeResource(Self->SourceScene);   Self->SourceScene = NULL; }
 
    Self->~extVectorFilter();
    return ERR_Okay;
@@ -527,7 +527,7 @@ static ERROR VECTORFILTER_Init(extVectorFilter *Self, APTR Void)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Self->Units <= 0) or (Self->Units >= VUNIT_END)) {
+   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return log.warning(ERR_OutOfRange);
    }
@@ -543,7 +543,7 @@ static ERROR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Arg
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->Object->ClassID IS ID_FILTEREFFECT) {
+   if (Args->Object->Class->BaseClassID IS ID_FILTEREFFECT) {
       auto effect = (extFilterEffect *)Args->Object;
 
       if (!Self->Effects) Self->Effects = effect;
@@ -562,14 +562,14 @@ static ERROR VECTORFILTER_NewChild(extVectorFilter *Self, struct acNewChild *Arg
 static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 {
    new (Self) extVectorFilter;
-   Self->Units          = VUNIT_BOUNDING_BOX;
-   Self->PrimitiveUnits = VUNIT_UNDEFINED;
+   Self->Units          = VUNIT::BOUNDING_BOX;
+   Self->PrimitiveUnits = VUNIT::UNDEFINED;
    Self->Opacity        = 1.0;
    Self->X              = -0.1; // -10% default as per SVG requirements
    Self->Y              = -0.1;
    Self->Width          = 1.2;  // +120% default as per SVG requirements
    Self->Height         = 1.2;
-   Self->ColourSpace    = VCS_SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
+   Self->ColourSpace    = VCS::SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
    Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
    return ERR_Okay;
 }
@@ -578,8 +578,8 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
 
 static ERROR VECTORFILTER_NewOwner(extVectorFilter *Self, struct acNewOwner *Args)
 {
-   if ((Args) and (Args->ClassID IS ID_VECTORSCENE)) {
-      Self->Scene = (extVectorScene *)GetObjectPtr(Args->NewOwnerID);
+   if (Args->NewOwner->Class->ClassID IS ID_VECTORSCENE) {
+      Self->Scene = (extVectorScene *)Args->NewOwner;
    }
    return ERR_Okay;
 }
@@ -655,7 +655,6 @@ If width or height is not specified, the effect is as if a value of 120% were sp
 static ERROR VECTORFILTER_GET_Height(extVectorFilter *Self, struct Variable *Value)
 {
    DOUBLE val = Self->Height;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -669,10 +668,7 @@ static ERROR VECTORFILTER_SET_Height(extVectorFilter *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_PERCENTAGE) {
-         val = val * 0.01;
-         Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-      }
+      if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
       else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
       Self->Height = val;
@@ -693,7 +689,7 @@ primarily for the purpose of simplifying SVG compatibility and its use may resul
 static ERROR VECTORFILTER_SET_Inherit(extVectorFilter *Self, extVectorFilter *Value)
 {
    if (Value) {
-      if (Value->ClassID IS ID_VECTORFILTER) Self->Inherit = Value;
+      if (Value->Class->BaseClassID IS ID_VECTORFILTER) Self->Inherit = Value;
       else return ERR_InvalidValue;
    }
    else Self->Inherit = NULL;
@@ -760,7 +756,6 @@ If width or height is not specified, the effect is as if a value of 120% were sp
 static ERROR VECTORFILTER_GET_Width(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
-   if (Value->Type & FD_PERCENTAGE) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -774,10 +769,7 @@ static ERROR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_PERCENTAGE) {
-         val = val * 0.01;
-         Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-      }
+      if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
       else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
       Self->Width = val;
@@ -801,7 +793,6 @@ If X or Y is not specified, the effect is as if a value of -10% were specified.
 static ERROR VECTORFILTER_GET_X(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -814,10 +805,7 @@ static ERROR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->X = val;
@@ -840,7 +828,6 @@ If X or Y is not specified, the effect is as if a value of -10% were specified.
 static ERROR VECTORFILTER_GET_Y(extVectorFilter *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = val;
    return ERR_Okay;
@@ -853,10 +840,7 @@ static ERROR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->Y = val;
@@ -904,7 +888,7 @@ ERROR init_filter(void)
    clVectorFilter = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTORFILTER),
       fl::Name("VectorFilter"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clVectorFilterActions),
       fl::Fields(clFilterFields),
       fl::Size(sizeof(extVectorFilter)),

@@ -102,7 +102,7 @@ static ERROR SET_Size(extFile *, LARGE);
 
 static ERROR GET_ResolvedPath(extFile *, CSTRING *);
 
-static ERROR set_permissions(extFile *, LONG);
+static ERROR set_permissions(extFile *, PERMIT);
 
 /*********************************************************************************************************************
 -ACTION-
@@ -115,14 +115,14 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    pf::Log log;
 
    if (Self->Handle != -1) return ERR_Okay;
-   if (!(Self->Flags & (FL_NEW|FL_READ|FL_WRITE))) return log.warning(ERR_NothingDone);
+   if ((Self->Flags & (FL::NEW|FL::READ|FL::WRITE)) IS FL::NIL) return log.warning(ERR_NothingDone);
 
    // Setup the open flags.  Note that for new files, the owner will always have read/write/delete permissions by
    // default.  Extra flags can be set through the Permissions field.  If the user wishes to turn off his access to
    // the created file then he must do so after initialisation.
 
    LONG openflags = 0;
-   if (Self->Flags & FL_NEW) openflags |= O_CREAT|O_TRUNC;
+   if ((Self->Flags & FL::NEW) != FL::NIL) openflags |= O_CREAT|O_TRUNC;
 
    CSTRING path;
    if (GET_ResolvedPath(Self, &path)) return ERR_ResolvePath;
@@ -132,10 +132,10 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
 
    // Opening /dev/ files from Parasol is disallowed because it can cause problems
 
-   if (Self->Flags & FL_DEVICE) {
+   if ((Self->Flags & FL::DEVICE) != FL::NIL) {
       openflags |= O_NOCTTY; // Prevent device from becoming the controlling terminal
    }
-   else if (!StrCompare("/dev/", path, 0, 0)) {
+   else if (!StrCompare("/dev/", path, 0)) {
       log.warning("Opening devices not permitted without the DEVICE flag.");
       return ERR_NoPermission;
    }
@@ -143,16 +143,16 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    LONG secureflags = S_IRUSR|S_IWUSR;
 #endif
 
-   if ((Self->Flags & (FL_READ|FL_WRITE)) IS (FL_READ|FL_WRITE)) {
+   if ((Self->Flags & (FL::READ|FL::WRITE)) IS (FL::READ|FL::WRITE)) {
       log.msg("Open \"%s\" [RW]", path);
       openflags |= O_RDWR;
    }
-   else if (Self->Flags & FL_READ) {
+   else if ((Self->Flags & FL::READ) != FL::NIL) {
       log.msg("Open \"%s\" [R]", path);
       openflags |= O_RDONLY;
    }
-   else if (Self->Flags & FL_WRITE) {
-      log.msg("Open \"%s\" [W|%s]", path, (Self->Flags & FL_NEW) ? "New" : "Existing");
+   else if ((Self->Flags & FL::WRITE) != FL::NIL) {
+      log.msg("Open \"%s\" [W|%s]", path, ((Self->Flags & FL::NEW) != FL::NIL) ? "New" : "Existing");
       openflags |= O_RDWR;
    }
    else log.msg("Open \"%s\" [-]", path);
@@ -165,7 +165,7 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    #endif
 
    #ifdef _WIN32
-      if (Self->Flags & FL_NEW) {
+      if ((Self->Flags & FL::NEW) != FL::NIL) {
          // Make sure that we'll be able to recreate the file from new if it already exists and is marked read-only.
 
          chmod(path, S_IRUSR|S_IWUSR);
@@ -175,7 +175,7 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    if ((Self->Handle = open(path, openflags|WIN32OPEN|O_LARGEFILE, secureflags)) IS -1) {
       LONG err = errno;
 
-      if (Self->Flags & FL_NEW) {
+      if ((Self->Flags & FL::NEW) != FL::NIL) {
          // Attempt to create the necessary directories that might be required for this new file.
 
          if (check_paths(path, Self->Permissions) IS ERR_Okay) {
@@ -189,21 +189,21 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
             else return ERR_CreateFile;
          }
       }
-      else if ((errno IS EROFS) and (Self->Flags & FL_READ)) {
+      else if ((errno IS EROFS) and ((Self->Flags & FL::READ) != FL::NIL)) {
          // Drop requested access rights to read-only and try again
          log.warning("Reverting to read-only access for this read-only file.");
          openflags = O_RDONLY;
-         Self->Flags &= ~FL_WRITE;
+         Self->Flags &= ~FL::WRITE;
          Self->Handle = open(path, openflags|WIN32OPEN|O_LARGEFILE, secureflags);
       }
-      else if (Self->Flags & FL_LINK) {
+      else if ((Self->Flags & FL::LINK) != FL::NIL) {
          // The file is a broken symbolic link (i.e. refers to a file that no longer exists).  Even
          // though we won't be able to get a valid handle for the link, we'll allow the initialisation
          // to continue because the user may want to delete the symbolic link or get some information
          // about it.
       }
 
-      if ((Self->Handle IS -1) and (!(Self->Flags & FL_LINK))) {
+      if ((Self->Handle IS -1) and ((Self->Flags & FL::LINK) IS FL::NIL)) {
          switch(errno) {
             case EACCES: return log.warning(ERR_NoPermission);
             case EEXIST: return log.warning(ERR_FileExists);
@@ -219,7 +219,7 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
    // File size management
 
    if (Self->Handle != -1) {
-      if (Self->Flags & FL_NEW);
+      if ((Self->Flags & FL::NEW) != FL::NIL);
       else if ((Self->Size = lseek64(Self->Handle, 0, SEEK_END)) != -1) {  // Get the size of the file.  Could be zero if the file is a stream.
          lseek64(Self->Handle, 0, SEEK_SET);
       }
@@ -228,13 +228,13 @@ static ERROR FILE_Activate(extFile *Self, APTR Void)
       }
    }
 
-   if (Self->Flags & FL_NEW) {
-      if (Self->Permissions) set_permissions(Self, Self->Permissions);
+   if ((Self->Flags & FL::NEW) != FL::NIL) {
+      if (Self->Permissions != PERMIT::NIL) set_permissions(Self, Self->Permissions);
    }
 
    // If the BUFFER flag is set, load the entire file into RAM and treat it as a read/write memory buffer.
 
-   if (Self->Flags & FL_BUFFER) return flBufferContent(Self);
+   if ((Self->Flags & FL::BUFFER) != FL::NIL) return flBufferContent(Self);
 
    return ERR_Okay;
 }
@@ -268,22 +268,22 @@ static ERROR FILE_BufferContent(extFile *Self, APTR Void)
 
    if (Self->Buffer) return ERR_Okay;
 
-   acSeek(Self, 0, SEEK_START);
+   acSeek(Self, 0, SEEK::START);
 
    if (!Self->Size) {
       // If the file has no size, it could be a stream (or simply empty).  This routine handles this situation.
 
       char ch;
       if (!acRead(Self, &ch, 1, &len)) {
-         Self->Flags |= FL_STREAM;
+         Self->Flags |= FL::STREAM;
          // Allocate a 1 MB memory block, read the stream into it, then reallocate the block to the correct size.
 
          UBYTE *buffer;
-         if (!AllocMemory(1024 * 1024, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+         if (!AllocMemory(1024 * 1024, MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
             acSeekStart(Self, 0);
             acRead(Self, buffer, 1024 * 1024, &len);
             if (len > 0) {
-               if (!AllocMemory(len, MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL)) {
+               if (!AllocMemory(len, MEM::NO_CLEAR, (APTR *)&Self->Buffer, NULL)) {
                   CopyMemory(buffer, Self->Buffer, len);
                   Self->Size = len;
                }
@@ -297,7 +297,7 @@ static ERROR FILE_BufferContent(extFile *Self, APTR Void)
       // the file content is treated as a string.
 
       BYTE *buffer;
-      if (!AllocMemory(Self->Size+1, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+      if (!AllocMemory(Self->Size+1, MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
          buffer[Self->Size] = 0;
          if (!acRead(Self, buffer, Self->Size, &len)) {
             Self->Buffer = buffer;
@@ -313,7 +313,7 @@ static ERROR FILE_BufferContent(extFile *Self, APTR Void)
    // If the file was empty, allocate a 1-byte memory block for the Buffer field, in order to satisfy condition tests.
 
    if (!Self->Buffer) {
-      if (AllocMemory(1, MEM_DATA, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
+      if (AllocMemory(1, MEM::DATA, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
          return log.warning(ERR_AllocMemory);
       }
    }
@@ -323,18 +323,18 @@ static ERROR FILE_BufferContent(extFile *Self, APTR Void)
    close(Self->Handle);
    Self->Handle = -1;
    Self->Position = 0;
-   Self->Flags |= FL_BUFFER;
+   Self->Flags |= FL::BUFFER;
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -ACTION-
 DataFeed: Data can be streamed to any file as a method of writing content.
 
 Streaming data of any type to a file will result in the content being written to the file at the current seek
 #Position.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
 {
@@ -346,13 +346,13 @@ static ERROR FILE_DataFeed(extFile *Self, struct acDataFeed *Args)
    else return acWrite(Self, Args->Buffer, StrLength((CSTRING)Args->Buffer), NULL);
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Copy: Copies the data of a file to another location.
 
 This method is used to copy the data of a file object to another location.  All of the data will be copied, effectively
-creating a clone of the original file information.  The file object must have been initialised with the FL_READ flag,
+creating a clone of the original file information.  The file object must have been initialised with the `FL::READ` flag,
 or the copy operation will not work (this restriction does not apply to directories).  If a matching file name already
 exists at the destination path, it will be over-written with the new data.
 
@@ -378,14 +378,14 @@ ResolvePath:
 Loop: Performing the copy would cause infinite recursion.
 AllocMemory:
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FILE_Copy(extFile *Self, struct flCopy *Args)
 {
    return CopyFile(Self->Path, Args->Dest, Args->Callback);
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -METHOD-
 Delete: Deletes a file from its source location.
@@ -407,7 +407,7 @@ ReadOnly: The file is on a read-only filesystem.
 Locked: The file is in use.
 BufferOverflow: The file path string is too long.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
 {
@@ -415,7 +415,7 @@ static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
 
    if ((!Self->Path) or (!*Self->Path)) return log.warning(ERR_MissingPath);
 
-   if ((Self->Stream) and (!(Self->Flags & FL_LINK))) {
+   if ((Self->Stream) and ((Self->Flags & FL::LINK) IS FL::NIL)) {
       log.branch("Delete Folder: %s", Self->Path);
 
       // Check if the Path is a volume
@@ -449,7 +449,7 @@ static ERROR FILE_Delete(extFile *Self, struct flDelete *Args)
          FileFeedback fb;
          ClearMemory(&fb, sizeof(fb));
          if ((Args->Callback) and (Args->Callback->Type)) {
-            fb.FeedbackID = FBK_DELETE_FILE;
+            fb.FeedbackID = FBK::DELETE_FILE;
             fb.Path       = buffer;
          }
 
@@ -494,15 +494,15 @@ static ERROR FILE_Free(extFile *Self, APTR Void)
 
 #ifdef _WIN32
    STRING path = NULL;
-   if (Self->Flags & FL_RESET_DATE) {
+   if ((Self->Flags & FL::RESET_DATE) != FL::NIL) {
       // If we have to reset the date, get the file path
       log.trace("Resetting the file date.");
-      ResolvePath(Self->Path, 0, &path);
+      ResolvePath(Self->Path, RSF::NIL, &path);
    }
 #endif
 
    if (Self->prvIcon) { FreeResource(Self->prvIcon); Self->prvIcon = NULL; }
-   if (Self->ProgressDialog) { acFree(Self->ProgressDialog); Self->ProgressDialog = NULL; }
+   if (Self->ProgressDialog) { FreeResource(Self->ProgressDialog); Self->ProgressDialog = NULL; }
    if (Self->prvLine) { FreeResource(Self->prvLine); Self->prvLine = NULL; }
    if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
@@ -527,7 +527,7 @@ static ERROR FILE_Free(extFile *Self, APTR Void)
    }
 
 #ifdef _WIN32
-   if ((Self->Flags & FL_RESET_DATE) and (path)) {
+   if (((Self->Flags & FL::RESET_DATE) != FL::NIL) and (path)) {
       winResetDate(path);
       FreeResource(path);
    }
@@ -543,16 +543,16 @@ Init: Initialises a file.
 
 This action will prepare a file or folder at the given #Path for use.
 
-To create a new file from scratch, specify the NEW flag.  This will overwrite any file that exists at the target path.
+To create a new file from scratch, specify the `NEW` flag.  This will overwrite any file that exists at the target path.
 
-To read and write data to the file, specify the READ and/or WRITE modes in the #Flags field prior to initialisation.
-If a file is read-only and the WRITE and READ flags are set in combination, the WRITE flag will be dropped and
+To read and write data to the file, specify the `READ` and/or `WRITE` modes in the #Flags field prior to initialisation.
+If a file is read-only and the `WRITE` and `READ` flags are set in combination, the `WRITE` flag will be dropped and
 initialisation will continue as normal.
 
-If neither of the NEW, READ or WRITE flags are specified, the file object is prepared and queried from disk (if it
+If neither of the `NEW`, `READ` or `WRITE` flags are specified, the file object is prepared and queried from disk (if it
 exists), but will not be opened.  It will be necessary to #Activate() the file in order to open it.
 
-The File class supports RAM based file buffering - this is activated by using the BUFFER flag and setting the Size
+The File class supports RAM based file buffering - this is activated by using the `BUFFER` flag and setting the Size
 field to the desired buffer size.  A file path is not required unless the buffer needs to be filled with content on
 initialisation.  Because buffered files exist virtually, their functionality is restricted to read/write access.
 
@@ -580,14 +580,14 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
    // If a path has been specified, we'll load the entire file into memory.  Please see the end of this
    // initialisation routine for more info.
 
-   if ((Self->Flags & FL_BUFFER) and (!Self->Path)) {
+   if (((Self->Flags & FL::BUFFER) != FL::NIL) and (!Self->Path)) {
       if (Self->Size < 0) Self->Size = 0;
-      Self->Flags |= FL_READ|FL_WRITE;
+      Self->Flags |= FL::READ|FL::WRITE;
       if (!Self->Buffer) {
          // Allocate buffer if none specified.  An extra byte is allocated for a NULL byte on the end, in case the file
          // content is treated as a string.
 
-         if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, MEM_NO_CLEAR, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
+         if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, MEM::NO_CLEAR, (APTR *)&Self->Buffer, NULL) != ERR_Okay) {
             return log.warning(ERR_AllocMemory);
          }
          ((BYTE *)Self->Buffer)[Self->Size] = 0;
@@ -597,14 +597,14 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
 
    if (!Self->Path) return log.warning(ERR_MissingPath);
 
-   if (glDefaultPermissions) Self->Permissions = glDefaultPermissions;
+   if (glDefaultPermissions != PERMIT::NIL) Self->Permissions = glDefaultPermissions;
 
-   if (!StrCompare("string:", Self->Path, 7, 0)) {
+   if (!StrCompare("string:", Self->Path, 7)) {
       Self->Size = StrLength(Self->Path + 7);
 
       if (Self->Size > 0) {
-         if (!AllocMemory(Self->Size, MEM_DATA, (APTR *)&Self->Buffer, NULL)) {
-            Self->Flags |= FL_READ|FL_WRITE;
+         if (!AllocMemory(Self->Size, MEM::DATA, (APTR *)&Self->Buffer, NULL)) {
+            Self->Flags |= FL::READ|FL::WRITE;
             CopyMemory(Self->Path + 7, Self->Buffer, Self->Size);
             return ERR_Okay;
          }
@@ -613,23 +613,23 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
       else return log.warning(ERR_Failed);
    }
 
-   if ((!Self->Permissions) or (Self->Permissions & PERMIT_INHERIT)) {
+   if ((Self->Permissions IS PERMIT::NIL) or ((Self->Permissions & PERMIT::INHERIT) != PERMIT::NIL)) {
       FileInfo info;
 
       // If the file already exists, pull the permissions from it.  Otherwise use a default set of permissions (if
       // possible, inherit permissions from the file's folder).
 
-      if ((Self->Flags & FL_NEW) and (!get_file_info(Self->Path, &info, sizeof(info)))) {
+      if (((Self->Flags & FL::NEW) != FL::NIL) and (!get_file_info(Self->Path, &info, sizeof(info)))) {
          log.msg("Using permissions of the original file.");
          Self->Permissions |= info.Permissions;
       }
       else {
 #ifdef __unix__
-         Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT_ALL_READ|PERMIT_ALL_WRITE);
-         if (!Self->Permissions) Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
-         else log.msg("Inherited permissions: $%.8x", Self->Permissions);
+         Self->Permissions |= get_parent_permissions(Self->Path, NULL, NULL) & (PERMIT::ALL_READ|PERMIT::ALL_WRITE);
+         if (Self->Permissions IS PERMIT::NIL) Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
+         else log.msg("Inherited permissions: $%.8x", LONG(Self->Permissions));
 #else
-         Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
+         Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
 #endif
        }
    }
@@ -639,16 +639,16 @@ static ERROR FILE_Init(extFile *Self, APTR Void)
    if ((Self->Static) and ((!Self->Path) or (!Self->Path[0]))) return ERR_Okay;
 
    if (Self->Path[0] IS ':') {
-      if (Self->Flags & FL_FILE) return log.warning(ERR_ExpectedFile);
+      if ((Self->Flags & FL::FILE) != FL::NIL) return log.warning(ERR_ExpectedFile);
       log.trace("Root folder initialised.");
       return ERR_Okay;
    }
 
-   // If the FL_FOLDER flag was set after the Path field was set, we may need to reset the Path field so
+   // If the FL::FOLDER flag was set after the Path field was set, we may need to reset the Path field so
    // that the trailing folder slash is added to it.
 
 retrydir:
-   if (Self->Flags & FL_FOLDER) {
+   if ((Self->Flags & FL::FOLDER) != FL::NIL) {
       LONG len = StrLength(Self->Path);
       if (len > 512) return log.warning(ERR_BufferOverflow);
 
@@ -656,7 +656,7 @@ retrydir:
          char buffer[len+1];
          for (j=0; j < len; j++) buffer[j] = Self->Path[j];
          buffer[j] = 0;
-         if (Self->set(FID_Path, buffer) != ERR_Okay) {
+         if (Self->setPath(CSTRING(buffer)) != ERR_Okay) {
             return log.warning(ERR_SetField);
          }
       }
@@ -667,14 +667,14 @@ retrydir:
       return ERR_Okay;
    }
 
-   // Use RSF_CHECK_VIRTUAL to cause failure if the volume name is reserved by a support class.  By doing this we can
+   // Use RSF::CHECK_VIRTUAL to cause failure if the volume name is reserved by a support class.  By doing this we can
    // return ERR_UseSubClass and a support class can then initialise the file instead.
 
-   LONG resolveflags = 0;
-   if (Self->Flags & FL_NEW) resolveflags |= RSF_NO_FILE_CHECK;
-   if (Self->Flags & FL_APPROXIMATE) resolveflags |= RSF_APPROXIMATE;
+   auto resolveflags = RSF::NIL;
+   if ((Self->Flags & FL::NEW) != FL::NIL) resolveflags |= RSF::NO_FILE_CHECK;
+   if ((Self->Flags & FL::APPROXIMATE) != FL::NIL) resolveflags |= RSF::APPROXIMATE;
 
-   if ((error = ResolvePath(Self->Path, resolveflags|RSF_CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR_Okay) {
+   if ((error = ResolvePath(Self->Path, resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR_Okay) {
       if (error IS ERR_VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.
          // Then return ERR_UseSubClass to have support delegated to the correct File sub-class.
@@ -687,8 +687,8 @@ retrydir:
       else {
          // The file may path may actually be a folder.  Add a / and retest to see if this is the case.
 
-         if (!(Self->Flags & FL_FOLDER)) {
-            Self->Flags |= FL_FOLDER;
+         if ((Self->Flags & FL::FOLDER) IS FL::NIL) {
+            Self->Flags |= FL::FOLDER;
             goto retrydir;
          }
 
@@ -701,8 +701,8 @@ retrydir:
 
    // Check if ResolvePath() resolved the path from a file string to a folder
 
-   if ((!(Self->prvType & STAT_FOLDER)) and (Self->prvResolvedPath[len-1] IS '/') and (!(Self->Flags & FL_FOLDER))) {
-      Self->Flags |= FL_FOLDER;
+   if ((!(Self->prvType & STAT_FOLDER)) and (Self->prvResolvedPath[len-1] IS '/') and ((Self->Flags & FL::FOLDER) IS FL::NIL)) {
+      Self->Flags |= FL::FOLDER;
       goto retrydir;
    }
 
@@ -711,14 +711,14 @@ retrydir:
    struct stat64 info;
    if (Self->prvResolvedPath[len-1] IS '/') Self->prvResolvedPath[len-1] = 0; // For lstat64() symlink we need to remove the slash
    if (lstat64(Self->prvResolvedPath, &info) != -1) { // Prefer to get a stat on the link rather than the file it refers to
-      if (S_ISLNK(info.st_mode)) Self->Flags |= FL_LINK;
+      if (S_ISLNK(info.st_mode)) Self->Flags |= FL::LINK;
    }
 #endif
 
    if (Self->prvType & STAT_FOLDER) { // Open the folder
-      if (Self->Flags & FL_FILE) return log.warning(ERR_ExpectedFile);
+      if ((Self->Flags & FL::FILE) != FL::NIL) return log.warning(ERR_ExpectedFile);
 
-      Self->Flags |= FL_FOLDER;
+      Self->Flags |= FL::FOLDER;
 
       acQuery(Self);
 
@@ -732,8 +732,8 @@ retrydir:
          #error Require folder open or folder marking code.
       #endif
 
-      if (Self->Flags & FL_NEW) {
-         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, Self->Permissions);
+      if ((Self->Flags & FL::NEW) != FL::NIL) {
+         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath, LONG(Self->Permissions));
          if (!CreateFolder(Self->prvResolvedPath, Self->Permissions)) {
             #ifdef __unix__
                if (!(Self->Stream = opendir(Self->prvResolvedPath))) {
@@ -757,11 +757,11 @@ retrydir:
       }
    }
    else {
-      Self->Flags |= FL_FILE;
+      Self->Flags |= FL::FILE;
 
       // Automatically open the file if access is required on initialisation.
 
-      if (Self->Flags & (FL_NEW|FL_READ|FL_WRITE)) {
+      if ((Self->Flags & (FL::NEW|FL::READ|FL::WRITE)) != FL::NIL) {
          ERROR error = acActivate(Self);
          if (!error) error = acQuery(Self);
          return error;
@@ -776,7 +776,7 @@ retrydir:
 Move: Moves a file to a new location.
 
 This method is used to move the data of a file to another location.  If the file object represents a folder, then
-the folder and all of its contents will be moved.  The file object must have been initialised with the FL_READ flag,
+the folder and all of its contents will be moved.  The file object must have been initialised with the `FL::READ` flag,
 or the move operation will not work (this restriction does not apply to directories).  If a file already exists at the
 destination path then it will be over-written with the new data.
 
@@ -826,7 +826,7 @@ static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
       }
 
       STRING newpath;
-      if (!AllocMemory(len + 1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&newpath, NULL)) {
+      if (!AllocMemory(len + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newpath, NULL)) {
          LONG j = StrCopy(dest, newpath);
          i++;
          while ((src[i]) and (src[i] != '/') and (src[i] != '\\')) newpath[j++] = src[i++];
@@ -851,7 +851,7 @@ static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
    }
    else {
       STRING newpath;
-      if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&newpath, NULL)) {
+      if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newpath, NULL)) {
          CopyMemory(dest, newpath, len+1);
 
          #ifdef _WIN32
@@ -878,7 +878,7 @@ static ERROR FILE_MoveFile(extFile *Self, struct flMove *Args)
 static ERROR FILE_NewObject(extFile *Self, APTR Void)
 {
    Self->Handle = -1;
-   Self->Permissions = PERMIT_READ|PERMIT_WRITE|PERMIT_GROUP_READ|PERMIT_GROUP_WRITE;
+   Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
    return ERR_Okay;
 }
 
@@ -907,21 +907,21 @@ Args
 NullArgs
 DirEmpty: The index has reached the end of the file list.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FILE_NextFile(extFile *Self, struct flNext *Args)
 {
    pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (!(Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFolder);
+   if ((Self->Flags & FL::FOLDER) IS FL::NIL) return log.warning(ERR_ExpectedFolder);
 
    if (!Self->prvList) {
-      LONG flags = RDF_QUALIFY;
+      auto flags = RDF::QUALIFY;
 
-      if (Self->Flags & FL_EXCLUDE_FOLDERS) flags |= RDF_FILE;
-      else if (Self->Flags & FL_EXCLUDE_FILES) flags |= RDF_FOLDER;
-      else flags |= RDF_FILE|RDF_FOLDER;
+      if ((Self->Flags & FL::EXCLUDE_FOLDERS) != FL::NIL) flags |= RDF::FILE;
+      else if ((Self->Flags & FL::EXCLUDE_FILES) != FL::NIL) flags |= RDF::FOLDER;
+      else flags |= RDF::FILE|RDF::FOLDER;
 
       if (auto error = OpenDir(Self->Path, flags, &Self->prvList)) return error;
    }
@@ -968,7 +968,7 @@ static ERROR FILE_Query(extFile *Self, APTR Void)
 Read: Reads data from a file.
 
 Reads data from a file into the given buffer.  Increases the value in the #Position field by the amount of
-bytes read from the file data.  The FL_READ bit in the #Flags field must have been set on file initialisation,
+bytes read from the file data.  The `FL::READ` bit in the #Flags field must have been set on file initialisation,
 or the call will fail.
 
 It is normal behaviour for this call to report success in the event that no data has been read from the file, e.g.
@@ -981,12 +981,12 @@ Args
 NullArgs
 NotInitialised
 OutOfRange: Invalid Length parameter.
-FileReadFlag: The FL_READ flag was not specified on initialisation.
+FileReadFlag: The FL::READ flag was not specified on initialisation.
 ExpectedFolder: The file object refers to a folder.
 Failed: The file object refers to a folder, or the object is corrupt.
 -END-
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FILE_Read(extFile *Self, struct acRead *Args)
 {
@@ -996,10 +996,10 @@ static ERROR FILE_Read(extFile *Self, struct acRead *Args)
    else if (Args->Length == 0) return ERR_Okay;
    else if (Args->Length < 0) return ERR_OutOfRange;
 
-   if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
+   if ((Self->Flags & FL::READ) IS FL::NIL) return log.warning(ERR_FileReadFlag);
 
    if (Self->Buffer) {
-      if (Self->Flags & FL_LOOP) {
+      if ((Self->Flags & FL::LOOP) != FL::NIL) {
          // In loop mode, we must make the file buffer appear to be of infinite length in terms of the read/write
          // position marker.
 
@@ -1064,7 +1064,7 @@ static ERROR FILE_Read(extFile *Self, struct acRead *Args)
 ReadLine: Reads the next line from the file.
 
 Reads one line from the file into an internal buffer, which is returned in the Result argument.  Reading a line will
-increase the #Position field by the amount of bytes read from the file.  You must have set the FL_READ bit in
+increase the #Position field by the amount of bytes read from the file.  You must have set the `FL::READ` bit in
 the #Flags field when you initialised the file, or the call will fail.
 
 The line buffer is managed internally, so there is no need for you to free the result string.  This method returns
@@ -1076,20 +1076,20 @@ ERR_NoData when it runs out of information to read from the file.
 -ERRORS-
 Okay: The file information was read into the buffer.
 Args
-FileReadFlag: The FL_READ flag was not specified on initialisation.
+FileReadFlag: The FL::READ flag was not specified on initialisation.
 Failed: The file object refers to a folder.
 ObjectCorrupt: The internal file handle is missing.
 BufferOverflow: The line is too long for the read routine (4096 byte limit).
 NoData: There is no more data left to read.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR FILE_ReadLine(extFile *Self, struct flReadLine *Args)
 {
    pf::Log log;
 
    if (!Args) return log.warning(ERR_NullArgs);
-   if (!(Self->Flags & FL_READ)) return log.warning(ERR_FileReadFlag);
+   if ((Self->Flags & FL::READ) IS FL::NIL) return log.warning(ERR_FileReadFlag);
 
    LONG len;
    char line[4096];
@@ -1174,9 +1174,9 @@ static ERROR FILE_Rename(extFile *Self, struct acRename *Args)
 
    LONG i = StrLength(Self->Path);
 
-   if ((Self->prvType & STAT_FOLDER) or (Self->Flags & FL_FOLDER)) {
+   if ((Self->prvType & STAT_FOLDER) or ((Self->Flags & FL::FOLDER) != FL::NIL)) {
       if (Self->Path[i-1] IS ':') { // Renaming a volume
-         if (!AllocMemory(namelen+2, MEM_STRING, (APTR *)&n, NULL)) {
+         if (!AllocMemory(namelen+2, MEM::STRING, (APTR *)&n, NULL)) {
             for (i=0; (Args->Name[i]) and (Args->Name[i] != ':') and (Args->Name[i] != '/') and (Args->Name[i] != '\\'); i++) n[i] = Args->Name[i];
             n[i] = 0;
             if (!RenameVolume(Self->Path, n)) {
@@ -1197,7 +1197,7 @@ static ERROR FILE_Rename(extFile *Self, struct acRename *Args)
          // We are renaming a folder
          for (--i; (i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\'); i--);
 
-         if (!AllocMemory(i+namelen+2, MEM_STRING, (APTR *)&n, NULL)) {
+         if (!AllocMemory(i+namelen+2, MEM::STRING, (APTR *)&n, NULL)) {
             for (j=0; j < i; j++) n[j] = Self->Path[j];
 
             for (i=0; (Args->Name[i]) and (Args->Name[i] != '/') and (Args->Name[i] != '\\') and (Args->Name[i] != ':'); i++) {
@@ -1223,7 +1223,7 @@ static ERROR FILE_Rename(extFile *Self, struct acRename *Args)
    }
    else { // We are renaming a file
       while ((i > 0) and (Self->Path[i-1] != ':') and (Self->Path[i-1] != '/') and (Self->Path[i-1] != '\\')) i--;
-      if (!AllocMemory(i+namelen+1, MEM_STRING, (APTR *)&n, NULL)) {
+      if (!AllocMemory(i+namelen+1, MEM::STRING, (APTR *)&n, NULL)) {
          // Generate the new path, then rename the file
 
          for (j=0; j < i; j++) n[j] = Self->Path[j];
@@ -1259,7 +1259,7 @@ Reset: If the file represents a folder, the file list index is reset by this act
 
 static ERROR FILE_Reset(extFile *Self, APTR Void)
 {
-   if (Self->Flags & FL_FOLDER) {
+   if ((Self->Flags & FL::FOLDER) != FL::NIL) {
       if (Self->prvList) { FreeResource(Self->prvList); Self->prvList = NULL; }
    }
 
@@ -1280,15 +1280,15 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
 
    // Set the new setting for the Self->Position field
 
-   if (Args->Position IS SEEK_START) {
+   if (Args->Position IS SEEK::START) {
       Self->Position = (LARGE)Args->Offset;
    }
-   else if (Args->Position IS SEEK_END) {
+   else if (Args->Position IS SEEK::END) {
       LARGE filesize;
       Self->get(FID_Size, &filesize);
       Self->Position = filesize - (LARGE)Args->Offset;
    }
-   else if (Args->Position IS SEEK_CURRENT) {
+   else if (Args->Position IS SEEK::CURRENT) {
       Self->Position = Self->Position + (LARGE)Args->Offset;
    }
    else return log.warning(ERR_Args);
@@ -1298,7 +1298,7 @@ static ERROR FILE_Seek(extFile *Self, struct acSeek *Args)
    if (Self->Position < 0) Self->Position = 0;
 
    if (Self->Buffer) {
-      if (Self->Flags & FL_LOOP) return ERR_Okay; // In loop mode, the position marker can legally be above the buffer size
+      if ((Self->Flags & FL::LOOP) != FL::NIL) return ERR_Okay; // In loop mode, the position marker can legally be above the buffer size
       else if (Self->Position > Self->Size) Self->Position = Self->Size;
       return ERR_Okay;
    }
@@ -1361,7 +1361,7 @@ static ERROR FILE_SetDate(extFile *Self, struct flSetDate *Args)
       CSTRING path;
       if (!GET_ResolvedPath(Self, &path)) {
          if (winSetFileTime(path, Args->Year, Args->Month, Args->Day, Args->Hour, Args->Minute, Args->Second)) {
-            Self->Flags |= FL_RESET_DATE;
+            Self->Flags |= FL::RESET_DATE;
             return ERR_Okay;
          }
          else return log.warning(ERR_SystemCall);
@@ -1389,7 +1389,7 @@ static ERROR FILE_SetDate(extFile *Self, struct flSetDate *Args)
             filetime[1] = filetime[0];
 
             if (utimes(path, filetime) != -1) {
-               Self->Flags |= FL_RESET_DATE;
+               Self->Flags |= FL::RESET_DATE;
                return ERR_Okay;
             }
             else {
@@ -1416,7 +1416,7 @@ writing data to the file object.  Although it is possible to call the Read and W
 will be limited to returning only the amount of data that is cached locally (if any), or writing as much as buffers
 will allow in software.
 
-A single file object can support read or write streams (pass `FL_READ` or `FL_WRITE` in the Flags parameter).  However,
+A single file object can support read or write streams (pass `FL::READ` or `FL::WRITE` in the Flags parameter).  However,
 only one of the two can be active at any time.  To switch between read and write modes, the stream must be stopped with
 the #StopStream() method and then restarted with StartStream.
 
@@ -1436,7 +1436,7 @@ A stream can be cancelled at any time by calling #StopStream().
 
 -INPUT-
 oid Subscriber: Reference to an object that will receive streamed data notifications.
-int(FL) Flags: Use FL_READ for incoming data, FL_WRITE for outgoing data.
+int(FL) Flags: Use READ for incoming data, WRITE for outgoing data.
 int Length: Limits the total amount of data to be streamed.
 
 -ERRORS-
@@ -1517,7 +1517,7 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
 {
    pf::Log log;
 
-   log.branch("%s, Flags: $%.8x", Self->Path, (Args) ? Args->Flags : 0);
+   log.branch("%s, Flags: $%.8x", Self->Path, (Args) ? LONG(Args->Flags) : 0);
 
    // Drop any previously configured watch.
 
@@ -1532,14 +1532,14 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
       Self->prvWatch = NULL;
    }
 
-   if ((!Args) or (!Args->Callback) or (!Args->Flags)) return ERR_Okay;
+   if ((!Args) or (!Args->Callback) or (Args->Flags IS MFF::NIL)) return ERR_Okay;
 
 #ifdef __linux__ // Initialise inotify if not done already.
    if (glInotify IS -1) {
       ERROR error;
       if ((glInotify = inotify_init()) != -1) {
          fcntl(glInotify, F_SETFL, fcntl(glInotify, F_GETFL)|O_NONBLOCK);
-         error = RegisterFD(glInotify, RFD_READ, (void (*)(HOSTHANDLE, APTR))path_monitor, NULL);
+         error = RegisterFD(glInotify, RFD::READ, (void (*)(HOSTHANDLE, APTR))path_monitor, NULL);
       }
       else error = log.warning(ERR_SystemCall);
 
@@ -1554,9 +1554,9 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
 
       if (vd->WatchPath) {
          #ifdef _WIN32
-         if (!AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM_DATA, (APTR *)&Self->prvWatch, NULL)) {
+         if (!AllocMemory(sizeof(rkWatchPath) + winGetWatchBufferSize(), MEM::DATA, (APTR *)&Self->prvWatch, NULL)) {
          #else
-         if (!AllocMemory(sizeof(rkWatchPath), MEM_DATA, (APTR *)&Self->prvWatch, NULL)) {
+         if (!AllocMemory(sizeof(rkWatchPath), MEM::DATA, (APTR *)&Self->prvWatch, NULL)) {
          #endif
             Self->prvWatch->VirtualID = vd->VirtualID;
             Self->prvWatch->Routine   = *Args->Callback;
@@ -1579,7 +1579,7 @@ static ERROR FILE_Watch(extFile *Self, struct flWatch *Args)
 Write: Writes data to a file.
 
 Writes data from the provided buffer into the file, then updates the #Position field to reflect the new
-read/write position.  You must have set the FL_WRITE bit in the #Flags field when you initialised the file, or
+read/write position.  You must have set the `FL::WRITE` bit in the #Flags field when you initialised the file, or
 the call will fail.
 
 -ERRORS-
@@ -1589,7 +1589,7 @@ NullArgs:
 ReallocMemory:
 ExpectedFile:
 ObjectCorrupt:
-FileWriteFlag: The FL_WRITE flag was not specified when initialising the file.
+FileWriteFlag: The FL::WRITE flag was not specified when initialising the file.
 LimitedSuccess: Only some of the data was written to the file.  Check the Result parameter to see how much data was written.
 -END-
 
@@ -1601,10 +1601,10 @@ static ERROR FILE_Write(extFile *Self, struct acWrite *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
    if (Args->Length <= 0) return ERR_Args;
-   if (!(Self->Flags & FL_WRITE)) return log.warning(ERR_FileWriteFlag);
+   if ((Self->Flags & FL::WRITE) IS FL::NIL) return log.warning(ERR_FileWriteFlag);
 
    if (Self->Buffer) {
-      if (Self->Flags & FL_LOOP) {
+      if ((Self->Flags & FL::LOOP) != FL::NIL) {
          // In loop mode, we must make the file buffer appear to be of infinite length in terms of the read/write
          // position marker.
 
@@ -1651,7 +1651,7 @@ static ERROR FILE_Write(extFile *Self, struct acWrite *Args)
       }
    }
 
-   if ((Self->prvType & STAT_FOLDER) or (Self->Flags & FL_FOLDER)) return log.warning(ERR_ExpectedFile);
+   if ((Self->prvType & STAT_FOLDER) or ((Self->Flags & FL::FOLDER) != FL::NIL)) return log.warning(ERR_ExpectedFile);
 
    if (Self->Handle IS -1) return log.warning(ERR_ObjectCorrupt);
 
@@ -1867,7 +1867,7 @@ ERROR SET_Date(extFile *Self, DateTime *Date)
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
       if (winSetFileTime(path, Date->Year, Date->Month, Date->Day, Date->Hour, Date->Minute, Date->Second)) {
-         Self->Flags |= FL_RESET_DATE;
+         Self->Flags |= FL::RESET_DATE;
          return ERR_Okay;
       }
       else return log.warning(ERR_SystemCall);
@@ -1896,7 +1896,7 @@ ERROR SET_Date(extFile *Self, DateTime *Date)
          utm.actime  = datetime;
 
          if (utime(path, &utm) != -1) {
-            Self->Flags |= FL_RESET_DATE;
+            Self->Flags |= FL::RESET_DATE;
             return ERR_Okay;
          }
          else return log.warning(ERR_SystemCall);
@@ -2019,14 +2019,14 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    FileInfo info;
    bool link = false;
    if (!get_file_info(Self->Path, &info, sizeof(info))) {
-      if (info.Flags & RDF_LINK) link = true;
+      if ((info.Flags & RDF::LINK) != RDF::NIL) link = true;
 
-      if (info.Flags & RDF_VIRTUAL) { // Virtual drives can specify custom icons, even for folders
+      if ((info.Flags & RDF::VIRTUAL) != RDF::NIL) { // Virtual drives can specify custom icons, even for folders
          *Value = Self->prvIcon = info.Tags[0]["Icon"].c_str();
          if (*Value) return ERR_Okay;
       }
 
-      if (info.Flags & RDF_FOLDER) {
+      if ((info.Flags & RDF::FOLDER) != RDF::NIL) {
          if (link) *Value = Self->prvIcon = StrClone("icons:folders/folder_shortcut");
          else *Value = Self->prvIcon = StrClone("icons:folders/folder");
          return ERR_Okay;
@@ -2062,7 +2062,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       if (Self->Path[k]) {
          for (auto& [group, keys] : groups[0]) {
             if (keys.contains("Match")) {
-               if (!StrCompare(keys["Match"].c_str(), Self->Path+k, 0, STR_WILDCARD)) {
+               if (!StrCompare(keys["Match"].c_str(), Self->Path+k, 0, STR::WILDCARD)) {
                   if (keys.contains("Icon")) {
                      StrCopy(keys["Icon"].c_str(), icon, sizeof(icon));
                      break;
@@ -2113,7 +2113,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
       return ERR_Okay;
    }
 
-   if (StrCompare("icons:", icon, 6, 0) != ERR_Okay) {
+   if (StrCompare("icons:", icon, 6) != ERR_Okay) {
       CopyMemory(icon, icon+6, sizeof(icon) - 6);
       for (LONG i=0; i < 6; i++) icon[i] = "icons:"[i];
    }
@@ -2145,8 +2145,8 @@ static ERROR GET_Link(extFile *Self, STRING *Value)
    }
 
    *Value = NULL;
-   if (Self->Flags & FL_LINK) {
-      if (!ResolvePath(Self->Path, 0, &path)) {
+   if ((Self->Flags & FL::LINK) != FL::NIL) {
+      if (!ResolvePath(Self->Path, RSF::NIL, &path)) {
          LONG i = StrLength(path);
          if (path[i-1] IS '/') path[i-1] = 0;
          if (((i = readlink(path, buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
@@ -2227,13 +2227,13 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
 
    LONG i, j, len;
    if ((Value) and (*Value)) {
-      if (StrCompare("string:", Value, 7, 0) != ERR_Okay) {
+      if (StrCompare("string:", Value, 7) != ERR_Okay) {
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
       }
       else len = StrLength(Value);
 
-      // Note: An extra byte is allocated in case the FL_FOLDER flag is set
-      if (!AllocMemory(len+2, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Path, NULL)) {
+      // Note: An extra byte is allocated in case the FL::FOLDER flag is set
+      if (!AllocMemory(len+2, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL)) {
          // If the path is set to ':' then this is the equivalent of asking for a folder list of all volumes in
          // the system.  No further initialisation is necessary in such a case.
 
@@ -2247,7 +2247,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
             // e.g. "drive1:documents//tutorials/"
 
             for (j=0; Value[j] IS ':'; j++);
-            if (!StrCompare("string:", Value, 7, 0)) {
+            if (!StrCompare("string:", Value, 7)) {
                i = StrCopy(Value, Self->Path);
             }
             else {
@@ -2281,7 +2281,7 @@ static ERROR SET_Path(extFile *Self, CSTRING Value)
             if ((Self->Path[i-1] IS ':') or (Self->Path[i-1] IS '/') or (Self->Path[i-1] IS '\\')) {
                Self->prvType |= STAT_FOLDER;
             }
-            else if (Self->Flags & FL_FOLDER) {
+            else if ((Self->Flags & FL::FOLDER) != FL::NIL) {
                Self->Path[i++] = '/';
                Self->Path[i] = 0;
                Self->prvType |= STAT_FOLDER;
@@ -2302,11 +2302,11 @@ Lookup: PERMIT
 -END-
 *********************************************************************************************************************/
 
-static ERROR GET_Permissions(extFile *Self, LONG *Value)
+static ERROR GET_Permissions(extFile *Self, PERMIT *Value)
 {
    pf::Log log;
 
-   *Value = 0;
+   *Value = PERMIT::NIL;
 
 #ifdef __unix__
 
@@ -2317,8 +2317,8 @@ static ERROR GET_Permissions(extFile *Self, LONG *Value)
    if (!GET_ResolvedPath(Self, &path)) {
       LONG i = StrLength(path);
       while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
-      if (path[i+1] IS '.') Self->Permissions = PERMIT_HIDDEN;
-      else Self->Permissions = 0;
+      if (path[i+1] IS '.') Self->Permissions = PERMIT::HIDDEN;
+      else Self->Permissions = PERMIT::NIL;
 
       if (Self->Handle != -1) {
          struct stat64 info;
@@ -2342,7 +2342,7 @@ static ERROR GET_Permissions(extFile *Self, LONG *Value)
 
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
-      winGetAttrib(path, Value); // Supports PERMIT_HIDDEN/ARCHIVE/OFFLINE/READ/WRITE
+      winGetAttrib(path, (LONG *)(Value)); // Supports PERMIT::HIDDEN/ARCHIVE/OFFLINE/READ/WRITE
       return ERR_Okay;
    }
    else return ERR_ResolvePath;
@@ -2352,7 +2352,7 @@ static ERROR GET_Permissions(extFile *Self, LONG *Value)
    return ERR_NoSupport;
 }
 
-static ERROR SET_Permissions(extFile *Self, LONG Value)
+static ERROR SET_Permissions(extFile *Self, PERMIT Value)
 {
    if (!Self->initialised()) {
       Self->Permissions = Value;
@@ -2363,32 +2363,32 @@ static ERROR SET_Permissions(extFile *Self, LONG Value)
 
 //********************************************************************************************************************
 
-static ERROR set_permissions(extFile *Self, LONG Permissions)
+static ERROR set_permissions(extFile *Self, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
 #ifdef __unix__
 
    if (Self->Handle != -1) {
       LONG flags = 0;
-      if (Permissions & PERMIT_READ)  flags |= S_IRUSR;
-      if (Permissions & PERMIT_WRITE) flags |= S_IWUSR;
-      if (Permissions & PERMIT_EXEC)  flags |= S_IXUSR;
+      if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
+      if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
+      if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)  flags |= S_IXUSR;
 
-      if (Permissions & PERMIT_GROUP_READ)  flags |= S_IRGRP;
-      if (Permissions & PERMIT_GROUP_WRITE) flags |= S_IWGRP;
-      if (Permissions & PERMIT_GROUP_EXEC)  flags |= S_IXGRP;
+      if ((Permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  flags |= S_IRGRP;
+      if ((Permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL) flags |= S_IWGRP;
+      if ((Permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)  flags |= S_IXGRP;
 
-      if (Permissions & PERMIT_OTHERS_READ)  flags |= S_IROTH;
-      if (Permissions & PERMIT_OTHERS_WRITE) flags |= S_IWOTH;
-      if (Permissions & PERMIT_OTHERS_EXEC)  flags |= S_IXOTH;
+      if ((Permissions & PERMIT::OTHERS_READ) != PERMIT::NIL)  flags |= S_IROTH;
+      if ((Permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) flags |= S_IWOTH;
+      if ((Permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL)  flags |= S_IXOTH;
 
       LONG err = fchmod(Self->Handle, flags);
 
       // Note that you need to be root to set the UID/GID flags, so we do it in this subsequent fchmod() call.
 
-      if ((err != -1) and (Permissions & (PERMIT_USERID|PERMIT_GROUPID))) {
-         if (Permissions & PERMIT_USERID)  flags |= S_ISUID;
-         if (Permissions & PERMIT_GROUPID) flags |= S_ISGID;
+      if ((err != -1) and ((Permissions & (PERMIT::USERID|PERMIT::GROUPID)) != PERMIT::NIL)) {
+         if ((Permissions & PERMIT::USERID) != PERMIT::NIL)  flags |= S_ISUID;
+         if ((Permissions & PERMIT::GROUPID) != PERMIT::NIL) flags |= S_ISGID;
          err = fchmod(Self->Handle, flags);
       }
 
@@ -2404,20 +2404,20 @@ static ERROR set_permissions(extFile *Self, LONG Permissions)
       CSTRING path;
       if (!GET_ResolvedPath(Self, &path)) {
          LONG flags = 0;
-         if (Permissions & PERMIT_READ)  flags |= S_IRUSR;
-         if (Permissions & PERMIT_WRITE) flags |= S_IWUSR;
-         if (Permissions & PERMIT_EXEC)  flags |= S_IXUSR;
+         if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
+         if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
+         if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)  flags |= S_IXUSR;
 
-         if (Permissions & PERMIT_GROUP_READ)  flags |= S_IRGRP;
-         if (Permissions & PERMIT_GROUP_WRITE) flags |= S_IWGRP;
-         if (Permissions & PERMIT_GROUP_EXEC)  flags |= S_IXGRP;
+         if ((Permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  flags |= S_IRGRP;
+         if ((Permissions & PERMIT::GROUP_WRITE) != PERMIT::NIL) flags |= S_IWGRP;
+         if ((Permissions & PERMIT::GROUP_EXEC) != PERMIT::NIL)  flags |= S_IXGRP;
 
-         if (Permissions & PERMIT_OTHERS_READ)  flags |= S_IROTH;
-         if (Permissions & PERMIT_OTHERS_WRITE) flags |= S_IWOTH;
-         if (Permissions & PERMIT_OTHERS_EXEC)  flags |= S_IXOTH;
+         if ((Permissions & PERMIT::OTHERS_READ) != PERMIT::NIL)  flags |= S_IROTH;
+         if ((Permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) flags |= S_IWOTH;
+         if ((Permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL)  flags |= S_IXOTH;
 
-         if (Permissions & PERMIT_GROUPID) flags |= S_ISGID;
-         if (Permissions & PERMIT_USERID)  flags |= S_ISUID;
+         if ((Permissions & PERMIT::GROUPID) != PERMIT::NIL) flags |= S_ISGID;
+         if ((Permissions & PERMIT::USERID) != PERMIT::NIL)  flags |= S_ISUID;
 
          if (chmod(path, flags) != -1) {
             Self->Permissions = Permissions;
@@ -2431,12 +2431,12 @@ static ERROR set_permissions(extFile *Self, LONG Permissions)
 
 #elif _WIN32
 
-   log.branch("$%.8x", Permissions);
+   log.branch("$%.8x", LONG(Permissions));
 
    CSTRING path;
    if (!GET_ResolvedPath(Self, &path)) {
       ERROR error;
-      if (winSetAttrib(path, Permissions)) error = log.warning(ERR_Failed);
+      if (winSetAttrib(path, LONG(Permissions))) error = log.warning(ERR_Failed);
       else error = ERR_Okay;
       return error;
    }
@@ -2485,9 +2485,7 @@ static ERROR GET_ResolvedPath(extFile *Self, CSTRING *Value)
    if (!Self->Path) return ERR_FieldNotSet;
 
    if (!Self->prvResolvedPath) {
-      LONG flags = 0;
-      if (Self->Flags & FL_APPROXIMATE) flags |= RSF_APPROXIMATE;
-      else flags |= RSF_NO_FILE_CHECK;
+      auto flags = ((Self->Flags & FL::APPROXIMATE) != FL::NIL) ? RSF::APPROXIMATE : RSF::NO_FILE_CHECK;
 
       ERROR error;
       pf::SwitchContext ctx(Self);
@@ -2514,7 +2512,7 @@ static ERROR GET_Size(extFile *Self, LARGE *Size)
 {
    pf::Log log;
 
-   if (Self->Flags & FL_FOLDER) {
+   if ((Self->Flags & FL::FOLDER) != FL::NIL) {
       *Size = 0;
       return ERR_Okay;
    }
@@ -2571,7 +2569,7 @@ static ERROR SET_Size(extFile *Self, LARGE Size)
 
    if (!GET_ResolvedPath(Self, &path)) {
       if (winSetEOF(path, Size)) {
-         acSeek(Self, 0.0, SEEK_END);
+         acSeek(Self, 0.0, SEEK::END);
          Self->Size = Size;
          if (Self->Position > Self->Size) acSeekStart(Self, Size);
          return ERR_Okay;
@@ -2771,30 +2769,30 @@ static ERROR SET_User(extFile *Self, LONG Value)
 //********************************************************************************************************************
 
 static const FieldDef PermissionFlags[] = {
-   { "Read",         PERMIT_READ },
-   { "Write",        PERMIT_WRITE },
-   { "Exec",         PERMIT_EXEC },
-   { "Executable",   PERMIT_EXEC },
-   { "Delete",       PERMIT_DELETE },
-   { "Hidden",       PERMIT_HIDDEN },
-   { "Archive",      PERMIT_ARCHIVE },
-   { "Password",     PERMIT_PASSWORD },
-   { "UserID",       PERMIT_USERID },
-   { "GroupID",      PERMIT_GROUPID },
-   { "OthersRead",   PERMIT_OTHERS_READ },
-   { "OthersWrite",  PERMIT_OTHERS_WRITE },
-   { "OthersExec",   PERMIT_OTHERS_EXEC },
-   { "OthersDelete", PERMIT_OTHERS_DELETE },
-   { "GroupRead",    PERMIT_GROUP_READ },
-   { "GroupWrite",   PERMIT_GROUP_WRITE },
-   { "GroupExec",    PERMIT_GROUP_EXEC },
-   { "GroupDelete",  PERMIT_GROUP_DELETE },
-   { "AllRead",      PERMIT_ALL_READ },
-   { "AllWrite",     PERMIT_ALL_WRITE },
-   { "AllExec",      PERMIT_ALL_EXEC },
-   { "UserRead",     PERMIT_READ },
-   { "UserWrite",    PERMIT_WRITE },
-   { "UserExec",     PERMIT_EXEC },
+   { "Read",         PERMIT::READ },
+   { "Write",        PERMIT::WRITE },
+   { "Exec",         PERMIT::EXEC },
+   { "Executable",   PERMIT::EXEC },
+   { "Delete",       PERMIT::DELETE },
+   { "Hidden",       PERMIT::HIDDEN },
+   { "Archive",      PERMIT::ARCHIVE },
+   { "Password",     PERMIT::PASSWORD },
+   { "UserID",       PERMIT::USERID },
+   { "GroupID",      PERMIT::GROUPID },
+   { "OthersRead",   PERMIT::OTHERS_READ },
+   { "OthersWrite",  PERMIT::OTHERS_WRITE },
+   { "OthersExec",   PERMIT::OTHERS_EXEC },
+   { "OthersDelete", PERMIT::OTHERS_DELETE },
+   { "GroupRead",    PERMIT::GROUP_READ },
+   { "GroupWrite",   PERMIT::GROUP_WRITE },
+   { "GroupExec",    PERMIT::GROUP_EXEC },
+   { "GroupDelete",  PERMIT::GROUP_DELETE },
+   { "AllRead",      PERMIT::ALL_READ },
+   { "AllWrite",     PERMIT::ALL_WRITE },
+   { "AllExec",      PERMIT::ALL_EXEC },
+   { "UserRead",     PERMIT::READ },
+   { "UserWrite",    PERMIT::WRITE },
+   { "UserExec",     PERMIT::EXEC },
    { NULL, 0 }
 };
 
@@ -2832,7 +2830,7 @@ extern "C" ERROR add_file_class(void)
    glFileClass = extMetaClass::create::global(
       fl::ClassVersion(VER_FILE),
       fl::Name("File"),
-      fl::Category(CCF_SYSTEM),
+      fl::Category(CCF::SYSTEM),
       fl::Actions(clFileActions),
       fl::Methods(clFileMethods),
       fl::Fields(FileFields),
@@ -2841,3 +2839,4 @@ extern "C" ERROR add_file_class(void)
 
    return glFileClass ? ERR_Okay : ERR_AddClass;
 }
+

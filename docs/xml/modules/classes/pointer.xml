@@ -1,0 +1,275 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Pointer</name>
+    <type>class</type>
+    <module>Display</module>
+    <comment>Interface for mouse cursor support.</comment>
+    <version>1</version>
+    <id>bbd12926</id>
+    <idstring>ID_POINTER</idstring>
+    <category>Graphics</category>
+    <include>modules/pointer.h</include>
+    <copyright>Paul Manias 2003-2023</copyright>
+    <description>
+<p>The Pointer class provides the user with a means of interacting with the graphical interface.  On a host system such as Windows, the pointer functionality will hook into the host's capabilities.  If the display is native then the pointer service will manage its own cursor exclusively.</p>
+<p>Internally, a system-wide pointer object is automatically created with a name of <code>SystemPointer</code>.  This should be used for all interactions with this service.</p></description>
+    <source>
+      <file>class_pointer.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Acceleration</name>
+      <comment>The rate of acceleration for relative pointer movement.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field affects the rate of acceleration as the pointer is moved across the display.  It is recommended that this field is never set manually, as the user will need to determine the best acceleration level through trial and error in the user preferences program.</p>
+<p>This field is not relevant in a hosted environment.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Anchor</name>
+      <comment>Can refer to a surface that the pointer has been anchored to.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If the pointer is anchored to a surface through <function module="Display">SetCursor</function>, this field will refer to the surface that holds the anchor.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Bitmap</name>
+      <comment>Refers to bitmap in which custom cursor images can be drawn.</comment>
+      <access read="R">Read</access>
+      <type class="Bitmap">*Bitmap</type>
+      <description>
+<p>The pointer graphic can be changed to a custom image if the <code>PTC::CUSTOM</code> <field>CursorID</field> type is defined and an image is drawn to the <class name="Bitmap">Bitmap</class> object referenced by this field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ButtonOrder</name>
+      <comment>Defines the order in which mouse buttons are interpreted.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field defines the order of interpretation of the mouse buttons when they are pressed.  This allows a right handed device to have its buttons remapped to mimic a left-handed device for instance.</p>
+<p>The default button order is defined as <code>123456789AB</code>.  The left, right and middle mouse buttons are defined as 1, 2 and 3 respectively.  The rest of the buttons are assigned by the device, preferably starting from the left of the device and moving clockwise.</p>
+<p>It is legal for buttons to be referenced more than once, for instance a setting of <code>111</code> will force the middle and right mouse buttons to translate to the left mouse button.</p>
+<p>Changes to this field will have an immediate impact on the pointing device's behaviour.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ButtonState</name>
+      <comment>Indicates the current button-press state.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>You can read this field at any time to get an indication of the buttons that are currently being held by the user.  The flags returned by this field are <code>JD_LMB</code>, <code>JD_RMB</code> and <code>JD_MMB</code> indicating left, right and middle mouse buttons respectively.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>ClickSlop</name>
+      <comment>A leniency value that assists in determining if the user intended to click or drag.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>The ClickSlop value defines the allowable pixel distance between two clicks for them to be considered a double-click (or a drag operation if they exceed the distance).</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CursorID</name>
+      <comment>Sets the user's cursor image, selected from the pre-defined graphics bank.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="PTC">PTC</type>
+      <description>
+<types lookup="PTC"/>
+      </description>
+    </field>
+
+    <field>
+      <name>CursorOwner</name>
+      <comment>The current owner of the cursor, as defined by SetCursor().</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If the pointer is currently owned by an object, this field will refer to that object ID.  Pointer ownership is managed by the <function module="Display">SetCursor</function> function.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DoubleClick</name>
+      <comment>The maximum interval between two clicks for a double click to be recognised.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>A double-click is recognised when two separate clicks occur within a pre-determined time frame.  The length of that time frame is determined in the DoubleClick field and is measured in seconds.  The recommended interval is 0.3 seconds, although the user can store his own preference in the pointer configuration file.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DragItem</name>
+      <comment>The currently dragged item, as defined by StartCursorDrag().</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>When the pointer is in drag-mode, the custom item number that was defined in the initial call to StartCursorDrag() will be defined here.  At all other times this field will be set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>DragSource</name>
+      <comment>The object managing the current drag operation, as defined by StartCursorDrag().</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>When the pointer is in drag-mode, the object that is managing the source data will be referenced in this field.  At all other times this field will be set to zero.</p>
+<p>Item dragging is managed by the StartCursorDrag() function.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type lookup="PF">PF</type>
+      <description>
+<types lookup="PF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Input</name>
+      <comment>Declares the I/O object to read movement from.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>By default a pointer will read its input directly from the mouse port.  However it may be convenient for the pointer to receive its information from elsewhere, in which case you can set this field to point to a different input object.  The object that you use <i>must</i> be able to send joyport information over data channels.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MaxSpeed</name>
+      <comment>Restricts the maximum speed of a pointer's movement.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The maximum speed at which the pointer can move per frame is specified in this field.  This field is provided to help the user for times where the pointer may be moving to fast (for example if the hardware driver is interpreting the mouse movement at larger offsets than what is normal).  You can also set the value to 1 if a digital simulation is required.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverObject</name>
+      <comment>Readable field that gives the ID of the object under the pointer.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>This field returns a reference to the object directly under the pointer's hot-spot.  NULL can be returned if there is no surface object under the pointer.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverX</name>
+      <comment>The horizontal position of the Pointer with respect to the object underneath the hot-spot.</comment>
+      <access read="R">Read</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The OverX field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverY</name>
+      <comment>The vertical position of the Pointer with respect to the object underneath the hot-spot.</comment>
+      <access read="R">Read</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The OverY field provides other classes with a means of finding out exactly where the pointer is positioned over their display area.  For example, if a user click occurs on an Image and it is necessary to find out what coordinates where affected, the OverX and OverY fields can be polled to determine the exact position of the user click.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>OverZ</name>
+      <comment>The position of the Pointer within an object.</comment>
+      <access read="R">Read</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This special field applies to 3D interfaces only.  It reflects the position of the pointer within 3-Dimensional displays, by returning its coordinate along the Z axis.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Restrict</name>
+      <comment>Refers to a surface when the pointer is restricted.</comment>
+      <access read="R">Read</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If the pointer has been restricted to a surface through SetCursor(), this field refers to the ID of that surface.  If the pointer is not restricted, this field is set to zero.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Speed</name>
+      <comment>Speed multiplier for Pointer movement.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The speed at which the pointer moves can be adjusted with this field.  To lower the speed, use a value between 0 and 100%.  To increase the speed, use a value between 100 and 1000%.  The Speed of the Pointer is complemented by the MaxSpeed field, which restricts the maximum amount of pixels that a Pointer can move each time the input device is polled.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Surface</name>
+      <comment>The top-most surface that is under the pointer's hot spot.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>OBJECTID</type>
+      <description>
+<p>The surface that is directly under the pointer's hot spot is referenced by this field.  It is automatically updated whenever the position of the pointer changes or a new surface appears under the pointer.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>WheelSpeed</name>
+      <comment>Defines a multiplier to be applied to the mouse wheel.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>DOUBLE</type>
+      <description>
+<p>This field defines a multiplier that is applied to values coming from the mouse wheel.  A setting of 1.0 leaves the wheel speed unaltered, while a setting of 2.0 would double the regular speed.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>The horizontal position of the pointer within its parent display.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>The vertical position of the pointer within its parent display.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="PF" comment="Flags for the Pointer class.">
+      <const name="ANCHOR">Allow the pointer to be anchored.</const>
+      <const name="UNUSED"/>
+      <const name="VISIBLE">Indicates that the pointer is currently visible.  Read-only.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

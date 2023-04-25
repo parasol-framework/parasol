@@ -10,35 +10,39 @@ Notes
 
 *********************************************************************************************************************/
 
-void MsgKeyPress(LONG Flags, LONG Value, LONG Printable)
+void MsgKeyPress(KQ Flags, KEY Value, LONG Printable)
 {
-   if (!Value) return;
+   if (Value IS KEY::NIL) return;
 
-   if ((Printable < 0x20) or (Printable IS 127)) Flags |= KQ_NOT_PRINTABLE;
+   if ((Printable < 0x20) or (Printable IS 127)) Flags |= KQ::NOT_PRINTABLE;
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
-      .Qualifiers = Flags|KQ_PRESSED,
+      .Qualifiers = Flags|KQ::PRESSED,
       .Code       = Value,
       .Unicode    = Printable
    };
    BroadcastEvent(&key, sizeof(key));
 }
 
+void MsgKeyPress(int Flags, int Value, int Printable) { MsgKeyPress(KQ(Flags), KEY(Value), Printable); }
+
 //********************************************************************************************************************
 
-void MsgKeyRelease(LONG Flags, LONG Value)
+void MsgKeyRelease(KQ Flags, KEY Value)
 {
-   if (!Value) return;
+   if (Value IS KEY::NIL) return;
 
    evKey key = {
       .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
-      .Qualifiers = Flags|KQ_RELEASED,
+      .Qualifiers = Flags|KQ::RELEASED,
       .Code       = Value,
       .Unicode    = 0
    };
    BroadcastEvent(&key, sizeof(key));
 }
+
+void MsgKeyRelease(int Flags, int Value) { MsgKeyRelease(KQ(Flags), KEY(Value)); }
 
 //********************************************************************************************************************
 
@@ -49,19 +53,19 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
       gfxReleasePointer(pointer);
 
       struct dcDeviceInput joy[2];
-      joy[0].Type  = JET_ABS_X;
-      joy[0].Flags = 0;
+      joy[0].Type  = JET::ABS_X;
+      joy[0].Flags = JTYPE::NIL;
       joy[0].Value = AbsX;
       joy[0].Timestamp = PreciseTime();
 
-      joy[1].Type  = JET_ABS_Y;
-      joy[1].Flags = 0;
+      joy[1].Type  = JET::ABS_Y;
+      joy[1].Flags = JTYPE::NIL;
       joy[1].Value = AbsY;
       joy[1].Timestamp = joy[0].Timestamp;
 
       struct acDataFeed feed = {
-         .ObjectID = 0,
-         .DataType = DATA_DEVICE_INPUT,
+         .Object   = NULL,
+         .Datatype = DATA::DEVICE_INPUT,
          .Buffer   = &joy,
          .Size     = sizeof(struct dcDeviceInput) * 2
       };
@@ -74,18 +78,18 @@ void MsgMovement(OBJECTID SurfaceID, DOUBLE AbsX, DOUBLE AbsY, LONG WinX, LONG W
 void MsgWheelMovement(OBJECTID SurfaceID, FLOAT Wheel)
 {
    if (!glPointerID) {
-      if (FindObject("SystemPointer", 0, 0, &glPointerID) != ERR_Okay) return;
+      if (FindObject("SystemPointer", 0, FOF::NIL, &glPointerID) != ERR_Okay) return;
    }
 
    struct dcDeviceInput joy;
-   joy.Type      = JET_WHEEL;
-   joy.Flags     = 0;
+   joy.Type      = JET::WHEEL;
+   joy.Flags     = JTYPE::NIL;
    joy.Value     = Wheel;
    joy.Timestamp = PreciseTime();
 
    struct acDataFeed feed;
-   feed.ObjectID = 0;
-   feed.DataType = DATA_DEVICE_INPUT;
+   feed.Object   = NULL;
+   feed.Datatype = DATA::DEVICE_INPUT;
    feed.Buffer   = &joy;
    feed.Size     = sizeof(struct dcDeviceInput);
    ActionMsg(AC_DataFeed, glPointerID, &feed);
@@ -108,33 +112,31 @@ void MsgFocusState(OBJECTID SurfaceID, LONG State)
 
 void MsgButtonPress(LONG button, LONG State)
 {
-   objPointer *pointer;
-
-   if ((pointer = gfxAccessPointer())) {
+   if (auto pointer = gfxAccessPointer()) {
       struct dcDeviceInput joy[3];
 
       LONG i = 0;
       LARGE timestamp = PreciseTime();
 
       if (button & 0x0001) {
-         joy[i].Type  = JET_BUTTON_1;
-         joy[i].Flags = 0;
+         joy[i].Type  = JET::BUTTON_1;
+         joy[i].Flags = JTYPE::NIL;
          joy[i].Value = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
 
       if (button & 0x0002) {
-         joy[i].Type  = JET_BUTTON_2;
-         joy[i].Flags = 0;
+         joy[i].Type  = JET::BUTTON_2;
+         joy[i].Flags = JTYPE::NIL;
          joy[i].Value = State;
          joy[i].Timestamp = timestamp;
          i++;
       }
 
       if (button & 0x0004) {
-         joy[i].Type  = JET_BUTTON_3;
-         joy[i].Flags = 0;
+         joy[i].Type  = JET::BUTTON_3;
+         joy[i].Flags = JTYPE::NIL;
          joy[i].Value = State;
          joy[i].Timestamp = timestamp;
          i++;
@@ -144,8 +146,8 @@ void MsgButtonPress(LONG button, LONG State)
 
       if (i) {
          struct acDataFeed feed;
-         feed.ObjectID = 0;
-         feed.DataType = DATA_DEVICE_INPUT;
+         feed.Object   = NULL;
+         feed.Datatype = DATA::DEVICE_INPUT;
          feed.Buffer   = &joy;
          feed.Size     = sizeof(struct dcDeviceInput) * i;
          if (ActionMsg(AC_DataFeed, glPointerID, &feed) IS ERR_NoMatchingObject) {
@@ -166,10 +168,10 @@ void MsgResizedWindow(OBJECTID SurfaceID, LONG WinX, LONG WinY, LONG WinWidth, L
    if ((!SurfaceID) or (WinWidth < 1) or (WinHeight < 1)) return;
 
    objSurface *surface;
-   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
+   if (!AccessObject(SurfaceID, 3000, &surface)) {
       extDisplay *display;
       OBJECTID display_id = surface->DisplayID;
-      if (!AccessObjectID(display_id, 3000, &display)) {
+      if (!AccessObject(display_id, 3000, &display)) {
          FUNCTION feedback = display->ResizeFeedback;
          display->X = WinX;
          display->Y = WinY;
@@ -200,8 +202,8 @@ void MsgSetFocus(OBJECTID SurfaceID)
 {
    pf::Log log;
    objSurface *surface;
-   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
-      if ((!(surface->Flags & RNF_HAS_FOCUS)) and (surface->Flags & RNF_VISIBLE)) {
+   if (!AccessObject(SurfaceID, 3000, &surface)) {
+      if ((!surface->hasFocus()) and (surface->visible())) {
          log.msg("WM_SETFOCUS: Sending focus to surface #%d.", SurfaceID);
          QueueAction(AC_Focus, SurfaceID);
       }
@@ -218,7 +220,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
    if ((!SurfaceID) or (!Width) or (!Height)) return;
 
    objSurface *surface;
-   if (!AccessObjectID(SurfaceID, 3000, &surface)) {
+   if (!AccessObject(SurfaceID, 3000, &surface)) {
       LONG minwidth, minheight, maxwidth, maxheight;
       LONG left, right, top, bottom;
       surface->get(FID_MinWidth, &minwidth);
@@ -235,7 +237,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
       if (*Width > maxwidth + left + right)   *Width  = maxwidth + left + right;
       if (*Height > maxheight + top + bottom) *Height = maxheight + top + bottom;
 
-      if (surface->Flags & RNF_ASPECT_RATIO) {
+      if ((surface->Flags & RNF::ASPECT_RATIO) != RNF::NIL) {
          if (minwidth > minheight) {
             DOUBLE scale = (DOUBLE)minheight / (DOUBLE)minwidth;
             *Height = *Width * scale;
@@ -255,7 +257,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    if ((Width) and (Height)) {
-      struct drwExpose expose = { X, Y, Width, Height, EXF_CHILDREN };
+      struct drwExpose expose = { X, Y, Width, Height, EXF::CHILDREN };
       ActionMsg(MT_DrwExpose, SurfaceID, &expose);
    }
    else ActionMsg(MT_DrwExpose, SurfaceID, NULL);
@@ -265,7 +267,7 @@ extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LO
 
 void MsgTimer(void)
 {
-   ProcessMessages(0, 0);
+   ProcessMessages(PMF::NIL, 0);
 }
 
 //********************************************************************************************************************
@@ -275,7 +277,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
    pf::Log log(__FUNCTION__);
 
    if (SurfaceID) {
-      const WindowHook hook(SurfaceID, WH_CLOSE);
+      const WindowHook hook(SurfaceID, WH::CLOSE);
 
       if (glWindowHooks.contains(hook)) {
          auto func = &glWindowHooks[hook];
@@ -301,7 +303,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
          }
       }
 
-      acFree(SurfaceID);
+      if (!CheckMemoryExists(SurfaceID)) FreeResource(SurfaceID);
    }
 }
 
@@ -312,7 +314,7 @@ void MsgWindowDestroyed(OBJECTID SurfaceID)
    if (SurfaceID) {
       pf::Log log("WinMgr");
       log.branch("Freeing window surface #%d.", SurfaceID);
-      acFree(SurfaceID);
+      FreeResource(SurfaceID);
    }
 }
 

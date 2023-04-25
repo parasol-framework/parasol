@@ -80,10 +80,10 @@ static ERROR AUDIO_Activate(extAudio *Self, APTR Void)
    Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);
 
-   if (!AllocMemory(Self->MixBufferSize, MEM_DATA, &Self->MixBuffer)) {
+   if (!AllocMemory(Self->MixBufferSize, MEM::DATA, &Self->MixBuffer)) {
       // Pick the correct mixing routines
 
-      if (Self->Flags & ADF_OVER_SAMPLING) {
+      if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) {
          if (Self->Stereo) Self->MixRoutines = MixStereoFloatInterp;
          else Self->MixRoutines = MixMonoFloatInterp;
       }
@@ -141,7 +141,7 @@ of the possible variations there are a number of sample formats, as illustrated 
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with `SFM_BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with `SFM::F_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the sample data.  This is achieved by configuring the &AudioLoop
 structure:
@@ -191,7 +191,7 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
 
    if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
-   LONG shift = sample_shift(Args->SampleFormat);
+   auto shift = sample_shift(Args->SampleFormat);
 
    auto &sample = Self->Samples[idx];
    sample.SampleType   = Args->SampleFormat;
@@ -216,10 +216,10 @@ ERROR AUDIO_AddSample(extAudio *Self, struct sndAddSample *Args)
       sample.Loop2Type = LTYPE::NIL;
    }
 
-   if ((!sample.SampleType) or (Args->DataSize <= 0) or (!Args->Data)) {
+   if ((sample.SampleType IS SFM::NIL) or (Args->DataSize <= 0) or (!Args->Data)) {
       sample.Data = NULL;
    }
-   else if (!AllocMemory(Args->DataSize, MEM_DATA|MEM_NO_CLEAR, &sample.Data)) {
+   else if (!AllocMemory(Args->DataSize, MEM::DATA|MEM::NO_CLEAR, &sample.Data)) {
       CopyMemory(Args->Data, sample.Data, Args->DataSize);
    }
    else return log.warning(ERR_AllocMemory);
@@ -251,7 +251,7 @@ variations there are a number of sample formats, as illustrated in the following
 <types lookup="SFM"/>
 
 By default, all samples are assumed to be in little endian format, as supported by Intel CPU's.  If the data is in big
-endian format, logical-or the SampleFormat value with the flag `SFM_BIG_ENDIAN`.
+endian format, logical-or the SampleFormat value with the flag `SFM::F_BIG_ENDIAN`.
 
 It is also possible to supply loop information with the stream.  The Audio class supports a number of different looping
 formats via the &AudioLoop structure:
@@ -291,7 +291,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->SampleFormat)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (Args->SampleFormat IS SFM::NIL)) return log.warning(ERR_NullArgs);
    if (!Args->Callback.Type) return log.warning(ERR_NullArgs);
 
    log.branch("Length: %d", Args->SampleLength);
@@ -305,7 +305,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
 
    if (idx >= (LONG)Self->Samples.size()) Self->Samples.resize(Self->Samples.size()+10);
 
-   LONG shift = sample_shift(Args->SampleFormat);
+   auto shift = sample_shift(Args->SampleFormat);
 
    LONG buffer_len;
    if (Args->SampleLength > 0) {
@@ -343,7 +343,7 @@ static ERROR AUDIO_AddStream(extAudio *Self, struct sndAddStream *Args)
       if (sample.Loop2Start IS sample.Loop2End) sample.Loop2Type = LTYPE::NIL;
    }
 
-   if (AllocMemory(buffer_len, MEM_DATA|MEM_NO_CLEAR, &sample.Data) != ERR_Okay) {
+   if (AllocMemory(buffer_len, MEM::DATA|MEM::NO_CLEAR, &sample.Data) != ERR_Okay) {
       return ERR_AllocMemory;
    }
 
@@ -378,7 +378,7 @@ static ERROR AUDIO_Beep(extAudio *Self, struct sndBeep *Args)
 
 #ifdef __linux__
    LONG console;
-   if ((console = GetResource(RES_CONSOLE_FD)) != -1) {
+   if ((console = GetResource(RES::CONSOLE_FD)) != -1) {
       ioctl(console, KDMKTONE, ((1193190 / Args->Pitch) & 0xffff) | ((ULONG)Args->Duration << 16));
       return ERR_Okay;
    }
@@ -456,7 +456,7 @@ static ERROR AUDIO_Deactivate(extAudio *Self, APTR Void)
 
 static ERROR AUDIO_Free(extAudio *Self, APTR Void)
 {
-   if (Self->Flags & ADF_AUTO_SAVE) Self->saveSettings();
+   if ((Self->Flags & ADF::AUTO_SAVE) != ADF::NIL) Self->saveSettings();
 
    if (Self->Timer) { UpdateTimer(Self->Timer, 0); Self->Timer = NULL; }
 
@@ -504,7 +504,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
    Self->InputRate   = 44100;        // Input rate for recording
    Self->Quality     = 80;
    Self->BitDepth    = 16;
-   Self->Flags       = ADF_OVER_SAMPLING|ADF_FILTER_HIGH|ADF_VOL_RAMPING|ADF_STEREO;
+   Self->Flags       = ADF::OVER_SAMPLING|ADF::FILTER_HIGH|ADF::VOL_RAMPING|ADF::STEREO;
    Self->Periods     = 4;
    Self->PeriodSize  = 2048;
    Self->Device      = "default";
@@ -512,7 +512,7 @@ static ERROR AUDIO_NewObject(extAudio *Self, APTR Void)
 
    const SystemState *state = GetSystemState();
    if ((!StrMatch(state->Platform, "Native")) or (!StrMatch(state->Platform, "Linux"))) {
-      Self->Flags |= ADF_SYSTEM_WIDE;
+      Self->Flags |= ADF::SYSTEM_WIDE;
    }
 
    Self->Samples.reserve(32);
@@ -583,7 +583,7 @@ static ERROR AUDIO_OpenChannels(extAudio *Self, struct sndOpenChannels *Args)
 
    Self->Sets[index].Channel.resize(Args->Total);
 
-   if (Self->Flags & ADF_OVER_SAMPLING) Self->Sets[index].Shadow.resize(Args->Total);
+   if ((Self->Flags & ADF::OVER_SAMPLING) != ADF::NIL) Self->Sets[index].Shadow.resize(Args->Total);
    else Self->Sets[index].Shadow.clear();
 
    Self->Sets[index].UpdateRate = 125;  // Default mixer update rate of 125ms
@@ -640,11 +640,9 @@ SaveSettings: Saves the current audio settings.
 
 static ERROR AUDIO_SaveSettings(extAudio *Self, APTR Void)
 {
-   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
+   objFile::create file = { fl::Path("user:config/audio.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
 
-   if (file.ok()) {
-      return acSaveToObject(Self, file->UID, 0);
-   }
+   if (file.ok()) return Self->saveToObject(*file);
    else return ERR_CreateFile;
 }
 
@@ -658,7 +656,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->DestID)) return log.warning(ERR_NullArgs);
+   if ((!Args) or (!Args->Dest)) return log.warning(ERR_NullArgs);
 
    objConfig::create config = { };
    if (config.ok()) {
@@ -669,15 +667,15 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       config->write("AUDIO", "Periods", Self->Periods);
       config->write("AUDIO", "PeriodSize", Self->PeriodSize);
 
-      if (Self->Flags & ADF_STEREO) config->write("AUDIO", "Stereo", "TRUE");
+      if ((Self->Flags & ADF::STEREO) != ADF::NIL) config->write("AUDIO", "Stereo", "TRUE");
       else config->write("AUDIO", "Stereo", "FALSE");
 
 #ifdef __linux__
       if (!Self->Device.empty()) config->write("AUDIO", "Device", Self->Device);
       else config->write("AUDIO", "Device", "default");
 
-      if ((!Self->Volumes.empty()) and (Self->Flags & ADF_SYSTEM_WIDE)) {
-         for (LONG i=0; i < (LONG)Self->Volumes.size(); i++) {
+      if ((!Self->Volumes.empty()) and ((Self->Flags & ADF::SYSTEM_WIDE) != ADF::NIL)) {
+         for (unsigned i=0; i < Self->Volumes.size(); i++) {
             std::ostringstream out;
             if ((Self->Volumes[i].Flags & VCF::MUTE) != VCF::NIL) out << "1,[";
             else out << "0,[";
@@ -745,7 +743,7 @@ static ERROR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       }
 #endif
 
-      config->saveToObject(Args->DestID, 0);
+      config->saveToObject(Args->Dest);
    }
 
    return ERR_Okay;
@@ -950,7 +948,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
       Self->Volumes[index].Flags |= VCF::MUTE;
    }
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
+   EVENTID evid = GetEventID(EVG::AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
    return ERR_Okay;
@@ -1019,7 +1017,7 @@ static ERROR AUDIO_SetVolume(extAudio *Self, struct sndSetVolume *Args)
    if ((Args->Flags & SVF::UNMUTE) != SVF::NIL) Self->Volumes[index].Flags &= ~VCF::MUTE;
    else if ((Args->Flags & SVF::MUTE) != SVF::NIL) Self->Volumes[index].Flags |= VCF::MUTE;
 
-   EVENTID evid = GetEventID(EVG_AUDIO, "volume", Self->Volumes[index].Name.c_str());
+   EVENTID evid = GetEventID(EVG::AUDIO, "volume", Self->Volumes[index].Name.c_str());
    evVolume event_volume = { evid, Args->Volume, ((Self->Volumes[index].Flags & VCF::MUTE) != VCF::NIL) ? true : false };
    BroadcastEvent(&event_volume, sizeof(event_volume));
 
@@ -1241,7 +1239,7 @@ Quality: Determines the quality of the audio mixing.
 
 Alter the quality of internal audio mixing by adjusting the Quality field.  The value range is from 0 (low quality) and
 100 (high quality).  A setting between 70 and 80 is recommended.  Setting the Quality field results in the following
-flags being automatically adjusted in the audio object: `ADF_FILTER_LOW`, `ADF_FILTER_HIGH` and `ADF_OVER_SAMPLING`.
+flags being automatically adjusted in the audio object: `ADF::FILTER_LOW`, `ADF::FILTER_HIGH` and `ADF::OVER_SAMPLING`.
 
 In general, low quality mixing should only be used when the audio output needs to be raw, or if the audio speaker is
 of low quality.
@@ -1252,12 +1250,12 @@ static ERROR SET_Quality(extAudio *Self, LONG Value)
 {
    Self->Quality = Value;
 
-   Self->Flags &= ~(ADF_FILTER_LOW|ADF_FILTER_HIGH|ADF_OVER_SAMPLING);
+   Self->Flags &= ~(ADF::FILTER_LOW|ADF::FILTER_HIGH|ADF::OVER_SAMPLING);
 
    if (Self->Quality < 10) return ERR_Okay;
-   else if (Self->Quality < 33) Self->Flags |= ADF_FILTER_LOW;
-   else if (Self->Quality < 66) Self->Flags |= ADF_FILTER_HIGH;
-   else Self->Flags |= ADF_OVER_SAMPLING|ADF_FILTER_HIGH;
+   else if (Self->Quality < 33) Self->Flags |= ADF::FILTER_LOW;
+   else if (Self->Quality < 66) Self->Flags |= ADF::FILTER_HIGH;
+   else Self->Flags |= ADF::OVER_SAMPLING|ADF::FILTER_HIGH;
 
    return ERR_Okay;
 }
@@ -1273,15 +1271,15 @@ Stereo: Set to TRUE for stereo output and FALSE for mono output.
 
 static ERROR GET_Stereo(extAudio *Self, LONG *Value)
 {
-   if (Self->Flags & ADF_STEREO) *Value = TRUE;
+   if ((Self->Flags & ADF::STEREO) != ADF::NIL) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
 }
 
 static ERROR SET_Stereo(extAudio *Self, LONG Value)
 {
-   if (Value IS TRUE) Self->Flags |= ADF_STEREO;
-   else Self->Flags &= ~ADF_STEREO;
+   if (Value IS TRUE) Self->Flags |= ADF::STEREO;
+   else Self->Flags &= ~ADF::STEREO;
    return ERR_Okay;
 }
 
@@ -1308,9 +1306,9 @@ static void load_config(extAudio *Self)
       if (config->read("AUDIO", "Device", Self->Device)) Self->Device = "default";
 
       std::string str;
-      Self->Flags |= ADF_STEREO;
+      Self->Flags |= ADF::STEREO;
       if (!config->read("AUDIO", "Stereo", str)) {
-         if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF_STEREO;
+         if (!StrMatch("FALSE", str.c_str())) Self->Flags &= ~ADF::STEREO;
       }
 
       if ((Self->BitDepth != 8) and (Self->BitDepth != 16) and (Self->BitDepth != 24)) Self->BitDepth = 16;
@@ -1387,7 +1385,7 @@ ERROR add_audio_class(void)
       fl::BaseClassID(ID_AUDIO),
       fl::ClassVersion(1.0),
       fl::Name("Audio"),
-      fl::Category(CCF_AUDIO),
+      fl::Category(CCF::AUDIO),
       fl::Actions(clAudioActions),
       fl::Methods(clAudioMethods),
       fl::Fields(clAudioFields),
@@ -1399,5 +1397,5 @@ ERROR add_audio_class(void)
 
 void free_audio_class(void)
 {
-   if (clAudio) { acFree(clAudio); clAudio = NULL; }
+   if (clAudio) { FreeResource(clAudio); clAudio = NULL; }
 }

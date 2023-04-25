@@ -23,7 +23,7 @@ gui.tooltip = function(Options)
    local self = { } -- Public variables
 
    self.free = function()
-      self.surface.acFree()
+      self.surface.free()
       table.clear(self)
    end
 
@@ -72,7 +72,7 @@ gui.tooltip = function(Options)
       if (surface != nil) then
          input.subscribe(JTYPE_MOVEMENT, nil, 0, function(Input, Message)
             Input.unsubscribe()
-            surface.acFree()
+            surface.free()
          end)
       end
    ]] }).acActivate()

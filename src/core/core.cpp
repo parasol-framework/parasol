@@ -73,7 +73,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include "defs.h"
 #include <parasol/modules/core.h>
 
-#ifdef DEBUG // KMSG() prints straight to stderr without going through the log.
+#ifdef _DEBUG // KMSG() prints straight to stderr without going through the log.
 #define KMSG(...) //fprintf(stderr, __VA_ARGS__)
 #else
 #define KMSG(...)
@@ -109,17 +109,7 @@ extern "C" ERROR add_storage_class(void);
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
 extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
-static ERROR open_shared_control(void);
-static ERROR init_shared_control(void);
 static ERROR init_volumes(const std::forward_list<std::string> &);
-
-#ifdef _WIN32
-static WINHANDLE glSharedControlID = 0; // Shared memory ID.
-#endif
-
-#if defined(__unix__) && !defined(__ANDROID__)
-static LONG glSharedControlID = -1;
-#endif
 
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
@@ -170,7 +160,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    LONG i;
 
    if (!Info) return NULL;
-   if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
    glOpenInfo   = Info;
    tlMainThread = TRUE;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
@@ -179,22 +169,20 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
-   if (alloc_private_lock(TL_FIELDKEYS, 0)) return NULL; // For access to glFields
-   if (alloc_private_lock(TL_CLASSDB, 0)) return NULL; // For access to glClassDB
-   if (alloc_private_lock(TL_VOLUMES, 0)) return NULL; // For access to glVolumes
-   if (alloc_private_lock(TL_GENERIC, 0)) return NULL; // A misc. internal mutex, strictly not recursive.
-   if (alloc_private_lock(TL_TIMER, 0)) return NULL; // For timer subscriptions.
-   if (alloc_private_lock(TL_MSGHANDLER, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRINT, 0)) return NULL; // For message logging only.
-   if (alloc_private_lock(TL_THREADPOOL, 0)) return NULL;
-   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRIVATE_MEM, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_PRIVATE_MEM, 0)) return NULL;
+   if (alloc_private_lock(TL_FIELDKEYS, ALF::NIL)) return NULL; // For access to glFields
+   if (alloc_private_lock(TL_CLASSDB, ALF::NIL)) return NULL; // For access to glClassDB
+   if (alloc_private_lock(TL_VOLUMES, ALF::NIL)) return NULL; // For access to glVolumes
+   if (alloc_private_lock(TL_GENERIC, ALF::NIL)) return NULL; // A misc. internal mutex, strictly not recursive.
+   if (alloc_private_lock(TL_TIMER, ALF::NIL)) return NULL; // For timer subscriptions.
+   if (alloc_private_lock(TL_MSGHANDLER, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_PRINT, ALF::NIL)) return NULL; // For message logging only.
+   if (alloc_private_lock(TL_THREADPOOL, ALF::NIL)) return NULL;
+   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_PRIVATE_MEM, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_cond(CN_PRIVATE_MEM, ALF::NIL)) return NULL;
 
-   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF_RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_OBJECTS, 0)) return NULL;
-
-   // Allocate a private POSIX semaphore for LockObject() and ReleaseObject()
+   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
@@ -223,43 +211,21 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    //
    // Any code that needs to regain admin access can use the following code segment:
    //
-   //    if (!SetResource(RES_PRIVILEGEDUSER, TRUE)) {
+   //    if (!SetResource(RES::PRIVILEGED_USER, TRUE)) {
    //       ...admin access...
-   //       SetResource(RES_PRIVILEGEDUSER, FALSE);
+   //       SetResource(RES::PRIVILEGED_USER, FALSE);
    //    }
 
    seteuid(glUID);  // Ensure that the rest of our code is run under the real user name instead of admin
    setegid(glGID);  // Ensure that we run under the user's default group (important for file creation)
 
 #elif _WIN32
-   // Make some Windows calls and generate the global share names.  The share names are based on the library location -
-   // this is very important for preventing multiple installs and versions from clashing with each other (e.g. a USB
-   // stick installation clashing with a base installation on C: drive)
-   //
-   // NOTE: A globally recognisable name only matters when a global instance is active for resource sharing.  Otherwise
-   // the names will be rewritten so that they are unique (see open_shared_control())
-
    LONG id = 0;
-   #ifdef DEBUG
+   #ifdef _DEBUG
       winInitialise(&id, NULL); // Don't set a break handler, this will allow GDB intercept CTRL-C.
    #else
       winInitialise(&id, (APTR)&BreakHandler);
    #endif
-
-   const char lookup[] = "0123456789ABCDEF";
-   for (LONG p=1; p < PL_END; p++) {
-      glPublicLocks[p].Name[0] = 'r';
-      glPublicLocks[p].Name[1] = 'k';
-      glPublicLocks[p].Name[2] = 'a' + p;
-      for (i=3; i < 11; i++) {
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         glPublicLocks[p].Name[i] = lookup[id & 0xf];
-         id = id>>4;
-      }
-      glPublicLocks[p].Name[i] = 0;
-   }
 #endif
 
    // Randomise the internal random variables
@@ -284,9 +250,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       #error Require code to obtain the process ID.
    #endif
 
-   if (Info->Flags & OPF_ROOT_PATH) SetResourcePath(RP_ROOT_PATH, Info->RootPath);
-   if (Info->Flags & OPF_MODULE_PATH) SetResourcePath(RP_MODULE_PATH, Info->ModulePath);
-   if (Info->Flags & OPF_SYSTEM_PATH) SetResourcePath(RP_SYSTEM_PATH, Info->SystemPath);
+   if ((Info->Flags & OPF::ROOT_PATH) != OPF::NIL) SetResourcePath(RP::ROOT_PATH, Info->RootPath);
+   if ((Info->Flags & OPF::MODULE_PATH) != OPF::NIL) SetResourcePath(RP::MODULE_PATH, Info->ModulePath);
+   if ((Info->Flags & OPF::SYSTEM_PATH) != OPF::NIL) SetResourcePath(RP::SYSTEM_PATH, Info->SystemPath);
 
    if (glRootPath.empty())   {
       #ifdef _WIN32
@@ -323,29 +289,31 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    // Process the Information structure
 
-   if (Info->Flags & OPF_CORE_VERSION) {
+   if ((Info->Flags & OPF::CORE_VERSION) != OPF::NIL) {
       if (Info->CoreVersion > VER_CORE) {
          KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_CoreVersion;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
          return NULL;
       }
    }
 
    // Debug processing
 
-   if (Info->Flags & OPF_DETAIL)  glLogLevel = (WORD)Info->Detail;
-   if (Info->Flags & OPF_MAX_DEPTH) glMaxDepth = (WORD)Info->MaxDepth;
-   if (Info->Flags & OPF_SHOW_MEMORY) glShowPrivate = TRUE;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)  glLogLevel = (WORD)Info->Detail;
+   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL) glMaxDepth = (WORD)Info->MaxDepth;
+   if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = TRUE;
 
    // Android sets an important JNI pointer on initialisation.
 
-   if ((Info->Flags & OPF_OPTIONS) and (Info->Options)) {
-      for (LONG i=0; Info->Options[i].Tag != TAGEND; i++) {
+   if (((Info->Flags & OPF::OPTIONS) != OPF::NIL) and (Info->Options)) {
+      for (LONG i=0; LONG(Info->Options[i].Tag) != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
-            case TOI_ANDROID_ENV: {
+            case TOI::ANDROID_ENV: {
                glJNIEnv = Info->Options[i].Value.Pointer;
                break;
             }
+            default:
+               break;
          }
       }
    }
@@ -353,15 +321,15 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    // Check if the privileged flag has been set, which means "don't drop administration privileges if my binary is known to be suid".
 
 #if defined(__unix__) && !defined(__ANDROID__)
-   if ((Info->Flags & OPF_PRIVILEGED) and (geteuid() != getuid())) {
+   if (((Info->Flags & OPF::PRIVILEGED) != OPF::NIL) and (geteuid() != getuid())) {
       glPrivileged = TRUE;
    }
 #endif
 
    std::forward_list<std::string> volumes;
 
-   std::vector<CSTRING> newargs;
-   if (Info->Flags & OPF_ARGS) {
+   pf::vector<std::string> newargs;
+   if ((Info->Flags & OPF::ARGS) != OPF::NIL) {
       for (i=1; i < Info->ArgCount; i++) {
          auto arg = Info->Args[i];
          if ((arg[0] != '-') or (arg[1] != '-')) { newargs.push_back(arg); continue; }
@@ -371,7 +339,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
             glShowPrivate = TRUE;
             glDebugMemory = TRUE;
          }
-         else if (!StrCompare(arg, "gfx-driver=", 11, 0)) {
+         else if (!StrCompare(arg, "gfx-driver=", 11)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
          }
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
@@ -392,7 +360,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          #if defined(__unix__) && !defined(__ANDROID__)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
-         else if (!StrCompare("home=", arg, 7, 0)) glHomeFolderName.assign(arg + 7);
+         else if (!StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
          else newargs.push_back(arg);
       }
 
@@ -410,7 +378,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
    }
 
-   glShowIO = (Info->Flags & OPF_SHOW_IO) ? TRUE : FALSE;
+   glShowIO = ((Info->Flags & OPF::SHOW_IO) != OPF::NIL);
 
 #if defined(__unix__) && !defined(__ANDROID__)
    // Setting stdout to non-blocking can prevent dead-locks at the cost of dropping excess output.  It is only
@@ -479,36 +447,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       winSetUnhandledExceptionFilter(&CrashHandler);
    }
    else log.msg("A debugger is active.");
-
-   // Generate unique resource names based on our process ID.
-
-   {
-      WINHANDLE handle;
-      LONG id = glProcessID;
-      static const char lookup[] = "0123456789ABCDEF";
-      while (true) {
-         for (LONG p=1; p < PL_END; p++) {
-            LONG mid = id;
-            for (LONG i=3; i < 11; i++) {
-               glPublicLocks[p].Name[i] = lookup[mid & 0xf];
-               mid = mid>>4;
-            }
-         }
-
-         // Check that the resource name is unique, otherwise keep looping.
-         if (open_public_lock(&handle, glPublicLocks[PL_FORBID].Name) != ERR_Okay) break;
-
-         free_public_lock(handle);
-         id += 17; // Alter the id with a prime number
-      }
-   }
 #endif
-
-   if (open_shared_control() != ERR_Okay) {
-      CloseCore();
-      if (Info->Flags & OPF_ERROR) Info->Error = ERR_Failed;
-      return NULL;
-   }
 
    // Sockets are used on Unix systems to tell our processes when new messages are available for them to read.
 
@@ -532,38 +471,34 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
-                  if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+                  if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
                   return NULL;
                }
             }
             else {
-               if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+               if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
                return NULL;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
-         if (Info->Flags & OPF_ERROR) Info->Error = ERR_SystemCall;
+         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
          return NULL;
       }
 
-      RegisterFD(glSocket, RFD_READ, NULL, NULL);
+      RegisterFD(glSocket, RFD::READ, NULL, NULL);
    #endif
 
    // Print task information
 
-   log.msg("Version: %.1f : Process: %d, MemPool Address: %p", VER_CORE, glProcessID, glSharedControl);
+   log.msg("Version: %.1f : Process: %d", VER_CORE, glProcessID);
    log.msg("Sync: %s, Root: %s", (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
 
    init_metaclass();
-
-   ManagedActions[AC_Init] = (LONG (*)(OBJECTPTR, APTR))MGR_Init;
-   ManagedActions[AC_Free] = (LONG (*)(OBJECTPTR, APTR))MGR_Free;
-   ManagedActions[AC_Signal] = (LONG (*)(OBJECTPTR, APTR))MGR_Signal;
 
    if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }
    if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
@@ -580,7 +515,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
    #endif
 
-   if (!(glCurrentTask = objTask::create::untracked())) {
+   if (!(glCurrentTask = extTask::create::untracked())) {
       CloseCore();
       return NULL;
    }
@@ -593,9 +528,9 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    fs_initialised = true;
 
-   if (!(Info->Flags & OPF_SCAN_MODULES)) {
+   if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
-      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL_READ) };
+      objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {
          LONG filesize;
@@ -626,14 +561,14 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       else glScanClasses = true; // If no file, a database rebuild is required.
    }
 
-   if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, newargs.data(), newargs.size());
+   if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, &newargs, newargs.size());
 
    // In Windows, set the PATH environment variable so that DLL's installed under modules:lib can be found.
 
 #ifdef _WIN32
    {
       STRING libpath;
-      if (!ResolvePath("modules:lib", RSF_NO_FILE_CHECK, &libpath)) {
+      if (!ResolvePath("modules:lib", RSF::NO_FILE_CHECK, &libpath)) {
          winSetDllDirectory(libpath);
          FreeResource(libpath);
       }
@@ -650,23 +585,21 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
-   if (Info->Flags & OPF_SCAN_MODULES) {
+   if ((Info->Flags & OPF::SCAN_MODULES) != OPF::NIL) {
       log.msg("Class scanning has been enforced by user request.");
       glScanClasses = true;
    }
 
-   if (glScanClasses) {
-      scan_classes();
-   }
+   if (glScanClasses) scan_classes();
 
-   #ifdef DEBUG
+   #ifdef _DEBUG
       print_class_list();
    #endif
 
    log.msg("PROGRAM OPENED");
 
-   glSharedControl->SystemState = 0; // Indicates that initialisation is complete.
-   if (Info->Flags & OPF_ERROR) Info->Error = ERR_Okay;
+   glSystemState = 0; // Indicates that initialisation is complete.
+   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
    return LocalCoreBase;
 }
@@ -679,226 +612,6 @@ EXPORT void CleanSystem(LONG Flags)
    pf::Log log("Core");
    log.msg("Flags: $%.8x", Flags);
    Expunge(FALSE);
-}
-
-//********************************************************************************************************************
-
-#define MAGICKEY 0x58392712
-
-static const LONG glMemorySize = sizeof(SharedControl) +
-                                 (sizeof(SemaphoreEntry) * MAX_SEMAPHORES) +
-                                 (sizeof(WaitLock) * MAX_WAITLOCKS);
-
-#ifdef _WIN32
-static ERROR open_shared_control(void)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.trace("");
-
-   ERROR error;
-
-   for (LONG i=1; i < PL_END; i++) {
-      if (glPublicLocks[i].Event) {
-         if ((error = alloc_public_waitlock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Event
-            log.warning("Failed to allocate system waitlock %d '%s', error %d", i, glPublicLocks[i].Name, error);
-            return error;
-         }
-      }
-      else if ((error = alloc_public_lock(&glPublicLocks[i].Lock, glPublicLocks[i].Name))) { // Mutex
-         log.warning("Failed to allocate system lock, error %d", error);
-         return error;
-      }
-   }
-
-   LONG init;
-   char sharename[12];
-   CopyMemory(glPublicLocks[PL_FORBID].Name, sharename, 12);
-   sharename[2] = 'z';
-   if ((init = winCreateSharedMemory(sharename, glMemorySize, glMemorySize, &glSharedControlID, (APTR *)&glSharedControl)) < 0) {
-      KERR("Failed to create the shared memory pool in call to winCreateSharedMemory(), code %d.\n", init);
-      return ERR_Failed;
-   }
-
-   if (init) error = init_shared_control();
-   else error = ERR_Okay;
-
-   return error;
-}
-
-#else
-
-static ERROR open_shared_control(void)
-{
-   pf::Log log("Core");
-
-   // Generate a resource sharing key based on the unique file inode of the core library.  This prevents
-   // conflicts with other installations of the system core on this machine.
-
-   LONG memkey = 0xd39f7ea1;
-
-   Dl_info dlinfo;
-   if (dladdr((CPTR)OpenCore, &dlinfo)) {
-      struct stat flinfo;
-      if (!stat(dlinfo.dli_fname, &flinfo)) {
-         memkey ^= flinfo.st_ino;
-      }
-   }
-
-   KMSG("open_shared_control() Key: $%.8x.\n", memkey);
-
-   #ifdef __ANDROID__
-      // Helpful ashmem article: http://notjustburritos.tumblr.com/post/21442138796/an-introduction-to-android-shared-memory
-
-      // There are two ways to go about managing shared memory: Allocate each request independently as a system memory block
-      // or allocate a memory pool and manage it with our own functionality.
-
-      if ((glMemoryFD = open("/dev/ashmem", O_RDWR, S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
-         LOGE("Failed to open /dev/ashmem");
-         return ERR_Failed;
-      }
-
-      char ashname[32];
-      snprintf(ashname, sizeof(ashname), "rkl_%d", memkey); // Use the memkey as the system-wide name.  This means that APK based installs are secluded, but a system installation of the core would be discoverable by everyone.
-
-      LONG ret = ioctl(glMemoryFD, ASHMEM_SET_NAME, ashname);
-      if (ret < 0) {
-         LOGE("Failed to set name of the ashmem region that we want.");
-         close(glMemoryFD);
-         glMemoryFD = -1;
-         return ERR_Failed;
-      }
-
-      ret = ioctl(glMemoryFD, ASHMEM_SET_SIZE, glMemorySize);
-      if (ret < 0) {
-         LOGE("Failed to set size of the ashmem region to %d.", glMemorySize);
-         close(glMemoryFD);
-         glMemoryFD = -1;
-         return ERR_Failed;
-      }
-
-      // Map the first portion of the file into our process (i.e. the system stuff that needs to be permanently mapped).
-      // Mapping of blocks in the global pool will only be done on request in AccessMemoryID().
-
-      if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
-         // Call init_shared_control() if this is the first time that the block has been created.
-
-         if (glSharedControl->MagicKey != MAGICKEY) init_shared_control();
-         else LOGI("Shared control structure already initialised.");
-      }
-      else {
-         KERR("mmap() failed on public memory pool: %s.\n", strerror(errno));
-         return ERR_LockFailed;
-      }
-
-   #elif USE_SHM
-      // NOTE: Do not ever use shmctl(IPC_STAT) for any reason, as the resulting structure is not compatible between all Linux versions.
-
-      bool init = false;
-      if ((glSharedControlID = shmget(memkey, 0, SHM_R|SHM_W)) IS -1) {
-         KMSG("No existing memory block exists for the given key (will create a new one).  Error: %s\n", strerror(errno));
-
-         // Change the memkey with our PID to make it unique.
-         memkey ^= getpid();
-
-         if ((glSharedControlID = shmget(memkey, glMemorySize, IPC_CREAT|IPC_EXCL|SHM_R|SHM_W|S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
-            if (errno IS EEXIST); // The shared memory block already exists
-            else if (errno IS EIDRM) { // The shared memory block is marked for termination and some other process is still using it
-               KERR("Cannot load the Core because an existing process has permanently locked the public memory pool.\nUse 'ps aux' to find the process and kill it.\n");
-               return ERR_Failed;
-            }
-            else {
-               KERR("\033[1mshmget() failed on the public memory pool, error %d: %s\033[0m\n", errno, strerror(errno));
-               return ERR_Failed;
-            }
-         }
-         else init = true;
-      }
-      else KMSG("Shared memory block already exists - will attach to it.\n");
-
-      if ((glSharedControl = (SharedControl *)shmat(glSharedControlID, 0, SHM_R|SHM_W)) IS (void *)-1) {
-         glSharedControl = NULL;
-         KERR("\033[1mFailed to connect to the public memory pool.\033[0m\n");
-         return ERR_Failed;
-      }
-
-      // Initialise/Reset the memory if we created it, OR it can be determined that a crash has occurred on previous
-      // execution and all shared memory allocations need to be destroyed.
-
-      if ((init) or (glSharedControl->MagicKey != MAGICKEY)) {
-         KMSG("Initialisation of glSharedControl is required.\n");
-         init_shared_control();
-      }
-
-   #else
-      struct stat info;
-
-      KMSG("Using mmap() sharing functionality.\n");
-
-      // Open the memory file, creating it if it does not exist.  If it does exist, the file is simply opened.
-
-      if ((glMemoryFD = open(MEMORYFILE, O_RDWR|O_CREAT, S_IRWXO|S_IRWXG|S_IRWXU)) IS -1) {
-         KERR("Failed to open memory base file \"%s\".\n", MEMORYFILE);
-         return ERR_Failed;
-      }
-
-      // Expand the size of the page file if it is too small
-
-      if (!fstat(glMemoryFD, &info)) {
-         if (info.st_size < glMemorySize) {
-            if (ftruncate(glMemoryFD, glMemorySize) IS -1) {
-               KERR("Failed to increase the filesize of \"%s\" to %d bytes.\n", MEMORYFILE, glMemorySize);
-               return ERR_Failed;
-            }
-         }
-      }
-
-      // Map the file into our process
-
-      if ((glSharedControl = mmap(0, glMemorySize, PROT_READ|PROT_WRITE, MAP_SHARED, glMemoryFD, 0)) != (APTR)-1) {
-         // Call init_shared_control() if this is the first time that the block has been created.
-
-         if (glSharedControl->MagicKey != MAGICKEY) init_shared_control();
-      }
-      else {
-         KERR("mmap() failed on public memory pool: %s.\n", strerror(errno));
-         return ERR_LockFailed;
-      }
-
-   #endif
-
-   glSharedControl->SystemState = -1; // System state of -1 == initialising
-
-   return ERR_Okay;
-}
-#endif
-
-static ERROR init_shared_control(void)
-{
-   KMSG("init_shared_control()\n");
-
-   ClearMemory(glSharedControl, glMemorySize);
-
-   glSharedControl->MagicKey   = MAGICKEY;
-
-   LONG offset = sizeof(SharedControl);
-
-   glSharedControl->SemaphoreOffset = offset;
-   offset += sizeof(SemaphoreEntry) * MAX_SEMAPHORES;
-
-   glSharedControl->WLOffset = offset;
-   offset += sizeof(WaitLock) * MAX_WAITLOCKS;
-
-   // Allocate public locks (for sharing between processes)
-
-   #ifdef __unix__
-      KMSG("Initialising %d global locks\n", PL_END-1);
-      for (UBYTE i=1; i < PL_END; i++) {
-         if (alloc_public_lock(i, ALF_RECURSIVE)) { CloseCore(); return ERR_Failed; };
-      }
-   #endif
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -1023,7 +736,7 @@ void print_diagnosis(LONG Signal)
          CLASSID class_id = 0;
          CSTRING class_name;
          if (ctx != &glTopContext) {
-            if ((class_id = ctx->object()->ClassID)) class_name = ResolveClassID(class_id);
+            if ((class_id = ctx->object()->Class->ClassID)) class_name = ResolveClassID(class_id);
             else class_name = "None";
          }
          else class_name = "None";
@@ -1094,7 +807,7 @@ void print_diagnosis(LONG Signal)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1105,7 +818,7 @@ static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1128,7 +841,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    if (glCrashStatus IS 0) {
       if (((SignalNumber IS SIGQUIT) or (SignalNumber IS SIGHUP)))  {
          log.msg("Termination request - SIGQUIT or SIGHUP.");
-         SendMessage(0, MSGID_QUIT, 0, NULL, 0);
+         SendMessage(MSGID_QUIT, MSF::NIL, NULL, 0);
          glCrashStatus = 1;
          return;
       }
@@ -1162,7 +875,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1171,7 +884,7 @@ static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef __unix__
 static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
@@ -1194,7 +907,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
    // !!! TODO: The slow methodology of this loop needs attention !!!
 
    for (const auto & mem : glPrivateMemory) {
-      if (!(mem.Flags & MEM_OBJECT)) continue;
+      if (!(mem.Flags & MEM::OBJECT)) continue;
 
       objTask *task;
       if ((task = mem.Address)) {
@@ -1211,7 +924,7 @@ static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 // 2014-01-01: The crash handler is having major problems on Windows, it seems to be killed early on in the cleanup
 // process and never in the same place.  Log output doesn't flush properly either.
 
@@ -1284,7 +997,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 }
 #endif
 
-//**********************************************************************
+//********************************************************************************************************************
 
 ERROR convert_errno(LONG Error, ERROR Default)
 {
@@ -1311,7 +1024,7 @@ ERROR convert_errno(LONG Error, ERROR Default)
    }
 }
 
-//**********************************************************************
+//********************************************************************************************************************
 
 #ifdef _WIN32
 static void BreakHandler(void)
@@ -1339,7 +1052,7 @@ static void BreakHandler(void)
 #ifdef _WIN32
 static void win32_enum_folders(CSTRING Volume, CSTRING Label, CSTRING Path, CSTRING Icon, BYTE Hidden)
 {
-   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME_REPLACE | (Hidden ? VOLUME_HIDDEN : 0));
+   SetVolume(Volume, Path, Icon, Label, NULL, VOLUME::REPLACE | (Hidden ? VOLUME::HIDDEN : VOLUME::NIL));
 }
 #endif
 
@@ -1358,72 +1071,74 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // Add system volumes that require run-time determination.  For the avoidance of doubt, on Unix systems the
    // default settings for a fixed installation are:
    //
-   // OPF_ROOT_PATH   : parasol : glRootPath   = /usr/local
-   // OPF_MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
-   // OPF_SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
+   // OPF::ROOT_PATH   : parasol : glRootPath   = /usr/local
+   // OPF::MODULE_PATH : modules : glModulePath = %ROOT%/lib/parasol
+   // OPF::SYSTEM_PATH : system  : glSystemPath = %ROOT%/share/parasol
 
    #ifdef _WIN32
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else {
-         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
    #elif __unix__
-      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
       if (!glModulePath.empty()) {
-         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
       else {
          std::string path = glRootPath + "lib/parasol/";
-         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
 
-      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME_REPLACE|VOLUME_SYSTEM);
-      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
-      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+      SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
+      SetVolume("usr", "/usr", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
    #endif
 
    // Configure some standard volumes.
 
    #ifdef __ANDROID__
-      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("assets", "EXT:FileAssets", NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("templates", "assets:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("config", "localcache:config/|assets:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    #else
-      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("templates", "scripts:templates/", "misc/openbook", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+      SetVolume("config", "system:config/", "tools/cog", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       if (!AnalysePath("parasol:bin/", NULL)) { // Bin is the location of the fluid and parasol binaries
-         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+         SetVolume("bin", "parasol:bin/", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
-      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
+      else SetVolume("bin", "parasol:", NULL, NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    #endif
 
-   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM);
-   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME_HIDDEN);
-   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME_HIDDEN|VOLUME_SYSTEM); // Refer to widget module for actual configuration
+   SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
+   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.
 
-   if ((glOpenInfo->Flags & OPF_OPTIONS) and (glOpenInfo->Options)) {
-      for (LONG i=0; glOpenInfo->Options[i].Tag != TAGEND; i++) {
+   if (((glOpenInfo->Flags & OPF::OPTIONS) != OPF::NIL) and (glOpenInfo->Options)) {
+      for (LONG i=0; LONG(glOpenInfo->Options[i].Tag) != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
-            case TOI_LOCAL_CACHE: {
-               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+            case TOI::LOCAL_CACHE: {
+               SetVolume("localcache", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
-            case TOI_LOCAL_STORAGE: {
-               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+            case TOI::LOCAL_STORAGE: {
+               SetVolume("localstorage", glOpenInfo->Options[i].Value.String, NULL, NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
                break;
             }
+            default:
+               break;
          }
       }
    }
@@ -1440,7 +1155,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
-         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE);
+         SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE);
 
          buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
       }
@@ -1465,31 +1180,31 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    // folder if it does not already exist.
 
    if (buffer != "config:users/default/") {
-      LONG location_type = 0;
-      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC_DIRECTORY)) {
+      LOC location_type = LOC::NIL;
+      if ((AnalysePath(buffer.c_str(), &location_type) != ERR_Okay) or (location_type != LOC::DIRECTORY)) {
          buffer.pop_back();
-         SetDefaultPermissions(-1, -1, PERMIT_READ|PERMIT_WRITE);
+         SetDefaultPermissions(-1, -1, PERMIT::READ|PERMIT::WRITE);
             CopyFile("config:users/default/", buffer.c_str(), NULL);
-         SetDefaultPermissions(-1, -1, 0);
+         SetDefaultPermissions(-1, -1, PERMIT::NIL);
          buffer += '/';
       }
 
       buffer += "|config:users/default/";
    }
 
-   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME_REPLACE|VOLUME_SYSTEM);
+   SetVolume("user", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
    // Make sure that certain default directories exist
 
-   CreateFolder("user:config/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
-   CreateFolder("user:temp/", PERMIT_READ|PERMIT_EXEC|PERMIT_WRITE);
+   CreateFolder("user:config/", PERMIT::READ|PERMIT::EXEC|PERMIT::WRITE);
+   CreateFolder("user:temp/", PERMIT::READ|PERMIT::EXEC|PERMIT::WRITE);
 
    if (AnalysePath("temp:", NULL) != ERR_Okay) {
-      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
    if (AnalysePath("clipboard:", NULL) != ERR_Okay) {
-      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME_REPLACE|VOLUME_HIDDEN|VOLUME_SYSTEM);
+      SetVolume("clipboard", "temp:clipboard/", "items/clipboard", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
    }
 
    // Look for the following drive types:
@@ -1521,19 +1236,19 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
             label[1] = 0;
 
             if (type IS DRIVETYPE_REMOVABLE) {
-               SetVolume(disk, buffer+i, "devices/storage", label, "disk", 0);
+               SetVolume(disk, buffer+i, "devices/storage", label, "disk", VOLUME::NIL);
                disk[4]++;
             }
             else if (type IS DRIVETYPE_CDROM) {
-               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", 0);
+               SetVolume(cd, buffer+i, "devices/compactdisc", label, "cd", VOLUME::NIL);
                cd[2]++;
             }
             else if (type IS DRIVETYPE_FIXED) {
-               SetVolume(hd, buffer+i, "devices/storage", label, "hd", 0);
+               SetVolume(hd, buffer+i, "devices/storage", label, "hd", VOLUME::NIL);
                hd[5]++;
             }
             else if (type IS DRIVETYPE_NETWORK) {
-               SetVolume(net, buffer+i, "devices/network", label, "network", 0);
+               SetVolume(net, buffer+i, "devices/network", label, "network", VOLUME::NIL);
                net[3]++;
             }
             else log.warning("Drive %s identified as unsupported type %d.", buffer+i, type);
@@ -1567,13 +1282,13 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       if (size < 1) size = 8192;
 
       STRING buffer;
-      if (!AllocMemory(size, MEM_NO_CLEAR, (APTR *)&buffer, NULL)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
          size = read(file, buffer, size);
          buffer[size] = 0;
 
          CSTRING str = buffer;
          while (*str) {
-            if (!StrCompare("/dev/hd", str, 0, 0)) {
+            if (!StrCompare("/dev/hd", str)) {
                // Extract mount point
 
                LONG i = 0;
@@ -1590,7 +1305,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
                if ((mount[0] IS '/') and (!mount[1]));
                else {
                   IntToStr(driveno++, drivename+5, 3);
-                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", 0);
+                  SetVolume(drivename, mount, "devices/storage", NULL, "hd", VOLUME::NIL);
                }
             }
 
@@ -1614,7 +1329,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
    for (LONG i=0; i < ARRAYSIZE(cdroms); i++) {
       if (!access(cdroms[i], F_OK)) {
-         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", 0);
+         SetVolume(cdname, cdroms[i], "devices/compactdisc", NULL, "cd", VOLUME::NIL);
          cdname[2] = cdname[2] + 1;
       }
    }
@@ -1631,16 +1346,16 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string name(vol, 0, v);
          std::string path(vol, v + 1, vol.size() - (v + 1));
 
-         LONG flags = glVolumes.contains(name) ? 0 : VOLUME_HIDDEN;
+         VOLUME flags = glVolumes.contains(name) ? VOLUME::NIL : VOLUME::HIDDEN;
 
-         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME_PRIORITY|flags);
+         SetVolume(name.c_str(), path.c_str(), NULL, NULL, NULL, VOLUME::PRIORITY|flags);
       }
    }
 
    // Change glModulePath to an absolute path to optimise the loading of modules.
 
    STRING mpath;
-   if (!ResolvePath("modules:", RSF_NO_FILE_CHECK, &mpath)) {
+   if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
       glModulePath = mpath;
       FreeResource(mpath);
    }

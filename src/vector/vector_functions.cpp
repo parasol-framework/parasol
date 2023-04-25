@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -29,8 +28,8 @@ inline char read_nibble(CSTRING Str)
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.
 
-void simplevector_free(APTR Address) {
-
+ERROR simplevector_free(APTR Address) {
+   return ERR_Okay;
 }
 
 static ResourceManager glResourceSimpleVector = {
@@ -47,7 +46,7 @@ void set_memory_manager(APTR Address, ResourceManager *Manager)
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM_DATA|MEM_MANAGED, &vector) != ERR_Okay) return NULL;
+   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR_Okay) return NULL;
    set_memory_manager(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
@@ -61,7 +60,7 @@ static SimpleVector * new_simplevector(void)
 
 ERROR CMDOpen(OBJECTPTR Module)
 {
-   Module->set(FID_FunctionList, glFunctions);
+   ((objModule *)Module)->setFunctionList(glFunctions);
    return ERR_Okay;
 }
 
@@ -89,7 +88,7 @@ NullArgs
 ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
 {
    if ((!Vector) or (!VectorPath)) return ERR_NullArgs;
-   if (VectorPath->SubID != ID_VECTORPATH) return ERR_Args;
+   if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
 
@@ -117,9 +116,9 @@ int(ARC) Flags: Optional flags.
 
 *********************************************************************************************************************/
 
-void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, LONG Flags)
+void vecArcTo(SimpleVector *Vector, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags)
 {
-   Vector->mPath.arc_to(RX, RY, Angle, (Flags & ARC_LARGE) ? 1 : 0, (Flags & ARC_SWEEP) ? 1 : 0, X, Y);
+   Vector->mPath.arc_to(RX, RY, Angle, ((Flags & ARC::LARGE) != ARC::NIL) ? 1 : 0, ((Flags & ARC::SWEEP) != ARC::NIL) ? 1 : 0, X, Y);
 }
 
 /*********************************************************************************************************************
@@ -544,7 +543,7 @@ ERROR vecMultiply(VectorMatrix *Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE She
    d.ShearX     = t2;
    d.TranslateX = t4;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -585,7 +584,7 @@ ERROR vecMultiplyMatrix(VectorMatrix *Target, VectorMatrix *Source)
    d.ShearX     = t2;
    d.TranslateX = t4;
 
-   if (Target->Vector) mark_dirty(Target->Vector, RC_TRANSFORM);
+   if (Target->Vector) mark_dirty(Target->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -634,22 +633,22 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    auto str = Commands;
    while (*str) {
       if ((*str >= 'a') and (*str <= 'z')) {
-         if (!StrCompare(str, "matrix", 6, 0)) {
+         if (!StrCompare(str, "matrix", 6)) {
             cmd m(M_MUL);
             str = read_numseq(str+6, &m.sx, &m.shy, &m.shx, &m.sy, &m.tx, &m.ty, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "translate", 9, 0)) {
+         else if (!StrCompare(str, "translate", 9)) {
             cmd m(M_TRANSLATE);
             str = read_numseq(str+9, &m.tx, &m.ty, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "rotate", 6, 0)) {
+         else if (!StrCompare(str, "rotate", 6)) {
             cmd m(M_ROTATE);
             str = read_numseq(str+6, &m.angle, &m.tx, &m.ty, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "scale", 5, 0)) {
+         else if (!StrCompare(str, "scale", 5)) {
             cmd m(M_SCALE);
             m.tx = 1.0;
             m.ty = DBL_EPSILON;
@@ -657,13 +656,13 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
             if (m.ty IS DBL_EPSILON) m.ty = m.tx;
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewX", 5, 0)) {
+         else if (!StrCompare(str, "skewX", 5)) {
             cmd m(M_SKEW);
             m.ty = 0;
             str = read_numseq(str+5, &m.tx, TAGEND);
             list.push_back(std::move(m));
          }
-         else if (!StrCompare(str, "skewY", 5, 0)) {
+         else if (!StrCompare(str, "skewY", 5)) {
             cmd m(M_SKEW);
             m.tx = 0;
             str = read_numseq(str+5, &m.ty, TAGEND);
@@ -723,7 +722,7 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
       }
    });
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -776,14 +775,14 @@ ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGra
 next:
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
-   if (!StrCompare("url(", IRI, 4, 0)) {
+   if (!StrCompare("url(", IRI, 4)) {
       if (!Scene) {
          log.trace("No Scene specified to enable URL() reference.");
          return ERR_Failed;
       }
 
-      if (Scene->ClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->ClassID != ID_VECTORSCENE) {
+      if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
+      else if (Scene->Class->ClassID != ID_VECTORSCENE) {
          log.warning("The Scene is invalid.");
          return ERR_Failed;
       }
@@ -799,16 +798,16 @@ next:
 
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
-            if (def->ClassID IS ID_VECTORGRADIENT) {
+            if (def->Class->ClassID IS ID_VECTORGRADIENT) {
                if (Gradient) *Gradient = (objVectorGradient *)def;
             }
-            else if (def->ClassID IS ID_VECTORIMAGE) {
+            else if (def->Class->ClassID IS ID_VECTORIMAGE) {
                if (Image) *Image = (objVectorImage *)def;
             }
-            else if (def->ClassID IS ID_VECTORPATTERN) {
+            else if (def->Class->ClassID IS ID_VECTORPATTERN) {
                if (Pattern) *Pattern = (objVectorPattern *)def;
             }
-            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->ClassID);
+            else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->Class->ClassID);
 
             // Check for combinations
             if (IRI[i++] IS ')') {
@@ -828,7 +827,7 @@ next:
 
       return ERR_Failed;
    }
-   else if (!StrCompare("rgb(", IRI, 4, 0)) {
+   else if (!StrCompare("rgb(", IRI, 4)) {
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
       RGB->Red = StrToFloat(IRI) * (1.0 / 255.0);
@@ -954,7 +953,7 @@ ERROR vecResetMatrix(VectorMatrix *Matrix)
    Matrix->TranslateX = 0;
    Matrix->TranslateY = 0;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -1023,7 +1022,7 @@ ERROR vecRotate(VectorMatrix *Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE Cente
    Matrix->TranslateX += CenterX;
    Matrix->TranslateY += CenterY;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -1067,7 +1066,7 @@ ERROR vecScale(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->ScaleY     *= Y;
    Matrix->TranslateY *= Y;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 
@@ -1199,7 +1198,7 @@ ERROR vecTranslate(VectorMatrix *Matrix, DOUBLE X, DOUBLE Y)
    Matrix->TranslateX += X;
    Matrix->TranslateY += Y;
 
-   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC_TRANSFORM);
+   if (Matrix->Vector) mark_dirty(Matrix->Vector, RC::TRANSFORM);
    return ERR_Okay;
 }
 

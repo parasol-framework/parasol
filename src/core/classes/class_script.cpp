@@ -60,11 +60,11 @@ static ERROR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 {
    if (!Args) return ERR_NullArgs;
 
-   if (Args->DataType IS DATA_XML) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+   if (Args->Datatype IS DATA::XML) {
+      Self->setStatement((STRING)Args->Buffer);
    }
-   else if (Args->DataType IS DATA_TEXT) {
-      Self->set(FID_String, (CSTRING)Args->Buffer);
+   else if (Args->Datatype IS DATA::TEXT) {
+      Self->setStatement((STRING)Args->Buffer);
    }
 
    return ERR_Okay;
@@ -334,7 +334,7 @@ static ERROR SCRIPT_Init(objScript *Self, APTR Void)
       Self->TargetID = Self->ownerID();
    }
 
-   if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+   if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
    return ERR_NoSupport;
 }
@@ -522,13 +522,13 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
       LONG i, j, len;
       if ((Value) and (*Value)) {
-         if (!StrCompare("STRING:", Value, 7, 0)) {
+         if (!StrCompare("STRING:", Value, 7)) {
             return SET_String(Self, Value + 7);
          }
 
          for (len=0; (Value[len]) and (Value[len] != ';'); len++);
 
-         if (!AllocMemory(len+1, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Path, NULL)) {
+         if (!AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Path, NULL)) {
             for (i=0; i < len; i++) Self->Path[i] = Value[i];
             Self->Path[i] = 0;
 
@@ -580,7 +580,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
                         }
                      }
 
-                     if (!StrMatch("target", arg)) Self->set(FID_Target, argval);
+                     if (!StrMatch("target", arg)) Self->setTarget(StrToInt(argval));
                      else acSetVar(Self, arg, argval);
                   }
                }
@@ -633,7 +633,7 @@ static ERROR SET_Owner(objScript *Self, OBJECTID Value)
 
    if (Value) {
       OBJECTPTR newowner;
-      if (!AccessObjectID(Value, 2000, &newowner)) {
+      if (!AccessObject(Value, 2000, &newowner)) {
          SetOwner(Self, newowner);
          ReleaseObject(newowner);
          return ERR_Okay;
@@ -712,7 +712,7 @@ static ERROR SET_Results(objScript *Self, CSTRING *Value, LONG Elements)
       }
       Self->ResultsTotal = Elements;
 
-      if (!AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM_STRING|MEM_NO_CLEAR, (APTR *)&Self->Results, NULL)) {
+      if (!AllocMemory((sizeof(CSTRING) * (Elements+1)) + len, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Results, NULL)) {
          STRING str = (STRING)(Self->Results + Elements + 1);
          LONG i;
          for (i=0; Value[i]; i++) {
@@ -854,7 +854,7 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          else snprintf(buf, sizeof(buf), "%s", workingpath);
 
          pf::SwitchContext ctx(Self);
-         if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+         if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
             Self->WorkingPath = StrClone(workingpath);
          }
       }
@@ -908,7 +908,7 @@ extern "C" ERROR add_script_class(void)
    glScriptClass = extMetaClass::create::global(
       fl::ClassVersion(VER_SCRIPT),
       fl::Name("Script"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Actions(clScriptActions),
       fl::Methods(clScriptMethods),
       fl::Fields(clScriptFields),

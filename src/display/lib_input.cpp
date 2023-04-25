@@ -27,10 +27,10 @@ cstr: A string describing the input type is returned or NULL if the Type is inva
 
 *********************************************************************************************************************/
 
-CSTRING gfxGetInputTypeName(LONG Type)
+CSTRING gfxGetInputTypeName(JET Type)
 {
-   if ((Type < 1) or (Type >= JET_END)) return NULL;
-   return glInputNames[Type];
+   if ((LONG(Type) < 1) or (LONG(Type) >= LONG(JET::END))) return NULL;
+   return glInputNames[LONG(Type)];
 }
 
 /*********************************************************************************************************************
@@ -54,7 +54,7 @@ events in the callback:
 ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 {
    for (auto e=Events; e; e=e->Next) {
-      if ((e->Flags & JTYPE_BUTTON) and (e->Value > 0)) {
+      if (((e->Flags & JTYPE::BUTTON) != JTYPE::NIL) and (e->Value > 0)) {
          process_click(Self, e->RecipientID, e->X, e->Y);
       }
    }
@@ -63,23 +63,7 @@ ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 }
 </pre>
 
-All processable events are referenced in the InputEvent structure in the Events parameter.  The structure format is as
-follows:
-
-<fields>
-<fld type="*InputEvent" name="Next">The next input event in the list.</>
-<fld type="UWORD" name="Type">This value is set to a JET constant that describes the input event.</>
-<fld type="UWORD" name="Flags">Flags provide a broad description of the event type and can also provide more specific information relevant to the event (see JTYPE flags).</>
-<fld type="DOUBLE" name="Value">The value associated with the Type</>
-<fld type="OBJECTID" name="RecipientID">The surface that the input message is being conveyed to.</>
-<fld type="OBJECTID" name="OverID">The surface that was directly under the mouse pointer at the time of the event.</>
-<fld type="DOUBLE" name="AbsX">Absolute horizontal coordinate of the mouse pointer (relative to the top left of the display).</>
-<fld type="DOUBLE" name="AbsY">Absolute vertical coordinate of the mouse pointer (relative to the top left of the display).</>
-<fld type="DOUBLE" name="OverX">Horizontal pointer coordinate, usually relative to the surface that the pointer is positioned over.  If a mouse button is held or the pointer is anchored, the coordinates are relative to the Recipient surface.</>
-<fld type="DOUBLE" name="OverY">Vertical pointer coordinate.</>
-<fld type="LARGE" name="Timestamp">Millisecond counter at which the input was recorded, or as close to it as possible.</>
-<fld type="OBJECTID" name="DeviceID">Reference to the hardware device that this event originated from.  There is no guarantee that the DeviceID is a reference to a publicly accessible object.</>
-</>
+All processable events are referenced in the InputEvent structure in the Events parameter.
 
 JET constants are as follows and take note of `ENTERED_SURFACE` and `LEFT_SURFACE` which are software generated and not
 a device event:
@@ -105,14 +89,14 @@ NullArgs:
 
 *********************************************************************************************************************/
 
-ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMask, OBJECTID DeviceFilter, LONG *Handle)
+ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, JTYPE InputMask, OBJECTID DeviceFilter, LONG *Handle)
 {
    static LONG counter = 1;
    pf::Log log(__FUNCTION__);
 
    if ((!Callback) or (!Handle)) return log.warning(ERR_NullArgs);
 
-   log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, InputMask);
+   log.branch("Surface Filter: #%d, Mask: $%.4x", SurfaceFilter, LONG(InputMask));
 
    const std::lock_guard<std::recursive_mutex> lock(glInputLock);
 
@@ -120,7 +104,7 @@ ERROR gfxSubscribeInput(FUNCTION *Callback, OBJECTID SurfaceFilter, LONG InputMa
 
    const InputCallback is = {
       .SurfaceFilter = SurfaceFilter,
-      .InputMask     = (!InputMask) ? WORD(0xffff) : WORD(InputMask),
+      .InputMask     = (InputMask IS JTYPE::NIL) ? JTYPE(0xffff) : JTYPE(InputMask),
       .Callback      = *Callback
    };
 
@@ -195,7 +179,7 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
    for (const auto & [ handle, sub ] : glInputCallbacks) {
       InputEvent *last = NULL, *first = NULL;
       for (auto &event : events) {
-         if (((event.RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and (event.Flags & sub.InputMask)) {
+         if (((event.RecipientID IS sub.SurfaceFilter) or (!sub.SurfaceFilter)) and ((event.Flags & sub.InputMask) != JTYPE::NIL)) {
             if (last) last->Next = &event;
             else first = &event;
             last = &event;

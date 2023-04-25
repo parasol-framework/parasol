@@ -3,7 +3,7 @@
 The input interface provides support for processing input messages.  The InputEvent structure is passed for each incoming
 message that is detected.
 
-   local in = input.subscribe(JTYPE_MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
+   local in = input.subscribe(JTYPE::MOVEMENT, SurfaceID, 0, function(SurfaceID, Event)
 
    end)
 
@@ -63,13 +63,13 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
       return ERR_NotFound;
    }
 
-   LONG branch = GetResource(RES_LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
+   LONG branch = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
 
       // For simplicity, a call to the handler is made for each individual input event.
 
       while (Events) {
-         if (Events->Flags & JTYPE_MOVEMENT) {
-            while ((Events->Next) and (Events->Next->Flags & JTYPE_MOVEMENT)) Events = Events->Next;
+         if ((Events->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+            while ((Events->Next) and ((Events->Next->Flags & JTYPE::MOVEMENT) != JTYPE::NIL)) Events = Events->Next;
          }
 
          lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, list->Callback); // +1 Reference to callback
@@ -83,7 +83,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
          Events = Events->Next;
       }
 
-   SetResource(RES_LOG_DEPTH, branch);
+   SetResource(RES::LOG_DEPTH, branch);
 
    log.traceBranch("Collecting garbage.");
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
@@ -127,7 +127,7 @@ static int input_keyboard(lua_State *Lua)
 
    OBJECTID object_id;
    struct object *obj;
-   if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->ObjectID;
+   if ((obj = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj"))) object_id = obj->UID;
    else object_id = lua_tointeger(Lua, 1);
 
    if ((object_id) and (GetClassID(object_id) != ID_SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
@@ -149,8 +149,8 @@ static int input_keyboard(lua_State *Lua)
       }
 
       objSurface *surface;
-      if (!AccessObjectID(object_id, 5000, &surface)) {
-         if (surface->Flags & RNF_HAS_FOCUS) sub_keyevent = true;
+      if (!AccessObject(object_id, 5000, &surface)) {
+         if (surface->hasFocus()) sub_keyevent = true;
          ReleaseObject(surface);
       }
       else {
@@ -211,84 +211,73 @@ static int input_request_item(lua_State *Lua)
       return 0;
    }
 
-   struct datarequest *request;
-   if (!AllocMemory(sizeof(struct datarequest), MEM_NO_CLEAR|MEM_DATA, &request)) {
-      struct object *obj;
-      OBJECTID source_id;
-      ERROR error;
+   auto obj = (struct object *)get_meta(Lua, 1, "Fluid.obj");
+   OBJECTID source_id;
 
-      if ((obj = (struct object *)get_meta(Lua, 1, "Fluid.obj"))) {
-         source_id = obj->ObjectID;
-      }
-      else if (!(source_id = lua_tonumber(Lua, 1))) {
-         luaL_argerror(Lua, 1, "Invalid object reference");
+   if (obj) source_id = obj->UID;
+   else if (!(source_id = lua_tointeger(Lua, 1))) {
+      luaL_argerror(Lua, 1, "Invalid object reference");
+      return 0;
+   }
+
+   LONG item = lua_tointeger(Lua, 2);
+
+   DATA datatype;
+   if (lua_isstring(Lua, 3)) {
+      CSTRING dt = lua_tostring(Lua, 3);
+      if (!StrMatch("text", dt))              datatype = DATA::TEXT;
+      else if (!StrMatch("raw", dt))          datatype = DATA::RAW;
+      else if (!StrMatch("device_input", dt)) datatype = DATA::DEVICE_INPUT;
+      else if (!StrMatch("xml", dt))          datatype = DATA::XML;
+      else if (!StrMatch("audio", dt))        datatype = DATA::AUDIO;
+      else if (!StrMatch("record", dt))       datatype = DATA::RECORD;
+      else if (!StrMatch("image", dt))        datatype = DATA::IMAGE;
+      else if (!StrMatch("request", dt))      datatype = DATA::REQUEST;
+      else if (!StrMatch("receipt", dt))      datatype = DATA::RECEIPT;
+      else if (!StrMatch("file", dt))         datatype = DATA::FILE;
+      else if (!StrMatch("content", dt))      datatype = DATA::CONTENT;
+      else {
+         luaL_argerror(Lua, 3, "Unrecognised datatype");
          return 0;
       }
-
-      LONG item = lua_tonumber(Lua, 2);
-
-      LONG datatype;
-      if (lua_isstring(Lua, 3)) {
-         CSTRING dt = lua_tostring(Lua, 3);
-         if (!StrMatch("text", dt))              datatype = DATA_TEXT;
-         else if (!StrMatch("raw", dt))          datatype = DATA_RAW;
-         else if (!StrMatch("device_input", dt)) datatype = DATA_DEVICE_INPUT;
-         else if (!StrMatch("xml", dt))          datatype = DATA_XML;
-         else if (!StrMatch("audio", dt))        datatype = DATA_AUDIO;
-         else if (!StrMatch("record", dt))       datatype = DATA_RECORD;
-         else if (!StrMatch("image", dt))        datatype = DATA_IMAGE;
-         else if (!StrMatch("request", dt))      datatype = DATA_REQUEST;
-         else if (!StrMatch("receipt", dt))      datatype = DATA_RECEIPT;
-         else if (!StrMatch("file", dt))         datatype = DATA_FILE;
-         else if (!StrMatch("content", dt))      datatype = DATA_CONTENT;
-         else {
-            luaL_argerror(Lua, 3, "Unrecognised datatype");
-            return 0;
-         }
-      }
-      else if ((datatype = lua_tonumber(Lua, 3)) <= 0) {
+   }
+   else {
+      datatype = DATA(lua_tointeger(Lua, 3));
+      if (LONG(datatype) <= 0) {
          luaL_argerror(Lua, 3, "Datatype invalid");
          return 0;
       }
+   }
 
-      request->SourceID = source_id;
+   auto function_type = lua_type(Lua, 4);
+   if (function_type IS LUA_TFUNCTION) {
+      lua_pushvalue(Lua, 4);
+      prv->Requests.emplace_back(source_id, luaL_ref(Lua, LUA_REGISTRYINDEX));
+   }
+   else if (function_type IS LUA_TSTRING) {
+      lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
+      prv->Requests.emplace_back(source_id, luaL_ref(Lua, LUA_REGISTRYINDEX));
+   }
 
-      LONG function_type = lua_type(Lua, 4);
-      if (function_type IS LUA_TFUNCTION) {
-         lua_pushvalue(Lua, 4);
-         request->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      }
-      else if (function_type IS LUA_TSTRING) {
-         lua_getglobal(Lua, (STRING)lua_tostring(Lua, 4));
-         request->Callback = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      }
+   struct dcRequest dcr;
+   dcr.Item          = item;
+   dcr.Preference[0] = UBYTE(datatype);
+   dcr.Preference[1] = 0;
 
-      request->TimeCreated = PreciseTime();
-      request->Next = prv->Requests;
-      prv->Requests = request;
+   struct acDataFeed dc = {
+      .Object   = Lua->Script,
+      .Datatype = DATA::REQUEST,
+      .Buffer   = &dcr,
+      .Size     = sizeof(dcr)
+   };
 
-      struct dcRequest dcr;
-      dcr.Item          = item;
-      dcr.Preference[0] = datatype;
-      dcr.Preference[1] = 0;
-
-      struct acDataFeed dc = {
-         .ObjectID = Lua->Script->UID,
-         .Datatype = DATA_REQUEST,
-         .Buffer   = &dcr,
-         .Size     = sizeof(dcr)
-      };
-
-      {
-         // The source will return a DATA_RECEIPT for the items that we've asked for (see the DataFeed action).
-         pf::Log log("input.request_item");
-         log.branch();
-         error = ActionMsg(AC_DataFeed, source_id, &dc);
-      }
-
+   {
+      // The source will return a DATA::RECEIPT for the items that we've asked for (see the DataFeed action).
+      pf::Log log("input.request_item");
+      log.branch();
+      auto error = ActionMsg(AC_DataFeed, source_id, &dc);
       if (error) luaL_error(Lua, "Failed to request item %d from source #%d: %s", item, source_id, GetErrorMsg(error));
    }
-   else luaL_error(Lua, "Failed to create table.");
 
    return 0;
 }
@@ -303,11 +292,11 @@ static int input_subscribe(lua_State *Lua)
    pf::Log log("input.subscribe");
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   LONG mask = lua_tointeger(Lua, 1); // Optional
+   auto mask = JTYPE(lua_tointeger(Lua, 1)); // Optional
 
    OBJECTID object_id;
    struct object *object;
-   if ((object = (struct object *)get_meta(Lua, 2, "Fluid.obj"))) object_id = object->ObjectID;
+   if ((object = (struct object *)get_meta(Lua, 2, "Fluid.obj"))) object_id = object->UID;
    else object_id = lua_tointeger(Lua, 2);
 
    LONG device_id = lua_tointeger(Lua, 3); // Optional
@@ -328,7 +317,7 @@ static int input_subscribe(lua_State *Lua)
       }
    }
 
-   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, mask, device_id);
+   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, LONG(mask), device_id);
 
    struct finput *input;
    if ((input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput)))) {
@@ -443,13 +432,13 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
 
    log.traceBranch("Incoming keyboard input");
 
-   LONG depth = GetResource(RES_LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
+   LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
    LONG top = lua_gettop(prv->Lua);
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->Callback); // Get the function reference in Lua and place it on the stack
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputValue); // Arg: Input value registered by the client
    lua_pushinteger(prv->Lua, Input->SurfaceID);  // Arg: Surface (if applicable)
-   lua_pushinteger(prv->Lua, Event->Qualifiers); // Arg: Key Flags
-   lua_pushinteger(prv->Lua, Event->Code);       // Arg: Key Value
+   lua_pushinteger(prv->Lua, ULONG(Event->Qualifiers)); // Arg: Key Flags
+   lua_pushinteger(prv->Lua, LONG(Event->Code));       // Arg: Key Value
    lua_pushinteger(prv->Lua, Event->Unicode);    // Arg: Unicode character
 
    if (lua_pcall(prv->Lua, 5, 0, 0)) {
@@ -457,7 +446,7 @@ static void key_event(struct finput *Input, evKey *Event, LONG Size)
    }
 
    lua_settop(prv->Lua, top);
-   SetResource(RES_LOG_DEPTH, depth);
+   SetResource(RES::LOG_DEPTH, depth);
 
    log.traceBranch("Collecting garbage.");
    lua_gc(prv->Lua, LUA_GCCOLLECT, 0);
@@ -477,7 +466,7 @@ static void focus_event(lua_State *Lua, evFocus *Event, LONG Size)
       return;
    }
 
-   log.traceBranch("Incoming focus event.");
+   log.traceBranch("Incoming focus event targeting #%d, focus lost from #%d.", Event->FocusList[0], Event->FocusList[Event->TotalWithFocus]);
 
    for (auto input=prv->InputList; input; input=input->Next) {
       if (input->Mode != FIM_KEYBOARD) continue;

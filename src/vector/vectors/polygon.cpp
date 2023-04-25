@@ -86,7 +86,7 @@ static ERROR read_points(extVectorPoly *Self, VectorPoint **Array, LONG *PointCo
    if (count >= 2) {
       LONG points = count>>1; // A point consists of 2 values.
       if (PointCount) *PointCount = points;
-      if (!AllocMemory(sizeof(VectorPoint) * count, MEM_DATA, Array)) {
+      if (!AllocMemory(sizeof(VectorPoint) * count, MEM::DATA, Array)) {
          LONG point = 0;
          LONG index = 0;
          for (LONG pos=0; (Value[pos]) and (point < points);) {
@@ -178,18 +178,18 @@ static ERROR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args
 
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
 
-   if (Args->Flags & MTF_X) {
+   if ((Args->Flags & MTF::X) != MTF::NIL) {
       DOUBLE center_x = (Self->BX2 - Self->BX1) * 0.5;
       DOUBLE xchange = Args->X - center_x;
       for (i=0; i < Self->TotalPoints; i++) {
          Self->Points[i].X += xchange;
-         Self->Points[i].XRelative = (Args->Flags & MTF_RELATIVE) ? TRUE : FALSE;
+         Self->Points[i].XRelative = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
       }
       Self->BX1 += xchange;
       Self->BX2 += xchange;
    }
 
-   if (Args->Flags & MTF_Y) {
+   if ((Args->Flags & MTF::Y) != MTF::NIL) {
       DOUBLE center_y = (Self->BY2 - Self->BY1) * 0.5;
       DOUBLE ychange = Args->Y - center_y;
       for (i=0; i < Self->TotalPoints; i++) Self->Points[i].Y += ychange;
@@ -208,7 +208,7 @@ static ERROR POLYGON_NewObject(extVectorPoly *Self, APTR Void)
    Self->GeneratePath = (void (*)(extVector *))&generate_polygon;
    Self->Closed       = TRUE;
    Self->TotalPoints  = 2;
-   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM_DATA, &Self->Points)) return ERR_AllocMemory;
+   if (AllocMemory(sizeof(VectorPoint) * Self->TotalPoints, MEM::DATA, &Self->Points)) return ERR_AllocMemory;
    return ERR_Okay;
 }
 
@@ -315,7 +315,7 @@ static ERROR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG 
 {
    if (Elements >= 2) {
       VectorPoint *points;
-      if (!AllocMemory(sizeof(VectorPoint) * Elements, MEM_DATA|MEM_NO_CLEAR, &points)) {
+      if (!AllocMemory(sizeof(VectorPoint) * Elements, MEM::DATA|MEM::NO_CLEAR, &points)) {
          CopyMemory(Value, points, sizeof(VectorPoint) * Elements);
          Self->Points = points;
          Self->TotalPoints = Elements;
@@ -381,7 +381,6 @@ a percentage.
 static ERROR POLY_GET_X1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].XRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -397,10 +396,7 @@ static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[0].XRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[0].XRelative = TRUE;
    else Self->Points[0].XRelative = FALSE;
    Self->Points[0].X = val;
    reset_path(Self);
@@ -422,7 +418,6 @@ a percentage.
 static ERROR POLY_GET_X2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].XRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -438,10 +433,7 @@ static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[1].XRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[1].XRelative = TRUE;
    else Self->Points[1].XRelative = FALSE;
    Self->Points[1].X = val;
    reset_path(Self);
@@ -463,7 +455,6 @@ a percentage.
 static ERROR POLY_GET_Y1(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[0].Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[0].YRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -479,10 +470,7 @@ static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[0].YRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[0].YRelative = TRUE;
    else Self->Points[0].YRelative = FALSE;
    Self->Points[0].Y = val;
    reset_path(Self);
@@ -504,7 +492,6 @@ a percentage.
 static ERROR POLY_GET_Y2(extVectorPoly *Self, Variable *Value)
 {
    DOUBLE val = Self->Points[1].Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Points[1].YRelative)) val = val * 100;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -520,10 +507,7 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Points[1].YRelative = TRUE;
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Points[1].YRelative = TRUE;
    else Self->Points[1].YRelative = FALSE;
    Self->Points[1].Y = val;
    reset_path(Self);
@@ -561,9 +545,9 @@ static ERROR init_polygon(void)
 {
    clVectorPolygon = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),
-      fl::SubClassID(ID_VECTORPOLYGON),
+      fl::ClassID(ID_VECTORPOLYGON),
       fl::Name("VectorPolygon"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clPolygonActions),
       fl::Fields(clPolygonFields),
       fl::Size(sizeof(extVectorPoly)),

@@ -8,31 +8,33 @@ Basic template for creating a new window:
 
 Valid options to use when creating the window are as follows:
 
-  target:      Optional reference to a Viewport or Surface that will contain the window.
-  icon:        An optional icon to display alongside the text.
-  title:       A label to display in the window titlebar.
-  events:      A table of event triggers.  Supported events: show, focus, lostFocus, close, minimise, maximise
-  width:       Width of the window.
-  x:           The x coordinate of the window.
-  y:           The y coordinate of the window.
-  center:      Centers the window on screen if true.
-  minimise:    Enables the minimise widget if true (default).
-  maximise:    Enables the maximise widget if true (default).
-  moveToBack:  Enables the move-to-back widget if true (default).
-  minWidth:    The minimum acceptable width of the client area.
-  minHeight:   The minimum acceptable height of the client area.
-  close:       Enables the close widget if true (default).
-  quit:        If true, sends a quit message to the client application when the window closes.
-  focus:       If false, the window does not automatically receive the focus when displayed.
-  orientation:  Set to 'portrait' or 'landspace' to indicate orientation when fullscreen.
-  client:       Readable, defines the client boundaries around the frame.
   aspectRatio:  If true, enforces the aspect ratio defined by the minWidth and minHeight values.
+  center:       Centers the window on screen if true.
+  client:       Readable, defines the client boundaries around the frame.
+  close:        Enables the close widget if true (default).
+  events:       A table of event triggers.  Supported events: show, focus, lostFocus, close, minimise, maximise
+  focus:        If false, the window does not automatically receive the focus when displayed.
   icon:         An icon to display in the titlebar.
-  menubar:      Optional configuration for a menubar.
-  insideWidth:  Alternative to width; defines the internal width of the window.
+  icon:         An optional icon to display alongside the text.
   insideHeight: Alternative to height; defines the internal height of the window.
+  insideWidth:  Alternative to width; defines the internal width of the window.
+  maximise:     Enables the maximise widget if true (default).
+  menubar:      Optional configuration for a menubar.
+  minHeight:    The minimum acceptable height of the client area.
+  minWidth:     The minimum acceptable width of the client area.
+  minimise:     Enables the minimise widget if true (default).
+  modal:        If true, the window acts as a modal dialog.
+  moveToBack:   Enables the move-to-back widget if true (default).
+  orientation:  Set to 'portrait' or 'landspace' to indicate orientation when fullscreen.
+  popOver:      Keep the window in front of this surface.
+  quit:         If true, sends a quit message to the client application when the window closes.
   stickToFront: If true, keep the window at the front of the display at all times.
+  target:       Optional reference to a Viewport or Surface that will contain the window.
+  title:        A label to display in the window titlebar.
   title:        A text label to display in the titlebar.
+  width:        Width of the window.
+  x:            The x coordinate of the window.
+  y:            The y coordinate of the window.
 
   :show()
     Present the window to the user.
@@ -382,6 +384,8 @@ gui.window = function(Options)
       maxWidth  = nz(Options.maxWidth, 4096),
       maxHeight = nz(Options.maxHeight, 4096),
       type      = RT_ROOT,
+      modal     = nz(Options.modal, false),
+      popOver   = Options.popOver,
       flags = (function()
          local flags = 0
 
@@ -484,11 +488,11 @@ gui.window = function(Options)
       end
    end
 
-   if self.surface.popover != 0 then
+   if self.surface.popOver != 0 then
       -- If a pop-over surface is stick-to-front, we also need that status to avoid being behind it.
 
       local info = struct.new('SurfaceInfo')
-      if (mGfx.GetSurfaceInfo(self.surface.popover, info) == ERR_Okay) then
+      if (mGfx.GetSurfaceInfo(self.surface.popOver, info) == ERR_Okay) then
          if (bit.band(info.flags, RNF_STICK_TO_FRONT) != 0) then
             self.surface.flags = bit.bor(self.surface.flags, RNF_STICK_TO_FRONT)
          end
@@ -497,8 +501,8 @@ gui.window = function(Options)
 
    if Options.center then
       local x, y = (function()
-         if (self.surface.popover) then
-            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popover)
+         if (self.surface.popOver) then
+            local err, _, _, x, y, powidth, poheight = mGfx.GetSurfaceCoords(self.surface.popOver)
             if (err == ERR_Okay) then
                x = x + ((powidth - self.surface.width) / 2)
                y = y + ((poheight - self.surface.height) / 2)
@@ -568,7 +572,7 @@ gui.window = function(Options)
 
    self.surface.subscribe('free', function(Surface, Args, self)
       if self.quit then
-         mSys.SendMessage(nil, MSGID_QUIT, nil, nil, nil);
+         mSys.SendMessage(MSGID_QUIT, nil, nil, nil);
       end
       table.clear(self)
    end, self)
@@ -582,7 +586,7 @@ gui.window = function(Options)
 
    m.__index = function(t, k) return self[k] end
    m.__newindex = function(t, k, v) self[k] = v end
-   m.__gc = function() if self.surface then self.surface.acFree() end end
+   m.__gc = function() if self.surface then self.surface.free() end end
 
    return proxy
 end

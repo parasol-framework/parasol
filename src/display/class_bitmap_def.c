@@ -6,6 +6,32 @@ static const struct FieldDef clBitmapType[] = {
    { NULL, 0 }
 };
 
+static const struct FieldDef clBitmapDataFlags[] = {
+   { "Data", 0x00000000 },
+   { "Managed", 0x00000001 },
+   { "Video", 0x00000002 },
+   { "Texture", 0x00000004 },
+   { "Audio", 0x00000008 },
+   { "Code", 0x00000010 },
+   { "NoPool", 0x00000020 },
+   { "TmpLock", 0x00000040 },
+   { "Untracked", 0x00000080 },
+   { "String", 0x00000100 },
+   { "Object", 0x00000200 },
+   { "NoLock", 0x00000400 },
+   { "Exclusive", 0x00000800 },
+   { "Delete", 0x00001000 },
+   { "NoBlock", 0x00002000 },
+   { "NoBlocking", 0x00002000 },
+   { "Read", 0x00010000 },
+   { "Write", 0x00020000 },
+   { "ReadWrite", 0x00030000 },
+   { "NoClear", 0x00040000 },
+   { "Hidden", 0x00100000 },
+   { "Caller", 0x00800000 },
+   { NULL, 0 }
+};
+
 static const struct FieldDef clBitmapFlags[] = {
    { "BlankPalette", 0x00000001 },
    { "Compressed", 0x00000002 },
@@ -43,7 +69,7 @@ FDEF maDrawRectangle[] = { { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LON
 FDEF maSetClipRegion[] = { { "Number", FD_LONG }, { "Left", FD_LONG }, { "Top", FD_LONG }, { "Right", FD_LONG }, { "Bottom", FD_LONG }, { "Terminate", FD_LONG }, { 0, 0 } };
 FDEF maGetColour[] = { { "Red", FD_LONG }, { "Green", FD_LONG }, { "Blue", FD_LONG }, { "Alpha", FD_LONG }, { "Colour", FD_LONG|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clBitmapMethods[] = {
+static const struct MethodEntry clBitmapMethods[] = {
    { -1, (APTR)BITMAP_CopyArea, "CopyArea", maCopyArea, sizeof(struct bmpCopyArea) },
    { -2, (APTR)BITMAP_Compress, "Compress", maCompress, sizeof(struct bmpCompress) },
    { -3, (APTR)BITMAP_Decompress, "Decompress", maDecompress, sizeof(struct bmpDecompress) },

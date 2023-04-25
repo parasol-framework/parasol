@@ -329,7 +329,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
          len = StrLength(Value);
 
-         if (!AllocMemory(i + len + 1, MEM_STRING|MEM_NO_CLEAR, &newpath)) {
+         if (!AllocMemory(i + len + 1, MEM::STRING|MEM::NO_CLEAR, &newpath)) {
             CopyMemory(Self->Path, newpath, i);
             CopyMemory(Value, newpath+i, len+1);
          }
@@ -344,7 +344,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
       for (i=0; (Self->Path[i]) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
 
-      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len, 0)))) {
+      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len)))) {
          // The location remains unchanged.  A complete reload shouldn't be necessary.
 
          reload = FALSE;
@@ -413,7 +413,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
          if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
          if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
-         if (Self->XML) { acFree(Self->XML); Self->XML = NULL; }
+         if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
 
          QueueAction(MT_DrwInvalidateRegion, Self->SurfaceID);
       }
@@ -443,7 +443,7 @@ static ERROR SET_Origin(extDocument *Self, STRING Value)
    if ((Value) and (*Value)) {
       LONG i;
       for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM_STRING|MEM_NO_CLEAR, &Self->Path)) {
+      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path)) {
          for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
          Self->Path[i] = 0;
       }
@@ -480,7 +480,7 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
 
       if (Value->Type & FD_PERCENTAGE) {
          if (Self->SurfaceWidth <= 0) return ERR_GetField;
-         value = (DOUBLE)(value * Self->SurfaceWidth) * (1.0 / 100.0);
+         value = (DOUBLE)(value * Self->SurfaceWidth);
       }
    }
    else value = Self->PageWidth;
@@ -685,7 +685,7 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
       }
       else snprintf(buf, sizeof(buf), "%s", workingpath);
 
-      if (ResolvePath(buf, RSF_APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+      if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
          Self->WorkingPath = StrClone(workingpath);
       }
    }

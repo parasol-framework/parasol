@@ -40,15 +40,15 @@ static ERROR FILTEREFFECT_Init(extFilterEffect *Self, APTR Void)
 
    // If the client didn't specify a source input, figure out what to use.
 
-   if (Self->SourceType IS VSF_PREVIOUS) {
+   if (Self->SourceType IS VSF::PREVIOUS) {
       if (Self->Prev) {
-         Self->SourceType = VSF_REFERENCE;
+         Self->SourceType = VSF::REFERENCE;
          Self->Input = Self->Prev;
          ((extFilterEffect *)Self->Input)->UsageCount++;
          log.msg("Using effect %s #%d as an input.", Self->Input->Class->ClassName, Self->Input->UID);
       }
       else {
-         Self->SourceType = VSF_GRAPHIC;
+         Self->SourceType = VSF::GRAPHIC;
          log.msg("Using SourceGraphic as an input.");
       }
    }
@@ -106,7 +106,7 @@ static ERROR FILTEREFFECT_MoveToFront(extFilterEffect *Self, APTR Void)
 
 static ERROR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
 {
-   Self->SourceType = VSF_PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
+   Self->SourceType = VSF::PREVIOUS; // Use previous effect as input, or SourceGraphic if no previous effect.
    return ERR_Okay;
 }
 
@@ -114,8 +114,8 @@ static ERROR FILTEREFFECT_NewObject(extFilterEffect *Self, APTR Void)
 
 static ERROR FILTEREFFECT_NewOwner(extFilterEffect *Self, struct acNewOwner *Args)
 {
-   if ((Args) and (Args->ClassID IS ID_VECTORFILTER)) {
-      Self->Filter = (extVectorFilter *)GetObjectPtr(Args->NewOwnerID);
+   if (Args->NewOwner->Class->BaseClassID IS ID_VECTORFILTER) {
+      Self->Filter = (extVectorFilter *)Args->NewOwner;
    }
    return ERR_Okay;
 }
@@ -144,7 +144,7 @@ static ERROR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Valu
 
    if (Value IS Self) return log.warning(ERR_InvalidValue);
 
-   Self->SourceType = VSF_REFERENCE;
+   Self->SourceType = VSF::REFERENCE;
    Self->Input      = Value;
    ((extFilterEffect *)Self->Input)->UsageCount++;
    return ERR_Okay;
@@ -162,7 +162,6 @@ The (Width,Height) field values define the dimensions of the effect within the t
 static ERROR FILTEREFFECT_GET_Height(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->Height;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_HEIGHT)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -175,10 +174,7 @@ static ERROR FILTEREFFECT_SET_Height(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->Height = val;
@@ -203,7 +199,7 @@ static ERROR FILTEREFFECT_SET_Mix(extFilterEffect *Self, extFilterEffect *Value)
 
    if (Value IS Self) return log.warning(ERR_InvalidValue);
 
-   Self->MixType = VSF_REFERENCE;
+   Self->MixType = VSF::REFERENCE;
    Self->Mix     = Value;
    ((extFilterEffect *)Self->Mix)->UsageCount++;
    return ERR_Okay;
@@ -235,7 +231,6 @@ The (Width,Height) field values define the dimensions of the effect within the t
 static ERROR FILTEREFFECT_GET_Width(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->Width;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_WIDTH)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -248,10 +243,7 @@ static ERROR FILTEREFFECT_SET_Width(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->Width = val;
@@ -270,7 +262,6 @@ The (X,Y) field values define the offset of the effect within the target clippin
 static ERROR FILTEREFFECT_GET_X(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->X;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_X)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -283,10 +274,7 @@ static ERROR FILTEREFFECT_SET_X(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->X = val;
@@ -306,7 +294,6 @@ The (X,Y) field values define the offset of the effect within the target clippin
 static ERROR FILTEREFFECT_GET_Y(extFilterEffect *Self, Variable *Value)
 {
    DOUBLE val = Self->Y;
-   if ((Value->Type & FD_PERCENTAGE) and (Self->Dimensions & DMF_RELATIVE_Y)) val = val * 100.0;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -319,10 +306,7 @@ static ERROR FILTEREFFECT_SET_Y(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) {
-      val = val * 0.01;
-      Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   }
+   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->Y = val;
@@ -356,7 +340,7 @@ ERROR init_filtereffect(void)
    clFilterEffect = objMetaClass::create::global(
       fl::ClassVersion(VER_FILTEREFFECT),
       fl::Name("FilterEffect"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::Actions(clFilterEffectActions),
       fl::Fields(clFilterEffectFields),
       fl::Size(sizeof(extFilterEffect)),

@@ -12,10 +12,7 @@
 #define FID_Fields 0xfd727cdcLL
 #define FID_Methods 0xbe528a79LL
 #define FID_FileHeader 0x9d60e6ceLL
-#define FID_SubClassID 0x7c4f26d2LL
 #define FID_OpenCount 0x376e7220LL
-#define FID_TotalMethods 0xb864fbfdLL
-#define FID_TotalFields 0xd67acde0LL
 #define FID_Usage 0x1084ecfaLL
 #define FID_ActionTable 0x1c85e14bLL
 #define FID_Listener 0xcec9a28bLL
@@ -941,6 +938,7 @@
 #define FID_Bias 0x7c949844LL
 #define FID_Constant 0x42a2b30fLL
 #define FID_Def 0x0b8869b4LL
+#define FID_Dictionary 0xccb60b7bLL
 #define FID_Divisor 0x12ffda05LL
 #define FID_EdgeMode 0xbb10b09fLL
 #define FID_Exponent 0xd4513596LL
@@ -963,4 +961,22 @@
 #define FID_XMLDef 0x27bb6ee5LL
 #define FID_XChannel 0xf9068f76LL
 #define FID_YChannel 0xe5486457LL
+#define FID_BaseClass 0x95f02736LL
+#define FID_KeyFilter 0x2ff6eaf4LL
+#define FID_GroupFilter 0x7f88a558LL
+#define FID_SubClass 0xb7799ba5LL
+#define FID_Process 0xc336efe4LL
+#define FID_Clip 0x7c95326dLL
+#define FID_TransRGB 0xbb42bc88LL
+#define FID_HDensity 0x7bd1ed6dLL
+#define FID_VDensity 0x676b91bbLL
+#define FID_RequestHandler 0x781c36ecLL
+#define FID_ErrorCallback 0x192eda5cLL
+#define FID_ExitCallback 0x28e186acLL
+#define FID_LaunchPath 0x096e116dLL
+#define FID_OutputCallback 0xb7c8ace3LL
+#define FID_Created 0xd9cc0a3dLL
+#define FID_Numeric 0x301f0df8LL
+#define FID_ResizeEvent 0xc404ebf9LL
+#define FID_TabOrder 0xa10b2cb8LL
 

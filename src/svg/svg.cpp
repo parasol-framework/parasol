@@ -30,6 +30,8 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <katana.h>
 #include <math.h>
 
+using namespace pf;
+
 MODULE_COREBASE;
 struct DisplayBase *DisplayBase;
 struct VectorBase *VectorBase;
@@ -63,10 +65,10 @@ struct svgState {
    DOUBLE  FillOpacity;
    DOUBLE  Opacity;
    LONG    FontWeight;
-   LONG    PathQuality;
+   RQ      PathQuality;
 
    svgState() : Fill("rgb(0,0,0)"), FontFamily("Open Sans"), StrokeWidth(0), FillOpacity(-1), Opacity(-1),
-      FontWeight(0), PathQuality(RQ_AUTO) { }
+      FontWeight(0), PathQuality(RQ::AUTO) { }
 };
 
 #include <parasol/modules/svg.h>
@@ -136,11 +138,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
-   if (modVector)  { acFree(modVector);  modVector = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (modVector)  { FreeResource(modVector);  modVector = NULL; }
 
-   if (clSVG)  { acFree(clSVG);  clSVG = NULL; }
-   if (clRSVG) { acFree(clRSVG); clRSVG = NULL; }
+   if (clSVG)  { FreeResource(clSVG);  clSVG = NULL; }
+   if (clRSVG) { FreeResource(clRSVG); clRSVG = NULL; }
    return ERR_Okay;
 }
 

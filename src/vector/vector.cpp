@@ -91,43 +91,43 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 ERROR CMDExpunge(void)
 {
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
-   if (modFont)    { acFree(modFont); modFont = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (modFont)    { FreeResource(modFont); modFont = NULL; }
 
-   if (clVectorShape)      { acFree(clVectorShape);      clVectorShape = NULL; }
-   if (clVectorSpiral)     { acFree(clVectorSpiral);     clVectorSpiral = NULL; }
-   if (clVectorScene)      { acFree(clVectorScene);      clVectorScene = NULL; }
-   if (clVector)           { acFree(clVector);           clVector = NULL; }
-   if (clVectorClip)       { acFree(clVectorClip);       clVectorClip = NULL; }
-   if (clVectorColour)     { acFree(clVectorColour);     clVectorColour = NULL; }
-   if (clVectorRectangle)  { acFree(clVectorRectangle);  clVectorRectangle = NULL; }
-   if (clVectorEllipse)    { acFree(clVectorEllipse);    clVectorEllipse = NULL; }
-   if (clVectorPath)       { acFree(clVectorPath);       clVectorPath = NULL; }
-   if (clVectorPolygon)    { acFree(clVectorPolygon);    clVectorPolygon = NULL; }
-   if (clVectorText)       { acFree(clVectorText);       clVectorText = NULL; }
-   if (clVectorGradient)   { acFree(clVectorGradient);   clVectorGradient = NULL; }
-   if (clVectorGroup)      { acFree(clVectorGroup);      clVectorGroup = NULL; }
-   if (clVectorViewport)   { acFree(clVectorViewport);   clVectorViewport = NULL; }
-   if (clVectorPattern)    { acFree(clVectorPattern);    clVectorPattern = NULL; }
-   if (clVectorFilter)     { acFree(clVectorFilter);     clVectorFilter = NULL; }
-   if (clVectorImage)      { acFree(clVectorImage);      clVectorImage = NULL; }
-   if (clVectorWave)       { acFree(clVectorWave);       clVectorWave = NULL; }
-   if (clVectorTransition) { acFree(clVectorTransition); clVectorTransition = NULL; }
-   if (clFilterEffect)     { acFree(clFilterEffect);     clFilterEffect = NULL; }
-   if (clImageFX)          { acFree(clImageFX);          clImageFX = NULL; }
-   if (clSourceFX)         { acFree(clSourceFX);         clSourceFX = NULL; }
-   if (clBlurFX)           { acFree(clBlurFX);           clBlurFX = NULL; }
-   if (clColourFX)         { acFree(clColourFX);         clColourFX = NULL; }
-   if (clCompositeFX)      { acFree(clCompositeFX);      clCompositeFX = NULL; }
-   if (clConvolveFX)       { acFree(clConvolveFX);       clConvolveFX = NULL; }
-   if (clFloodFX)          { acFree(clFloodFX);          clFloodFX = NULL; }
-   if (clMergeFX)          { acFree(clMergeFX);          clMergeFX = NULL; }
-   if (clMorphologyFX)     { acFree(clMorphologyFX);     clMorphologyFX = NULL; }
-   if (clOffsetFX)         { acFree(clOffsetFX);         clOffsetFX = NULL; }
-   if (clTurbulenceFX)     { acFree(clTurbulenceFX);     clTurbulenceFX = NULL; }
-   if (clRemapFX)          { acFree(clRemapFX);          clRemapFX = NULL; }
-   if (clLightingFX)       { acFree(clLightingFX);       clLightingFX = NULL; }
-   if (clDisplacementFX)   { acFree(clDisplacementFX);   clDisplacementFX = NULL; }
+   if (clVectorShape)      { FreeResource(clVectorShape);      clVectorShape = NULL; }
+   if (clVectorSpiral)     { FreeResource(clVectorSpiral);     clVectorSpiral = NULL; }
+   if (clVectorScene)      { FreeResource(clVectorScene);      clVectorScene = NULL; }
+   if (clVector)           { FreeResource(clVector);           clVector = NULL; }
+   if (clVectorClip)       { FreeResource(clVectorClip);       clVectorClip = NULL; }
+   if (clVectorColour)     { FreeResource(clVectorColour);     clVectorColour = NULL; }
+   if (clVectorRectangle)  { FreeResource(clVectorRectangle);  clVectorRectangle = NULL; }
+   if (clVectorEllipse)    { FreeResource(clVectorEllipse);    clVectorEllipse = NULL; }
+   if (clVectorPath)       { FreeResource(clVectorPath);       clVectorPath = NULL; }
+   if (clVectorPolygon)    { FreeResource(clVectorPolygon);    clVectorPolygon = NULL; }
+   if (clVectorText)       { FreeResource(clVectorText);       clVectorText = NULL; }
+   if (clVectorGradient)   { FreeResource(clVectorGradient);   clVectorGradient = NULL; }
+   if (clVectorGroup)      { FreeResource(clVectorGroup);      clVectorGroup = NULL; }
+   if (clVectorViewport)   { FreeResource(clVectorViewport);   clVectorViewport = NULL; }
+   if (clVectorPattern)    { FreeResource(clVectorPattern);    clVectorPattern = NULL; }
+   if (clVectorFilter)     { FreeResource(clVectorFilter);     clVectorFilter = NULL; }
+   if (clVectorImage)      { FreeResource(clVectorImage);      clVectorImage = NULL; }
+   if (clVectorWave)       { FreeResource(clVectorWave);       clVectorWave = NULL; }
+   if (clVectorTransition) { FreeResource(clVectorTransition); clVectorTransition = NULL; }
+   if (clFilterEffect)     { FreeResource(clFilterEffect);     clFilterEffect = NULL; }
+   if (clImageFX)          { FreeResource(clImageFX);          clImageFX = NULL; }
+   if (clSourceFX)         { FreeResource(clSourceFX);         clSourceFX = NULL; }
+   if (clBlurFX)           { FreeResource(clBlurFX);           clBlurFX = NULL; }
+   if (clColourFX)         { FreeResource(clColourFX);         clColourFX = NULL; }
+   if (clCompositeFX)      { FreeResource(clCompositeFX);      clCompositeFX = NULL; }
+   if (clConvolveFX)       { FreeResource(clConvolveFX);       clConvolveFX = NULL; }
+   if (clFloodFX)          { FreeResource(clFloodFX);          clFloodFX = NULL; }
+   if (clMergeFX)          { FreeResource(clMergeFX);          clMergeFX = NULL; }
+   if (clMorphologyFX)     { FreeResource(clMorphologyFX);     clMorphologyFX = NULL; }
+   if (clOffsetFX)         { FreeResource(clOffsetFX);         clOffsetFX = NULL; }
+   if (clTurbulenceFX)     { FreeResource(clTurbulenceFX);     clTurbulenceFX = NULL; }
+   if (clRemapFX)          { FreeResource(clRemapFX);          clRemapFX = NULL; }
+   if (clLightingFX)       { FreeResource(clLightingFX);       clLightingFX = NULL; }
+   if (clDisplacementFX)   { FreeResource(clDisplacementFX);   clDisplacementFX = NULL; }
    return ERR_Okay;
 }
 

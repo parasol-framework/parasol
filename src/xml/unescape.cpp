@@ -317,8 +317,8 @@ static void xml_unescape(extXML *Self, std::string &String)
                String.replace(c, end-c, glOfficial[lookup]);
                c++;
             }
-            else if (Self->Flags & XMF_PARSE_ENTITY) c++; // Not yet implemented
-            else if (Self->Flags & XMF_PARSE_HTML) { // Process HTML escape codes
+            else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) c++; // Not yet implemented
+            else if ((Self->Flags & XMF::PARSE_HTML) != XMF::NIL) { // Process HTML escape codes
                if (glHTML.contains(lookup)) {
                   auto unicode = glHTML[lookup];
                   char unichar[6];
@@ -345,7 +345,7 @@ static void unescape_all(extXML *Self, TAGS &Tags)
          unescape_all(Self, tag.Children);
       }
 
-      if (tag.Flags & XTF_CDATA) continue;
+      if ((tag.Flags & XTF::CDATA) != XTF::NIL) continue;
       for (auto &attrib : tag.Attribs) {
          if (attrib.Value.empty()) continue;
          xml_unescape(Self, attrib.Value);

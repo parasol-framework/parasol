@@ -63,9 +63,9 @@ static ERROR GET_TotalGroups(extConfig *, LONG *);
 static ERROR CONFIG_SaveSettings(extConfig *, APTR);
 
 static const FieldDef clFlags[] = {
-   { "AutoSave",    CNF_AUTO_SAVE },
-   { "StripQuotes", CNF_STRIP_QUOTES },
-   { "New",         CNF_NEW },
+   { "AutoSave",    CNF::AUTO_SAVE },
+   { "StripQuotes", CNF::STRIP_QUOTES },
+   { "New",         CNF::NEW },
    { NULL, 0 }
 };
 
@@ -151,7 +151,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
 {
    ERROR error = ERR_Okay;
    while ((*Path) and (!error)) {
-      objFile::create file = { fl::Path(Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      objFile::create file = { fl::Path(Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
 
       if (file.ok()) {
          LONG filesize;
@@ -159,7 +159,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
 
          if (filesize > 0) {
             STRING data;
-            if (!AllocMemory(filesize + 3, MEM_DATA|MEM_NO_CLEAR, (APTR *)&data, NULL)) {
+            if (!AllocMemory(filesize + 3, MEM::DATA|MEM::NO_CLEAR, (APTR *)&data, NULL)) {
                file->read(data, filesize); // Read the entire file
                data[filesize++] = '\n';
                data[filesize] = 0;
@@ -169,7 +169,7 @@ static ERROR parse_file(extConfig *Self, CSTRING Path)
             else error = ERR_AllocMemory;
          }
       }
-      else if (Self->Flags & CNF_OPTIONAL_FILES) error = ERR_Okay;
+      else if ((Self->Flags & CNF::OPTIONAL_FILES) != CNF::NIL) error = ERR_Okay;
 
       while ((*Path) and (*Path != ';') and (*Path != '|')) Path++;
       if (*Path) Path++; // Skip separator
@@ -207,7 +207,7 @@ static ERROR CONFIG_DataFeed(extConfig *Self, struct acDataFeed *Args)
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   if (Args->DataType IS DATA_TEXT) {
+   if (Args->Datatype IS DATA::TEXT) {
       ERROR error = parse_config(Self, (CSTRING)Args->Buffer);
       if (!error) {
          if (Self->GroupFilter) apply_group_filter(Self, Self->GroupFilter);
@@ -304,15 +304,15 @@ static ERROR CONFIG_Free(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & CNF_AUTO_SAVE) {
+   if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) {
       if (Self->Path) {
          auto crc = calc_crc(Self);
 
          if ((!crc) or (crc != Self->CRC)) {
             log.msg("Auto-saving changes to \"%s\" (CRC: %d : %d)", Self->Path, Self->CRC, crc);
 
-            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0) };
-            acSaveToObject(Self, file->UID, 0);
+            objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::NIL) };
+            Self->saveToObject(*file);
          }
          else log.msg("Not auto-saving data (CRC unchanged).");
       }
@@ -363,7 +363,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Flags & CNF_NEW) return ERR_Okay; // Do not load any data even if the path is defined.
+   if ((Self->Flags & CNF::NEW) != CNF::NIL) return ERR_Okay; // Do not load any data even if the path is defined.
 
    ERROR error = ERR_Okay;
    if (Self->Path) {
@@ -374,7 +374,7 @@ static ERROR CONFIG_Init(extConfig *Self, APTR Void)
       }
    }
 
-   if (Self->Flags & CNF_AUTO_SAVE) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
+   if ((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) Self->CRC = calc_crc(Self); // Store the CRC in advance of any changes
    return error;
 }
 
@@ -400,7 +400,7 @@ AccessObject: The source configuration object could not be accessed.
 static ERROR CONFIG_Merge(extConfig *Self, struct cfgMerge *Args)
 {
    if ((!Args) or (!Args->Source)) return ERR_NullArgs;
-   if (Args->Source->ClassID != ID_CONFIG) return ERR_Args;
+   if (Args->Source->Class->ClassID != ID_CONFIG) return ERR_Args;
 
    auto src = (extConfig *)Args->Source;
    merge_groups(Self->Groups[0], src->Groups[0]);
@@ -515,21 +515,18 @@ This action will save the configuration data back to its original file source (a
 static ERROR CONFIG_SaveSettings(extConfig *Self, APTR Void)
 {
    pf::Log log;
-
    log.branch();
 
    ULONG crc = calc_crc(Self);
-   if ((Self->Flags & CNF_AUTO_SAVE) and (crc IS Self->CRC)) return ERR_Okay;
+   if (((Self->Flags & CNF::AUTO_SAVE) != CNF::NIL) and (crc IS Self->CRC)) return ERR_Okay;
 
    if (Self->Path) {
       objFile::create file = {
-         fl::Path(Self->Path), fl::Flags(FL_WRITE|FL_NEW), fl::Permissions(0)
+         fl::Path(Self->Path), fl::Flags(FL::WRITE|FL::NEW), fl::Permissions(PERMIT::NIL)
       };
 
       if (file.ok()) {
-         if (!acSaveToObject(Self, file->UID, 0)) {
-            Self->CRC = crc;
-         }
+         if (!Self->saveToObject(*file)) Self->CRC = crc;
          return ERR_Okay;
       }
       else return ERR_File;
@@ -547,25 +544,20 @@ static ERROR CONFIG_SaveToObject(extConfig *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->DestID);
+   log.msg("Saving %d groups to object #%d.", (LONG)Self->Groups->size(), Args->Dest->UID);
 
-   OBJECTPTR dest;
-   if (!AccessObjectID(Args->DestID, 5000, &dest)) {
-      ConfigGroups &groups = Self->Groups[0];
-      for (auto& [group, keys] : groups) {
-         std::string out_group("\n[" + group + "]\n");
-         acWrite(dest, out_group.c_str(), out_group.size(), NULL);
+   ConfigGroups &groups = Self->Groups[0];
+   for (auto& [group, keys] : groups) {
+      std::string out_group("\n[" + group + "]\n");
+      acWrite(Args->Dest, out_group.c_str(), out_group.size(), NULL);
 
-         for (auto& [k, v] : keys) {
-            std::string kv(k + " = " + v + "\n");
-            acWrite(dest, kv.c_str(), kv.size(), NULL);
-         }
+      for (auto& [k, v] : keys) {
+         std::string kv(k + " = " + v + "\n");
+         acWrite(Args->Dest, kv.c_str(), kv.size(), NULL);
       }
-
-      ReleaseObject(dest);
-      return ERR_Okay;
    }
-   else return ERR_AccessObject;
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -616,8 +608,7 @@ static ERROR CONFIG_Sort(extConfig *Self, APTR Void)
    log.branch("Sorting by group name.");
 
    std::sort(Self->Groups->begin(), Self->Groups->end(),
-      [](const std::pair<std::string, std::map<std::string, std::string>> &a,
-         const std::pair<std::string, std::map<std::string, std::string>> &b ) {
+      [](const ConfigGroup &a, const ConfigGroup &b ) {
       return a.first < b.first;
    });
 
@@ -918,13 +909,13 @@ static bool check_for_key(CSTRING Data)
 void merge_groups(ConfigGroups &Dest, ConfigGroups &Source)
 {
    for (auto& [src_group, src_keys] : Source) {
-      bool processed = FALSE;
+      bool processed = false;
 
       // Check if the group already exists and merge the keys
 
       for (auto& [dest_group, dest_keys] : Dest) {
          if (!dest_group.compare(src_group)) {
-            processed = TRUE;
+            processed = true;
             for (auto& [k, v] : src_keys) {
                dest_keys[k] = v;
             }
@@ -1016,7 +1007,7 @@ static ERROR parse_config(extConfig *Self, CSTRING Buffer)
             if (*data) data++;
             while ((*data) and (*data <= 0x20)) data++; // Skip any leading whitespace, including new lines
 
-            if ((Self->Flags & CNF_STRIP_QUOTES) and (*data IS '"')) {
+            if (((Self->Flags & CNF::STRIP_QUOTES) != CNF::NIL) and (*data IS '"')) {
                data++;
                for (len=0; (data[len]) and (data[len] != '"'); len++);
                value.assign(data, 0, len);
@@ -1109,7 +1100,7 @@ static ConfigKeys * find_group_wild(extConfig *Self, CSTRING Group)
    if ((!Group) or (!*Group)) return NULL;
 
    for (auto & [group, keys] : Self->Groups[0]) {
-      if (!StrCompare(Group, group.c_str(), 0, STR_WILDCARD)) return &keys;
+      if (!StrCompare(Group, group.c_str(), 0, STR::WILDCARD)) return &keys;
    }
 
    return NULL;
@@ -1139,7 +1130,7 @@ extern "C" ERROR add_config_class(void)
       fl::BaseClassID(ID_CONFIG),
       fl::ClassVersion(VER_CONFIG),
       fl::Name("Config"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::FileExtension("*.cfg|*.cnf|*.config"),
       fl::FileDescription("Config File"),
       fl::Actions(clConfigActions),

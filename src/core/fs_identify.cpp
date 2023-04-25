@@ -74,7 +74,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
    }
 
    ERROR reserror;
-   if ((reserror = ResolvePath(Path, RSF_APPROXIMATE|RSF_PATH|RSF_CHECK_VIRTUAL, &res_path)) != ERR_Okay) {
+   if ((reserror = ResolvePath(Path, RSF::APPROXIMATE|RSF::PATH|RSF::CHECK_VIRTUAL, &res_path)) != ERR_Okay) {
       if (reserror IS ERR_VirtualVolume) {
          // Virtual volumes may support the IdentifyFile() request as a means of speeding up file identification.  This
          // is often useful when probing remote file systems.  If the FS doesn't support this option, we can still
@@ -99,7 +99,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
 
          log.warning("ResolvePath() failed on '%s', error '%s'", Path, GetErrorMsg(reserror));
 
-         if (!StrCompare("string:", Path, 7, 0)) { // Do not check for '|' when string: is in use
+         if (!StrCompare("string:", Path, 7)) { // Do not check for '|' when string: is in use
             return ERR_FileNotFound;
          }
 
@@ -110,7 +110,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
          if (Path[i] IS '|') {
             STRING tmp = StrClone(Path);
             tmp[i] = 0;
-            if (ResolvePath(tmp, RSF_APPROXIMATE, &res_path) != ERR_Okay) {
+            if (ResolvePath(tmp, RSF::APPROXIMATE, &res_path) != ERR_Okay) {
                FreeResource(tmp);
                return ERR_FileNotFound;
             }
@@ -132,7 +132,7 @@ ERROR IdentifyFile(CSTRING Path, CLASSID *ClassID, CLASSID *SubClassID)
             for (auto it = glClassDB.begin(); it != glClassDB.end(); it++) {
                auto &rec = it->second;
                if (!rec.Match.empty()) {
-                  if (!StrCompare(rec.Match.c_str(), filename, 0, STR_WILDCARD)) {
+                  if (!StrCompare(rec.Match.c_str(), filename, 0, STR::WILDCARD)) {
                      if (rec.ParentID) {
                         *ClassID = rec.ParentID;
                         if (SubClassID) *SubClassID = rec.ClassID;

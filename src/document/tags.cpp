@@ -314,7 +314,7 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child,
          if (function[i] IS '.') {
             OBJECTID id;
             function[i] = 0;
-            if (!FindObject(function, 0, 0, &id)) script = GetObjectPtr(id);
+            if (!FindObject(function, 0, FOF::NIL, &id)) script = GetObjectPtr(id);
             function[i] = '.';
             function = function + i;
          }
@@ -520,7 +520,7 @@ static void tag_editdef(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
 
    DocEdit *editptr, *last;
 
-   if (!AllocMemory(sizeof(DocEdit)+bufsize, MEM_NO_CLEAR, &editptr)) {
+   if (!AllocMemory(sizeof(DocEdit)+bufsize, MEM::NO_CLEAR, &editptr)) {
       CopyMemory(&edit, editptr, sizeof(DocEdit));
       if (bufsize > 0) {
          LONG offset = sizeof(DocEdit);
@@ -1104,10 +1104,10 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child, 
    if (Tag->TotalAttrib > 1) {
       if (!StrMatch("object", Tag->Attrib[1].Name)) {
          OBJECTID objectid;
-         if (!FindObject(Tag->Attrib[1].Value, 0, FOF_SMART_NAMES, &objectid)) {
+         if (!FindObject(Tag->Attrib[1].Value, 0, FOF::SMART_NAMES, &objectid)) {
             if (valid_objectid(Self, objectid) IS TRUE) {
                OBJECTPTR object;
-               if (!AccessObjectID(objectid, 3000, &object)) {
+               if (!AccessObject(objectid, 3000, &object)) {
                   for (LONG i=2; i < Tag->TotalAttrib; i++) {
                      log.trace("tag_set:","#%d %s = '%s'", objectid, Tag->Attrib[i].Name, Tag->Attrib[i].Value);
 
@@ -1191,7 +1191,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag *Tag, WORD Fl
 
    if ((str = XMLATTRIB(Tag, "object"))) {
       OBJECTID id;
-      if (!FindObject(str, 0, 0, &id)) {
+      if (!FindObject(str, 0, FOF::NIL, &id)) {
          target = GetObjectPtr(id);
          if (valid_object(Self, target) IS FALSE) return;
       }
@@ -1372,7 +1372,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
    // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
 
    if (Self->CurrentObject) {
-      object->set(FID_Owner, Self->CurrentObject->UID);
+      object->setOwner(Self->CurrentObject->UID);
    }
    else if (pagetarget) {
       field_id = StrHash(pagetarget, 0);
@@ -1434,10 +1434,10 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
             }
             else if ((src = XMLATTRIB(scan, "object"))) {
                OBJECTID objectid;
-               if (!FindObject(src, 0, FOF_SMART_NAMES, &objectid)) {
+               if (!FindObject(src, 0, FOF::SMART_NAMES, &objectid)) {
                   if ((objectid) and (valid_objectid(Self, objectid))) {
                      objXML *objxml;
-                     if (!AccessObjectID(objectid, 3000, &objxml)) {
+                     if (!AccessObject(objectid, 3000, &objxml)) {
                         if (objxml->ClassID IS ID_XML) {
                            if (!xmlGetString(objxml, 0, XMF_INCLUDE_SIBLINGS|XMF_STRIP_CDATA, &content)) {
                               acDataXML(object, content);
@@ -1473,7 +1473,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       }
    }
 
-   if (!acInit(object)) {
+   if (!InitObject(object)) {
       escObject escobj;
 
       if (Self->Invisible) acHide(object); // Hide the object if it's in an invisible section
@@ -1574,7 +1574,7 @@ static void tag_object(extDocument *Self, CSTRING pagetarget, CLASSID class_id, 
       else log.trace("Object %d self-destructed.", object->UID);
    }
    else {
-      acFree(object);
+      FreeResource(object);
       log.warning("Failed to initialise object of class $%.8x", class_id);
    }
 
@@ -1676,7 +1676,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          // Reference an external script as the default for function calls
          if (Self->Flags & DCF_UNRESTRICTED) {
             OBJECTID id;
-            if (!FindObject(Tag->Attrib[i].Value, 0, 0, &id)) {
+            if (!FindObject(Tag->Attrib[i].Value, 0, FOF::NIL, &id)) {
                Self->DefaultScript = GetObjectPtr(id);
                return;
             }
@@ -1708,7 +1708,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
       for (auto resource=Self->Resources; resource; resource=resource->Next) {
          if (resource->Type IS RT_PERSISTENT_SCRIPT) {
             script = GetObjectPtr(resource->ObjectID);
-            if (!StrMatch(name, GetName(script))) {
+            if (!StrMatch(name, script->Name)) {
                log.msg("Persistent script discovered.");
                if ((!Self->DefaultScript) or (defaultscript)) Self->DefaultScript = script;
                return;
@@ -1728,22 +1728,22 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
    if (!error) {
       if (name) SetName(script, name);
 
-      if (src) script->set(FID_Path, src);
+      if (src) script->setPath(src);
       else {
          if (!xmlGetContent(XML, Tag->Index, Self->Temp, Self->TempSize)) {
-            script->set(FID_Statement, Self->Temp);
+            script->setStatement(Self->Temp);
          }
          else {
-            acFree(script);
+            FreeResource(script);
             return;
          }
       }
 
-      if (cachefile) script->set(FID_CacheFile, cachefile);
+      if (cachefile) script->setCacheFile(cachefile);
 
       // Object references are to be limited in scope to the Document object
 
-      //script->set(FID_ObjectScope, Self->Head.UID);
+      //script->setObjectScope(Self->Head.UID);
 
       // Pass custom arguments in the script tag
 
@@ -1755,7 +1755,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
          }
       }
 
-      if (!(error = acInit(script))) {
+      if (!(error = InitObject(script))) {
          // Pass document arguments to the script
 
          std::unordered_map<std::string, std::string> *vs;
@@ -1787,9 +1787,9 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chil
                }
             }
          }
-         else acFree(script);
+         else FreeResource(script);
       }
-      else acFree(script);
+      else FreeResource(script);
    }
 }
 
@@ -2225,7 +2225,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Child
    table = (escTable *)(Self->Stream + table_index + ESC_LEN_START);
    CopyMemory(&start, table, sizeof(start));
 
-   if (!AllocMemory(sizeof(tablecol) * table->TotalColumns, MEM_DATA, &table->Columns)) {
+   if (!AllocMemory(sizeof(tablecol) * table->TotalColumns, MEM::DATA, &table->Columns)) {
       if (columns) {
          // The columns value, if supplied is arranged as a CSV list of column widths
 
@@ -2573,7 +2573,7 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag *Tag, XMLTag *Chi
       if (!extract_script(Self, function_name, &script, &function_name, NULL)) {
          if (!scGetProcedureID(script, function_name, &function_id)) {
             DocTrigger *trigger;
-            if (!AllocMemory(sizeof(DocTrigger), MEM_DATA|MEM_NO_CLEAR, &trigger)) {
+            if (!AllocMemory(sizeof(DocTrigger), MEM::DATA|MEM::NO_CLEAR, &trigger)) {
                trigger->Function = make_function_script(script, function_id);
                trigger->Next = Self->Triggers[trigger_code];
                Self->Triggers[trigger_code] = trigger;

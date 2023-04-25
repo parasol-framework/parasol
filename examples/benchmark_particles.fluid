@@ -170,7 +170,7 @@ function createWindow()
          close = function(Window)
             mSys.UpdateTimer(glTimerHandle, 0)
             glWindow = nil
-            mSys.SendMessage(0, MSGID_QUIT)
+            mSys.SendMessage(MSGID_QUIT)
          end
       }
    })

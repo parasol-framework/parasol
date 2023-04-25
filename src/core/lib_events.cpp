@@ -14,21 +14,44 @@ Name: Events
 
 #include "defs.h"
 
+static const std::array<CSTRING, LONG(EVG::END)> glEventGroups = {
+   NULL,
+   "filesystem",
+   "network",
+   "system",
+   "gui",
+   "display",
+   "io",
+   "hardware",
+   "audio",
+   "user",
+   "power",
+   "class",
+   "app",
+   "android"
+};
+
 struct eventsub {
    struct eventsub *Next;
    struct eventsub *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void   (*Callback)(APTR Custom, APTR Info, LONG Size);
-   UBYTE  Group;
-   UBYTE  Called;
+   void     (*Callback)(APTR Custom, APTR Info, LONG Size);
+   EVG      Group;
+   UBYTE    Called;
    OBJECTID ContextID;
-   APTR   Custom;
+   APTR     Custom;
+
+   inline CSTRING groupName() {
+      return glEventGroups[UBYTE(Group)];
+   }
 };
 
 static struct eventsub *glEventList = NULL;
 static UBYTE glCallSignal = 0;
 static UBYTE glEventListAltered = FALSE;
+
+static std::unordered_map<ULONG, std::string> glEventNames;
 
 //********************************************************************************************************************
 
@@ -88,9 +111,9 @@ ERROR BroadcastEvent(APTR Event, LONG EventSize)
 
    if (glEventMask & groupmask) {
       log.trace("Broadcasting event $%.8x%.8x",
-         (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
-         (LONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff));
-      SendMessage(0, MSGID_EVENT, 0, Event, EventSize);
+         (ULONG)(((rkEvent *)Event)->EventID>>32 & 0xffffffff),
+         (ULONG)(((rkEvent *)Event)->EventID));
+      SendMessage(MSGID_EVENT, MSF::NIL, Event, EventSize);
    }
 
    return ERR_Okay;
@@ -107,7 +130,7 @@ to events.  Events are described in three parts - Group, SubGroup and the Event 
 
 The Group is strictly limited to one of the following definitions:
 
-<types prefix="EVG"/>
+<types lookup="EVG"/>
 
 The SubGroup and Event parameters are string-based and there are no restrictions on naming.  If a SubGroup or Event
 name is NULL, this will act as a wildcard for subscribing to multiple events.  For example, subscribing to the network
@@ -116,25 +139,32 @@ Group setting of zero is not allowed.
 
 -INPUT-
 int(EVG) Group: The group to which the event belongs.
-cstr SubGroup: The sub-group to which the event belongs.
-cstr Event:    The name of the event.
+cstr SubGroup: The sub-group to which the event belongs (case-sensitive).
+cstr Event:    The name of the event (case-sensitive).
 
 -RESULT-
 large: The EventID is returned as a 64-bit integer.
 
 *********************************************************************************************************************/
 
-LARGE GetEventID(LONG Group, CSTRING SubGroup, CSTRING Event)
+LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Group) return 0;
+   if (Group IS EVG::NIL) return 0;
 
-   LARGE event_id = ((LARGE)(Group & 0xff))<<58;
-   if ((SubGroup) and (SubGroup[0] != '*')) event_id |= ((LARGE)(StrHash(SubGroup, FALSE) & 0x00ffffff)) <<32;
-   if ((Event) and (Event[0] != '*')) event_id |= StrHash(Event, FALSE);
+   auto hash_subgroup = StrHash(SubGroup, true) & 0x00ffffff;
+   auto hash_event = StrHash(Event, true);
 
-   log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x", Group, SubGroup, Event, (LONG)((event_id>>32)& 0xffffffff), (LONG)(event_id & 0xffffffff));
+   LARGE event_id = LARGE(UBYTE(Group))<<56;
+   if ((SubGroup) and (SubGroup[0] != '*')) event_id |= LARGE(hash_subgroup)<<32;
+   if ((Event) and (Event[0] != '*')) event_id |= hash_event;
+
+   glEventNames[hash_subgroup] = SubGroup;
+   glEventNames[hash_event]    = Event;
+
+   log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x",
+      LONG(Group), SubGroup, Event, ULONG(event_id>>32), ULONG(event_id));
 
    return event_id;
 }
@@ -174,6 +204,12 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
 
    if (Callback->Type != CALL_STDC) return ERR_Args; // Currently only StdC callbacks are accepted.
 
+   auto gid = EVG(UBYTE(EventID>>56));
+
+   if ((LONG(gid) < 1) or (LONG(gid) >= LONG(EVG::END))) {
+      return log.warning(ERR_Args);
+   }
+
    struct eventsub *event;
    if ((event = (struct eventsub *)malloc(sizeof(struct eventsub)))) {
       LARGE mask = 0xff00000000000000LL;
@@ -183,7 +219,7 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
       event->Callback  = (void (*)(APTR, APTR, LONG))Callback->StdC.Routine;
-      event->Group     = ((EventID>>56) & 0xff);
+      event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
       event->Prev      = NULL;
@@ -193,9 +229,15 @@ ERROR SubscribeEvent(LARGE EventID, FUNCTION *Callback, APTR Custom, APTR *Handl
       if (glEventList) glEventList->Prev = event;
       glEventList = event;
 
-      glEventMask |= 1<<event->Group;
+      glEventMask |= 1<<UBYTE(event->Group);
 
-      log.function("Custom: %p, Callback: %p, Mask: $%.8x, Event: %p", Custom, Callback, glEventMask, event);
+      auto it_subgroup = glEventNames.find(ULONG(EventID>>32) & 0x00ffffff);
+      auto it_name = glEventNames.find(ULONG(EventID));
+      if ((it_subgroup != glEventNames.end()) and (it_name != glEventNames.end())) {
+         log.function("Handle: %p, Mask: $%.8x, %s.%s.%s",
+            event, glEventMask, event->groupName(), it_subgroup->second.c_str(), it_name->second.c_str());
+      }
+      else log.function("Handle: %p, Mask: $%.8x", event, glEventMask);
 
       *Handle = event;
 
@@ -213,21 +255,27 @@ Use UnsubscribeEvent() to remove an existing event subscription.  A valid handle
 function must be provided.
 
 -INPUT-
-ptr Event: An event handle returned from SubscribeEvent()
+ptr Handle: An event handle returned from SubscribeEvent()
 -END-
 
 *********************************************************************************************************************/
 
-void UnsubscribeEvent(APTR Event)
+void UnsubscribeEvent(APTR Handle)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Event) return;
+   if (!Handle) return;
    if (!glEventList) return; // All events have already been freed (i.e. Core is closing)
 
-   log.function("Event: %p", Event);
+   auto event = (eventsub *)Handle;
+   auto it_subgroup = glEventNames.find(ULONG(event->EventID>>32) & 0x00ffffff);
+   auto it_name = glEventNames.find(ULONG(event->EventID));
 
-   auto event = (eventsub *)Event;
+   if ((it_subgroup != glEventNames.end()) and (it_name != glEventNames.end())) {
+      log.function("Handle: %p, %s.%s.%s", event, event->groupName(), it_subgroup->second.c_str(), it_name->second.c_str());
+   }
+   else log.function("Handle: %p, Group: %s", event, event->groupName());
+
    if (event->Prev) event->Prev->Next = event->Next;
    if (event->Next) event->Next->Prev = event->Prev;
    if (event IS glEventList) glEventList = event->Next;
@@ -240,11 +288,11 @@ void UnsubscribeEvent(APTR Event)
       if (scan->Group IS event->Group) break;
       scan = scan->Next;
    }
-   if (!scan) glEventMask = glEventMask & (~(1<<event->Group));
+   if (!scan) glEventMask = glEventMask & (~(1<<UBYTE(event->Group)));
 
    free(event);
 
-   glEventListAltered = TRUE;
+   glEventListAltered = true;
 }
 
 /*********************************************************************************************************************
@@ -259,7 +307,7 @@ ERROR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSiz
 
    rkEvent *eventmsg = (rkEvent *)Message;
 
-   log.msg(VLF_EXTAPI|VLF_BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
+   log.msg(VLF::EXTAPI|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((eventmsg->EventID>>32)& 0xffffffff),
       (LONG)(eventmsg->EventID & 0xffffffff));
 
    struct eventsub *event;
@@ -273,7 +321,7 @@ restart:
 
          event->Called = glCallSignal;
 
-         glEventListAltered = FALSE;
+         glEventListAltered = false;
 
          pf::ScopedObjectLock lock(event->ContextID, 3000);
          if (lock.granted()) {
@@ -281,7 +329,7 @@ restart:
             event->Callback(event->Custom, Message, MsgSize);
          }
 
-         if (glEventListAltered IS TRUE) goto restart;
+         if (glEventListAltered IS true) goto restart;
       }
 
       event = event->Next;

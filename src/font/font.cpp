@@ -1,12 +1,10 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
-This code utilises the work of the FreeType Project under the FreeType
-License.  For more information please refer to the FreeType home page at
-www.freetype.org.
+This code utilises the work of the FreeType Project under the FreeType License.  For more information please refer to
+the FreeType home page at www.freetype.org.
 
 **********************************************************************************************************************
 
@@ -27,7 +25,6 @@ Font: Provides font management functionality and hosts the Font class.
 #include FT_STROKER_H
 
 #include <parasol/main.h>
-#include "font_structs.h"
 
 #include <parasol/modules/xml.h>
 #include <parasol/modules/picture.h>
@@ -37,6 +34,8 @@ Font: Provides font management functionality and hosts the Font class.
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
+
+using namespace pf;
 
 /*********************************************************************************************************************
 ** This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
@@ -70,6 +69,9 @@ struct DisplayBase *DisplayBase;
 static OBJECTPTR clFont = NULL;
 static OBJECTPTR modDisplay = NULL;
 static FT_Library glFTLibrary = NULL;
+
+#include "font_structs.h"
+
 static LONG glDisplayVDPI = FIXED_DPI; // Initially matches the fixed DPI value, can change if display has a high DPI setting.
 static LONG glDisplayHDPI = FIXED_DPI;
 
@@ -173,7 +175,7 @@ static DOUBLE global_point_size(void)
    if (!glPointSet) {
       pf::Log log(__FUNCTION__);
       OBJECTID style_id;
-      if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
+      if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
          pf::ScopedObjectLock<objXML> style(style_id, 3000);
          if (style.granted()) {
             char fontsize[20];
@@ -215,7 +217,7 @@ static void update_dpi(void)
 }
 
 //********************************************************************************************************************
-// Only call this function if the font includes kerning support (test via FTF_KERNING).
+// Only call this function if the font includes kerning support (test via FTF::KERNING).
 
 INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LONG *Y)
 {
@@ -224,9 +226,6 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *X = delta.x>>FT_DOWNSIZE;
    *Y = delta.y>>FT_DOWNSIZE;
 }
-
-//********************************************************************************************************************
-// Only call this function if the font includes kerning support (test via FTF_KERNING).
 
 INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
@@ -242,7 +241,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 INLINE void calc_lines(extFont *Self)
 {
    if (Self->String) {
-      if (Self->Flags & FTF_CHAR_CLIP) {
+      if ((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) {
          fntStringSize(Self, Self->String, -1, 0, NULL, &Self->prvLineCount);
       }
       else if (Self->WrapEdge > 0) {
@@ -272,8 +271,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return ERR_Failed;
    }
 
-   LONG type;
-   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC_FILE);
+   LOC type;
+   bool refresh = (AnalysePath("fonts:fonts.cfg", &type) != ERR_Okay) or (type != LOC::FILE);
 
    if ((glConfig = objConfig::create::global(fl::Name("cfgSystemFonts"), fl::Path("fonts:fonts.cfg")))) {
       if (refresh) fntRefreshFonts();
@@ -303,10 +302,10 @@ static ERROR CMDExpunge(void)
    if (glCacheTimer) { UpdateTimer(glCacheTimer, 0); glCacheTimer = NULL; }
 
    if (glFTLibrary) { FT_Done_FreeType(glFTLibrary); glFTLibrary = NULL; }
-   if (glConfig)    { acFree(glConfig); glConfig = NULL; }
+   if (glConfig)    { FreeResource(glConfig); glConfig = NULL; }
 
-   if (clFont)     { acFree(clFont);     clFont = NULL; }
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
+   if (clFont)     { FreeResource(clFont);     clFont = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
 
    glBitmapCache.clear();
 
@@ -339,10 +338,10 @@ static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
    if (Kerning) *Kerning = 0;
 
    if (Font->FixedWidth > 0) return Font->FixedWidth;
-   else if (Font->Flags & FTF_SCALABLE) {
+   else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
       font_glyph *cache;
       if ((cache = get_glyph(Font, Char, false))) {
-         if ((Font->Flags & FTF_KERNING) and (KChar) and (Kerning)) {
+         if (((Font->Flags & FTF::KERNING) != FTF::NIL) and (KChar) and (Kerning)) {
             LONG kglyph = FT_Get_Char_Index(Font->Cache->Face, KChar);
             *Kerning = get_kerning(Font->Cache->Face, cache->GlyphIndex, kglyph);
          }
@@ -401,7 +400,7 @@ static ERROR fntGetList(FontList **Result)
       }
 
       FontList *list, *last_list = NULL;
-      if (!AllocMemory(size, MEM_DATA, &list)) {
+      if (!AllocMemory(size, MEM::DATA, &list)) {
          STRING buffer = (STRING)(list + groups->size());
          *Result = list;
 
@@ -420,7 +419,7 @@ static ERROR fntGetList(FontList **Result)
             }
 
             if (keys.contains("Scalable")) {
-               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR_MATCH_LEN)) list->Scalable = TRUE;
+               if (!StrCompare("Yes", keys["Scalable"].c_str(), 0, STR::MATCH_LEN)) list->Scalable = TRUE;
             }
 
             list->Points = NULL;
@@ -494,7 +493,7 @@ static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
       if (Chars < 0) Chars = 0x7fffffff;
    }
 
-   if ((Wrap <= 0) or (Font->Flags & FTF_CHAR_CLIP)) Wrap = 0x7fffffff;
+   if ((Wrap <= 0) or ((Font->Flags & FTF::CHAR_CLIP) != FTF::NIL)) Wrap = 0x7fffffff;
 
    //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
 
@@ -515,7 +514,7 @@ static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
          if (*String IS ' ') x += Font->prvChar[' '].Advance + Font->GlyphSpacing;
          else if (*String IS '\t') {
             tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-            if (tabwidth) x += ROUNDUP(x, tabwidth);
+            if (tabwidth) x += pf::roundup(x, tabwidth);
          }
          else if (*String IS '\n') {
             if (lastword > longest) longest = lastword;
@@ -544,20 +543,20 @@ static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, 
          LONG charlen = getutf8(String, &unicode);
 
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
-         else if (Font->Flags & FTF_SCALABLE) {
+         else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
             if (unicode IS ' ') {
                charwidth += Font->prvChar[' '].Advance + Font->GlyphSpacing;
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
                charwidth = cache->AdvanceX + Font->GlyphSpacing;
-               if (Font->Flags & FTF_KERNING) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) charwidth += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph); // Kerning adjustment
                prevglyph = cache->GlyphIndex;
             }
          }
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
          else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance + Font->GlyphSpacing;
 
-         if ((!x) and (!(Font->Flags & FTF_CHAR_CLIP)) and (x+wordwidth+charwidth >= Wrap)) {
+         if ((!x) and ((Font->Flags & FTF::CHAR_CLIP) IS FTF::NIL) and (x+wordwidth+charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
 
             lastword = wordwidth;
@@ -666,7 +665,7 @@ static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-         if (tabwidth) len = ROUNDUP(len, tabwidth);
+         if (tabwidth) len = pf::roundup(len, tabwidth);
          str++;
          Chars--;
       }
@@ -676,8 +675,8 @@ static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
          Chars--;
 
          if (Font->FixedWidth > 0) len += Font->FixedWidth + Font->GlyphSpacing;
-         else if (Font->Flags & FTF_SCALABLE) {
-            if ((unicode < 256) and (Font->prvChar[unicode].Advance) and (!(Font->Flags & FTF_KERNING))) {
+         else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
+            if ((unicode < 256) and (Font->prvChar[unicode].Advance) and ((Font->Flags & FTF::KERNING) IS FTF::NIL)) {
                len += Font->prvChar[unicode].Advance + Font->GlyphSpacing;
             }
             else if (unicode IS ' ') {
@@ -685,7 +684,7 @@ static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
                len += cache->AdvanceX + Font->GlyphSpacing;
-               if (Font->Flags & FTF_KERNING) len += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) len += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
                prevglyph = cache->GlyphIndex;
             }
          }
@@ -778,23 +777,23 @@ static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LON
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Font->prvChar[' '].Advance + Font->GlyphSpacing) * Font->TabSize;
-         width = ROUNDUP(xpos, tabwidth) - xpos;
+         width = pf::roundup(xpos, tabwidth) - xpos;
          str++;
       }
       else {
          ULONG unicode;
          str += getutf8(str, &unicode);
 
-         if (Font->Flags & FTF_SCALABLE) {
+         if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
             if (unicode IS ' ') {
                width = Font->prvChar[' '].Advance + Font->GlyphSpacing;
             }
-            else if ((!(Font->Flags & FTF_KERNING)) and (unicode < 256) and (Font->prvChar[unicode].Advance)) {
+            else if (((Font->Flags & FTF::KERNING) IS FTF::NIL) and (unicode < 256) and (Font->prvChar[unicode].Advance)) {
                width = Font->prvChar[unicode].Advance + Font->GlyphSpacing;
             }
             else if ((cache = get_glyph(Font, unicode, false))) {
                width = cache->AdvanceX + Font->GlyphSpacing;
-               if (Font->Flags & FTF_KERNING) xpos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
+               if ((Font->Flags & FTF::KERNING) != FTF::NIL) xpos += get_kerning(Font->Cache->Face, cache->GlyphIndex, prevglyph);
                prevglyph = cache->GlyphIndex;
             }
          }
@@ -903,7 +902,7 @@ static ERROR fntInstallFont(CSTRING Files)
 
       // Read the file header to figure out whether the file belongs in the fixed or truetype directory.
 
-      objFile::create file = { fl::Flags(FL_READ), fl::Path(buffer) };
+      objFile::create file = { fl::Flags(FL::READ), fl::Path(buffer) };
       if (file.ok()) {
          if (!file->read(buffer, 256)) {
             CSTRING directory = ((buffer[0] IS 'M') and (buffer[1] IS 'Z')) ? "fixed" : "truetype";
@@ -1011,7 +1010,7 @@ font is unavailable.  The use of the `*` wildcard indicates that the default sys
 that neither of the other choices are available.  Note that omitting this wildcard will raise the likelihood of
 `ERR_Search` being returned in the event that neither of the preferred choices are available.
 
-Flags that alter the search behaviour are `FTF_PREFER_SCALED`, `FTF_PREFER_FIXED` and `FTF_ALLOW_SCALE`.
+Flags that alter the search behaviour are `FTF::PREFER_SCALED`, `FTF::PREFER_FIXED` and `FTF::ALLOW_SCALE`.
 
 -INPUT-
 cstr Name:  The name of a font face, or multiple faces in CSV format.  Using camel-case for each word is compulsory.
@@ -1043,11 +1042,11 @@ static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::str
    return std::nullopt;
 }
 
-static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, CSTRING *Path)
+static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, Flags);
+   log.branch("%s:%d:%s, Flags: $%.8x", Name, Point, Style, LONG(Flags));
 
    if (!Name) return log.warning(ERR_NullArgs);
 
@@ -1057,7 +1056,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    ConfigGroups *groups;
    if (glConfig->getPtr(FID_Data, &groups)) return ERR_Search;
 
-   bool multi = (Flags & FTF_ALLOW_SCALE) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
+   bool multi = ((Flags & FTF::ALLOW_SCALE) != FTF::NIL) ? true : false; // ALLOW_SCALE is equivalent to '*' for fixed fonts
 
    std::string style_name(Style);
    pf::camelcase(style_name);
@@ -1080,7 +1079,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
       pf::rtrim(name, "'\"");
 
       for (auto & [group, keys] : groups[0]) {
-         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR_WILDCARD)) {
+         if (!StrCompare(name.c_str(), keys["Name"].c_str(), 0, STR::WILDCARD)) {
             // Determine if this is a fixed and/or scalable font.  Note that if the font supports
             // both fixed and scalable, fixed_group and scale_group will point to the same font.
 
@@ -1107,17 +1106,17 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    }
 
    if ((!scale_group) and (!fixed_group)) log.warning("The font \"%s\" is not installed on this system.", Name);
-   if (Flags & FTF_REQUIRE_FIXED) scale_group = NULL;
-   if (Flags & FTF_REQUIRE_SCALED) fixed_group = NULL;
+   if ((Flags & FTF::REQUIRE_FIXED) != FTF::NIL) scale_group = NULL;
+   if ((Flags & FTF::REQUIRE_SCALED) != FTF::NIL) fixed_group = NULL;
 
-   if ((!scale_group) and (!(FTF_REQUIRE_FIXED))) {
+   if ((!scale_group) and ((Flags & FTF::REQUIRE_FIXED) IS FTF::NIL)) {
       // Select a default scalable font if multi-face font search was enabled.  Otherwise we presume that
       // auto-upgrading of the fixed font is undesirable.
       if ((fixed_group) and (multi)) {
          static char default_font[60] = "";
          if (!default_font[0]) { // Static value only needs to be calculated once
             OBJECTID style_id;
-            if (!FindObject("glStyle", ID_XML, 0, &style_id)) {
+            if (!FindObject("glStyle", ID_XML, FOF::NIL, &style_id)) {
                pf::ScopedObjectLock<objXML> style(style_id, 3000);
                if (style.granted()) {
                   if (acGetVar(style.obj, "/fonts/font(@name='scalable')/@face", default_font, sizeof(default_font))) {
@@ -1171,10 +1170,10 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    ConfigKeys *preferred_group, *alt_group = NULL;
    std::string preferred_type, alt_type;
 
-   if (not ((Point < 12) or (Flags & (FTF_PREFER_FIXED|FTF_REQUIRE_FIXED)))) {
+   if (not ((Point < 12) or ((Flags & (FTF::PREFER_FIXED|FTF::REQUIRE_FIXED)) != FTF::NIL))) {
       preferred_group = fixed_group;
       preferred_type = "Fixed";
-      if (!(Flags & FTF_REQUIRE_FIXED)) {
+      if ((Flags & FTF::REQUIRE_FIXED) IS FTF::NIL) {
          alt_group = scale_group;
          alt_type = "Scale";
       }
@@ -1182,7 +1181,7 @@ static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, LONG Flags, 
    else {
       preferred_group = scale_group;
       preferred_type = "Scale";
-      if (!(Flags & FTF_REQUIRE_SCALED)) {
+      if ((Flags & FTF::REQUIRE_SCALED) IS FTF::NIL) {
          alt_group = fixed_group;
          alt_type = "Fixed";
       }
@@ -1296,8 +1295,8 @@ static ERROR fntRefreshFonts(void)
 
    log.trace("Saving the font configuration file.");
 
-   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL_NEW|FL_WRITE) };
-   if (file.ok()) glConfig->saveToObject(file->UID, 0);
+   objFile::create file = { fl::Path("fonts:fonts.cfg"), fl::Flags(FL::NEW|FL::WRITE) };
+   if (file.ok()) glConfig->saveToObject(*file);
 
    return ERR_Okay;
 }
@@ -1316,14 +1315,14 @@ static void scan_truetype_folder(objConfig *Config)
 
    log.branch("Scanning for truetype fonts.");
 
-   if (!OpenDir("fonts:truetype/", RDF_FILE, &dir)) {
+   if (!OpenDir("fonts:truetype/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
          snprintf(location, sizeof(location), "fonts:truetype/%s", dir->Info->Name);
 
          for (j=0; location[j]; j++);
          while ((j > 0) and (location[j-1] != '.') and (location[j-1] != ':') and (location[j-1] != '/') and (location[j-1] != '\\')) j--;
 
-         ResolvePath(location, 0, (STRING *)&open.pathname);
+         ResolvePath(location, RSF::NIL, (STRING *)&open.pathname);
          open.flags = FT_OPEN_PATHNAME;
          if (!FT_Open_Face(glFTLibrary, &open, 0, &ftface)) {
             FreeResource(open.pathname);
@@ -1341,16 +1340,16 @@ static void scan_truetype_folder(objConfig *Config)
 
             // Strip any style references out of the font name and keep them as style flags
 
-            LONG style = 0;
+            FTF style = FTF::NIL;
             if (ftface->style_name) {
                if ((n = StrSearchCase(" Bold", group)) != -1) {
                   for (j=0; " Bold"[j]; j++) group[n++] = ' ';
-                  style |= FTF_BOLD;
+                  style |= FTF::BOLD;
                }
 
                if ((n = StrSearchCase(" Italic", group)) != -1) {
                   for (j=0; " Italic"[j]; j++) group[n++] = ' ';
-                  style |= FTF_ITALIC;
+                  style |= FTF::ITALIC;
                }
             }
 
@@ -1371,9 +1370,9 @@ static void scan_truetype_folder(objConfig *Config)
                   Config->write(group, buffer.c_str(), location);
                }
                else {
-                  if (style IS FTF_BOLD) Config->write(group, "Scale:Bold", location);
-                  else if (style IS FTF_ITALIC) Config->write(group, "Scale:Italic", location);
-                  else if (style IS (FTF_BOLD|FTF_ITALIC)) Config->write(group, "Scale:Bold Italic", location);
+                  if (style IS FTF::BOLD) Config->write(group, "Scale:Bold", location);
+                  else if (style IS FTF::ITALIC) Config->write(group, "Scale:Italic", location);
+                  else if (style IS (FTF::BOLD|FTF::ITALIC)) Config->write(group, "Scale:Bold Italic", location);
                   else Config->write(group, "Scale:Regular", location);
                }
             }
@@ -1400,7 +1399,7 @@ static void scan_fixed_folder(objConfig *Config)
    log.branch("Scanning for fixed fonts.");
 
    DirInfo *dir;
-   if (!OpenDir("fonts:fixed/", RDF_FILE, &dir)) {
+   if (!OpenDir("fonts:fixed/", RDF::FILE, &dir)) {
       while (!ScanDir(dir)) {
          bool bold = false;
          bool bolditalic = false;
@@ -1421,13 +1420,13 @@ static void scan_fixed_folder(objConfig *Config)
 
             // Strip any style references out of the font name and keep them as style flags
 
-            LONG style = 0;
+            FTF style = FTF::NIL;
 
             {
                auto n = group.find(" Bold");
                if (n != std::string::npos) {
                   group.erase(n, 5);
-                  style |= FTF_BOLD;
+                  style |= FTF::BOLD;
                }
             }
 
@@ -1435,12 +1434,12 @@ static void scan_fixed_folder(objConfig *Config)
                auto n = group.find(" Italic");
                if (n != std::string::npos) {
                   group.erase(n, 7);
-                  style |= FTF_ITALIC;
+                  style |= FTF::ITALIC;
                }
             }
 
-            if (header.italic) style |= FTF_ITALIC;
-            if (header.weight >= 600) style |= FTF_BOLD;
+            if (header.italic) style |= FTF::ITALIC;
+            if (header.weight >= 600) style |= FTF::BOLD;
 
             {
                auto n = group.length();
@@ -1453,15 +1452,15 @@ static void scan_fixed_folder(objConfig *Config)
 
             // Add the style with a link to the font file location
 
-            if (style IS FTF_BOLD) {
+            if (style IS FTF::BOLD) {
                Config->write(gs, "Fixed:Bold", src);
                bold = true;
             }
-            else if (style IS FTF_ITALIC) {
+            else if (style IS FTF::ITALIC) {
                Config->write(gs, "Fixed:Italic", src);
                italic = true;
             }
-            else if (style IS (FTF_BOLD|FTF_ITALIC)) {
+            else if (style IS (FTF::BOLD|FTF::ITALIC)) {
                Config->write(gs, "Fixed:Bold Italic", src);
                bolditalic = true;
             }
@@ -1503,7 +1502,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
    if ((!Path) or (!Header) or (!FaceName)) return ERR_NullArgs;
 
    *FaceName = NULL;
-   objFile::create file = { fl::Path(Path), fl::Flags(FL_READ) };
+   objFile::create file = { fl::Path(Path), fl::Flags(FL::READ) };
    if (file.ok()) {
       file->read(&mz_header, sizeof(mz_header));
 

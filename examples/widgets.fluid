@@ -32,8 +32,10 @@ function menuCallback(ID, Name)
    print('Callback: ' .. ID .. ', ' .. Name)
 end
 
-function itemClicked(Menu, Item)
+-- This is a universal callback for any menu item that is activated by the user.
 
+function itemClicked(Menu, Item)
+   print('Selected ' .. nz(Item.item,'NIL'))
 end
 
 function widgetFocus(Widget)
@@ -41,12 +43,6 @@ function widgetFocus(Widget)
    --Widget.effect = vfx.shake(nz(Widget.inputViewport, Widget.viewport), 0.2, 0, 0.2, function(Effect)
    --   Widget.effect = nil
    --end)
-end
-
--- This is a universal callback for any menu item that is activated by the user.
-
-function popupClicked(Menu, Item)
-   print(Item.item)
 end
 
    local menubar = gui.menubar(viewport, {
@@ -109,14 +105,14 @@ end
       popup = true,
       config = {
          { group='Files' },
-         { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=popupClicked },
-         { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=popupClicked },
-         { item='Reload Document', icon='items/reload', key='F5', feedback=popupClicked },
-         { item='Save File', icon='items/file_save', qualifier='CTRL', key='S', feedback=popupClicked },
+         { item='New File', icon='items/file_new', qualifier='CTRL', key='N', feedback=itemClicked },
+         { item='Open File', icon='office/documents', qualifier='CTRL', key='O', feedback=itemClicked },
+         { item='Reload Document', icon='items/reload', key='F5', feedback=itemClicked },
+         { item='Save File', icon='items/file_save', qualifier='CTRL', key='S', feedback=itemClicked },
          { group='Print' },
-         { item='Print', icon='devices/printer', qualifier='CTRL', key='P', feedback=popupClicked },
+         { item='Print', icon='devices/printer', qualifier='CTRL', key='P', feedback=itemClicked },
          { group='Quit' },
-         { item='Quit', icon='items/quit', qualifier='CTRL', key='Q', feedback=popupClicked }
+         { item='Quit', icon='items/quit', qualifier='CTRL', key='Q', feedback=itemClicked }
       }
    })
 
@@ -181,8 +177,9 @@ end
       events = {
          activate = function(Widget)
             gui.dialog.colour({
-               modal  = true,
-               colour = '255,0,0',
+               modal   = true,
+               popOver = win.surface,
+               colour  = '255,0,0',
                feedback = function(Colour)
                   if (not Colour) then
                      print('Dialog was cancelled.')
@@ -209,6 +206,7 @@ end
                okText     = 'Select Font',
                cancelText = 'Exit',
                modal      = true,
+               popOver    = win.surface,
                feedback = function(Dialog, Accepted)
                   if (not Accepted) then
                      print('Dialog was cancelled.')
@@ -236,6 +234,7 @@ end
                okText      = 'Select File',
                cancelText  = 'Exit',
                modal       = true,
+               popOver     = win.surface,
                warnExists  = true,
                multiSelect = true,
                feedback = function(Dialog, Path, Files)
@@ -358,7 +357,7 @@ end
                vfx.rotate(Icon.viewport, 0.8),
                vfx.zoomOut(Icon.viewport, 0.8)
             }, function()
-               Icon.viewport.acFree()
+               Icon.viewport.free()
                Icon.viewport = nil
             end)
 

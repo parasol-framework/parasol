@@ -1,0 +1,601 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>Compression</name>
+    <type>class</type>
+    <module>Core</module>
+    <comment>Compresses data into archives, supporting a variety of compression formats.</comment>
+    <fileExtension>*.zip</fileExtension>
+    <fileDescription>ZIP File</fileDescription>
+    <version>1</version>
+    <id>700c0197</id>
+    <idstring>ID_COMPRESSION</idstring>
+    <category>Data</category>
+    <include>modules/compression.h</include>
+    <copyright>Paul Manias 1996-2023</copyright>
+    <description>
+<p>The Compression class provides the necessary means to compress and decompress data.  It provides support for file based compression as well as memory based compression routines.  The base class uses zip algorithms to support pkzip files, while other forms of compressed data can be supported by installing additional compression sub-classes.</p>
+<p>The following examples demonstrate basic usage of compression objects in Fluid:</p>
+<pre>// Create a new zip archive and compress two files.
+
+cmp = obj.new('compression', { path='temp:result.zip', flags='!NEW' } )
+err = cmp.mtCompressFile('config:defs/compression.def', '')
+err = cmp.mtCompressFile('config:defs/core.def', '')
+
+// Decompress all *.def files in the root of an archive.
+
+cmp = obj.new('compression', { path='temp:result.zip' } )
+err = cmp.mtDecompressFile('*.def', 'temp:')
+</pre>
+<p>It is strongly advised that Compression objects are created for the purpose of either writing to, or reading from the target archive.  The class is not designed for both purposes simultaneously, particularly due to considerations for maximising operational speed.</p>
+<p>If data is to be encrypted or decrypted, set the <field>Password</field> field with a null-terminated encryption string. If the password for an encrypted file, errors will be returned when trying to decompress the information (the source archive may be reported as a corrupted file).</p>
+<p>To list the contents of an archive, use the <method>Scan</method> method.</p>
+<p>To adjust the level of compression used to pack each file, set the <field>CompressionLevel</field> field to a value between 0 and 100%.</p>
+<p>This code is based on the work of Jean-loup Gailly and Mark Adler.</p></description>
+    <source>
+      <file path="../compression/">class_compression.cpp</file>
+      <file path="../compression/">compression_fields.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Flush</name>
+      <comment>Flushes all pending actions.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>CompressBuffer</name>
+      <comment>Compresses a plain memory area into an empty buffer.</comment>
+      <prototype>ERROR cmpCompressBuffer(OBJECTPTR Object, APTR Input, LONG InputSize, APTR Output, LONG OutputSize, LONG * Result)</prototype>
+      <input>
+        <param type="APTR" name="Input">Pointer to the source data.</param>
+        <param type="LONG" name="InputSize">Byte length of the source data.</param>
+        <param type="APTR" name="Output">Pointer to a destination buffer.</param>
+        <param type="LONG" name="OutputSize">Available space in the destination buffer.</param>
+        <param type="LONG *" name="Result">The size of the compressed data will be returned in this parameter.</param>
+      </input>
+      <description>
+<p>This method provides a simple way of compressing a memory area into a buffer.  It requires a reference to the source data and a buffer large enough to accept the compressed information.  Generally the destination buffer should be no smaller than 75% of the size of the source data.  If the destination buffer is not large enough, an error of <code>ERR_BufferOverflow</code> will be returned.  The size of the compressed data will be returned in the Result parameter.</p>
+<p>To decompress the data that is output by this function, use the <method>DecompressBuffer</method> method.</p>
+<p>The compression method used to compress the data will be identified in the first 32 bits of output, for example, <code>ZLIB</code>.  The following 32 bits will indicate the length of the compressed data section, followed by the data itself.</p>
+      </description>
+      <result>
+        <error code="Okay">The data was compressed successfully.  The Result parameter indicates the size of the compressed data.</error>
+        <error code="Failed">General failure.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="BufferOverflow">The output buffer is not large enough.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>CompressFile</name>
+      <comment>Add files to a compression object.</comment>
+      <prototype>ERROR cmpCompressFile(OBJECTPTR Object, CSTRING Location, CSTRING Path)</prototype>
+      <input>
+        <param type="CSTRING" name="Location">The location of the file(s) to add.</param>
+        <param type="CSTRING" name="Path">The path that is prefixed to the file name when added to the compression object.  May be NULL for no path.</param>
+      </input>
+      <description>
+<p>The CompressFile method is used to add new files and folders to a compression object. You need to supply the location of the file to compress, as well as the path that is prefixed to the file name when it is in the compression object. The Location parameter accepts wildcards, allowing you to add multiple files in a single function call if you require this convenience.</p>
+<p>To compress all contents of a folder, specify its path in the Location parameter and ensure that it is fully qualified by appending a forward slash or colon character.</p>
+<p>The Path parameter must include a slash when targeting a folder, otherwise the source file will be renamed to suit the target path.  If the Path starts with a forward slash and the source is a folder, the name of that folder will be used in the target path for the compressed files and folders.</p>
+      </description>
+      <result>
+        <error code="Okay">The file was added to the compression object.</error>
+        <error code="File">An error was encountered when trying to open the source file.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoSupport">The sub-class does not support this method.</error>
+        <error code="NoPermission">The READ_ONLY flag has been set on the compression object.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>CompressStream</name>
+      <comment>Compresses streamed data into a buffer.</comment>
+      <prototype>ERROR cmpCompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <input>
+        <param type="APTR" name="Input">Pointer to the source data.</param>
+        <param type="LONG" name="Length">Amount of data to compress, in bytes.</param>
+        <param type="FUNCTION *" name="Callback">This callback function will be called with a pointer to the compressed data.</param>
+        <param type="APTR" name="Output">Optional.  Points to a buffer that will receive the compressed data.  Must be equal to or larger than the MinOutputSize field.</param>
+        <param type="LONG" name="OutputSize">Indicates the size of the Output buffer, otherwise set to zero.</param>
+      </input>
+      <description>
+<p>Use the CompressStream method to compress incoming streams of data whilst using a minimal amount of memory.  The compression process is handled in three phases of Start, Compress and End.  The methods provided for each phase are <method>CompressStreamStart</method>, <method>CompressStream</method> and <method>CompressStreamEnd</method>.</p>
+<p>A compression object can manage only one compression stream at any given time.  If it is necessary to compress multiple streams at once, create a compression object for each individual stream.</p>
+<p>No meta-information is written to the stream, so the client will need a way to record the total number of bytes that have been output during the compression process. This value must be stored somewhere in order to decompress the stream correctly.  There is also no header information recorded to identify the type of algorithm used to compress the stream.  We recommend that the compression object's sub-class ID is stored for future reference.</p>
+<p>The following C code illustrates a simple means of compressing a file to another file using a stream:</p>
+<pre>ERROR error = mtCompressStreamStart(compress);
+
+if (!error) {
+   LONG len;
+   LONG cmpsize = 0;
+   UBYTE input[4096];
+   while (!(error = acRead(file, input, sizeof(input), &amp;len))) {
+      if (!len) break; // No more data to read.
+
+      error = mtCompressStream(compress, input, len, &amp;callback, NULL, 0);
+      if (error) break;
+
+      if (result &gt; 0) {
+         cmpsize += result;
+         error = acWrite(outfile, output, result, &amp;len);
+         if (error) break;
+      }
+   }
+
+   if (!error) {
+      if (!(error = mtCompressStreamEnd(compress, NULL, 0))) {
+         cmpsize += result;
+         error = acWrite(outfile, output, result, &amp;len);
+      }
+   }
+}
+</pre>
+<p>Please note that, depending on the type of algorithm, this method will not always write data to the output buffer.  The algorithm may store a copy of the input and wait for more data for efficiency reasons.  Any unwritten data will be resolved when the stream is terminated with <method>CompressStreamEnd</method>.  To check if data was output by this function, either set a flag in the callback function or compare the <field>TotalOutput</field> value to its original setting before CompressStream was called.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Retry">Please recall the method using a larger output buffer.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="BufferOverflow">The output buffer is not large enough to contain the compressed data.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>CompressStreamEnd</name>
+      <comment>Ends the compression of an open stream.</comment>
+      <prototype>ERROR cmpCompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <input>
+        <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each compressed block of data.</param>
+        <param type="APTR" name="Output">Optional pointer to a buffer that will receive the compressed data.  If not set, the compression object will use its own buffer.</param>
+        <param type="LONG" name="OutputSize">Size of the buffer specified in Output (value ignored if Output is NULL).</param>
+      </input>
+      <description>
+<p>To end the compression process, this method must be called to write any final blocks of data and remove the resources that were allocated.</p>
+<p>The expected format of the Callback function is specified in the <method>CompressStream</method> method.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="BufferOverflow">The supplied Output buffer is not large enough (check the MinOutputSize field for the minimum allowable size).</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>CompressStreamStart</name>
+      <comment>Initialises a new compression stream.</comment>
+      <prototype>ERROR cmpCompressStreamStart(OBJECTPTR Object)</prototype>
+      <description>
+<p>The level of compression is determined by the <field>CompressionLevel</field> field value.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Failed">Failed to initialise the decompression process.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DecompressBuffer</name>
+      <comment>Decompresses data originating from the CompressBuffer method.</comment>
+      <prototype>ERROR cmpDecompressBuffer(OBJECTPTR Object, APTR Input, APTR Output, LONG OutputSize, LONG * Result)</prototype>
+      <input>
+        <param type="APTR" name="Input">Pointer to the compressed data.</param>
+        <param type="APTR" name="Output">Pointer to the decompression buffer.</param>
+        <param type="LONG" name="OutputSize">Size of the decompression buffer.</param>
+        <param type="LONG *" name="Result">The amount of bytes decompressed will be returned in this parameter.</param>
+      </input>
+      <description>
+<p>This method is used to decompress data that has been packed using the <method>CompressBuffer</method> method.  A pointer to the compressed data and an output buffer large enough to contain the decompressed data are required.  If the output buffer is not large enough to contain the data, the method will write out as much information as it can and then return with an error code of <code>ERR_BufferOverflow</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="BufferOverflow">The output buffer is not large enough to hold the decompressed information.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DecompressFile</name>
+      <comment>Extracts one or more files from a compression object.</comment>
+      <prototype>ERROR cmpDecompressFile(OBJECTPTR Object, CSTRING Path, CSTRING Dest, LONG Flags)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">The full path name of the file to extract from the archive.</param>
+        <param type="CSTRING" name="Dest">The destination to extract the file to.</param>
+        <param type="LONG" name="Flags">Optional flags.  Currently unused.</param>
+      </input>
+      <description>
+<p>Use the DecompressFile method to decompress a file or files to a destination folder.  The exact path name of the compressed file is required for extraction unless using wildcards.  A single asterisk in the Path parameter will extract all files in a compression object.</p>
+<p>When specifying the Dest parameter, it is recommended that you specify a folder location by using a forward slash at the end of the string.  If this is omitted, the destination will be interpreted as a file name.  If the destination file already exists, it will be overwritten by the decompressed data.</p>
+<p>This method sends feedback at regular intervals during decompression.  For further information on receiving feedback, please refer to the <field>Feedback</field> field.</p>
+      </description>
+      <result>
+        <error code="Okay">The file was successfully extracted.</error>
+        <error code="Cancelled">The decompression process was cancelled by the feedback mechanism.</error>
+        <error code="Failed">General failure.</error>
+        <error code="File">A destination file could not be created.</error>
+        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="NoData">No data is available for use.</error>
+        <error code="Write">Failed to write uncompressed information to a destination file.</error>
+        <error code="MissingPath">The object is missing a setting in the Path or Location field.</error>
+        <error code="Seek">An error occurred during a seek operation.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DecompressObject</name>
+      <comment>Decompresses one file to a target object.</comment>
+      <prototype>ERROR cmpDecompressObject(OBJECTPTR Object, CSTRING Path, OBJECTPTR Object)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">The location of the source file within the archive.  If a wildcard is used, the first matching file is extracted.</param>
+        <param type="OBJECTPTR" name="Object">The target object for the decompressed source data.</param>
+      </input>
+      <description>
+<p>The DecompressObject method will decompress a file to a target object, using a series of <action>Write</action> calls.</p>
+<p>This method sends feedback at regular intervals during decompression.  For further information on receiving feedback, please refer to the <field>Feedback</field> field.</p>
+<p>Note that if decompressing to a <class name="File">File</class> object, the seek position will point to the end of the file after this method returns.  Reset the seek position to zero if the decompressed data needs to be read back.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Failed">General failure.</error>
+        <error code="Write">Error writing data to file.</error>
+        <error code="MissingPath">The object is missing a setting in the Path or Location field.</error>
+        <error code="Seek">An error occurred during a seek operation.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DecompressStream</name>
+      <comment>Decompresses streamed data to an output buffer.</comment>
+      <prototype>ERROR cmpDecompressStream(OBJECTPTR Object, APTR Input, LONG Length, FUNCTION * Callback, APTR Output, LONG OutputSize)</prototype>
+      <input>
+        <param type="APTR" name="Input">Pointer to data to decompress.</param>
+        <param type="LONG" name="Length">Amount of data to decompress from the Input parameter.</param>
+        <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each decompressed block of information.</param>
+        <param type="APTR" name="Output">Optional pointer to a buffer that will receive the decompressed data.  If not set, the compression object will use its own buffer.</param>
+        <param type="LONG" name="OutputSize">Size of the buffer specified in Output (value ignored if Output is NULL).</param>
+      </input>
+      <description>
+<p>Call DecompressStream repeatedly to decompress a data stream and process the results in a callback routine.  The client will need to provide a pointer to the data in the Input parameter and indicate its size in Length.  The decompression routine will call the routine that was specified in Callback for each block that is decompressed.</p>
+<p>The format of the Callback routine is <code>ERROR Function(*Compression, APTR Buffer, LONG Length)</code></p>
+<p>The Buffer will refer to the start of the decompressed data and its size will be indicated in Length.  If the Callback routine returns an error of any kind, the decompression process will be stopped and the error code will be immediately returned by the method.</p>
+<p>Optionally, the client can specify an output buffer in the Output parameter.  This can be a valuable optimisation technique, as it will eliminate the need to copy data out of the compression object's internal buffer.</p>
+<p>When there is no more data in the decompression stream or if an error has occurred, the client must call <method>DecompressStreamEnd</method>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="BufferOverflow">The output buffer is not large enough.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DecompressStreamEnd</name>
+      <comment>Must be called at the end of the decompression process.</comment>
+      <prototype>ERROR cmpDecompressStreamEnd(OBJECTPTR Object, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="FUNCTION *" name="Callback">Refers to a function that will be called for each decompressed block of information.</param>
+      </input>
+      <description>
+<p>To end the decompression process, this method must be called to write any final blocks of data and remove the resources that were allocated during decompression.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>DecompressStreamStart</name>
+      <comment>Initialises a new decompression stream.</comment>
+      <prototype>ERROR cmpDecompressStreamStart(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use the DecompressStreamStart method to initialise a new decompression stream.  No parameters are required.</p>
+<p>If a decompression stream is already active at the time that this method is called, all resources associated with that stream will be deallocated so that the new stream can be initiated.</p>
+<p>To decompress the data stream, follow this call with repeated calls to <method>DecompressStream</method> until all the data has been processed, then call <method>DecompressStreamEnd</method>.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Failed">Failed to initialise the decompression process.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Find</name>
+      <comment>Find the first item that matches a given filter.</comment>
+      <prototype>ERROR cmpFind(OBJECTPTR Object, CSTRING Path, STR Flags, struct CompressedItem ** Item)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">Search for a specific item or items, using wildcards.</param>
+        <param type="STR" name="Flags" lookup="STR">String comparison flags used by StrCompare().</param>
+        <param type="struct CompressedItem **" name="Item">The discovered item is returned in this parameter, or NULL if the search failed.</param>
+      </input>
+      <description>
+<p>Use the Find method to search for a specific item in an archive.  The algorithm will return the first item that matches the Path parameter string in conjunction with the options in Flags.  The options match those in the <function module="Core">StrCompare</function> function - in particular <code>STR::CASE</code>, <code>STR::MATCH_LEN</code> and <code>STR::WILDCARD</code> are the most useful.</p>
+<p>Please refer to the <method>Scan</method> method for a break-down of the CompressedItem structure that is returned by this method.  The resulting structure is temporary and values will be discarded on the next call to this method.  If persistent values are required, copy the resulting structure immediately after the call.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Search">A search routine in this function failed.</error>
+        <error code="NoSupport">This request is not supported.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>RemoveFile</name>
+      <comment>Deletes one or more files from a compression object.</comment>
+      <prototype>ERROR cmpRemoveFile(OBJECTPTR Object, CSTRING Path)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">The full path name of the file to delete from the archive.</param>
+      </input>
+      <description>
+<p>This method deletes compressed files from a compression object.  If the file is in a folder then the client must specify the complete path in conjunction with the file name.  Wild cards are accepted if you want to delete multiple files.  A Path setting of <code>*</code> will delete an archive's entire contents, while a more conservative Path of <code>documents/ *</code> would delete all files and directories under the documents path.  Directories can be declared using either the back-slash or the forward-slash characters.</p>
+<p>Depending on internal optimisation techniques, the compressed file may not shrink from deletions until the compression object is closed or the <action>Flush</action> action is called.</p>
+      </description>
+      <result>
+        <error code="Okay">The file was successfully deleted.</error>
+        <error code="NoSupport">This request is not supported.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>Scan</name>
+      <comment>Scan the archive's index of compressed data.</comment>
+      <prototype>ERROR cmpScan(OBJECTPTR Object, CSTRING Folder, CSTRING Filter, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="CSTRING" name="Folder">If defined, only items within the specified folder are returned.  Use an empty string for files in the root folder.</param>
+        <param type="CSTRING" name="Filter">Search for a specific item or items by name, using wildcards.  If NULL or an empty string, all items will be scanned.</param>
+        <param type="FUNCTION *" name="Callback">This callback function will be called with a pointer to a CompressedItem structure.</param>
+      </input>
+      <description>
+<p>Use the Scan method to search an archive's list of items.  Optional filtering can be applied using the Folder parameter to limit results to those within a folder, and Filter parameter to apply wildcard matching to item names.  Each item that is discovered during the scan will be passed to the function referenced in the Callback parameter.  If the Callback function returns ERR_Terminate, the scan will stop immediately.  The synopsis of the callback function is <code>ERROR Function(*Compression, *CompressedItem)</code>.</p>
+<p>The <struct>CompressedItem</struct> structure consists of the following fields:</p>
+<struct lookup="CompressedItem"/>
+<p>To search for a single item with a path and name already known, please use the <method>Find</method> method instead.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NoSupport">This request is not supported.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>ArchiveName</name>
+      <comment>Apply an archive name to the object, allowing it to be used as a named object in the file system.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>Setting the ArchiveName will allow a Compression object's files to be accessible using standard file system paths. This is achieved through use of the <code>archive:</code> volume, which is a file system extension included in the Compression module.  Please refer to the <class name="FileArchive">FileArchive</class> class for further information on this feature.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>CompressionLevel</name>
+      <comment>The compression level to use when compressing data.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The level of compression that is used when compressing data is determined by the value in this field.  Values range between 0 for no compression and 100 for maximum compression.  The speed of compression decreases with higher values, but the compression ratio will improve.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Feedback</name>
+      <comment>Provides feedback during the de/compression process.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>To receive feedback during any de/compression process, set a callback routine in this field. The format for the callback routine is <code>ERROR Function(*Compression, *CompressionFeedback)</code>.</p>
+<p>For object classes, the object that initiated the de/compression process can be learned by calling the Core's <function module="Core">CurrentContext</function> function.</p>
+<p>During the processing of multiple files, any individual file can be skipped by returning <code>ERR_Skip</code> and the entire process can be cancelled by returning ERR_Terminate.  All other error codes are ignored.</p>
+<p>The <struct>CompressionFeedback</struct> structure consists of the following fields:</p>
+<struct lookup="CompressionFeedback"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="CMF">CMF</type>
+      <description>
+<types lookup="CMF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>MinOutputSize</name>
+      <comment>Indicates the minimum output buffer size that will be needed during de/compression.</comment>
+      <access read="R">Read</access>
+      <type>INT</type>
+      <description>
+<p>This field indicates the minimum allowable buffer size for output during decompression and compression processing. This field must be checked before allocating your own buffers for holding compressed and decompressed output, as failing to allocate enough buffer space is extremely likely to result in overflow errors.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Output</name>
+      <comment>Resulting messages will be sent to the object referred to in this field.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>OBJECTID</type>
+      <description>
+<p>If this field is set to a valid ObjectID, text messages will be sent to that object when the compression object is used.  This can be helpful for notifying the user of the results of compression, decompression and removal of files.</p>
+<p>The target object must be capable of processing incoming text from data channels.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Password</name>
+      <comment>Required if an archive needs an encryption password for access.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Set the password field if an archive will use a password for the encryption of its contents.  The string must be null-terminated and not more than 128 bytes in length.</p>
+<p>It is recommended that the Password is set before or immediately after initialisation.  To change the password of an existing archive, create a new compression object with the desired password and transfer the existing data across to it.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>Set if the compressed data originates from, or is to be saved to a file source.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>To load or create a new file archive, set the Path field to the path of that file.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Permissions</name>
+      <comment>Default permissions for decompressed files are defined here.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="PERMIT">PERMIT</type>
+      <description>
+<p>By default the permissions of files added to an archive are derived from their source location.  This behaviour can be over-ridden by setting the Permissions field.  Valid permission flags are outlined in the <class name="File">File</class> class.</p>
+<types lookup="PERMIT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Size</name>
+      <comment>Indicates the size of the source archive, in bytes.</comment>
+      <access read="G">Get</access>
+      <type>BIGINT</type>
+    </field>
+
+    <field>
+      <name>TotalOutput</name>
+      <comment>The total number of bytes that have been output during the compression or decompression of streamed data.</comment>
+      <access read="R">Read</access>
+      <type>BIGINT</type>
+    </field>
+
+    <field>
+      <name>UncompressedSize</name>
+      <comment>The total decompressed size of all files in an archive.</comment>
+      <access read="G">Get</access>
+      <type>BIGINT</type>
+      <description>
+<p>If you would like to know the total number of bytes that have been compressed into a compression object, read this field.  This will tell you the maximum byte count used if every file were to be decompressed.  Header and tail information that may identify the compressed data is not included in the total.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>WindowBits</name>
+      <comment>Special option for certain compression formats.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>The WindowBits field defines the size of the sliding window frame for the default compression format (DEFLATE), but may also be of use to other compression formats that use this technique.</p>
+<p>For DEFLATE compression, the window bits range must lie between 8 and 15.  Please note that if the value is negative, the algorithm will not output the traditional zlib header information.</p>
+<p>To support GZIP decompression, please set the WindowBits value to 47.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="CMF" comment="Compression flags">
+      <const name="APPLY_SECURITY">When decompressing, apply individual file permissions if they are available in the compression file.</const>
+      <const name="CREATE_FILE">Create a new archive only if the source file does not already exist.</const>
+      <const name="NEW">Force the creation of a new file archive.  Any existing file data at the target location will be destroyed.</const>
+      <const name="NO_LINKS">Treat symbolic links as normal files/folders.</const>
+      <const name="PASSWORD">A password has been set on the object.</const>
+      <const name="READ_ONLY">Forces read-only access, which is strongly recommended if an existing archive is being opened with no modifications intended.  If this flag is not set, initialisation can fail if the user does not have write access to the source file.</const>
+    </constants>
+
+    <constants lookup="PERMIT" comment="Permission flags">
+      <const name="ALL_DELETE">Synonym for EVERYONE_DELETE</const>
+      <const name="ALL_EXEC">Synonym for EVERYONE_EXEC</const>
+      <const name="ALL_READ">Synonym for EVERYONE_READ</const>
+      <const name="ALL_WRITE">Synonym for EVERYONE_WRITE</const>
+      <const name="ARCHIVE">Marks the file for future backup.  The flag should be cleared after the backup has succeeded.</const>
+      <const name="DELETE">Owner can delete.  If the file system does not support this, deletion is enabled via the WRITE flag.</const>
+      <const name="EVERYONE_ACCESS">Synonym for EVERYONE_READ | EVERYONE_WRITE | EVERYONE_EXEC | EVERYONE_DELETE</const>
+      <const name="EVERYONE_DELETE">Synonym for DELETE | GROUP_DELETE | OTHERS_DELETE</const>
+      <const name="EVERYONE_EXEC">Synonym for EXEC | GROUP_EXEC | OTHERS_EXEC</const>
+      <const name="EVERYONE_READ">Synonym for READ | GROUP_READ | OTHERS_READ</const>
+      <const name="EVERYONE_READWRITE">Synonym for EVERYONE_READ | EVERYONE_WRITE</const>
+      <const name="EVERYONE_WRITE">Synonym for WRITE | GROUP_WRITE | OTHERS_WRITE</const>
+      <const name="EXEC">User/Owner can execute.</const>
+      <const name="GROUP">Synonym for GROUP_READ | GROUP_WRITE | GROUP_EXEC | GROUP_DELETE</const>
+      <const name="GROUPID">Allows executables to run with a set group id.</const>
+      <const name="GROUP_DELETE">Group members can delete.</const>
+      <const name="GROUP_EXEC">Group members can execute.</const>
+      <const name="GROUP_READ">Group members can read.</const>
+      <const name="GROUP_WRITE">Group members can write.</const>
+      <const name="HIDDEN">Recommends that the file is hidden from view by default.</const>
+      <const name="INHERIT">Inherit permissions from parent folder and logical OR them with preset permission flags.</const>
+      <const name="NETWORK">File is hosted on another machine.</const>
+      <const name="OFFLINE">File content for this networked file has not been cached on the local PC.</const>
+      <const name="OTHERS">Synonym for OTHERS_READ | OTHERS_WRITE | OTHERS_EXEC | OTHERS_DELETE</const>
+      <const name="OTHERS_DELETE">Others can delete.</const>
+      <const name="OTHERS_EXEC">Others can execute.</const>
+      <const name="OTHERS_READ">Others can read.</const>
+      <const name="OTHERS_WRITE">Others can write.</const>
+      <const name="PASSWORD">File is password protected.</const>
+      <const name="READ">User/Owner has read access.  This will not allow compiled code to be executed.</const>
+      <const name="USER">Synonym for READ | WRITE | EXEC | DELETE</const>
+      <const name="USERID">Allows executables to run with a set user id.</const>
+      <const name="USER_EXEC">Synonym for EXEC</const>
+      <const name="USER_READ">Synonym for READ</const>
+      <const name="USER_WRITE">Synonym for WRITE</const>
+      <const name="WRITE">User/Owner can write.</const>
+    </constants>
+
+    <constants lookup="STR">
+      <const name="CASE">Perform a case-sensitive match.</const>
+      <const name="MATCH_CASE">Perform a case-sensitive match.</const>
+      <const name="MATCH_LEN">The strings must be of equal length to be matched.</const>
+      <const name="WILDCARD">Allow the use of wildcard characters '|', '?' and '*'.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="CompressedItem">
+      <field name="OriginalSize" type="LARGE">Original size of the file</field>
+      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="Next" type="struct CompressedItem *">Used only if this is a linked-list.</field>
+      <field name="Path" type="CSTRING">Path to the file (includes folder prefixes).  Archived folders will include the trailing slash.</field>
+      <field name="Permissions" type="PERMIT" lookup="PERMIT">Original permissions - see PERMIT flags.</field>
+      <field name="UserID" type="LONG">Original user ID</field>
+      <field name="GroupID" type="LONG">Original group ID</field>
+      <field name="OthersID" type="LONG">Original others ID</field>
+      <field name="Flags" type="FL" lookup="FL">FL flags</field>
+      <field name="Created" type="struct DateTime">Date and time of the file's creation.</field>
+      <field name="Modified" type="struct DateTime">Date and time last modified.</field>
+    </struct>
+
+    <struct name="CompressionFeedback">
+      <field name="FeedbackID" type="FDB" lookup="FDB">Set to one of the FDB event indicators</field>
+      <field name="Index" type="LONG">Index of the current file</field>
+      <field name="Path" type="CSTRING">Name of the current file/path in the archive</field>
+      <field name="Dest" type="CSTRING">Destination file/path during decompression</field>
+      <field name="Progress" type="LARGE">Progress indicator (byte position for the file being de/compressed).</field>
+      <field name="OriginalSize" type="LARGE">Original size of the file</field>
+      <field name="CompressedSize" type="LARGE">Compressed size of the file</field>
+      <field name="Year" type="WORD">Year of the original file's datestamp.</field>
+      <field name="Month" type="WORD">Month of the original file's datestamp.</field>
+      <field name="Day" type="WORD">Day of the original file's datestamp.</field>
+      <field name="Hour" type="WORD">Hour of the original file's datestamp.</field>
+      <field name="Minute" type="WORD">Minute of the original file's datestamp.</field>
+      <field name="Second" type="WORD">Second of the original file's datestamp.</field>
+    </struct>
+
+  </structs>
+</book>

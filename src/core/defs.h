@@ -31,15 +31,11 @@
 
 // See the makefile for optional defines
 
-//#define USE_GLOBAL_EVENTS 1 // Use a global locking system for resources in Windows (equivalent to Linux)
-
 #define MAX_TASKS    50  // Maximum number of tasks allowed to run at once
-#define MAX_SEMLOCKS 40  // Maximum number of semaphore allocations per task
 
 #define MSG_MAXARGSIZE   512   // The maximum allowable size of data based arguments before they have to be allocated as memory blocks when messaging
 #define SIZE_SYSTEM_PATH 100  // Max characters for the Parasol system path
 
-#define MAX_SEMAPHORES    40  // Maximum number of semaphores that can be allocated in the system
 #define MAX_THREADS       20  // Maximum number of threads per process.
 #define MAX_NB_LOCKS      20  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
 #define MAX_WAITLOCKS     60  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
@@ -68,6 +64,9 @@
 #define DRIVETYPE_NETWORK   4
 
 #define DEFAULT_VIRTUALID 0xffffffff
+
+#define CODE_MEMH 0x4D454D48L
+#define CODE_MEMT 0x4D454D54L
 
 #ifdef _WIN32
    typedef void * MODHANDLE;
@@ -98,36 +97,47 @@ class objFile;
 class objStorageDevice;
 class objConfig;
 class objMetaClass;
+class objTask;
 struct ActionTable;
 struct FileFeedback;
 struct ResourceManager;
 struct MsgHandler;
 
-//********************************************************************************************************************
-// Private memory management structures.
+enum class RES    : LONG;
+enum class RP     : LONG;
+enum class IDTYPE : LONG;
+enum class TSTATE : BYTE;
+enum class LOC    : LONG;
+enum class STT    : LONG;
+enum class NF     : ULONG;
+enum class FOF    : ULONG;
+enum class RFD    : ULONG;
+enum class PMF    : ULONG;
+enum class MSF    : ULONG;
+enum class RDF    : ULONG;
+enum class RSF    : ULONG;
+enum class LDF    : ULONG;
+enum class VOLUME : ULONG;
+enum class STR    : ULONG;
+enum class SCF    : ULONG;
+enum class SBF    : ULONG;
+enum class SMF    : ULONG;
+enum class VLF    : ULONG;
+enum class MFF    : ULONG;
+enum class DEVICE : LARGE;
+enum class PERMIT : ULONG;
+enum class CCF    : ULONG;
+enum class MEM    : ULONG;
+enum class ALF    : UWORD;
+enum class EVG    : LONG;
 
-class PrivateAddress {
-public:
-   union {
-      APTR      Address;
-      OBJECTPTR Object;
-   };
-   MEMORYID MemoryID;   // Unique identifier
-   OBJECTID OwnerID;    // The object that allocated this block.
-   ULONG    Size;       // 4GB max
-   volatile LONG ThreadLockID = 0;
-   WORD     Flags;
-   volatile WORD AccessCount = 0; // Total number of locks
-
-   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, WORD aFlags) :
-      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
-};
+#define STAT_FOLDER 0x0001
 
 struct rkWatchPath {
    LARGE      Custom;    // User's custom data pointer or value
    HOSTHANDLE Handle;    // The handle for the file being monitored, can be a special reference for virtual paths
    FUNCTION   Routine;   // Routine to call on event trigger
-   LONG       Flags;     // Event mask (original flags supplied to Watch)
+   MFF        Flags;     // Event mask (original flags supplied to Watch)
    ULONG      VirtualID; // If monitored path is virtual, this refers to an ID in the glVirtual table
 
 #ifdef _WIN32
@@ -135,14 +145,36 @@ struct rkWatchPath {
 #endif
 };
 
-#define STAT_FOLDER 0x0001
-
-enum class NF : ULONG;
-
 #include <parasol/vector.hpp>
 #include "prototypes.h"
 
 #include <parasol/main.h>
+
+using namespace pf;
+
+struct ActionEntry {
+   ERROR (*PerformAction)(OBJECTPTR, APTR);     // Internal
+};
+
+struct ThreadMessage {
+   OBJECTID ThreadID;    // Internal
+};
+
+struct ThreadActionMessage {
+   OBJECTPTR Object;    // Direct pointer to a target object.
+   LONG      ActionID;  // The action to execute.
+   LONG      Key;       // Internal
+   ERROR     Error;     // The error code resulting from the action's execution.
+   FUNCTION  Callback;  // Callback function to execute on action completion.
+};
+
+enum class ALF : UWORD {
+   NIL = 0,
+   SHARED = 0x0001,
+   RECURSIVE = 0x0002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(ALF)
 
 enum {
    TL_GENERIC=0,
@@ -174,6 +206,34 @@ struct CaseInsensitiveMap {
 };
 
 //********************************************************************************************************************
+// Private memory management structures.
+
+class PrivateAddress {
+public:
+   union {
+      APTR      Address;
+      OBJECTPTR Object;
+   };
+   MEMORYID MemoryID;   // Unique identifier
+   OBJECTID OwnerID;    // The object that allocated this block.
+   ULONG    Size;       // 4GB max
+   volatile LONG ThreadLockID = 0;
+   MEM      Flags;
+   volatile WORD AccessCount = 0; // Total number of locks
+
+   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
+      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
+
+   void clear() {
+      Address  = 0;
+      MemoryID = 0;
+      OwnerID  = 0;
+      Flags    = MEM::NIL;
+      ThreadLockID = 0;
+   }
+};
+
+//********************************************************************************************************************
 
 struct ActionSubscription {
    OBJECTPTR Context;
@@ -195,13 +255,13 @@ struct virtual_drive {
    ERROR (*OpenDir)(DirInfo *);
    ERROR (*CloseDir)(DirInfo *);
    ERROR (*Obsolete)(CSTRING, DirInfo **, LONG);
-   ERROR (*TestPath)(CSTRING, LONG, LONG *);
+   ERROR (*TestPath)(CSTRING, RSF, LOC *);
    ERROR (*WatchPath)(class extFile *);
    void  (*IgnoreFile)(class extFile *);
    ERROR (*GetInfo)(CSTRING, FileInfo *, LONG);
    ERROR (*GetDeviceInfo)(CSTRING, objStorageDevice *);
    ERROR (*IdentifyFile)(STRING, CLASSID *, CLASSID *);
-   ERROR (*CreateFolder)(CSTRING, LONG);
+   ERROR (*CreateFolder)(CSTRING, PERMIT);
    ERROR (*SameFile)(CSTRING, CSTRING);
    ERROR (*ReadLink)(STRING, STRING *);
    ERROR (*CreateLink)(CSTRING, CSTRING);
@@ -245,42 +305,9 @@ extern std::unordered_map<ULONG, virtual_drive> glVirtual;
   #endif
 #endif
 
-#ifdef _WIN32
-
-struct public_lock {
-   char Name[12];
-   WINHANDLE Lock;
-   LONG PID;
-   WORD Count;
-   bool Event; // Set to true if the lock is for a broadcast-able event
-};
-
-extern struct public_lock glPublicLocks[PL_END];
-
-#endif
-
 enum {
-   RT_SEMAPHORE,
    RT_OBJECT
 };
-
-struct WaitLock {
-   LONG ProcessID;
-   LONG ThreadID;
-   #ifdef _WIN32
-      #ifndef USE_GLOBAL_EVENTS
-         WINHANDLE Lock;
-      #endif
-   #endif
-   LARGE WaitingTime;
-   LONG WaitingForProcessID;
-   LONG WaitingForThreadID;
-   LONG WaitingForResourceID;
-   LONG WaitingForResourceType;
-   UBYTE Flags; // WLF flags
-};
-
-#define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 
 //********************************************************************************************************************
 // This structure is used for internally timed broadcasting.
@@ -319,20 +346,22 @@ class extMetaClass : public objMetaClass {
    public:
    using create = pf::Create<extMetaClass>;
    class extMetaClass *Base;            // Reference to the base class if this is a sub-class
-   struct Field *prvFields;             // Internal field structure
+   std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
+   std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
    struct RootModule *Root;             // Root module that owns this class, if any.
-   UBYTE Children[8];                   // Child objects (field indexes), in order
-   STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the user reads it
-   struct ActionEntry ActionTable[AC_END];
+   UBYTE Integral[8];                   // Integral object references (by field indexes), in order
+   STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
+   ActionEntry ActionTable[AC_END];
    WORD OriginalFieldTotal;
+   UWORD BaseCeiling;                   // FieldLookup ceiling value for the base-class fields
 };
 
 class extFile : public objFile {
    public:
    using create = pf::Create<extFile>;
-   struct DateTime prvModified;  // [28 byte structure]
-   struct DateTime prvCreated;  // [28 byte structure]
+   struct DateTime prvModified;
+   struct DateTime prvCreated;
    LARGE Size;
    #ifdef _WIN32
       LONG  Stream;
@@ -348,7 +377,7 @@ class extFile : public objFile {
    OBJECTPTR ProgressDialog;
    struct DirInfo *prvList;
    LARGE  ProgressTime;
-   LONG   Permissions;
+   PERMIT Permissions;
    LONG   prvType;
    LONG   Handle;         // Native system file handle
    WORD   prvLineLen;
@@ -357,7 +386,7 @@ class extFile : public objFile {
 class extConfig : public objConfig {
    public:
    using create = pf::Create<extConfig>;
-   ULONG    CRC;   // CRC32, for determining if config data has been altered
+   ULONG CRC;   // CRC32, for determining if config data has been altered
 };
 
 class extStorageDevice : public objStorageDevice {
@@ -388,23 +417,22 @@ class extTask : public objTask {
    public:
    using create = pf::Create<extTask>;
    std::map<std::string, std::string, CaseInsensitiveMap> Fields; // Variable field storage
+   pf::vector<std::string> Parameters; // Arguments (string array)
    MEMORYID MessageMID;
    STRING   LaunchPath;
    STRING   Path;
    STRING   ProcessPath;
    STRING   Location;         // Where to load the task from (string)
-   CSTRING  *Parameters;      // Arguments (string array)
    char     Name[32];         // Name of the task, if specified (string)
-   LONG     ParametersSize;   // Byte size of the arguments structure
-   BYTE     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   bool     ReturnCodeSet;    // TRUE if the ReturnCode has been set
    FUNCTION ErrorCallback;
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
    struct MsgHandler *MsgAction;
+   struct MsgHandler *MsgFree;
    struct MsgHandler *MsgDebug;
    struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgValidateProcess;
    struct MsgHandler *MsgQuit;
    struct MsgHandler *MsgEvent;
    struct MsgHandler *MsgThreadCallback;
@@ -417,6 +445,7 @@ class extTask : public objTask {
    #ifdef _WIN32
       STRING Env;
       APTR Platform;
+      WINHANDLE Lock;
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
 };
@@ -457,7 +486,7 @@ class extModule : public objModule {
 struct ClassRecord {
    CLASSID ClassID;
    CLASSID ParentID;
-   LONG Category;
+   CCF Category;
    std::string Name;
    std::string Path;
    std::string Match;
@@ -468,8 +497,8 @@ struct ClassRecord {
    ClassRecord() { }
 
    inline ClassRecord(extMetaClass *pClass, std::optional<std::string> pPath = std::nullopt) {
-      ClassID  = pClass->SubClassID;
-      ParentID = (pClass->BaseClassID IS pClass->SubClassID) ? 0 : pClass->BaseClassID;
+      ClassID  = pClass->ClassID;
+      ParentID = (pClass->BaseClassID IS pClass->ClassID) ? 0 : pClass->BaseClassID;
       Category = pClass->Category;
 
       Name.assign(pClass->ClassName);
@@ -484,7 +513,7 @@ struct ClassRecord {
    inline ClassRecord(CLASSID pClassID, std::string pName, CSTRING pMatch = NULL, CSTRING pHeader = NULL) {
       ClassID  = pClassID;
       ParentID = 0;
-      Category = CCF_SYSTEM;
+      Category = CCF::SYSTEM;
       Name     = pName;
       Path     = "modules:core";
       if (pMatch) Match   = pMatch;
@@ -602,13 +631,13 @@ extern std::string glModulePath;
 extern std::string glRootPath;
 extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate;
+extern bool glJanitorActive;
 extern WORD glLogLevel, glMaxDepth;
-extern UBYTE glTaskState;
+extern TSTATE glTaskState;
 extern LARGE glTimeLog;
 extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct SharedControl  *glSharedControl; // Locked with PL_FORBID
 extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
-extern objTask *glCurrentTask;
+extern extTask *glCurrentTask;
 extern const struct ActionTable ActionTable[];
 extern const struct Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
@@ -631,9 +660,8 @@ extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
 extern LONG glMessageIDCount;
 extern LONG glGlobalIDCount;
-extern LONG glMutexLockSize; // Read only constant
 extern LONG glPrivateIDCounter;
-extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex;
+extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern UWORD glFunctionID;
 extern BYTE glProgramStage;
 extern bool glPrivileged, glSync;
@@ -685,11 +713,11 @@ extern THREADVAR BYTE tlMainThread;
 extern THREADVAR WORD tlPreventSleep;
 extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
-extern THREADVAR LONG glForceUID, glForceGID, glDefaultPermissions;
+extern THREADVAR LONG glForceUID, glForceGID;
+extern THREADVAR PERMIT glDefaultPermissions;
 
 //********************************************************************************************************************
 
-extern std::array<LONG (*)(struct BaseClass *, APTR), AC_END> ManagedActions;
 extern ERROR (*glMessageHandler)(struct Message *);
 extern void (*glVideoRecovery)(void);
 extern void (*glKeyboardRecovery)(void);
@@ -697,7 +725,6 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 
 #ifdef _WIN32
 extern WINHANDLE glProcessHandle;
-extern WINHANDLE glValidationSemaphore;
 extern THREADVAR WORD tlMessageBreak;
 #endif
 
@@ -722,15 +749,6 @@ struct TaskMessage {
    LONG Type;       // Message type ID
    LONG DataSize;   // Size of the data (does not include the size of the TaskMessage structure)
    LONG NextMsg;    // Offset to the next message
-   /*
-   #ifdef _WIN32
-      LONG MsgProcess;
-      WINHANDLE MsgSemaphore;
-   #endif
-   #ifdef __unix__
-      THREADLOCK Mutex;
-   #endif
-   */
    // Data follows
 };
 
@@ -818,14 +836,16 @@ struct FDRecord {
    HOSTHANDLE FD;                         // The file descriptor that is managed by this record.
    void (*Routine)(HOSTHANDLE, APTR);     // The routine that will process read/write messages for the FD.
    APTR Data;                             // A user specific data pointer.
-   LONG Flags;                            // Set to RFD_READ, RFD_WRITE or RFD_EXCEPT.
+   RFD  Flags;                            // Set to RFD::READ, RFD::WRITE or RFD::EXCEPT.
 
-   FDRecord(HOSTHANDLE pFD, void (*pRoutine)(HOSTHANDLE, APTR), APTR pData, LONG pFlags) :
+   FDRecord(HOSTHANDLE pFD, void (*pRoutine)(HOSTHANDLE, APTR), APTR pData, RFD pFlags) :
       FD(pFD), Routine(pRoutine), Data(pData), Flags(pFlags) { }
 };
 
 extern std::list<FDRecord> glFDTable;
 extern LONG glInotify;
+extern BYTE glFDProtected;
+extern std::vector<FDRecord> glRegisterFD;
 
 #define LRT_Exclusive 1
 
@@ -847,7 +867,7 @@ class RootModule : public BaseClass {
    WORD   Version;
    WORD   OpenCount;           // Amount of programs with this module open
    FLOAT  ModVersion;          // Version of this module
-   LONG   Flags;
+   MHF    Flags;
    UBYTE  NoUnload;
    UBYTE  DLL;                 // TRUE if the module is a Windows DLL
    LONG   (*Init)(OBJECTPTR, struct CoreBase *);
@@ -863,54 +883,43 @@ extern "C" {
 #endif
 
 //********************************************************************************************************************
-// Action managers.
 
-ERROR MGR_Init(OBJECTPTR, APTR);
-ERROR MGR_Free(OBJECTPTR, APTR);
-ERROR MGR_Signal(OBJECTPTR, APTR);
-
-//********************************************************************************************************************
-
-ERROR AccessSemaphore(LONG, LONG, LONG);
-ERROR AllocSemaphore(CSTRING, LONG, LONG, LONG *);
-ERROR FreeSemaphore(LONG SemaphoreID);
 ERROR SetFieldF(OBJECTPTR, FIELD, va_list);
-ERROR pReleaseSemaphore(LONG, LONG);
 
-ERROR fs_closedir(struct DirInfo *);
+ERROR fs_closedir(DirInfo *);
 ERROR fs_createlink(CSTRING, CSTRING);
 ERROR fs_delete(STRING, FUNCTION *);
-ERROR fs_getinfo(CSTRING, struct FileInfo *, LONG);
+ERROR fs_getinfo(CSTRING, FileInfo *, LONG);
 ERROR fs_getdeviceinfo(CSTRING, objStorageDevice *);
 void  fs_ignore_file(class extFile *);
-ERROR fs_makedir(CSTRING, LONG);
-ERROR fs_opendir(struct DirInfo *);
+ERROR fs_makedir(CSTRING, PERMIT);
+ERROR fs_opendir(DirInfo *);
 ERROR fs_readlink(STRING, STRING *);
 ERROR fs_rename(STRING, STRING);
 ERROR fs_samefile(CSTRING, CSTRING);
-ERROR fs_scandir(struct DirInfo *);
-ERROR fs_testpath(CSTRING, LONG, LONG *);
+ERROR fs_scandir(DirInfo *);
+ERROR fs_testpath(CSTRING, RSF, LOC *);
 ERROR fs_watch_path(class extFile *);
 
-const struct virtual_drive * get_fs(CSTRING Path);
-void free_storage_class(void);
+const virtual_drive * get_fs(CSTRING Path);
+void  free_storage_class(void);
 
-ERROR convert_zip_error(struct z_stream_s *, LONG);
-ERROR check_cache(OBJECTPTR, LARGE, LARGE);
-ERROR get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
-ERROR fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
-ERROR fs_copydir(STRING, STRING, struct FileFeedback *, FUNCTION *, BYTE);
-LONG  get_parent_permissions(CSTRING, LONG *, LONG *);
-ERROR load_datatypes(void);
-ERROR RenameVolume(CSTRING, CSTRING);
-ERROR findfile(STRING);
-LONG  convert_fs_permissions(LONG);
-LONG  convert_permissions(LONG);
-void set_memory_manager(APTR, struct ResourceManager *);
-BYTE  strip_folder(STRING) __attribute__ ((unused));
-ERROR get_file_info(CSTRING, struct FileInfo *, LONG);
-ERROR convert_errno(LONG Error, ERROR Default);
-void free_file_cache(void);
+ERROR  convert_zip_error(struct z_stream_s *, LONG);
+ERROR  check_cache(OBJECTPTR, LARGE, LARGE);
+ERROR  get_class_cmd(CSTRING, objConfig *, LONG, CLASSID, STRING *);
+ERROR  fs_copy(CSTRING, CSTRING, FUNCTION *, BYTE);
+ERROR  fs_copydir(STRING, STRING, FileFeedback *, FUNCTION *, BYTE);
+PERMIT get_parent_permissions(CSTRING, LONG *, LONG *);
+ERROR  load_datatypes(void);
+ERROR  RenameVolume(CSTRING, CSTRING);
+ERROR  findfile(STRING);
+PERMIT convert_fs_permissions(LONG);
+LONG   convert_permissions(PERMIT);
+void   set_memory_manager(APTR, ResourceManager *);
+BYTE   strip_folder(STRING) __attribute__ ((unused));
+ERROR  get_file_info(CSTRING, FileInfo *, LONG);
+ERROR  convert_errno(LONG Error, ERROR Default);
+void   free_file_cache(void);
 
 EXPORT void Expunge(WORD);
 
@@ -919,89 +928,68 @@ extern void remove_archive(class extCompression *);
 
 void   print_diagnosis(LONG);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
-APTR   build_jump_table(const struct Function *);
-ERROR  copy_args(const struct FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
-ERROR  copy_field_to_buffer(OBJECTPTR, struct Field *, LONG, APTR, CSTRING, LONG *);
+APTR   build_jump_table(const Function *);
+ERROR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
+ERROR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
 ERROR  create_archive_volume(void);
-ERROR  delete_tree(STRING, LONG, FUNCTION *, struct FileFeedback *);
+ERROR  delete_tree(STRING, LONG, FUNCTION *, FileFeedback *);
 struct ClassItem * find_class(CLASSID);
 ERROR  find_private_object_entry(OBJECTID, LONG *);
 void   free_events(void);
-void   free_module_entry(struct RootModule *);
+void   free_module_entry(RootModule *);
 void   free_wakelocks(void);
 LONG   get_thread_id(void);
 void   init_metaclass(void);
-ERROR  init_sleep(LONG, LONG, LONG, LONG, WORD *);
-void   local_free_args(APTR, const struct FunctionField *);
-struct Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
+ERROR  init_sleep(LONG, LONG, LONG);
+void   local_free_args(APTR, const FunctionField *);
+Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
-void   optimise_write_field(struct Field *);
+void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
-void   remove_semaphores(void);
-ERROR  resolve_args(APTR, const struct FunctionField *);
+ERROR  resolve_args(APTR, const FunctionField *);
 void   scan_classes(void);
-ERROR  sort_class_fields(extMetaClass *, struct Field *);
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
-void   wake_sleepers(LONG, LONG);
-ERROR  writeval_default(OBJECTPTR, struct Field *, LONG, const void *, LONG);
+ERROR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
 ERROR  validate_process(LONG);
 void   free_iconv(void);
-ERROR  check_paths(CSTRING, LONG);
+ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #define REF_WAKELOCK           get_threadlock()
 
-#define LOCK_SEMAPHORES(t)  SysLock(PL_SEMAPHORES,(t))
-#define UNLOCK_SEMAPHORES() SysUnlock(PL_SEMAPHORES)
-
 #ifdef _WIN32
-   ERROR alloc_public_lock(WINHANDLE *, CSTRING);
-   ERROR open_public_lock(WINHANDLE *, CSTRING);
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);
-   void  free_public_lock(WINHANDLE);
-   ERROR public_thread_lock(WINHANDLE, LONG);
-   void  public_thread_unlock(WINHANDLE);
    WINHANDLE get_threadlock(void);
    void  free_threadlocks(void);
-   ERROR wake_waitlock(WINHANDLE Lock, LONG ProcessID, LONG TotalSleepers);
-   ERROR alloc_public_waitlock(WINHANDLE *Lock, const char *Name);
-   void  free_public_waitlock(WINHANDLE Lock);
-   ERROR send_thread_msg(WINHANDLE Handle, LONG Type, APTR Data, LONG Size);
+   ERROR wake_waitlock(WINHANDLE, LONG);
+   ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
+   void  free_public_waitlock(WINHANDLE);
+   ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
    LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
-   struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size);
-   ERROR alloc_public_lock(UBYTE, WORD Flags);
-   ERROR alloc_public_cond(CONDLOCK *, WORD Flags);
-   void  free_public_lock(UBYTE);
+   struct sockaddr_un * get_socket_path(LONG, socklen_t *);
+   ERROR alloc_public_cond(CONDLOCK *, ALF);
    void  free_public_cond(CONDLOCK *);
-   ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout);
-   ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size);
+   ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
+   ERROR send_thread_msg(LONG, LONG, APTR, LONG);
 #endif
 
-ERROR alloc_private_lock(UBYTE, WORD);
-ERROR alloc_private_cond(UBYTE, WORD);
+ERROR alloc_private_lock(UBYTE, ALF);
+ERROR alloc_private_cond(UBYTE, ALF);
 void  free_private_lock(UBYTE);
 void  free_private_cond(UBYTE);
 ERROR thread_lock(UBYTE, LONG);
 void  thread_unlock(UBYTE);
-ERROR cond_wait(UBYTE, UBYTE, LONG Timeout);
+ERROR cond_wait(UBYTE, UBYTE, LONG);
 
 void cond_wake_all(UBYTE);
 void cond_wake_single(UBYTE);
-ERROR clear_waitlock(WORD);
-
-// Platform specific semaphore functionality.
-
-ERROR plAllocPrivateSemaphore(APTR, LONG InitialValue);
-void  plFreePrivateSemaphore(APTR);
-ERROR plLockSemaphore(APTR, LONG TimeOut);
-void  plUnlockSemaphore(APTR);
 
 #ifdef _WIN32
 void activate_console(BYTE);
@@ -1036,7 +1024,6 @@ LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *Pro
 void winLeaveCriticalSection(APTR);
 WINHANDLE winLoadLibrary(CSTRING);
 void winLowerPriority(void);
-WINHANDLE winOpenSemaphore(unsigned char *Name);
 void winProcessMessages(void);
 LONG winReadStd(APTR, LONG, APTR Buffer, LONG *Size);
 LONG winReadPipe(WINHANDLE FD, APTR Buffer, LONG *Size);

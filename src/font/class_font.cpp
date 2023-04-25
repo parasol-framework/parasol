@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -49,7 +48,7 @@ Please note that if special effects and transforms are desired then use the @Vec
 
 *********************************************************************************************************************/
 
-static BitmapCache * check_bitmap_cache(extFont *, LONG);
+static BitmapCache * check_bitmap_cache(extFont *, FTF);
 static ERROR cache_truetype_font(extFont *, CSTRING);
 static ERROR SET_Point(extFont *, Variable *);
 static ERROR SET_Style(extFont *, CSTRING );
@@ -83,7 +82,7 @@ static ERROR draw_vector_font(extFont *);
 
 static ERROR FONT_Draw(extFont *Self, APTR Void)
 {
-   if (!(Self->Flags & FTF_SCALABLE)) {
+   if ((Self->Flags & FTF::SCALABLE) IS FTF::NIL) {
       return draw_bitmap_font(Self);
    }
    else return draw_vector_font(Self);
@@ -121,7 +120,7 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
    }
 
    if (Self->prvTempGlyph.Outline) { FreeResource(Self->prvTempGlyph.Outline); Self->prvTempGlyph.Outline = NULL; }
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path)    { FreeResource(Self->Path); Self->Path = NULL; }
    if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
    if ((Self->String) and ((APTR)Self->String != (APTR)Self->prvBuffer)) {
@@ -141,7 +140,8 @@ static ERROR FONT_Free(extFont *Self, APTR Void)
 static ERROR FONT_Init(extFont *Self, APTR Void)
 {
    pf::Log log;
-   LONG diff, style;
+   LONG diff;
+   FTF style;
    ERROR error;
 
    if ((!Self->prvFace[0]) and (!Self->Path)) {
@@ -153,7 +153,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    if (!Self->Path) {
       CSTRING path = NULL;
-      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF_PREFER_SCALED|FTF_PREFER_FIXED|FTF_ALLOW_SCALE), &path)) {
+      if (!fntSelectFont(Self->prvFace, Self->prvStyle, Self->Point, Self->Flags & (FTF::PREFER_SCALED|FTF::PREFER_FIXED|FTF::ALLOW_SCALE), &path)) {
          Self->set(FID_Path, path);
          FreeResource(path);
       }
@@ -165,19 +165,19 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
    // Check the bitmap cache to see if we have already loaded this font
 
-   if (!StrMatch("Bold", Self->prvStyle)) style = FTF_BOLD;
-   else if (!StrMatch("Italic", Self->prvStyle)) style = FTF_ITALIC;
-   else if (!StrMatch("Bold Italic", Self->prvStyle)) style = FTF_BOLD|FTF_ITALIC;
-   else style = 0;
+   if (!StrMatch("Bold", Self->prvStyle)) style = FTF::BOLD;
+   else if (!StrMatch("Italic", Self->prvStyle)) style = FTF::ITALIC;
+   else if (!StrMatch("Bold Italic", Self->prvStyle)) style = FTF::BOLD|FTF::ITALIC;
+   else style = FTF::NIL;
 
    CACHE_LOCK lock(glCacheMutex);
 
    BitmapCache *cache = check_bitmap_cache(Self, style);
 
    if (cache); // The font exists in the cache
-   else if (!StrCompare("*.ttf", Self->Path, 0, STR_WILDCARD)); // The font is truetype
+   else if (!StrCompare("*.ttf", Self->Path, 0, STR::WILDCARD)); // The font is truetype
    else {
-      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL_READ|FL_APPROXIMATE) };
+      objFile::create file = { fl::Path(Self->Path), fl::Flags(FL::READ|FL::APPROXIMATE) };
       if (file.ok()) {
          // Check if the file is a Windows Bitmap Font
 
@@ -185,12 +185,12 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
          file->read(&mz_header, sizeof(mz_header));
 
          if (mz_header.magic IS ID_WINMZ) {
-            file->seek(mz_header.lfanew, SEEK_START);
+            file->seek(mz_header.lfanew, SEEK::START);
 
             winne_header_fields ne_header;
             if ((!file->read(&ne_header, sizeof(ne_header))) and (ne_header.magic IS ID_WINNE)) {
                ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
-               file->seek(res_offset, SEEK_START);
+               file->seek(res_offset, SEEK::START);
 
                // Count the number of fonts in the file
 
@@ -211,7 +211,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                      break;
                   }
 
-                  file->seek(4 + (count * 12), SEEK_CURRENT);
+                  file->seek(4 + (count * 12), SEEK::CURRENT);
                }
 
                if ((!font_count) or (!font_offset)) {
@@ -219,7 +219,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                   return ERR_Failed;
                }
 
-               file->seek(font_offset, SEEK_START);
+               file->seek(font_offset, SEEK::START);
 
                // Scan the list of available fonts to find the closest point size for our font
 
@@ -231,14 +231,14 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                   flReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
                   fonts[i].Size   = size<<size_shift;
-                  file->seek(8, SEEK_CURRENT);
+                  file->seek(8, SEEK::CURRENT);
                }
 
                LONG abs = 0x7fff;
                LONG wfi = 0;
                winfnt_header_fields face;
                for (LONG i=0; i < font_count; i++) {
-                  file->seek((DOUBLE)fonts[i].Offset, SEEK_START);
+                  file->seek((DOUBLE)fonts[i].Offset, SEEK::START);
 
                   winfnt_header_fields header;
                   if (!file->read(&header, sizeof(header))) {
@@ -323,9 +323,9 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
    else {
       if ((error = cache_truetype_font(Self, Self->Path))) return error;
 
-      if (FT_HAS_KERNING(Self->Cache->Face)) Self->Flags |= FTF_KERNING;
-      if (!(Self->Flags & FTF_QUICK_ALIAS)) Self->Flags |= FTF_ANTIALIAS;
-      Self->Flags |= FTF_SCALABLE;
+      if (FT_HAS_KERNING(Self->Cache->Face)) Self->Flags |= FTF::KERNING;
+      if ((Self->Flags & FTF::QUICK_ALIAS) IS FTF::NIL) Self->Flags |= FTF::ANTIALIAS;
+      Self->Flags |= FTF::SCALABLE;
    }
 
    // Remove the location string to reduce resource usage
@@ -405,7 +405,7 @@ convenience - we recommend that you set the Style field for determining font sty
 
 static ERROR GET_Bold(extFont *Self, LONG *Value)
 {
-   if (Self->Flags & FTF_BOLD) *Value = TRUE;
+   if ((Self->Flags & FTF::BOLD) != FTF::NIL) *Value = TRUE;
    else if (StrSearch("bold", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
@@ -417,7 +417,7 @@ static ERROR SET_Bold(extFont *Self, LONG Value)
       // If the font is initialised, setting the bold style is implicit
       return SET_Style(Self, "Bold");
    }
-   else if (Self->Flags & FTF_ITALIC) {
+   else if ((Self->Flags & FTF::ITALIC) != FTF::NIL) {
       return SET_Style(Self, "Bold Italic");
    }
    else return SET_Style(Self, "Bold");
@@ -516,7 +516,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
    LONG i, j, k;
 
    if ((Value) and (Value[0])) {
-      if (!StrCompare("SRC:", Value, 4, 0)) {
+      if (!StrCompare("SRC:", Value, 4)) {
          for (i=4; Value[i]; i++);
          char path[i-4];
          LONG coloncount = 0;
@@ -541,7 +541,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
       // Extract the point size
 
       i++;
-      Variable var = { .Type = FD_DOUBLE, .Double = StrToFloat(Value+i) };
+      Variable var(StrToFloat(Value+i));
       while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
       if (Value[i] IS '.') {
          Value++;
@@ -583,9 +583,9 @@ Flags:  Optional flags.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Flags(extFont *Self, LONG Value)
+static ERROR SET_Flags(extFont *Self, FTF Value)
 {
-   Self->Flags = (Self->Flags & 0xff000000) | (Value & 0x00ffffff);
+   Self->Flags = (Self->Flags & FTF(0xff000000)) | (Value & FTF(0x00ffffff));
    return ERR_Okay;
 }
 
@@ -653,7 +653,7 @@ convenience only - we recommend that you set the Style field for determining fon
 
 static ERROR GET_Italic(extFont *Self, LONG *Value)
 {
-   if (Self->Flags & FTF_ITALIC) *Value = TRUE;
+   if ((Self->Flags & FTF::ITALIC) != FTF::NIL) *Value = TRUE;
    else if (StrSearch("italic", Self->prvStyle) != -1) *Value = TRUE;
    else *Value = FALSE;
    return ERR_Okay;
@@ -665,7 +665,7 @@ static ERROR SET_Italic(extFont *Self, LONG Value)
       // If the font is initialised, setting the italic style is implicit
       return SET_Style(Self, "Italic");
    }
-   else if (Self->Flags & FTF_BOLD) {
+   else if ((Self->Flags & FTF::BOLD) != FTF::NIL) {
       return SET_Style(Self, "Bold Italic");
    }
    else return SET_Style(Self, "Italic");
@@ -753,7 +753,7 @@ static ERROR SET_Opacity(extFont *Self, DOUBLE Value)
 {
    if (Value >= 100) Self->Colour.Alpha = 255;
    else if (Value <= 0) Self->Colour.Alpha = 0;
-   else Self->Colour.Alpha = F2T(Value * 255.0 / 100.0);
+   else Self->Colour.Alpha = F2T(Value * (255.0 / 100.0));
    return ERR_Okay;
 }
 
@@ -813,7 +813,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
       // Default point size is scaled relative to display DPI, then re-scaled to the % value that was passed in.
       DOUBLE global_point = global_point_size();
       DOUBLE pct = value;
-      value = (global_point * (DOUBLE)glDisplayHDPI / 96.0) * (pct / 100.0);
+      value = (global_point * (DOUBLE)glDisplayHDPI / 96.0) * pct;
       log.msg("Calculated point size: %.2f, from global point %.2f * %.0f%%, DPI %d", value, global_point, pct, glDisplayHDPI);
    }
 
@@ -847,7 +847,7 @@ character from the font.
 
 static ERROR SET_String(extFont *Self, CSTRING Value)
 {
-   if (!StrCompare(Value, Self->String, 0, STR_MATCH_CASE|STR_MATCH_LEN)) return ERR_Okay;
+   if (!StrCompare(Value, Self->String, 0, STR::MATCH_CASE|STR::MATCH_LEN)) return ERR_Okay;
 
    if ((Self->String) and ((APTR)Self->String != (APTR)Self->prvBuffer)) {
       FreeResource(Self->String);
@@ -934,7 +934,7 @@ static ERROR SET_Tabs(extFont *Self, WORD *Tabs, LONG Elements)
 
    if (Self->prvTabs) { FreeResource(Self->prvTabs); Self->prvTabs = NULL; }
 
-   if (!AllocMemory(sizeof(WORD) * Elements, MEM_NO_CLEAR, &Self->prvTabs)) {
+   if (!AllocMemory(sizeof(WORD) * Elements, MEM::NO_CLEAR, &Self->prvTabs)) {
       CopyMemory(Tabs, Self->prvTabs, sizeof(WORD) * Elements);
       Self->prvTotalTabs = Elements;
       return ERR_Okay;
@@ -993,7 +993,7 @@ static ERROR GET_Width(extFont *Self, LONG *Value)
       return ERR_Okay;
    }
 
-   if ((!Self->prvStrWidth) or (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) or (Self->WrapEdge)){
+   if ((!Self->prvStrWidth) or ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) or (Self->WrapEdge)){
       if (Self->WrapEdge > 0) {
          fntStringSize(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, NULL);
       }
@@ -1057,12 +1057,12 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
 {
    if (Self->prvLineCount < 1) calc_lines(Self);
 
-   if (Self->Align & ALIGN_VERTICAL) {
+   if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) {
       LONG offset = (Self->AlignHeight - (Self->Height + (Self->LineSpacing * (Self->prvLineCount-1))))>>1;
       offset += (Self->LineSpacing - Self->MaxHeight)>>1; // Adjust for spacing between each individual line
       *Value = offset;
    }
-   else if (Self->Align & ALIGN_BOTTOM) {
+   else if ((Self->Align & ALIGN::BOTTOM) != ALIGN::NIL) {
       *Value = Self->AlignHeight - (Self->MaxHeight + (Self->LineSpacing * (Self->prvLineCount-1)));
    }
    else *Value = 0;
@@ -1076,8 +1076,8 @@ static ERROR GET_YOffset(extFont *Self, LONG *Value)
 static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *src, LONG dxcoord, LONG dycoord, const RGB8 *Colour)
 {
    RGB8 rgb;
-   UBYTE  *data;
-   WORD   dx, dy, ex, ey, sx, sy, xinc;
+   UBYTE *data;
+   WORD  dx, dy, ex, ey, sx, sy, xinc;
 
    if (((data = src->Outline)) and (Colour->Alpha > 0)) {
       sx = dxcoord + src->OutlineLeft;
@@ -1110,7 +1110,7 @@ static void draw_vector_outline(extFont *Self, objBitmap *Bitmap, font_glyph *sr
 
       xinc = src->OutlineWidth - (ex - sx);
 
-      if (Self->Flags & FTF_QUICK_ALIAS) {
+      if ((Self->Flags & FTF::QUICK_ALIAS) != FTF::NIL) {
          for (dy=sy; dy < ey; dy++) {
             for (dx=sx; dx < ex; dx++) {
                if (data[0] > 2) {
@@ -1187,7 +1187,7 @@ static ERROR draw_vector_font(extFont *Self)
    GET_YOffset(Self, &offset); // vertical alignment offset
    dycoord += offset; // - Self->Leading;
 
-   if (Self->Flags & FTF_BASE_LINE) dycoord -= Self->Ascent;
+   if ((Self->Flags & FTF::BASE_LINE) != FTF::NIL) dycoord -= Self->Ascent;
 
    LONG linewidth, wrapindex;
    fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
@@ -1195,10 +1195,10 @@ static ERROR draw_vector_font(extFont *Self)
 
    // If horizontal centring is required, calculate the correct horizontal starting coordinate.
 
-   if ((!Self->Angle) and (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT))) {
-      if (Self->Align & ALIGN_HORIZONTAL) {
+   if ((!Self->Angle) and ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL)) {
+      if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
          dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
-         if ((Self->Flags & FTF_CHAR_CLIP) and (dxcoord < Self->X)) dxcoord = Self->X;
+         if (((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) and (dxcoord < Self->X)) dxcoord = Self->X;
       }
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
@@ -1217,7 +1217,7 @@ static ERROR draw_vector_font(extFont *Self)
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
          if (Self->Underline.Alpha > 0) {
-            gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
+            gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
          }
 
          str++;
@@ -1226,8 +1226,8 @@ static ERROR draw_vector_font(extFont *Self)
          fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
          wrapstr = str + wrapindex;
 
-         if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-            if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+         if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+            if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
             else dxcoord = Self->X + Self->AlignWidth - linewidth;
          }
          else dxcoord = Self->X;
@@ -1243,12 +1243,12 @@ static ERROR draw_vector_font(extFont *Self)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Self->prvChar['o'].Advance + Self->GlyphSpacing) * Self->TabSize;
-         dxcoord = Self->X + ROUNDUP(dxcoord - Self->X, tabwidth);
+         dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
          prevglyph = 0;
       }
       else {
-         if ((Self->Flags & FTF_CHAR_CLIP) and (linewidth >= Self->WrapEdge - Self->X)) {
+         if (((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) and (linewidth >= Self->WrapEdge - Self->X)) {
             if (charclip_count) {
                charlen = 0;
                unicode = '.';
@@ -1310,8 +1310,8 @@ static ERROR draw_vector_font(extFont *Self)
             fntStringSize(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
             wrapstr = str + wrapindex;
 
-            if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-               if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+            if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+               if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
                else dxcoord = Self->X + Self->AlignWidth - linewidth;
             }
 
@@ -1341,7 +1341,7 @@ static ERROR draw_vector_font(extFont *Self)
             }
             glyph = src->GlyphIndex;
 
-            if (Self->Flags & FTF_KERNING) {
+            if ((Self->Flags & FTF::KERNING) != FTF::NIL) {
                LONG kx, ky;
                get_kerning_xy(Self->Cache->Face, glyph, prevglyph, &kx, &ky);
                dxcoord += kx;
@@ -1381,7 +1381,7 @@ static ERROR draw_vector_font(extFont *Self)
 
             LONG xinc = src->Width - (ex - sx);
 
-            if (Self->Flags & FTF_QUICK_ALIAS) {
+            if ((Self->Flags & FTF::QUICK_ALIAS) != FTF::NIL) {
                for (dy=sy; dy < ey; dy++) {
                   for (dx=sx; dx < ex; dx++) {
                      if (data[0] > 2) {
@@ -1438,7 +1438,7 @@ static ERROR draw_vector_font(extFont *Self)
    // Draw an underline for the current line if underlining is turned on
 
    if (Self->Underline.Alpha > 0) {
-      gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, BAF_FILL);
+      gfxDrawRectangle(Bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
    }
 
    Self->EndX = dxcoord;
@@ -1461,7 +1461,7 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
       std::string sp(Path);
       if (glCache.contains(sp)) Self->Cache = glCache[sp];
       else {
-         log.msg("Creating new cache for font '%s'", Path);
+         log.branch("Creating new cache for font '%s'", Path);
 
          FT_Face face;
          openargs.flags    = FT_OPEN_PATHNAME;
@@ -1544,7 +1544,7 @@ static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
       if (!FT_Get_Glyph(Self->Cache->Face->glyph, &glyph)) {
          if (glyph->format != FT_GLYPH_FORMAT_BITMAP) {
             if (!FT_Glyph_Stroke(&glyph, stroker, TRUE)) {
-               if ((Self->Flags & (FTF_ANTIALIAS|FTF_QUICK_ALIAS)) or (Self->Colour.Alpha < 255)) rendermode =  FT_RENDER_MODE_NORMAL;
+               if (((Self->Flags & (FTF::ANTIALIAS|FTF::QUICK_ALIAS)) != FTF::NIL) or (Self->Colour.Alpha < 255)) rendermode =  FT_RENDER_MODE_NORMAL;
                else rendermode =  FT_RENDER_MODE_MONO;
 
                if (!FT_Glyph_To_Bitmap(&glyph, rendermode, &origin, TRUE)) { // Destroy original glyph, replace with bitmap glyph
@@ -1552,7 +1552,7 @@ static ERROR generate_vector_outline(extFont *Self, font_glyph *Glyph)
 
                   if (bmp->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
                      LONG size = bmp->bitmap.pitch * bmp->bitmap.rows;
-                     if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &Glyph->Outline)) {
+                     if (!AllocMemory(size, MEM::NO_CLEAR|MEM::UNTRACKED, &Glyph->Outline)) {
                         CopyMemory(bmp->bitmap.buffer, Glyph->Outline, size);
                         Glyph->OutlineTop       = bmp->top;
                         Glyph->OutlineLeft      = bmp->left;
@@ -1593,7 +1593,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
 
    LONG glyph_index;
    FT_Render_Mode rendermode;
-   if ((Self->Flags & (FTF_ANTIALIAS|FTF_QUICK_ALIAS)) or (Self->Colour.Alpha < 255)) rendermode = FT_RENDER_MODE_NORMAL;
+   if (((Self->Flags & (FTF::ANTIALIAS|FTF::QUICK_ALIAS)) != FTF::NIL) or (Self->Colour.Alpha < 255)) rendermode = FT_RENDER_MODE_NORMAL;
    else rendermode = FT_RENDER_MODE_MONO;
 
    if ((!Self->Angle) and (cache.Glyphs.contains(Unicode))) {
@@ -1610,7 +1610,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
          if (!FT_Render_Glyph(face->glyph, rendermode)) {
             if (face->glyph->bitmap.pixel_mode IS FT_PIXEL_MODE_GRAY) {
                LONG size = face->glyph->bitmap.pitch * face->glyph->bitmap.rows;
-               if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &glyph->Data)) {
+               if (!AllocMemory(size, MEM::NO_CLEAR|MEM::UNTRACKED, &glyph->Data)) {
                   CopyMemory(face->glyph->bitmap.buffer, glyph->Data, size);
                   glyph->Top    = face->glyph->bitmap_top;
                   glyph->Left   = face->glyph->bitmap_left;
@@ -1672,7 +1672,7 @@ static font_glyph * get_glyph(extFont *Self, ULONG Unicode, bool GetBitmap)
       if (!GetBitmap) return key_glyph;
 
       LONG size = face->glyph->bitmap.pitch * face->glyph->bitmap.rows;
-      if (!AllocMemory(size, MEM_NO_CLEAR|MEM_UNTRACKED, &key_glyph->Data)) {
+      if (!AllocMemory(size, MEM::NO_CLEAR|MEM::UNTRACKED, &key_glyph->Data)) {
          CopyMemory(face->glyph->bitmap.buffer, key_glyph->Data, size);
          return key_glyph;
       }
@@ -1748,7 +1748,7 @@ static ERROR draw_bitmap_font(extFont *Self)
    GET_YOffset(Self, &offset);
    dycoord = dycoord + offset - Self->Leading;
 
-   if (Self->Flags & FTF_BASE_LINE) {
+   if ((Self->Flags & FTF::BASE_LINE) != FTF::NIL) {
       dycoord -= (Self->Ascent - Self->Leading); // - 1;
    }
 
@@ -1757,10 +1757,10 @@ static ERROR draw_bitmap_font(extFont *Self)
 
    // If horizontal centering is required, calculate the correct horizontal starting coordinate.
 
-   if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-      if (Self->Align & ALIGN_HORIZONTAL) {
+   if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+      if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
          dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
-         if ((Self->Flags & FTF_CHAR_CLIP) and (dxcoord < Self->X)) dxcoord = Self->X;
+         if (((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) and (dxcoord < Self->X)) dxcoord = Self->X;
       }
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
@@ -1783,7 +1783,7 @@ static ERROR draw_bitmap_font(extFont *Self)
    while (*str) {
       if (*str IS '\n') { // Reset the font to a new line
          if (Self->Underline.Alpha > 0) {
-            gfxDrawRectangle(bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
+            gfxDrawRectangle(bitmap, startx, dycoord + Self->Height + 1, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
          }
 
          str++;
@@ -1792,8 +1792,8 @@ static ERROR draw_bitmap_font(extFont *Self)
          fntStringSize(Self, str, FSS_LINE, (Self->WrapEdge > 0) ? (Self->WrapEdge - Self->X) : 0, &linewidth, &wrapindex);
          wrapstr = str + wrapindex;
 
-         if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-            if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+         if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+            if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
             else dxcoord = Self->X + Self->AlignWidth - linewidth;
          }
          else dxcoord = Self->X;
@@ -1804,11 +1804,11 @@ static ERROR draw_bitmap_font(extFont *Self)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Self->prvChar['o'].Advance + Self->GlyphSpacing) * Self->TabSize;
-         dxcoord = Self->X + ROUNDUP(dxcoord - Self->X, tabwidth);
+         dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
       }
       else {
-         if ((Self->Flags & FTF_CHAR_CLIP) and (linewidth >= Self->WrapEdge - Self->X)) {
+         if (((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) and (linewidth >= Self->WrapEdge - Self->X)) {
             // This line exceeds the wrap boundary and thus needs to be clipped.
 
             if (charclip_count) {
@@ -1875,8 +1875,8 @@ static ERROR draw_bitmap_font(extFont *Self)
             fntStringSize(Self, str, FSS_LINE, Self->WrapEdge - dxcoord, &linewidth, &wrapindex);
             wrapstr = str + wrapindex;
 
-            if (Self->Align & (ALIGN_HORIZONTAL|ALIGN_RIGHT)) {
-               if (Self->Align & ALIGN_HORIZONTAL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
+            if ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) {
+               if ((Self->Align & ALIGN::HORIZONTAL) != ALIGN::NIL) dxcoord = Self->X + ((Self->AlignWidth - linewidth)>>1);
                else dxcoord = Self->X + Self->AlignWidth - linewidth;
             }
             CHECK_LINE_CLIP(Self, dycoord, bitmap);
@@ -2037,8 +2037,8 @@ static ERROR draw_bitmap_font(extFont *Self)
                   }
                }
                else if (bitmap->BitsPerPixel IS 8) {
-                  if (bitmap->Flags & BMF_MASK) {
-                     if (bitmap->Flags & BMF_INVERSE_ALPHA) colour = 0;
+                  if ((bitmap->Flags & BMF::MASK) != BMF::NIL) {
+                     if ((bitmap->Flags & BMF::INVERSE_ALPHA) != BMF::NIL) colour = 0;
                      else colour = 255;
                   }
 
@@ -2081,9 +2081,9 @@ static ERROR draw_bitmap_font(extFont *Self)
    // Draw an underline for the current line if underlining is turned on
 
    if (Self->Underline.Alpha > 0) {
-      if (Self->Flags & FTF_BASE_LINE) sy = dycoord;
+      if ((Self->Flags & FTF::BASE_LINE) != FTF::NIL) sy = dycoord;
       else sy = dycoord + Self->Height + Self->Leading + 1;
-      gfxDrawRectangle(bitmap, startx, sy, dxcoord-startx, (Self->Flags & FTF_HEAVY_LINE) ? 2 : 1, ucolour, TRUE);
+      gfxDrawRectangle(bitmap, startx, sy, dxcoord-startx, ((Self->Flags & FTF::HEAVY_LINE) != FTF::NIL) ? 2 : 1, ucolour, BAF::FILL);
    }
 
    Self->EndX = dxcoord;
@@ -2116,10 +2116,10 @@ static void unload_glyph_cache(extFont *Font)
 #include "class_font_def.c"
 
 static const FieldDef AlignFlags[] = {
-   { "Right",      ALIGN_RIGHT      }, { "Left",     ALIGN_LEFT },
-   { "Bottom",     ALIGN_BOTTOM     }, { "Top",      ALIGN_TOP },
-   { "Horizontal", ALIGN_HORIZONTAL }, { "Vertical", ALIGN_VERTICAL },
-   { "Center",     ALIGN_CENTER     }, { "Middle",   ALIGN_MIDDLE },
+   { "Right",      ALIGN::RIGHT      }, { "Left",     ALIGN::LEFT },
+   { "Bottom",     ALIGN::BOTTOM     }, { "Top",      ALIGN::TOP },
+   { "Horizontal", ALIGN::HORIZONTAL }, { "Vertical", ALIGN::VERTICAL },
+   { "Center",     ALIGN::CENTER     }, { "Middle",   ALIGN::MIDDLE },
    { NULL, 0 }
 };
 
@@ -2183,7 +2183,7 @@ static ERROR add_font_class(void)
       fl::BaseClassID(ID_FONT),
       fl::ClassVersion(VER_FONT),
       fl::Name("Font"),
-      fl::Category(CCF_GRAPHICS),
+      fl::Category(CCF::GRAPHICS),
       fl::FileExtension("*.font|*.fnt|*.tty|*.fon"),
       fl::FileDescription("Font"),
       fl::Actions(clFontActions),

@@ -64,7 +64,7 @@ static ERROR CSTREAM_Init(extCompressedStream *Self, APTR Void)
 //********************************************************************************************************************
 
 static ERROR CSTREAM_NewObject(extCompressedStream *Self, APTR Void) {
-   Self->Format = CF_GZIP;
+   Self->Format = CF::GZIP;
    return ERR_Okay;
 }
 
@@ -97,15 +97,15 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
       log.trace("Initialising decompression of the stream.");
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
       switch (Self->Format) {
-         case CF_ZLIB:
+         case CF::ZLIB:
             if (inflateInit2(&Self->Stream, MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
             break;
 
-         case CF_DEFLATE:
+         case CF::DEFLATE:
             if (inflateInit2(&Self->Stream, -MAX_WBITS) != ERR_Okay) return log.warning(ERR_Decompression);
             break;
 
-         case CF_GZIP:
+         case CF::GZIP:
          default:
             if (inflateInit2(&Self->Stream, 15 + 32) != ERR_Okay) return log.warning(ERR_Decompression);
             // Read the uncompressed size from the gzip header
@@ -123,7 +123,7 @@ static ERROR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
       // An internal buffer will need to be allocated if the one supplied to Read() is not large enough.
       outputsize = MIN_OUTPUT_SIZE;
       if (!(output = Self->OutputBuffer)) {
-         if (AllocMemory(MIN_OUTPUT_SIZE, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL)) return ERR_AllocMemory;
+         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL)) return ERR_AllocMemory;
          output = Self->OutputBuffer;
       }
    }
@@ -211,8 +211,8 @@ static ERROR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
    CSTREAM_Reset(Self, NULL);
 
    LARGE pos = 0;
-   if (Args->Position IS SEEK_START) pos = F2T(Args->Offset);
-   else if (Args->Position IS SEEK_CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
+   if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
+   else if (Args->Position IS SEEK::CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
    else return log.warning(ERR_Args);
 
    if (pos < 0) return log.warning(ERR_OutOfRange);
@@ -245,19 +245,19 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
       ClearMemory(&Self->Stream, sizeof(Self->Stream));
 
       switch (Self->Format) {
-         case CF_ZLIB:
+         case CF::ZLIB:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
                return log.warning(ERR_Compression);
             }
             break;
 
-         case CF_DEFLATE:
+         case CF::DEFLATE:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, -MAX_WBITS, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
                return log.warning(ERR_Compression);
             }
             break;
 
-         case CF_GZIP:
+         case CF::GZIP:
          default:
             if (deflateInit2(&Self->Stream, 9, Z_DEFLATED, 15 + 32, ZLIB_MEM_LEVEL, Z_DEFAULT_STRATEGY)) {
                return log.warning(ERR_Compression);
@@ -269,7 +269,7 @@ static ERROR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    }
 
    if (!Self->OutputBuffer) {
-      if (AllocMemory(MIN_OUTPUT_SIZE, MEM_DATA|MEM_NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL)) return ERR_AllocMemory;
+      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL)) return ERR_AllocMemory;
    }
 
    Args->Result = 0;
@@ -407,7 +407,7 @@ extern "C" ERROR add_compressed_stream_class(void)
       fl::ClassVersion(1.0),
       fl::Name("CompressedStream"),
       fl::FileDescription("GZip File"),
-      fl::Category(CCF_DATA),
+      fl::Category(CCF::DATA),
       fl::Actions(clStreamActions),
       fl::Fields(clStreamFields),
       fl::Size(sizeof(extCompressedStream)),

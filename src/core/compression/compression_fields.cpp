@@ -167,7 +167,7 @@ static ERROR SET_Password(extCompression *Self, CSTRING Value)
 {
    if ((Value) and (*Value)) {
       StrCopy(Value, Self->Password, sizeof(Self->Password));
-      Self->Flags |= CMF_PASSWORD;
+      Self->Flags |= CMF::PASSWORD;
    }
    else Self->Password[0] = 0;
 

@@ -9,6 +9,7 @@ typedef void * HANDLE;
 typedef void * HINSTANCE;
 typedef void * WNDPROC;
 typedef void * HCURSOR;
+enum class PTC : LONG;
 #endif
 
 struct WinCursor {
@@ -17,7 +18,11 @@ struct WinCursor {
    #else
    void * WinCursor;
    #endif
+   #ifdef PARASOL_MAIN_H
+   PTC CursorID;
+   #else
    int CursorID;
+   #endif
 };
 
 struct WinDT {

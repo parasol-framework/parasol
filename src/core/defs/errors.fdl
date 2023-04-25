@@ -45,8 +45,8 @@ function declareErrors()
     "OwnerNeedsBitmap",
     "CoreVersion",
     "NeedWidthHeight",
-    "NegativeSubClassID",
-    "NegativeClassID",
+    "NegativeSubClassID", -- DEPRECATED
+    "NegativeClassID", -- DEPRECATED
     "MissingClassName",
     "OutOfRange",
     "ObtainMethod",
@@ -119,8 +119,8 @@ function declareErrors()
     "ExpectedFile",            -- The operation expected a path to a file.
     "Resize",                  -- Resize failure
     "Redimension",             -- Redimension failure
-    "AllocSemaphore",          -- AllocSemaphore() failed
-    "AccessSemaphore",         -- AccessSemaphore() failed
+    "AllocSemaphore",          -- DEPRECATED
+    "AccessSemaphore",         -- DEPRECATED
     "CreateFile",              -- Failed to create a new file
     "DeleteFile",              -- Deletion of dir/file failed (e.g. permissions, read-only media)
     "OpenFile",                -- File could not be opened
@@ -174,8 +174,8 @@ function declareErrors()
     "OutsideMainThread",       -- An operation has been attempted that is only possible from within the main thread.
     "UseSubClass",             -- Requested to use a registered sub-class (not an error).
     "WrongType",               -- The expected type was not provided.
-    "AllocMutex",              -- A call to AllocMutex() or AllocSharedMutex() failed.
-    "LockMutex",               -- An attempt to lock a mutex failed.
+    "AllocMutex",              -- DEPRECATED
+    "LockMutex",               -- DEPRECATED
     "SetVolume",               -- A call to SetVolume() failed.
     "Decompression",           -- Unspecified failure during decompression of a data stream.
     "Compression",             -- Unspecified failure during compression of a data stream.

@@ -21,7 +21,7 @@ also supported, but user preference may dictate whether or not the necessary dri
 The Picture class will clip any loaded picture so that it fits the size given in the #Bitmap's Width and
 Height. If you specify the `RESIZE` flag, the picture will be shrunk or enlarged to fit the given dimensions.
 If the Width and Height are zero, the picture will be loaded at its default dimensions.  To find out general information
-about a picture before initialising it, @Query() it first so that the picture object can load initial details on the
+about a picture before initialising it, #Query() it first so that the picture object can load initial details on the
 file format.
 
 Images are also remapped automatically if the source palette and destination palettes do not match, or if there are
@@ -43,6 +43,8 @@ significant differences between the source and destination bitmap types.
 
 #include "picture.h"
 
+using namespace pf;
+
 MODULE_COREBASE;
 static RootModule *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
@@ -50,7 +52,7 @@ static OBJECTPTR modDisplay = NULL;
 struct DisplayBase *DisplayBase = NULL;
 static THREADVAR bool tlError = false;
 
-static ERROR decompress_png(prvPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
+static ERROR decompress_png(extPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
 static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
@@ -97,8 +99,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERROR CMDExpunge(void)
 {
-   if (clPicture)  { acFree(clPicture); clPicture = NULL; }
-   if (modDisplay) { acFree(modDisplay); modDisplay = NULL; }
+   if (clPicture)  { FreeResource(clPicture); clPicture = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    return ERR_Okay;
 }
 
@@ -122,7 +124,7 @@ Bitmap using its available drawing methods.
 
 *********************************************************************************************************************/
 
-static ERROR PIC_Activate(prvPicture *Self, APTR Void)
+static ERROR PICTURE_Activate(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
@@ -142,7 +144,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
       STRING path;
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) goto exit;
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
    Self->prvFile->seekStart(0);
@@ -169,7 +171,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 
    if (!bmp->Width)  bmp->Width  = png_width;
    if (!bmp->Height) bmp->Height = png_height;
-   if (!bmp->Type)   bmp->Type   = BMP_CHUNKY;
+   if (bmp->Type IS BMP::NIL) bmp->Type = BMP::CHUNKY;
 
    if (!Self->DisplayWidth)  Self->DisplayWidth  = png_width;
    if (!Self->DisplayHeight) Self->DisplayHeight = png_height;
@@ -196,18 +198,18 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
    // If the picture supports an alpha channel, initialise an alpha based Mask object for the Picture.
 
    if (color_type & PNG_COLOR_MASK_ALPHA) {
-      if (Self->Flags & PCF_FORCE_ALPHA_32) {
+      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          // Upgrade the image to 32-bit and store the alpha channel in the alpha byte of the pixel data.
 
          bmp->BitsPerPixel  = 32;
          bmp->BytesPerPixel = 4;
-         bmp->Flags |= BMF_ALPHA_CHANNEL;
+         bmp->Flags |= BMF::ALPHA_CHANNEL;
       }
       else {
          if ((Self->Mask = objBitmap::create::integral(
                fl::Width(Self->Bitmap->Width), fl::Height(Self->Bitmap->Height),
-               fl::AmtColours(256), fl::Flags(BMF_MASK)))) {
-            Self->Flags |= PCF_MASK|PCF_ALPHA;
+               fl::AmtColours(256), fl::Flags(BMF::MASK)))) {
+            Self->Flags |= PCF::MASK|PCF::ALPHA;
          }
          else goto exit;
       }
@@ -281,7 +283,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
       else bmp->BitsPerPixel = 24;
    }
 
-   if ((Self->Flags & PCF_NO_PALETTE) and (bmp->BitsPerPixel <= 8)) {
+   if (((Self->Flags & PCF::NO_PALETTE) != PCF::NIL) and (bmp->BitsPerPixel <= 8)) {
       bmp->BitsPerPixel = 32;
    }
 
@@ -304,7 +306,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 
       if (tmp_bitmap.ok()) {
          if (!(error = decompress_png(Self, *tmp_bitmap, bit_depth, color_type, read_ptr, info_ptr, png_width, png_height))) {
-            gfxCopyArea(*tmp_bitmap, bmp, BAF_DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
+            gfxCopyArea(*tmp_bitmap, bmp, BAF::DITHER, 0, 0, bmp->Width, bmp->Height, 0, 0);
          }
       }
    }
@@ -312,7 +314,7 @@ static ERROR PIC_Activate(prvPicture *Self, APTR Void)
 
    if (!error) {
       png_read_end(read_ptr, end_info);
-      if (Self->prvFile) { acFree(Self->prvFile); Self->prvFile = NULL; }
+      if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
    }
    else {
 exit:
@@ -326,14 +328,14 @@ exit:
 
 //********************************************************************************************************************
 
-static ERROR PIC_Free(prvPicture *Self, APTR Void)
+static ERROR PICTURE_Free(extPicture *Self, APTR Void)
 {
    if (Self->prvPath)        { FreeResource(Self->prvPath); Self->prvPath = NULL; }
    if (Self->prvDescription) { FreeResource(Self->prvDescription); Self->prvDescription = NULL; }
    if (Self->prvDisclaimer)  { FreeResource(Self->prvDisclaimer); Self->prvDisclaimer = NULL; }
-   if (Self->prvFile)        { acFree(Self->prvFile); Self->prvFile = NULL; }
-   if (Self->Bitmap)         { acFree(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Mask)           { acFree(Self->Mask); Self->Mask = NULL; }
+   if (Self->prvFile)        { FreeResource(Self->prvFile); Self->prvFile = NULL; }
+   if (Self->Bitmap)         { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Mask)           { FreeResource(Self->Mask); Self->Mask = NULL; }
    return ERR_Okay;
 }
 
@@ -356,41 +358,41 @@ Query actions to load or find out more information about the image format.
 
 *********************************************************************************************************************/
 
-static ERROR PIC_Init(prvPicture *Self, APTR Void)
+static ERROR PICTURE_Init(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
-   if ((!Self->prvPath) or (Self->Flags & PCF_NEW)) {
+   if ((!Self->prvPath) or ((Self->Flags & PCF::NEW) != PCF::NIL)) {
       // If no path has been specified, assume that the picture is being created from scratch (e.g. to save an
       // image to disk).  The programmer is required to specify the dimensions and colours of the Bitmap so that we can
       // initialise it.
 
-      if (Self->Flags & PCF_FORCE_ALPHA_32) {
+      if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) {
          Self->Bitmap->BitsPerPixel  = 32;
          Self->Bitmap->BytesPerPixel = 4;
-         Self->Bitmap->Flags |= BMF_ALPHA_CHANNEL;
+         Self->Bitmap->Flags |= BMF::ALPHA_CHANNEL;
       }
 
-      Self->Flags &= ~(PCF_RESIZE_X|PCF_RESIZE_Y|PCF_LAZY|PCF_SCALABLE); // Turn off irrelevant flags that don't match these
+      Self->Flags &= ~(PCF::RESIZE_X|PCF::RESIZE_Y|PCF::LAZY|PCF::SCALABLE); // Turn off irrelevant flags that don't match these
 
       if (!Self->Bitmap->Width) Self->Bitmap->Width = Self->DisplayWidth;
       if (!Self->Bitmap->Height) Self->Bitmap->Height = Self->DisplayHeight;
 
       if ((Self->Bitmap->Width) and (Self->Bitmap->Height)) {
-         if (!acInit(Self->Bitmap)) {
-            if (Self->Flags & PCF_FORCE_ALPHA_32) Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
+         if (!InitObject(Self->Bitmap)) {
+            if ((Self->Flags & PCF::FORCE_ALPHA_32) != PCF::NIL) Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
 
-            if (Self->Flags & (PCF_ALPHA|PCF_MASK)) {
+            if ((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) {
                if ((Self->Mask = objBitmap::create::integral(fl::Width(Self->Bitmap->Width),
                      fl::Height(Self->Bitmap->Height),
-                     fl::Flags(BMF_MASK),
-                     fl::BitsPerPixel((Self->Flags & PCF_ALPHA) ? 8 : 1)))) {
-                  Self->Flags |= PCF_MASK;
+                     fl::Flags(BMF::MASK),
+                     fl::BitsPerPixel(((Self->Flags & PCF::ALPHA) != PCF::NIL) ? 8 : 1)))) {
+                  Self->Flags |= PCF::MASK;
                }
                else return log.warning(ERR_Init);
             }
 
-            if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+            if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
             return ERR_Okay;
          }
@@ -399,12 +401,12 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
       else return log.warning(ERR_InvalidDimension);
    }
    else {
-      if (Self->SubID) return ERR_Okay; // Break here to let the sub-class continue initialisation
+      if (Self->isSubClass()) return ERR_Okay; // Break here to let the sub-class continue initialisation
 
       // Test the given path to see if it matches our supported file format.
 
       STRING res_path;
-      if (!ResolvePath(Self->prvPath, RSF_APPROXIMATE, &res_path)) {
+      if (!ResolvePath(Self->prvPath, RSF::APPROXIMATE, &res_path)) {
          LONG result;
 
          FreeResource(Self->prvPath); // Switch to the resolved path in case it was approximated
@@ -417,7 +419,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
 
             if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
                 (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
-               if (Self->Flags & PCF_LAZY) return ERR_Okay;
+               if ((Self->Flags & PCF::LAZY) != PCF::NIL) return ERR_Okay;
                return acActivate(Self);
             }
             else return ERR_NoSupport;
@@ -435,7 +437,7 @@ static ERROR PIC_Init(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
+static ERROR PICTURE_NewObject(extPicture *Self, APTR Void)
 {
    pf::Log log;
 
@@ -449,14 +451,14 @@ static ERROR PIC_NewObject(prvPicture *Self, APTR Void)
 
 //********************************************************************************************************************
 
-static ERROR PIC_Query(prvPicture *Self, APTR Void)
+static ERROR PICTURE_Query(extPicture *Self, APTR Void)
 {
    pf::Log log;
    STRING path;
    png_uint_32 width, height;
    int bit_depth, color_type;
 
-   if (Self->Bitmap->Flags & BMF_QUERIED) return ERR_Okay;
+   if ((Self->Bitmap->Flags & BMF::QUERIED) != BMF::NIL) return ERR_Okay;
    if (!Self->prvFile) return ERR_NotInitialised;
 
    log.branch();
@@ -473,7 +475,7 @@ static ERROR PIC_Query(prvPicture *Self, APTR Void)
    if (!Self->prvFile) {
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_GetField);
 
-      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL_READ|FL_APPROXIMATE)))) goto exit;
+      if (!(Self->prvFile = objFile::create::integral(fl::Path(path), fl::Flags(FL::READ|FL::APPROXIMATE)))) goto exit;
    }
 
    Self->prvFile->seekStart(0);
@@ -496,11 +498,11 @@ static ERROR PIC_Query(prvPicture *Self, APTR Void)
 
    if (!Bitmap->Width)  Bitmap->Width  = width;
    if (!Bitmap->Height) Bitmap->Height = height;
-   if (!Bitmap->Type)   Bitmap->Type   = BMP_CHUNKY;
+   if (Bitmap->Type IS BMP::NIL) Bitmap->Type = BMP::CHUNKY;
 
    if (!Self->DisplayWidth)  Self->DisplayWidth  = width;
    if (!Self->DisplayHeight) Self->DisplayHeight = height;
-   if (color_type & PNG_COLOR_MASK_ALPHA) Self->Flags |= PCF_ALPHA;
+   if (color_type & PNG_COLOR_MASK_ALPHA) Self->Flags |= PCF::ALPHA;
 
    if (!Bitmap->BitsPerPixel) {
       if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_PALETTE)) {
@@ -528,7 +530,7 @@ Read: Reads raw image data from a Picture object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PIC_Read(prvPicture *Self, struct acRead *Args)
+static ERROR PICTURE_Read(extPicture *Self, struct acRead *Args)
 {
    return Action(AC_Read, Self->Bitmap, Args);
 }
@@ -539,7 +541,7 @@ Refresh: Refreshes a loaded picture - draws the next frame.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PIC_Refresh(prvPicture *Self, APTR Void)
+static ERROR PICTURE_Refresh(extPicture *Self, APTR Void)
 {
    return ERR_Okay;
 }
@@ -553,7 +555,7 @@ If no destination is specified then the image will be saved as a new file target
 -END-
 *********************************************************************************************************************/
 
-static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
+static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 {
    pf::Log log;
    STRING path;
@@ -569,16 +571,11 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    ERROR error = ERR_Failed;
    tlError = false;
 
-   if ((Args) and (Args->DestID)) {
-      if (AccessObjectID(Args->DestID, 3000, &file) != ERR_Okay) {
-         log.warning("Failed to access destination object #%d.", Args->DestID);
-         goto exit;
-      }
-   }
+   if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
       if (Self->get(FID_Path, &path) != ERR_Okay) return log.warning(ERR_MissingPath);
 
-      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL_NEW|FL_WRITE)))) return ERR_CreateObject;
+      if (!(file = objFile::create::global(fl::Path(path), fl::Flags(FL::NEW|FL::WRITE)))) return ERR_CreateObject;
    }
 
    // Allocate PNG structures
@@ -607,17 +604,17 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
       goto exit;
    }
 
-   if ((Self->Flags & (PCF_ALPHA|PCF_MASK)) and (!Self->Mask)) {
+   if (((Self->Flags & (PCF::ALPHA|PCF::MASK)) != PCF::NIL) and (!Self->Mask)) {
       log.warning("Illegal use of the ALPHA/MASK flags without an accompanying mask bitmap.");
-      Self->Flags &= ~(PCF_ALPHA|PCF_MASK);
+      Self->Flags &= ~(PCF::ALPHA|PCF::MASK);
    }
 
    if (bmp->AmtColours > 256) {
-      if (bmp->Flags & BMF_ALPHA_CHANNEL) {
+      if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
          log.trace("Saving as 32-bit alpha.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
-      else if (Self->Flags & PCF_ALPHA) {
+      else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          log.trace("Saving with alpha-mask.");
          png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
       }
@@ -670,7 +667,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
    // Write the image data to the PNG file
 
    if ((bmp->BitsPerPixel IS 8) or (bmp->BitsPerPixel IS 24)) {
-      if (Self->Flags & PCF_ALPHA) {
+      if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UBYTE *data = bmp->Data;
@@ -684,7 +681,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = mask[maskx++];  // Alpha
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -698,7 +695,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
       }
    }
    else if (bmp->BitsPerPixel IS 32) {
-      if (bmp->Flags & BMF_ALPHA_CHANNEL) {
+      if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UBYTE *data = bmp->Data;
@@ -710,12 +707,12 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = data[x+3];  // Alpha
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
       }
-      else if (Self->Flags & PCF_ALPHA) {
+      else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          UBYTE row[bmp->Width * 4];
 
          row_pointers = row;
@@ -730,7 +727,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];     // Red
                row[i++] = mask[maskx++]; // Alpha
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -747,14 +744,14 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
       }
    }
    else if (bmp->BytesPerPixel IS 2) {
-      if (Self->Flags & PCF_ALPHA) {
+      if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          UBYTE row[bmp->Width * 4];
          row_pointers = row;
          UWORD *data = (UWORD *)bmp->Data;
@@ -768,7 +765,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
                row[i++] = bmp->unpackRed(data[x]);
                row[i++] = mask[maskx++];
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
@@ -786,7 +783,7 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
                row[i++] = bmp->unpackGreen(data[x]);
                row[i++] = bmp->unpackRed(data[x]);
             }
-            if (bmp->ColourSpace IS CS_LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
          }
@@ -800,10 +797,8 @@ static ERROR PIC_SaveImage(prvPicture *Self, struct acSaveImage *Args)
 exit:
    png_destroy_write_struct(&write_ptr, &info_ptr);
 
-   if ((Args) and (Args->DestID)) {
-      if (file) ReleaseObject(file);
-   }
-   else if (file) acFree(file);
+   if ((Args) and (Args->Dest));
+   else if (file) FreeResource(file);
 
    if (error) return log.warning(error);
    else return ERR_Okay;
@@ -815,7 +810,7 @@ SaveToObject: Saves the picture image to a data object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
+static ERROR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
    ERROR (**routine)(OBJECTPTR, APTR);
@@ -823,19 +818,19 @@ static ERROR PIC_SaveToObject(prvPicture *Self, struct acSaveToObject *Args)
    if ((Args->ClassID) and (Args->ClassID != ID_PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->getPtr(FID_ActionTable, &routine) IS ERR_Okay) and (routine)) {
-         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PIC_SaveToObject)) {
+         if ((routine[AC_SaveToObject]) and (routine[AC_SaveToObject] != (APTR)PICTURE_SaveToObject)) {
             return routine[AC_SaveToObject](Self, Args);
          }
-         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)PIC_SaveImage)) {
+         else if ((routine[AC_SaveImage]) and (routine[AC_SaveImage] != (APTR)PICTURE_SaveImage)) {
             struct acSaveImage saveimage;
-            saveimage.DestID = Args->DestID;
+            saveimage.Dest = Args->Dest;
             return routine[AC_SaveImage](Self, &saveimage);
          }
          else return log.warning(ERR_NoSupport);
       }
       else return log.warning(ERR_GetField);
    }
-   else return acSaveImage(Self, Args->DestID, Args->ClassID);
+   else return acSaveImage(Self, Args->Dest, Args->ClassID);
 }
 
 /*********************************************************************************************************************
@@ -844,7 +839,7 @@ Seek: Seeks to a new read/write position within a Picture object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PIC_Seek(prvPicture *Self, struct acSeek *Args)
+static ERROR PICTURE_Seek(extPicture *Self, struct acSeek *Args)
 {
    return Action(AC_Seek, Self->Bitmap, Args);
 }
@@ -855,7 +850,7 @@ Write: Writes raw image data to a picture object.
 -END-
 *********************************************************************************************************************/
 
-static ERROR PIC_Write(prvPicture *Self, struct acWrite *Args)
+static ERROR PICTURE_Write(extPicture *Self, struct acWrite *Args)
 {
    return Action(AC_Write, Self->Bitmap, Args);
 }
@@ -867,13 +862,13 @@ Author: The name of the person or company that created the image.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Author(prvPicture *Self, STRING *Value)
+static ERROR GET_Author(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvAuthor;
    return ERR_Okay;
 }
 
-static ERROR SET_Author(prvPicture *Self, CSTRING Value)
+static ERROR SET_Author(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvAuthor, sizeof(Self->prvAuthor));
    else Self->prvAuthor[0] = 0;
@@ -901,13 +896,13 @@ example "Copyright H.R. Giger (c) 1992."
 
 *********************************************************************************************************************/
 
-static ERROR GET_Copyright(prvPicture *Self, STRING *Value)
+static ERROR GET_Copyright(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvCopyright;
    return ERR_Okay;
 }
 
-static ERROR SET_Copyright(prvPicture *Self, CSTRING Value)
+static ERROR SET_Copyright(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvCopyright, sizeof(Self->prvCopyright));
    else Self->prvCopyright[0] = 0;
@@ -923,7 +918,7 @@ description.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Description(prvPicture *Self, STRING *Value)
+static ERROR GET_Description(extPicture *Self, STRING *Value)
 {
    if (Self->prvDescription) {
       *Value = Self->prvDescription;
@@ -935,7 +930,7 @@ static ERROR GET_Description(prvPicture *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Description(prvPicture *Self, CSTRING Value)
+static ERROR SET_Description(extPicture *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -955,7 +950,7 @@ If it is necessary to associate a disclaimer with an image, the legal text may b
 
 *********************************************************************************************************************/
 
-static ERROR GET_Disclaimer(prvPicture *Self, STRING *Value)
+static ERROR GET_Disclaimer(extPicture *Self, STRING *Value)
 {
    if (Self->prvDisclaimer) {
       *Value = Self->prvDisclaimer;
@@ -967,7 +962,7 @@ static ERROR GET_Disclaimer(prvPicture *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Disclaimer(prvPicture *Self, CSTRING Value)
+static ERROR SET_Disclaimer(extPicture *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1017,7 +1012,7 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *********************************************************************************************************************/
 
-static ERROR GET_Header(prvPicture *Self, APTR *Value)
+static ERROR GET_Header(extPicture *Self, APTR *Value)
 {
    *Value = Self->prvHeader;
    return ERR_Okay;
@@ -1029,7 +1024,7 @@ Path: The location of source image data.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(prvPicture *Self, STRING *Value)
+static ERROR GET_Path(extPicture *Self, STRING *Value)
 {
    if (Self->prvPath) {
       *Value = Self->prvPath;
@@ -1041,7 +1036,7 @@ static ERROR GET_Path(prvPicture *Self, STRING *Value)
    }
 }
 
-static ERROR SET_Path(prvPicture *Self, CSTRING Value)
+static ERROR SET_Path(extPicture *Self, CSTRING Value)
 {
    pf::Log log;
 
@@ -1079,13 +1074,13 @@ Software: The name of the application that was used to draw the image.
 
 *********************************************************************************************************************/
 
-static ERROR GET_Software(prvPicture *Self, STRING *Value)
+static ERROR GET_Software(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvSoftware;
    return ERR_Okay;
 }
 
-static ERROR SET_Software(prvPicture *Self, CSTRING Value)
+static ERROR SET_Software(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvSoftware, sizeof(Self->prvSoftware));
    else Self->prvSoftware[0] = 0;
@@ -1098,13 +1093,13 @@ Title: The title of the image.
 -END-
 *********************************************************************************************************************/
 
-static ERROR GET_Title(prvPicture *Self, STRING *Value)
+static ERROR GET_Title(extPicture *Self, STRING *Value)
 {
    *Value = Self->prvTitle;
    return ERR_Okay;
 }
 
-static ERROR SET_Title(prvPicture *Self, CSTRING Value)
+static ERROR SET_Title(extPicture *Self, CSTRING Value)
 {
    if (Value) StrCopy(Value, Self->prvTitle, sizeof(Self->prvTitle));
    else Self->prvTitle[0] = 0;
@@ -1189,7 +1184,7 @@ ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
 
 //********************************************************************************************************************
 
-static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
+static ERROR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int ColourType, png_structp ReadPtr,
                             png_infop InfoPtr, png_uint_32 PngWidth, png_uint_32 PngHeight)
 {
    ERROR error;
@@ -1210,11 +1205,11 @@ static ERROR decompress_png(prvPicture *Self, objBitmap *Bitmap, int BitDepth, i
    LONG rowsize = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR_Okay) return error;
    if (!Bitmap->initialised()) {
-      if ((error = acInit(Bitmap)) != ERR_Okay) return error;
+      if ((error = InitObject(Bitmap)) != ERR_Okay) return error;
    }
-   if ((error = AllocMemory(rowsize, MEM_DATA|MEM_NO_CLEAR, &row)) != ERR_Okay) return error;
+   if ((error = AllocMemory(rowsize, MEM::DATA|MEM::NO_CLEAR, &row)) != ERR_Okay) return error;
 
-   if (Self->Flags & PCF_RESIZE) {
+   if ((Self->Flags & PCF::RESIZE) != PCF::NIL) {
       DOUBLE fx, fy;
       LONG isrcy, isrcx, ify;
 
@@ -1390,20 +1385,12 @@ exit:
 
 //********************************************************************************************************************
 
-static const FieldDef clFlags[] = {
-   { "ResizeX",   PCF_RESIZE_X   }, { "ResizeY", PCF_RESIZE_Y },
-   { "Resize",    PCF_RESIZE     }, { "Stretch", PCF_RESIZE },
-   { "New",       PCF_NEW        }, { "Lazy",    PCF_LAZY },
-   { "Alpha",     PCF_ALPHA      },
-   { "NoPalette", PCF_NO_PALETTE }, { "ForceAlpha32", PCF_FORCE_ALPHA_32 },
-   { "Scalable",  PCF_SCALABLE   },
-   { NULL, 0 }
-};
+#include "picture_def.c"
 
 static const FieldArray clFields[] = {
    { "Bitmap",        FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
    { "Mask",          FDF_INTEGRAL|FDF_R, NULL, NULL, ID_BITMAP },
-   { "Flags",         FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clFlags },
+   { "Flags",         FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clPictureFlags },
    { "DisplayHeight", FDF_LONG|FDF_RW },
    { "DisplayWidth",  FDF_LONG|FDF_RW },
    { "Quality",       FDF_LONG|FDF_RW },
@@ -1422,34 +1409,19 @@ static const FieldArray clFields[] = {
    END_FIELD
 };
 
-static const ActionArray clActions[] = {
-   { AC_Activate,      PIC_Activate },
-   { AC_Free,          PIC_Free },
-   { AC_NewObject,     PIC_NewObject },
-   { AC_Init,          PIC_Init },
-   { AC_Query,         PIC_Query },
-   { AC_Read,          PIC_Read },
-   { AC_Refresh,       PIC_Refresh },
-   { AC_SaveImage,     PIC_SaveImage },
-   { AC_SaveToObject,  PIC_SaveToObject },
-   { AC_Seek,          PIC_Seek },
-   { AC_Write,         PIC_Write },
-   { 0, NULL }
-};
-
 static ERROR create_picture_class(void)
 {
    clPicture = objMetaClass::create::global(
       fl::ClassVersion(VER_PICTURE),
       fl::Name("Picture"),
-      fl::Category(CCF_GRAPHICS),
-      fl::Flags(CLF_PROMOTE_INTEGRAL),
+      fl::Category(CCF::GRAPHICS),
+      fl::Flags(CLF::PROMOTE_INTEGRAL),
       fl::FileExtension("*.png"),
       fl::FileDescription("PNG Picture"),
       fl::FileHeader("[0:$89504e470d0a1a0a]"),
-      fl::Actions(clActions),
+      fl::Actions(clPictureActions),
       fl::Fields(clFields),
-      fl::Size(sizeof(prvPicture)),
+      fl::Size(sizeof(extPicture)),
       fl::Path(MOD_PATH));
 
    return clPicture ? ERR_Okay : ERR_AddClass;

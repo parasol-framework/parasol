@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>SVG</name>
+    <type>class</type>
+    <module>SVG</module>
+    <comment>Provides support for parsing and rendering SVG files.</comment>
+    <version>1</version>
+    <id>0b88abb5</id>
+    <idstring>ID_SVG</idstring>
+    <category>GUI</category>
+    <include>modules/svg.h</include>
+    <copyright>Paul Manias © 2010-2023</copyright>
+    <description>
+<p>The SVG class provides support for parsing SVG statements into native <class name="Vector">Vector</class> objects and related definitions. For low-level vector programming, consider using the <class name="Vector">Vector</class> class directly, or use the SVG class to parse an SVG script and then access the <field>Viewport</field> field to perform transforms and manipulation of the vector group.</p>
+<p>Please refer to the W3C documentation on SVG for a complete reference to the attributes that can be applied to SVG elements.  Unfortunately we do not support all SVG capabilities at this time, but support will improve in future.</p></description>
+    <source>
+      <file>class_svg.cpp</file>
+    </source>
+  </info>
+
+  <actions>
+    <action>
+      <name>Activate</name>
+      <comment>Initiates playback of SVG animations.</comment>
+      <description>
+<p>SVG documents that use animation features will remain static until they are activated with this action.  The animation code will be processed in the background at the pre-defined <field>FrameRate</field>.  The client may hook into the animation cycle by setting the <field>FrameCallback</field> with a suitable function.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>Deactivate</name>
+      <comment>Stops all playback of SVG animations.</comment>
+    </action>
+
+    <action>
+      <name>Init</name>
+      <comment>Initialise the SVG object.</comment>
+      <description>
+<p>Initialising an SVG object will load an SVG source file if a <field>Path</field> has been specified.  The default behaviour is to generate the content in a local <field>Scene</field> object, or alternatively the content can be redirected to an external <class name="VectorScene">VectorScene</class> referred to by <field>Target</field>.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>SaveImage</name>
+      <comment>Saves the SVG document as a PNG image.</comment>
+      <description>
+<p>This action will render the SVG document to a bitmap and save the resulting image.  The size of the image is determined by the PageWidth and PageHeight of the <field>Scene</field>, or if not defined then the default of 1920x1080 is applied.</p>
+<p>The image will be saved in PNG format by default, but can be changed by specifying an alternate ClassID.  PNG is recommended in particular because it supports an alpha channel.</p>
+      </description>
+    </action>
+
+    <action>
+      <name>SaveToObject</name>
+      <comment>Saves the SVG document to a data object.</comment>
+    </action>
+
+  </actions>
+
+  <methods>
+    <method>
+      <name>Render</name>
+      <comment>Render the scene to a target Bitamp.</comment>
+      <prototype>ERROR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>
+      <input>
+        <param type="objBitmap *" name="Bitmap">The target bitmap.</param>
+        <param type="LONG" name="X">Target X coordinate.</param>
+        <param type="LONG" name="Y">Target Y coordinate.</param>
+        <param type="LONG" name="Width">Target page width.</param>
+        <param type="LONG" name="Height">Target page height.</param>
+      </input>
+      <description>
+<p>This method will render the vector scene directly to a target bitmap at coordinates (X,Y) and scaled to the desired (Width,Height).</p>
+      </description>
+    </method>
+
+  </methods>
+
+  <fields>
+    <field>
+      <name>Flags</name>
+      <comment>Optional flags.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="SVF">SVF</type>
+      <description>
+<types lookup="SVF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Frame</name>
+      <comment>Forces the graphics to be drawn to a specific frame.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+      <description>
+<p>If this field is set to a valid frame number, the vector graphics will only be drawn when the frame of the container matches the Frame number in this field.  When set to 0 (the default), the Vector will be drawn regardless of the container's frame number.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FrameCallback</name>
+      <comment>Optional callback that is triggered whenever a new frame is prepared.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>FUNCTION</type>
+      <description>
+<p>Referencing a function in this field will allow the client to receive a callback after the preparation of each animation frame (if the SVG object is being animated).  This feature is commonly used to render the SVG document to a target <class name="Bitmap">Bitmap</class>.</p>
+<p>Note that if the SVG document does not make use of any animation features then the function will never be called.</p>
+<p>The function prototype is <code>void Function(*SVG)</code>.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FrameRate</name>
+      <comment>The maximum frame rate to use when animating a vector scene.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>INT</type>
+      <description>
+<p>This field defines the maximum frame rate that will be used when a vector scene is animated.  It is recommended that a value between 50 and 100 is used.  It is important to note that while higher frame rates produce smoother animations, they also increase the CPU usage proportionately.  For instance, a frame rate of 100 will use the CPU twice as much as a frame rate of 50.  This will subsequently have an effect on power consumption.</p>
+<p>The recommended frame rate is 60, as this will match the majority of modern displays.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Path</name>
+      <comment>The location of the source SVG data.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+      <description>
+<p>SVG data can be loaded from a file source by setting the Path field to an SVG file.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Scene</name>
+      <comment>The VectorScene that manages the Target object is referenced here.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>The Scene is a read-only field that assists in quickly finding the <class name="VectorScene">VectorScene</class> that owns the <field>Target</field> object.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Target</name>
+      <comment>The root Viewport that is generated during SVG initialisation can be created as a child of this target object.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>During the initialisation of an SVG object, a VectorViewport will be created that hosts the SVG's vector objects.  The target of this VectorViewport can be specified here, conditional on that object residing within a <class name="VectorScene">VectorScene</class>, or is a VectorScene itself.</p>
+<p>An attempt will be made to find the new target's parent VectorScene.  If none is identified, an error will be returned and no further action is taken.</p>
+<p>If a SVG object is initialised with no Target being defined, a <class name="VectorScene">VectorScene</class> will be created automatically and referenced by the Target field.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Title</name>
+      <comment>The title of the SVG document.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>The title of an SVG document is declared with a title element that can embedded anywhere in the document.  In cases where a title has been specified, it will be possible to read it from this field.  If no title is in the document then NULL will be returned.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Viewport</name>
+      <comment>Returns the first viewport created by an SVG document.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>This field simplifies the process of finding the first <class name="VectorViewport">VectorViewport</class> that was created by a loaded SVG document.  NULL is returned if an SVG document has not been successfully parsed yet.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="SVF" comment="SVG flags.">
+      <const name="ALPHA">Generate an alpha channel in the rendered image.</const>
+      <const name="AUTOSCALE">In auto-resize mode, vector dimensions are scaled to the width and height of the vector page.  PageWidth and PageHeight must be set in Vector for this.</const>
+    </constants>
+
+  </types>
+  <structs>
+  </structs>
+</book>

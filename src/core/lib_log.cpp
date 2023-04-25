@@ -103,7 +103,7 @@ if (!NewObject(ID_DISPLAY, 0, &display)) {
    if (!display->init(display)) {
       LogF("Demo","The width of the display is: %d", display-&gt;Width);
    }
-   acFree(display);
+   FreeResource(display);
 }
 </pre>
 
@@ -128,12 +128,12 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
    if (Header) {
       if (*Header IS '~') { // ~ is the create-branch code
-         new_branch = TRUE;
+         new_branch = true;
          msgstate = MS_FUNCTION;
          Header++;
       }
       else {
-         new_branch = FALSE;
+         new_branch = false;
          msgstate = MS_MSG;
       }
 
@@ -196,7 +196,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
    else {
       if (glLogLevel < 3) return;
       msglevel = 3;
-      new_branch = FALSE;
+      new_branch = false;
       msgstate = MS_NONE;
    }
 
@@ -205,13 +205,13 @@ void LogF(CSTRING Header, CSTRING Format, ...)
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
 
       #if defined(__unix__) and !defined(__ANDROID__)
-         BYTE flushdbg;
+         bool flushdbg;
          if (glLogLevel >= 3) {
-            flushdbg = TRUE;
-            if (tlPublicLockCount) flushdbg = FALSE;
+            flushdbg = true;
+            if (tlPublicLockCount) flushdbg = false;
             if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
          }
-         else flushdbg = FALSE;
+         else flushdbg = false;
       #endif
 
       #ifdef ESC_OUTPUT
@@ -229,15 +229,10 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
       auto ctx = tlContext;
       auto obj = tlContext->object();
-      if (ctx->Action) {
-         if (ctx->Action < 0) {
-            auto mc = obj->Class;
-            if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
-               action = mc->Methods[-ctx->Action].Name;
-            }
-            else action = "Method";
-         }
-         else action = ActionTable[ctx->Action].Name;
+      if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
+      else if (ctx->Action < 0) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+         else action = "Method";
       }
       else action = "App";
 
@@ -336,7 +331,7 @@ exit:
 
 -FUNCTION-
 VLogF: Sends formatted messages to the standard log.
-ExtPrototype: int Flags, const char *Header, const char *Message, va_list Args
+ExtPrototype: VLF Flags, const char *Header, const char *Message, va_list Args
 Status: private
 
 Please refer to LogF().  This function is not intended for external use.
@@ -350,24 +345,24 @@ va_list Args: A va_list corresponding to the arguments referenced in Message.
 
 *********************************************************************************************************************/
 
-void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
+void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 {
-   if (tlLogStatus <= 0) { if (Flags & VLF_BRANCH) tlDepth++; return; }
+   if (tlLogStatus <= 0) { if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++; return; }
 
-   static const ULONG log_levels[10] = {
-      VLF_CRITICAL,
-      VLF_ERROR|VLF_CRITICAL,
-      VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_TRACE|VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL,
-      VLF_TRACE|VLF_DEBUG|VLF_EXTAPI|VLF_API|VLF_INFO|VLF_WARNING|VLF_ERROR|VLF_CRITICAL
+   static const VLF log_levels[10] = {
+      VLF::CRITICAL,
+      VLF::ERROR|VLF::CRITICAL,
+      VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL,
+      VLF::TRACE|VLF::DEBUG|VLF::EXTAPI|VLF::API|VLF::INFO|VLF::WARNING|VLF::ERROR|VLF::CRITICAL
    };
 
-   if (Flags & VLF_CRITICAL) { // Print the message irrespective of the log level
+   if ((Flags & VLF::CRITICAL) != VLF::NIL) { // Print the message irrespective of the log level
       #ifdef __ANDROID__
          __android_log_vprint(ANDROID_LOG_ERROR, Header ? Header : "Parasol", Message, Args);
       #else
@@ -393,7 +388,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          fprintf(stderr, "\n");
       #endif
 
-      if (Flags & VLF_BRANCH) tlDepth++;
+      if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
       return;
    }
 
@@ -401,8 +396,8 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
    if (level > 9) level = 9;
    else if (level < 0) level = 0;
 
-   if (((log_levels[level] & Flags) != 0) or
-       ((glLogLevel > 1) and (Flags & (VLF_WARNING|VLF_ERROR|VLF_CRITICAL))))  {
+   if (((log_levels[level] & Flags) != VLF::NIL) or
+       ((glLogLevel > 1) and ((Flags & (VLF::WARNING|VLF::ERROR|VLF::CRITICAL)) != VLF::NIL)))  {
       CSTRING name, action;
       BYTE msgstate;
       BYTE adjust = 0;
@@ -411,24 +406,24 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       if ((Header) and (!*Header)) Header = NULL;
 
-      if (Flags & (VLF_BRANCH|VLF_FUNCTION)) msgstate = MS_FUNCTION;
+      if ((Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) msgstate = MS_FUNCTION;
       else msgstate = MS_MSG;
 
       //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
       //fprintf(stderr, "%p ", ctx);
 
       #if defined(__unix__) and !defined(__ANDROID__)
-         BYTE flushdbg;
+         bool flushdbg;
          if (glLogLevel >= 3) {
-            flushdbg = TRUE;
-            if (tlPublicLockCount) flushdbg = FALSE;
+            flushdbg = true;
+            if (tlPublicLockCount) flushdbg = false;
             if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
          }
-         else flushdbg = FALSE;
+         else flushdbg = false;
       #endif
 
       #ifdef ESC_OUTPUT // Highlight errors if the log output is crowded
-         if ((glLogLevel > 2) and (Flags & (VLF_ERROR|VLF_WARNING))) {
+         if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) {
             #ifdef _WIN32
                fprintf(stderr, "!");
                adjust = 1;
@@ -442,15 +437,10 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       auto ctx = tlContext;
       auto obj = tlContext->object();
-      if (ctx->Action) {
-         if (ctx->Action < 0) {
-            auto mc = obj->Class;
-            if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
-               action = mc->Methods[-ctx->Action].Name;
-            }
-            else action = "Method";
-         }
-         else action = ActionTable[ctx->Action].Name;
+      if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
+      else if (ctx->Action < 0) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+         else action = "Method";
       }
       else action = "App";
 
@@ -517,7 +507,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
          vfprintf(stderr, Message, Args);
 
          #if defined(ESC_OUTPUT) and !defined(_WIN32)
-            if ((glLogLevel > 2) and (Flags & (VLF_ERROR|VLF_WARNING))) fprintf(stderr, "\033[0m");
+            if ((glLogLevel > 2) and ((Flags & (VLF::ERROR|VLF::WARNING)) != VLF::NIL)) fprintf(stderr, "\033[0m");
          #endif
 
          fprintf(stderr, "\n");
@@ -532,7 +522,7 @@ void VLogF(LONG Flags, CSTRING Header, CSTRING Message, va_list Args)
       #endif
    }
 
-   if (Flags & VLF_BRANCH) tlDepth++;
+   if ((Flags & VLF::BRANCH) != VLF::NIL) tlDepth++;
 }
 
 /*********************************************************************************************************************
@@ -563,10 +553,10 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
    // Issue a LogReturn() call if the error code is negative
 
-   BYTE step = FALSE;
+   bool step = false;
    if (Code < 0) {
       Code = -Code;
-      step = TRUE;
+      step = true;
    }
 
    if (glLogLevel < 2) {
@@ -585,15 +575,10 @@ ERROR FuncError(CSTRING Header, ERROR Code)
       auto ctx = tlContext;
       auto obj = tlContext->object();
       if (!Header) {
-         if (ctx->Action) {
-            if (ctx->Action < 0) {
-               auto mc = obj->Class;
-               if ((mc) and (mc->Methods) and (-ctx->Action < mc->TotalMethods)) {
-                  Header = mc->Methods[-ctx->Action].Name;
-               }
-               else Header = "Method";
-            }
-            else Header = ActionTable[ctx->Action].Name;
+         if (ctx->Action > 0) Header = ActionTable[ctx->Action].Name;
+         else if (ctx->Action < 0) {
+            if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+            else Header = "Method";
          }
          else Header = "Function";
       }

@@ -19,6 +19,93 @@ class objProxy;
 class objNetLookup;
 class objNetSocket;
 
+// Address types for the IPAddress structure.
+
+enum class IPADDR : LONG {
+   NIL = 0,
+   V4 = 0,
+   V6 = 1,
+};
+
+enum class NSF : ULONG {
+   NIL = 0,
+   SERVER = 0x00000001,
+   SSL = 0x00000002,
+   MULTI_CONNECT = 0x00000004,
+   SYNCHRONOUS = 0x00000008,
+   LOG_ALL = 0x00000010,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(NSF)
+
+// Options for NetLookup
+
+enum class NLF : ULONG {
+   NIL = 0,
+   NO_CACHE = 0x00000001,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(NLF)
+
+// NetSocket states
+
+enum class NTC : LONG {
+   NIL = 0,
+   DISCONNECTED = 0,
+   CONNECTING = 1,
+   CONNECTING_SSL = 2,
+   CONNECTED = 3,
+};
+
+// Tags for SetSSL().
+
+enum class NSL : LONG {
+   NIL = 0,
+   CONNECT = 1,
+};
+
+// Internal identifiers for the NetMsg structure.
+
+#define NETMSG_SIZE_LIMIT 1048576
+#define NETMSG_MAGIC 941629299
+#define NETMSG_MAGIC_TAIL 2198696884
+
+// These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
+
+#define SCV_OK 0
+#define SCV_UNABLE_TO_GET_ISSUER_CERT 2
+#define SCV_UNABLE_TO_GET_CRL 3
+#define SCV_UNABLE_TO_DECRYPT_CERT_SIGNATURE 4
+#define SCV_UNABLE_TO_DECRYPT_CRL_SIGNATURE 5
+#define SCV_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY 6
+#define SCV_CERT_SIGNATURE_FAILURE 7
+#define SCV_CRL_SIGNATURE_FAILURE 8
+#define SCV_CERT_NOT_YET_VALID 9
+#define SCV_CERT_HAS_EXPIRED 10
+#define SCV_CRL_NOT_YET_VALID 11
+#define SCV_CRL_HAS_EXPIRED 12
+#define SCV_ERROR_IN_CERT_NOT_BEFORE_FIELD 13
+#define SCV_ERROR_IN_CERT_NOT_AFTER_FIELD 14
+#define SCV_ERROR_IN_CRL_LAST_UPDATE_FIELD 15
+#define SCV_ERROR_IN_CRL_NEXT_UPDATE_FIELD 16
+#define SCV_OUT_OF_MEM 17
+#define SCV_DEPTH_ZERO_SELF_SIGNED_CERT 18
+#define SCV_SELF_SIGNED_CERT_IN_CHAIN 19
+#define SCV_UNABLE_TO_GET_ISSUER_CERT_LOCALLY 20
+#define SCV_UNABLE_TO_VERIFY_LEAF_SIGNATURE 21
+#define SCV_CERT_CHAIN_TOO_LONG 22
+#define SCV_CERT_REVOKED 23
+#define SCV_INVALID_CA 24
+#define SCV_PATH_LENGTH_EXCEEDED 25
+#define SCV_INVALID_PURPOSE 26
+#define SCV_CERT_UNTRUSTED 27
+#define SCV_CERT_REJECTED 28
+#define SCV_SUBJECT_ISSUER_MISMATCH 29
+#define SCV_AKID_SKID_MISMATCH 30
+#define SCV_AKID_ISSUER_SERIAL_MISMATCH 31
+#define SCV_KEYUSAGE_NO_CERTSIGN 32
+#define SCV_APPLICATION_VERIFICATION 50
+
 
 #ifdef ENABLE_SSL
 #include "openssl/ssl.h"
@@ -33,43 +120,11 @@ typedef LONG SOCKET_HANDLE;
 #else
 #error "No support for this platform"
 #endif
-// Address types for the IPAddress structure.
-
-#define IPADDR_V4 0
-#define IPADDR_V6 1
-
 struct IPAddress {
-   ULONG Data[4];    // 128-bit array for supporting both V4 and V6 IP addresses.
-   LONG  Type;       // Identifies the address Data value as a V4 or V6 address type.
-   LONG  Pad;        // Unused padding for 64-bit alignment
+   ULONG  Data[4];   // 128-bit array for supporting both V4 and V6 IP addresses.
+   IPADDR Type;      // Identifies the address Data value as a V4 or V6 address type.
+   LONG   Pad;       // Unused padding for 64-bit alignment
 };
-
-#define NSF_SERVER 0x00000001
-#define NSF_SSL 0x00000002
-#define NSF_MULTI_CONNECT 0x00000004
-#define NSF_SYNCHRONOUS 0x00000008
-#define NSF_DEBUG 0x00000010
-
-// Options for NetLookup
-
-#define NLF_NO_CACHE 0x00000001
-
-// NetSocket states
-
-#define NTC_DISCONNECTED 0
-#define NTC_CONNECTING 1
-#define NTC_CONNECTING_SSL 2
-#define NTC_CONNECTED 3
-
-// Tags for SetSSL().
-
-#define NSL_CONNECT 1
-
-// Internal identifiers for the NetMsg structure.
-
-#define NETMSG_SIZE_LIMIT 1048576
-#define NETMSG_MAGIC 941629299
-#define NETMSG_MAGIC_TAIL 2198696884
 
 struct NetQueue {
    ULONG Index;    // The current read/write position within the buffer
@@ -110,7 +165,7 @@ struct csReadClientMsg { APTR Message; LONG Length; LONG Progress; LONG CRC;  };
 struct csWriteClientMsg { APTR Message; LONG Length;  };
 
 INLINE ERROR csReadClientMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
-   struct csReadClientMsg args = { 0, 0, 0, 0 };
+   struct csReadClientMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_csReadClientMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
@@ -144,7 +199,7 @@ class objClientSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
@@ -184,6 +239,9 @@ class objClientSocket : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
 };
 
 // Proxy class definition
@@ -231,8 +289,71 @@ class objProxy : public BaseClass {
 
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
    inline ERROR enable() { return Action(AC_Enable, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    inline ERROR saveSettings() { return Action(AC_SaveSettings, this, NULL); }
+
+   // Customised field setting
+
+   template <class T> inline ERROR setNetworkFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setGatewayFilter(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setUsername(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setPassword(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setProxyName(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setServer(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPort(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[8];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setServerPort(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setEnabled(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setRecord(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 // NetLookup class definition
@@ -280,11 +401,30 @@ class objNetLookup : public BaseClass {
    using create = pf::Create<objNetLookup>;
 
    LARGE UserData;    // Optional user data storage
-   LONG  Flags;       // Optional flags
+   NLF   Flags;       // Optional flags
 
    // Action stubs
 
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERROR setUserData(const LARGE Value) {
+      this->UserData = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const NLF Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
 // NetSocket class definition
@@ -328,7 +468,7 @@ INLINE ERROR nsDisconnectSocket(APTR Ob, objClientSocket * Socket) {
 }
 
 INLINE ERROR nsReadMsg(APTR Ob, APTR * Message, LONG * Length, LONG * Progress, LONG * CRC) {
-   struct nsReadMsg args = { 0, 0, 0, 0 };
+   struct nsReadMsg args = { (APTR)0, (LONG)0, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_nsReadMsg, (OBJECTPTR)Ob, &args);
    if (Message) *Message = args.Message;
    if (Length) *Length = args.Length;
@@ -353,10 +493,10 @@ class objNetSocket : public BaseClass {
    struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   UserData;               // A user-defined pointer that can be useful in action notify events.
    STRING Address;                // An IP address or domain name to connect to.
-   LONG   State;                  // The current connection state of the netsocket object.
+   NTC    State;                  // The current connection state of the netsocket object.
    ERROR  Error;                  // Information about the last error that occurred during a NetSocket operation
    LONG   Port;                   // The port number to use for initiating a connection.
-   LONG   Flags;                  // Optional flags.
+   NSF    Flags;                  // Optional flags.
    LONG   TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
    LONG   Backlog;                // The maximum number of connections that can be queued against the socket.
    LONG   ClientLimit;            // The maximum number of clients that can be connected to a server socket.
@@ -364,12 +504,12 @@ class objNetSocket : public BaseClass {
 
    // Action stubs
 
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
-   inline ERROR init() { return Action(AC_Init, this, NULL); }
+   inline ERROR init() { return InitObject(this); }
    template <class T, class U> ERROR read(APTR Buffer, T Size, U *Result) {
       static_assert(std::is_integral<U>::value, "Result value must be an integer type");
       static_assert(std::is_integral<T>::value, "Size value must be an integer type");
@@ -409,49 +549,84 @@ class objNetSocket : public BaseClass {
       if (!Action(AC_Write, this, &write)) return write.Result;
       else return 0;
    }
+
+   // Customised field setting
+
+   inline ERROR setUserData(APTR Value) {
+      this->UserData = Value;
+      return ERR_Okay;
+   }
+
+   template <class T> inline ERROR setAddress(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[5];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   inline ERROR setState(const NTC Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[4];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setPort(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Port = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const NSF Value) {
+      this->Flags = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBacklog(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->Backlog = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setClientLimit(const LONG Value) {
+      this->ClientLimit = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setMsgLimit(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->MsgLimit = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSocketHandle(APTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08000500, Value, 1);
+   }
+
+   inline ERROR setFeedback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setIncoming(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   inline ERROR setOutgoing(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
 };
 
-// These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
-
-#define SCV_OK 0
-#define SCV_UNABLE_TO_GET_ISSUER_CERT 2
-#define SCV_UNABLE_TO_GET_CRL 3
-#define SCV_UNABLE_TO_DECRYPT_CERT_SIGNATURE 4
-#define SCV_UNABLE_TO_DECRYPT_CRL_SIGNATURE 5
-#define SCV_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY 6
-#define SCV_CERT_SIGNATURE_FAILURE 7
-#define SCV_CRL_SIGNATURE_FAILURE 8
-#define SCV_CERT_NOT_YET_VALID 9
-#define SCV_CERT_HAS_EXPIRED 10
-#define SCV_CRL_NOT_YET_VALID 11
-#define SCV_CRL_HAS_EXPIRED 12
-#define SCV_ERROR_IN_CERT_NOT_BEFORE_FIELD 13
-#define SCV_ERROR_IN_CERT_NOT_AFTER_FIELD 14
-#define SCV_ERROR_IN_CRL_LAST_UPDATE_FIELD 15
-#define SCV_ERROR_IN_CRL_NEXT_UPDATE_FIELD 16
-#define SCV_OUT_OF_MEM 17
-#define SCV_DEPTH_ZERO_SELF_SIGNED_CERT 18
-#define SCV_SELF_SIGNED_CERT_IN_CHAIN 19
-#define SCV_UNABLE_TO_GET_ISSUER_CERT_LOCALLY 20
-#define SCV_UNABLE_TO_VERIFY_LEAF_SIGNATURE 21
-#define SCV_CERT_CHAIN_TOO_LONG 22
-#define SCV_CERT_REVOKED 23
-#define SCV_INVALID_CA 24
-#define SCV_PATH_LENGTH_EXCEEDED 25
-#define SCV_INVALID_PURPOSE 26
-#define SCV_CERT_UNTRUSTED 27
-#define SCV_CERT_REJECTED 28
-#define SCV_SUBJECT_ISSUER_MISMATCH 29
-#define SCV_AKID_SKID_MISMATCH 30
-#define SCV_AKID_ISSUER_SERIAL_MISMATCH 31
-#define SCV_KEYUSAGE_NO_CERTSIGN 32
-#define SCV_APPLICATION_VERIFICATION 50
-
-INLINE ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
+inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR UserData) {
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
    else return ERR_CreateObject;
 }
-extern struct NetworkBase *NetworkBase;
 struct NetworkBase {
    ERROR (*_StrToAddress)(CSTRING String, struct IPAddress * Address);
    CSTRING (*_AddressToStr)(struct IPAddress * IPAddress);
@@ -463,6 +638,7 @@ struct NetworkBase {
 };
 
 #ifndef PRV_NETWORK_MODULE
+extern struct NetworkBase *NetworkBase;
 inline ERROR netStrToAddress(CSTRING String, struct IPAddress * Address) { return NetworkBase->_StrToAddress(String,Address); }
 inline CSTRING netAddressToStr(struct IPAddress * IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
 inline ULONG netHostToShort(ULONG Value) { return NetworkBase->_HostToShort(Value); }

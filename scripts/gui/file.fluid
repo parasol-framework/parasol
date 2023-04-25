@@ -176,7 +176,7 @@ file.ui.copy = function(Source, Dest, Options)
                         response = 'cancel'
                      end
 
-                     mSys.SendMessage(0, break_dialog, MSF_WAIT, NULL, 0)
+                     mSys.SendMessage(break_dialog, MSF_WAIT, NULL, 0)
                   end
                })
 
@@ -221,7 +221,7 @@ file.ui.copy = function(Source, Dest, Options)
                title   = 'File Copy Failure',
                string  = message,
                feedback = function(Dialog, Response, State)
-                  mSys.SendMessage(0, break_dialog, MSF_WAIT, NULL, 0)
+                  mSys.SendMessage(break_dialog, MSF_WAIT, NULL, 0)
                end
             })
 
@@ -294,7 +294,7 @@ LONG feedback_delete(struct FileFeedback *Feedback)
          else if (response[0] IS '2') {
             // If the window was closed then continue deleting files, don't bother the user with further messages.
 
-            acFree(Self->ProgressDialog);
+            Self->ProgressDialog.free()
             Self->ProgressDialog = NULL;
             Self->TargetID = -1;
             return FFR_OKAY;

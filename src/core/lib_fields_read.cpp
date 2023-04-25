@@ -1,16 +1,15 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol Framework is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 -CATEGORY-
 Name: Fields
 -END-
 
-NOTE: The GetField range of functions do not provide any context management. This means that field routines that
-allocate memory will have their memory tracked back to the object that made the GetField() call.  They can overcome
-this by calling SetContext() themselves.
+NOTE: The GetField range of functions do not provide any context management (which is intentional). This means that
+field routines that allocate memory will have their memory tracked back to the object that made the GetField() call.
+They can overcome this by calling SetContext() themselves.
 
 *********************************************************************************************************************/
 
@@ -25,44 +24,51 @@ static THREADVAR char strGetField[400]; // Buffer for retrieving variable field 
 Field * lookup_id(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target)
 {
    auto mc = Object->ExtClass;
-   auto field = mc->prvFields;
+   auto &field = mc->FieldLookup;
    *Target = Object;
 
-   LONG floor = 0;
-   LONG ceiling = mc->TotalFields;
+   unsigned floor = 0;
+   unsigned ceiling = mc->BaseCeiling;
    while (floor < ceiling) {
-      LONG i = (floor + ceiling)>>1;
+      auto i = (floor + ceiling)>>1;
       if (field[i].FieldID < FieldID) floor = i + 1;
       else if (field[i].FieldID > FieldID) ceiling = i;
-      else {
-         while ((i > 0) and (field[i-1].FieldID IS FieldID)) i--;
-         return field+i;
+      else return &field[i];
+   }
+
+   // Sub-class fields (located in the upper register of FieldLookup)
+
+   if (mc->BaseCeiling < mc->FieldLookup.size()) {
+      unsigned floor = mc->BaseCeiling;
+      auto ceiling = mc->FieldLookup.size();
+      while (floor < ceiling) {
+         auto i = (floor + ceiling)>>1;
+         if (field[i].FieldID < FieldID) floor = i + 1;
+         else if (field[i].FieldID > FieldID) ceiling = i;
+         else return &field[i];
       }
    }
 
-   if (mc->Flags & CLF_PROMOTE_INTEGRAL) {
-      for (LONG i=0; mc->Children[i] != 0xff; i++) {
-         OBJECTPTR child;
-         if ((!copy_field_to_buffer(Object, mc->prvFields + mc->Children[i], FT_POINTER, &child, NULL, NULL)) and (child)) {
-            auto childclass = child->ExtClass;
-            field = childclass->prvFields;
+   // Integral field support.  NOTE: This is fallback mechanism.  The client can optimise their code by
+   // directly retrieving a pointer to the integral object and then reading the field value from that.
 
-            LONG floor = 0;
-            LONG ceiling = childclass->TotalFields;
-            while (floor < ceiling) {
-               LONG j = (floor + ceiling)>>1;
-               if (field[j].FieldID < FieldID) floor = j + 1;
-               else if (field[j].FieldID > FieldID) ceiling = j;
-               else {
-                  while ((j > 0) and (field[j-1].FieldID IS FieldID)) j--;
-                  *Target = child;
-                  return field+j;
-               }
-            }
+   for (unsigned i=0; mc->Integral[i] != 0xff; i++) {
+      OBJECTPTR child = *((OBJECTPTR *)(((BYTE *)Object) + mc->FieldLookup[mc->Integral[i]].Offset));
+      auto &field = child->ExtClass->FieldLookup;
+      unsigned floor = 0;
+      auto ceiling = child->ExtClass->BaseCeiling;
+      while (floor < ceiling) {
+         auto j = (floor + ceiling)>>1;
+         if (field[j].FieldID < FieldID) floor = j + 1;
+         else if (field[j].FieldID > FieldID) ceiling = j;
+         else {
+            *Target = child;
+            return &field[j];
          }
       }
    }
-   return 0;
+
+   return NULL;
 }
 
 /*********************************************************************************************************************
@@ -105,12 +111,14 @@ The FindField() function checks if an object supports a specified field by scann
 If a matching field is declared, its descriptor is returned.  For example:
 
 <pre>
-if ((field = FindField(Screen, FID_Width, NULL))) {
-   log.msg("The field name is \"%s\".", Field-&gt;Name);
+if (auto field = FindField(Screen, FID_Width, NULL)) {
+   log.msg("The field name is \"%s\".", field-&gt;Name);
 }
 </pre>
 
 The resulting Field structure is immutable.
+
+Note: To lookup the field definition of a MetaClass, use the @MetaClass.FindField() method.
 
 -INPUT-
 obj Object:   The target object.
@@ -121,23 +129,14 @@ uint FieldID: The 'FID' number to lookup.
 struct(Field): Returns a pointer to the field descriptor, otherwise NULL if not found.
 -END-
 
-Please note that FieldID is explicitly defined as 32-bit because using the FIELD type would make it 64-bit.
-
 *********************************************************************************************************************/
 
+// Please note that FieldID is explicitly defined as 32-bit because using the FIELD type would make it 64-bit.
 Field * FindField(OBJECTPTR Object, ULONG FieldID, OBJECTPTR *Target) // Read-only, thread safe function.
 {
-   if (!Object) return NULL;
-
    OBJECTPTR dummy;
    if (!Target) Target = &dummy;
-
-   /*if (Object->ClassID IS ID_METACLASS) {
-      // If FindField() is called on a meta-class, the fields declared for that class will be inspected rather than
-      // the metaclass itself.
-      return lookup_id_byclass((extMetaClass *)Object, FieldID, (extMetaClass **)Target);
-   }
-   else*/ return lookup_id(Object, FieldID, Target);
+   return lookup_id(Object, FieldID, Target);
 }
 
 /*********************************************************************************************************************
@@ -584,7 +583,7 @@ ERROR copy_field_to_buffer(OBJECTPTR Object, Field *Field, LONG DestFlags, APTR 
 
    if (Field->GetValue) {
       ObjectContext ctx(Object, 0, Field);
-      ERROR (*get_field)(APTR, APTR, LONG *) = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
+      auto get_field = (ERROR (*)(APTR, APTR, LONG *))Field->GetValue;
       ERROR error = get_field(Object, value, &array_size);
       if (error) return error;
       data = value;

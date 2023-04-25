@@ -65,7 +65,7 @@ static void * thread_entry(struct thread_info *info)
    LONG i;
    ERROR error;
 
-   info->index = GetResource(RES_THREAD_ID);
+   info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
    for (i=0; i < glLockAttempts; i++) {
@@ -86,7 +86,7 @@ static void * thread_entry(struct thread_info *info)
 
          if (glTerminateObject) {
             if (i >= glLockAttempts-2) {
-               acFree(glConfig);
+               FreeResource(glConfig);
                #ifdef QUICKLOCK
                prv_release(glConfig);
                #else
@@ -169,7 +169,7 @@ void program(void)
       pthread_join(glThreads[i].thread, NULL);
    }
 
-   acFree(glConfig);
+   FreeResource(glConfig);
 
    print("Testing complete.\n");
 }

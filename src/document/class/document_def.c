@@ -40,7 +40,7 @@ FDEF maHideIndex[] = { { "Name", FD_STR }, { 0, 0 } };
 FDEF maEdit[] = { { "Name", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maReadContent[] = { { "Format", FD_LONG }, { "Start", FD_LONG }, { "End", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clDocumentMethods[] = {
+static const struct MethodEntry clDocumentMethods[] = {
    { -1, (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct docFeedParser) },
    { -2, (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct docSelectLink) },
    { -3, (APTR)DOCUMENT_ApplyFontStyle, "ApplyFontStyle", maApplyFontStyle, sizeof(struct docApplyFontStyle) },

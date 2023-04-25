@@ -63,7 +63,7 @@ FDEF maDecompressObject[] = { { "Path", FD_STR }, { "Object", FD_OBJECTPTR }, { 
 FDEF maScan[] = { { "Folder", FD_STR }, { "Filter", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maFind[] = { { "Path", FD_STR }, { "Flags", FD_LONG }, { "CompressedItem:Item", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
 
-static const struct MethodArray clCompressionMethods[] = {
+static const struct MethodEntry clCompressionMethods[] = {
    { -1, (APTR)COMPRESSION_CompressBuffer, "CompressBuffer", maCompressBuffer, sizeof(struct cmpCompressBuffer) },
    { -2, (APTR)COMPRESSION_CompressFile, "CompressFile", maCompressFile, sizeof(struct cmpCompressFile) },
    { -3, (APTR)COMPRESSION_DecompressBuffer, "DecompressBuffer", maDecompressBuffer, sizeof(struct cmpDecompressBuffer) },

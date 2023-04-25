@@ -18,7 +18,7 @@ speed improvement to the user.
 
 Valid options to use when creating the dialog are as follows:
 
-   popover:    Place the dialog window over the referenced surface.
+   popOver:    Place the dialog window over the referenced surface.
    target:     Open the dialog window within the referenced surface.
    modal:      Set to true if the dialog box needs to be modal (prevents interaction with other windows).
    okText:     Text to display in the OK button.
@@ -128,7 +128,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       refreshGuidelines()
 
       if self.exampleText then
-         self.exampleText.acFree()
+         self.exampleText.free()
       end
 
       self.exampleText = self.examplePage.new('VectorText', {
@@ -227,7 +227,7 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
       maxHeight    = 800,
       quit         = false,
       center       = true,
-      popover      = lOptions.popover,
+      popOver      = lOptions.popOver,
       parent       = lOptions.target,
       icon         = 'items/font',
       title        = nz(lOptions.title, 'Select a font'),
@@ -436,7 +436,7 @@ end
       local state = getExecutionState()
       if (state.inRequire != true) then
          local dlg = font.dialog({
-            popover    = arg('popover'),
+            popOver    = arg('popOver'),
             target     = arg('target'),
             modal      = arg('modal'),
             okText     = arg('okText'),

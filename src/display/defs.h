@@ -98,6 +98,8 @@
 #define PI (3.141592653589793238462643383279f)
 #endif
 
+#define ALIGN32(a) (((a) + 3) & (~3))
+
 #define SURFACE_READ      (0x0001)   // Read access
 #define SURFACE_WRITE     (0x0002)   // Write access
 #define SURFACE_READWRITE (SURFACE_READ|SURFACE_WRITE)
@@ -106,7 +108,8 @@
 #include <parasol/modules/xml.h>
 #include <parasol/linear_rgb.h>
 
-#define URF_REDRAWS_CHILDREN     0x00000001
+using namespace pf;
+class extBitmap;
 
 #define UpdateSurfaceRecord(a) update_surface_copy(a)
 
@@ -118,7 +121,7 @@ struct SurfaceRecord {
    OBJECTID DisplayID;     // Display
    OBJECTID RootID;        // RootLayer
    OBJECTID PopOverID;
-   LONG     Flags;         // Surface flags (RNF_VISIBLE etc)
+   RNF      Flags;         // Surface flags (RNF::VISIBLE etc)
    LONG     X;             // Horizontal coordinate
    LONG     Y;             // Vertical coordinate
    LONG     Width;         // Width
@@ -145,8 +148,13 @@ struct SurfaceRecord {
       return std::move(ClipRectangle(Left, Top, Right, Bottom));
    }
 
-   inline bool hasFocus() const { return Flags & RNF_HAS_FOCUS; }
-   inline void dropFocus() { Flags &= RNF_HAS_FOCUS; }
+   inline bool hasFocus() const { return (Flags & RNF::HAS_FOCUS) != RNF::NIL; }
+   inline void dropFocus() { Flags &= RNF::HAS_FOCUS; }
+   inline bool transparent() const { return (Flags & RNF::TRANSPARENT) != RNF::NIL; }
+   inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
+   inline bool invisible() const { return (Flags & RNF::VISIBLE) IS RNF::NIL; }
+   inline bool isVolatile() const { return (Flags & RNF::VOLATILE) != RNF::NIL; }
+   inline bool isCursor() const { return (Flags & RNF::CURSOR) != RNF::NIL; }
 };
 
 typedef std::vector<SurfaceRecord> SURFACELIST;
@@ -155,16 +163,16 @@ extern std::recursive_mutex glSurfaceLock;
 class WindowHook {
 public:
    OBJECTID SurfaceID;
-   UBYTE Event;
+   WH Event;
 
-   WindowHook(OBJECTID aSurfaceID, UBYTE aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
+   WindowHook(OBJECTID aSurfaceID, WH aEvent) : SurfaceID(aSurfaceID), Event(aEvent) { };
 
    bool operator== (const WindowHook &rhs) const {
       return (SurfaceID == rhs.SurfaceID) and (Event == rhs.Event);
    }
 
    bool operator() (const WindowHook &lhs, const WindowHook &rhs) const {
-       if (lhs.SurfaceID == rhs.SurfaceID) return lhs.Event < rhs.Event;
+       if (lhs.SurfaceID == rhs.SurfaceID) return UBYTE(lhs.Event) < UBYTE(rhs.Event);
        else return lhs.SurfaceID < rhs.SurfaceID;
    }
 };
@@ -173,7 +181,7 @@ namespace std {
    template <> struct hash<WindowHook> {
       std::size_t operator()(const WindowHook &k) const {
          return ((std::hash<OBJECTID>()(k.SurfaceID)
-            ^ (std::hash<UBYTE>()(k.Event) << 1)) >> 1);
+            ^ (std::hash<UBYTE>()(UBYTE(k.Event)) << 1)) >> 1);
       }
    };
 }
@@ -188,10 +196,10 @@ enum {
 #define MT_PtrGrabX11Pointer -2
 #define MT_PtrUngrabX11Pointer -3
 
-struct ptrSetWinCursor { LONG Cursor;  };
+struct ptrSetWinCursor { PTC Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
 
-INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, LONG Cursor) {
+INLINE ERROR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
    struct ptrSetWinCursor args = { Cursor };
    return Action(MT_PtrSetWinCursor, Ob, &args);
 }
@@ -258,7 +266,7 @@ extern EventBuffer glInputEvents;
 class InputCallback {
 public:
    OBJECTID SurfaceFilter;
-   WORD     InputMask; // JTYPE flags
+   JTYPE    InputMask; // JTYPE flags
    FUNCTION Callback;
 
    bool operator==(const InputCallback &other) const {
@@ -286,12 +294,12 @@ struct ClipItem {
 };
 
 struct ClipRecord {
-   LONG  Datatype;    // The type of data clipped
-   LONG  Flags;       // CEF_DELETE may be set for the 'cut' operation
+   CLIPTYPE Datatype; // The type of data clipped
+   CEF Flags;         // CEF::DELETE may be set for the 'cut' operation
    std::vector<ClipItem> Items;  // List of file locations referencing all the data in this clip entry
 
    ~ClipRecord();
-   ClipRecord(LONG pDatatype, LONG pFlags, const std::vector<ClipItem> pItems) :
+   ClipRecord(CLIPTYPE pDatatype, CEF pFlags, const std::vector<ClipItem> pItems) :
       Datatype(pDatatype), Flags(pFlags), Items(pItems) { }
 };
 
@@ -321,8 +329,8 @@ class extPointer : public objPointer {
    MEMORYID MessageQueue;       // Message port of the task that holds the cursor
    MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
    LONG     CursorRelease;
-   LONG     BufferCursor;
-   LONG     BufferFlags;
+   PTC      BufferCursor;
+   CRF      BufferFlags;
    MEMORYID BufferQueue;
    OBJECTID BufferOwner;
    OBJECTID BufferObject;
@@ -335,7 +343,7 @@ class extPointer : public objPointer {
    struct {
       WORD HotX;
       WORD HotY;
-   } Cursors[PTR_END];
+   } Cursors[LONG(PTC::END)];
 };
 
 class extSurface : public objSurface {
@@ -355,6 +363,7 @@ class extSurface : public objSurface {
    LONG     ScrollFromX, ScrollFromY;
    LONG     ListIndex;            // Last known list index
    LONG     InputHandle;          // Input handler for dragging of surfaces
+   SWIN     WindowType;           // See SWIN constants
    TIMER    RedrawTimer;          // For ScheduleRedraw()
    TIMER    ScrollTimer;
    SurfaceCallback CallbackCache[4];
@@ -372,7 +381,6 @@ class extSurface : public objSurface {
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
    UBYTE    CallbackSize;         // Current size of the callback array.
-   BYTE     WindowType;           // See SWIN constants
    BYTE     Anchored;
 };
 
@@ -381,11 +389,8 @@ class extDisplay : public objDisplay {
    using create = pf::Create<extDisplay>;
 
    DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
-   struct resolution *Resolutions;
+   std::vector<struct resolution> Resolutions;
    FUNCTION  ResizeFeedback;
-   MEMORYID  ResolutionsMID;
-   WORD      TotalResolutions;
-   OBJECTID  BitmapID;
    LONG      BmpXOffset;     // X offset for scrolling
    LONG      BmpYOffset;     // Y offset for scrolling
    #ifdef __xwindows__
@@ -413,35 +418,6 @@ class extDisplay : public objDisplay {
    char  DisplayManufacturer[60];
    #ifdef _WIN32
       APTR OldProcedure;
-   #endif
-};
-
-class extBitmap : public objBitmap {
-   public:
-   using create = pf::Create<extBitmap>;
-
-   ULONG  *Gradients;
-   APTR   ResolutionChangeHandle;
-   RGBPalette prvPaletteArray;
-   struct ColourFormat prvColourFormat;
-   UBYTE *prvCompress;
-   LONG   prvAFlags;                  // Private allocation flags
-   #ifdef __xwindows__
-      struct {
-         XImage   ximage;
-         Drawable drawable;
-         XImage   *readable;
-         XShmSegmentInfo ShmInfo;
-         bool XShmImage;
-      } x11;
-   #elif _WIN32
-      struct {
-         APTR Drawable;  // HDC for the Bitmap
-      } win;
-   #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
-      LONG prvGLPixel;
-      LONG prvGLFormat;
    #endif
 };
 
@@ -473,20 +449,20 @@ extern void  untrack_layer(OBJECTID);
 extern BYTE  restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
 extern ERROR load_style_values(void);
 extern ERROR resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
-extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, LONG, LONG);
-extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
-extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, LONG);
-extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, LONG);
+extern void  redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
+extern ERROR _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
+extern ERROR _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
+extern void  _redraw_surface_do(extSurface *, const SURFACELIST &, LONG, ClipRectangle &, extBitmap *, IRF);
 extern void  check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
 extern ERROR update_surface_copy(extSurface *);
+extern ERROR update_display(extDisplay *, extBitmap *, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest);
 
-extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, LONG);
+extern ERROR gfxRedrawSurface(OBJECTID, LONG, LONG, LONG, LONG, IRF);
 
 #ifdef DBG_LAYERS
 extern void print_layer_list(STRING Function, SurfaceControl *Ctl, LONG POI)
 #endif
 
-extern SharedControl *glSharedControl;
 extern bool glSixBitDisplay;
 extern OBJECTPTR glModule;
 extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface;
@@ -504,7 +480,7 @@ extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
 extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
 extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
 extern LONG glpMaximise, glpFullScreen;
-extern LONG glpWindowType;
+extern SWIN glpWindowType;
 extern char glpDPMS[20];
 extern UBYTE *glDemultiply;
 extern std::array<UBYTE, 256 * 256> glAlphaLookup;
@@ -522,12 +498,12 @@ extern THREADVAR WORD tlNoDrawing, tlNoExpose, tlVolatileIndex;
 extern THREADVAR OBJECTID tlFreeExpose;
 
 struct InputType {
-   LONG Flags;  // As many flags as necessary to describe the input type
-   LONG Mask;   // Limited flags to declare the mask that must be used to receive that type
+   JTYPE Flags;  // As many flags as necessary to describe the input type
+   JTYPE Mask;   // Limited flags to declare the mask that must be used to receive that type
 };
 
-extern const InputType glInputType[JET_END];
-extern const CSTRING glInputNames[JET_END];
+extern const InputType glInputType[LONG(JET::END)];
+extern const CSTRING glInputNames[LONG(JET::END)];
 
 //********************************************************************************************************************
 
@@ -550,16 +526,16 @@ DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
 
-int winAddClip(int Datatype, const void *, int, int);
+int winAddClip(CLIPTYPE, const void *, int, int);
 void winClearClipboard(void);
 void winCopyClipboard(void);
 int winExtractFile(void *, int, char *, int);
-void winGetClip(int Datatype);
+void winGetClip(CLIPTYPE);
 void winTerminate(void);
 APTR winGetDC(APTR);
 void winReleaseDC(APTR, APTR);
 void winSetSurfaceID(APTR, LONG);
-APTR GetWinCursor(LONG);
+APTR GetWinCursor(PTC);
 LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
 void winGetError(LONG, STRING, LONG);
 APTR winCreateCompatibleDC(void);
@@ -604,13 +580,16 @@ extern void free_xcursors(void);
 
 extern WORD glDGAAvailable;
 extern APTR glDGAMemory;
+extern XVisualInfo glXInfoAlpha;
 extern X11Globals glX11;
 extern _XDisplay *XDisplay;
 extern struct XRandRBase *XRandRBase;
 extern bool glX11ShmImage;
-extern UBYTE KeyHeld[K_LIST_END];
+extern bool glXCompositeSupported;
+extern UBYTE KeyHeld[LONG(KEY::LIST_END)];
 extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
-extern LONG glKeyFlags, glXFD, glDGAPixelsPerLine, glDGABankSize;
+extern KQ glKeyFlags;
+extern LONG glXFD, glDGAPixelsPerLine, glDGABankSize;
 extern Atom atomSurfaceID, XWADeleteWindow;
 extern GC glXGC, glClipXGC;
 extern XWindowAttributes glRootWindow;
@@ -695,3 +674,41 @@ inline LONG find_parent_list(const SURFACELIST &list, extSurface *Self)
 
    return find_surface_list(Self->ParentID);
 }
+
+//********************************************************************************************************************
+
+class extBitmap : public objBitmap {
+   public:
+   using create = pf::Create<extBitmap>;
+
+   ULONG  *Gradients;
+   APTR   ResolutionChangeHandle;
+   RGBPalette prvPaletteArray;
+   struct ColourFormat prvColourFormat;
+   UBYTE *prvCompress;
+   LONG   prvAFlags;                  // Private allocation flags
+   #ifdef __xwindows__
+      struct {
+         XImage   ximage;
+         Drawable drawable;
+         XImage   *readable;
+         XShmSegmentInfo ShmInfo;
+         GC gc;
+         bool XShmImage;
+      } x11;
+
+      inline GC getGC() {
+         if (x11.gc) return x11.gc;
+         else return glXGC;
+      }
+
+   #elif _WIN32
+      struct {
+         APTR Drawable;  // HDC for the Bitmap
+      } win;
+   #elif _GLES_
+      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
+      LONG prvGLPixel;
+      LONG prvGLFormat;
+   #endif
+};

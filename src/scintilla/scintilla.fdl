@@ -8,7 +8,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
-  const("SCLEX", { comment="Scintilla Lexers.  These codes originate from the Scintilla library." }, {
+  const("SCLEX", { type="int", comment="Scintilla Lexers.  These codes originate from the Scintilla library." }, {
     PYTHON     = "2: Python",
     CPP        = "3: C or C++",
     HTML       = "4: HTML",
@@ -33,7 +33,7 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
     REBOL      = "71: Rebol"
   })
 
-  flags("SCF", { comment="Optional flags." },
+  flags("SCIF", { comment="Optional flags." },
      "DISABLED: Read-only.  This flag is set if the Scintilla object has been deactivated with the Disable action.",
      "DETECT_LEXER: Automatic lexer detection will occur on initialisation and at any time that a source file is loaded.",
      "EDIT: Must be defined if the document is to be editable via user input.",
@@ -71,11 +71,11 @@ module({ name="Scintilla", copyright="Paul Manias © 2005-2023", version=1.0 }, 
   })
 
   class("Scintilla", { src={ "class_scintilla.cxx" }, output="class_scintilla_def.cxx" }, [[
-    large(SEF) EventFlags      # SEF flags.  Indicates the events that will be reported.
     obj(Font) Font             # Font to use for the text
     cstr Path                  # Source text file
+    int(SEF) EventFlags        # SEF flags.  Indicates the events that will be reported.
     oid Surface                # The object that should be rendered to
-    int(SCF) Flags             # Optional flags
+    int(SCIF) Flags            # Optional flags
     oid Focus
     int Visible                # TRUE if the text is visible
     int LeftMargin             # Size of the left margin

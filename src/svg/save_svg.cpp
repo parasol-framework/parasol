@@ -1,5 +1,5 @@
 
-static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, LONG Relative)
+static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, bool Relative)
 {
    if (Relative) xmlNewAttrib(*Tag, Attrib, std::to_string(Value * 100.0) + "%");
    else xmlNewAttrib(*Tag, Attrib, std::to_string(Value));
@@ -14,7 +14,7 @@ static ERROR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG 
 
    if (!(error = Vector->get(FID_Sequence, &path))) {
       LONG new_index;
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<path/>", &new_index);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<path/>", &new_index);
       if (!error) {
          XMLTag *tag;
          error = xmlGetTag(XML, new_index, &tag);
@@ -40,45 +40,47 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
       LONG def_index = 0;
       for (auto & [ key, def ] : *defs) {
          if (!def_index) {
-            if ((error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<defs/>", &def_index))) return error;
+            if ((error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<defs/>", &def_index))) return error;
          }
 
-         log.msg("Processing definition %s (%x %x)", def->Class->ClassName, def->ClassID, def->SubID);
+         log.msg("Processing definition %s (%x)", def->Class->ClassName, def->Class->ClassID);
 
-         if (def->ClassID IS ID_VECTORGRADIENT) {
+         if (def->Class->ClassID IS ID_VECTORGRADIENT) {
             auto gradient = (objVectorGradient *)def;
             std::string gradient_type;
             switch(gradient->Type) {
-               case VGT_RADIAL:  gradient_type = "<radialGradient/>"; break;
-               case VGT_CONIC:   gradient_type = "<conicGradient/>"; break;
-               case VGT_DIAMOND: gradient_type = "<diamondGradient/>"; break;
-               case VGT_CONTOUR: gradient_type = "<contourGradient/>"; break;
-               case VGT_LINEAR:
-               default:          gradient_type = "<linearGradient/>"; break;
+               case VGT::RADIAL:  gradient_type = "<radialGradient/>"; break;
+               case VGT::CONIC:   gradient_type = "<conicGradient/>"; break;
+               case VGT::DIAMOND: gradient_type = "<diamondGradient/>"; break;
+               case VGT::CONTOUR: gradient_type = "<contourGradient/>"; break;
+               case VGT::LINEAR:
+               default:           gradient_type = "<linearGradient/>"; break;
             }
             XMLTag *tag;
-            error = xmlInsertXML(XML, def_index, XMI_CHILD_END, gradient_type, &tag);
+            error = xmlInsertXML(XML, def_index, XMI::CHILD_END, gradient_type, &tag);
 
             if (!error) xmlNewAttrib(tag, "id", key);
 
-            LONG units;
-            if ((!error) and (!gradient->get(FID_Units, &units))) {
+            VUNIT units;
+            if ((!error) and (!gradient->get(FID_Units, (LONG *)&units))) {
                switch(units) {
-                  case VUNIT_USERSPACE:    xmlNewAttrib(tag, "gradientUnits", "userSpaceOnUse"); break;
-                  case VUNIT_BOUNDING_BOX: xmlNewAttrib(tag, "gradientUnits", "objectBoundingBox"); break;
+                  case VUNIT::USERSPACE:    xmlNewAttrib(tag, "gradientUnits", "userSpaceOnUse"); break;
+                  case VUNIT::BOUNDING_BOX: xmlNewAttrib(tag, "gradientUnits", "objectBoundingBox"); break;
+                  default: break;
                }
             }
 
-            LONG spread;
-            if ((!error) and (!gradient->get(FID_SpreadMethod, &spread))) {
+            VSPREAD spread;
+            if ((!error) and (!gradient->get(FID_SpreadMethod, (LONG *)&spread))) {
                switch(spread) {
-                  case VSPREAD_PAD:     break; // Pad is the default SVG setting
-                  case VSPREAD_REFLECT: xmlNewAttrib(tag, "spreadMethod", "reflect"); break;
-                  case VSPREAD_REPEAT:  xmlNewAttrib(tag, "spreadMethod", "repeat"); break;
+                  default:
+                  case VSPREAD::PAD:     break; // Pad is the default SVG setting
+                  case VSPREAD::REFLECT: xmlNewAttrib(tag, "spreadMethod", "reflect"); break;
+                  case VSPREAD::REPEAT:  xmlNewAttrib(tag, "spreadMethod", "repeat"); break;
                }
             }
 
-            if ((gradient->Type IS VGT_LINEAR) or (gradient->Type IS VGT_CONTOUR)) {
+            if ((gradient->Type IS VGT::LINEAR) or (gradient->Type IS VGT::CONTOUR)) {
                if (!error) {
                   xmlNewAttrib(tag, "x1", std::to_string(gradient->X1));
                   xmlNewAttrib(tag, "y1", std::to_string(gradient->Y1));
@@ -86,21 +88,21 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                   xmlNewAttrib(tag, "y2", std::to_string(gradient->Y2));
                }
             }
-            else if ((gradient->Type IS VGT_RADIAL) or (gradient->Type IS VGT_DIAMOND) or (gradient->Type IS VGT_CONIC)) {
-               if ((!error) and (gradient->Flags & (VGF_FIXED_CX|VGF_RELATIVE_CX)))
-                  set_dimension(tag, "cx", gradient->CenterX, gradient->Flags & VGF_RELATIVE_CX);
+            else if ((gradient->Type IS VGT::RADIAL) or (gradient->Type IS VGT::DIAMOND) or (gradient->Type IS VGT::CONIC)) {
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_CX|VGF::RELATIVE_CX)) != VGF::NIL))
+                  set_dimension(tag, "cx", gradient->CenterX, (gradient->Flags & VGF::RELATIVE_CX) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_CY|VGF_RELATIVE_CY)))
-                  set_dimension(tag, "cy", gradient->CenterY, gradient->Flags & VGF_RELATIVE_CY);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_CY|VGF::RELATIVE_CY)) != VGF::NIL))
+                  set_dimension(tag, "cy", gradient->CenterY, (gradient->Flags & VGF::RELATIVE_CY) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_FX|VGF_RELATIVE_FX)))
-                  set_dimension(tag, "fx", gradient->FX, gradient->Flags & VGF_RELATIVE_FX);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_FX|VGF::RELATIVE_FX)) != VGF::NIL))
+                  set_dimension(tag, "fx", gradient->FX, (gradient->Flags & VGF::RELATIVE_FX) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_FY|VGF_RELATIVE_FY)))
-                  set_dimension(tag, "fy", gradient->FY, gradient->Flags & VGF_RELATIVE_FY);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_FY|VGF::RELATIVE_FY)) != VGF::NIL))
+                  set_dimension(tag, "fy", gradient->FY, (gradient->Flags & VGF::RELATIVE_FY) != VGF::NIL);
 
-               if ((!error) and (gradient->Flags & (VGF_FIXED_RADIUS|VGF_RELATIVE_RADIUS)))
-                  set_dimension(tag, "r", gradient->Radius, gradient->Flags & VGF_RELATIVE_RADIUS);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_RADIUS|VGF::RELATIVE_RADIUS)) != VGF::NIL))
+                  set_dimension(tag, "r", gradient->Radius, (gradient->Flags & VGF::RELATIVE_RADIUS) != VGF::NIL);
             }
 
             VectorMatrix *transform;
@@ -116,7 +118,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                LONG total_stops, stop_index;
                if (!GetFieldArray(gradient, FID_Stops, &stops, &total_stops)) {
                   for (LONG s=0; (s < total_stops) and (!error); s++) {
-                     if (!(error = xmlInsertXML(XML, def_index, XMI_CHILD_END, "<stop/>", &stop_index))) {
+                     if (!(error = xmlInsertXML(XML, def_index, XMI::CHILD_END, "<stop/>", &stop_index))) {
                         XMLTag *stop_tag;
                         error = xmlGetTag(XML, stop_index, &stop_tag);
                         if (!error) xmlNewAttrib(stop_tag, "offset", std::to_string(stops[s].Offset));
@@ -129,20 +131,20 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
          }
-         else if (def->ClassID IS ID_VECTORIMAGE) {
+         else if (def->Class->ClassID IS ID_VECTORIMAGE) {
             log.warning("VectorImage not supported.");
          }
-         else if (def->SubID IS ID_VECTORPATH) {
+         else if (def->Class->ClassID IS ID_VECTORPATH) {
             error = save_vectorpath(Self, XML, (objVector *)def, def_index);
          }
-         else if (def->ClassID IS ID_VECTORPATTERN) {
+         else if (def->Class->ClassID IS ID_VECTORPATTERN) {
             log.warning("VectorPattern not supported.");
          }
-         else if (def->ClassID IS ID_VECTORFILTER) {
+         else if (def->Class->ClassID IS ID_VECTORFILTER) {
             objVectorFilter *filter = (objVectorFilter *)def;
 
             XMLTag *tag;
-            error = xmlInsertXML(XML, def_index, XMI_CHILD_END, "<filter/>", &tag);
+            error = xmlInsertXML(XML, def_index, XMI::CHILD_END, "<filter/>", &tag);
 
             if (!error) xmlNewAttrib(tag, "id", key);
 
@@ -161,38 +163,39 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             if ((!error) and (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)))
                set_dimension(tag, "height", filter->Height, dim & DMF_RELATIVE_HEIGHT);
 
-            LONG units;
-            if ((!error) and (!filter->get(FID_Units, &units))) {
+            VUNIT units;
+            if ((!error) and (!filter->get(FID_Units, (LONG *)&units))) {
                switch(units) {
                   default:
-                  case VUNIT_BOUNDING_BOX: break; // Default
-                  case VUNIT_USERSPACE:    xmlNewAttrib(tag, "filterUnits", "userSpaceOnUse"); break;
+                  case VUNIT::BOUNDING_BOX: break; // Default
+                  case VUNIT::USERSPACE:    xmlNewAttrib(tag, "filterUnits", "userSpaceOnUse"); break;
                }
             }
 
-            if ((!error) and (!filter->get(FID_PrimitiveUnits, &units))) {
+            if ((!error) and (!filter->get(FID_PrimitiveUnits, (LONG *)&units))) {
                switch(units) {
-                  case VUNIT_USERSPACE:    break;
-                  case VUNIT_BOUNDING_BOX: xmlNewAttrib(tag, "primitiveUnits", "objectBoundingBox"); break;
+                  default:
+                  case VUNIT::USERSPACE:    break;
+                  case VUNIT::BOUNDING_BOX: xmlNewAttrib(tag, "primitiveUnits", "objectBoundingBox"); break;
                }
             }
 
             STRING effect_xml;
             if ((!error) and (!filter->get(FID_EffectXML, &effect_xml))) {
-               error = xmlInsertXML(XML, tag->ID, XMI_CHILD, effect_xml, NULL);
+               error = xmlInsertXML(XML, tag->ID, XMI::CHILD, effect_xml, NULL);
                FreeResource(effect_xml);
             }
          }
-         else if (def->ClassID IS ID_VECTORTRANSITION) {
+         else if (def->Class->ClassID IS ID_VECTORTRANSITION) {
             log.warning("VectorTransition not supported.");
          }
-         else if (def->SubID IS ID_VECTORCLIP) {
+         else if (def->Class->ClassID IS ID_VECTORCLIP) {
             log.warning("VectorClip not supported.");
          }
-         else if (def->ClassID IS ID_VECTOR) {
+         else if (def->Class->BaseClassID IS ID_VECTOR) {
             log.warning("%s not supported.", def->Class->ClassName);
          }
-         else log.warning("Unrecognised definition class %x", def->ClassID);
+         else log.warning("Unrecognised definition class %x", def->Class->ClassID);
       }
 
       return ERR_Okay;
@@ -245,28 +248,28 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       xmlNewAttrib(tag, "stroke-color", buffer);
    }
 
-   LONG line_join;
-   if ((!error) and (!Vector->get(FID_LineJoin, &line_join))) {
+   VLJ line_join;
+   if ((!error) and (!Vector->get(FID_LineJoin, (LONG *)&line_join))) {
       switch (line_join) {
          default:
-         case VLJ_MITER:        break; // Default
-         case VLJ_MITER_REVERT: xmlNewAttrib(tag, "stroke-linejoin", "miter-revert"); break; // Parasol
-         case VLJ_ROUND:        xmlNewAttrib(tag, "stroke-linejoin", "round"); break;
-         case VLJ_BEVEL:        xmlNewAttrib(tag, "stroke-linejoin", "bevel"); break;
-         case VLJ_MITER_ROUND:  xmlNewAttrib(tag, "stroke-linejoin", "arcs"); break; // (SVG2) Not sure if compliant
-         case VLJ_INHERIT:      xmlNewAttrib(tag, "stroke-linejoin", "inherit"); break;
+         case VLJ::MITER:        break; // Default
+         case VLJ::MITER_REVERT: xmlNewAttrib(tag, "stroke-linejoin", "miter-revert"); break; // Parasol
+         case VLJ::ROUND:        xmlNewAttrib(tag, "stroke-linejoin", "round"); break;
+         case VLJ::BEVEL:        xmlNewAttrib(tag, "stroke-linejoin", "bevel"); break;
+         case VLJ::MITER_ROUND:  xmlNewAttrib(tag, "stroke-linejoin", "arcs"); break; // (SVG2) Not sure if compliant
+         case VLJ::INHERIT:      xmlNewAttrib(tag, "stroke-linejoin", "inherit"); break;
       } // "miter-clip" SVG2
    }
 
-   LONG inner_join;
-   if ((!error) and (!Vector->get(FID_InnerJoin, &inner_join))) { // Parasol only
+   VIJ inner_join;
+   if ((!error) and (!Vector->get(FID_InnerJoin, (LONG *)&inner_join))) { // Parasol only
       switch (inner_join) {
          default:
-         case VIJ_MITER:   break; // Default
-         case VIJ_BEVEL:   xmlNewAttrib(tag, "stroke-innerjoin", "bevel"); break;
-         case VIJ_JAG:     xmlNewAttrib(tag, "stroke-innerjoin", "jag"); break;
-         case VIJ_ROUND:   xmlNewAttrib(tag, "stroke-innerjoin", "round"); break;
-         case VIJ_INHERIT: xmlNewAttrib(tag, "stroke-innerjoin", "inherit"); break;
+         case VIJ::MITER:   break; // Default
+         case VIJ::BEVEL:   xmlNewAttrib(tag, "stroke-innerjoin", "bevel"); break;
+         case VIJ::JAG:     xmlNewAttrib(tag, "stroke-innerjoin", "jag"); break;
+         case VIJ::ROUND:   xmlNewAttrib(tag, "stroke-innerjoin", "round"); break;
+         case VIJ::INHERIT: xmlNewAttrib(tag, "stroke-innerjoin", "inherit"); break;
       }
    }
 
@@ -287,20 +290,20 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       xmlNewAttrib(tag, "stroke-dasharray", buffer);
    }
 
-   LONG linecap;
-   if ((!error) and (!Vector->get(FID_LineCap, &linecap))) {
+   VLC linecap;
+   if ((!error) and (!Vector->get(FID_LineCap, (LONG *)&linecap))) {
       switch (linecap) {
          default:
-         case VLC_BUTT:    break; // Default
-         case VLC_SQUARE:  xmlNewAttrib(tag, "stroke-linecap", "square"); break;
-         case VLC_ROUND:   xmlNewAttrib(tag, "stroke-linecap", "round"); break;
-         case VLC_INHERIT: xmlNewAttrib(tag, "stroke-linecap", "inherit"); break;
+         case VLC::BUTT:    break; // Default
+         case VLC::SQUARE:  xmlNewAttrib(tag, "stroke-linecap", "square"); break;
+         case VLC::ROUND:   xmlNewAttrib(tag, "stroke-linecap", "round"); break;
+         case VLC::INHERIT: xmlNewAttrib(tag, "stroke-linecap", "inherit"); break;
       }
    }
 
-   if (Vector->Visibility IS VIS_HIDDEN)        xmlNewAttrib(tag, "visibility", "hidden");
-   else if (Vector->Visibility IS VIS_COLLAPSE) xmlNewAttrib(tag, "visibility", "collapse");
-   else if (Vector->Visibility IS VIS_INHERIT)  xmlNewAttrib(tag, "visibility", "inherit");
+   if (Vector->Visibility IS VIS::HIDDEN)        xmlNewAttrib(tag, "visibility", "hidden");
+   else if (Vector->Visibility IS VIS::COLLAPSE) xmlNewAttrib(tag, "visibility", "collapse");
+   else if (Vector->Visibility IS VIS::INHERIT)  xmlNewAttrib(tag, "visibility", "inherit");
 
    STRING stroke_width;
    if ((!error) and (!Vector->get(FID_StrokeWidth, &stroke_width))) {
@@ -318,9 +321,9 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       xmlNewAttrib(tag, "fill", buffer);
    }
 
-   LONG fill_rule;
-   if ((!error) and (!Vector->get(FID_FillRule, &fill_rule))) {
-      if (fill_rule IS VFR_EVEN_ODD) xmlNewAttrib(tag, "fill-rule", "evenodd");
+   VFR fill_rule;
+   if ((!error) and (!Vector->get(FID_FillRule, (LONG *)&fill_rule))) {
+      if (fill_rule IS VFR::EVEN_ODD) xmlNewAttrib(tag, "fill-rule", "evenodd");
    }
 
    if ((!error) and (!(error = Vector->get(FID_ID, &str))) and (str)) xmlNewAttrib(tag, "id", str);
@@ -337,10 +340,10 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
 
    OBJECTPTR shape;
    if ((!error) and (!Vector->getPtr(FID_Morph, &shape)) and (shape)) {
-      LONG morph_flags;
+      VMF morph_flags;
 
       XMLTag *morph_tag;
-      error = xmlInsertXML(XML, TagID, XMI_CHILD_END, "<parasol:morph/>", &morph_tag);
+      error = xmlInsertXML(XML, TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
 
       STRING shape_id;
       if ((!error) and (!shape->get(FID_ID, &shape_id)) and (shape_id)) {
@@ -350,21 +353,21 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
          xmlNewAttrib(morph_tag, "xlink:href", shape_ref);
       }
 
-      if (!error) error = Vector->get(FID_MorphFlags, &morph_flags);
+      if (!error) error = Vector->get(FID_MorphFlags, (LONG *)&morph_flags);
 
-      if ((!error) and (morph_flags & VMF_STRETCH)) xmlNewAttrib(morph_tag, "method", "stretch");
-      if ((!error) and (morph_flags & VMF_AUTO_SPACING)) xmlNewAttrib(morph_tag, "spacing", "auto");
+      if ((!error) and ((morph_flags & VMF::STRETCH) != VMF::NIL)) xmlNewAttrib(morph_tag, "method", "stretch");
+      if ((!error) and ((morph_flags & VMF::AUTO_SPACING) != VMF::NIL)) xmlNewAttrib(morph_tag, "spacing", "auto");
 
-      if ((!error) and (morph_flags & (VMF_X_MIN|VMF_X_MID|VMF_X_MAX|VMF_Y_MIN|VMF_Y_MID|VMF_Y_MAX))) {
+      if ((!error) and ((morph_flags & (VMF::X_MIN|VMF::X_MID|VMF::X_MAX|VMF::Y_MIN|VMF::Y_MID|VMF::Y_MAX)) != VMF::NIL)) {
          char align[40];
          WORD apos = 0;
-         if (morph_flags & VMF_X_MIN) apos = StrCopy("xMin ", align, sizeof(align));
-         else if (morph_flags & VMF_X_MID) apos = StrCopy("xMid ", align, sizeof(align));
-         else if (morph_flags & VMF_X_MAX) apos = StrCopy("xMax ", align, sizeof(align));
+         if ((morph_flags & VMF::X_MIN) != VMF::NIL) apos = StrCopy("xMin ", align, sizeof(align));
+         else if ((morph_flags & VMF::X_MID) != VMF::NIL) apos = StrCopy("xMid ", align, sizeof(align));
+         else if ((morph_flags & VMF::X_MAX) != VMF::NIL) apos = StrCopy("xMax ", align, sizeof(align));
 
-         if (morph_flags & VMF_Y_MIN) StrCopy("yMin", align+apos, sizeof(align));
-         else if (morph_flags & VMF_Y_MID) StrCopy("yMid", align+apos, sizeof(align));
-         else if (morph_flags & VMF_Y_MAX) StrCopy("yMax", align+apos, sizeof(align));
+         if ((morph_flags & VMF::Y_MIN) != VMF::NIL) StrCopy("yMin", align+apos, sizeof(align));
+         else if ((morph_flags & VMF::Y_MID) != VMF::NIL) StrCopy("yMid", align+apos, sizeof(align));
+         else if ((morph_flags & VMF::Y_MAX) != VMF::NIL) StrCopy("yMax", align+apos, sizeof(align));
 
          xmlNewAttrib(morph_tag, "align", align);
       }
@@ -397,12 +400,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
    log.branch("%s", Vector->Class->ClassName);
 
    ERROR error = ERR_Okay;
-   if (Vector->SubID IS ID_VECTORRECTANGLE) {
+   if (Vector->Class->ClassID IS ID_VECTORRECTANGLE) {
       XMLTag *tag;
       DOUBLE rx, ry, x, y, width, height;
       LONG dim;
 
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<rect/>", &new_index);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<rect/>", &new_index);
       if (!error) error = xmlGetTag(XML, new_index, &tag);
       if (!error) error = Vector->get(FID_Dimensions, &dim);
 
@@ -417,7 +420,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          save_svg_scan_std(Self, XML, Vector, new_index);
       }
    }
-   else if (Vector->SubID IS ID_VECTORELLIPSE) {
+   else if (Vector->Class->ClassID IS ID_VECTORELLIPSE) {
       XMLTag *tag;
       DOUBLE rx, ry, cx, cy;
       LONG dim;
@@ -427,7 +430,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if (!error) error = Vector->get(FID_RadiusY, &ry);
       if (!error) error = Vector->get(FID_CenterX, &cx);
       if (!error) error = Vector->get(FID_CenterY, &cy);
-      if (!error) error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<ellipse/>", &tag);
+      if (!error) error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<ellipse/>", &tag);
 
       if (!error) {
          set_dimension(tag, "rx", rx, dim & DMF_RELATIVE_RADIUS_X);
@@ -438,10 +441,10 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
    }
-   else if (Vector->SubID IS ID_VECTORPATH) {
+   else if (Vector->Class->ClassID IS ID_VECTORPATH) {
       error = save_vectorpath(Self, XML, Vector, Parent);
    }
-   else if (Vector->SubID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
+   else if (Vector->Class->ClassID IS ID_VECTORPOLYGON) { // Serves <polygon>, <line> and <polyline>
       XMLTag *tag;
       VectorPoint *points;
       LONG total_points, i;
@@ -449,7 +452,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if ((!Vector->get(FID_Closed, &i)) and (i IS FALSE)) { // Line or Polyline
          if (!(error = GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             if (total_points IS 2) {
-               error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<line/>", &tag);
+               error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<line/>", &tag);
                if (!error) {
                   set_dimension(tag, "x1", points[0].X, points[0].XRelative);
                   set_dimension(tag, "y1", points[0].Y, points[0].YRelative);
@@ -459,7 +462,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
             }
             else {
                std::stringstream buffer;
-               error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<polyline/>", &tag);
+               error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<polyline/>", &tag);
                if (!error) {
                   for (i=0; i < total_points; i++) {
                      buffer << points[i].X << "," << points[i].Y << " ";
@@ -471,7 +474,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
       else {
          std::stringstream buffer;
-         error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<polygon/>", &tag);
+         error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<polygon/>", &tag);
 
          if ((!error) and (!GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             for (i=0; i < total_points; i++) {
@@ -488,14 +491,14 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
-   else if (Vector->SubID IS ID_VECTORTEXT) {
+   else if (Vector->Class->ClassID IS ID_VECTORTEXT) {
       XMLTag *tag;
       DOUBLE x, y, *dx, *dy, *rotate, text_length;
       LONG total, i, weight;
       STRING str;
       char buffer[1024];
 
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<text/>", &tag);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<text/>", &tag);
 
       if ((!error) and (!Vector->get(FID_X, &x))) set_dimension(tag, "x", x, FALSE);
       if ((!error) and (!Vector->get(FID_Y, &y))) set_dimension(tag, "y", y, FALSE);
@@ -546,41 +549,41 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          xmlNewAttrib(tag, "font-weight", std::to_string(weight));
 
       if ((!error) and (!(error = Vector->get(FID_String, &str))))
-         error = xmlInsertContent(XML, tag->ID, XMI_CHILD, str, NULL);
+         error = xmlInsertContent(XML, tag->ID, XMI::CHILD, str, NULL);
 
       // TODO: lengthAdjust, font, font-size-adjust, font-stretch, font-style, font-variant, text-anchor, kerning, letter-spacing, path-length, word-spacing, text-decoration
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
-   else if (Vector->SubID IS ID_VECTORGROUP) {
+   else if (Vector->Class->ClassID IS ID_VECTORGROUP) {
       XMLTag *tag;
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<g/>", &tag);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<g/>", &tag);
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
-   else if (Vector->SubID IS ID_VECTORCLIP) {
+   else if (Vector->Class->ClassID IS ID_VECTORCLIP) {
       XMLTag *tag;
       STRING str;
       if ((!(error = Vector->get(FID_ID, &str))) and (str)) { // The id is an essential requirement
-         error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<clipPath/>", &tag);
+         error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<clipPath/>", &tag);
 
-         LONG units;
-         if (!Vector->get(FID_Units, &units)) {
+         VUNIT units;
+         if (!Vector->get(FID_Units, (LONG *)&units)) {
             switch(units) {
                default:
-               case VUNIT_USERSPACE:    break; // Default
-               case VUNIT_BOUNDING_BOX: xmlNewAttrib(tag, "clipPathUnits", "objectBoundingBox"); break;
+               case VUNIT::USERSPACE:    break; // Default
+               case VUNIT::BOUNDING_BOX: xmlNewAttrib(tag, "clipPathUnits", "objectBoundingBox"); break;
             }
          }
 
          if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORWAVE) {
+   else if (Vector->Class->ClassID IS ID_VECTORWAVE) {
       XMLTag *tag;
       DOUBLE dbl;
       LONG dim;
 
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<parasol:wave/>", &tag);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<parasol:wave/>", &tag);
 
       if (!error) error = Vector->get(FID_Dimensions, &dim);
 
@@ -601,12 +604,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORSPIRAL) {
+   else if (Vector->Class->ClassID IS ID_VECTORSPIRAL) {
       XMLTag *tag;
       DOUBLE dbl;
       LONG dim, length;
 
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<parasol:spiral/>", &tag);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<parasol:spiral/>", &tag);
       if (error) return error;
 
       if ((error = Vector->get(FID_Dimensions, &dim))) return error;
@@ -625,12 +628,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORSHAPE) {
+   else if (Vector->Class->ClassID IS ID_VECTORSHAPE) {
       XMLTag *tag;
       DOUBLE dbl;
       LONG num, dim;
 
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<parasol:shape/>", &tag);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<parasol:shape/>", &tag);
 
       if ((error = Vector->get(FID_Dimensions, &dim))) return error;
 
@@ -655,12 +658,12 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
          error = save_svg_scan_std(Self, XML, Vector, tag->ID);
       }
    }
-   else if (Vector->SubID IS ID_VECTORVIEWPORT) {
+   else if (Vector->Class->ClassID IS ID_VECTORVIEWPORT) {
       XMLTag *tag;
       DOUBLE x, y, width, height;
       LONG dim;
 
-      error = xmlInsertXML(XML, Parent, XMI_CHILD_END, "<svg/>", &tag);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<svg/>", &tag);
 
       if (!error) error = Vector->get(FID_ViewX, &x);
       if (!error) error = Vector->get(FID_ViewY, &y);

@@ -19,7 +19,7 @@ speed improvement to the user.
 
 Valid options to use when creating the dialog are as follows:
 
-   popover:      Place the dialog window over the referenced surface.
+   popOver:      Place the dialog window over the referenced surface.
    target:       Open the dialog window within the referenced surface.
    modal:        Set to true if the dialog box needs to be modal (prevents interaction with other windows).
    okText:       Override the text to display in the OK button.
@@ -88,7 +88,7 @@ gui.dialog.file = function(Options)
                title   = 'Confirmation Required',
                image   = 'items/warning',
                message = msg,
-               popover = windowID,
+               popOver = windowID,
                feedback = function(Dialog, Response, State)
                   if (Response) and (Response.id == 1) then
                      if self.feedback then
@@ -119,7 +119,7 @@ gui.dialog.file = function(Options)
       minHeight    = 150,
       quit         = false,
       center       = true,
-      popover      = Options.popover,
+      popOver      = Options.popOver,
       parent       = Options.target,
       icon         = nz(Options.icon, 'icons:folders/folder'),
       title        = nz(Options.title, 'Select a file'),
@@ -363,7 +363,7 @@ end
       local state = getExecutionState()
       if (state.inRequire != true) then
          local dlg = gui.dialog.file({
-            popover      = arg('popover'),
+            popOver      = arg('popOver'),
             target       = arg('target'),
             modal        = arg('modal'),
             okText       = arg('okText'),

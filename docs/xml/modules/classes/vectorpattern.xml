@@ -1,0 +1,192 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="class.xsl"?>
+
+<book>
+  <info>
+    <name>VectorPattern</name>
+    <type>class</type>
+    <module>Vector</module>
+    <comment>Provides support for the filling and stroking of vectors with patterns.</comment>
+    <version>1</version>
+    <id>09eaa136</id>
+    <idstring>ID_VECTORPATTERN</idstring>
+    <category>Graphics</category>
+    <include>modules/vectorpattern.h</include>
+    <copyright>Paul Manias © 2010-2023</copyright>
+    <description>
+<p>The VectorPattern class is used by Vector painting algorithms to fill and stroke vectors with pre-rendered patterns. It is the most efficient way of rendering a common set of graphics multiple times.</p>
+<p>The VectorPattern must be registered with a <class name="VectorScene">VectorScene</class> via the <method class="VectorScene">AddDef</method> method. Any vector within the target scene will be able to utilise the pattern for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#dots)'.</p>
+<p>A special use case is made for patterns that are applied as a fill operation in <class name="VectorViewport">VectorViewport</class> objects.  In this case the renderer will dynamically render the pattern as a background within the viewport.  This ensures that the pattern is rendered at maximum fidelity whenever it is used, and not affected by bitmap clipping restrictions.  It should be noted that this means the image caching feature will be disabled.</p>
+<p>It is strongly recommended that the VectorPattern is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorPattern is deallocated when the scene is destroyed.</p></description>
+    <source>
+      <file path="defs/">pattern.cpp</file>
+    </source>
+  </info>
+
+  <fields>
+    <field>
+      <name>Dimensions</name>
+      <comment>Dimension flags are stored here.</comment>
+      <access read="R">Read</access>
+      <type lookup="DMF">INT</type>
+      <description>
+<types lookup="DMF"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Height</name>
+      <comment>Height of the pattern tile.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Inherit</name>
+      <comment>Inherit attributes from a VectorPattern referenced here.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="VectorPattern">*VectorPattern</type>
+      <description>
+<p>Attributes can be inherited from another pattern by referencing it in this field.  This feature is provided primarily for the purpose of simplifying SVG compatibility and its use may result in an unnecessary performance penalty.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Matrices</name>
+      <comment>A linked list of transform matrices that have been applied to the pattern.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+      <description>
+<p>All transforms that have been applied to the pattern can be read from the Matrices field.  Each transform is represented by a VectorMatrix structure, and are linked in the order in which they were applied to the pattern.</p>
+<struct lookup="VectorMatrix"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Opacity</name>
+      <comment>The opacity of the pattern.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The opacity of the pattern is defined as a value between 0.0 and 1.0, with 1.0 being fully opaque.  The default value is 1.0.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Scene</name>
+      <comment>Refers to the internal <class name="VectorScene">VectorScene</class> that will contain the rendered pattern.</comment>
+      <access read="R">Read</access>
+      <type class="VectorScene">*VectorScene</type>
+      <description>
+<p>The VectorPattern class allocates a <class name="VectorScene">VectorScene</class> in this field and inherits its functionality.  In addition, a <class name="VectorViewport">VectorViewport</class> class will be assigned to the scene and is referenced in the <field>Viewport</field> field for managing the vectors that will be rendered.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SpreadMethod</name>
+      <comment>The behaviour to use when the pattern bounds do not match the vector path.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VSPREAD">VSPREAD</type>
+      <description>
+<p>Indicates what happens if the pattern starts or ends inside the bounds of the target vector.  The default value is PAD.</p>
+<types lookup="VSPREAD"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Transform</name>
+      <comment>Applies a transform to the pattern during the render process.</comment>
+      <access write="S">Set</access>
+      <type>STRING</type>
+      <description>
+<p>A transform can be applied to the pattern by setting this field with an SVG compliant transform string.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Units</name>
+      <comment>Defines the coordinate system for fields X, Y, Width and Height.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type lookup="VUNIT">VUNIT</type>
+      <description>
+<p>This field declares the coordinate system that is used for values in the <field>X</field> and <field>Y</field> fields.  The default setting is <code>BOUNDING_BOX</code>, which means the pattern will be drawn to scale in realtime.  The most efficient method is USERSPACE, which allows the pattern image to be persistently cached.</p>
+<types lookup="VUNIT"/>
+      </description>
+    </field>
+
+    <field>
+      <name>Viewport</name>
+      <comment>Refers to the viewport that contains the pattern.</comment>
+      <access read="G">Get</access>
+      <type>OBJECTPTR</type>
+      <description>
+<p>The Viewport refers to a <class name="VectorViewport">VectorViewport</class> object that is created to host the vectors for the rendered pattern.  If the Viewport does not contain at least one vector that renders an image, the pattern will be ineffective.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Width</name>
+      <comment>Width of the pattern tile.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (Width,Height) field values define the dimensions of the pattern tile.  If the provided value is a percentage then the dimension is calculated relative to the bounding box or viewport applying the pattern, dependent on the <field>Units</field> setting.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>X</name>
+      <comment>X coordinate for the pattern.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X,Y) field values define the starting coordinate for mapping patterns.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Y</name>
+      <comment>Y coordinate for the pattern.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
+      <description>
+<p>The (X,Y) field values define the starting coordinate for mapping patterns.</p>
+      </description>
+    </field>
+
+  </fields>
+  <types>
+    <constants lookup="VSPREAD" comment="Spread method options define the method to use for tiling filled graphics.">
+      <const name="CLIP">Do not scale the graphic.  Clip it if it extends past imposed boundaries.</const>
+      <const name="PAD">Scale the graphic to the object bounds.</const>
+      <const name="REFLECT">Tile the graphic, reflecting the image alternately on the X and Y axis.</const>
+      <const name="REFLECT_X">Tile the graphic, reflecting the image alternately on the X axis only.</const>
+      <const name="REFLECT_Y">Tile the graphic, reflecting the image alternately on the Y axis only.</const>
+      <const name="REPEAT">Tile the graphic repeatedly.</const>
+      <const name="UNDEFINED">Either the default setting will be applied or the setting will be inherited from a parent object.</const>
+    </constants>
+
+    <constants lookup="VUNIT">
+      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="UNDEFINED"/>
+      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="VectorMatrix" comment="Vector transformation matrix.">
+      <field name="Next" type="struct VectorMatrix *">The next transform in the list.</field>
+      <field name="Vector" type="objVector *">The vector associated with the transform.</field>
+      <field name="ScaleX" type="DOUBLE">Matrix value A</field>
+      <field name="ShearY" type="DOUBLE">Matrix value B</field>
+      <field name="ShearX" type="DOUBLE">Matrix value C</field>
+      <field name="ScaleY" type="DOUBLE">Matrix value D</field>
+      <field name="TranslateX" type="DOUBLE">Matrix value E</field>
+      <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
+  </structs>
+</book>

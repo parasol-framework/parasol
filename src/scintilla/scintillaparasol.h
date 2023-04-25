@@ -4,6 +4,8 @@ class ScintillaParasol;
 
 #include <parasol/modules/scintilla.h>
 
+using namespace pf;
+
 class extScintilla : public objScintilla {
    public:
    struct  SurfaceCoords Surface;
@@ -21,7 +23,7 @@ class extScintilla : public objScintilla {
    LONG   TabWidth;
    LONG   InputHandle;
    TIMER  TimerID;
-   LARGE  ReportEventFlags;    // For delayed event reporting.
+   SEF    ReportEventFlags;    // For delayed event reporting.
    UWORD  KeyAlt:1;
    UWORD  KeyCtrl:1;
    UWORD  KeyShift:1;
@@ -79,9 +81,9 @@ public:
    virtual void panDraw(objSurface *, objBitmap *Bitmap);
    virtual void panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont);
    virtual void panIdleEvent();
-   virtual void panKeyDown(int Key, LONG);
-   virtual void panMousePress(int ButtonFlags, double x, double y);
-   virtual void panMouseRelease(int ButtonFlags, double x, double y);
+   virtual void panKeyDown(int Key, KQ);
+   virtual void panMousePress(JET ButtonFlags, double x, double y);
+   virtual void panMouseRelease(JET ButtonFlags, double x, double y);
    virtual void panMouseMove(double x, double y);
    virtual void panResized();
    virtual void panScrollToX(double x);

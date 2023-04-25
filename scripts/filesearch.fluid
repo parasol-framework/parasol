@@ -52,7 +52,7 @@ file.search = function(Path, Options)
          // By default, symbolic links are not scanned for content unless the scanLinks option is set.
 
          if (bit.bor(fl.flags, FL_LINK) != 0) and (lOptions.scanLinks == true) then
-            fl.acFree()
+            fl.free()
             return false
          end
 
