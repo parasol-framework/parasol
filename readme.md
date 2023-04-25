@@ -17,14 +17,14 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Features
 
-* Use our Lua based scripting language `Fluid` to quickly write applications without having to deal with compiled code.
-* Load SVG files into our scene graph, interact with the graph via our API and save the output in SVG (saving is WIP).
+* Multi-functional: Integrate your C++ code with our system libraries, or write programs quickly in Fluid, our integrated Lua-based scripting language.
 * Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.
+* Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
-* Data handling APIs (XML, JSON, ZIP, PNG, JPEG, SVG)
-* Hundreds of standardised scalable icons are included for application building.
+* Integrated data handling APIs for XML, JSON, ZIP, PNG, JPEG, SVG.
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback supporting WAV and MP3 files.
+* Hundreds of standardised scalable icons are included for application building.  Fonts are also standardised for cross-platform consistency.
 * WIP: Extensive text editing widget implemented with scintilla.org.
 
 ### Application Example
@@ -75,7 +75,7 @@ Source code should be checked out from the `release` branch of our GitHub reposi
 git clone -b release https://github.com/parasol-framework/parasol.git parasol
 ```
 
-The `master` branch is generally stable and updated more frequently, but be aware that minor build issues can occasionally surface.  Anything under `test` is under active development and unlikely to compile.
+Alternatively the `master` branch is generally stable and updated often, but be aware that minor build issues can occasionally surface.  Anything under `test` is under active development and unlikely to compile.
 
 ## 3. Build Process
 
