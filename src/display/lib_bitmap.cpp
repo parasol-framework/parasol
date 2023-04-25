@@ -571,13 +571,16 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
             }
          }
          else { // Source is an ximage, destination is a pixmap
-            if (Bitmap->x11.XShmImage IS true)  {
-               if (XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False)) {
+            if ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpPremultiply(Bitmap);
 
-               }
-               else log.warning("XShmPutImage() failed.");
+            if (Bitmap->x11.XShmImage IS true)  {
+               XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False);
             }
             else XPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
+
+            XSync(XDisplay, False); // Essential because the graphics won't otherwise be immediately pushed to the display.
+
+            if ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpDemultiply(Bitmap);
          }
       }
       else { // Both the source and the destination are pixmaps
@@ -1290,19 +1293,19 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       else alignment = 32;
 
       XImage ximage;
-      ximage.width            = Surface->LineWidth / Surface->BytesPerPixel;  // Image width
-      ximage.height           = Surface->Height; // Image height
+      ximage.width            = Surface->LineWidth / Surface->BytesPerPixel;
+      ximage.height           = Surface->Height;
       ximage.xoffset          = 0;               // Number of pixels offset in X direction
       ximage.format           = ZPixmap;         // XYBitmap, XYPixmap, ZPixmap
-      ximage.data             = (char *)Surface->Data;   // Pointer to image data
-      ximage.byte_order       = 0;               // LSBFirst / MSBFirst
+      ximage.data             = (char *)Surface->Data;
+      ximage.byte_order       = LSBFirst;        // LSBFirst / MSBFirst
       ximage.bitmap_unit      = alignment;       // Quant. of scanline - 8, 16, 32
-      ximage.bitmap_bit_order = 0;               // LSBFirst / MSBFirst
+      ximage.bitmap_bit_order = LSBFirst;        // LSBFirst / MSBFirst
       ximage.bitmap_pad       = alignment;       // 8, 16, 32, either XY or Zpixmap
       if ((Surface->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) ximage.depth = 24;
-      else ximage.depth = Surface->BitsPerPixel;            // Actual bits per pixel
-      ximage.bytes_per_line   = Surface->LineWidth;         // Accelerator to next line
-      ximage.bits_per_pixel   = Surface->BytesPerPixel * 8; // Bits per pixel-group
+      else ximage.depth = Surface->BitsPerPixel;
+      ximage.bytes_per_line   = Surface->LineWidth;
+      ximage.bits_per_pixel   = Surface->BytesPerPixel * 8;
       ximage.red_mask         = 0;
       ximage.green_mask       = 0;
       ximage.blue_mask        = 0;

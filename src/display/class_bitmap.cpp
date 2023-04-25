@@ -1025,9 +1025,9 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                   Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
                   Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
                   if (glX11ShmImage) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
-                  Self->x11.ximage.byte_order       = 0;            // LSBFirst / MSBFirst
+                  Self->x11.ximage.byte_order       = LSBFirst;     // LSBFirst / MSBFirst
                   Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-                  Self->x11.ximage.bitmap_bit_order = 0;            // LSBFirst / MSBFirst
+                  Self->x11.ximage.bitmap_bit_order = LSBFirst;     // LSBFirst / MSBFirst
                   Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
                   if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
                   else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
@@ -1731,16 +1731,18 @@ setfields:
 
          ClearMemory(&Self->x11.ximage, sizeof(Self->x11.ximage));
 
-         Self->x11.ximage.width       = Self->Width;  // Image width
-         Self->x11.ximage.height      = Self->Height; // Image height
+         Self->x11.ximage.width       = Self->Width;
+         Self->x11.ximage.height      = Self->Height;
          Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-         Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
+         Self->x11.ximage.data        = (char *)Self->Data;
+         Self->x11.ximage.byte_order  = LSBFirst;        // LSBFirst / MSBFirst
+         Self->x11.ximage.bitmap_bit_order = LSBFirst;
          Self->x11.ximage.obdata      = (char *)&Self->x11.ShmInfo;
          Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
-         Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
+         Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32
          if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
-         else Self->x11.ximage.depth = Self->BitsPerPixel;          // Actual bits per pixel
-         Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
+         else Self->x11.ximage.depth = Self->BitsPerPixel;
+         Self->x11.ximage.bytes_per_line = Self->LineWidth;
          Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
 
          XInitImage(&Self->x11.ximage);
@@ -1755,15 +1757,17 @@ setfields:
 
       ClearMemory(&Self->x11.ximage, sizeof(XImage));
 
-      Self->x11.ximage.width       = Self->Width;  // Image width
-      Self->x11.ximage.height      = Self->Height; // Image height
+      Self->x11.ximage.width       = Self->Width;
+      Self->x11.ximage.height      = Self->Height;
       Self->x11.ximage.format      = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-      Self->x11.ximage.data        = (char *)Self->Data; // Pointer to image data
+      Self->x11.ximage.data        = (char *)Self->Data;
+      Self->x11.ximage.byte_order  = LSBFirst;     // LSBFirst / MSBFirst
+      Self->x11.ximage.bitmap_bit_order = LSBFirst;
       Self->x11.ximage.bitmap_unit = alignment;    // Quant. of scanline - 8, 16, 32
-      Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32, either XY or Zpixmap
+      Self->x11.ximage.bitmap_pad  = alignment;    // 8, 16, 32
       if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
-      else Self->x11.ximage.depth = Self->BitsPerPixel;      // Actual bits per pixel
-      Self->x11.ximage.bytes_per_line = Self->LineWidth;         // Accelerator to next line
+      else Self->x11.ximage.depth = Self->BitsPerPixel;
+      Self->x11.ximage.bytes_per_line = Self->LineWidth;
       Self->x11.ximage.bits_per_pixel = Self->BytesPerPixel * 8; // Bits per pixel-group
 
       XInitImage(&Self->x11.ximage);
