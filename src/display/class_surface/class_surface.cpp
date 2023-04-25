@@ -307,7 +307,7 @@ static void expose_buffer(const SURFACELIST &list, LONG Limit, LONG Index, LONG 
       if (video_bmp->Clip.Right  > video_bmp->Width)  video_bmp->Clip.Right  = video_bmp->Width;
       if (video_bmp->Clip.Bottom > video_bmp->Height) video_bmp->Clip.Bottom = video_bmp->Height;
 
-      gfxUpdateDisplay(display, Bitmap, sx, sy, // Src X/Y (bitmap relative)
+      update_display((extDisplay *)display, Bitmap, sx, sy, // Src X/Y (bitmap relative)
          list[Index].Width, list[Index].Height,
          list[Index].Left - list[iscr].Left, list[Index].Top - list[iscr].Top); // Dest X/Y (absolute display position)
 

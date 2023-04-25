@@ -526,24 +526,17 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
    else if (dest->x11.drawable) {
       if (!Bitmap->x11.drawable) {
          if (((Flags & BAF::BLEND) != BAF::NIL) and (Bitmap->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL)) {
-            ULONG *srcdata;
-            UBYTE alpha;
-            WORD cl, cr, ct, cb;
-
-            cl = dest->Clip.Left;
-            cr = dest->Clip.Right;
-            ct = dest->Clip.Top;
-            cb = dest->Clip.Bottom;
+            auto save_clip = dest->Clip;
             dest->Clip.Left   = DestX - dest->XOffset;
             dest->Clip.Right  = DestX + Width - dest->XOffset;
             dest->Clip.Top    = DestY - dest->YOffset;
             dest->Clip.Bottom = DestY + Height - dest->YOffset;
             if (!lock_surface(dest, SURFACE_READ|SURFACE_WRITE)) {
-               srcdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
+               auto srcdata = (ULONG *)(Bitmap->Data + (Y * Bitmap->LineWidth) + (X<<2));
 
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
-                     alpha = 255 - Bitmap->unpackAlpha(srcdata[i]);
+                     UBYTE alpha = 255 - Bitmap->unpackAlpha(srcdata[i]);
 
                      if (alpha >= BLEND_MAX_THRESHOLD) {
                         pixel.Red   = (UBYTE)(srcdata[i] >> Bitmap->prvColourFormat.RedPos);
@@ -565,14 +558,11 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                }
                unlock_surface(dest);
             }
-            dest->Clip.Left   = cl;
-            dest->Clip.Right  = cr;
-            dest->Clip.Top    = ct;
-            dest->Clip.Bottom = cb;
+            dest->Clip = save_clip;
          }
          else if ((Bitmap->Flags & BMF::TRANSPARENT) != BMF::NIL) {
             while (Height > 0) {
-               for (i = 0; i < Width; i++) {
+               for (auto i=0; i < Width; i++) {
                   colour = Bitmap->ReadUCPixel(Bitmap, X + i, Y);
                   if (colour != (ULONG)Bitmap->TransIndex) dest->DrawUCPixel(dest, DestX + i, DestY, colour);
                }
@@ -580,26 +570,22 @@ ERROR gfxCopyArea(extBitmap *Bitmap, extBitmap *dest, BAF Flags, LONG X, LONG Y,
                Height--;
             }
          }
-         else {
-            // Source is an ximage, destination is a pixmap
+         else { // Source is an ximage, destination is a pixmap
+            if ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpPremultiply(Bitmap);
 
-            if (Bitmap->x11.XShmImage IS TRUE)  {
-               if (XShmPutImage(XDisplay, dest->x11.drawable, glXGC, &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False)) {
+            if (Bitmap->x11.XShmImage IS true)  {
+               XShmPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height, False);
+            }
+            else XPutImage(XDisplay, dest->x11.drawable, dest->getGC(), &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
 
-               }
-               else log.warning("XShmPutImage() failed.");
-            }
-            else {
-               XPutImage(XDisplay, dest->x11.drawable, glXGC,
-                  &Bitmap->x11.ximage, X, Y, DestX, DestY, Width, Height);
-            }
+            XSync(XDisplay, False); // Essential because the graphics won't otherwise be immediately pushed to the display.
+
+            if ((Bitmap->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) bmpDemultiply(Bitmap);
          }
       }
-      else {
-         // Both the source and the destination are pixmaps
-
+      else { // Both the source and the destination are pixmaps
          XCopyArea(XDisplay, Bitmap->x11.drawable, dest->x11.drawable,
-            glXGC, X, Y, Width, Height, DestX, DestY);
+            dest->getGC(), X, Y, Width, Height, DestX, DestY);
       }
 
       return ERR_Okay;
@@ -1300,32 +1286,32 @@ ERROR gfxCopyRawBitmap(BITMAPSURFACE *Surface, extBitmap *Bitmap,
       // Source is an ximage, destination is a pixmap.  NB: If DGA is enabled, we will avoid using these routines because mem-copying from software
       // straight to video RAM is a lot faster.
 
-      XImage ximage;
       WORD alignment;
 
       if (Bitmap->LineWidth & 0x0001) alignment = 8;
       else if (Bitmap->LineWidth & 0x0002) alignment = 16;
       else alignment = 32;
 
-      ximage.width            = Surface->LineWidth / Surface->BytesPerPixel;  // Image width
-      ximage.height           = Surface->Height; // Image height
+      XImage ximage;
+      ximage.width            = Surface->LineWidth / Surface->BytesPerPixel;
+      ximage.height           = Surface->Height;
       ximage.xoffset          = 0;               // Number of pixels offset in X direction
       ximage.format           = ZPixmap;         // XYBitmap, XYPixmap, ZPixmap
-      ximage.data             = (char *)Surface->Data;   // Pointer to image data
-      ximage.byte_order       = 0;               // LSBFirst / MSBFirst
+      ximage.data             = (char *)Surface->Data;
+      ximage.byte_order       = LSBFirst;        // LSBFirst / MSBFirst
       ximage.bitmap_unit      = alignment;       // Quant. of scanline - 8, 16, 32
-      ximage.bitmap_bit_order = 0;               // LSBFirst / MSBFirst
+      ximage.bitmap_bit_order = LSBFirst;        // LSBFirst / MSBFirst
       ximage.bitmap_pad       = alignment;       // 8, 16, 32, either XY or Zpixmap
-      if (Surface->BitsPerPixel IS 32) ximage.depth = 24;
-      else ximage.depth = Surface->BitsPerPixel;            // Actual bits per pixel
-      ximage.bytes_per_line   = Surface->LineWidth;         // Accelerator to next line
-      ximage.bits_per_pixel   = Surface->BytesPerPixel * 8; // Bits per pixel-group
+      if ((Surface->BitsPerPixel IS 32) and ((Bitmap->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) ximage.depth = 24;
+      else ximage.depth = Surface->BitsPerPixel;
+      ximage.bytes_per_line   = Surface->LineWidth;
+      ximage.bits_per_pixel   = Surface->BytesPerPixel * 8;
       ximage.red_mask         = 0;
       ximage.green_mask       = 0;
       ximage.blue_mask        = 0;
       XInitImage(&ximage);
 
-      XPutImage(XDisplay, Bitmap->x11.drawable, glXGC,
+      XPutImage(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(),
          &ximage, X, Y, XDest, YDest, Width, Height);
 
       return ERR_Okay;
@@ -1779,8 +1765,8 @@ void gfxDrawRectangle(extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height
 
    #ifdef __xwindows__
       if ((Bitmap->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
-         XSetForeground(XDisplay, glXGC, Colour);
-         XFillRectangle(XDisplay, Bitmap->x11.drawable, glXGC, X, Y, Width, Height);
+         XSetForeground(XDisplay, Bitmap->getGC(), Colour);
+         XFillRectangle(XDisplay, Bitmap->x11.drawable, Bitmap->getGC(), X, Y, Width, Height);
          return;
       }
    #endif

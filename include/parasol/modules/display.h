@@ -879,8 +879,7 @@ class objBitmap : public BaseClass {
 #define MT_GfxSetGammaLinear -6
 #define MT_GfxSetMonitor -7
 #define MT_GfxMinimise -8
-#define MT_GfxUpdateDisplay -9
-#define MT_GfxCheckXWindow -10
+#define MT_GfxCheckXWindow -9
 
 struct gfxUpdatePalette { struct RGBPalette * NewPalette;  };
 struct gfxSetDisplay { LONG X; LONG Y; LONG Width; LONG Height; LONG InsideWidth; LONG InsideHeight; LONG BitsPerPixel; DOUBLE RefreshRate; LONG Flags;  };
@@ -888,7 +887,6 @@ struct gfxSizeHints { LONG MinWidth; LONG MinHeight; LONG MaxWidth; LONG MaxHeig
 struct gfxSetGamma { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
 struct gfxSetGammaLinear { DOUBLE Red; DOUBLE Green; DOUBLE Blue; GMF Flags;  };
 struct gfxSetMonitor { CSTRING Name; LONG MinH; LONG MaxH; LONG MinV; LONG MaxV; MON Flags;  };
-struct gfxUpdateDisplay { objBitmap * Bitmap; LONG X; LONG Y; LONG Width; LONG Height; LONG XDest; LONG YDest;  };
 
 #define gfxWaitVBL(obj) Action(MT_GfxWaitVBL,(obj),0)
 
@@ -923,11 +921,6 @@ INLINE ERROR gfxSetMonitor(APTR Ob, CSTRING Name, LONG MinH, LONG MaxH, LONG Min
 }
 
 #define gfxMinimise(obj) Action(MT_GfxMinimise,(obj),0)
-
-INLINE ERROR gfxUpdateDisplay(APTR Ob, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest) {
-   struct gfxUpdateDisplay args = { Bitmap, X, Y, Width, Height, XDest, YDest };
-   return(Action(MT_GfxUpdateDisplay, (OBJECTPTR)Ob, &args));
-}
 
 #define gfxCheckXWindow(obj) Action(MT_GfxCheckXWindow,(obj),0)
 

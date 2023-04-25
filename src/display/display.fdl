@@ -444,8 +444,7 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     { id=6, name="SetGammaLinear" },
     { id=7, name="SetMonitor" },
     { id=8, name="Minimise" },
-    { id=9, name="UpdateDisplay" },
-    { id=10, name="CheckXWindow" }
+    { id=9, name="CheckXWindow" }
   })
 
   class("Display", { version=1.0, src="class_display.cpp", output="class_display_def.c" }, [[

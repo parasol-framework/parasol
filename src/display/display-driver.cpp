@@ -34,7 +34,9 @@ void handle_stack_change(XCirculateEvent *);
 X11Globals glX11;
 _XDisplay *XDisplay = 0;
 struct XRandRBase *XRandRBase = 0;
+XVisualInfo glXInfoAlpha;
 bool glX11ShmImage = false;
+bool glXCompositeSupported = false;
 UBYTE KeyHeld[LONG(KEY::LIST_END)];
 UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 KQ glKeyFlags = KQ::NIL;
@@ -707,7 +709,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log(__FUNCTION__);
 
    #ifdef __xwindows__
-      XGCValues gcv;
       LONG shmmajor, shmminor, pixmaps;
    #endif
 
@@ -819,6 +820,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       // Create the graphics contexts for drawing directly to X11 windows
 
+      XGCValues gcv;
       gcv.function = GXcopy;
       gcv.graphics_exposures = False;
       glXGC = XCreateGC(XDisplay, DefaultRootWindow(XDisplay), GCGraphicsExposures|GCFunction, &gcv);
@@ -844,6 +846,11 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       atomSurfaceID   = XInternAtom(XDisplay, "PARASOL_SCREENID", False);
 
       XGetWindowAttributes(XDisplay, DefaultRootWindow(XDisplay), &glRootWindow);
+
+      if (XMatchVisualInfo(XDisplay, DefaultScreen(XDisplay), 32, TrueColor, &glXInfoAlpha)) {
+         glXCompositeSupported = true;
+      }
+      else glXCompositeSupported = false;
 
       ClearMemory(KeyHeld, sizeof(KeyHeld));
 
@@ -1274,6 +1281,90 @@ void free_egl(void)
    log.msg("EGL successfully terminated.");
 }
 #endif
+
+//********************************************************************************************************************
+// Updates the display using content from a source bitmap.
+
+ERROR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
+{
+#ifdef _WIN32
+   auto dest   = Self->Bitmap;
+   auto x      = X;
+   auto y      = Y;
+   auto width  = Width;
+   auto height = Height;
+   auto xdest  = XDest;
+   auto ydest  = YDest;
+
+   // Check if the destination that we are copying to is within the drawable area.
+
+   if ((xdest < dest->Clip.Left)) {
+      width = width - (dest->Clip.Left - xdest);
+      if (width < 1) return ERR_Okay;
+      x = x + (dest->Clip.Left - xdest);
+      xdest = dest->Clip.Left;
+   }
+   else if (xdest >= dest->Clip.Right) return ERR_Okay;
+
+   if ((ydest < dest->Clip.Top)) {
+      height = height - (dest->Clip.Top - ydest);
+      if (height < 1) return ERR_Okay;
+      y = y + (dest->Clip.Top - ydest);
+      ydest = dest->Clip.Top;
+   }
+   else if (ydest >= dest->Clip.Bottom) return ERR_Okay;
+
+   // Check if the source that we are copying from is within its own drawable area.
+
+   if (x < 0) {
+      if ((width += x) < 1) return ERR_Okay;
+      x = 0;
+   }
+   else if (x >= Bitmap->Width) return ERR_Okay;
+
+   if (y < 0) {
+      if ((height += y) < 1) return ERR_Okay;
+      y = 0;
+   }
+   else if (y >= Bitmap->Height) return ERR_Okay;
+
+   // Clip the Width and Height
+
+   if ((xdest + width)  >= dest->Clip.Right)  width  = dest->Clip.Right - xdest;
+   if ((ydest + height) >= dest->Clip.Bottom) height = dest->Clip.Bottom - ydest;
+
+   if ((x + width)  >= Bitmap->Width)  width  = Bitmap->Width - x;
+   if ((y + height) >= Bitmap->Height) height = Bitmap->Height - y;
+
+   if (width < 1) return ERR_Okay;
+   if (height < 1) return ERR_Okay;
+
+   // Adjust coordinates by offset values
+
+   x += Bitmap->XOffset;
+   y += Bitmap->YOffset;
+   xdest += dest->XOffset;
+   ydest += dest->YOffset;
+
+   APTR drawable;
+   dest->getPtr(FID_Handle, &drawable);
+
+   win32RedrawWindow(Self->WindowHandle, drawable,
+      x, y,
+      width, height,
+      xdest, ydest,
+      Bitmap->Width, Bitmap->Height,
+      Bitmap->BitsPerPixel, Bitmap->Data,
+      Bitmap->ColourFormat->RedMask   << Bitmap->ColourFormat->RedPos,
+      Bitmap->ColourFormat->GreenMask << Bitmap->ColourFormat->GreenPos,
+      Bitmap->ColourFormat->BlueMask  << Bitmap->ColourFormat->BluePos,
+      ((Self->Flags & SCR::COMPOSITE) != SCR::NIL) ? (Bitmap->ColourFormat->AlphaMask << Bitmap->ColourFormat->AlphaPos) : 0,
+      Self->Opacity);
+   return ERR_Okay;
+#else
+   return(gfxCopyArea(Bitmap, (extBitmap *)Self->Bitmap, BAF::NIL, X, Y, Width, Height, XDest, YDest));
+#endif
+}
 
 //********************************************************************************************************************
 

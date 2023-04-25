@@ -44,7 +44,6 @@ FDEF maSizeHints[] = { { "MinWidth", FD_LONG }, { "MinHeight", FD_LONG }, { "Max
 FDEF maSetGamma[] = { { "Red", FD_DOUBLE }, { "Green", FD_DOUBLE }, { "Blue", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetGammaLinear[] = { { "Red", FD_DOUBLE }, { "Green", FD_DOUBLE }, { "Blue", FD_DOUBLE }, { "Flags", FD_LONG }, { 0, 0 } };
 FDEF maSetMonitor[] = { { "Name", FD_STR }, { "MinH", FD_LONG }, { "MaxH", FD_LONG }, { "MinV", FD_LONG }, { "MaxV", FD_LONG }, { "Flags", FD_LONG }, { 0, 0 } };
-FDEF maUpdateDisplay[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { "XDest", FD_LONG }, { "YDest", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clDisplayMethods[] = {
    { -1, (APTR)DISPLAY_WaitVBL, "WaitVBL", 0, 0 },
@@ -55,8 +54,7 @@ static const struct MethodEntry clDisplayMethods[] = {
    { -6, (APTR)DISPLAY_SetGammaLinear, "SetGammaLinear", maSetGammaLinear, sizeof(struct gfxSetGammaLinear) },
    { -7, (APTR)DISPLAY_SetMonitor, "SetMonitor", maSetMonitor, sizeof(struct gfxSetMonitor) },
    { -8, (APTR)DISPLAY_Minimise, "Minimise", 0, 0 },
-   { -9, (APTR)DISPLAY_UpdateDisplay, "UpdateDisplay", maUpdateDisplay, sizeof(struct gfxUpdateDisplay) },
-   { -10, (APTR)DISPLAY_CheckXWindow, "CheckXWindow", 0, 0 },
+   { -9, (APTR)DISPLAY_CheckXWindow, "CheckXWindow", 0, 0 },
    { 0, 0, 0, 0, 0 }
 };
 
