@@ -501,7 +501,7 @@ gui.menu = function(Options)
       local ev = Events
       while ev do
          if (ev.type == JET_BUTTON_1) then
-            if ev.value == 0 then
+            if ev.value == 1 then
                if self.hItem then -- Menu item activated
                   if self.hItem.config.feedback then
                      self.hItem.config.feedback(self, self.hItem.config)
