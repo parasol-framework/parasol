@@ -510,18 +510,20 @@ static ERROR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEn
    if (!Host->h_name) cache.HostName = Key;
    else cache.HostName = Host->h_name;
 
-   if (Host->h_addrtype IS AF_INET) {
-      for (unsigned i=0; Host->h_addr_list[i]; i++) {
-         auto addr = *((ULONG *)Host->h_addr_list[i]);
-         cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR::V4 });
+   if (Host->h_addr_list) {
+      if (Host->h_addrtype IS AF_INET) {
+         for (unsigned i=0; Host->h_addr_list[i]; i++) {
+            auto addr = *((ULONG *)Host->h_addr_list[i]);
+            cache.Addresses.push_back({ ntohl(addr), 0, 0, 0, IPADDR::V4 });
+         }
       }
-   }
-   else if (Host->h_addrtype IS AF_INET6) {
-      for (unsigned i=0; Host->h_addr_list[i]; i++) {
-         auto addr = ((struct in6_addr **)Host->h_addr_list)[i];
-         cache.Addresses.push_back({
-            ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR::V6
-         });
+      else if (Host->h_addrtype IS AF_INET6) {
+         for (unsigned i=0; Host->h_addr_list[i]; i++) {
+            auto addr = ((struct in6_addr **)Host->h_addr_list)[i];
+            cache.Addresses.push_back({
+               ((ULONG *)addr)[0], ((ULONG *)addr)[1], ((ULONG *)addr)[2], ((ULONG *)addr)[3], IPADDR::V6
+            });
+         }
       }
    }
 
