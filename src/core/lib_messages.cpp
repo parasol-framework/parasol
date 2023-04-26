@@ -309,6 +309,9 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
    bool breaking = false;
    ERROR error;
 
+   ThreadLock lock(TL_MSGHANDLER, 5000); // A persistent lock on message handlers is optimal
+   if (!lock.granted()) return log.warning(ERR_SystemLocked);
+
    do { // Standard message handler for the core process.
       // Call all objects on the timer list (managed by SubscribeTimer()).  To manage timer locking cleanly, the loop
       // is restarted after each client call.  To prevent more than one call per cycle, the glTimerCycle is used to
@@ -390,7 +393,7 @@ timer_cycle:
 
       // Consume queued messages
 
-      LONG i;
+      unsigned i;
       for (i=0; (i < glQueue.size()) and (i < 30); i++) {
          if (glQueue[i].Type IS MSGID_BREAK) {
             // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
@@ -401,36 +404,33 @@ timer_cycle:
 
          tlCurrentMsg = &glQueue[i];
 
-         ThreadLock lock(TL_MSGHANDLER, 5000);
-         if (lock.granted()) {
-            for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
-               if ((!hdl->MsgType) or (hdl->MsgType IS glQueue[i].Type)) {
-                  ERROR result = ERR_NoSupport;
-                  if (hdl->Function.Type IS CALL_STDC) {
-                     auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))hdl->Function.StdC.Routine;
-                     if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size);
-                     else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0);
-                  }
-                  else if (hdl->Function.Type IS CALL_SCRIPT) {
-                     const ScriptArg args[] = {
-                        { "Custom",   FD_PTR,             { .Address = hdl->Custom } },
-                        { "UID",      FD_LONG,            { .Long    = glQueue[i].UID } },
-                        { "Type",     FD_LONG,            { .Long    = glQueue[i].Type } },
-                        { "Data",     FD_PTR|FD_BUFFER,   { .Address = glQueue[i].getBuffer() } },
-                        { "Size",     FD_LONG|FD_BUFSIZE, { .Long    = glQueue[i].Size } }
-                     };
-                     auto &script = hdl->Function.Script;
-                     if (scCallback(script.Script, script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
-                  }
+         for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
+            if ((!hdl->MsgType) or (hdl->MsgType IS glQueue[i].Type)) {
+               ERROR result = ERR_NoSupport;
+               if (hdl->Function.Type IS CALL_STDC) {
+                  auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))hdl->Function.StdC.Routine;
+                  if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size);
+                  else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0);
+               }
+               else if (hdl->Function.Type IS CALL_SCRIPT) {
+                  const ScriptArg args[] = {
+                     { "Custom",   FD_PTR,             { .Address = hdl->Custom } },
+                     { "UID",      FD_LONG,            { .Long    = glQueue[i].UID } },
+                     { "Type",     FD_LONG,            { .Long    = glQueue[i].Type } },
+                     { "Data",     FD_PTR|FD_BUFFER,   { .Address = glQueue[i].getBuffer() } },
+                     { "Size",     FD_LONG|FD_BUFSIZE, { .Long    = glQueue[i].Size } }
+                  };
+                  auto &script = hdl->Function.Script;
+                  if (scCallback(script.Script, script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
+               }
 
-                  if (result IS ERR_Okay) { // If the message was handled, do not pass it to anyone else
-                     break;
-                  }
-                  else if (result IS ERR_Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
-                     log.trace("Terminate request received from message handler.");
-                     timeout_end = 0; // Set to zero to indicate loop terminated
-                     break;
-                  }
+               if (result IS ERR_Okay) { // If the message was handled, do not pass it to anyone else
+                  break;
+               }
+               else if (result IS ERR_Terminate) { // Terminate the ProcessMessages() loop, but don't quit the program
+                  log.trace("Terminate request received from message handler.");
+                  timeout_end = 0; // Set to zero to indicate loop terminated
+                  break;
                }
             }
          }
