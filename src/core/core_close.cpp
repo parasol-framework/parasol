@@ -94,8 +94,6 @@ EXPORT void CloseCore(void)
       }
    #endif
 
-   glTaskMessageMID = 0;
-
    // Run the video recovery routine if one has been set and we have crashed
 
    if ((glCrashStatus) and (glVideoRecovery)) {

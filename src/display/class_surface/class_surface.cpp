@@ -743,8 +743,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
 
    if (Self->disabled()) return ERR_Okay|ERF_Notified;
 
-   Message *msg;
-   if ((msg = GetActionMsg())) {
+   if (auto msg = GetActionMsg()) {
       // This is a message - in which case it could have been delayed and thus superseded by a more recent message.
 
       if (msg->Time < glLastFocusTime) {
@@ -1045,9 +1044,7 @@ Okay
 
 static ERROR SURFACE_InheritedFocus(extSurface *Self, struct gfxInheritedFocus *Args)
 {
-   Message *msg;
-
-   if ((msg = GetActionMsg())) {
+   if (auto msg = GetActionMsg()) {
       // This is a message - in which case it could have been delayed and thus superseded by a more recent message.
 
       if (msg->Time < glLastFocusTime) {
@@ -1514,9 +1511,7 @@ LostFocus: Informs a surface object that it has lost the user focus.
 static ERROR SURFACE_LostFocus(extSurface *Self, APTR Void)
 {
 #if 0
-   Message *msg;
-
-   if ((msg = GetActionMsg())) {
+   if (auto msg = GetActionMsg()) {
       // This is a message - in which case it could have been delayed and thus superseded by a more recent call.
 
       if (msg->Time < glLastFocusTime) {
@@ -1579,31 +1574,25 @@ static ERROR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // scrolling from one point to another.  Potentially the user may not see the intended effect or witness erratic
    // response times.
 
-   APTR queue;
-   if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ, 2000, &queue)) {
-      LONG index = 0;
-      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
-      while (!ScanMessages(queue, &index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
+   LONG index = 0;
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
+   while (!ScanMessages(&index, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+      auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS AC_MoveToPoint) and (action->ObjectID IS Self->UID)) {
-            ReleaseMemory(queue);
-            return ERR_Okay|ERF_Notified;
-         }
-         else if ((action->ActionID IS AC_Move) and (action->SendArgs IS TRUE) and
-                  (action->ObjectID IS Self->UID)) {
-            auto msgmove = (struct acMove *)(action + 1);
-            msgmove->DeltaX += Args->DeltaX;
-            msgmove->DeltaY += Args->DeltaY;
-            msgmove->DeltaZ += Args->DeltaZ;
-
-            UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct acMove));
-
-            ReleaseMemory(queue);
-            return ERR_Okay|ERF_Notified;
-         }
+      if ((action->ActionID IS AC_MoveToPoint) and (action->ObjectID IS Self->UID)) {
+         return ERR_Okay|ERF_Notified;
       }
-      ReleaseMemory(queue);
+      else if ((action->ActionID IS AC_Move) and (action->SendArgs IS TRUE) and
+               (action->ObjectID IS Self->UID)) {
+         auto msgmove = (struct acMove *)(action + 1);
+         msgmove->DeltaX += Args->DeltaX;
+         msgmove->DeltaY += Args->DeltaY;
+         msgmove->DeltaZ += Args->DeltaZ;
+
+         UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct acMove));
+
+         return ERR_Okay|ERF_Notified;
+      }
    }
 
    if ((Self->Flags & RNF::STICKY) != RNF::NIL) return ERR_Failed|ERF_Notified;

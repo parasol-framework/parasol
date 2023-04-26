@@ -1358,21 +1358,10 @@ static ERROR TASK_GetVar(extTask *Self, struct acGetVar *Args)
 static ERROR TASK_Init(extTask *Self, APTR Void)
 {
    pf::Log log;
-   MessageHeader *msgblock;
    LONG len;
 
-   if (!fs_initialised) {
-      // Perform the following if this is a Task representing the current process
-
+   if (!fs_initialised) { // Perform the following if this is a Task representing the current process
       Self->ProcessID = glProcessID;
-
-      // Allocate the message block for this Task
-
-      if (!AllocMemory(sizeof(MessageHeader), MEM::DATA, (void **)&msgblock, &glTaskMessageMID)) {
-         Self->MessageMID = glTaskMessageMID;
-         ReleaseMemory(glTaskMessageMID);
-      }
-      else return ERR_AllocMemory;
 
 #ifdef _WIN32
       Self->Lock = get_threadlock();

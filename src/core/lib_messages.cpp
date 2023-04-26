@@ -65,13 +65,9 @@ static ResourceManager glResourceMsgHandler = {
    &msghandler_free
 };
 
-//#define DBG_INCOMING TRUE  // Print incoming message information
-
-#ifdef _WIN32
-static THREADVAR UBYTE tlMsgSent = FALSE;
-#endif
-
 #define MAX_MSEC 1000
+
+static std::mutex glQueueLock;
 
 //********************************************************************************************************************
 // Handler for WaitForObjects().  If an object on the list is signalled then it is removed from the list.  A
@@ -79,8 +75,7 @@ static THREADVAR UBYTE tlMsgSent = FALSE;
 
 static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   auto lref = glWFOList.find(Object->UID);
-   if (lref != glWFOList.end()) {
+   if (auto lref = glWFOList.find(Object->UID); lref != glWFOList.end()) {
       pf::Log log;
       auto &ref = lref->second;
       log.trace("Object #%d has been signalled from action %d.", Object->UID, ActionID);
@@ -180,10 +175,10 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **H
 -FUNCTION-
 GetMessage: Reads messages from message queues.
 
-The GetMessage() function is used to read messages that have been stored in message queues.  You can use this function
-to read the next immediate message stored on the queue, or the first message on the queue that matches a particular
-Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than
-`ERR_Okay` is returned.
+The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this
+function to read the next immediate message stored on the queue, or the first message on the queue that matches a
+particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code
+other than `ERR_Okay` is returned.
 
 Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you
 need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your
@@ -193,7 +188,6 @@ Message data is written to the supplied buffer with a Message structure, which i
 up with the actual message data.
 
 -INPUT-
-mem Queue:  The memory ID of the message queue is specified here.  If zero, the message queue of the local task will be used.
 int Type:   Filter down to this message type or set to zero to receive the next message on the queue.
 int(MSF) Flags:  This argument is reserved for future use.  Set it to zero.
 buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the incoming message information.  If set to NULL then all accompanying message data will be destroyed.
@@ -208,80 +202,38 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERROR GetMessage(MEMORYID MessageMID, LONG Type, MSF Flags, APTR Buffer, LONG BufferSize)
+ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG BufferSize)
 {
-   pf::Log log(__FUNCTION__);
+   const std::lock_guard<std::mutex> lock(glQueueLock);
 
-   //log.branch("Queue: %d, Type: %d, Flags: $%.8x, Size: %d", MessageMID, Type, LONG(Flags), BufferSize);
-
-   if (!MessageMID) MessageMID = glTaskMessageMID;
-
-   // If no buffer has been provided, drive the Size to 0
-
-   if (!Buffer) BufferSize = 0;
-
-   MessageHeader *header;
-   if ((Flags & MSF::ADDRESS) != MSF::NIL) header = (MessageHeader *)(MAXINT)MessageMID;
-   else if (AccessMemory(MessageMID, MEM::READ_WRITE, 2000, (void **)&header) != ERR_Okay) {
-      return ERR_AccessMemory;
-   }
-
-   TaskMessage *msg = (TaskMessage *)header->Buffer;
-   TaskMessage *prevmsg = NULL;
-   LONG j = 0;
-   while (j < header->Count) {
-      if (!msg->Type) goto next;
+   for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
+      if (!it->Type) continue;
 
       if ((Flags & MSF::MESSAGE_ID) != MSF::NIL) {
          // The Type argument actually refers to a unique message ID when MSF::MESSAGE_ID is used
-         if (msg->UniqueID != Type) goto next;
+         if (it->UID != Type) continue;
       }
-      else if ((Type) and (msg->Type != Type)) goto next;
+      else if ((Type) and (it->Type != Type)) continue;
 
       // Copy the message to the buffer
 
       if ((Buffer) and ((size_t)BufferSize >= sizeof(Message))) {
-         LONG len;
-         ((Message *)Buffer)->UniqueID = msg->UniqueID;
-         ((Message *)Buffer)->Type     = msg->Type;
-         ((Message *)Buffer)->Size     = msg->DataSize;
-         ((Message *)Buffer)->Time     = msg->Time;
+         ((Message *)Buffer)->UID  = it->UID;
+         ((Message *)Buffer)->Type = it->Type;
+         ((Message *)Buffer)->Size = it->Size;
+         ((Message *)Buffer)->Time = it->Time;
          BufferSize -= sizeof(Message);
-         if (BufferSize < msg->DataSize) {
+         if (BufferSize < it->Size) {
             ((Message *)Buffer)->Size = BufferSize;
-            len = BufferSize;
+            CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
          }
-         else len = msg->DataSize;
-         CopyMemory(msg + 1, ((BYTE *)Buffer) + sizeof(Message), len);
+         else CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
       }
 
-      // Remove the message from the buffer
-
-      if (prevmsg) {
-         if (msg->NextMsg) prevmsg->NextMsg += msg->NextMsg;
-         else prevmsg->NextMsg = 0;
-      }
-      else {
-         msg->Type = 0;
-         msg->DataSize = 0;
-      }
-
-      // Decrement the message count
-
-      header->CompressReset = 0;
-      header->Count--;
-      if (header->Count IS 0) header->NextEntry = 0;
-
-      if ((Flags & MSF::ADDRESS) IS MSF::NIL) ReleaseMemory(MessageMID);
+      glQueue.erase(it);
       return ERR_Okay;
-
-next:
-      if (msg->Type) j++;
-      prevmsg = msg;
-      msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
    }
 
-   if ((Flags & MSF::ADDRESS) IS MSF::NIL) ReleaseMemory(MessageMID);
    return ERR_Search;
 }
 
@@ -353,14 +305,9 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
    log.traceBranch("Flags: $%.8x, TimeOut: %d", LONG(Flags), TimeOut);
 
    ERROR returncode = ERR_Okay;
-   Message *msg = NULL;
-   LONG msgbufsize = 0;
+   TaskMessage msg;
    bool breaking = false;
    ERROR error;
-
-   #ifdef _DEBUG
-      LARGE periodic = PreciseTime();
-   #endif
 
    do { // Standard message handler for the core process.
       // Call all objects on the timer list (managed by SubscribeTimer()).  To manage timer locking cleanly, the loop
@@ -441,119 +388,40 @@ timer_cycle:
          thread_unlock(TL_TIMER);
       }
 
-      // This sub-routine consumes all of the queued messages
+      // Consume queued messages
 
-      WORD msgcount = 0;
-      bool repass = false;
-      while (1) {
-         MessageHeader *msgbuffer;
-         bool msgfound = false;
-         if (!AccessMemory(glTaskMessageMID, MEM::READ_WRITE, 2000, (void **)&msgbuffer)) {
-            if (msgbuffer->Count) {
-               auto scanmsg = (TaskMessage *)msgbuffer->Buffer;
-               TaskMessage *prevmsg = NULL;
-
-               #ifdef _DEBUG
-               if (PreciseTime() - periodic > 1000000LL) {
-                  periodic = PreciseTime();
-                  log.trace("Message count: %d", msgbuffer->Count);
-               }
-               #endif
-
-               while (1) {
-                  if (!scanmsg->Type); // Ignore removed messages.
-                  else if ((scanmsg->DataSize < 0) or (scanmsg->DataSize > 1024 * 1024)) { // Check message validity
-                     log.warning("Invalid message found in queue: Type: %d, Size: %d", scanmsg->Type, scanmsg->DataSize);
-                     scanmsg->Type = 0;
-                     scanmsg->DataSize = 0;
-                  }
-                  else { // Message found.  Process it.
-                     if ((msg) and ((size_t)msgbufsize < sizeof(Message) + scanmsg->DataSize)) { // Is our message buffer large enough?
-                        log.trace("Freeing message buffer for expansion %d < %d + %d", msgbufsize, sizeof(Message), scanmsg->DataSize);
-                        FreeResource(msg);
-                        msg = NULL;
-                     }
-
-                     if (!msg) {
-                        #define DEFAULT_MSGBUFSIZE 16384
-
-                        if (sizeof(Message) + scanmsg->DataSize  > DEFAULT_MSGBUFSIZE) {
-                           msgbufsize = sizeof(Message) + scanmsg->DataSize;
-                        }
-                        else msgbufsize = DEFAULT_MSGBUFSIZE;
-
-                        if (AllocMemory(msgbufsize, MEM::NO_CLEAR, (APTR *)&msg, NULL) != ERR_Okay) break;
-                     }
-
-                     ((Message *)msg)->UniqueID = scanmsg->UniqueID;
-                     ((Message *)msg)->Type     = scanmsg->Type;
-                     ((Message *)msg)->Size     = scanmsg->DataSize;
-                     ((Message *)msg)->Time     = scanmsg->Time;
-                     CopyMemory(scanmsg + 1, ((BYTE *)msg) + sizeof(Message), scanmsg->DataSize);
-
-                     // Remove the message from the buffer
-
-                     if (prevmsg) {
-                        if (scanmsg->NextMsg) prevmsg->NextMsg += scanmsg->NextMsg;
-                        else prevmsg->NextMsg = 0;
-                     }
-                     else {
-                        scanmsg->Type = 0;
-                        scanmsg->DataSize = 0;
-                     }
-
-                     // Decrement the message count
-
-                     msgbuffer->CompressReset = 0;
-                     msgbuffer->Count--;
-                     if (msgbuffer->Count IS 0) msgbuffer->NextEntry = 0;
-                     msgfound = true;
-                     break;
-                  }
-
-                  // Go to next message
-                  prevmsg = scanmsg;
-                  if (scanmsg->NextMsg) scanmsg = (TaskMessage *)ResolveAddress(scanmsg, scanmsg->NextMsg);
-                  else break;
-               } // while(1)
-            }
-
-            ReleaseMemory(glTaskMessageMID);
-         }
-
-         if (!msgfound) break;
-
-         tlCurrentMsg = (Message *)msg; // This global variable is available through GetResourcePtr(RES::CURRENT_MSG)
-
-         if (msg->Type IS MSGID_BREAK) {
+      LONG i;
+      for (i=0; (i < glQueue.size()) and (i < 30); i++) {
+         if (glQueue[i].Type IS MSGID_BREAK) {
             // MSGID_BREAK will break out of recursive calls to ProcessMessages(), but not the top-level
             // call made by the client application.
             if ((tlMsgRecursion > 1) or (TimeOut != -1)) breaking = true;
             else log.trace("Unable to break from recursive position %d layers deep.", tlMsgRecursion);
          }
 
+         tlCurrentMsg = &glQueue[i];
+
          ThreadLock lock(TL_MSGHANDLER, 5000);
          if (lock.granted()) {
-            for (auto handler=glMsgHandlers; handler; handler=handler->Next) {
-               if ((!handler->MsgType) or (handler->MsgType IS msg->Type)) {
+            for (auto hdl=glMsgHandlers; hdl; hdl=hdl->Next) {
+               if ((!hdl->MsgType) or (hdl->MsgType IS glQueue[i].Type)) {
                   ERROR result = ERR_NoSupport;
-                  if (handler->Function.Type IS CALL_STDC) {
-                     auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))handler->Function.StdC.Routine;
-                     if (msg->Size) result = msghandler(handler->Custom, msg->UniqueID, msg->Type, msg + 1, msg->Size);
-                     else result = msghandler(handler->Custom, msg->UniqueID, msg->Type, NULL, 0);
+                  if (hdl->Function.Type IS CALL_STDC) {
+                     auto msghandler = (LONG (*)(APTR, LONG, LONG, APTR, LONG))hdl->Function.StdC.Routine;
+                     if (glQueue[i].Size) result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, glQueue[i].getBuffer(), glQueue[i].Size);
+                     else result = msghandler(hdl->Custom, glQueue[i].UID, glQueue[i].Type, NULL, 0);
                   }
-                  else if (handler->Function.Type IS CALL_SCRIPT) {
+                  else if (hdl->Function.Type IS CALL_SCRIPT) {
                      const ScriptArg args[] = {
-                        { "Custom",   FD_PTR,  { .Address  = handler->Custom } },
-                        { "UniqueID", FD_LONG, { .Long = msg->UniqueID } },
-                        { "Type",     FD_LONG, { .Long = msg->Type } },
-                        { "Data",     FD_PTR|FD_BUFFER, { .Address = msg + 1} },
-                        { "Size",     FD_LONG|FD_BUFSIZE, { .Long = msg->Size } }
+                        { "Custom",   FD_PTR,             { .Address = hdl->Custom } },
+                        { "UID",      FD_LONG,            { .Long    = glQueue[i].UID } },
+                        { "Type",     FD_LONG,            { .Long    = glQueue[i].Type } },
+                        { "Data",     FD_PTR|FD_BUFFER,   { .Address = glQueue[i].getBuffer() } },
+                        { "Size",     FD_LONG|FD_BUFSIZE, { .Long    = glQueue[i].Size } }
                      };
-                     auto script = handler->Function.Script.Script;
-                     if (scCallback(script, handler->Function.Script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
+                     auto &script = hdl->Function.Script;
+                     if (scCallback(script.Script, script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;
                   }
-                  else log.warning("Handler uses function type %d, not understood.", handler->Function.Type);
 
                   if (result IS ERR_Okay) { // If the message was handled, do not pass it to anyone else
                      break;
@@ -567,37 +435,30 @@ timer_cycle:
             }
          }
 
+         glQueue[i].Type = 0;
+
          tlCurrentMsg = NULL;
-
-         if (++msgcount > 30) {
-            repass = true;
-            break; // Break if there are a lot of messages, so that we can call message hooks etc
-         }
-      } // while(1)
-
-      // This code is used to validate suspect processes
-
-      if (glValidateProcessID) {
-         validate_process(glValidateProcessID);
-         glValidateProcessID = 0;
       }
+
+      if (i > 0) glQueue.erase(glQueue.begin(), glQueue.begin() + i);
+
+      // Check for possibly broken child processes
+
+      if (glValidateProcessID) { validate_process(glValidateProcessID); glValidateProcessID = 0; }
 
       #ifdef _WIN32
          // Process any incoming window messages that occurred during our earlier processing. The hook for glNetProcessMessages() is found
          // in the network module and is required to prevent flooding of the Windows message queue.
 
          if (tlMainThread) {
-            tlMsgSent = FALSE;
             if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, NULL);
             winProcessMessages();
             if (glNetProcessMessages) glNetProcessMessages(NETMSG_END, NULL);
-
-            if (tlMsgSent) repass = true; // We may have placed a message on our own queue - make sure we go back and process it rather than sleeping
          }
       #endif
 
       LARGE wait = 0;
-      if ((repass) or (breaking) or ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)));
+      if ((!glQueue.empty()) or (breaking) or ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)));
       else if (timeout_end > 0) {
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
@@ -619,9 +480,9 @@ timer_cycle:
 
       #ifdef _WIN32
          if (tlMainThread) {
-            tlMessageBreak = TRUE;  // Break if the host OS sends us a native message
-            sleep_task(wait / 1000LL, FALSE); // Even if wait is zero, we still need to clear FD's and call FD hooks
-            tlMessageBreak = FALSE;
+            tlMessageBreak = true;  // Break if the host OS sends us a native message
+            sleep_task(wait / 1000LL, false); // Even if wait is zero, we still need to clear FD's and call FD hooks
+            tlMessageBreak = false;
 
             if (wait) {
                if (glNetProcessMessages) glNetProcessMessages(NETMSG_START, NULL);
@@ -637,7 +498,7 @@ timer_cycle:
 
       // Continue the loop?
 
-      if (repass) continue; // There are messages left unprocessed
+      if (!glQueue.empty()) continue; // There are messages left unprocessed
       else if (((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) or (breaking)) {
          log.trace("Breaking message loop.");
          break;
@@ -649,12 +510,9 @@ timer_cycle:
          }
          break;
       }
-
-   } while (1);
+   } while (true);
 
    if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL)) returncode = ERR_Terminate;
-
-   if (msg) FreeResource(msg);
 
    tlMsgRecursion--;
    return returncode;
@@ -665,34 +523,26 @@ timer_cycle:
 -FUNCTION-
 ScanMessages: Scans a message queue for multiple occurrences of a message type.
 
-Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To
-use this function, you need to establish a connection to the queue by using the ~AccessMemory() function
-first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code
-other than `ERR_Okay`.  Use ~ReleaseMemory() to let go of the message queue when you are done with it.
+Use the ScanMessages() function to scan the local message queue for information without affecting the state of the
+queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns
+an error code other than `ERR_Okay`.
 
-Here is an example that scans the queue of the active task:
+The following example illustrates a scan for `MSGID_QUIT` messages:
 
 <pre>
-if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ, &queue)) {
-   while (!ScanMessages(queue, &index, MSGID_QUIT, NULL, NULL)) {
-      ...
-   }
-   ReleaseMemory(queue);
+while (!ScanMessages(&handle, MSGID_QUIT, NULL, NULL)) {
+   ...
 }
 </pre>
 
-Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you
-need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your
-messages.  If the buffer is too small, the message data will be cut off to fit inside the buffer.
-
-Message data is written to the supplied buffer with a Message structure (struct Message), which is immediately followed
-up with the actual message data.  The message structure includes the following fields:
+Messages will often (but not always) carry data that is relevant to the message type.  To retrieve this data a buffer
+must be supplied.  If the buffer is too small as indicated by the Size, the message data will be trimmed to fit
+without any further indication.
 
 -INPUT-
-ptr Queue:  An address pointer for a message queue (use AccessMemory() to get an address from a message queue ID).
-&int Index: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
+&int Handle: Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.
 int Type:   The message type to filter for, or zero to scan all messages in the queue.
-buf(ptr) Buffer: Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.
+buf(ptr) Buffer: Optional pointer to a buffer that is large enough to hold any message data.
 bufsize Size: The byte-size of the supplied Buffer.
 
 -ERRORS-
@@ -703,76 +553,56 @@ Search: No more messages are left on the queue, or no messages that match the gi
 
 *********************************************************************************************************************/
 
-ERROR ScanMessages(APTR MessageQueue, LONG *Index, LONG Type, APTR Buffer, LONG BufferSize)
+ERROR ScanMessages(LONG *Handle, LONG Type, APTR Buffer, LONG BufferSize)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!MessageQueue) or (!Index)) return log.warning(ERR_NullArgs);
+   if (!Handle) return log.warning(ERR_NullArgs);
    if (!Buffer) BufferSize = 0;
 
-   MessageHeader *header = (MessageHeader *)MessageQueue;
-   TaskMessage *msg, *prevmsg = NULL;
-
-   LONG j = 0;
-
-   if (*Index > 0) {
-      msg = (TaskMessage *)header->Buffer;
-      while ((j < header->Count) and (j < *Index)) {
-         if (msg->Type) j++;
-         prevmsg = msg;
-         if (!msg->NextMsg) break;
-         msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
-      }
-   }
-   else if (*Index < 0) {
-      *Index = -1;
+   if (*Handle < 0) {
+      *Handle = -1;
       return ERR_Search;
    }
-   else msg = (TaskMessage *)header->Buffer;
 
-   while (j < header->Count) {
-      if ((msg->Type) and ((msg->Type IS Type) or (!Type))) {
+   const std::lock_guard<std::mutex> lock(glQueueLock);
+
+   LONG index = *Handle;
+   if (index >= LONG(glQueue.size())) return ERR_OutOfRange;
+
+   for (auto it = glQueue.begin() + index; it != glQueue.end(); it++) {
+      if ((it->Type) and ((it->Type IS Type) or (!Type))) {
          if ((Buffer) and ((size_t)BufferSize >= sizeof(Message))) {
-            ((Message *)Buffer)->UniqueID = msg->UniqueID;
-            ((Message *)Buffer)->Type     = msg->Type;
-            ((Message *)Buffer)->Size     = msg->DataSize;
-            ((Message *)Buffer)->Time     = msg->Time;
+            ((Message *)Buffer)->UID  = it->UID;
+            ((Message *)Buffer)->Type = it->Type;
+            ((Message *)Buffer)->Size = it->Size;
+            ((Message *)Buffer)->Time = it->Time;
 
             BufferSize -= sizeof(Message);
-            if (BufferSize < msg->DataSize) {
+            if (BufferSize < it->Size) {
                ((Message *)Buffer)->Size = BufferSize;
-               CopyMemory(msg + 1, ((BYTE *)Buffer) + sizeof(Message), BufferSize);
+               CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
             }
-            else CopyMemory(msg + 1, ((BYTE *)Buffer) + sizeof(Message), msg->DataSize);
+            else CopyMemory(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
          }
 
-         *Index = j + 1;
+         *Handle = index + 1;
          return ERR_Okay;
       }
-
-      if (msg->Type) j++;
-      prevmsg = msg;
-      if (!msg->NextMsg) break;
-      msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
    }
 
-   *Index = -1;
+   *Handle = -1;
    return ERR_Search;
 }
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-SendMessage: Send messages to the local message queue.
+SendMessage: Add a message to the local message queue.
 
-The SendMessage() function is used to send messages to message queues.  Messages must be associated with a Type
-identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined,
-such as `MSGID_QUIT`.  Custom messages should use a unique type ID obtained from ~AllocateID().
-
-If the target message queue is full, or if the size of the message is larger than the total size of the queue,
-this function will immediately return with an `ERR_ArrayFull` error code.  If you are prepared to wait for the queue
-handler to process the waiting messages, specify `WAIT` in the Flags parameter.  There is a maximum time-out period
-of 10 seconds in case the task responsible for handling the queue is failing to process its messages.
+The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated
+with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are
+pre-defined, such as `MSGID_QUIT`.  Custom messages should use a unique type ID obtained from ~AllocateID().
 
 -INPUT-
 int(MSGID) Type:  The message Type/ID being sent.  Unique type ID's can be obtained from ~AllocateID().
@@ -781,16 +611,11 @@ buf(ptr) Data:  Pointer to the data that will be written to the queue.  Set to N
 bufsize Size:   The byte-size of the data being written to the message queue.
 
 -ERRORS-
-Okay:         The message was successfully written to the message queue.
+Okay: The message was successfully written to the message queue.
 Args:
-ArrayFull:    The message queue is full.
-TimeOut:      The message queue is full and the queue handler has failed to process them over a reasonable time period.
-AccessMemory: Access to the message queue memory was denied.
 -END-
 
 *********************************************************************************************************************/
-
-static LONG glUniqueMsgID = 1;
 
 ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
 {
@@ -806,130 +631,27 @@ ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)
 
    if ((!Type) or (Size < 0)) return log.warning(ERR_Args);
 
-   if (!Data) Size = 0;
+   {
+      const std::lock_guard<std::mutex> lock(glQueueLock);
 
-   LONG msgsize = (Size + 3) & (~3); // Raise the size if not long-word aligned
-
-   LONG i;
-   ERROR error;
-   TaskMessage *msg, *prevmsg;
-   MessageHeader *header;
-   if (!(error = AccessMemory(glTaskMessageMID, MEM::READ_WRITE, 2000, (void **)&header))) {
       if ((Flags & (MSF::NO_DUPLICATE|MSF::UPDATE)) != MSF::NIL) {
-         msg = (TaskMessage *)header->Buffer;
-         prevmsg = NULL;
-         i = 0;
-         while (i < header->Count) {
-            if (msg->Type IS Type) {
-               if ((Flags & MSF::NO_DUPLICATE) != MSF::NIL) {
-                  ReleaseMemory(glTaskMessageMID);
-                  return ERR_Okay;
-               }
-               else {
-                  // Delete the existing message type before adding the new one when the MF_UPDATE flag has been specified.
-
-                  if (prevmsg) {
-                     if (msg->NextMsg) prevmsg->NextMsg += msg->NextMsg;
-                     else prevmsg->NextMsg = 0;
-                  }
-                  else {
-                     msg->UniqueID = 0;
-                     msg->Type     = 0;
-                     msg->DataSize = 0;
-                     msg->Time     = 0;
-                  }
-
-                  // Decrement the message count
-
-                  header->Count--;
-                  if (header->Count IS 0) header->NextEntry = 0;
+         for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
+            if (it->Type IS Type) {
+               if ((Flags & MSF::NO_DUPLICATE) != MSF::NIL) return ERR_Okay;
+               else { // Delete the existing message before adding the new one when MF::UPDATE has been specified.
+                  it = glQueue.erase(it);
                   break;
                }
             }
-            if (msg->Type) i++;
-            prevmsg = msg;
-            msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
          }
       }
 
-      if ((header->NextEntry + sizeof(TaskMessage) + msgsize) >= SIZE_MSGBUFFER) {
-
-         if (header->CompressReset) {
-            // Do nothing if we've already tried compression and no messages have been pulled off the queue since that time.
-            log.warning("Message buffer %d is at capacity.", glTaskMessageMID);
-            ReleaseMemory(glTaskMessageMID);
-            return ERR_ArrayFull;
-         }
-
-         // Compress the message buffer
-
-         MessageHeader *buffer;
-         if (!AllocMemory(sizeof(MessageHeader), MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, NULL)) {
-            // Compress the message buffer to a temporary data store
-
-            buffer->NextEntry = 0;
-            auto srcmsg  = (TaskMessage *)header->Buffer;
-            auto destmsg = (TaskMessage *)buffer->Buffer;
-            for (buffer->Count=0; buffer->Count < header->Count;) {
-               if (srcmsg->Type) {
-                  CopyMemory(srcmsg, destmsg, sizeof(TaskMessage) + srcmsg->DataSize);
-                  destmsg->NextMsg = sizeof(TaskMessage) + ((srcmsg->DataSize + 3) & ~3);
-                  buffer->NextEntry += destmsg->NextMsg;
-                  destmsg = (TaskMessage *)ResolveAddress(destmsg, destmsg->NextMsg);
-                  buffer->Count++;
-               }
-               srcmsg = (TaskMessage *)ResolveAddress(srcmsg, srcmsg->NextMsg);
-            }
-
-            CopyMemory(buffer, header, sizeof(MessageHeader)); // Copy our new message buffer over the old one
-            FreeResource(buffer);
-         }
-
-         log.debug("Buffer compressed to %d bytes, %d messages on the queue.", header->NextEntry, header->Count);
-
-         // Check if space is now available
-
-         if ((header->NextEntry + sizeof(TaskMessage) + msgsize) >= SIZE_MSGBUFFER) {
-            log.warning("Message buffer %d is at capacity and I cannot compress the queue.", glTaskMessageMID);
-            header->CompressReset = 1;
-            ReleaseMemory(glTaskMessageMID);
-            return ERR_ArrayFull;
-         }
-      }
-
-      // Set up the message entry
-
-      msg = (TaskMessage *)(header->Buffer + header->NextEntry);
-      msg->UniqueID = __sync_add_and_fetch(&glUniqueMsgID, 1);
-      msg->Type     = Type;
-      msg->DataSize = Size;
-      msg->NextMsg  = sizeof(TaskMessage) + msgsize;
-      msg->Time     = PreciseTime();
-
-      // Copy the message data, if given
-
-      if ((Data) and (msgsize)) CopyMemory(Data, msg + 1, Size);
-
-      header->NextEntry += msg->NextMsg;
-      header->Count++;
-      header->CompressReset = 0;
-
-      ReleaseMemory(glTaskMessageMID);
-
-      // Alert the process to indicate that there are messages available.
-
-      wake_task();
-
-      #ifdef _WIN32
-         tlMsgSent = TRUE;
-      #endif
-
-      return ERR_Okay;
+      glQueue.emplace_back(Type, Data, Size);
    }
-   else {
-      log.warning("Could not gain access to message port #%d: %s", glTaskMessageMID, glMessages[error]);
-      return error; // Important that the original AccessMemory() error is returned (some code depends on this for detailed clarification)
-   }
+
+   wake_task(); // Alert the process to indicate that there are messages available.
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -1050,11 +772,10 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
 
    TaskMessage msg;
-   msg.UniqueID = __sync_add_and_fetch(&glUniqueMsgID, 1);
-   msg.Type     = Type;
-   msg.DataSize = Size;
-   msg.NextMsg  = sizeof(TaskMessage) + Size;
-   msg.Time     = PreciseTime();
+   msg.UID  = __sync_add_and_fetch(&glUniqueMsgID, 1);
+   msg.Type = Type;
+   msg.Size = Size;
+   msg.Time = PreciseTime();
 
 #ifdef _WIN32
    LONG write = sizeof(msg);
@@ -1133,65 +854,49 @@ ERROR write_nonblock(LONG Handle, APTR Data, LONG Size, LARGE EndTime)
 -FUNCTION-
 UpdateMessage: Updates the data of any message that is queued.
 
-The UpdateMessage() function provides a facility for updating the content of existing messages on a queue.  You are
-required to know the ID of the message that will be updated and need to provide the new message Type and/or Data
-to set against the message.
+The UpdateMessage() function provides a facility for updating the content of existing messages on the local queue.
+The client must provide the ID of the message to update and the new message Type and/or Data to set against the
+message.
 
 Messages can be deleted from the queue by setting the Type to -1.  There is no need to provide buffer information
 when deleting a message.
 
-If you supply a data buffer, then its size should equal that of the data already set against the message.  The size
-will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.
+If Data is defined, its size should equal that of the data already set against the message.  The size will be trimmed
+if it exceeds that of the existing message, as this function cannot expand the size of the queue.
 
 -INPUT-
-ptr Queue:   Must refer to the target message queue.
-int Message: The ID of the message that will be updated.
-int Type:    Defines the type of the message.  If set to -1, the message will be deleted.
+int Message:   The ID of the message that will be updated.
+int Type:      Defines the type of the message.  If set to -1, the message will be deleted.
 buf(ptr) Data: Pointer to a buffer that contains the new data for the message.
-bufsize Size: The byte-size of the buffer that has been supplied.  It must not exceed the size of the message that is being updated.
+bufsize Size:  The byte-size of the buffer that has been supplied.  It must not exceed the size of the message that is being updated.
 
 -ERRORS-
 Okay:   The message was successfully updated.
 NullArgs:
+AccessMemory:
 Search: The supplied ID does not refer to a message in the queue.
 -END-
 
 *********************************************************************************************************************/
 
-ERROR UpdateMessage(APTR Queue, LONG MessageID, LONG Type, APTR Buffer, LONG BufferSize)
+ERROR UpdateMessage(LONG MessageID, LONG Type, APTR Buffer, LONG BufferSize)
 {
-   pf::Log log(__FUNCTION__);
+   if (!MessageID) return ERR_NullArgs;
 
-   if ((!Queue) or (!MessageID)) return log.warning(ERR_NullArgs);
+   const std::lock_guard<std::mutex> lock(glQueueLock);
 
-   auto header = (MessageHeader *)Queue;
-   auto msg = (TaskMessage *)header->Buffer;
-   TaskMessage *prevmsg = NULL;
-   LONG j = 0;
-   while (j < header->Count) {
-      if (msg->UniqueID IS MessageID) {
-         if (Buffer) {
-            LONG len = (BufferSize > msg->DataSize) ? msg->DataSize : BufferSize;
-            CopyMemory(Buffer, msg + 1, len);
-         }
+   for (auto it=glQueue.begin(); it != glQueue.end(); it++) {
+      if (it->UID != MessageID) continue;
 
-         if (Type IS -1) { // Delete the message from the queue
-            if (msg->Type) {
-               msg->Type = 0;
-               header->Count--;
-            }
-         }
-         else if (Type) msg->Type = Type;
+      if (Buffer) it->setBuffer(Buffer, BufferSize);
 
-         return ERR_Okay;
-      }
+      if (Type IS -1) glQueue.erase(it); // Delete message from the queue
+      else if (Type) it->Type = Type;
 
-      if (msg->Type) j++;
-      prevmsg = msg;
-      msg = (TaskMessage *)ResolveAddress(msg, msg->NextMsg);
+      return ERR_Okay;
    }
 
-   return log.warning(ERR_Search);
+   return ERR_Search;
 }
 
 //********************************************************************************************************************
@@ -1406,7 +1111,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       // This subroutine will wait until either:
       //   Something is received on a registered WINHANDLE
       //   The thread-lock is released by another task (see wake_task).
-      //   A window message is received (if tlMessageBreak is TRUE)
+      //   A window message is received (if tlMessageBreak is true)
 
       WINHANDLE handles[glFDTable.size()+1]; // +1 for thread-lock
       handles[0] = get_threadlock();

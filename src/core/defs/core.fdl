@@ -327,7 +327,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TERMINATED: The process has closed.")
 
   enum("RES", { type="int", start=1 },
-    "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
+    "FREE_SWAP: The total amount of free swap memory.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
     "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
     "USER_ID: Internal",
@@ -342,7 +342,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "LOG_DEPTH: The current depth of log messages.",
     "JNI_ENV: Return the current JNI environment string.",
     "THREAD_ID: Return the ID of the current thread.",
-    "CURRENT_MSG: Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.",
     "OPEN_INFO: Pointer to the OpenInfo structure originally used to initialise the system.",
     "EXCEPTION_HANDLER: Internal",
     "NET_PROCESSING: Internal windows resource for Network module",
@@ -350,8 +349,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
-    "FREE_MEMORY: The total amount of free memory.",
-    "FREE_SWAP: The total amount of free swap memory."
+    "FREE_MEMORY: The total amount of free memory."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -935,11 +933,11 @@ struct FieldValue {
     cid ClassID   # The class ID of the referenced object.
   ]])
 
-  struct("Message", { comment="Messaging structures.  Note: This structure is utilised by NextMsg" }, [[
-     large Time    # A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
-     int UniqueID  # A unique identifier automatically created by SendMessage().
-     int Type      # A message type identifier as defined by the client.
-     int Size      # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
+  struct("Message", { comment="Message header." }, [[
+     large Time  # A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
+     int UID     # A unique identifier automatically created by SendMessage().
+     int Type    # A message type identifier as defined by the client.
+     int Size    # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
   ]])
 
   struct("MemInfo", { type="meminfo" }, [[
