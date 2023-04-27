@@ -653,7 +653,6 @@ extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // Volum
 extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[ERR_END+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
-extern MEMORYID glTaskMessageMID;        // Read-only
 extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
@@ -700,16 +699,17 @@ extern bool glScanClasses;
 extern UBYTE glTimerCycle;
 extern LONG glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
+extern LONG glUniqueMsgID;
 
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
 extern THREADVAR class ObjectContext *tlContext;
-extern THREADVAR struct Message *tlCurrentMsg;
+extern THREADVAR struct TaskMessage *tlCurrentMsg;
+extern THREADVAR bool tlMainThread;
 extern THREADVAR WORD tlMsgRecursion;
 extern THREADVAR WORD tlDepth;
 extern THREADVAR WORD tlLogStatus;
-extern THREADVAR BYTE tlMainThread;
 extern THREADVAR WORD tlPreventSleep;
 extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
@@ -738,30 +738,94 @@ extern struct FileMonitor *glFileMonitor;
 
 extern struct MsgHandler *glMsgHandlers, *glLastMsgHandler;
 
-//********************************************************************************************************************
-// Message structure and internal ID's for standard Task-to-Task messages.
-
-#define SIZE_MSGBUFFER (1024 * 64)
-
-struct TaskMessage {
+class TaskMessage {
+   public:
+   // struct Message - START
    LARGE Time;
-   LONG UniqueID;   // Unique identifier for this particular message
-   LONG Type;       // Message type ID
-   LONG DataSize;   // Size of the data (does not include the size of the TaskMessage structure)
-   LONG NextMsg;    // Offset to the next message
-   // Data follows
+   LONG  UID;
+   LONG  Type;
+   LONG  Size;
+   // struct Message - END
+   private:
+   char *ExtBuffer;
+   std::array<char, 64> Buffer;
+
+   // Constructors
+
+   public:
+   TaskMessage() : Size(0), ExtBuffer(NULL) { }
+
+   TaskMessage(LONG pType, APTR pData = NULL, LONG pSize = 0) {
+      Time = PreciseTime();
+      UID  = __sync_add_and_fetch(&glUniqueMsgID, 1);
+      Type = pType;
+      Size = 0;
+      ExtBuffer = NULL;
+      if ((pData) and (pSize)) setBuffer(pData, pSize);
+   }
+
+   ~TaskMessage() {
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+   }
+
+   // Move constructor
+   TaskMessage(TaskMessage &&other) noexcept {
+      ExtBuffer = NULL;
+      copy_from(other);
+      other.Size = 0;
+      other.ExtBuffer = NULL; // Source loses its buffer
+   }
+
+   // Copy constructor
+   TaskMessage(const TaskMessage &other) {
+      ExtBuffer = NULL;
+      copy_from(other);
+   }
+
+   // Move assignment
+   TaskMessage& operator=(TaskMessage &&other) noexcept {
+      if (this == &other) return *this;
+      copy_from(other);
+      other.Size = 0;
+      other.ExtBuffer = NULL; // Source loses its buffer
+      return *this;
+   }
+
+   // Copy assignment
+   TaskMessage& operator=(const TaskMessage& other) {
+      if (this == &other) return *this;
+      copy_from(other);
+      return *this;
+   }
+
+   // Public methods
+
+   char * getBuffer() { return ExtBuffer ? ExtBuffer : Buffer.data(); }
+
+   void setBuffer(APTR pData, size_t pSize) {
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+
+      if (pSize <= Buffer.size()) CopyMemory(pData, Buffer.data(), pSize);
+      else {
+         ExtBuffer = new char[pSize];
+         CopyMemory(pData, ExtBuffer, pSize);
+      }
+
+      Size = pSize;
+   }
+
+   private:
+   inline void copy_from(const TaskMessage &Source, bool Constructor = false) {
+      Time = Source.Time;
+      UID  = Source.UID;
+      Type = Source.Type;
+      Size = Source.Size;
+      if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
+      else if (Size) CopyMemory(Source.Buffer.data(), Buffer.data(), Size);
+   }
 };
 
-struct MessageHeader {
-   LONG NextEntry;     // Byte offset for the next message to be stored
-   WORD Count;         // Count of messages stored in the buffer
-   LONG CompressReset; // Manages message queue compression
-   BYTE Buffer[SIZE_MSGBUFFER + sizeof(struct TaskMessage)];
-};
-
-struct ValidateMessage {
-   LONG ProcessID;
-};
+extern std::vector<TaskMessage> glQueue;
 
 //********************************************************************************************************************
 // ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.

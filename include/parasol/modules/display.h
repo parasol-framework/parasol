@@ -475,7 +475,6 @@ typedef struct BitmapSurfaceV2 {
    WORD  XOffset;                // Offset all X coordinate references by the given value.
    WORD  YOffset;                // Offset all Y coordinate references by the given value.
    struct ColourFormat Format;   // The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
-   APTR  Private;                // A private pointer reserved for internal usage
 } BITMAPSURFACE;
 
 // Bitmap class definition

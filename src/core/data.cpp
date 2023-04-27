@@ -54,11 +54,11 @@ objMetaClass *glCompressedStreamClass = 0;
 #ifdef __ANDROID__
 objMetaClass *glAssetClass = 0;
 #endif
-BYTE fs_initialised = FALSE;
-APTR glPageFault = NULL;
-bool glScanClasses = false;
+BYTE fs_initialised  = FALSE;
+APTR glPageFault     = NULL;
+bool glScanClasses   = false;
 bool glJanitorActive = false;
-LONG glDebugMemory = FALSE;
+LONG glDebugMemory   = FALSE;
 struct CoreBase *LocalCoreBase = NULL;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
@@ -75,10 +75,11 @@ std::list<FDRecord> glFDTable;
 std::list<CoreTimer> glTimers;
 std::vector<TaskRecord> glTasks;
 std::vector<FDRecord> glRegisterFD;
+std::vector<TaskMessage> glQueue;
 
-struct RootModule     *glModuleList    = NULL;
-struct OpenInfo       *glOpenInfo      = NULL;
-struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
+struct RootModule *glModuleList   = NULL;
+struct OpenInfo   *glOpenInfo     = NULL;
+struct MsgHandler *glMsgHandlers  = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
 extTask *glCurrentTask = NULL;
@@ -89,7 +90,6 @@ UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
-LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
@@ -101,6 +101,7 @@ TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
 BYTE glFDProtected = 0;
 CSTRING glIDL = MOD_IDL;
+LONG glUniqueMsgID = 1;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
@@ -165,7 +166,7 @@ THREADVAR LONG glForceUID = -1, glForceGID = -1;
 THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
 THREADVAR WORD tlDepth     = 0;
 THREADVAR WORD tlLogStatus = 1;
-THREADVAR BYTE tlMainThread = FALSE; // Will be set to TRUE on open, any other threads will remain FALSE.
+THREADVAR bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
 THREADVAR WORD tlPreventSleep = 0;
 THREADVAR WORD tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
@@ -178,17 +179,15 @@ OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
-THREADVAR struct Message *tlCurrentMsg = 0;
+THREADVAR struct TaskMessage *tlCurrentMsg = NULL;
 
-ERROR (*glMessageHandler)(struct Message *) = 0;
-void (*glVideoRecovery)(void) = 0;
-void (*glKeyboardRecovery)(void) = 0;
-void (*glNetProcessMessages)(LONG, APTR) = 0;
-
-// Imported string variables
+ERROR (*glMessageHandler)(struct Message *) = NULL;
+void (*glVideoRecovery)(void) = NULL;
+void (*glKeyboardRecovery)(void) = NULL;
+void (*glNetProcessMessages)(LONG, APTR) = NULL;
 
 #ifdef __ANDROID__
-static struct AndroidBase *AndroidBase = 0;
+static struct AndroidBase *AndroidBase = NULL;
 #endif
 
 //********************************************************************************************************************

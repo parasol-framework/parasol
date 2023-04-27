@@ -302,7 +302,6 @@
     <constants lookup="RES">
       <const name="CORE_IDL">Refers to the Core module's compressed IDL string.</const>
       <const name="CPU_SPEED">The average top-speed of all CPU cores in Mhz.</const>
-      <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
       <const name="FREE_MEMORY">The total amount of free memory.</const>
       <const name="FREE_SWAP">The total amount of free swap memory.</const>
       <const name="JNI_ENV">Return the current JNI environment string.</const>
@@ -310,7 +309,6 @@
       <const name="LOG_DEPTH">The current depth of log messages.</const>
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
-      <const name="MESSAGE_QUEUE">Use this resource to retrieve the message queue ID of the current task.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
       <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
       <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
@@ -433,9 +431,9 @@
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
     </struct>
 
-    <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
+    <struct name="Message" comment="Message header.">
       <field name="Time" type="LARGE">A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().</field>
-      <field name="UniqueID" type="LONG">A unique identifier automatically created by SendMessage().</field>
+      <field name="UID" type="LONG">A unique identifier automatically created by SendMessage().</field>
       <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
       <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
     </struct>

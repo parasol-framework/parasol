@@ -325,52 +325,46 @@ ERROR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
-   APTR queue;
-   if (!AccessMemory(msgqueue, MEM::READ, 3000, &queue)) {
-      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
-      LONG msgindex = 0;
-      while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
+   LONG msgindex = 0;
+   while (!ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+      auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
-            if (!action->SendArgs) {
-               ReleaseMemory(msgqueue);
-               return ERR_Okay|ERF_Notified;
-            }
-         }
-         else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->UID)) {
-            if (action->SendArgs IS TRUE) {
-               auto msgdraw = (struct acDraw *)(action + 1);
-
-               if (!Args) { // Tell the next message to draw everything.
-                  action->SendArgs = FALSE;
-               }
-               else {
-                  DOUBLE right  = msgdraw->X + msgdraw->Width;
-                  DOUBLE bottom = msgdraw->Y + msgdraw->Height;
-
-                  if (x < msgdraw->X) msgdraw->X = x;
-                  if (y < msgdraw->Y) msgdraw->Y = y;
-                  if ((x + width) > right)   right  = x + width;
-                  if ((y + height) > bottom) bottom = y + height;
-
-                  msgdraw->Width  = right - msgdraw->X;
-                  msgdraw->Height = bottom - msgdraw->Y;
-               }
-
-               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct acDraw));
-            }
-            else {
-               // We do nothing here because the next draw message will draw everything.
-            }
-
-            ReleaseMemory(msgqueue);
+      if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
+         if (!action->SendArgs) {
             return ERR_Okay|ERF_Notified;
          }
       }
-      ReleaseMemory(msgqueue);
+      else if ((action->ActionID IS AC_Draw) and (action->ObjectID IS Self->UID)) {
+         if (action->SendArgs IS TRUE) {
+            auto msgdraw = (struct acDraw *)(action + 1);
+
+            if (!Args) { // Tell the next message to draw everything.
+               action->SendArgs = FALSE;
+            }
+            else {
+               DOUBLE right  = msgdraw->X + msgdraw->Width;
+               DOUBLE bottom = msgdraw->Y + msgdraw->Height;
+
+               if (x < msgdraw->X) msgdraw->X = x;
+               if (y < msgdraw->Y) msgdraw->Y = y;
+               if ((x + width) > right)   right  = x + width;
+               if ((y + height) > bottom) bottom = y + height;
+
+               msgdraw->Width  = right - msgdraw->X;
+               msgdraw->Height = bottom - msgdraw->Y;
+            }
+
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct acDraw));
+         }
+         else {
+            // We do nothing here because the next draw message will draw everything.
+         }
+
+         return ERR_Okay|ERF_Notified;
+      }
    }
+
 
    log.traceBranch("%dx%d,%dx%d", x, y, width, height);
    gfxRedrawSurface(Self->UID, x, y, width, height, IRF::RELATIVE|IRF::IGNORE_CHILDREN);
@@ -405,57 +399,52 @@ static ERROR SURFACE_Expose(extSurface *Self, struct drwExpose *Args)
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   APTR queue;
-   MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
-   if (!AccessMemory(msgqueue, MEM::READ_WRITE, 3000, &queue)) {
-      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
-      LONG msgindex = 0;
-      while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwExpose)];
+   LONG msgindex = 0;
+   while (!ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+      auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 
-         if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->UID)) {
-            if (action->SendArgs) {
-               auto msgexpose = (struct drwExpose *)(action + 1);
+      if ((action->ActionID IS MT_DrwExpose) and (action->ObjectID IS Self->UID)) {
+         if (action->SendArgs) {
+            auto msgexpose = (struct drwExpose *)(action + 1);
 
-               if (!Args) {
-                  // Invalidate everything
-                  msgexpose->X = 0;
-                  msgexpose->Y = 0;
-                  msgexpose->Width  = 20000;
-                  msgexpose->Height = 20000;
-               }
-               else {
-                  LONG right  = msgexpose->X + msgexpose->Width;
-                  LONG bottom = msgexpose->Y + msgexpose->Height;
-
-                  // Ignore region if it doesn't intersect
-
-                  if ((Args->X+Args->Width < msgexpose->X) or
-                      (Args->Y+Args->Height < msgexpose->Y) or
-                      (Args->X > right) or (Args->Y > bottom)) continue;
-
-                  if (Args->X < msgexpose->X) msgexpose->X = Args->X;
-                  if (Args->Y < msgexpose->Y) msgexpose->Y = Args->Y;
-                  if ((Args->X + Args->Width) > right)   right  = Args->X + Args->Width;
-                  if ((Args->Y + Args->Height) > bottom) bottom = Args->Y + Args->Height;
-
-                  msgexpose->Width  = right - msgexpose->X;
-                  msgexpose->Height = bottom - msgexpose->Y;
-                  msgexpose->Flags  |= Args->Flags;
-               }
-
-               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
+            if (!Args) {
+               // Invalidate everything
+               msgexpose->X = 0;
+               msgexpose->Y = 0;
+               msgexpose->Width  = 20000;
+               msgexpose->Height = 20000;
             }
             else {
-               // We do nothing here because the next expose message will draw everything.
+               LONG right  = msgexpose->X + msgexpose->Width;
+               LONG bottom = msgexpose->Y + msgexpose->Height;
+
+               // Ignore region if it doesn't intersect
+
+               if ((Args->X+Args->Width < msgexpose->X) or
+                   (Args->Y+Args->Height < msgexpose->Y) or
+                   (Args->X > right) or (Args->Y > bottom)) continue;
+
+               if (Args->X < msgexpose->X) msgexpose->X = Args->X;
+               if (Args->Y < msgexpose->Y) msgexpose->Y = Args->Y;
+               if ((Args->X + Args->Width) > right)   right  = Args->X + Args->Width;
+               if ((Args->Y + Args->Height) > bottom) bottom = Args->Y + Args->Height;
+
+               msgexpose->Width  = right - msgexpose->X;
+               msgexpose->Height = bottom - msgexpose->Y;
+               msgexpose->Flags  |= Args->Flags;
             }
 
-            ReleaseMemory(msgqueue);
-            return ERR_Okay|ERF_Notified;
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drwExpose));
          }
+         else {
+            // We do nothing here because the next expose message will draw everything.
+         }
+
+         return ERR_Okay|ERF_Notified;
       }
-      ReleaseMemory(msgqueue);
    }
+
 
    ERROR error;
    if (Args) error = gfxExposeSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, Args->Flags);
@@ -505,43 +494,38 @@ static ERROR SURFACE_InvalidateRegion(extSurface *Self, struct drwInvalidateRegi
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   APTR queue;
-   MEMORYID msgqueue = GetResource(RES::MESSAGE_QUEUE);
-   if (!AccessMemory(msgqueue, MEM::READ_WRITE, 3000, &queue)) {
-      LONG msgindex = 0;
-      UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
-      while (!ScanMessages(queue, &msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
-         auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
-         if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
-            if (action->SendArgs IS TRUE) {
-               auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
+   LONG msgindex = 0;
+   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion)];
+   while (!ScanMessages(&msgindex, MSGID_ACTION, msgbuffer, sizeof(msgbuffer))) {
+      auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
+      if ((action->ActionID IS MT_DrwInvalidateRegion) and (action->ObjectID IS Self->UID)) {
+         if (action->SendArgs IS TRUE) {
+            auto msginvalid = (struct drwInvalidateRegion *)(action + 1);
 
-               if (!Args) { // Invalidate everything
-                  action->SendArgs = FALSE;
-               }
-               else {
-                  DOUBLE right  = msginvalid->X + msginvalid->Width;
-                  DOUBLE bottom = msginvalid->Y + msginvalid->Height;
-
-                  if (Args->X < msginvalid->X) msginvalid->X = Args->X;
-                  if (Args->Y < msginvalid->Y) msginvalid->Y = Args->Y;
-                  if ((Args->X + Args->Width) > right)   right  = Args->X + Args->Width;
-                  if ((Args->Y + Args->Height) > bottom) bottom = Args->Y + Args->Height;
-
-                  msginvalid->Width  = right - msginvalid->X;
-                  msginvalid->Height = bottom - msginvalid->Y;
-               }
-
-               UpdateMessage(queue, ((Message *)msgbuffer)->UniqueID, 0, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
+            if (!Args) { // Invalidate everything
+               action->SendArgs = FALSE;
             }
-            else { } // We do nothing here because the next invalidation message will draw everything.
+            else {
+               DOUBLE right  = msginvalid->X + msginvalid->Width;
+               DOUBLE bottom = msginvalid->Y + msginvalid->Height;
 
-            ReleaseMemory(msgqueue);
-            return ERR_Okay|ERF_Notified;
+               if (Args->X < msginvalid->X) msginvalid->X = Args->X;
+               if (Args->Y < msginvalid->Y) msginvalid->Y = Args->Y;
+               if ((Args->X + Args->Width) > right)   right  = Args->X + Args->Width;
+               if ((Args->Y + Args->Height) > bottom) bottom = Args->Y + Args->Height;
+
+               msginvalid->Width  = right - msginvalid->X;
+               msginvalid->Height = bottom - msginvalid->Y;
+            }
+
+            UpdateMessage(((Message *)msgbuffer)->UID, 0, action, sizeof(ActionMessage) + sizeof(struct drwInvalidateRegion));
          }
+         else { } // We do nothing here because the next invalidation message will draw everything.
+
+         return ERR_Okay|ERF_Notified;
       }
-      ReleaseMemory(msgqueue);
    }
+
 
    if (Args) {
       gfxRedrawSurface(Self->UID, Args->X, Args->Y, Args->Width, Args->Height, IRF::RELATIVE);

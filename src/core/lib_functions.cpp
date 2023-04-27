@@ -408,13 +408,11 @@ LARGE GetResource(RES Resource)
 #endif
 
    switch(Resource) {
-      case RES::MESSAGE_QUEUE:   return glTaskMessageMID;
       case RES::PRIVILEGED:      return glPrivileged;
       case RES::LOG_LEVEL:       return glLogLevel;
       case RES::PROCESS_STATE:   return MAXINT(glTaskState);
       case RES::MAX_PROCESSES:   return MAX_TASKS;
       case RES::LOG_DEPTH:       return tlDepth;
-      case RES::CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
       case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
       case RES::THREAD_ID:       return (MAXINT)get_thread_id();

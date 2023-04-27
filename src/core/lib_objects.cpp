@@ -952,7 +952,7 @@ Message * GetActionMsg(void)
 {
    if (auto obj = tlContext->resource()) {
       if (obj->defined(NF::MESSAGE) and (obj->ActionDepth IS 1)) {
-         return tlCurrentMsg;
+         return (Message *)tlCurrentMsg;
       }
    }
    return NULL;

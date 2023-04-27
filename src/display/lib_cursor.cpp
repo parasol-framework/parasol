@@ -444,7 +444,6 @@ ERROR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJ
 
    if ((pointer->CursorOwnerID) and (pointer->CursorOwnerID != OwnerID)) {
       if ((pointer->CursorOwnerID < 0) and (CheckObjectExists(pointer->CursorOwnerID) != ERR_True)) pointer->CursorOwnerID = 0;
-      else if ((pointer->MessageQueue < 0) and (CheckMemoryExists(pointer->MessageQueue) != ERR_True)) pointer->CursorOwnerID = 0;
       else if ((Flags & CRF::BUFFER) != CRF::NIL) {
          // If the BUFFER option is used, then we can buffer the change so that it
          // will be activated as soon as the current holder releases the cursor.
@@ -455,7 +454,6 @@ ERROR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJ
          pointer->BufferOwner  = OwnerID;
          pointer->BufferFlags  = Flags;
          pointer->BufferObject = ObjectID;
-         pointer->BufferQueue  = GetResource(RES::MESSAGE_QUEUE);
          ReleaseObject(pointer);
          return ERR_Okay;
       }
@@ -485,7 +483,6 @@ ERROR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJ
    pointer->CursorReleaseID = 0;
    pointer->CursorOwnerID   = 0;
    pointer->CursorRelease   = 0;
-   pointer->MessageQueue    = 0;
 
    if (CursorID != PTC::NIL) {
       if ((CursorID IS pointer->CursorID) and (CursorID != PTC::CUSTOM)) {
@@ -568,8 +565,6 @@ ERROR gfxSetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJ
       }
       else log.warning("The pointer may only be restricted to public surfaces.");
    }
-
-   pointer->MessageQueue = GetResource(RES::MESSAGE_QUEUE);
 
    ReleaseObject(pointer);
    return ERR_Okay;
@@ -777,7 +772,6 @@ ERROR gfxUnlockCursor(OBJECTID SurfaceID)
    if (auto pointer = (extPointer *)gfxAccessPointer()) {
       if (pointer->AnchorID IS SurfaceID) {
          pointer->AnchorID = 0;
-         pointer->AnchorMsgQueue = 0;
          ReleaseObject(pointer);
          return ERR_Okay;
       }

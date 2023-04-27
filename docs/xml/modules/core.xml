@@ -920,16 +920,15 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     <name>GetMessage</name>
     <category>Messages</category>
     <comment>Reads messages from message queues.</comment>
-    <prototype>ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size)</prototype>
     <input>
-      <param type="MEMORYID" name="Queue">The memory ID of the message queue is specified here.  If zero, the message queue of the local task will be used.</param>
       <param type="LONG" name="Type">Filter down to this message type or set to zero to receive the next message on the queue.</param>
       <param type="MSF" name="Flags" lookup="MSF">This argument is reserved for future use.  Set it to zero.</param>
       <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the incoming message information.  If set to NULL then all accompanying message data will be destroyed.</param>
       <param type="LONG" name="Size">The byte-size of the buffer that you have supplied.</param>
     </input>
     <description>
-<p>The GetMessage() function is used to read messages that have been stored in message queues.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR_Okay</code> is returned.</p>
+<p>The GetMessage() function is used to read messages that have been stored in the local message queue.  You can use this function to read the next immediate message stored on the queue, or the first message on the queue that matches a particular Type.  It is also possible to call this function in a loop to clear out all messages, until an error code other than <code>ERR_Okay</code> is returned.</p>
 <p>Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your messages.  If the buffer is too small, the message data will be cut off to fit inside the buffer.</p>
 <p>Message data is written to the supplied buffer with a Message structure, which is immediately followed up with the actual message data.</p>
     </description>
@@ -1567,26 +1566,21 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <name>ScanMessages</name>
     <category>Messages</category>
     <comment>Scans a message queue for multiple occurrences of a message type.</comment>
-    <prototype>ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size)</prototype>
+    <prototype>ERROR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size)</prototype>
     <input>
-      <param type="APTR" name="Queue">An address pointer for a message queue (use AccessMemory() to get an address from a message queue ID).</param>
-      <param type="LONG *" name="Index">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
+      <param type="LONG *" name="Handle">Pointer to a 32-bit value that must initially be set to zero.  The ScanMessages() function will automatically update this variable with each call so that it can remember its analysis position.</param>
       <param type="LONG" name="Type">The message type to filter for, or zero to scan all messages in the queue.</param>
-      <param type="APTR" name="Buffer">Pointer to a buffer that is large enough to hold the message information.  Set to NULL if you are not interested in the message data.</param>
+      <param type="APTR" name="Buffer">Optional pointer to a buffer that is large enough to hold any message data.</param>
       <param type="LONG" name="Size">The byte-size of the supplied Buffer.</param>
     </input>
     <description>
-<p>Use the ScanMessages() function to scan a message queue for information without affecting the state of the queue.  To use this function, you need to establish a connection to the queue by using the <function module="Core">AccessMemory</function> function first to gain access.  Then make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.  Use <function module="Core">ReleaseMemory</function> to let go of the message queue when you are done with it.</p>
-<p>Here is an example that scans the queue of the active task:</p>
-<pre>if (!AccessMemory(GetResource(RES::MESSAGE_QUEUE), MEM::READ, &amp;queue)) {
-   while (!ScanMessages(queue, &amp;index, MSGID_QUIT, NULL, NULL)) {
-      ...
-   }
-   ReleaseMemory(queue);
+<p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR_Okay</code>.</p>
+<p>The following example illustrates a scan for <code>MSGID_QUIT</code> messages:</p>
+<pre>while (!ScanMessages(&amp;handle, MSGID_QUIT, NULL, NULL)) {
+   ...
 }
 </pre>
-<p>Messages will often (although not always) carry data that is relevant to the message type.  To retrieve this data you need to supply a buffer, preferably one that is large enough to receive all the data that you expect from your messages.  If the buffer is too small, the message data will be cut off to fit inside the buffer.</p>
-<p>Message data is written to the supplied buffer with a Message structure (struct Message), which is immediately followed up with the actual message data.  The message structure includes the following fields:</p>
+<p>Messages will often (but not always) carry data that is relevant to the message type.  To retrieve this data a buffer must be supplied.  If the buffer is too small as indicated by the Size, the message data will be trimmed to fit without any further indication.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
@@ -1598,7 +1592,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
   <function>
     <name>SendMessage</name>
     <category>Messages</category>
-    <comment>Send messages to the local message queue.</comment>
+    <comment>Add a message to the local message queue.</comment>
     <prototype>ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size)</prototype>
     <input>
       <param type="LONG" name="Type" lookup="MSGID">The message Type/ID being sent.  Unique type ID's can be obtained from <function module="Core">AllocateID</function>.</param>
@@ -1607,15 +1601,11 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
       <param type="LONG" name="Size">The byte-size of the data being written to the message queue.</param>
     </input>
     <description>
-<p>The SendMessage() function is used to send messages to message queues.  Messages must be associated with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function module="Core">AllocateID</function>.</p>
-<p>If the target message queue is full, or if the size of the message is larger than the total size of the queue, this function will immediately return with an <code>ERR_ArrayFull</code> error code.  If you are prepared to wait for the queue handler to process the waiting messages, specify <code>WAIT</code> in the Flags parameter.  There is a maximum time-out period of 10 seconds in case the task responsible for handling the queue is failing to process its messages.</p>
+<p>The SendMessage() function will add a message to the end of the local message queue.  Messages must be associated with a Type identifier and this can help the receiver process any accompanying Data.  Some common message types are pre-defined, such as <code>MSGID_QUIT</code>.  Custom messages should use a unique type ID obtained from <function module="Core">AllocateID</function>.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
-      <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
   </function>
 
@@ -2233,22 +2223,22 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <name>UpdateMessage</name>
     <category>Messages</category>
     <comment>Updates the data of any message that is queued.</comment>
-    <prototype>ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size)</prototype>
+    <prototype>ERROR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size)</prototype>
     <input>
-      <param type="APTR" name="Queue">Must refer to the target message queue.</param>
       <param type="LONG" name="Message">The ID of the message that will be updated.</param>
       <param type="LONG" name="Type">Defines the type of the message.  If set to -1, the message will be deleted.</param>
       <param type="APTR" name="Data">Pointer to a buffer that contains the new data for the message.</param>
       <param type="LONG" name="Size">The byte-size of the buffer that has been supplied.  It must not exceed the size of the message that is being updated.</param>
     </input>
     <description>
-<p>The UpdateMessage() function provides a facility for updating the content of existing messages on a queue.  You are required to know the ID of the message that will be updated and need to provide the new message Type and/or Data to set against the message.</p>
+<p>The UpdateMessage() function provides a facility for updating the content of existing messages on the local queue. The client must provide the ID of the message to update and the new message Type and/or Data to set against the message.</p>
 <p>Messages can be deleted from the queue by setting the Type to -1.  There is no need to provide buffer information when deleting a message.</p>
-<p>If you supply a data buffer, then its size should equal that of the data already set against the message.  The size will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.</p>
+<p>If Data is defined, its size should equal that of the data already set against the message.  The size will be trimmed if it exceeds that of the existing message, as this function cannot expand the size of the queue.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Search">A search routine in this function failed.</error>
+      <error code="AccessMemory">Access to a shared memory block was denied.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -3166,7 +3156,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <constants lookup="RES">
       <const name="CORE_IDL">Refers to the Core module's compressed IDL string.</const>
       <const name="CPU_SPEED">The average top-speed of all CPU cores in Mhz.</const>
-      <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
       <const name="FREE_MEMORY">The total amount of free memory.</const>
       <const name="FREE_SWAP">The total amount of free swap memory.</const>
       <const name="JNI_ENV">Return the current JNI environment string.</const>
@@ -3174,7 +3163,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="LOG_DEPTH">The current depth of log messages.</const>
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
-      <const name="MESSAGE_QUEUE">Use this resource to retrieve the message queue ID of the current task.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
       <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
       <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
@@ -3506,9 +3494,9 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
     </struct>
 
-    <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
+    <struct name="Message" comment="Message header.">
       <field name="Time" type="LARGE">A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().</field>
-      <field name="UniqueID" type="LONG">A unique identifier automatically created by SendMessage().</field>
+      <field name="UID" type="LONG">A unique identifier automatically created by SendMessage().</field>
       <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
       <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
     </struct>

@@ -1096,7 +1096,7 @@ enum class TSTATE : BYTE {
 
 enum class RES : LONG {
    NIL = 0,
-   MESSAGE_QUEUE = 1,
+   FREE_SWAP = 1,
    CONSOLE_FD = 2,
    KEY_STATE = 3,
    USER_ID = 4,
@@ -1111,16 +1111,14 @@ enum class RES : LONG {
    LOG_DEPTH = 13,
    JNI_ENV = 14,
    THREAD_ID = 15,
-   CURRENT_MSG = 16,
-   OPEN_INFO = 17,
-   EXCEPTION_HANDLER = 18,
-   NET_PROCESSING = 19,
-   PROCESS_STATE = 20,
-   TOTAL_MEMORY = 21,
-   TOTAL_SWAP = 22,
-   CPU_SPEED = 23,
-   FREE_MEMORY = 24,
-   FREE_SWAP = 25,
+   OPEN_INFO = 16,
+   EXCEPTION_HANDLER = 17,
+   NET_PROCESSING = 18,
+   PROCESS_STATE = 19,
+   TOTAL_MEMORY = 20,
+   TOTAL_SWAP = 21,
+   CPU_SPEED = 22,
+   FREE_MEMORY = 23,
 };
 
 // Path types for SetResourcePath()
@@ -1880,10 +1878,10 @@ struct ChildEntry {
 };
 
 struct Message {
-   LARGE Time;       // A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
-   LONG  UniqueID;   // A unique identifier automatically created by SendMessage().
-   LONG  Type;       // A message type identifier as defined by the client.
-   LONG  Size;       // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
+   LARGE Time;    // A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
+   LONG  UID;     // A unique identifier automatically created by SendMessage().
+   LONG  Type;    // A message type identifier as defined by the client.
+   LONG  Size;    // The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
 };
 
 typedef struct MemInfo {
@@ -2048,7 +2046,7 @@ struct CoreBase {
    ERROR (*_ProcessMessages)(PMF Flags, LONG TimeOut);
    ERROR (*_IdentifyFile)(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
    ERROR (*_ReallocMemory)(APTR Memory, LONG Size, APTR Address, MEMORYID * ID);
-   ERROR (*_GetMessage)(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size);
+   ERROR (*_GetMessage)(LONG Type, MSF Flags, APTR Buffer, LONG Size);
    ERROR (*_ReleaseMemory)(MEMORYID MemoryID);
    CLASSID (*_ResolveClassName)(CSTRING Name);
    ERROR (*_SendMessage)(LONG Type, MSF Flags, APTR Data, LONG Size);
@@ -2072,7 +2070,7 @@ struct CoreBase {
    ULONG (*_GenCRC32)(ULONG CRC, APTR Data, ULONG Length);
    LARGE (*_GetResource)(RES Resource);
    LARGE (*_SetResource)(RES Resource, LARGE Value);
-   ERROR (*_ScanMessages)(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size);
+   ERROR (*_ScanMessages)(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
    STT (*_StrDatatype)(CSTRING String);
    void (*_UnloadFile)(struct CacheFile * Cache);
    ERROR (*_CreateFolder)(CSTRING Path, PERMIT Permissions);
@@ -2080,7 +2078,7 @@ struct CoreBase {
    ERROR (*_SetVolume)(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
    ERROR (*_DeleteVolume)(CSTRING Name);
    ERROR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
-   ERROR (*_UpdateMessage)(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size);
+   ERROR (*_UpdateMessage)(LONG Message, LONG Type, APTR Data, LONG Size);
    ERROR (*_AddMsgHandler)(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
    ERROR (*_QueueAction)(LONG Action, OBJECTID Object, APTR Args);
    LARGE (*_PreciseTime)(void);
@@ -2161,7 +2159,7 @@ inline CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding) { return Core
 inline ERROR ProcessMessages(PMF Flags, LONG TimeOut) { return CoreBase->_ProcessMessages(Flags,TimeOut); }
 inline ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass) { return CoreBase->_IdentifyFile(Path,Class,SubClass); }
 inline ERROR ReallocMemory(APTR Memory, LONG Size, APTR Address, MEMORYID * ID) { return CoreBase->_ReallocMemory(Memory,Size,Address,ID); }
-inline ERROR GetMessage(MEMORYID Queue, LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Queue,Type,Flags,Buffer,Size); }
+inline ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size) { return CoreBase->_GetMessage(Type,Flags,Buffer,Size); }
 inline ERROR ReleaseMemory(MEMORYID MemoryID) { return CoreBase->_ReleaseMemory(MemoryID); }
 inline CLASSID ResolveClassName(CSTRING Name) { return CoreBase->_ResolveClassName(Name); }
 inline ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size) { return CoreBase->_SendMessage(Type,Flags,Data,Size); }
@@ -2185,7 +2183,7 @@ inline LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return Cor
 inline ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline LARGE GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
 inline LARGE SetResource(RES Resource, LARGE Value) { return CoreBase->_SetResource(Resource,Value); }
-inline ERROR ScanMessages(APTR Queue, LONG * Index, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Queue,Index,Type,Buffer,Size); }
+inline ERROR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size) { return CoreBase->_ScanMessages(Handle,Type,Buffer,Size); }
 inline STT StrDatatype(CSTRING String) { return CoreBase->_StrDatatype(String); }
 inline void UnloadFile(struct CacheFile * Cache) { return CoreBase->_UnloadFile(Cache); }
 inline ERROR CreateFolder(CSTRING Path, PERMIT Permissions) { return CoreBase->_CreateFolder(Path,Permissions); }
@@ -2193,7 +2191,7 @@ inline ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache) { retu
 inline ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags) { return CoreBase->_SetVolume(Name,Path,Icon,Label,Device,Flags); }
 inline ERROR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
-inline ERROR UpdateMessage(APTR Queue, LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Queue,Message,Type,Data,Size); }
+inline ERROR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
 inline ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
 inline ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline LARGE PreciseTime(void) { return CoreBase->_PreciseTime(); }
