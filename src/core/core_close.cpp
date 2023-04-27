@@ -1,8 +1,5 @@
 
 static void free_private_memory(void);
-#ifdef __unix__
-static void free_shared_control(void);
-#endif
 
 //********************************************************************************************************************
 
@@ -443,16 +440,3 @@ static void free_private_memory(void)
 
    if ((glCrashStatus) and (count > 0)) log.msg("%d memory blocks were freed.", count);
 }
-
-//********************************************************************************************************************
-
-#ifdef __unix__
-static void free_shared_control(void)
-{
-   if (glSocket != -1) {
-      close(glSocket);
-      glSocket = -1;
-   }
-}
-#endif
-
