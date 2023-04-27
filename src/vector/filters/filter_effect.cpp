@@ -149,7 +149,7 @@ static ERROR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Valu
    if (Value) {
       Self->SourceType = VSF::REFERENCE;
       Self->Input      = Value;
-      ((extFilterEffect *)Self->Input)->UsageCount++;
+      Value->UsageCount++;
    }
    else {
       Self->Input = NULL;
