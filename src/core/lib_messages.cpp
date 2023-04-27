@@ -305,7 +305,6 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
    log.traceBranch("Flags: $%.8x, TimeOut: %d", LONG(Flags), TimeOut);
 
    ERROR returncode = ERR_Okay;
-   TaskMessage msg;
    bool breaking = false;
    ERROR error;
 
@@ -1097,10 +1096,9 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       if (pos > 0) log.warning("WARNING - Sleeping with %d private locks held (%s)", tlPrivateLockCount, buffer);
    }
 
-   LARGE time_end;
-
    //log.traceBranch("Time-out: %d, TotalFDs: %d", Timeout, glTotalFDs);
 
+   LARGE time_end;
    if (Timeout < 0) {
       Timeout = -1; // A value of -1 means to wait indefinitely
       time_end = 0x7fffffffffffffffLL;
