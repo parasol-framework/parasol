@@ -1124,17 +1124,20 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #ifdef __xwindows__
 
-   if ((!glHeadless) and (Self->x11.drawable)) {
-      XVisualInfo visual, *info;
-      LONG items;
-      visual.bits_per_rgb = Self->BytesPerPixel * 8;
-      if ((info = XGetVisualInfo(XDisplay, VisualBitsPerRGBMask, &visual, &items))) {
-         gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
-         XFree(info);
+   if (!glHeadless) {
+      if (Self->x11.drawable) {
+         XVisualInfo visual, *info;
+         LONG items;
+         visual.bits_per_rgb = Self->BytesPerPixel * 8;
+         if ((info = XGetVisualInfo(XDisplay, VisualBitsPerRGBMask, &visual, &items))) {
+            gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
+            XFree(info);
+         }
+         else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
       }
-      else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+      else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, Self->x11.ximage.red_mask, Self->x11.ximage.green_mask, Self->x11.ximage.blue_mask, 0xff000000);
    }
-   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, Self->x11.ximage.red_mask, Self->x11.ximage.green_mask, Self->x11.ximage.blue_mask, 0xff000000);
+   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
 
 #elif _WIN32
 

@@ -13,6 +13,7 @@ function renderSVGToBitmap(Path)
    local vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
    local svg = obj.new('svg', { target=vp, path=Path })
    local bmp = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32 })
+   bmp.acClear()
    scene.bitmap = bmp
    scene.acDraw()
    return bmp
