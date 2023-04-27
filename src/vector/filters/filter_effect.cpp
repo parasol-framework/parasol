@@ -140,13 +140,21 @@ previous effect if available, otherwise the source graphic is used.
 
 static ERROR FILTEREFFECT_SET_Input(extFilterEffect *Self, extFilterEffect *Value)
 {
-   pf::Log log;
+   if (Value IS Self) return ERR_InvalidValue;
 
-   if (Value IS Self) return log.warning(ERR_InvalidValue);
+   if ((Self->SourceType IS VSF::REFERENCE) and (Self->Input)) {
+      ((extFilterEffect *)Self->Input)->UsageCount--;
+   }
 
-   Self->SourceType = VSF::REFERENCE;
-   Self->Input      = Value;
-   ((extFilterEffect *)Self->Input)->UsageCount++;
+   if (Value) {
+      Self->SourceType = VSF::REFERENCE;
+      Self->Input      = Value;
+      ((extFilterEffect *)Self->Input)->UsageCount++;
+   }
+   else {
+      Self->Input = NULL;
+      Self->SourceType = VSF::NIL;
+   }
    return ERR_Okay;
 }
 

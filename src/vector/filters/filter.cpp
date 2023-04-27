@@ -213,8 +213,8 @@ static ERROR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, 
          // Find first effect in the hierarchy that outputs a bitmap.
 
          while ((!bmp) and (e)) {
-            bmp = Effect->Target;
-            e = Effect->Input;
+            bmp = e->Target;
+            e = e->Input;
          }
 
          if (!bmp) {
