@@ -977,7 +977,6 @@ the surface area first).</li>
       <field name="XOffset" type="WORD">Offset all X coordinate references by the given value.</field>
       <field name="YOffset" type="WORD">Offset all Y coordinate references by the given value.</field>
       <field name="Format" type="struct ColourFormat">The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.</field>
-      <field name="Private" type="APTR">A private pointer reserved for internal usage</field>
     </struct>
 
     <struct name="CursorInfo">
