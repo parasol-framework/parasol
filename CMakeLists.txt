@@ -170,6 +170,14 @@ if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
    message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev")
 endif ()
 
+if (WIN32)
+   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
+   set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
+   set(INIT_LINK "init-win")
+else ()
+   set(INIT_LINK "init-unix")
+endif ()
+
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -459,11 +467,6 @@ if (X11_Xrandr_FOUND)
    add_subdirectory (src/xrandr)
 endif ()
 
-if (WIN32)
-   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
-   set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
-endif ()
-
 # --------------------------------------------------------------------------------------------------------------------
 # Parasol executable
 
@@ -476,11 +479,11 @@ endif ()
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
    add_executable (parasol_cmd WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
-   target_link_libraries (parasol_cmd PRIVATE init-win)
 else ()
    add_executable (parasol_cmd "src/launcher/parasol.cpp")
-   target_link_libraries (parasol_cmd PRIVATE init-unix)
 endif ()
+
+target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
 
 target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 
