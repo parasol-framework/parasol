@@ -64,7 +64,7 @@ static void * test_locking(void *Arg)
          log.msg("%d: Memory released.", info->index);
 
          #ifdef __unix__
-            pthread_yield();
+            sched_yield();
          #endif
          if (glAccessGap > 0) WaitTime(0, glAccessGap);
       }

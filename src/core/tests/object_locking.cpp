@@ -16,8 +16,8 @@ This program tests the locking of private objects between threads.
 CSTRING ProgName = "ObjectLocking";
 extern struct CoreBase *CoreBase;
 static volatile OBJECTPTR glConfig = NULL;
-static LONG glTotalThreads = 8;
-static LONG glLockAttempts = 200;
+static ULONG glTotalThreads = 8;
+static ULONG glLockAttempts = 200;
 static bool glTerminateObject = false;
 static LONG glAccessGap = 200000;
 
@@ -59,7 +59,6 @@ INLINE void prv_release(OBJECTPTR Object)
 static void * thread_entry(void *Arg)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
    ERROR error;
 
    auto info = (struct thread_info *)Arg;
@@ -67,7 +66,7 @@ static void * thread_entry(void *Arg)
    info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
-   for (i=0; i < glLockAttempts; i++) {
+   for (unsigned i=0; i < glLockAttempts; i++) {
       if (!glConfig) break;
       //LogF("~","Attempt %d.%d: Acquiring the object.", info->index, i);
       #ifdef QUICKLOCK
@@ -104,7 +103,7 @@ static void * thread_entry(void *Arg)
          #endif
 
          #ifdef __unix__
-            pthread_yield();
+            sched_yield();
          #endif
          if (glAccessGap > 0) WaitTime(0, glAccessGap);
       }
@@ -122,7 +121,6 @@ static void * thread_entry(void *Arg)
 int main(int argc, CSTRING *argv)
 {
    pf::Log log;
-   LONG i;
    pf::vector<std::string> *args;
 
    if (auto msg = init_parasol(argc, argv)) {
