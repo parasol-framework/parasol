@@ -17,6 +17,7 @@ This file is in the public domain and may be distributed and modified without re
 #define KEY_READ 0x20019
 #define MAX_PATH 260
 #define INVALID_HANDLE_VALUE (void *)(-1)
+
 extern "C" {
 DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
 DLLCALL LONG WINAPI FreeLibrary(APTR);
@@ -33,6 +34,7 @@ DLLCALL LONG WINAPI SetDllDirectoryA(CSTRING);
 DLLCALL LONG WINAPI SetDefaultDllDirectories(LONG DirectoryFlags);
 DLLCALL void * AddDllDirectory(STRING NewDirectory);
 }
+
 #define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x00000200
 #define LOAD_LIBRARY_SEARCH_USER_DIRS 0x00000400
 #define LOAD_LIBRARY_SEARCH_SYSTEM32 0x00000800

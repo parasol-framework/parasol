@@ -44,7 +44,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 ERROR ProcessMessages(PMF Flags, LONG TimeOut);
 ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
-ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID);
+ERROR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID);
 ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
 ERROR ReleaseMemory(MEMORYID MemoryID);
 CLASSID ResolveClassName(CSTRING Name);

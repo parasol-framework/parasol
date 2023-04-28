@@ -26,29 +26,6 @@ Name: Memory
 
 using namespace pf;
 
-#ifdef RANDOMISE_MEM
-static void randomise_memory(UBYTE *, ULONG Size);
-#else
-#define randomise_memory(a,b)
-#endif
-
-//********************************************************************************************************************
-// This function is called whenever memory blocks are freed.  It is useful for debugging applications that are
-// suspected to be using memory blocks after they have been deallocated.  Copies '0xdeadbeef' so that it's obvious.
-
-#ifdef RANDOMISE_MEM
-static void randomise_memory(UBYTE *Address, ULONG Size)
-{
-   if ((Size > RANDOMISE_MEM) or (Size < 8)) return;
-
-   ULONG number = 0xdeadbeef;
-   ULONG i;
-   for (i=0; i < (Size>>2)-1; i++) {
-      ((ULONG *)Address)[i] = number;
-   }
-}
-#endif
-
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -89,10 +66,10 @@ int(MEM) Flags: Optional flags.
 -ERRORS-
 Okay:
 Args:
-Failed:         The block could not be allocated due to insufficient memory space.
-ArrayFull:      Although memory space for the block was available, all available memory records are in use.
-SystemCorrupt:  The internal tables that manage memory allocations are corrupt.
-AccessMemory:   The block was allocated but access to it was not granted, causing failure.
+Failed:        The block could not be allocated due to insufficient memory space.
+ArrayFull:     Although memory space for the block was available, all available memory records are in use.
+SystemCorrupt: The internal tables that manage memory allocations are corrupt.
+AccessMemory:  The block was allocated but access to it was not granted, causing failure.
 -END-
 
 *********************************************************************************************************************/
@@ -289,7 +266,6 @@ ERROR FreeResource(MEMORYID MemoryID)
                DEBUG_BREAK
             }
 
-            randomise_memory(mem.Address, mem.Size);
             freemem(start_mem);
 
             if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
@@ -452,7 +428,7 @@ which case your existing memory block will remain valid.
 
 -INPUT-
 ptr Memory:   Pointer to a memory block obtained from AllocMemory().
-int Size:     The size of the new memory block.
+uint Size:    The size of the new memory block.
 !ptr Address: Point to an APTR variable to store the resulting pointer to the new memory block.
 &mem ID:      Point to a MEMORYID variable to store the resulting memory block's unique ID.
 
@@ -466,7 +442,7 @@ Memory: The memory block to be re-allocated is invalid.
 
 *********************************************************************************************************************/
 
-ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID)
+ERROR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -497,10 +473,7 @@ ERROR ReallocMemory(APTR Address, LONG NewSize, APTR *Memory, MEMORYID *MemoryID
    // Allocate the new memory block and copy the data across
 
    if (!AllocMemory(NewSize, meminfo.Flags, Memory, MemoryID)) {
-      ULONG copysize;
-      if (NewSize < meminfo.Size) copysize = NewSize;
-      else copysize = meminfo.Size;
-
+      auto copysize = (NewSize < meminfo.Size) ? NewSize : meminfo.Size;
       CopyMemory(Address, *Memory, copysize);
 
       // Free the old memory block.  If it is locked then we also release it for the caller.

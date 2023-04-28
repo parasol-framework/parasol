@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -11,15 +10,15 @@ This program tests the locking of private objects between threads.
 *********************************************************************************************************************/
 
 #include <pthread.h>
-
 #include <parasol/startup.h>
+#include <parasol/vector.hpp>
 
-STRING ProgName      = "ObjectLocking";
+CSTRING ProgName = "ObjectLocking";
 extern struct CoreBase *CoreBase;
 static volatile OBJECTPTR glConfig = NULL;
 static LONG glTotalThreads = 8;
 static LONG glLockAttempts = 200;
-static BYTE glTerminateObject = FALSE;
+static bool glTerminateObject = false;
 static LONG glAccessGap = 200000;
 
 struct thread_info{
@@ -55,15 +54,15 @@ INLINE void prv_release(OBJECTPTR Object)
 }
 #endif
 
-/*********************************************************************************************************************
-** Internal: thread_entry()
-*/
+//********************************************************************************************************************
 
-static void * thread_entry(struct thread_info *info)
+static void * thread_entry(void *Arg)
 {
    pf::Log log(__FUNCTION__);
    LONG i;
    ERROR error;
+
+   auto info = (struct thread_info *)Arg;
 
    info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
@@ -117,30 +116,35 @@ static void * thread_entry(struct thread_info *info)
    return NULL;
 }
 
-/*********************************************************************************************************************
-** Main.
-*/
+//********************************************************************************************************************
+// Main.
 
-void program(void)
+int main(int argc, CSTRING *argv)
 {
+   pf::Log log;
    LONG i;
-   STRING *args;
+   pf::vector<std::string> *args;
 
-   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
-      for (i=0; args[i]; i++) {
-         if (!StrMatch(args[i], "-threads")) {
-            if (args[++i]) glTotalThreads = StrToInt(args[i]);
+   if (auto msg = init_parasol(argc, argv)) {
+      print(msg);
+      return -1;
+   }
+
+   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
+      for (unsigned i=0; i < args->size(); i++) {
+         if (!StrMatch(args[0][i], "-threads")) {
+            if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[i], "-attempts")) {
-            if (args[++i]) glLockAttempts = StrToInt(args[i]);
+         else if (!StrMatch(args[0][i], "-attempts")) {
+            if (++i < args->size()) glLockAttempts = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[i], "-gap")) {
-            if (args[++i]) glAccessGap = StrToInt(args[i]);
+         else if (!StrMatch(args[0][i], "-gap")) {
+            if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[i], "-terminate")) glTerminateObject = TRUE;
+         else if (!StrMatch(args[0][i], "-terminate")) glTerminateObject = TRUE;
       }
    }
 
@@ -154,9 +158,9 @@ void program(void)
 
    struct thread_info glThreads[glTotalThreads];
 
-   for (i=0; i < glTotalThreads; i++) {
+   for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
-      pthread_create(&glThreads[i].thread, NULL, (void *)&thread_entry, &glThreads[i]);
+      pthread_create(&glThreads[i].thread, NULL, &thread_entry, &glThreads[i]);
    }
 
    // Main block now waits for both threads to terminate, before it exits
@@ -165,11 +169,13 @@ void program(void)
 
    log.msg("Waiting for thread completion.");
 
-   for (i=0; i < glTotalThreads; i++) {
+   for (unsigned i=0; i < glTotalThreads; i++) {
       pthread_join(glThreads[i].thread, NULL);
    }
 
    FreeResource(glConfig);
 
    print("Testing complete.\n");
+
+   close_parasol();
 }

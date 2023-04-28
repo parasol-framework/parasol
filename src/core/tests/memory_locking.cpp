@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -11,19 +10,16 @@ This program tests the locking of memory between threads.
 *********************************************************************************************************************/
 
 #include <pthread.h>
-
 #include <parasol/startup.h>
 
-STRING ProgName      = "MemoryLocking";
-static struct StringsBase *StringsBase;
-static struct FileSystemBase *FileSystemBase;
+CSTRING ProgName = "MemoryLocking";
 extern struct CoreBase *CoreBase;
 static volatile MEMORYID glMemoryID = 0;
 static LONG glTotalThreads = 2;
-static LONG glLockAttempts = 20;
-static BYTE glTerminateMemory = FALSE;
+static ULONG glLockAttempts = 20;
+static bool glTerminateMemory = false;
 static LONG glAccessGap = 2000;
-static BYTE glTestAllocation = FALSE;
+static bool glTestAllocation = false;
 
 struct thread_info{
    pthread_t thread;
@@ -32,21 +28,20 @@ struct thread_info{
 
 //********************************************************************************************************************
 
-static void * test_locking(struct thread_info *info)
+static void * test_locking(void *Arg)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
-   ERROR error;
-   BYTE *memory;
+   auto info = (thread_info *)Arg;
 
    info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
-   for (i=0; i < glLockAttempts; i++) {
+   for (unsigned i=0; i < glLockAttempts; i++) {
       if (!glMemoryID) break;
-      //LogF("~","Attempt %d.%d: Acquiring the memory.", info->index, i);
+      //log.branch("Attempt %d.%d: Acquiring the memory.", info->index, i);
 
-      if (!(error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory))) {
+      BYTE *memory;
+      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory); !error) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
          WaitTime(0, 2000);
@@ -83,14 +78,14 @@ static void * test_locking(struct thread_info *info)
 //********************************************************************************************************************
 // Allocate and free sets of memory blocks at random intervals.
 
-#define TOTAL_ALLOC 2000
+static const LONG TOTAL_ALLOC = 2000;
 
-static void * test_allocation(struct thread_info *info)
+static void * test_allocation(void *Arg)
 {
    APTR memory[TOTAL_ALLOC];
 
-   LONG i, j, start;
-   start = 0;
+   LONG i, j;
+   LONG start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
       AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], NULL);
       if (rand() % 10 > 7) {
@@ -110,30 +105,32 @@ static void * test_allocation(struct thread_info *info)
 
 //********************************************************************************************************************
 
-void program(void)
+int main(int argc, CSTRING *argv)
 {
    LONG i;
-   STRING *args;
+   pf::vector<std::string> *args;
 
-   StringsBase = GetResourcePtr(RES::STRINGS);
-   FileSystemBase = GetResourcePtr(RES::FILESYSTEM);
+   if (auto msg = init_parasol(argc, argv)) {
+      print(msg);
+      return -1;
+   }
 
    if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
-      for (i=0; args[i]; i++) {
-         if (!StrMatch(args[i], "-threads")) {
-            if (args[++i]) glTotalThreads = StrToInt(args[i]);
+      for (unsigned i=0; i < args->size(); i++) {
+         if (!StrMatch(args[0][i], "-threads")) {
+            if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[i], "-attempts")) {
-            if (args[++i]) glLockAttempts = StrToInt(args[i]);
+         else if (!StrMatch(args[0][i], "-attempts")) {
+            if (++i < args->size()) glLockAttempts = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[i], "-gap")) {
-            if (args[++i]) glAccessGap = StrToInt(args[i]);
+         else if (!StrMatch(args[0][i], "-gap")) {
+            if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[i], "-terminate")) glTerminateMemory = TRUE;
-         else if (!StrMatch(args[i], "-alloc")) glTestAllocation = TRUE;
+         else if (!StrMatch(args[0][i], "-terminate")) glTerminateMemory = true;
+         else if (!StrMatch(args[0][i], "-alloc")) glTestAllocation = true;
       }
    }
 
@@ -141,12 +138,12 @@ void program(void)
 
    print("Spawning %d threads...\n", glTotalThreads);
 
-   struct thread_info glThreads[glTotalThreads];
+   thread_info glThreads[glTotalThreads];
 
    for (i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
-      if (glTestAllocation) pthread_create(&glThreads[i].thread, NULL, (void *)&test_allocation, &glThreads[i]);
-      else pthread_create(&glThreads[i].thread, NULL, (void *)&test_locking, &glThreads[i]);
+      if (glTestAllocation) pthread_create(&glThreads[i].thread, NULL, &test_allocation, &glThreads[i]);
+      else pthread_create(&glThreads[i].thread, NULL, &test_locking, &glThreads[i]);
    }
 
    // Main block now waits for both threads to terminate, before it exits.  If main block exits, both threads exit,
@@ -161,4 +158,6 @@ void program(void)
    FreeResource(glMemoryID);
 
    print("Testing complete.\n");
+
+   close_parasol();
 }

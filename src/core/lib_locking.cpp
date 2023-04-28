@@ -657,7 +657,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       return log.warning(ERR_NullArgs);
    }
 
-   LONG our_thread = get_thread_id();
+   auto our_thread = get_thread_id();
 
    do {
       // Using an atomic increment we can achieve a 'quick lock' of the object without having to resort to locks.

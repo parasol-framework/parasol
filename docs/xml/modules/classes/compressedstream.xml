@@ -425,7 +425,7 @@
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
-      <field name="Size" type="LONG">The size of the memory block.</field>
+      <field name="Size" type="ULONG">The size of the memory block.</field>
       <field name="Flags" type="MEM" lookup="MEM">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>

@@ -943,7 +943,7 @@ struct FieldValue {
   struct("MemInfo", { type="meminfo" }, [[
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
-    int  Size          # The size of the memory block.
+    uint  Size         # The size of the memory block.
     int(MEM) Flags     # The type of memory.
     mem  MemoryID      # The unique ID for this block.
     short AccessCount  # Total number of active locks on this block.

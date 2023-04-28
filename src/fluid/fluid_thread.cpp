@@ -274,8 +274,7 @@ static int thread_method(lua_State *Lua)
                      return 0;
                   }
                }
-               else {
-                  // No parameters.
+               else { // No parameters.
                   if (object->ObjectPtr) {
                      error = ActionThread(action_id, object->ObjectPtr, NULL, &callback, key);
                   }

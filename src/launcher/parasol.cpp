@@ -12,7 +12,7 @@ This version of the Parasol launcher is intended for use from the command-line o
 #include <parasol/main.h>
 #include <parasol/modules/core.h>
 #include <parasol/modules/display.h>
-#include <startup.h>
+#include <parasol/startup.h>
 #include <string.h>
 
 #include "common.h"
