@@ -29,28 +29,21 @@ struct thread_info{
 #define QUICKLOCK
 
 #ifdef QUICKLOCK
-#define INC_QUEUE(Object) __sync_add_and_fetch(&(Object)->Queue, 1)
-#define SUB_QUEUE(Object) __sync_sub_and_fetch(&(Object)->Queue, 1)
-#define INC_SLEEP(Object) __sync_add_and_fetch(&(Object)->SleepQueue, 1)
-#define SUB_SLEEP(Object) __sync_sub_and_fetch(&(Object)->SleepQueue, 1)
-
-INLINE ERROR prv_access(OBJECTPTR Object, LONG ThreadID)
-{
-   if (INC_QUEUE(Object) IS 1) {
+INLINE ERROR prv_access(OBJECTPTR Object, LONG ThreadID) {
+   if (Object->incQueue() IS 1) {
       Object->ThreadID = ThreadID;
       return ERR_Okay;
    }
    else {
       if (Object->ThreadID IS ThreadID) return ERR_Okay;
-      SUB_QUEUE(Object); // Put the lock count back to normal before LockObject()
+      Object->subQueue(); // Put the lock count back to normal before LockObject()
       return LockObject(Object, -1);
    }
 }
 
-INLINE void prv_release(OBJECTPTR Object)
-{
+INLINE void prv_release(OBJECTPTR Object) {
    if (Object->SleepQueue > 0) ReleaseObject(Object);
-   else SUB_QUEUE(Object);
+   else Object->subQueue();
 }
 #endif
 
@@ -68,7 +61,7 @@ static void * thread_entry(void *Arg)
 
    for (unsigned i=0; i < glLockAttempts; i++) {
       if (!glConfig) break;
-      //LogF("~","Attempt %d.%d: Acquiring the object.", info->index, i);
+      //log.branch("Attempt %d.%d: Acquiring the object.", info->index, i);
       #ifdef QUICKLOCK
       if (!(error = prv_access(glConfig, info->index))) {
       #else
@@ -91,7 +84,6 @@ static void * thread_entry(void *Arg)
                ReleaseObject(glConfig);
                #endif
                glConfig = NULL;
-               //LogReturn();
                break;
             }
          }
@@ -108,7 +100,6 @@ static void * thread_entry(void *Arg)
          if (glAccessGap > 0) WaitTime(0, glAccessGap);
       }
       else log.msg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
-      //LogReturn();
    }
 
    log.msg("----- Thread %d is finished.", info->index);
@@ -124,7 +115,7 @@ int main(int argc, CSTRING *argv)
    pf::vector<std::string> *args;
 
    if (auto msg = init_parasol(argc, argv)) {
-      print(msg);
+      printf("%s\n", msg);
       return -1;
    }
 
@@ -161,8 +152,8 @@ int main(int argc, CSTRING *argv)
       pthread_create(&glThreads[i].thread, NULL, &thread_entry, &glThreads[i]);
    }
 
-   // Main block now waits for both threads to terminate, before it exits
-   // If main block exits, both threads exit, even if the threads have not
+   // Main block now waits for all threads to terminate before it exits.
+   // If main block exits, all threads exit, even if the threads have not
    // finished their work
 
    log.msg("Waiting for thread completion.");
@@ -173,7 +164,7 @@ int main(int argc, CSTRING *argv)
 
    FreeResource(glConfig);
 
-   print("Testing complete.\n");
+   printf("Testing complete.\n");
 
    close_parasol();
 }

@@ -10,15 +10,16 @@ function testMultipleSignals()
    -- Because the thread code is parsed as a string it won't see variables outside of its scope
 
    thread.script([[
-      msg('Thread is now in session.')
+      print('Thread is now in session.')
    ]],
    function()
-      msg('Thread has been executed.')
+      print('Thread has been executed.')
       signal_a.acSignal()
       signal_b.acSignal()
    end)
 
    local proc = processing.new({ timeout=2.0, signals = { signal_a, signal_b } })
+   print('Going to sleep....')
    local err = proc.sleep()
    assert(err == ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
 end

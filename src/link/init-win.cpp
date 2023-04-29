@@ -130,4 +130,3 @@ void close_parasol(void)
 }
 
 #include "common-win.c"
-#include "startup-common.c"

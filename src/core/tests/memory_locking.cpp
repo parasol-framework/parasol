@@ -111,7 +111,7 @@ int main(int argc, CSTRING *argv)
    pf::vector<std::string> *args;
 
    if (auto msg = init_parasol(argc, argv)) {
-      print(msg);
+      printf("%s\n", msg);
       return -1;
    }
 
@@ -136,7 +136,7 @@ int main(int argc, CSTRING *argv)
 
    AllocMemory(10000, MEM::DATA, NULL, (MEMORYID *)&glMemoryID);
 
-   print("Spawning %d threads...\n", glTotalThreads);
+   printf("Spawning %d threads...\n", glTotalThreads);
 
    thread_info glThreads[glTotalThreads];
 
@@ -149,7 +149,7 @@ int main(int argc, CSTRING *argv)
    // Main block now waits for both threads to terminate, before it exits.  If main block exits, both threads exit,
    // even if the threads have not finished their work
 
-   print("Waiting for thread completion.\n");
+   printf("Waiting for thread completion.\n");
 
    for (i=0; i < glTotalThreads; i++) {
       pthread_join(glThreads[i].thread, NULL);
@@ -157,7 +157,7 @@ int main(int argc, CSTRING *argv)
 
    FreeResource(glMemoryID);
 
-   print("Testing complete.\n");
+   printf("Testing complete.\n");
 
    close_parasol();
 }

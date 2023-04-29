@@ -20,8 +20,8 @@ CSTRING ProgName = "Parasol";
 extern struct CoreBase *CoreBase;
 struct FileSystemBase *FileSystemBase;
 
-#define STR_UNPACK "temp:scripts/"
-#define STR_MAIN   "main.fluid"
+static CSTRING STR_UNPACK = "temp:scripts/";
+static CSTRING STR_MAIN   = "main.fluid";
 
 static OBJECTID glTargetID = 0;
 static STRING glDirectory = NULL, *glArgs = NULL;
@@ -30,9 +30,9 @@ static char glBind[40] = { 0 };
 static OBJECTPTR glTask = NULL;
 static OBJECTPTR glScript = NULL;
 
-static ERROR decompress_archive(STRING);
+static ERROR decompress_archive(CSTRING);
 static ERROR prep_environment(LONG, LONG, LONG);
-static ERROR exec_script(STRING, OBJECTID *, LONG, STRING);
+static ERROR exec_script(CSTRING, OBJECTID *, LONG, STRING);
 static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
@@ -59,9 +59,7 @@ Available commands:\n\
  --errors   : Activates the output of run-time errors.\n"
 };
 
-/*********************************************************************************************************************
-** Function: main()
-*/
+//********************************************************************************************************************
 
 extern "C" void program(void)
 {
@@ -86,18 +84,18 @@ extern "C" void program(void)
       for (i=0; Args[i]; i++) {
          if (!StrMatch(Args[i], "--help")) {
             // Print help for the user
-            print(Help);
+            printf(Help);
             goto exit;
          }
          else if (!StrMatch(Args[i], "--time")) {
             time = true;
          }
          else if (!StrMatch(Args[i], "--info")) {
-            print("Instance: %d", GetResource(RES::INSTANCE));
+            printf("Instance: %d\n", GetResource(RES::INSTANCE));
          }
          else if (!StrMatch(Args[i], "--instance")) {
             glTask->get(FID_Instance, &j);
-            print("Instance: %d", j);
+            printf("Instance: %d\n", j);
          }
          else if (!StrMatch(Args[i], "--winhandle")) { // Target a desktop window in the host environment
             if (Args[i+1]) {
@@ -129,22 +127,22 @@ extern "C" void program(void)
          else if (!StrMatch(Args[i], "--target")) {
             if (Args[i+1]) {
                if (FindObject(Args[i+1], 0, FOF::SMART_NAMES, &TargetID) != ERR_Okay) {
-                  print("Warning - could not find target object \"%s\".", Args[i+1]);
+                  printf("Warning - could not find target object \"%s\".\n", Args[i+1]);
                }
                else log.msg("Using target %d", TargetID);
             }
          }
          else if (!StrMatch(Args[i], "--hash")) {
             if (Args[i+1]) {
-               ULONG hash = LCASEHASH(Args[i+1]);
-               print("Hash for %s = 0x%.8x\n", Args[i+1], hash);
+               auto hash = LCASEHASH(Args[i+1]);
+               printf("Hash for %s = 0x%.8x\n", Args[i+1], hash);
                i++;
             }
          }
          else {
             // If argument not recognised, assume this arg is the script file.
             if (ResolvePath(Args[i], RSF::APPROXIMATE, &scriptfile)) {
-               print("Unable to find file '%s'", Args[i]);
+               printf("Unable to find file '%s'\n", Args[i]);
                goto exit;
             }
             if (Args[i+1]) glArgs = Args + i + 1;
@@ -154,7 +152,7 @@ extern "C" void program(void)
    }
 
    if (!scriptfile) { // Abort if no script file to load.
-      print(Help);
+      printf(Help);
       goto exit;
    }
 
@@ -164,14 +162,14 @@ extern "C" void program(void)
 
    if (winhandle) {
       if (prep_environment(winhandle, width, height) != ERR_Okay) {
-         print("Failed to prepare an environment for running this script.");
+         printf("Failed to prepare an environment for running this script.\n");
          goto exit;
       }
    }
 
    LOC path_type;
    if ((AnalysePath(scriptfile, &path_type) != ERR_Okay) or (path_type != LOC::FILE)) {
-      print("File '%s' does not exist.", scriptfile);
+      printf("File '%s' does not exist.\n", scriptfile);
       goto exit;
    }
 
@@ -212,9 +210,8 @@ exit:
    if (glScript) FreeResource(glScript);
 }
 
-/*********************************************************************************************************************
-** Prepares a special environment for running scripts.
-*/
+//********************************************************************************************************************
+// Prepares a special environment for running scripts.
 
 ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 {
@@ -237,11 +234,10 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
    else return ERR_CreateObject;
 }
 
-/*********************************************************************************************************************
-** Runs scripts.
-*/
+//********************************************************************************************************************
+// Runs scripts.
 
-ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRING Procedure)
+ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRING Procedure)
 {
    LONG i, j, k;
    ERROR error;
@@ -255,7 +251,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
          // The Fluid source may be a compressed file that contains multiple script files.  This part of the routine will decompress the contents to "temp:scripts/".
 
          if (decompress_archive(ScriptFile) != ERR_Okay) {
-            print("Failed to decompress the script archive.");
+            printf("Failed to decompress the script archive.\n");
             return(ERR_Failed);
          }
          ScriptFile = glDirectory;
@@ -312,7 +308,7 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
       }
    }
    else {
-      print("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.", ScriptFile, GetErrorMsg(error));
+      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.\n", ScriptFile, GetErrorMsg(error));
       subclass = ID_SCRIPT;
       class_id = ID_SCRIPT;
    }
@@ -369,34 +365,32 @@ ERROR exec_script(STRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRI
             if (ShowTime) {
                DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;
                DOUBLE endseconds   = (DOUBLE)PreciseTime() / 1000000.0;
-               print("Script executed in %f seconds.\n\n", endseconds - startseconds);
+               printf("Script executed in %f seconds.\n\n", endseconds - startseconds);
             }
          }
          else {
-            print("Script failed during processing.  Use the --debug option to examine the failure.");
+            printf("Script failed during processing.  Use the --debug option to examine the failure.\n");
             return(ERR_Failed);
          }
       }
       else {
-         print("Failed to load / initialise the script.");
+         printf("Failed to load / initialise the script.\n");
          return(ERR_Failed);
       }
 
       log.msg("Script initialised.");
    }
    else {
-      print("Internal Failure: Failed to create a new Script object for file processing.");
+      printf("Internal Failure: Failed to create a new Script object for file processing.\n");
       return(ERR_Failed);
    }
 
    return(ERR_Okay);
 }
 
-/*********************************************************************************************************************
-** Function: decompress_archive()
-*/
+//********************************************************************************************************************
 
-static ERROR decompress_archive(STRING Location)
+static ERROR decompress_archive(CSTRING Location)
 {
    if (!Location) return(ERR_NullArgs);
 
@@ -421,11 +415,11 @@ static ERROR decompress_archive(STRING Location)
 
             return ERR_Okay;
          }
-         else print("Failed to decompress the file contents.");
+         else printf("Failed to decompress the file contents.\n");
       }
-      else print("Failed to allocate a memory block.");
+      else printf("Failed to allocate a memory block.\n");
    }
-   else print("Failed to open the compressed file.");
+   else printf("Failed to open the compressed file.\n");
 
    return ERR_Failed;
 }

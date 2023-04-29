@@ -138,8 +138,3 @@ extern "C" void close_parasol(void)
    if (closecore) closecore();
    if (glCoreHandle) dlclose(glCoreHandle);
 }
-
-//********************************************************************************************************************
-
-#include "startup-common.c"
-
