@@ -35,7 +35,7 @@ Most technical code regarding system locking is managed in this area.  Also chec
 using namespace pf;
 
 #ifdef _WIN32
-THREADVAR WORD tlMessageBreak = FALSE; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
+THREADVAR bool tlMessageBreak = false; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
 #endif
 
 //********************************************************************************************************************
@@ -64,7 +64,7 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 {
    static THREADVAR struct sockaddr_un tlSocket;
-   static THREADVAR UBYTE init = FALSE;
+   static THREADVAR bool init = false;
 
    if (!init) {
       tlSocket.sun_family = AF_UNIX;
@@ -73,7 +73,7 @@ struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
       tlSocket.sun_path[1] = 'p';
       tlSocket.sun_path[2] = 's';
       tlSocket.sun_path[3] = 'l';
-      init = TRUE;
+      init = true;
    }
 
    ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
@@ -337,7 +337,7 @@ ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
    const std::lock_guard<std::mutex> lock(glWaitLockMutex);
 
    if (glWLIndex IS -1) { // New thread that isn't registered yet
-      unsigned i=0;
+      unsigned i = 0;
       for (; i < glWaitLocks.size(); i++) {
          if (!glWaitLocks[i].ThreadID) break;
       }
@@ -401,7 +401,7 @@ void remove_process_waitlocks(void)
 
 #ifdef _WIN32
 static WORD glThreadLockIndex = 1;           // Shared between all threads.
-static BYTE glTLInit = FALSE;
+static bool glTLInit = false;
 static WINHANDLE glThreadLocks[MAX_THREADS]; // Shared between all threads, used for resource tracking allocated wake locks.
 static THREADVAR WINHANDLE tlThreadLock = 0; // Local to the thread.
 
@@ -414,7 +414,7 @@ WINHANDLE get_threadlock(void)
    if (tlThreadLock) return tlThreadLock; // Thread-local, no problem...
 
    if (!glTLInit) {
-      glTLInit = TRUE;
+      glTLInit = true;
       ClearMemory(glThreadLocks, sizeof(glThreadLocks));
    }
 
@@ -824,8 +824,8 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
 ReleaseObject: Release a locked private object.
 Category: Objects
 
-Release a lock previously obtained from ~AccessObject() or ~LockObject().  Locks will nest, so a release is
-required for every lock that has been granted.
+Release a lock previously obtained from ~AccessObject() or ~LockObject().  Locks will nest, so a release is required
+for every lock that has been granted.
 
 -INPUT-
 obj Object: Pointer to the object to be released.
