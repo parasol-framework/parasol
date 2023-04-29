@@ -5,62 +5,16 @@ This file is in the public domain and may be distributed and modified without re
 *********************************************************************************************************************/
 
 #include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
 
 #include <parasol/main.h>
-#include <parasol/system/errors.h>
 
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
-#define HKEY_LOCAL_MACHINE 0x80000002
-#define KEY_READ 0x20019
-#define MAX_PATH 260
-#define INVALID_HANDLE_VALUE (void *)(-1)
 
 extern "C" {
-DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
-DLLCALL LONG WINAPI FreeLibrary(APTR);
-DLLCALL LONG WINAPI FindClose(APTR);
-DLLCALL APTR WINAPI FindFirstFileA(STRING, void *);
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
-DLLCALL LONG WINAPI RegOpenKeyExA(LONG,CSTRING,LONG,LONG,APTR *);
-DLLCALL LONG WINAPI RegQueryValueExA(APTR,CSTRING,LONG *,LONG *,BYTE *,LONG *);
-DLLCALL void WINAPI CloseHandle(APTR);
-DLLCALL int  WINAPI MessageBoxA(LONG,CSTRING,CSTRING,LONG);
-DLLCALL LONG WINAPI GetCurrentDirectoryA(LONG, CSTRING);
-DLLCALL LONG WINAPI GetModuleFileNameA(APTR, CSTRING, LONG);
-DLLCALL LONG WINAPI SetDllDirectoryA(CSTRING);
-DLLCALL LONG WINAPI SetDefaultDllDirectories(LONG DirectoryFlags);
-DLLCALL void * AddDllDirectory(STRING NewDirectory);
+DLLCALL LONG WINAPI FreeLibrary(APTR);
 }
-
-#define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x00000200
-#define LOAD_LIBRARY_SEARCH_USER_DIRS 0x00000400
-#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x00000800
-
-typedef struct _FILETIME {
-	LONG dwLowDateTime;
-	LONG dwHighDateTime;
-} FILETIME,*PFILETIME,*LPFILETIME;
-
-typedef struct _WIN32_FIND_DATAW {
-	LONG dwFileAttributes;
-	FILETIME ftCreationTime;
-	FILETIME ftLastAccessTime;
-	FILETIME ftLastWriteTime;
-	LONG nFileSizeHigh;
-	LONG nFileSizeLow;
-	LONG dwReserved0;
-	LONG dwReserved1;
-   UWORD cFileName[MAX_PATH];
-	UWORD cAlternateFileName[14];
-} WIN32_FIND_DATAW,*LPWIN32_FIND_DATAW;
-
-typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
-
-#define MB_ICONERROR 16
-#define MB_OK 0
 
 extern void program(void);
 
@@ -81,7 +35,7 @@ static char msgbuf[120];
 extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
    struct OpenInfo info;
-   const char *msg = NULL;
+   CSTRING msg = NULL;
    char path_buffer[256];
 
    corehandle = find_core(path_buffer, sizeof(path_buffer));
