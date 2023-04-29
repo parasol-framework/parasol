@@ -68,7 +68,6 @@ Okay:
 Args:
 Failed:        The block could not be allocated due to insufficient memory space.
 ArrayFull:     Although memory space for the block was available, all available memory records are in use.
-SystemCorrupt: The internal tables that manage memory allocations are corrupt.
 AccessMemory:  The block was allocated but access to it was not granted, causing failure.
 -END-
 
@@ -181,8 +180,6 @@ mem ID: The ID of the memory block that will be checked.
 -ERRORS-
 Okay: The block exists.
 False: The block does not exist.
-NullArgs:
-SystemCorrupt: The internal memory tables are corrupt.
 -END-
 
 *********************************************************************************************************************/
@@ -316,7 +313,7 @@ Okay
 NullArgs
 Args
 MemoryDoesNotExist
-SystemCorrupt: Internal memory tables are corrupt.
+SystemLocked
 -END-
 
 *********************************************************************************************************************/

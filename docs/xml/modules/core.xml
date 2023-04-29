@@ -310,7 +310,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
@@ -458,8 +457,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="False">The result is false.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1128,8 +1125,8 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
+      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

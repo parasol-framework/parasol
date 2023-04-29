@@ -13,12 +13,11 @@ This program tests the locking of memory between threads.
 #include <parasol/startup.h>
 
 CSTRING ProgName = "MemoryLocking";
-extern struct CoreBase *CoreBase;
 static volatile MEMORYID glMemoryID = 0;
-static LONG glTotalThreads = 2;
+static ULONG glTotalThreads = 2;
 static ULONG glLockAttempts = 20;
-static bool glTerminateMemory = false;
 static LONG glAccessGap = 2000;
+static bool glTerminateMemory = false;
 static bool glTestAllocation = false;
 
 struct thread_info{
@@ -107,15 +106,13 @@ static void * test_allocation(void *Arg)
 
 int main(int argc, CSTRING *argv)
 {
-   LONG i;
-   pf::vector<std::string> *args;
-
    if (auto msg = init_parasol(argc, argv)) {
       printf("%s\n", msg);
       return -1;
    }
 
-   if ((CurrentTask()->getPtr(FID_Parameters, &args) IS ERR_Okay) and (args)) {
+   pf::vector<std::string> *args;
+   if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (!StrMatch(args[0][i], "-threads")) {
             if (++i < args->size()) glTotalThreads = StrToInt(args[0][i]);
@@ -140,7 +137,7 @@ int main(int argc, CSTRING *argv)
 
    thread_info glThreads[glTotalThreads];
 
-   for (i=0; i < glTotalThreads; i++) {
+   for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
       if (glTestAllocation) pthread_create(&glThreads[i].thread, NULL, &test_allocation, &glThreads[i]);
       else pthread_create(&glThreads[i].thread, NULL, &test_locking, &glThreads[i]);
@@ -151,7 +148,7 @@ int main(int argc, CSTRING *argv)
 
    printf("Waiting for thread completion.\n");
 
-   for (i=0; i < glTotalThreads; i++) {
+   for (unsigned i=0; i < glTotalThreads; i++) {
       pthread_join(glThreads[i].thread, NULL);
    }
 

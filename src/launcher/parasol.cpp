@@ -122,7 +122,6 @@ static ERROR process_args(void)
 }
 
 //********************************************************************************************************************
-// Main entry point
 
 int main(int argc, CSTRING *argv)
 {

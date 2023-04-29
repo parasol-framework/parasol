@@ -14,12 +14,11 @@ This program tests the locking of private objects between threads.
 #include <parasol/vector.hpp>
 
 CSTRING ProgName = "ObjectLocking";
-extern struct CoreBase *CoreBase;
 static volatile OBJECTPTR glConfig = NULL;
 static ULONG glTotalThreads = 8;
 static ULONG glLockAttempts = 200;
-static bool glTerminateObject = false;
 static LONG glAccessGap = 200000;
+static bool glTerminateObject = false;
 
 struct thread_info{
    pthread_t thread;
@@ -54,7 +53,7 @@ static void * thread_entry(void *Arg)
    pf::Log log(__FUNCTION__);
    ERROR error;
 
-   auto info = (struct thread_info *)Arg;
+   auto info = (thread_info *)Arg;
 
    info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
@@ -107,7 +106,6 @@ static void * thread_entry(void *Arg)
 }
 
 //********************************************************************************************************************
-// Main.
 
 int main(int argc, CSTRING *argv)
 {
@@ -145,7 +143,7 @@ int main(int argc, CSTRING *argv)
 
    log.msg("Spawning %d threads...", glTotalThreads);
 
-   struct thread_info glThreads[glTotalThreads];
+   thread_info glThreads[glTotalThreads];
 
    for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
