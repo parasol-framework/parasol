@@ -444,17 +444,6 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 
    Object->ActionDepth--;
    Object->threadRelease();
-
-#ifdef _DEBUG
-   if (log_depth != tlDepth) {
-      pf::Log log(__FUNCTION__);
-      if (ActionID >= 0) {
-         log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, ActionTable[ActionID].Name, log_depth, tlDepth);
-      }
-      else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
-   }
-#endif
-
    return error;
 }
 

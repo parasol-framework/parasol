@@ -184,31 +184,29 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    auto msg = (ThreadMessage *)Message;
    if (!msg) return ERR_Okay;
 
-   extThread *thread;
-   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
+   ScopedObjectLock<extThread> thread(msg->ThreadID, 5000);
+   if (thread.granted()) {
       thread->Active = false; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->Callback.Type IS CALL_STDC) {
          auto callback = (void (*)(extThread *))thread->Callback.StdC.Routine;
-         callback(thread);
+         callback(*thread);
       }
       else if (thread->Callback.Type IS CALL_SCRIPT) {
          if (auto script = thread->Callback.Script.Script) {
             if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
+               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = *thread } } };
                scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleaseObject(script);
             }
          }
       }
 
-      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(thread);
+      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(*thread);
 
-      ReleaseObject(thread);
+      return ERR_Okay;
    }
    else return ERR_AccessObject;
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -239,12 +237,10 @@ static void * thread_entry(extThread *Self)
          Self->Error = routine(Self);
       }
       else if (Self->Routine.Type IS CALL_SCRIPT) {
-         if (auto script = Self->Routine.Script.Script) {
-            if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
-               scCallback(script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleaseObject(script);
-            }
+         ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
+         if (script.granted()) {
+            const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
+            scCallback(*script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
 
@@ -306,6 +302,14 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    pf::Log log;
 
    if (Self->Active) return ERR_NothingDone;
+
+   // Thread objects MUST be locked prior to activation.  There is otherwise a genuine risk that the object
+   // could be terminated by code operating outside of the thread space while it is active.
+
+   if (Self->Queue < 1) {
+      log.warning("Thread objects must be locked prior to activation.");
+      return ERR_Failed;
+   }
 
    Self->Active = true;
 

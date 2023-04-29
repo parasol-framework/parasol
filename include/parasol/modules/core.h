@@ -2427,6 +2427,14 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
 
 namespace pf {
 
+static THREADVAR LONG _tlUniqueThreadID = 0;
+
+inline LONG _get_thread_id(void) {
+   if (_tlUniqueThreadID) return _tlUniqueThreadID;
+   _tlUniqueThreadID = GetResource(RES::THREAD_ID);
+   return _tlUniqueThreadID;
+}
+
 // For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
 
 class Log { // C++ wrapper for Parasol's log functionality
@@ -2606,29 +2614,6 @@ struct BaseClass { // Must be 64-bit aligned
       return (Flags & NF::FREE) != NF::NIL;
    }
 
-   inline ERROR threadLock() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (incQueue() IS 1) {
-            ThreadID = get_thread_id();
-            return ERR_Okay;
-         }
-         else {
-            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            subQueue(this); // Put the lock count back to normal before LockObject()
-            return LockObject(this, -1); // Can fail if object is marked for deletion.
-         }
-      #else
-         return ERR_Okay;
-      #endif
-   }
-
-   inline void threadRelease() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleaseObject(this);
-         else subQueue(this);
-      #endif
-   }
-
    // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
    // object lock if the queue value was at zero.
 
@@ -2646,6 +2631,29 @@ struct BaseClass { // Must be 64-bit aligned
 
    inline LONG subSleep() {
       return __sync_sub_and_fetch(&SleepQueue, 1);
+   }
+
+   inline ERROR threadLock() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (incQueue() IS 1) {
+            ThreadID = pf::_get_thread_id();
+            return ERR_Okay;
+         }
+         else {
+            if (ThreadID IS pf::_get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+            subQueue(); // Put the lock count back to normal before LockObject()
+            return LockObject(this, -1); // Can fail if object is marked for deletion.
+         }
+      #else
+         return ERR_Okay;
+      #endif
+   }
+
+   inline void threadRelease() {
+      #ifdef AUTO_OBJECT_LOCK
+         if (SleepQueue > 0) ReleaseObject(this);
+         else subQueue();
+      #endif
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
