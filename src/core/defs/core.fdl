@@ -1544,7 +1544,7 @@ struct BaseClass { // Must be 64-bit aligned
    LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
-   UBYTE ThreadPending;          // ActionThread() increments this.
+   std::atomic_uchar ThreadPending; // ActionThread() increments this.
    std::atomic_char Queue;       // Counter of locks gained by incQueue()
    std::atomic_char SleepQueue;  //
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()

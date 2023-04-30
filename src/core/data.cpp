@@ -86,22 +86,22 @@ extTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
-UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
+std::atomic_ushort glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
 LONG glValidateProcessID = 0;
 LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-LONG glPrivateIDCounter = 500;
-LONG glMessageIDCount = 10000;
-LONG glGlobalIDCount = 1;
+std::atomic_int glPrivateIDCounter = 500;
+std::atomic_int glMessageIDCount = 10000;
+std::atomic_int glGlobalIDCount = 1;
 LONG glEventMask = 0;
 TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
 BYTE glFDProtected = 0;
 CSTRING glIDL = MOD_IDL;
-LONG glUniqueMsgID = 1;
+std::atomic_int glUniqueMsgID = 1;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.

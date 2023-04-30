@@ -67,17 +67,15 @@ LONG AllocateID(IDTYPE Type)
    pf::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE::MESSAGE) {
-      LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
+      auto id = ++glMessageIDCount;
       log.function("MessageID: %d", id);
       return id;
    }
    else if (Type IS IDTYPE::GLOBAL) {
-      LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
-      return id;
+      return ++glGlobalIDCount;
    }
    else if (Type IS IDTYPE::FUNCTION) {
-      UWORD id = __sync_add_and_fetch(&glFunctionID, 1);
-      return id;
+      return ++glFunctionID;
    }
 
    return 0;
