@@ -377,6 +377,7 @@ static ERROR FLUID_Activate(objScript *Self, APTR Void)
       // Pre-load the Core module: mSys = mod.load('core')
 
       if (auto core = objModule::create::global(fl::Name("core"))) {
+         SetName(core, "mSys");
          auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
          ClearMemory(mod, sizeof(struct module));
          luaL_getmetatable(prv->Lua, "Fluid.mod");
