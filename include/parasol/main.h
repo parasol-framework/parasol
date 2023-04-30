@@ -87,7 +87,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
       T *obj;
 
       ScopedObjectLock(OBJECTID ObjectID, LONG Milliseconds = 3000) {
-         error = AccessObject(ObjectID, Milliseconds, &obj);
+         error = AccessObject(ObjectID, Milliseconds, (OBJECTPTR *)&obj);
       }
 
       ScopedObjectLock(OBJECTPTR Object, LONG Milliseconds = 3000) {

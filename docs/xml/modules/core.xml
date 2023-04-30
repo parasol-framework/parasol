@@ -310,7 +310,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="ArrayFull">Array has reached capacity and cannot be expanded.</error>
       <error code="AccessMemory">Access to a shared memory block was denied.</error>
     </result>
@@ -458,8 +457,6 @@ if (!AllocMemory(1000, MEM::DATA, &amp;address, NULL)) {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="False">The result is false.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
@@ -1128,8 +1125,8 @@ if (!MemoryIDInfo(memid, &amp;info)) {
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="SystemCorrupt">The operating system has been badly corrupted.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
+      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1368,10 +1365,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <name>ReallocMemory</name>
     <category>Memory</category>
     <comment>Reallocates memory blocks.</comment>
-    <prototype>ERROR ReallocMemory(APTR Memory, LONG Size, APTR * Address, MEMORYID * ID)</prototype>
+    <prototype>ERROR ReallocMemory(APTR Memory, ULONG Size, APTR * Address, MEMORYID * ID)</prototype>
     <input>
       <param type="APTR" name="Memory">Pointer to a memory block obtained from AllocMemory().</param>
-      <param type="LONG" name="Size">The size of the new memory block.</param>
+      <param type="ULONG" name="Size">The size of the new memory block.</param>
       <param type="APTR *" name="Address">Point to an APTR variable to store the resulting pointer to the new memory block.</param>
       <param type="MEMORYID *" name="ID">Point to a MEMORYID variable to store the resulting memory block's unique ID.</param>
     </input>
@@ -3488,7 +3485,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
-      <field name="Size" type="LONG">The size of the memory block.</field>
+      <field name="Size" type="ULONG">The size of the memory block.</field>
       <field name="Flags" type="MEM" lookup="MEM">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>

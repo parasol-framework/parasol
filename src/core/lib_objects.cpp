@@ -53,6 +53,7 @@ static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
 static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
+// Object termination hook for FreeResource()
 
 static ERROR object_free(BaseClass *Object)
 {
@@ -87,9 +88,8 @@ static ERROR object_free(BaseClass *Object)
    }
 
    if (Object->ActionDepth > 0) {
-      // Free() is being called while the object itself is still in use.
-      // This can be an issue with objects that haven't been locked with AccessObject().
-      log.trace("Free() attempt while object is in use.");
+      // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
+      log.trace("FreeResource() attempt while object is in use.");
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
@@ -100,7 +100,7 @@ static ERROR object_free(BaseClass *Object)
 
    if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
    else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
+   else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
@@ -144,7 +144,7 @@ static ERROR object_free(BaseClass *Object)
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
-   if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
+   if (mc->ActionTable[AC_Free].PerformAction) {  // Could be sub-class or base-class
       mc->ActionTable[AC_Free].PerformAction(Object, NULL);
    }
 
@@ -444,17 +444,6 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 
    Object->ActionDepth--;
    Object->threadRelease();
-
-#ifdef _DEBUG
-   if (log_depth != tlDepth) {
-      pf::Log log(__FUNCTION__);
-      if (ActionID >= 0) {
-         log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, ActionTable[ActionID].Name, log_depth, tlDepth);
-      }
-      else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
-   }
-#endif
-
    return error;
 }
 

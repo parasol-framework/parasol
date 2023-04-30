@@ -12,7 +12,7 @@ This version of the Parasol launcher is intended for use from the command-line o
 #include <parasol/main.h>
 #include <parasol/modules/core.h>
 #include <parasol/modules/display.h>
-#include <startup.h>
+#include <parasol/startup.h>
 #include <string.h>
 
 #include "common.h"
@@ -66,7 +66,7 @@ static ERROR process_args(void)
       pf::vector<std::string> &args = *glArgs;
       for (unsigned i=0; i < args.size(); i++) {
          if (!StrMatch(args[i], "--help")) { // Print help for the user
-            print(glHelp);
+            printf(glHelp);
             return ERR_Terminate;
          }
          else if (!StrMatch(args[i], "--verify")) {
@@ -90,7 +90,6 @@ static ERROR process_args(void)
                FreeResource(dir);
             }
 
-            if (total >= ARRAYSIZE(modules)) print("1");
             return ERR_Terminate;
          }
          else if (!StrMatch(args[i], "--sandbox")) {
@@ -110,7 +109,7 @@ static ERROR process_args(void)
          }
          else { // If argument not recognised, assume this arg is the target file.
             if (ResolvePath(args[i].c_str(), RSF::APPROXIMATE, &glTargetFile)) {
-               print("Unable to find file '%s'", args[i].c_str());
+               printf("Unable to find file '%s'\n", args[i].c_str());
                return ERR_Terminate;
             }
             glArgsIndex = i + 1;
@@ -123,7 +122,6 @@ static ERROR process_args(void)
 }
 
 //********************************************************************************************************************
-// Main entry point
 
 int main(int argc, CSTRING *argv)
 {
@@ -133,7 +131,7 @@ int main(int argc, CSTRING *argv)
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
          if (!strcmp(argv[i], "--verify")) return 0;
       }
-      print(msg);
+      printf("%s\n", msg);
       return -1;
    }
 
@@ -148,11 +146,11 @@ int main(int argc, CSTRING *argv)
 
          LOC type;
          if ((AnalysePath(glTargetFile, &type) != ERR_Okay) or (type != LOC::FILE)) {
-            print("File '%s' does not exist.", glTargetFile);
+            printf("File '%s' does not exist.\n", glTargetFile);
          }
          else result = exec_source(glTargetFile, glTime, glProcedure);
       }
-      else print(glHelp);
+      else printf(glHelp);
    }
 
    if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = NULL; }

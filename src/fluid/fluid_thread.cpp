@@ -87,7 +87,7 @@ static ERROR thread_script_entry(objThread *Thread)
 }
 
 //********************************************************************************************************************
-// Callback following execution (within the context of the main thread, not the child)
+// Callback following execution (executed by the main thread, not the child)
 
 static ERROR thread_script_callback(objThread *Thread)
 {
@@ -274,8 +274,7 @@ static int thread_method(lua_State *Lua)
                      return 0;
                   }
                }
-               else {
-                  // No parameters.
+               else { // No parameters.
                   if (object->ObjectPtr) {
                      error = ActionThread(action_id, object->ObjectPtr, NULL, &callback, key);
                   }

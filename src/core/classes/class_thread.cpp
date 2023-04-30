@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -150,9 +149,8 @@ void remove_threadpool(void)
 
 ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   ThreadActionMessage *msg;
-
-   if (!(msg = (ThreadActionMessage *)Message)) return ERR_Okay;
+   auto msg = (ThreadActionMessage *)Message;
+   if (!msg) return ERR_Okay;
 
    if (msg->Callback.Type IS CALL_STDC) {
       auto routine = (void (*)(ACTIONID, OBJECTPTR, ERROR, LONG))msg->Callback.StdC.Routine;
@@ -183,35 +181,32 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   ThreadMessage *msg;
-   if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
+   auto msg = (ThreadMessage *)Message;
+   if (!msg) return ERR_Okay;
 
-   extThread *thread;
-   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
-      thread->Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
+   ScopedObjectLock<extThread> thread(msg->ThreadID, 5000);
+   if (thread.granted()) {
+      thread->Active = false; // Because marking the thread as inactive is not done until the message is received by the core program
 
       if (thread->Callback.Type IS CALL_STDC) {
          auto callback = (void (*)(extThread *))thread->Callback.StdC.Routine;
-         callback(thread);
+         callback(*thread);
       }
       else if (thread->Callback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = thread->Callback.Script.Script)) {
+         if (auto script = thread->Callback.Script.Script) {
             if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
+               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = *thread } } };
                scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
                ReleaseObject(script);
             }
          }
       }
 
-      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(thread);
+      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(*thread);
 
-      ReleaseObject(thread);
+      return ERR_Okay;
    }
    else return ERR_AccessObject;
-
-   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -227,7 +222,7 @@ static void * thread_entry(extThread *Self)
 #endif
 {
    // Note that the Active flag will have been set to true prior to entry.
-   tlThreadCrashed = TRUE;
+   tlThreadCrashed = true;
    tlThreadRef = Self;
    pthread_cleanup_push(&thread_entry_cleanup, Self);
 
@@ -242,13 +237,10 @@ static void * thread_entry(extThread *Self)
          Self->Error = routine(Self);
       }
       else if (Self->Routine.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Self->Routine.Script.Script)) {
-            if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
-               scCallback(script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleaseObject(script);
-            }
+         ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
+         if (script.granted()) {
+            const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
+            scCallback(*script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
 
@@ -265,13 +257,13 @@ static void * thread_entry(extThread *Self)
             msg.ThreadID = Self->UID;
             SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
 
-            //Self->Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
+            //Self->Active = false; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
          }
          else if ((Self->Flags & THF::AUTO_FREE) != THF::NIL) {
-            Self->Active = FALSE;
+            Self->Active = false;
             FreeResource(Self);
          }
-         else Self->Active = FALSE;
+         else Self->Active = false;
 
          ReleaseObject(Self);
       }
@@ -279,8 +271,8 @@ static void * thread_entry(extThread *Self)
       // Please note that the Thread object/memory should be presumed terminated from this point
    }
 
-   tlThreadCrashed = FALSE;
-   pthread_cleanup_pop(TRUE);
+   tlThreadCrashed = false;
+   pthread_cleanup_pop(true);
    return 0;
 }
 
@@ -291,7 +283,7 @@ static void thread_entry_cleanup(void *Arg)
 {
    if (tlThreadCrashed) {
       LogF("!Parasol","A thread in this program has crashed.");
-      if (tlThreadRef) tlThreadRef->Active = FALSE;
+      if (tlThreadRef) tlThreadRef->Active = false;
    }
 
    #ifdef _WIN32
@@ -311,7 +303,15 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
 
    if (Self->Active) return ERR_NothingDone;
 
-   Self->Active = TRUE;
+   // Thread objects MUST be locked prior to activation.  There is otherwise a genuine risk that the object
+   // could be terminated by code operating outside of the thread space while it is active.
+
+   if (Self->Queue < 1) {
+      log.warning("Thread objects must be locked prior to activation.");
+      return ERR_Failed;
+   }
+
+   Self->Active = true;
 
 #ifdef __unix__
    pthread_attr_t attr;
@@ -339,7 +339,7 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    #error Platform support for threads is required.
 #endif
 
-   Self->Active = FALSE;
+   Self->Active = false;
    return log.warning(ERR_Failed);
 }
 
@@ -365,7 +365,7 @@ static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
          #warning Add code to kill threads.
       #endif
 
-      Self->Active = FALSE;
+      Self->Active = false;
    }
 
    return ERR_Okay;

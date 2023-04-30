@@ -635,11 +635,11 @@ extern bool glJanitorActive;
 extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
-extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
+extern RootModule *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
+extern OpenInfo *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
-extern const struct ActionTable ActionTable[];
-extern const struct Function    glFunctions[];
+extern const ActionTable ActionTable[];
+extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
 extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
@@ -673,7 +673,7 @@ extern objTime *glTime;
 extern objConfig *glDatatypes;
 extern objFile *glClassFile;
 extern CSTRING glIDL;
-extern struct BaseClass glDummyObject;
+extern BaseClass glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 
@@ -725,7 +725,7 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 
 #ifdef _WIN32
 extern WINHANDLE glProcessHandle;
-extern THREADVAR WORD tlMessageBreak;
+extern THREADVAR bool tlMessageBreak;
 #endif
 
 #ifdef __unix__

@@ -11,7 +11,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
 
    CLASSID class_id, subclass;
    if ((error = IdentifyFile(TargetFile, &class_id, &subclass))) {
-      print("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.", TargetFile, GetErrorMsg(error));
+      printf("Failed to identify the type of file for path '%s', error: %s.  Assuming ID_SCRIPT.\n", TargetFile, GetErrorMsg(error));
       subclass = ID_SCRIPT;
       class_id = ID_SCRIPT;
    }
@@ -81,7 +81,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
             return error;
          }
          else if (error) {
-            print("Sandbox initialisation failed.");
+            printf("Sandbox initialisation failed.\n");
             return error;
          }
 */
@@ -98,16 +98,16 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
          if ((error = parc->activate())) {
             STRING msg;
             if (!parc->get(FID_Message, &msg)) {
-               print("Failed to execute the archive, error: %s", GetErrorMsg(error));
+               printf("Failed to execute the archive, error: %s\n", GetErrorMsg(error));
             }
-            else print("Failed to execute the archive, error: %s", GetErrorMsg(error));
+            else printf("Failed to execute the archive, error: %s\n", GetErrorMsg(error));
 
             error = ERR_Activate;
          }
-         else print("PARC execution completed successfully.");
+         else printf("PARC execution completed successfully.\n");
       }
       else {
-         print("Failed to initialise the PARC archive, error: %s", GetErrorMsg(error));
+         printf("Failed to initialise the PARC archive, error: %s\n", GetErrorMsg(error));
          error = ERR_CreateObject;
       }
 
@@ -162,7 +162,7 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
             if (ShowTime) { // Print the execution time of the script
                auto start_seconds = (DOUBLE)start_time / 1000000.0;
                auto end_seconds   = (DOUBLE)PreciseTime() / 1000000.0;
-               print("Script executed in %f seconds.\n\n", end_seconds - start_seconds);
+               printf("Script executed in %f seconds.\n\n", end_seconds - start_seconds);
             }
 
             if (glScript->Error) {
@@ -178,17 +178,17 @@ ERROR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure
             else return ERR_Okay;
          }
          else {
-            print("Script failed during processing.  Use the --log-error option to examine the failure.");
+            printf("Script failed during processing.  Use the --log-error option to examine the failure.\n");
             return ERR_Failed;
          }
       }
       else {
-         print("Failed to load / initialise the script.");
+         printf("Failed to load / initialise the script.\n");
          return ERR_Failed;
       }
    }
    else {
-      print("Internal Failure: Failed to create a new Script object for file processing.");
+      printf("Internal Failure: Failed to create a new Script object for file processing.\n");
       return ERR_Failed;
    }
 }
