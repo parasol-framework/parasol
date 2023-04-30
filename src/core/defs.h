@@ -632,6 +632,7 @@ extern std::string glRootPath;
 extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate;
 extern bool glJanitorActive;
+extern bool glLogThreads;
 extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
@@ -1025,7 +1026,7 @@ void   free_iconv(void);
 ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 
-#define REF_WAKELOCK           get_threadlock()
+#define REF_WAKELOCK get_threadlock()
 
 #ifdef _WIN32
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);

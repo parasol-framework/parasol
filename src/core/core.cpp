@@ -336,8 +336,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          arg += 2; // Skip '--' as this prepends all Core arguments
 
          if (!StrMatch(arg, "log-memory")) {
-            glShowPrivate = TRUE;
-            glDebugMemory = TRUE;
+            glShowPrivate = true;
+            glDebugMemory = true;
          }
          else if (!StrCompare(arg, "gfx-driver=", 11)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
@@ -345,7 +345,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
-         else if (!StrMatch(arg, "sync"))        glSync = TRUE;
+         else if (!StrMatch(arg, "sync"))        glSync = true;
+         else if (!StrMatch(arg, "log-threads")) glLogThreads = true;
          else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
          else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
          else if (!StrMatch(arg, "log-warn"))    glLogLevel = 2;
