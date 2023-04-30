@@ -235,7 +235,7 @@ static ERROR thread_action(extThread *Thread)
    OBJECTPTR obj = data->Object;
 
    if (!(error = LockObject(obj, 5000))) { // Access the object and process the action.
-      __sync_sub_and_fetch(&obj->ThreadPending, 1);
+      --obj->ThreadPending;
       error = Action(data->ActionID, obj, data->Parameters ? (data + 1) : NULL);
 
       if (data->Parameters) { // Free any temporary buffers that were allocated.
@@ -247,7 +247,7 @@ static ERROR thread_action(extThread *Thread)
       ReleaseObject(data->Object);
    }
    else {
-      __sync_sub_and_fetch(&obj->ThreadPending, 1);
+      --obj->ThreadPending;
    }
 
    // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
@@ -582,7 +582,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UID, Parameters, Callback, Key);
 
-   __sync_add_and_fetch(&Object->ThreadPending, 1);
+   ++Object->ThreadPending;
 
    ERROR error;
    extThread *thread = NULL;
@@ -650,7 +650,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
    }
    else error = ERR_NewObject;
 
-   if (error) __sync_sub_and_fetch(&Object->ThreadPending, 1);
+   if (error) --Object->ThreadPending;
 
    return error;
 }
@@ -1314,7 +1314,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    if ((mc->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) Flags |= NF::UNTRACKED;
 
-   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
+   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter.load(std::memory_order_relaxed), LONG(Flags));
 
    OBJECTPTR head = NULL;
    MEMORYID head_id;

@@ -400,7 +400,7 @@ void remove_process_waitlocks(void)
 // resources only.  Internally, use critical sections for synchronisation between threads.
 
 #ifdef _WIN32
-static WORD glThreadLockIndex = 1;           // Shared between all threads.
+static std::atomic_int glThreadLockIndex = 1; // Shared between all threads.
 static bool glTLInit = false;
 static WINHANDLE glThreadLocks[MAX_THREADS]; // Shared between all threads, used for resource tracking allocated wake locks.
 static THREADVAR WINHANDLE tlThreadLock = 0; // Local to the thread.
@@ -418,7 +418,7 @@ WINHANDLE get_threadlock(void)
       ClearMemory(glThreadLocks, sizeof(glThreadLocks));
    }
 
-   LONG index = __sync_fetch_and_add(&glThreadLockIndex, 1);
+   auto index = glThreadLockIndex++;
    LONG end = index - 1;
    while (index != end) {
       if (index >= ARRAYSIZE(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
@@ -431,10 +431,10 @@ WINHANDLE get_threadlock(void)
             return lock;
          }
       }
-      index = __sync_fetch_and_add(&glThreadLockIndex, 1);
+      index = glThreadLockIndex++;
    }
 
-   log.warning("Failed to allocate a new wake-lock.  Index: %d/%d", glThreadLockIndex, MAX_THREADS);
+   log.warning("Failed to allocate a new wake-lock.  Index: %d/%d", glThreadLockIndex.load(), MAX_THREADS);
    exit(0); // This is a permanent failure.
    return 0;
 }

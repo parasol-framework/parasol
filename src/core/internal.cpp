@@ -128,12 +128,12 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 // Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
 
 static THREADVAR LONG tlUniqueThreadID = 0;
-static LONG glThreadIDCount = 1;
+static std::atomic_int glThreadIDCount = 1;
 
 LONG get_thread_id(void)
 {
    if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = __sync_add_and_fetch(&glThreadIDCount, 1);
+   tlUniqueThreadID = glThreadIDCount++;
    return tlUniqueThreadID;
 }
 

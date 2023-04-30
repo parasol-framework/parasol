@@ -771,7 +771,7 @@ ERROR send_thread_msg(LONG Handle, LONG Type, APTR Data, LONG Size)
    log.function("Type: %d, Data: %p, Size: %d", Type, Data, Size);
 
    TaskMessage msg;
-   msg.UID  = __sync_add_and_fetch(&glUniqueMsgID, 1);
+   msg.UID  = ++glUniqueMsgID;
    msg.Type = Type;
    msg.Size = Size;
    msg.Time = PreciseTime();

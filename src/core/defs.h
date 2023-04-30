@@ -658,11 +658,11 @@ extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
-extern LONG glMessageIDCount;
-extern LONG glGlobalIDCount;
-extern LONG glPrivateIDCounter;
+extern std::atomic_int glMessageIDCount;
+extern std::atomic_int glGlobalIDCount;
+extern std::atomic_int glPrivateIDCounter;
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
-extern UWORD glFunctionID;
+extern std::atomic_ushort glFunctionID;
 extern BYTE glProgramStage;
 extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
@@ -700,7 +700,7 @@ extern bool glScanClasses;
 extern UBYTE glTimerCycle;
 extern LONG glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
-extern LONG glUniqueMsgID;
+extern std::atomic_int glUniqueMsgID;
 
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
@@ -758,7 +758,7 @@ class TaskMessage {
 
    TaskMessage(LONG pType, APTR pData = NULL, LONG pSize = 0) {
       Time = PreciseTime();
-      UID  = __sync_add_and_fetch(&glUniqueMsgID, 1);
+      UID  = ++glUniqueMsgID;
       Type = pType;
       Size = 0;
       ExtBuffer = NULL;
@@ -1025,8 +1025,6 @@ ERROR  validate_process(LONG);
 void   free_iconv(void);
 ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
-
-#define REF_WAKELOCK get_threadlock()
 
 #ifdef _WIN32
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);

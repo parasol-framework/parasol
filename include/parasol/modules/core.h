@@ -16,6 +16,7 @@
 #include <vector>
 #include <unordered_map>
 #include <bit>
+#include <atomic>
 #endif
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
@@ -2584,19 +2585,19 @@ struct BaseClass { // Must be 64-bit aligned
       objMetaClass *Class;          // [Public] Class pointer
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
-   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // The owner of this object
-   NF       Flags;              // Object flags
-   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   volatile LONG  ThreadID;     // Managed by locking functions
-   char Name[MAX_NAME_LEN];     // The name of the object (optional)
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by locking functions
-   volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObject()/LockObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+   APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   OBJECTID UID;                 // Unique object identifier
+   OBJECTID OwnerID;             // The owner of this object
+   NF       Flags;               // Object flags
+   LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
+   volatile LONG  ThreadID;      // Managed by locking functions
+   char Name[MAX_NAME_LEN];      // The name of the object (optional)
+   std::atomic_uchar ThreadPending; // ActionThread() increments this.
+   std::atomic_char Queue;       // Counter of locks gained by incQueue()
+   std::atomic_char SleepQueue;  //
+   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
+   BYTE ActionDepth;             // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
@@ -2617,43 +2618,26 @@ struct BaseClass { // Must be 64-bit aligned
    // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
    // object lock if the queue value was at zero.
 
-   inline LONG incQueue() {
-      return __sync_add_and_fetch(&Queue, 1);
-   }
-
-   inline LONG subQueue() {
-      return __sync_sub_and_fetch(&Queue, 1);
-   }
-
-   inline LONG incSleep() {
-      return __sync_add_and_fetch(&SleepQueue, 1);
-   }
-
-   inline LONG subSleep() {
-      return __sync_sub_and_fetch(&SleepQueue, 1);
-   }
+   inline LONG incQueue() { return ++Queue; }
+   inline LONG subQueue() { return --Queue; }
+   inline LONG incSleep() { return ++SleepQueue; }
+   inline LONG subSleep() { return --SleepQueue; }
 
    inline ERROR threadLock() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (incQueue() IS 1) {
-            ThreadID = pf::_get_thread_id();
-            return ERR_Okay;
-         }
-         else {
-            if (ThreadID IS pf::_get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            subQueue(); // Put the lock count back to normal before LockObject()
-            return LockObject(this, -1); // Can fail if object is marked for deletion.
-         }
-      #else
+      if (incQueue() IS 1) {
+         ThreadID = pf::_get_thread_id();
          return ERR_Okay;
-      #endif
+      }
+      else {
+         if (ThreadID IS pf::_get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+         subQueue(); // Put the lock count back to normal before LockObject()
+         return LockObject(this, -1); // Can fail if object is marked for deletion.
+      }
    }
 
    inline void threadRelease() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleaseObject(this);
-         else subQueue();
-      #endif
+      if (SleepQueue > 0) ReleaseObject(this);
+      else subQueue();
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
