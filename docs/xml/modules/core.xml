@@ -3305,8 +3305,8 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
   </types>
   <structs>
     <struct name="ActionArray">
-      <field name="ActionCode" type="LONG">Action identifier</field>
       <field name="Routine" type="APTR">Pointer to the function entry point</field>
+      <field name="ActionCode" type="LONG">Action identifier</field>
     </struct>
 
     <struct name="ActionTable" comment="Structure for ActionList">
@@ -3416,10 +3416,10 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 
     <struct name="FieldArray" comment="Used to construct class blueprints for the MetaClass.">
       <field name="Name" type="CSTRING">The name of the field, e.g. "Width"</field>
-      <field name="Flags" type="ULONG">Special flags that describe the field</field>
-      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
       <field name="GetField" type="APTR">void GetField(*Object, APTR Result);</field>
       <field name="SetField" type="APTR">ERROR SetField(*Object, APTR Value);</field>
+      <field name="Arg" type="MAXINT">Can be a pointer or an integer value</field>
+      <field name="Flags" type="ULONG">Special flags that describe the field</field>
     </struct>
 
     <struct name="FieldDef" comment="Used to define constants for field references.">

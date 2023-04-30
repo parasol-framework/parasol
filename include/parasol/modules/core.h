@@ -1812,12 +1812,12 @@ struct ModHeader {
 
 struct FieldArray {
    CSTRING Name;    // The name of the field, e.g. "Width"
-   ULONG   Flags;   // Special flags that describe the field
-   MAXINT  Arg;     // Can be a pointer or an integer value
    APTR    GetField; // void GetField(*Object, APTR Result);
    APTR    SetField; // ERROR SetField(*Object, APTR Value);
+   MAXINT  Arg;     // Can be a pointer or an integer value
+   ULONG   Flags;   // Special flags that describe the field
   template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, ULONG pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
-     Name(pName), Flags(pFlags), Arg((MAXINT)pArg), GetField((APTR)pGetField), SetField((APTR)pSetField)
+     Name(pName), GetField((APTR)pGetField), SetField((APTR)pSetField), Arg((MAXINT)pArg), Flags(pFlags)
      { }
 };
 
@@ -1849,9 +1849,9 @@ struct Variable {
 };
 
 struct ActionArray {
-   LONG ActionCode;    // Action identifier
    APTR Routine;       // Pointer to the function entry point
-  template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
+   LONG ActionCode;    // Action identifier
+  template <class T> ActionArray(LONG pID, T pRoutine) : Routine((APTR)pRoutine), ActionCode(pID) { }
 };
 
 struct MethodEntry {
