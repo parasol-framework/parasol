@@ -18,7 +18,7 @@ function testMultipleSignals()
       signal_b.acSignal()
    end)
 
-   local proc = processing.new({ timeout=2.0, signals = { signal_a, signal_b } })
+   local proc = processing.new({ timeout=0.5, signals = { signal_a, signal_b } })
    print('Going to sleep....')
    local err = proc.sleep()
    assert(err == ERR_Okay, "Unexpected error: " .. mSys.GetErrorMsg(err))
