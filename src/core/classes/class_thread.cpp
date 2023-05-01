@@ -196,32 +196,37 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    pf::Log log;
 
    auto msg = (ThreadMessage *)Message;
+   auto uid = msg->ThreadID;
 
-   log.branch("Executing completion callback for thread #%d", msg->ThreadID);
+   log.branch("Executing completion callback for thread #%d", uid);
 
    if (msg->Callback.Type IS CALL_STDC) {
       auto callback = (void (*)(OBJECTID))msg->Callback.StdC.Routine;
-      callback(msg->ThreadID);
+      callback(uid);
    }
    else if (msg->Callback.Type IS CALL_SCRIPT) {
       if (auto script = msg->Callback.Script.Script) {
          if (!LockObject(script, 5000)) {
-            const ScriptArg args[] = { { "Thread", FD_OBJECTID, { .Long = msg->ThreadID } } };
+            const ScriptArg args[] = { { "Thread", FD_OBJECTID, { .Long = uid } } };
             scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             ReleaseObject(script);
          }
       }
    }
 
-   ScopedObjectLock<extThread> thread(msg->ThreadID, 10000);
+   // NB: Assume 'msg' is unstable after this point because the callback may have modified the message table.
 
-   NotifySubscribers(*thread, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
+   ScopedObjectLock<extThread> thread(uid, 10000);
+   if (thread.granted()) {
+      NotifySubscribers(*thread, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
 
-   if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) {
-      thread->Active = false;
-      FreeResource(*thread);
+      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) {
+         thread->Active = false;
+         FreeResource(*thread);
+      }
+      else thread->Active = false;
    }
-   else thread->Active = false;
+   else log.warning(ERR_AccessObject);
 
    return ERR_Okay;
 }
@@ -243,7 +248,8 @@ static void * thread_entry(extThread *Self)
    // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
    // is called.
 
-   // Configure thread cleanup in case of a crash
+   // Configure crash indicators and a cleanup operation
+
    tlThreadCrashed = true;
    tlThreadRef     = Self;
    pthread_cleanup_push(&thread_entry_cleanup, Self);
