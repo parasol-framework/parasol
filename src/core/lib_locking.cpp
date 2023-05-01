@@ -226,13 +226,13 @@ void thread_unlock(UBYTE Index)
    pthread_mutex_unlock(&glPrivateLocks[Index]);
 }
 
-ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout)
+ERROR cond_wait(UBYTE Lock, UBYTE Cond, LONG Timeout)
 {
    pf::Log log(__FUNCTION__);
 
 #ifdef __ANDROID__
-   if (Timeout <= 0) pthread_cond_wait(Cond, Lock);
-   else pthread_cond_timeout_np(Cond, Lock, Timeout); // This is an Android-only function
+   if (Timeout <= 0) pthread_cond_wait(&glPrivateCond[Cond], &glPrivateLocks[Lock]);
+   else pthread_cond_timeout_np(&glPrivateCond[Cond], &glPrivateLocks[Lock], Timeout); // This is an Android-only function
 #else
    if (Timeout > 0) {
       struct timespec timestamp;
@@ -248,20 +248,15 @@ ERROR public_cond_wait(THREADLOCK *Lock, CONDLOCK *Cond, LONG Timeout)
       }
       timestamp.tv_nsec = (LONG)tn;
 
-      LONG result = pthread_cond_timedwait(Cond, Lock, &timestamp);
+      LONG result = pthread_cond_timedwait(&glPrivateCond[Cond], &glPrivateLocks[Lock], &timestamp);
       if (result) log.warning("Error: %s", strerror(errno));
       if ((result IS ETIMEDOUT) or (result IS EAGAIN)) return ERR_TimeOut;
       else if (result) return ERR_Failed;
    }
-   else pthread_cond_wait(Cond, Lock);
+   else pthread_cond_wait(&glPrivateCond[Cond], &glPrivateLocks[Lock]);
 #endif
 
    return ERR_Okay;
-}
-
-ERROR cond_wait(UBYTE Lock, UBYTE Cond, LONG Timeout)
-{
-   return public_cond_wait(&glPrivateLocks[Lock], &glPrivateCond[Cond], Timeout);
 }
 
 // NOTE: You MUST have a already acquired a lock on the mutex associated with the condition.
@@ -547,13 +542,13 @@ ERROR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result
          }
 
          mem->second.ThreadLockID = our_thread;
-         __sync_fetch_and_add(&mem->second.AccessCount, 1);
+         mem->second.AccessCount++;
          tlPrivateLockCount++;
 
          *Result = mem->second.Address;
          return ERR_Okay;
       }
-      else log.traceWarning("Cannot find private memory ID #%d", MemoryID); // This is not uncommon, so trace only
+      else log.traceWarning("Cannot find memory ID #%d", MemoryID); // This is not uncommon, so trace only
    }
    else return log.warning(ERR_SystemLocked);
 
@@ -681,7 +676,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       // This is quite safe so long as the developer is being careful with use of the object between threads (i.e. not
       // destroying the object when other threads could potentially be using it).
 
-      if (Object->incQueue() IS 1) {
+      if (++Object->Queue IS 1) {
          Object->Locked = true;
          Object->ThreadID = our_thread;
          return ERR_Okay;
@@ -695,7 +690,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       //    zero.  As a result it would not send a signal, because it mistakenly thinks it still has a lock.
       // Solution: When restoring the queue, we check for zero.  If true, we try to re-lock because we know that the
       //    object is free.  By not sleeping, we don't have to be concerned about the missing signal.
-   } while (Object->subQueue() IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
+   } while (--Object->Queue IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
 
    if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
 
@@ -725,14 +720,14 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
                return ERR_DoesNotExist;
             }
 
-            if (Object->incQueue() IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
+            if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a prv_access() call if the lock value is 1.
                glWaitLocks[glWLIndex].notWaiting();
                Object->Locked = false;
                Object->ThreadID = our_thread;
                Object->subSleep();
                return ERR_Okay;
             }
-            else Object->subQueue();
+            else --Object->Queue;
 
             cond_wait(TL_OBJECT_LOCKING, CN_OBJECTS, tmout);
          } // end while()
@@ -741,7 +736,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 
          if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
             pf::Log log(__FUNCTION__);
-            log.warning("TID %d: The private resource no longer exists.", get_thread_id());
+            log.warning("TID %d: The resource no longer exists.", get_thread_id());
             error = ERR_DoesNotExist;
          }
          else {
@@ -802,8 +797,8 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
       }
 
       WORD access;
-      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on private addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = __sync_sub_and_fetch(&mem->second.AccessCount, 1);
+      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
+         access = --mem->second.AccessCount;
          tlPrivateLockCount--;
       }
       else access = -1;
@@ -818,7 +813,7 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
          #endif
 
          if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
-            log.trace("Deleting marked private memory block #%d (MEM::DELETE)", MemoryID);
+            log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
             FreeResource(mem->second.Address);
             cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
             return ERR_Okay;
@@ -838,7 +833,7 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReleaseObject: Release a locked private object.
+ReleaseObject: Release a locked object.
 Category: Objects
 
 Release a lock previously obtained from ~AccessObject() or ~LockObject().  Locks will nest, so a release is required
@@ -853,18 +848,13 @@ void ReleaseObject(OBJECTPTR Object)
 {
    if (!Object) return;
 
-   // If the queue reaches zero, check if there are other threads sleeping on this object.  If so, use a signal to
-   // wake at least one of them.
-
-   if (Object->subQueue() > 0) return;
+   if (--Object->Queue > 0) return;
 
    Object->Locked = false;
 
-   if (Object->SleepQueue > 0) {
-      #ifdef _DEBUG
-         pf::Log log(__FUNCTION__);
-         log.traceBranch("Thread: %d - Waking 1 of %d threads", our_thread, Object->SleepQueue);
-      #endif
+   if (Object->SleepQueue > 0) { // Other threads are waiting on this object
+      pf::Log log(__FUNCTION__);
+      log.traceBranch("Waking %d threads for this object.", Object->SleepQueue.load());
 
       if (!thread_lock(TL_OBJECT_LOCKING, -1)) {
          if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) { // We have to tell other threads that the object is marked for deletion.
@@ -878,9 +868,7 @@ void ReleaseObject(OBJECTPTR Object)
             }
          }
 
-         // Destroy the object if marked for deletion.  NOTE: It is the responsibility of the programmer
-         // to ensure that once an object has been marked for deletion, references to the object pointer
-         // are removed so that no thread will attempt to use it during deallocation.
+         // Destroy the object if marked for deletion.
 
          if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
             Object->Flags &= ~NF::FREE_ON_UNLOCK;
@@ -890,7 +878,6 @@ void ReleaseObject(OBJECTPTR Object)
          cond_wake_all(CN_OBJECTS);
          thread_unlock(TL_OBJECT_LOCKING);
       }
-      else exit(0);
    }
    else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
       Object->Flags &= ~NF::FREE_ON_UNLOCK;

@@ -220,7 +220,7 @@ public:
    ULONG    Size;       // 4GB max
    volatile LONG ThreadLockID = 0;
    MEM      Flags;
-   volatile WORD AccessCount = 0; // Total number of locks
+   WORD     AccessCount = 0; // Total number of locks
 
    PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
       Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
@@ -1159,17 +1159,17 @@ class ScopedObjectAccess {
       ERROR error;
 
       ScopedObjectAccess(OBJECTPTR Object) {
-         error = Object->threadLock();
+         error = Object->lock();
          obj = Object;
       }
 
-      ~ScopedObjectAccess() { if (!error) obj->threadRelease(); }
+      ~ScopedObjectAccess() { if (!error) obj->unlock(); }
 
       bool granted() { return error == ERR_Okay; }
 
       void release() {
          if (!error) {
-            obj->threadRelease();
+            obj->unlock();
             error = ERR_NotLocked;
          }
       }

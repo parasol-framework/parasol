@@ -1432,7 +1432,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   <function>
     <name>ReleaseObject</name>
     <category>Objects</category>
-    <comment>Release a locked private object.</comment>
+    <comment>Release a locked object.</comment>
     <prototype>void ReleaseObject(OBJECTPTR Object)</prototype>
     <input>
       <param type="OBJECTPTR" name="Object">Pointer to the object to be released.</param>

@@ -67,13 +67,14 @@ static ERROR object_free(BaseClass *Object)
 {
    pf::Log log("Free");
 
-   Object->threadLock();
+   ScopedObjectAccess objlock(Object);
+   if (!objlock.granted()) return ERR_AccessObject;
+
    ObjectContext new_context(Object, AC_Free);
 
    auto mc = Object->ExtClass;
    if (!mc) {
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
-      Object->threadRelease();
       return ERR_Okay;
    }
 
@@ -82,7 +83,6 @@ static ERROR object_free(BaseClass *Object)
    if ((Object->Locked) or (Object->ThreadPending)) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
       Object->Flags |= NF::FREE_ON_UNLOCK;
-      Object->threadRelease();
       return ERR_InUse;
    }
 
@@ -91,7 +91,6 @@ static ERROR object_free(BaseClass *Object)
 
    if (Object->defined(NF::FREE)) {
       log.trace("Object already marked with NF::FREE.");
-      Object->threadRelease();
       return ERR_InUse;
    }
 
@@ -102,7 +101,6 @@ static ERROR object_free(BaseClass *Object)
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
-      Object->threadRelease();
       return ERR_InUse;
    }
 
@@ -122,10 +120,7 @@ static ERROR object_free(BaseClass *Object)
 
             log.msg("Object will be destroyed despite being in use.");
          }
-         else {
-            Object->threadRelease();
-            return ERR_InUse;
-         }
+         else return ERR_InUse;
       }
    }
 
@@ -137,10 +132,7 @@ static ERROR object_free(BaseClass *Object)
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
             }
-            else {
-               Object->threadRelease();
-               return ERR_InUse;
-            }
+            else return ERR_InUse;
          }
       }
    }
@@ -392,7 +384,9 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 {
    if (!Object) return ERR_NullArgs;
 
-   Object->threadLock();
+   ScopedObjectAccess lock(Object);
+   if (!lock.granted()) return ERR_AccessObject;
+
    ObjectContext new_context(Object, ActionID);
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
@@ -449,7 +443,6 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    }
 
    Object->ActionDepth--;
-   Object->threadRelease();
    return error;
 }
 
@@ -1069,6 +1062,8 @@ ERROR InitObject(OBJECTPTR Object)
 {
    pf::Log log("Init");
 
+   ScopedObjectAccess objlock(Object);
+
    auto cl = Object->ExtClass;
 
    if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
@@ -1079,7 +1074,6 @@ ERROR InitObject(OBJECTPTR Object)
    if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->OwnerID);
    else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->OwnerID);
 
-   Object->threadLock();
    ObjectContext new_context(Object, AC_Init);
 
    bool use_subclass = false;
@@ -1100,7 +1094,6 @@ ERROR InitObject(OBJECTPTR Object)
          if (!error) Object->Flags |= NF::INITIALISED;
       }
 
-      Object->threadRelease();
       return error;
    }
    else {
@@ -1134,7 +1127,6 @@ ERROR InitObject(OBJECTPTR Object)
                Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
 
-            Object->threadRelease();
             return ERR_Okay;
          }
 
@@ -1189,14 +1181,10 @@ ERROR InitObject(OBJECTPTR Object)
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
                      Object->Flags |= NF::INITIALISED;
                      Object->ExtClass->OpenCount++;
-                     Object->threadRelease();
                      return ERR_Okay;
                   }
                }
-               else {
-                  Object->threadRelease();
-                  return ERR_Okay;
-               }
+               else return ERR_Okay;
             }
             else log.warning("Failed to load module for class #%d.", subclass_id);
          }
@@ -1206,7 +1194,6 @@ ERROR InitObject(OBJECTPTR Object)
       Object->Class = cl;  // Put back the original to retain object integrity
    }
 
-   Object->threadRelease();
    return error;
 }
 
