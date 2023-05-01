@@ -1036,7 +1036,7 @@ enum class NF : ULONG {
    UNTRACKED = 0x00000001,
    INITIALISED = 0x00000002,
    INTEGRAL = 0x00000004,
-   UNLOCK_FREE = 0x00000008,
+   FREE_ON_UNLOCK = 0x00000008,
    FREE = 0x00000010,
    TIMER_SUB = 0x00000020,
    SUPPRESS_LOG = 0x00000040,
@@ -2595,7 +2595,7 @@ struct BaseClass { // Must be 64-bit aligned
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
    std::atomic_char Queue;       // Counter of locks gained by incQueue()
-   std::atomic_char SleepQueue;  //
+   std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object
 

@@ -13,8 +13,6 @@ Most technical code regarding system locking is managed in this area.  Also chec
 #undef DEBUG
 #endif
 
-//#define DBG_OBJECTLOCKS
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -369,6 +367,25 @@ ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
 }
 
 //********************************************************************************************************************
+
+void warn_threads_of_object_removal(OBJECTID UID)
+{
+   // We use WLF_REMOVED to tell other threads in LockObject() that an object has been removed.
+
+   if (!thread_lock(TL_OBJECT_LOCKING, -1)) {
+      for (unsigned i=0; i < glWaitLocks.size(); i++) {
+         if ((glWaitLocks[i].WaitingForResourceID IS UID) and
+             (glWaitLocks[i].WaitingForResourceType IS RT_OBJECT)) {
+            glWaitLocks[i].Flags |= WLF_REMOVED;
+         }
+      }
+
+      cond_wake_all(CN_OBJECTS);
+      thread_unlock(TL_OBJECT_LOCKING);
+   }
+}
+
+//********************************************************************************************************************
 // Remove all the wait-locks for the current process (affects all threads).  Lingering wait-locks are indicative of
 // serious problems, as all should have been released on shutdown.
 
@@ -674,15 +691,15 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
          return ERR_Okay;
       }
 
-      // Problem: If a ReleaseObject() were to occur inside this loop area, it receives a queue value of 1 instead of
+      // Problem: If a ReleaseObject() were to occur inside this while loop, it receives a queue value of 1 instead of
       //    zero.  As a result it would not send a signal, because it mistakenly thinks it still has a lock.
       // Solution: When restoring the queue, we check for zero.  If true, we try to re-lock because we know that the
       //    object is free.  By not sleeping, we don't have to be concerned about the missing signal.
    } while (Object->subQueue() IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
 
-   if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
+   if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
 
-   // Problem: What if ReleaseObject() in another thread were to release the object prior to our TL_PRIVATE_OBJECTS lock?  This means that we would never receive the wake signal.
+   // Problem: What if ReleaseObject() in another thread were to release the object prior to our TL_OBJECT_LOCKING lock?  This means that we would never receive the wake signal.
    // Solution: Prior to cond_wait(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
@@ -692,14 +709,14 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 
    Object->incSleep(); // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
-   ThreadLock lock(TL_PRIVATE_OBJECTS, Timeout);
+   ThreadLock lock(TL_OBJECT_LOCKING, Timeout);
    if (lock.granted()) {
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
 
       ERROR error = ERR_TimeOut;
       if (!init_sleep(Object->ThreadID, Object->UID, RT_OBJECT)) { // Indicate that our thread is sleeping.
          while ((current_time = (PreciseTime() / 1000LL)) < end_time) {
-            LONG tmout = (LONG)(end_time - current_time);
+            auto tmout = end_time - current_time;
             if (tmout < 0) tmout = 0;
 
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
@@ -717,7 +734,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
             }
             else Object->subQueue();
 
-            cond_wait(TL_PRIVATE_OBJECTS, CN_OBJECTS, tmout);
+            cond_wait(TL_OBJECT_LOCKING, CN_OBJECTS, tmout);
          } // end while()
 
          // Failure: Either a timeout occurred or the object no longer exists.
@@ -836,15 +853,6 @@ void ReleaseObject(OBJECTPTR Object)
 {
    if (!Object) return;
 
-   #ifdef _DEBUG
-      LONG our_thread = get_thread_id();
-      if (Object->ThreadID != our_thread) {
-         pf::Log log(__FUNCTION__);
-         log.traceWarning("Invalid call to ReleaseObject(), locked by thread #%d, we are #%d", Object->ThreadID, our_thread);
-         return;
-      }
-   #endif
-
    // If the queue reaches zero, check if there are other threads sleeping on this object.  If so, use a signal to
    // wake at least one of them.
 
@@ -858,9 +866,9 @@ void ReleaseObject(OBJECTPTR Object)
          log.traceBranch("Thread: %d - Waking 1 of %d threads", our_thread, Object->SleepQueue);
       #endif
 
-      if (!thread_lock(TL_PRIVATE_OBJECTS, -1)) {
-         if (Object->defined(NF::FREE|NF::UNLOCK_FREE)) { // We have to tell other threads that the object is marked for deletion.
-            // NB: A lock on glWaitLocks is not required because we're already protected by the TL_PRIVATE_OBJECTS
+      if (!thread_lock(TL_OBJECT_LOCKING, -1)) {
+         if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) { // We have to tell other threads that the object is marked for deletion.
+            // NB: A lock on glWaitLocks is not required because we're already protected by the TL_OBJECT_LOCKING
             // barrier (which is common between LockObject() and ReleaseObject()
             for (unsigned i=0; i < glWaitLocks.size(); i++) {
                if ((glWaitLocks[i].WaitingForResourceID IS Object->UID) and
@@ -874,20 +882,18 @@ void ReleaseObject(OBJECTPTR Object)
          // to ensure that once an object has been marked for deletion, references to the object pointer
          // are removed so that no thread will attempt to use it during deallocation.
 
-         if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
-            Object->Flags &= ~NF::UNLOCK_FREE;
+         if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
+            Object->Flags &= ~NF::FREE_ON_UNLOCK;
             FreeResource(Object);
-
-            cond_wake_all(CN_OBJECTS);
          }
-         else cond_wake_single(CN_OBJECTS); // This will either be a critical section (Windows) or private conditional (Posix)
 
-         thread_unlock(TL_PRIVATE_OBJECTS);
+         cond_wake_all(CN_OBJECTS);
+         thread_unlock(TL_OBJECT_LOCKING);
       }
       else exit(0);
    }
-   else if (Object->defined(NF::UNLOCK_FREE) and (!Object->defined(NF::FREE))) {
-      Object->Flags &= ~NF::UNLOCK_FREE;
+   else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
+      Object->Flags &= ~NF::FREE_ON_UNLOCK;
       FreeResource(Object);
    }
 }

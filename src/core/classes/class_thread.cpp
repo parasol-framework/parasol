@@ -75,6 +75,19 @@ struct ActionThread {
 static std::vector<struct ActionThread> glActionThreads;
 
 //********************************************************************************************************************
+// Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
+
+static THREADVAR LONG tlUniqueThreadID = 0;
+static std::atomic_int glThreadIDCount = 1;
+
+LONG get_thread_id(void)
+{
+   if (tlUniqueThreadID) return tlUniqueThreadID;
+   tlUniqueThreadID = glThreadIDCount++;
+   return tlUniqueThreadID;
+}
+
+//********************************************************************************************************************
 // Retrieve a thread object from the thread pool.
 
 ERROR threadpool_get(extThread **Result)
@@ -135,12 +148,12 @@ void threadpool_release(extThread *Thread)
 
 void remove_threadpool(void)
 {
-   pf::Log log("Core");
-
-   log.branch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
-
-   ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) glActionThreads.clear();
+   if (!glActionThreads.empty()) {
+      pf::Log log("Core");
+      log.branch("Removing the action thread pool of %d threads.", (LONG)glActionThreads.size());
+      ThreadLock lock(TL_THREADPOOL, 2000);
+      if (lock.granted()) glActionThreads.clear();
+   }
 }
 
 //********************************************************************************************************************
@@ -177,7 +190,6 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 //********************************************************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
-// This is NOT called if the developer did not define a Callback reference.
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
@@ -282,7 +294,8 @@ static void * thread_entry(extThread *Self)
 static void thread_entry_cleanup(void *Arg)
 {
    if (tlThreadCrashed) {
-      LogF("!Parasol","A thread in this program has crashed.");
+      pf::Log log("thread_cleanup");
+      log.error("A thread in this program has crashed.");
       if (tlThreadRef) tlThreadRef->Active = false;
    }
 
@@ -306,12 +319,12 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    // Thread objects MUST be locked prior to activation.  There is otherwise a genuine risk that the object
    // could be terminated by code operating outside of the thread space while it is active.
 
-   if (Self->Queue < 1) {
+   if (Self->Queue.load() < 1) {
       log.warning("Thread objects must be locked prior to activation.");
       return ERR_Failed;
    }
 
-   Self->Active = true;
+   Self->Active = true; // Indicate that the thread is running
 
 #ifdef __unix__
    pthread_attr_t attr;
@@ -396,6 +409,7 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
       if (Self->Msgs[1]) { winCloseHandle(Self->Msgs[1]); Self->Msgs[1] = 0; }
    #endif
 
+   Self->~extThread();
    return ERR_Okay;
 }
 
@@ -412,7 +426,7 @@ static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
       return ERR_InUse;
    }
 
-   log.msg("Attempt to free an active thread.  Process will wait for the thread to terminate.");
+   log.msg("This thread is marked active.  Process will wait for the thread to terminate.");
    struct thWait wait = { 60 * 1000 };
    Action(MT_ThWait, Self, &wait);
 
@@ -440,6 +454,7 @@ static ERROR THREAD_Init(extThread *Self, APTR Void)
 
 static ERROR THREAD_NewObject(extThread *Self, APTR Void)
 {
+   new (Self) extThread;
    Self->StackSize = 16384;
    #ifdef __unix__
       Self->Msgs[0] = -1;

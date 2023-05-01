@@ -158,6 +158,7 @@ struct ActionEntry {
 
 struct ThreadMessage {
    OBJECTID ThreadID;    // Internal
+   FUNCTION Callback;
 };
 
 struct ThreadActionMessage {
@@ -179,10 +180,10 @@ DEFINE_ENUM_FLAG_OPERATORS(ALF)
 enum {
    TL_GENERIC=0,
    TL_TIMER,
-   TL_OBJECT_LOOKUP,
+   TL_OBJECT_LOOKUP, // For glObjectLookup
    TL_PRIVATE_MEM,
    TL_PRINT,
-   TL_PRIVATE_OBJECTS,
+   TL_OBJECT_LOCKING, // For LockObject() and ReleaseObject()
    TL_MSGHANDLER,
    TL_THREADPOOL,
    TL_VOLUMES,
@@ -407,8 +408,7 @@ class extThread : public objThread {
       LONG ThreadID;
       WINHANDLE Msgs[2];
    #endif
-   BYTE Active;
-   BYTE Waiting;
+   std::atomic_bool Active;
    FUNCTION Routine;
    FUNCTION Callback;
 };
@@ -1011,6 +1011,7 @@ Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
+ERROR  msg_free(APTR, LONG, LONG, APTR, LONG);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
@@ -1025,6 +1026,7 @@ ERROR  validate_process(LONG);
 void   free_iconv(void);
 ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
+void   warn_threads_of_object_removal(OBJECTID);
 
 #ifdef _WIN32
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);

@@ -53,6 +53,14 @@ static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
 static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
+
+ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   FreeResource(((OBJECTID *)Message)[0]);
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Object termination hook for FreeResource()
 
 static ERROR object_free(BaseClass *Object)
@@ -69,17 +77,17 @@ static ERROR object_free(BaseClass *Object)
       return ERR_Okay;
    }
 
-   // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
-   // can safely get rid of it during ReleaseObject().
+   // Return if the object is currently in the process of being freed (i.e. avoid recursion)
 
    if ((Object->Locked) or (Object->ThreadPending)) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      Object->Flags |= NF::UNLOCK_FREE;
+      Object->Flags |= NF::FREE_ON_UNLOCK;
       Object->threadRelease();
       return ERR_InUse;
    }
 
-   // Return if the object is currently in the process of being freed (i.e. avoid recursion)
+   // If the object is locked from LockObject() then we mark it for collection and return.
+   // Collection is achieved via the message queue as the safest and predictable option.
 
    if (Object->defined(NF::FREE)) {
       log.trace("Object already marked with NF::FREE.");
@@ -89,7 +97,7 @@ static ERROR object_free(BaseClass *Object)
 
    if (Object->ActionDepth > 0) {
       // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
-      log.trace("FreeResource() attempt while object is in use.");
+      log.trace("Object in use; marking for collection.");
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
@@ -140,7 +148,7 @@ static ERROR object_free(BaseClass *Object)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
+   Object->Flags = (Object->Flags|NF::FREE) & (~NF::FREE_ON_UNLOCK);
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
@@ -231,7 +239,7 @@ struct thread_data {
 static ERROR thread_action(extThread *Thread)
 {
    ERROR error;
-   thread_data *data = (thread_data *)Thread->Data;
+   auto data = (thread_data *)Thread->Data;
    OBJECTPTR obj = data->Object;
 
    if (!(error = LockObject(obj, 5000))) { // Access the object and process the action.
@@ -243,12 +251,10 @@ static ERROR thread_action(extThread *Thread)
          else local_free_args(data + 1, ((extMetaClass *)obj->Class)->Methods[-data->ActionID].Args);
       }
 
-      if (obj->defined(NF::FREE)) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
+      if (obj->terminating()) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
       ReleaseObject(data->Object);
    }
-   else {
-      --obj->ThreadPending;
-   }
+   else --obj->ThreadPending;
 
    // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
 
@@ -290,7 +296,7 @@ static void free_children(OBJECTPTR Object)
                continue;
             }
 
-            if (!mem.Object->defined(NF::UNLOCK_FREE)) {
+            if (!mem.Object->defined(NF::FREE_ON_UNLOCK)) {
                if (mem.Object->defined(NF::INTEGRAL)) {
                   log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
                }
@@ -725,7 +731,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
       LONG result = ERR_False;
       auto mem = glPrivateMemory.find(ObjectID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-         if (mem->second.Object->defined(NF::UNLOCK_FREE));
+         if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
          else result = ERR_True;
       }
       return result;
