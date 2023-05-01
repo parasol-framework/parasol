@@ -362,25 +362,6 @@ ERROR init_sleep(LONG OtherThreadID, LONG ResourceID, LONG ResourceType)
 }
 
 //********************************************************************************************************************
-
-void warn_threads_of_object_removal(OBJECTID UID)
-{
-   // We use WLF_REMOVED to tell other threads in LockObject() that an object has been removed.
-
-   if (!thread_lock(TL_OBJECT_LOCKING, -1)) {
-      for (unsigned i=0; i < glWaitLocks.size(); i++) {
-         if ((glWaitLocks[i].WaitingForResourceID IS UID) and
-             (glWaitLocks[i].WaitingForResourceType IS RT_OBJECT)) {
-            glWaitLocks[i].Flags |= WLF_REMOVED;
-         }
-      }
-
-      cond_wake_all(CN_OBJECTS);
-      thread_unlock(TL_OBJECT_LOCKING);
-   }
-}
-
-//********************************************************************************************************************
 // Remove all the wait-locks for the current process (affects all threads).  Lingering wait-locks are indicative of
 // serious problems, as all should have been released on shutdown.
 
@@ -702,7 +683,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
    if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
    else end_time = (PreciseTime() / 1000LL) + Timeout;
 
-   Object->incSleep(); // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
+   Object->SleepQueue++; // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
    ThreadLock lock(TL_OBJECT_LOCKING, Timeout);
    if (lock.granted()) {
@@ -716,7 +697,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
-               Object->subSleep();
+               Object->SleepQueue--;
                return ERR_DoesNotExist;
             }
 
@@ -724,7 +705,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
                glWaitLocks[glWLIndex].notWaiting();
                Object->Locked = false;
                Object->ThreadID = our_thread;
-               Object->subSleep();
+               Object->SleepQueue--;
                return ERR_Okay;
             }
             else --Object->Queue;
@@ -748,11 +729,11 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
       }
       else error = log.error(ERR_Failed);
 
-      Object->subSleep();
+      Object->SleepQueue--;
       return error;
    }
    else {
-      Object->subSleep();
+      Object->SleepQueue--;
       return ERR_SystemLocked;
    }
 }

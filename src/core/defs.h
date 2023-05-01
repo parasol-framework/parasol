@@ -1026,7 +1026,6 @@ ERROR  validate_process(LONG);
 void   free_iconv(void);
 ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
-void   warn_threads_of_object_removal(OBJECTID);
 
 #ifdef _WIN32
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);
