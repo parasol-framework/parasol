@@ -56,7 +56,12 @@ static void free_children(OBJECTPTR Object);
 
 ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   FreeResource(((OBJECTID *)Message)[0]);
+   // Lock the object via conventional means to guarantee thread safety.
+   OBJECTPTR obj;
+   if (!AccessObject(((OBJECTID *)Message)[0], 10000, &obj)) {
+      obj->Locked = false; // Required to allow the object to be freed while maintaining a lock via the Queue mechanism.
+      FreeResource(obj);
+   }
    return ERR_Okay;
 }
 
@@ -80,7 +85,7 @@ static ERROR object_free(BaseClass *Object)
 
    // Return if the object is currently in the process of being freed (i.e. avoid recursion)
 
-   if ((Object->Locked) or (Object->ThreadPending)) {
+   if (Object->Locked) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
       Object->Flags |= NF::FREE_ON_UNLOCK;
       return ERR_InUse;
@@ -89,8 +94,8 @@ static ERROR object_free(BaseClass *Object)
    // If the object is locked from LockObject() then we mark it for collection and return.
    // Collection is achieved via the message queue as the safest and predictable option.
 
-   if (Object->defined(NF::FREE)) {
-      log.trace("Object already marked with NF::FREE.");
+   if (Object->terminating()) {
+      log.trace("Object already marked for termination.");
       return ERR_InUse;
    }
 
