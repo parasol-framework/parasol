@@ -95,9 +95,9 @@ ERROR SetArray(OBJECTPTR Object, FIELD FieldID, APTR Array, LONG Elements)
       }
 
 
-      Object->threadLock();
+      Object->lock();
       ERROR error = field->WriteValue(Object, field, type, Array, Elements);
-      Object->threadRelease();
+      Object->unlock();
       return error;
    }
    else {
@@ -180,7 +180,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
          return ERR_NoFieldAccess;
       }
 
-      Object->threadLock();
+      Object->lock();
 
       ERROR error;
       va_list list;
@@ -204,7 +204,7 @@ ERROR SetField(OBJECTPTR Object, FIELD FieldID, ...)
 
       va_end(list);
 
-      Object->threadRelease();
+      Object->unlock();
       return error;
    }
    else {

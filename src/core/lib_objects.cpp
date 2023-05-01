@@ -53,48 +53,54 @@ static LONG glSubReadOnly = 0; // To prevent modification of glSubscriptions
 static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
+
+ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   FreeResource(((OBJECTID *)Message)[0]);
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Object termination hook for FreeResource()
 
 static ERROR object_free(BaseClass *Object)
 {
    pf::Log log("Free");
 
-   Object->threadLock();
+   ScopedObjectAccess objlock(Object);
+   if (!objlock.granted()) return ERR_AccessObject;
+
    ObjectContext new_context(Object, AC_Free);
 
    auto mc = Object->ExtClass;
    if (!mc) {
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
-      Object->threadRelease();
       return ERR_Okay;
-   }
-
-   // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
-   // can safely get rid of it during ReleaseObject().
-
-   if ((Object->Locked) or (Object->ThreadPending)) {
-      log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      Object->Flags |= NF::UNLOCK_FREE;
-      Object->threadRelease();
-      return ERR_InUse;
    }
 
    // Return if the object is currently in the process of being freed (i.e. avoid recursion)
 
+   if ((Object->Locked) or (Object->ThreadPending)) {
+      log.debug("Object #%d locked; marking for deletion.", Object->UID);
+      Object->Flags |= NF::FREE_ON_UNLOCK;
+      return ERR_InUse;
+   }
+
+   // If the object is locked from LockObject() then we mark it for collection and return.
+   // Collection is achieved via the message queue as the safest and predictable option.
+
    if (Object->defined(NF::FREE)) {
       log.trace("Object already marked with NF::FREE.");
-      Object->threadRelease();
       return ERR_InUse;
    }
 
    if (Object->ActionDepth > 0) {
       // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
-      log.trace("FreeResource() attempt while object is in use.");
+      log.trace("Object in use; marking for collection.");
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
-      Object->threadRelease();
       return ERR_InUse;
    }
 
@@ -114,10 +120,7 @@ static ERROR object_free(BaseClass *Object)
 
             log.msg("Object will be destroyed despite being in use.");
          }
-         else {
-            Object->threadRelease();
-            return ERR_InUse;
-         }
+         else return ERR_InUse;
       }
    }
 
@@ -129,10 +132,7 @@ static ERROR object_free(BaseClass *Object)
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
             }
-            else {
-               Object->threadRelease();
-               return ERR_InUse;
-            }
+            else return ERR_InUse;
          }
       }
    }
@@ -140,7 +140,7 @@ static ERROR object_free(BaseClass *Object)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
+   Object->Flags = (Object->Flags|NF::FREE) & (~NF::FREE_ON_UNLOCK);
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
@@ -231,7 +231,7 @@ struct thread_data {
 static ERROR thread_action(extThread *Thread)
 {
    ERROR error;
-   thread_data *data = (thread_data *)Thread->Data;
+   auto data = (thread_data *)Thread->Data;
    OBJECTPTR obj = data->Object;
 
    if (!(error = LockObject(obj, 5000))) { // Access the object and process the action.
@@ -243,12 +243,10 @@ static ERROR thread_action(extThread *Thread)
          else local_free_args(data + 1, ((extMetaClass *)obj->Class)->Methods[-data->ActionID].Args);
       }
 
-      if (obj->defined(NF::FREE)) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
+      if (obj->terminating()) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
       ReleaseObject(data->Object);
    }
-   else {
-      --obj->ThreadPending;
-   }
+   else --obj->ThreadPending;
 
    // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
 
@@ -290,7 +288,7 @@ static void free_children(OBJECTPTR Object)
                continue;
             }
 
-            if (!mem.Object->defined(NF::UNLOCK_FREE)) {
+            if (!mem.Object->defined(NF::FREE_ON_UNLOCK)) {
                if (mem.Object->defined(NF::INTEGRAL)) {
                   log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
                }
@@ -386,7 +384,9 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 {
    if (!Object) return ERR_NullArgs;
 
-   Object->threadLock();
+   ScopedObjectAccess lock(Object);
+   if (!lock.granted()) return ERR_AccessObject;
+
    ObjectContext new_context(Object, ActionID);
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
@@ -443,7 +443,6 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    }
 
    Object->ActionDepth--;
-   Object->threadRelease();
    return error;
 }
 
@@ -725,7 +724,7 @@ ERROR CheckObjectExists(OBJECTID ObjectID)
       LONG result = ERR_False;
       auto mem = glPrivateMemory.find(ObjectID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-         if (mem->second.Object->defined(NF::UNLOCK_FREE));
+         if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
          else result = ERR_True;
       }
       return result;
@@ -1063,6 +1062,8 @@ ERROR InitObject(OBJECTPTR Object)
 {
    pf::Log log("Init");
 
+   ScopedObjectAccess objlock(Object);
+
    auto cl = Object->ExtClass;
 
    if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
@@ -1073,7 +1074,6 @@ ERROR InitObject(OBJECTPTR Object)
    if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->OwnerID);
    else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->OwnerID);
 
-   Object->threadLock();
    ObjectContext new_context(Object, AC_Init);
 
    bool use_subclass = false;
@@ -1094,7 +1094,6 @@ ERROR InitObject(OBJECTPTR Object)
          if (!error) Object->Flags |= NF::INITIALISED;
       }
 
-      Object->threadRelease();
       return error;
    }
    else {
@@ -1128,7 +1127,6 @@ ERROR InitObject(OBJECTPTR Object)
                Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
 
-            Object->threadRelease();
             return ERR_Okay;
          }
 
@@ -1183,14 +1181,10 @@ ERROR InitObject(OBJECTPTR Object)
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
                      Object->Flags |= NF::INITIALISED;
                      Object->ExtClass->OpenCount++;
-                     Object->threadRelease();
                      return ERR_Okay;
                   }
                }
-               else {
-                  Object->threadRelease();
-                  return ERR_Okay;
-               }
+               else return ERR_Okay;
             }
             else log.warning("Failed to load module for class #%d.", subclass_id);
          }
@@ -1200,7 +1194,6 @@ ERROR InitObject(OBJECTPTR Object)
       Object->Class = cl;  // Put back the original to retain object integrity
    }
 
-   Object->threadRelease();
    return error;
 }
 

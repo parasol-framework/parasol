@@ -27,25 +27,6 @@ struct thread_info{
 
 #define QUICKLOCK
 
-#ifdef QUICKLOCK
-INLINE ERROR prv_access(OBJECTPTR Object, LONG ThreadID) {
-   if (Object->incQueue() IS 1) {
-      Object->ThreadID = ThreadID;
-      return ERR_Okay;
-   }
-   else {
-      if (Object->ThreadID IS ThreadID) return ERR_Okay;
-      Object->subQueue(); // Put the lock count back to normal before LockObject()
-      return LockObject(Object, -1);
-   }
-}
-
-INLINE void prv_release(OBJECTPTR Object) {
-   if (Object->SleepQueue > 0) ReleaseObject(Object);
-   else Object->subQueue();
-}
-#endif
-
 //********************************************************************************************************************
 
 static void * thread_entry(void *Arg)
@@ -62,14 +43,14 @@ static void * thread_entry(void *Arg)
       if (!glConfig) break;
       //log.branch("Attempt %d.%d: Acquiring the object.", info->index, i);
       #ifdef QUICKLOCK
-      if (!(error = prv_access(glConfig, info->index))) {
+      if (!(error = glConfig->lock())) {
       #else
       if (!(error = LockObject(glConfig, 30000))) {
       #endif
          glConfig->ActionDepth++;
          log.msg("%d.%d: Object acquired.", info->index, i);
          WaitTime(0, 2000);
-         if (glConfig->ActionDepth > 1) log.warning("--- MAJOR ERROR: More than one thread has access to this object!");
+         if (glConfig->ActionDepth > 1) log.error("--- MAJOR ERROR: More than one thread has access to this object!");
          glConfig->ActionDepth--;
 
          // Test that object removal works in ReleaseObject() and that waiting threads fail peacefully.
@@ -78,7 +59,7 @@ static void * thread_entry(void *Arg)
             if (i >= glLockAttempts-2) {
                FreeResource(glConfig);
                #ifdef QUICKLOCK
-               prv_release(glConfig);
+               glConfig->unlock();
                #else
                ReleaseObject(glConfig);
                #endif
@@ -88,7 +69,7 @@ static void * thread_entry(void *Arg)
          }
 
          #ifdef QUICKLOCK
-         prv_release(glConfig);
+         glConfig->unlock();
          #else
          ReleaseObject(glConfig);
          #endif

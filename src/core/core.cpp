@@ -181,7 +181,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (alloc_private_lock(TL_PRIVATE_MEM, ALF::RECURSIVE)) return NULL;
    if (alloc_private_cond(CN_PRIVATE_MEM, ALF::NIL)) return NULL;
 
-   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF::RECURSIVE)) return NULL;
+   if (alloc_private_lock(TL_OBJECT_LOCKING, ALF::RECURSIVE)) return NULL;
    if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
 
 #ifdef __unix__

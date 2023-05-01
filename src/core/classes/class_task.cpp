@@ -474,11 +474,46 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
 }
 
 //********************************************************************************************************************
+// Determine whether or not a process is alive
 
-static ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERROR validate_process(LONG ProcessID)
 {
-   FreeResource(((OBJECTID *)Message)[0]);
-   return ERR_Okay;
+   pf::Log log(__FUNCTION__);
+   static LONG glValidating = 0;
+
+   log.function("PID: %d", ProcessID);
+
+   if (glValidating) return ERR_Okay;
+   if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
+   if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR_Okay;
+
+   #ifdef _WIN32
+      // On Windows we don't check if the process is alive because validation can often occur during the final shutdown
+      // phase of the other process.
+   #elif __unix__
+      if ((kill(ProcessID, 0) IS -1) and (errno IS ESRCH));
+      else return ERR_Okay;
+   #else
+      log.error("This platform does not support validate_process()");
+      return ERR_Okay;
+   #endif
+
+   OBJECTID task_id = 0;
+   for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
+      if (it->ProcessID IS ProcessID) {
+         task_id = it->TaskID;
+         glTasks.erase(it);
+         break;
+      }
+   }
+
+   if (!task_id) return ERR_False;
+
+   evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
+   BroadcastEvent(&task_removed, sizeof(task_removed));
+
+   glValidating = 0;
+   return ERR_False; // Return ERR_False to indicate that the task was not healthy
 }
 
 //********************************************************************************************************************
@@ -1171,16 +1206,16 @@ static ERROR TASK_Free(extTask *Self, APTR Void)
    if (Self->Location)    { FreeResource(Self->Location);    Self->Location    = NULL; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path        = NULL; }
    if (Self->ProcessPath) { FreeResource(Self->ProcessPath); Self->ProcessPath = NULL; }
-   if (Self->MessageMID)  { FreeResource(Self->MessageMID); Self->MessageMID  = 0; }
+   if (Self->MessageMID)  { FreeResource(Self->MessageMID);  Self->MessageMID  = 0; }
 
-   if (Self->MsgAction)          { FreeResource(Self->MsgAction);          Self->MsgAction          = NULL; }
-   if (Self->MsgDebug)           { FreeResource(Self->MsgDebug);           Self->MsgDebug           = NULL; }
-   if (Self->MsgWaitForObjects)  { FreeResource(Self->MsgWaitForObjects);  Self->MsgWaitForObjects  = NULL; }
-   if (Self->MsgQuit)            { FreeResource(Self->MsgQuit);            Self->MsgQuit            = NULL; }
-   if (Self->MsgFree)            { FreeResource(Self->MsgFree);            Self->MsgFree            = NULL; }
-   if (Self->MsgEvent)           { FreeResource(Self->MsgEvent);           Self->MsgEvent           = NULL; }
-   if (Self->MsgThreadCallback)  { FreeResource(Self->MsgThreadCallback);  Self->MsgThreadCallback  = NULL; }
-   if (Self->MsgThreadAction)    { FreeResource(Self->MsgThreadAction);    Self->MsgThreadAction    = NULL; }
+   if (Self->MsgAction)         { FreeResource(Self->MsgAction);         Self->MsgAction          = NULL; }
+   if (Self->MsgDebug)          { FreeResource(Self->MsgDebug);          Self->MsgDebug           = NULL; }
+   if (Self->MsgWaitForObjects) { FreeResource(Self->MsgWaitForObjects); Self->MsgWaitForObjects  = NULL; }
+   if (Self->MsgQuit)           { FreeResource(Self->MsgQuit);           Self->MsgQuit            = NULL; }
+   if (Self->MsgFree)           { FreeResource(Self->MsgFree);           Self->MsgFree            = NULL; }
+   if (Self->MsgEvent)          { FreeResource(Self->MsgEvent);          Self->MsgEvent           = NULL; }
+   if (Self->MsgThreadCallback) { FreeResource(Self->MsgThreadCallback); Self->MsgThreadCallback  = NULL; }
+   if (Self->MsgThreadAction)   { FreeResource(Self->MsgThreadAction);   Self->MsgThreadAction    = NULL; }
 
    Self->~extTask();
    return ERR_Okay;

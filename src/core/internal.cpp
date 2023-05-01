@@ -25,59 +25,6 @@ Functions that are internal to the Core.
 using namespace pf;
 
 //********************************************************************************************************************
-// Determine whether or not a process is alive
-
-ERROR validate_process(LONG ProcessID)
-{
-   pf::Log log(__FUNCTION__);
-   static LONG glValidating = 0;
-
-   log.function("PID: %d", ProcessID);
-
-   if (glValidating) return ERR_Okay;
-   if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
-   if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR_Okay;
-
-   #ifdef _WIN32
-      // On Windows we don't check if the process is alive because validation can often occur during the final shutdown
-      // phase of the other process.
-   #elif __unix__
-      if ((kill(ProcessID, 0) IS -1) and (errno IS ESRCH));
-      else return ERR_Okay;
-   #else
-      log.error("This platform does not support validate_process()");
-      return ERR_Okay;
-   #endif
-
-   OBJECTID task_id = 0;
-   for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
-      if (it->ProcessID IS ProcessID) {
-         task_id = it->TaskID;
-         glTasks.erase(it);
-         break;
-      }
-   }
-
-   if (!task_id) return ERR_False;
-
-   evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
-   BroadcastEvent(&task_removed, sizeof(task_removed));
-
-   glValidating = 0;
-   return ERR_False; // Return ERR_False to indicate that the task was not healthy
-}
-
-//********************************************************************************************************************
-
-TaskRecord * find_process(LONG ProcessID)
-{
-   for (auto &task : glTasks) {
-      if (ProcessID IS task.ProcessID) return &task;
-   }
-   return NULL;
-}
-
-//********************************************************************************************************************
 
 ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 {
@@ -97,10 +44,13 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
    while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
       log.warning("Zombie process #%d discovered.", childprocess);
 
-      if (auto task = find_process(childprocess)) {
-         task->ReturnCode = WEXITSTATUS(status);
-         task->Returned = TRUE;
-         validate_process(childprocess);
+      for (auto &task : glTasks) {
+         if (childprocess IS task.ProcessID) {
+            task.ReturnCode = WEXITSTATUS(status);
+            task.Returned   = true;
+            validate_process(childprocess);
+            break;
+         }
       }
    }
 
@@ -122,19 +72,6 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 #endif
 
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
-
-static THREADVAR LONG tlUniqueThreadID = 0;
-static std::atomic_int glThreadIDCount = 1;
-
-LONG get_thread_id(void)
-{
-   if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = glThreadIDCount++;
-   return tlUniqueThreadID;
 }
 
 /*********************************************************************************************************************

@@ -274,7 +274,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
-    "UNLOCK_FREE: Read-only indicator for when the object is marked for deletion.",
+    "FREE_ON_UNLOCK: Read-only indicator for when the object is marked for deletion.",
     "FREE: Read-only indicator for when the object is being freed.",
     "TIMER_SUB: The object is subscribed to a timer interval.",
     "SUPPRESS_LOG: Private.  Turns off the initial log message.",
@@ -1372,11 +1372,6 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
    return ERR_Okay;
 }
 
-// If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes.
-// NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
-
-//#define AUTO_OBJECT_LOCK 1
-
 namespace pf {
 
 static THREADVAR LONG _tlUniqueThreadID = 0;
@@ -1546,7 +1541,7 @@ struct BaseClass { // Must be 64-bit aligned
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
    std::atomic_char Queue;       // Counter of locks gained by incQueue()
-   std::atomic_char SleepQueue;  //
+   std::atomic_char SleepQueue;  // For the use of LockObject() only
    std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
    BYTE ActionDepth;             // Incremented each time an action or method is called on the object
 
@@ -1569,26 +1564,25 @@ struct BaseClass { // Must be 64-bit aligned
    // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
    // object lock if the queue value was at zero.
 
-   inline LONG incQueue() { return ++Queue; }
-   inline LONG subQueue() { return --Queue; }
    inline LONG incSleep() { return ++SleepQueue; }
    inline LONG subSleep() { return --SleepQueue; }
 
-   inline ERROR threadLock() {
-      if (incQueue() IS 1) {
+   // Use lock() to quickly obtain an object lock without a call to LockObject()
+   inline ERROR lock() {
+      if (++Queue IS 1) {
          ThreadID = pf::_get_thread_id();
          return ERR_Okay;
       }
       else {
          if (ThreadID IS pf::_get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-         subQueue(); // Put the lock count back to normal before LockObject()
+         --Queue; // Restore the lock count
          return LockObject(this, -1); // Can fail if object is marked for deletion.
       }
    }
 
-   inline void threadRelease() {
+   inline void unlock() {
       if (SleepQueue > 0) ReleaseObject(this);
-      else subQueue();
+      else --Queue;
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
@@ -1623,7 +1617,7 @@ struct BaseClass { // Must be 64-bit aligned
    template <typename... Args> ERROR setFields(Args&&... pFields) {
       pf::Log log("setFields");
 
-      threadLock();
+      lock();
 
       std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
@@ -1637,7 +1631,7 @@ struct BaseClass { // Must be 64-bit aligned
                log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
             }
             else {
-               if (target != this) target->threadLock();
+               if (target != this) target->lock();
 
                ERROR error;
                if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
@@ -1651,25 +1645,25 @@ struct BaseClass { // Must be 64-bit aligned
                }
                else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
 
-               if (target != this) target->threadRelease();
+               if (target != this) target->unlock();
 
                // NB: NoSupport is considered a 'soft' error that does not warrant failure.
 
                if ((error) and (error != ERR_NoSupport)) {
                   log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
-                  threadRelease();
+                  unlock();
                   return error;
                }
             }
          }
          else {
             log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
-            threadRelease();
+            unlock();
             return ERR_UnsupportedField;
          }
       }
 
-      threadRelease();
+      unlock();
       return ERR_Okay;
    }
 
@@ -1740,7 +1734,7 @@ class Create {
                      return;
                   }
                   else {
-                     target->threadLock();
+                     target->lock();
 
                      if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
                         error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
@@ -1755,7 +1749,7 @@ class Create {
                         error = field->WriteValue(target, field, f.Type, &f.Long, 1);
                      }
 
-                     target->threadRelease();
+                     target->unlock();
 
                      // NB: NoSupport is considered a 'soft' error that does not warrant failure.
 

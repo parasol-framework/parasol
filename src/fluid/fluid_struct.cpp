@@ -429,13 +429,12 @@ ERROR make_struct(lua_State *Lua, const std::string &StructName, CSTRING Sequenc
    }
 
    pf::Log log(__FUNCTION__);
-   log.msg(VLF::BRANCH|VLF::DEBUG, "%s, %.50s", StructName.c_str(), Sequence);
+   log.traceBranch("%s, %.50s", StructName.c_str(), Sequence);
 
    prv->Structs[StructName] = struct_record(StructName);
 
    LONG computed_size = 0;
    if (auto error = generate_structdef(Lua->Script, StructName, Sequence, prv->Structs[StructName], &computed_size)) {
-      log.debranch();
       if (error IS ERR_BufferOverflow) luaL_argerror(Lua, 1, "String too long - buffer overflow");
       else if (error IS ERR_Syntax) luaL_error(Lua, "Unsupported struct character in definition: %s", Sequence);
       else luaL_error(Lua, "Failed to make struct for %s, error: %s", StructName.c_str(), GetErrorMsg(error));
