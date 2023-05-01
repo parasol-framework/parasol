@@ -193,32 +193,37 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
+   pf::Log log;
+
    auto msg = (ThreadMessage *)Message;
-   if (!msg) return ERR_Okay;
 
-   ScopedObjectLock<extThread> thread(msg->ThreadID, 5000);
-   if (thread.granted()) {
-      thread->Active = false; // Because marking the thread as inactive is not done until the message is received by the core program
+   log.branch("Executing completion callback for thread #%d", msg->ThreadID);
 
-      if (thread->Callback.Type IS CALL_STDC) {
-         auto callback = (void (*)(extThread *))thread->Callback.StdC.Routine;
-         callback(*thread);
-      }
-      else if (thread->Callback.Type IS CALL_SCRIPT) {
-         if (auto script = thread->Callback.Script.Script) {
-            if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = *thread } } };
-               scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleaseObject(script);
-            }
+   if (msg->Callback.Type IS CALL_STDC) {
+      auto callback = (void (*)(OBJECTID))msg->Callback.StdC.Routine;
+      callback(msg->ThreadID);
+   }
+   else if (msg->Callback.Type IS CALL_SCRIPT) {
+      if (auto script = msg->Callback.Script.Script) {
+         if (!LockObject(script, 5000)) {
+            const ScriptArg args[] = { { "Thread", FD_OBJECTID, { .Long = msg->ThreadID } } };
+            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            ReleaseObject(script);
          }
       }
-
-      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(*thread);
-
-      return ERR_Okay;
    }
-   else return ERR_AccessObject;
+
+   ScopedObjectLock<extThread> thread(msg->ThreadID, 10000);
+
+   NotifySubscribers(*thread, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
+
+   if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) {
+      thread->Active = false;
+      FreeResource(*thread);
+   }
+   else thread->Active = false;
+
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -233,14 +238,19 @@ static int thread_entry(extThread *Self)
 static void * thread_entry(extThread *Self)
 #endif
 {
-   // Note that the Active flag will have been set to true prior to entry.
+   auto uid = Self->UID;
+
+   // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
+   // is called.
+
+   // Configure thread cleanup in case of a crash
    tlThreadCrashed = true;
-   tlThreadRef = Self;
+   tlThreadRef     = Self;
    pthread_cleanup_push(&thread_entry_cleanup, Self);
 
-   // ENTRY
+   ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
 
-   if (Self->Routine.Type) {
+   {
       // Replace the default dummy context with one that pertains to the thread
       ObjectContext thread_ctx(Self, 0);
 
@@ -255,34 +265,15 @@ static void * thread_entry(extThread *Self)
             scCallback(*script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
-
-      tlThreadRef = NULL;
-
-      if (!LockObject(Self, 10000)) {
-         NotifySubscribers(Self, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
-
-         if (Self->Callback.Type) {
-            // A message needs to be placed on the process' message queue with a reference to the thread object
-            // so the callback can be processed by the main program thread.  See msg_threadcallback()
-
-            ThreadMessage msg;
-            msg.ThreadID = Self->UID;
-            SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
-
-            //Self->Active = false; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
-         }
-         else if ((Self->Flags & THF::AUTO_FREE) != THF::NIL) {
-            Self->Active = false;
-            FreeResource(Self);
-         }
-         else Self->Active = false;
-
-         ReleaseObject(Self);
-      }
-
-      // Please note that the Thread object/memory should be presumed terminated from this point
    }
 
+   // Please no references to Self after this point
+
+   // See msg_threadcallback()
+   SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
+
+   // Reset the crash indicators and invoke the cleanup code.
+   tlThreadRef     = NULL;
    tlThreadCrashed = false;
    pthread_cleanup_pop(true);
    return 0;
@@ -327,6 +318,7 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    Self->Active = true; // Indicate that the thread is running
 
 #ifdef __unix__
+
    pthread_attr_t attr;
    pthread_attr_init(&attr);
    // On Linux it is better not to set the stack size, as it implies you intend to manually allocate the stack and guard it...
@@ -340,6 +332,8 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
       strerror_r(errno, errstr, sizeof(errstr));
       log.warning("pthread_create() failed with error: %s.", errstr);
       pthread_attr_destroy(&attr);
+      Self->Active = false;
+      return log.warning(ERR_SystemCall);
    }
 
 #elif _WIN32
@@ -347,13 +341,14 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    if ((Self->Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->ThreadID))) {
       return ERR_Okay;
    }
+   else {
+      Self->Active = false;
+      return log.warning(ERR_SystemCall);
+   }
 
 #else
    #error Platform support for threads is required.
 #endif
-
-   Self->Active = false;
-   return log.warning(ERR_Failed);
 }
 
 /*********************************************************************************************************************

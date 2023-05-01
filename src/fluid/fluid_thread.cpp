@@ -28,19 +28,22 @@ extern "C" {
 #include "defs.h"
 
 static ERROR thread_script_entry(objThread *);
-static ERROR thread_script_callback(objThread *);
+static ERROR thread_script_callback(OBJECTID);
 
 struct thread_callback {
-   LONG callbackID;
    objScript *threadScript;
+   LONG     callbackID;
    OBJECTID mainScriptID;
 };
+
+std::unordered_map<OBJECTID, thread_callback> glThreadCB;
 
 //********************************************************************************************************************
 // Usage: thread.script(Statement, Callback)
 
 static int thread_script(lua_State *Lua)
 {
+   pf::Log log;
    CSTRING statement;
 
    if (!(statement = luaL_checkstring(Lua, 1))) {
@@ -52,12 +55,12 @@ static int thread_script(lua_State *Lua)
       if (auto script = objScript::create::global(fl::Owner(thread->UID), fl::Statement(statement))) {
          if (lua_isfunction(Lua, 2)) {
             lua_pushvalue(Lua, 2);
-            thread_callback cb = {
-               .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
+
+            glThreadCB[thread->UID] = {
                .threadScript = script,
+               .callbackID   = luaL_ref(Lua, LUA_REGISTRYINDEX),
                .mainScriptID = Lua->Script->UID
             };
-            thSetData(thread, &cb, sizeof(cb));
 
             thread->set(FID_Callback, (CPTR)&thread_script_callback);
          }
@@ -65,6 +68,8 @@ static int thread_script(lua_State *Lua)
          if (thread->activate()) {
             luaL_error(Lua, "Failed to execute thread");
          }
+
+         // The thread is not manually removed because we've used AUTO_FREE and the script is owned by it.
       }
       else luaL_error(Lua, "Failed to create script for threaded execution.");
    }
@@ -78,10 +83,10 @@ static int thread_script(lua_State *Lua)
 
 static ERROR thread_script_entry(objThread *Thread)
 {
-   thread_callback *cb;
-   if (!Thread->getPtr(FID_Data, &cb)) {
-      acActivate(cb->threadScript);
-      FreeResource(cb->threadScript);
+   if (auto it = glThreadCB.find(Thread->UID); it != glThreadCB.end()) {
+      thread_callback &cb = it->second;
+      acActivate(cb.threadScript);
+      FreeResource(cb.threadScript);
    }
    return ERR_Okay;
 }
@@ -89,20 +94,18 @@ static ERROR thread_script_entry(objThread *Thread)
 //********************************************************************************************************************
 // Callback following execution (executed by the main thread, not the child)
 
-static ERROR thread_script_callback(objThread *Thread)
+static ERROR thread_script_callback(OBJECTID ThreadID)
 {
-   pf::Log log("thread");
-   thread_callback *cb;
-
-   if ((!Thread->getPtr(FID_Data, &cb)) and (cb)) {
+   if (auto it = glThreadCB.find(ThreadID); it != glThreadCB.end()) {
+      thread_callback &cb = it->second;
       objScript *script;
-      if (!AccessObject(cb->mainScriptID, 4000, &script)) {
+      if (!AccessObject(cb.mainScriptID, 4000, &script)) {
          auto prv = (prvFluid *)script->ChildPrivate;
-         if (!prv) return log.warning(ERR_ObjectCorrupt);
-         scCallback(script, cb->callbackID, NULL, 0, NULL);
-         luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb->callbackID);
+         scCallback(script, cb.callbackID, NULL, 0, NULL);
+         luaL_unref(prv->Lua, LUA_REGISTRYINDEX, cb.callbackID);
          ReleaseObject(script);
       }
+      glThreadCB.erase(it);
    }
 
    return ERR_Okay;
