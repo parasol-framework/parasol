@@ -1091,7 +1091,7 @@ GetField(Object, FID_Y|TLONG, &amp;y);
     </input>
     <description>
 <p>Use LockObject() to gain exclusive access to an object at thread-level.  This function provides identical behaviour to that of <function module="Core">AccessObject</function>, but with a slight speed advantage as the object ID does not need to be resolved to an address.  Calls to LockObject() will nest, and must be matched with a call to <function module="Core">ReleaseObject</function> to unlock the object.</p>
-<p>Be aware that while this function is faster than <function module="Core">AccessObject</function>, its use may be considered unsafe if other threads could terminate the object without a suitable barrier in place.</p>
+<p>Be aware that while this function is faster than <function module="Core">AccessObject</function>, it is unsafe if other threads could terminate the object without a suitable barrier in place.</p>
 <p>If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.</p>
     </description>
     <result type="ERROR">

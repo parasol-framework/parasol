@@ -641,8 +641,8 @@ Use LockObject() to gain exclusive access to an object at thread-level.  This fu
 to that of ~AccessObject(), but with a slight speed advantage as the object ID does not need to be resolved to an
 address.  Calls to LockObject() will nest, and must be matched with a call to ~ReleaseObject() to unlock the object.
 
-Be aware that while this function is faster than ~AccessObject(), its use may be considered unsafe if other threads
-could terminate the object without a suitable barrier in place.
+Be aware that while this function is faster than ~AccessObject(), it is unsafe if other threads could terminate the
+object without a suitable barrier in place.
 
 If it is guaranteed that an object is not being shared between threads, object locking is unnecessary.
 
