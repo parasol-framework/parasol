@@ -218,13 +218,13 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
 
    ScopedObjectLock<extThread> thread(uid, 10000);
    if (thread.granted()) {
-      NotifySubscribers(*thread, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
-
+      // NB: If a client wants notification of the thread ending, they can use WaitForObjects()
+      // if not using callbacks.
+      thread->Active = false;
       if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) {
-         thread->Active = false;
          FreeResource(*thread);
       }
-      else thread->Active = false;
+      else acSignal(*thread); // Convenience for the client
    }
    else log.warning(ERR_AccessObject);
 
@@ -273,7 +273,8 @@ static void * thread_entry(extThread *Self)
       }
    }
 
-   // Please no references to Self after this point
+   // Please no references to Self after this point.  It is possible that the Thread object has been forcibly removed
+   // if the client routine is persistently running during shutdown.
 
    // See msg_threadcallback()
    SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
@@ -418,25 +419,13 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
 
 static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 {
-   pf::Log log;
-
    if (!Self->Active) return ERR_Okay;
-
-   if (!tlMainThread) { // Only the main thread should be terminating child threads.
+   else {
+      pf::Log log;
+      log.debug("Thread is still running, marking for auto termination.");
       Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }
-
-   log.msg("This thread is marked active.  Process will wait for the thread to terminate.");
-   struct thWait wait = { 60 * 1000 };
-   Action(MT_ThWait, Self, &wait);
-
-   if (Self->Active) {
-      log.warning("Thread #%d still in use - marking it for automatic termination.", Self->UID);
-      Self->Flags |= THF::AUTO_FREE;
-      return ERR_InUse;
-   }
-   else return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -512,36 +501,6 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
       return ERR_Okay;
    }
    else return log.warning(ERR_AllocMemory);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-Wait: Waits for a thread to be completed.
-
-Call the Wait method to wait for a thread to complete its activity.  Incoming messages will continue to be processed
-by ~ProcessMessages() while waiting.
-
--INPUT-
-int TimeOut: A timeout value measured in milliseconds.
-
--ERRORS-
-Okay: The thread is no longer active.
-NullArgs
-Args: The TimeOut value is invalid.
-TimeOut: The timeout was reached before the thread was terminated.
--END-
-
-*********************************************************************************************************************/
-
-static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   ObjectSignal sig[2] = { { .Object = Self }, { 0 } };
-   return WaitForObjects(PMF::SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
 /*********************************************************************************************************************

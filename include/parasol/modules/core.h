@@ -2610,13 +2610,8 @@ struct BaseClass { // Must be 64-bit aligned
       return (Flags & NF::FREE) != NF::NIL;
    }
 
-   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
-   // object lock if the queue value was at zero.
-
-   inline LONG incSleep() { return ++SleepQueue; }
-   inline LONG subSleep() { return --SleepQueue; }
-
    // Use lock() to quickly obtain an object lock without a call to LockObject()
+
    inline ERROR lock() {
       if (++Queue IS 1) {
          ThreadID = pf::_get_thread_id();
@@ -2630,7 +2625,8 @@ struct BaseClass { // Must be 64-bit aligned
    }
 
    inline void unlock() {
-      if (SleepQueue > 0) ReleaseObject(this);
+      // Prefer to use ReleaseObject() if there are threads that need to be woken
+      if (SleepQueue.load() > 0) ReleaseObject(this);
       else --Queue;
    }
 
@@ -2892,6 +2888,7 @@ inline ERROR acRefresh(OBJECTPTR Object) { return Action(AC_Refresh, Object, NUL
 inline ERROR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
 inline ERROR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
 inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
+inline ERROR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
@@ -2913,6 +2910,13 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
 inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
+}
+
+inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
+   struct acGetVar args = { FieldName, Buffer, Size };
+   ERROR error = Action(AC_GetVar, Object, &args);
+   if ((error) and (Buffer)) Buffer[0] = 0;
+   return error;
 }
 
 inline ERROR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
@@ -2963,18 +2967,6 @@ inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP
    return Action(AC_ScrollToPoint, Object, &args);
 }
 
-inline ERROR acUndo(OBJECTPTR Object, LONG Steps) {
-   struct acUndo args = { Steps };
-   return Action(AC_Undo, Object, &args);
-}
-
-inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
-   struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, Object, &args);
-   if ((error) and (Buffer)) Buffer[0] = 0;
-   return error;
-}
-
 inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
@@ -3009,6 +3001,11 @@ inline ERROR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
    }
    va_end(list);
    return ERR_Okay;
+}
+
+inline ERROR acUndo(OBJECTPTR Object, LONG Steps) {
+   struct acUndo args = { Steps };
+   return Action(AC_Undo, Object, &args);
 }
 
 inline ERROR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
@@ -3999,19 +3996,12 @@ class objTask : public BaseClass {
 // Thread methods
 
 #define MT_ThSetData -1
-#define MT_ThWait -2
 
 struct thSetData { APTR Data; LONG Size;  };
-struct thWait { LONG TimeOut;  };
 
 INLINE ERROR thSetData(APTR Ob, APTR Data, LONG Size) {
    struct thSetData args = { Data, Size };
    return(Action(MT_ThSetData, (OBJECTPTR)Ob, &args));
-}
-
-INLINE ERROR thWait(APTR Ob, LONG TimeOut) {
-   struct thWait args = { TimeOut };
-   return(Action(MT_ThWait, (OBJECTPTR)Ob, &args));
 }
 
 
