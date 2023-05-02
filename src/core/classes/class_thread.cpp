@@ -111,7 +111,10 @@ ERROR threadpool_get(extThread **Result)
 
    if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
       glmThreadPool.lock();
-      if (glActionThreads.size() < THREADPOOL_MAX) glActionThreads.emplace_back(thread);
+      if (glActionThreads.size() < THREADPOOL_MAX) {
+         glActionThreads.emplace_back(thread);
+         thread->Pooled = true;
+      }
       *Result = thread;
       glmThreadPool.unlock();
       return ERR_Okay;
@@ -132,6 +135,7 @@ void threadpool_release(extThread *Thread)
    for (auto &at : glActionThreads) {
       if (at.Thread IS Thread) {
          at.InUse = false;
+         Thread->Active = false; // For pooled threads we mark them as inactive manually.
          glmThreadPool.unlock();
          return;
       }
@@ -255,6 +259,7 @@ static void * thread_entry(extThread *Self)
    pthread_cleanup_push(&thread_entry_cleanup, Self);
 
    ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
+   bool pooled = Self->Pooled;
 
    {
       // Replace the default dummy context with one that pertains to the thread
@@ -277,7 +282,7 @@ static void * thread_entry(extThread *Self)
    // if the client routine is persistently running during shutdown.
 
    // See msg_threadcallback()
-   SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
+   if (!pooled) SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
 
    // Reset the crash indicators and invoke the cleanup code.
    tlThreadRef     = NULL;
@@ -312,15 +317,12 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Active) return ERR_NothingDone;
+   if (Self->Active) return ERR_ThreadAlreadyActive;
 
    // Thread objects MUST be locked prior to activation.  There is otherwise a genuine risk that the object
    // could be terminated by code operating outside of the thread space while it is active.
 
-   if (Self->Queue.load() < 1) {
-      log.warning("Thread objects must be locked prior to activation.");
-      return ERR_Failed;
-   }
+   if (Self->Queue.load() < 1) return log.warning(ERR_ThreadNotLocked);
 
    Self->Active = true; // Indicate that the thread is running
 

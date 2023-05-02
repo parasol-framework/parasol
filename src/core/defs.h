@@ -403,9 +403,10 @@ class extThread : public objThread {
       LONG ThreadID;
       WINHANDLE Msgs[2];
    #endif
-   std::atomic_bool Active;
    FUNCTION Routine;
    FUNCTION Callback;
+   std::atomic_bool Active;
+   bool Pooled;
 };
 
 class extTask : public objTask {
@@ -692,7 +693,7 @@ extern BYTE fs_initialised;
 extern APTR glPageFault;
 extern bool glScanClasses;
 extern UBYTE glTimerCycle;
-extern LONG glDebugMemory;
+extern bool glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
 extern std::atomic_int glUniqueMsgID;
 

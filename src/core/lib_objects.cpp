@@ -637,13 +637,9 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          if (Callback) call->Callback = *Callback;
          else call->Callback.Type = 0;
 
-         struct thSetData setdata = {
-            .Data = call,
-            .Size = argssize
-         };
-         Action(MT_ThSetData, thread, &setdata);
+         thSetData(thread, call, argssize);
 
-         error = Action(AC_Activate, thread, NULL);
+         error = thread->activate();
       }
 
       if (error) {

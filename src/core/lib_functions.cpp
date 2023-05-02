@@ -900,7 +900,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       }
 
       auto it = glTimers.emplace(glTimers.end());
-      LARGE subscribed = PreciseTime();
+      auto subscribed = PreciseTime();
       it->SubscriberID = subscriber->UID;
       it->Interval     = usInterval;
       it->LastCall     = subscribed;
@@ -954,12 +954,12 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
       auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
-         LARGE usInterval = -((LARGE)(Interval * 1000000.0));
+         auto usInterval = -(LARGE(Interval * 1000000.0));
          if (usInterval < timer->Interval) timer->Interval = usInterval;
          return ERR_Okay;
       }
       else if (Interval > 0) {
-         LARGE usInterval = (LARGE)(Interval * 1000000.0);
+         auto usInterval = LARGE(Interval * 1000000.0);
          timer->Interval = usInterval;
          timer->NextCall = PreciseTime() + usInterval;
          return ERR_Okay;

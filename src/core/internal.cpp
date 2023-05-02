@@ -5,24 +5,46 @@ Functions that are internal to the Core.
 *********************************************************************************************************************/
 
 #ifdef __unix__
-   #include <unistd.h>
-   #include <signal.h>
-   #include <sys/ipc.h>
-   #ifndef __ANDROID__
-      #include <sys/shm.h>
-      #include <sys/sem.h>
-      #include <sys/msg.h>
-   #endif
-   #include <sys/types.h>
-   #include <sys/wait.h>
-   #include <string.h>
-   #include <errno.h>
-   #include <signal.h>
+ #include <signal.h>
+ #include <sys/wait.h>
 #endif
 
 #include "defs.h"
 
 using namespace pf;
+
+//********************************************************************************************************************
+
+#ifdef __APPLE__
+struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+{
+   // OSX doesn't support anonymous sockets, so we use /tmp instead.
+   static THREADVAR struct sockaddr_un tlSocket;
+   tlSocket.sun_family = AF_UNIX;
+   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
+   return &tlSocket;
+}
+#elif __unix__
+struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+{
+   static THREADVAR struct sockaddr_un tlSocket;
+   static THREADVAR bool init = false;
+
+   if (!init) {
+      tlSocket.sun_family = AF_UNIX;
+      ClearMemory(tlSocket.sun_path, sizeof(tlSocket.sun_path));
+      tlSocket.sun_path[0] = '\0';
+      tlSocket.sun_path[1] = 'p';
+      tlSocket.sun_path[2] = 's';
+      tlSocket.sun_path[3] = 'l';
+      init = true;
+   }
+
+   ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
+   *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
+   return &tlSocket;
+}
+#endif
 
 //********************************************************************************************************************
 

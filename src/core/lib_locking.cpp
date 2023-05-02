@@ -3,30 +3,7 @@
 The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
-CORE LOCKING MANAGEMENT
--------------------------
-Most technical code regarding system locking is managed in this area.  Also check out lib_semaphores.c and lib_messages.c.
-
 *********************************************************************************************************************/
-
-#ifndef DBG_LOCKS // Debugging is off unless DBG_LOCKS is explicitly defined.
-#undef DEBUG
-#endif
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#ifdef __unix__
-  #include <errno.h>
-  #include <sys/socket.h>
-  #ifndef USE_SHM
-    #include <sys/mman.h>
-  #endif
-  #ifndef __ANDROID__
-    #include <sys/shm.h>
-  #endif
-#endif
 
 #include "defs.h"
 
@@ -34,39 +11,6 @@ using namespace pf;
 
 #ifdef _WIN32
 THREADVAR bool tlMessageBreak = false; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
-#endif
-
-//********************************************************************************************************************
-
-#ifdef __APPLE__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
-{
-   // OSX doesn't support anonymous sockets, so we use /tmp instead.
-   static THREADVAR struct sockaddr_un tlSocket;
-   tlSocket.sun_family = AF_UNIX;
-   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
-   return &tlSocket;
-}
-#elif __unix__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
-{
-   static THREADVAR struct sockaddr_un tlSocket;
-   static THREADVAR bool init = false;
-
-   if (!init) {
-      tlSocket.sun_family = AF_UNIX;
-      ClearMemory(tlSocket.sun_path, sizeof(tlSocket.sun_path));
-      tlSocket.sun_path[0] = '\0';
-      tlSocket.sun_path[1] = 'p';
-      tlSocket.sun_path[2] = 's';
-      tlSocket.sun_path[3] = 'l';
-      init = true;
-   }
-
-   ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
-   *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
-   return &tlSocket;
-}
 #endif
 
 //********************************************************************************************************************
@@ -263,14 +207,11 @@ int MilliSeconds: The millisecond interval to wait before a timeout occurs.  Do 
 
 -ERRORS-
 Okay
-Args
+Args: The MilliSeconds value is less or equal to zero.
 NullArgs
-LockFailed
-DeadLock: A process has locked the memory block and is currently sleeping on a response from the caller.
+SystemLocked
 TimeOut
 MemoryDoesNotExist: The MemoryID that you supplied does not refer to an existing memory block.
-MarkedForDeletion: The memory block cannot be accessed because it has been marked for deletion.
-SystemLocked
 -END-
 
 *********************************************************************************************************************/
@@ -280,11 +221,7 @@ ERROR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result
    pf::Log log(__FUNCTION__);
 
    if ((!MemoryID) or (!Result)) return log.warning(ERR_NullArgs);
-
-   if (MilliSeconds <= 0) {
-      log.warning("MemoryID: %d, Flags: $%x, TimeOut: %d - Invalid timeout", MemoryID, LONG(Flags), MilliSeconds);
-      return ERR_Args;
-   }
+   if (MilliSeconds <= 0) return log.warning(ERR_Args);
 
    // NB: Logging AccessMemory() calls is usually a waste of time unless the process is going to sleep.
    //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, LONG(Flags), MilliSeconds);
@@ -365,10 +302,9 @@ int MilliSeconds: The limit in milliseconds before a timeout occurs.  The maximu
 -ERRORS-
 Okay
 NullArgs
-MarkedForDeletion
-MissingClass
 NoMatchingObject
 TimeOut
+SystemLocked
 -END-
 
 *********************************************************************************************************************/
@@ -554,48 +490,37 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
 
    if (!MemoryID) return log.warning(ERR_NullArgs);
 
-   if (auto lock = std::unique_lock{glmMemory}) {
-      auto mem = glPrivateMemory.find(MemoryID);
+   std::lock_guard lock(glmMemory);
+   auto mem = glPrivateMemory.find(MemoryID);
 
-      if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
-         else log.warning("Unable to find a record for memory #%d.", MemoryID);
-         if (glLogLevel > 1) print_diagnosis(0);
-         return ERR_Search;
-      }
-
-      WORD access;
-      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = --mem->second.AccessCount;
-         tlPrivateLockCount--;
-      }
-      else access = -1;
-
-      #ifdef DBG_LOCKS
-         log.function("MemoryID: %d, Locks: %d", MemoryID, access);
-      #endif
-
-      if (!access) {
-         #ifdef __unix__
-            mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
-         #endif
-
-         if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
-            log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
-            FreeResource(mem->second.Address);
-            cvResources.notify_all(); // Wake up any threads sleeping on this memory block.
-            return ERR_Okay;
-         }
-         else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
-            mem->second.Flags &= ~MEM::EXCLUSIVE;
-         }
-
-         cvResources.notify_all(); // Wake up any threads sleeping on this memory block.
-      }
-
-      return ERR_Okay;
+   if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) { // Sanity check; this should never happen
+      if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
+      else log.warning("Unable to find a record for memory #%d.", MemoryID);
+      return ERR_Search;
    }
-   else return log.warning(ERR_SystemLocked);
+
+   WORD access;
+   if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
+      access = --mem->second.AccessCount;
+      tlPrivateLockCount--;
+   }
+   else access = -1;
+
+   if (!access) {
+      mem->second.ThreadLockID = 0;
+
+      if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
+         log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
+         FreeResource(mem->second.Address);
+      }
+      else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
+         mem->second.Flags &= ~MEM::EXCLUSIVE;
+      }
+
+      cvResources.notify_all(); // Wake up any threads sleeping on this memory block.
+   }
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
