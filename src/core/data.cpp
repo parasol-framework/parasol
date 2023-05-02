@@ -87,7 +87,7 @@ std::timed_mutex glmClassDB;
 std::timed_mutex glmFieldKeys;
 std::timed_mutex glmGeneric;
 std::timed_mutex glmObjectLocking;
-std::recursive_mutex glmThreadPool;
+std::mutex glmThreadPool;
 std::timed_mutex glmVolumes;
 
 struct RootModule *glModuleList   = NULL;
