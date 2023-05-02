@@ -58,24 +58,43 @@ BYTE fs_initialised  = FALSE;
 APTR glPageFault     = NULL;
 bool glScanClasses   = false;
 bool glJanitorActive = false;
-LONG glDebugMemory   = FALSE;
+bool glDebugMemory   = false;
 struct CoreBase *LocalCoreBase = NULL;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
-std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
-std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
-std::unordered_map<CLASSID, ClassRecord> glClassDB;
-std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
-std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
-std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-std::unordered_map<ULONG, std::string> glFields;
-std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-std::list<FDRecord> glFDTable;
+
+std::condition_variable_any cvObjects;
+std::condition_variable_any cvResources;
+
 std::list<CoreTimer> glTimers;
-std::vector<TaskRecord> glTasks;
+std::list<FDRecord> glFDTable;
+
+std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
+std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
+
+std::mutex glmPrint;
+std::mutex glmThreadPool;
+std::recursive_mutex glmMemory;
+std::recursive_mutex glmMsgHandler;
+std::recursive_timed_mutex glmObjectLookup;
+std::recursive_timed_mutex glmTimer;
+std::timed_mutex glmClassDB;
+std::timed_mutex glmFieldKeys;
+std::timed_mutex glmGeneric;
+std::timed_mutex glmObjectLocking;
+std::timed_mutex glmVolumes;
+
+std::unordered_map<CLASSID, ClassRecord> glClassDB;
+std::unordered_map<CLASSID, extMetaClass *> glClassMap;
+std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
+std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
+std::unordered_map<ULONG, std::string> glFields;
+
 std::vector<FDRecord> glRegisterFD;
 std::vector<TaskMessage> glQueue;
+std::vector<TaskRecord> glTasks;
 
 struct RootModule *glModuleList   = NULL;
 struct OpenInfo   *glOpenInfo     = NULL;
@@ -107,6 +126,7 @@ std::atomic_int glUniqueMsgID = 1;
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
+  WINHANDLE glTaskLock = 0;
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()

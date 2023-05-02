@@ -122,7 +122,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
    if (tlLogStatus <= 0) return;
 
-   ThreadLock lock(TL_PRINT, -1);
+   std::lock_guard lock(glmPrint);
 
    if (!Format) Format = "";
 
@@ -402,7 +402,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       BYTE msgstate;
       BYTE adjust = 0;
 
-      ThreadLock lock(TL_PRINT, -1);
+      std::lock_guard lock(glmPrint);
 
       if ((Header) and (!*Header)) Header = NULL;
 

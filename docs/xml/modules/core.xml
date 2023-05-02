@@ -50,11 +50,8 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
       <error code="MemoryDoesNotExist">Memory block does not exist.</error>
-      <error code="DeadLock">Dead-lock detected - procedure aborted.</error>
       <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
@@ -87,8 +84,7 @@
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
       <error code="TimeOut">Function timed-out before successful completion.</error>
-      <error code="MarkedForDeletion">A resource cannot be accessed as it is marked for deletion.</error>
-      <error code="MissingClass">The class could not be found in the system.</error>
+      <error code="SystemLocked">Part of the system is unreachable due to a persistent lock.</error>
       <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>

@@ -345,8 +345,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
 
    if (save) {
       // Saving is only necessary if this is a new dictionary entry.
-      ThreadLock lock(TL_CLASSDB, 3000);
-      if (lock.granted()) {
+      if (auto lock = std::unique_lock{glmClassDB, 3s}) {
          static bool write_attempted = false;
          if ((!glClassFile) and (!write_attempted)) {
             write_attempted = true;
@@ -368,7 +367,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
             glClassDB[Self->ClassID].write(glClassFile);
          }
       }
-      else return log.warning(ERR_TimeOut);
+      else return log.warning(ERR_SystemLocked);
    }
 
    return ERR_Okay;
@@ -706,8 +705,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
    pf::Log log;
    std::list<OBJECTID> objlist;
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto & [ id, mem ] : glPrivateMemory) {
          OBJECTPTR object;
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (object = (OBJECTPTR)mem.Address)) {
@@ -717,7 +715,7 @@ static ERROR GET_PrivateObjects(extMetaClass *Self, OBJECTID **Array, LONG *Elem
          }
       }
    }
-   else return log.warning(ERR_LockFailed);
+   else return log.warning(ERR_SystemLocked);
 
    if (!objlist.size()) {
       *Array = NULL;
@@ -958,8 +956,7 @@ static void field_setup(extMetaClass *Class)
 
 static void register_fields(std::vector<Field> &Fields)
 {
-   ThreadLock lock(TL_FIELDKEYS, 1000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmFieldKeys, 1s}) {
       for (auto &field : Fields) {
          if (!glFields.contains(field.FieldID)) glFields[field.FieldID] = field.Name;
       }

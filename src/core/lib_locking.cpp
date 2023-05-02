@@ -3,30 +3,7 @@
 The source code of the Parasol Framework is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
-CORE LOCKING MANAGEMENT
--------------------------
-Most technical code regarding system locking is managed in this area.  Also check out lib_semaphores.c and lib_messages.c.
-
 *********************************************************************************************************************/
-
-#ifndef DBG_LOCKS // Debugging is off unless DBG_LOCKS is explicitly defined.
-#undef DEBUG
-#endif
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#ifdef __unix__
-  #include <errno.h>
-  #include <sys/socket.h>
-  #ifndef USE_SHM
-    #include <sys/mman.h>
-  #endif
-  #ifndef __ANDROID__
-    #include <sys/shm.h>
-  #endif
-#endif
 
 #include "defs.h"
 
@@ -34,251 +11,6 @@ using namespace pf;
 
 #ifdef _WIN32
 THREADVAR bool tlMessageBreak = false; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
-#endif
-
-//********************************************************************************************************************
-// POSIX compatible lock allocation functions.
-// Note: THREADLOCK == pthread_mutex_t; CONDLOCK == pthread_cond_t
-
-#ifdef __unix__
-static ERROR alloc_lock(THREADLOCK *, ALF);
-static ERROR alloc_cond(CONDLOCK *, ALF);
-static void free_cond(CONDLOCK *);
-static void free_lock(THREADLOCK *);
-
-static THREADLOCK glPrivateLocks[TL_END];
-static CONDLOCK   glPrivateCond[CN_END];
-
-#ifdef __APPLE__
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
-{
-   // OSX doesn't support anonymous sockets, so we use /tmp instead.
-   static THREADVAR struct sockaddr_un tlSocket;
-   tlSocket.sun_family = AF_UNIX;
-   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
-   return &tlSocket;
-}
-#else
-struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
-{
-   static THREADVAR struct sockaddr_un tlSocket;
-   static THREADVAR bool init = false;
-
-   if (!init) {
-      tlSocket.sun_family = AF_UNIX;
-      ClearMemory(tlSocket.sun_path, sizeof(tlSocket.sun_path));
-      tlSocket.sun_path[0] = '\0';
-      tlSocket.sun_path[1] = 'p';
-      tlSocket.sun_path[2] = 's';
-      tlSocket.sun_path[3] = 'l';
-      init = true;
-   }
-
-   ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
-   *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
-   return &tlSocket;
-}
-#endif
-
-static ERROR alloc_lock(THREADLOCK *Lock, ALF Flags)
-{
-   LONG result;
-
-   if (Flags != ALF::NIL) {
-      pthread_mutexattr_t attrib;
-      pthread_mutexattr_init(&attrib);
-
-      if ((Flags & ALF::SHARED) != ALF::NIL) {
-         pthread_mutexattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
-         #if !defined(__ANDROID__) && !defined(__APPLE__)
-            // If someone crashes holding the mutex, a robust mutex results in EOWNERDEAD being returned to the next
-            // guy who must then call pthread_mutex_consistent() and pthread_mutex_unlock()
-            pthread_mutexattr_setrobust(&attrib, PTHREAD_MUTEX_ROBUST);
-         #endif
-      }
-      if ((Flags & ALF::RECURSIVE) != ALF::NIL) pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_RECURSIVE);
-      result = pthread_mutex_init(Lock, &attrib); // Create it.
-      pthread_mutexattr_destroy(&attrib);
-   }
-   else result = pthread_mutex_init(Lock, NULL);
-
-   if (!result) return ERR_Okay;
-   else return ERR_Init;
-}
-
-ERROR alloc_private_lock(UBYTE Index, ALF Flags)
-{
-   return alloc_lock(&glPrivateLocks[Index], Flags);
-}
-
-ERROR alloc_private_cond(UBYTE Index, ALF Flags)
-{
-   return alloc_cond(&glPrivateCond[Index], Flags);
-}
-
-void free_private_lock(UBYTE Index)
-{
-   free_lock(&glPrivateLocks[Index]);
-}
-
-void free_private_cond(UBYTE Index)
-{
-   free_cond(&glPrivateCond[Index]);
-}
-
-static ERROR alloc_cond(CONDLOCK *Lock, ALF Flags)
-{
-   LONG result;
-
-   if (Flags != ALF::NIL) {
-      pthread_condattr_t attrib;
-      if (!(result = pthread_condattr_init(&attrib))) {
-         if ((Flags & ALF::SHARED) != ALF::NIL) pthread_condattr_setpshared(&attrib, PTHREAD_PROCESS_SHARED); // Allow the mutex to be used across foreign processes.
-         result = pthread_cond_init(Lock, &attrib);
-         pthread_condattr_destroy(&attrib);
-      }
-   }
-   else result = pthread_cond_init(Lock, NULL);
-
-   if (!result) return ERR_Okay;
-   else return ERR_Init;
-}
-
-static void free_lock(THREADLOCK *Lock)
-{
-   if (Lock) {
-      pthread_mutex_destroy(Lock);
-      ClearMemory(Lock, sizeof(*Lock));
-   }
-}
-
-static void free_cond(CONDLOCK *Cond)
-{
-   if (Cond) {
-      pthread_cond_destroy(Cond);
-      ClearMemory(Cond, sizeof(*Cond));
-   }
-}
-
-static ERROR pthread_lock(THREADLOCK *Lock, LONG Timeout) // Timeout in milliseconds
-{
-   pf::Log log(__FUNCTION__);
-   LONG result;
-
-retry:
-
-#ifdef __ANDROID__
-   if (Timeout <= 0) result = pthread_mutex_lock(Lock);
-   else result = pthread_mutex_lock_timeout_np(Lock, Timeout); // This is an Android-only function
-#else
-   if (Timeout > 0) {
-      result = pthread_mutex_trylock(Lock); // Attempt a quick-lock without resorting to the very slow clock_gettime()
-      if (result IS EBUSY) {
-         #ifdef __APPLE__
-            LARGE end = PreciseTime() + (Timeout * 1000LL);
-            do {
-               struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; // Equates to 1000 checks per second
-               nanosleep(&ts, &ts);
-            } while ((pthread_mutex_trylock(Lock) IS EBUSY) and (PreciseTime() < end));
-         #else
-             struct timespec timestamp;
-             clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
-
-             // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a
-             // modulo operation).  Note that nsec is from 0 - 1000000000.
-
-             LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
-             while (tn > 1000000000LL) {
-                timestamp.tv_sec++;
-                tn -= 1000000000LL;
-             }
-             timestamp.tv_nsec = (LONG)tn;
-
-             result = pthread_mutex_timedlock(Lock, &timestamp);
-         #endif
-      }
-   }
-   else if (Timeout IS 0) result = pthread_mutex_trylock(Lock);
-   else result = pthread_mutex_lock(Lock);
-#endif
-
-   if ((result IS ETIMEDOUT) or (result IS EBUSY)) return ERR_TimeOut;
-   else if (result IS EOWNERDEAD) { // The previous mutex holder crashed while holding it.
-      log.warning("Resetting the state of a crashed mutex.");
-      #if !defined(__ANDROID__) && !defined(__APPLE__)
-         pthread_mutex_consistent(Lock);
-      #endif
-      pthread_mutex_unlock(Lock);
-      goto retry;
-   }
-   else if (result) return ERR_LockFailed;
-
-   return ERR_Okay;
-}
-
-ERROR thread_lock(UBYTE Index, LONG Timeout)
-{
-   return pthread_lock(&glPrivateLocks[Index], Timeout);
-}
-
-void thread_unlock(UBYTE Index)
-{
-   pthread_mutex_unlock(&glPrivateLocks[Index]);
-}
-
-ERROR cond_wait(UBYTE Lock, UBYTE Cond, LONG Timeout)
-{
-   pf::Log log(__FUNCTION__);
-
-#ifdef __ANDROID__
-   if (Timeout <= 0) pthread_cond_wait(&glPrivateCond[Cond], &glPrivateLocks[Lock]);
-   else pthread_cond_timeout_np(&glPrivateCond[Cond], &glPrivateLocks[Lock], Timeout); // This is an Android-only function
-#else
-   if (Timeout > 0) {
-      struct timespec timestamp;
-      clock_gettime(CLOCK_REALTIME, &timestamp); // Slow!
-
-      // This subroutine is intended to perform addition with overflow management as quickly as possible (avoid a
-      // modulo operation).  Note that nsec is from 0 - 1000000000.
-
-      LARGE tn = timestamp.tv_nsec + (1000000LL * (LARGE)Timeout);
-      while (tn > 1000000000) {
-         timestamp.tv_sec++;
-         tn -= 1000000000;
-      }
-      timestamp.tv_nsec = (LONG)tn;
-
-      LONG result = pthread_cond_timedwait(&glPrivateCond[Cond], &glPrivateLocks[Lock], &timestamp);
-      if (result) log.warning("Error: %s", strerror(errno));
-      if ((result IS ETIMEDOUT) or (result IS EAGAIN)) return ERR_TimeOut;
-      else if (result) return ERR_Failed;
-   }
-   else pthread_cond_wait(&glPrivateCond[Cond], &glPrivateLocks[Lock]);
-#endif
-
-   return ERR_Okay;
-}
-
-// NOTE: You MUST have a already acquired a lock on the mutex associated with the condition.
-
-void cond_wake_single(UBYTE Index)
-{
-   pthread_cond_signal(&glPrivateCond[Index]); // Unblocks one or more threads waiting on the condition variable.
-}
-
-void cond_wake_all(UBYTE Index)
-{
-   pthread_cond_broadcast(&glPrivateCond[Index]); // Unblocks ALL threads waiting on the condition variable.
-}
-
-#elif _WIN32
-
-// Windows functions for locking are described in windows.c, and use critical sections (InitializeCriticalSection() et al)
-
-#else
-
-#error Platform requires support for mutexes and conditional locking.
-
 #endif
 
 //********************************************************************************************************************
@@ -398,7 +130,8 @@ static bool glTLInit = false;
 static WINHANDLE glThreadLocks[MAX_THREADS]; // Shared between all threads, used for resource tracking allocated wake locks.
 static THREADVAR WINHANDLE tlThreadLock = 0; // Local to the thread.
 
-// Returns the thread-lock semaphore for the active thread.
+// Returns the thread-lock semaphore for the active thread.  This is required for putting a thread to sleep in a way that
+// is compatible with the Win32 API.
 
 WINHANDLE get_threadlock(void)
 {
@@ -474,14 +207,11 @@ int MilliSeconds: The millisecond interval to wait before a timeout occurs.  Do 
 
 -ERRORS-
 Okay
-Args
+Args: The MilliSeconds value is less or equal to zero.
 NullArgs
-LockFailed
-DeadLock: A process has locked the memory block and is currently sleeping on a response from the caller.
+SystemLocked
 TimeOut
 MemoryDoesNotExist: The MemoryID that you supplied does not refer to an existing memory block.
-MarkedForDeletion: The memory block cannot be accessed because it has been marked for deletion.
-SystemLocked
 -END-
 
 *********************************************************************************************************************/
@@ -491,33 +221,30 @@ ERROR AccessMemory(MEMORYID MemoryID, MEM Flags, LONG MilliSeconds, APTR *Result
    pf::Log log(__FUNCTION__);
 
    if ((!MemoryID) or (!Result)) return log.warning(ERR_NullArgs);
-
-   if (MilliSeconds <= 0) {
-      log.warning("MemoryID: %d, Flags: $%x, TimeOut: %d - Invalid timeout", MemoryID, LONG(Flags), MilliSeconds);
-      return ERR_Args;
-   }
+   if (MilliSeconds <= 0) return log.warning(ERR_Args);
 
    // NB: Logging AccessMemory() calls is usually a waste of time unless the process is going to sleep.
    //log.trace("MemoryID: %d, Flags: $%x, TimeOut: %d", MemoryID, LONG(Flags), MilliSeconds);
 
    *Result = NULL;
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(MemoryID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
          auto our_thread = get_thread_id();
-         // This loop looks odd, but will prevent sleeping if we already have a lock on the memory.
-         // cond_wait() will be met with a global wake-up, not necessarily on the desired block, hence the need for while().
 
-         LARGE end_time = (PreciseTime() / 1000LL) + MilliSeconds;
-         ERROR error = ERR_TimeOut;
+         // This loop condition verifies that the block is available and protects against recursion.
+         // wait_for() is awoken with a global wake-up, not necessarily on the desired block, hence the need for while().
+
+         LARGE end_time = 0;
          while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
-            LONG timeout = end_time - (PreciseTime() / 1000LL);
+            auto current_time = PreciseTime();
+            if (!end_time) end_time = (current_time / 1000LL) + MilliSeconds;
+            auto timeout = end_time - (current_time / 1000LL);
             if (timeout <= 0) return log.warning(ERR_TimeOut);
             else {
                //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (LONG)mem->second.ThreadLockID, our_thread);
-               if ((error = cond_wait(TL_PRIVATE_MEM, CN_PRIVATE_MEM, timeout))) {
-                  return log.warning(error);
+               if (cvResources.wait_for(glmMemory, std::chrono::milliseconds{timeout}) IS std::cv_status::timeout) {
+                  return log.warning(ERR_TimeOut);
                }
             }
          }
@@ -575,10 +302,9 @@ int MilliSeconds: The limit in milliseconds before a timeout occurs.  The maximu
 -ERRORS-
 Okay
 NullArgs
-MarkedForDeletion
-MissingClass
 NoMatchingObject
 TimeOut
+SystemLocked
 -END-
 
 *********************************************************************************************************************/
@@ -590,8 +316,7 @@ ERROR AccessObject(OBJECTID ObjectID, LONG MilliSeconds, OBJECTPTR *Result)
    if ((!Result) or (!ObjectID)) return log.warning(ERR_NullArgs);
    if (MilliSeconds <= 0) log.warning(ERR_Args); // Warn but do not fail
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(ObjectID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
          if (auto error = LockObject((OBJECTPTR)mem->second.Address, MilliSeconds); !error) {
@@ -675,8 +400,8 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 
    if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) return ERR_MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
 
-   // Problem: What if ReleaseObject() in another thread were to release the object prior to our TL_OBJECT_LOCKING lock?  This means that we would never receive the wake signal.
-   // Solution: Prior to cond_wait(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
+   // Problem: What if ReleaseObject() in another thread were to release the object prior to our glmObjectLocking lock?  This means that we would never receive the wake signal.
+   // Solution: Prior to wait_until(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
    LARGE end_time, current_time;
@@ -685,8 +410,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
 
    Object->SleepQueue++; // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
-   ThreadLock lock(TL_OBJECT_LOCKING, Timeout);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmObjectLocking, std::chrono::milliseconds(Timeout)}) {
       //log.function("TID: %d, Sleeping on #%d, Timeout: %d, Queue: %d, Locked By: %d", our_thread, Object->UID, Timeout, Object->Queue, Object->ThreadID);
 
       ERROR error = ERR_TimeOut;
@@ -710,7 +434,7 @@ ERROR LockObject(OBJECTPTR Object, LONG Timeout)
             }
             else --Object->Queue;
 
-            cond_wait(TL_OBJECT_LOCKING, CN_OBJECTS, tmout);
+            if (cvObjects.wait_for(glmObjectLocking, std::chrono::milliseconds{tmout}) IS std::cv_status::timeout) break;
          } // end while()
 
          // Failure: Either a timeout occurred or the object no longer exists.
@@ -766,49 +490,37 @@ ERROR ReleaseMemory(MEMORYID MemoryID)
 
    if (!MemoryID) return log.warning(ERR_NullArgs);
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
-      auto mem = glPrivateMemory.find(MemoryID);
+   std::lock_guard lock(glmMemory);
+   auto mem = glPrivateMemory.find(MemoryID);
 
-      if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) {
-         if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
-         else log.warning("Unable to find a record for memory #%d.", MemoryID);
-         if (glLogLevel > 1) print_diagnosis(0);
-         return ERR_Search;
-      }
-
-      WORD access;
-      if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-         access = --mem->second.AccessCount;
-         tlPrivateLockCount--;
-      }
-      else access = -1;
-
-      #ifdef DBG_LOCKS
-         log.function("MemoryID: %d, Locks: %d", MemoryID, access);
-      #endif
-
-      if (!access) {
-         #ifdef __unix__
-            mem->second.ThreadLockID = 0; // This is more for peace of mind (it's the access count that matters)
-         #endif
-
-         if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
-            log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
-            FreeResource(mem->second.Address);
-            cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
-            return ERR_Okay;
-         }
-         else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
-            mem->second.Flags &= ~MEM::EXCLUSIVE;
-         }
-
-         cond_wake_all(CN_PRIVATE_MEM); // Wake up any threads sleeping on this memory block.
-      }
-
-      return ERR_Okay;
+   if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) { // Sanity check; this should never happen
+      if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
+      else log.warning("Unable to find a record for memory #%d.", MemoryID);
+      return ERR_Search;
    }
-   else return log.warning(ERR_SystemLocked);
+
+   WORD access;
+   if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
+      access = --mem->second.AccessCount;
+      tlPrivateLockCount--;
+   }
+   else access = -1;
+
+   if (!access) {
+      mem->second.ThreadLockID = 0;
+
+      if ((mem->second.Flags & MEM::DELETE) != MEM::NIL) {
+         log.trace("Deleting marked memory block #%d (MEM::DELETE)", MemoryID);
+         FreeResource(mem->second.Address);
+      }
+      else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
+         mem->second.Flags &= ~MEM::EXCLUSIVE;
+      }
+
+      cvResources.notify_all(); // Wake up any threads sleeping on this memory block.
+   }
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -837,9 +549,9 @@ void ReleaseObject(OBJECTPTR Object)
       pf::Log log(__FUNCTION__);
       log.traceBranch("Waking %d threads for this object.", Object->SleepQueue.load());
 
-      if (!thread_lock(TL_OBJECT_LOCKING, -1)) {
+      if (auto lock = std::unique_lock{glmObjectLocking}) {
          if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) { // We have to tell other threads that the object is marked for deletion.
-            // NB: A lock on glWaitLocks is not required because we're already protected by the TL_OBJECT_LOCKING
+            // NB: A lock on glWaitLocks is not required because we're already protected by the glmObjectLocking
             // barrier (which is common between LockObject() and ReleaseObject()
             for (unsigned i=0; i < glWaitLocks.size(); i++) {
                if ((glWaitLocks[i].WaitingForResourceID IS Object->UID) and
@@ -856,8 +568,7 @@ void ReleaseObject(OBJECTPTR Object)
             FreeResource(Object);
          }
 
-         cond_wake_all(CN_OBJECTS);
-         thread_unlock(TL_OBJECT_LOCKING);
+         cvObjects.notify_all();
       }
    }
    else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {

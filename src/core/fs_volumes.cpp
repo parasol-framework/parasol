@@ -32,20 +32,20 @@ ERROR DeleteVolume(CSTRING Name)
 
    log.branch("Name: %s", Name);
 
-   ThreadLock lock(TL_VOLUMES, 4000);
-   if (!lock.granted()) return log.warning(ERR_LockFailed);
+   if (auto lock = std::unique_lock{glmVolumes, 4s}) {
+      unsigned i;
+      for (i=0; (Name[i]) and (Name[i] != ':'); i++);
+      std::string vol(Name, i);
 
-   LONG i;
-   for (i=0; (Name[i]) and (Name[i] != ':'); i++);
-   std::string vol(Name, i);
+      if (glVolumes.contains(vol)) {
+         if (glVolumes[vol]["System"] == "Yes") return log.warning(ERR_NoPermission);
 
-   if (glVolumes.contains(vol)) {
-      if (glVolumes[vol]["System"] == "Yes") return log.warning(ERR_NoPermission);
+         glVolumes.erase(vol);
+      }
 
-      glVolumes.erase(vol);
+      return ERR_Okay;
    }
-
-   return ERR_Okay;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -60,8 +60,7 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 {
    pf::Log log(__FUNCTION__);
 
-   ThreadLock lock(TL_VOLUMES, 6000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmVolumes, 6s}) {
       LONG i;
       for (i=0; (Volume[i]) and (Volume[i] != ':'); i++);
 
@@ -135,37 +134,37 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
    if (Label) log.branch("Name: %s (%s), Path: %s", Name, Label, Path);
    else log.branch("Name: %s, Path: %s", Name, Path);
 
-   ThreadLock lock(TL_VOLUMES, 6000);
-   if (!lock.granted()) return log.warning(ERR_LockFailed);
+   if (auto lock = std::unique_lock{glmVolumes, 6s}) {
+      // If we are not in replace mode, check if the volume already exists with configured path.  If so, add the path as a complement
+      // to the existing volume.  In this mode nothing else besides the path is changed, even if other tags are specified.
 
-   // If we are not in replace mode, check if the volume already exists with configured path.  If so, add the path as a complement
-   // to the existing volume.  In this mode nothing else besides the path is changed, even if other tags are specified.
-
-   if ((Flags & VOLUME::REPLACE) IS VOLUME::NIL) {
-      if (glVolumes.contains(name)) {
-         auto &keys = glVolumes[name];
-         if ((Flags & VOLUME::PRIORITY) != VOLUME::NIL) keys["Path"] = std::string(Path) + "|" + keys["Path"];
-         else keys["Path"] = keys["Path"] + "|" + Path;
-         return ERR_Okay;
+      if ((Flags & VOLUME::REPLACE) IS VOLUME::NIL) {
+         if (glVolumes.contains(name)) {
+            auto &keys = glVolumes[name];
+            if ((Flags & VOLUME::PRIORITY) != VOLUME::NIL) keys["Path"] = std::string(Path) + "|" + keys["Path"];
+            else keys["Path"] = keys["Path"] + "|" + Path;
+            return ERR_Okay;
+         }
       }
+
+      auto &keys = glVolumes[name];
+
+      keys["Path"] = Path;
+
+      if (Icon)   keys["Icon"]   = Icon;
+      if (Label)  keys["Label"]  = Label;
+      if (Device) keys["Device"] = Device;
+
+      if ((Flags & VOLUME::HIDDEN) != VOLUME::NIL) keys["Hidden"] = "Yes";
+      if ((Flags & VOLUME::SYSTEM) != VOLUME::NIL) keys["System"] = "Yes";
+
+      UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
+      ((EVENTID *)evbuf)[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
+      CopyMemory(name.c_str(), evbuf + sizeof(EVENTID), name.size() + 1);
+      BroadcastEvent(evbuf, sizeof(EVENTID) + name.size() + 1);
+      return ERR_Okay;
    }
-
-   auto &keys = glVolumes[name];
-
-   keys["Path"] = Path;
-
-   if (Icon)   keys["Icon"]   = Icon;
-   if (Label)  keys["Label"]  = Label;
-   if (Device) keys["Device"] = Device;
-
-   if ((Flags & VOLUME::HIDDEN) != VOLUME::NIL) keys["Hidden"] = "Yes";
-   if ((Flags & VOLUME::SYSTEM) != VOLUME::NIL) keys["System"] = "Yes";
-
-   UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
-   ((EVENTID *)evbuf)[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
-   CopyMemory(name.c_str(), evbuf + sizeof(EVENTID), name.size() + 1);
-   BroadcastEvent(evbuf, sizeof(EVENTID) + name.size() + 1);
-   return ERR_Okay;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************

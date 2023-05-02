@@ -2003,8 +2003,7 @@ static ERROR GET_Icon(extFile *Self, CSTRING *Value)
    if ((Self->Path[i] IS ':') and (!Self->Path[i+1])) {
       std::string icon("icons:folders/folder");
 
-      ThreadLock lock(TL_VOLUMES, 6000);
-      if (lock.granted()) {
+      if (auto lock = std::unique_lock{glmVolumes, 6s}) {
          std::string volume(Self->Path, i);
 
          if ((glVolumes.contains(volume)) and (glVolumes[volume].contains("Icon"))) {

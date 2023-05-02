@@ -112,8 +112,7 @@ ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    APTR data_start = (char *)start_mem + sizeof(LONG) + sizeof(LONG); // Skip MEMH and unique ID.
    if ((Flags & MEM::MANAGED) != MEM::NIL) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) { // For keeping threads synchronised, it is essential that this lock is made early on.
+   if (auto lock = std::unique_lock{glmMemory}) { // To keep threads synced, it is essential that this lock is made early.
       MEMORYID unique_id = glPrivateIDCounter++;
 
       // Configure the memory header and place boundary cookies at the start and end of the memory block.
@@ -163,7 +162,7 @@ ERROR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    }
    else {
       freemem(start_mem);
-      return ERR_LockFailed;
+      return ERR_SystemLocked;
    }
 }
 
@@ -186,8 +185,7 @@ False: The block does not exist.
 
 ERROR CheckMemoryExists(MEMORYID MemoryID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (glPrivateMemory.contains(MemoryID)) return ERR_True;
    }
    return ERR_False;
@@ -225,8 +223,7 @@ ERROR FreeResource(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       auto it = glPrivateMemory.find(MemoryID);
       if ((it != glPrivateMemory.end()) and (it->second.Address)) {
          auto &mem = it->second;
@@ -280,10 +277,10 @@ ERROR FreeResource(MEMORYID MemoryID)
 
          return error;
       }
+      log.warning("Memory ID #%d does not exist.", MemoryID);
+      return ERR_MemoryDoesNotExist;
    }
-
-   log.warning("Memory ID #%d does not exist.", MemoryID);
-   return ERR_MemoryDoesNotExist;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************
@@ -327,8 +324,7 @@ ERROR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
 
    ClearMemory(MemInfo, Size);
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(MemoryID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
          MemInfo->Start       = mem->second.Address;
@@ -391,8 +387,7 @@ ERROR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
    // come from AllocMemory() then the optimal solution for the client is to pull the ID from
    // (LONG *)Memory)[-2] first and call MemoryIDInfo() instead.
 
-   ThreadLock memlock(TL_PRIVATE_MEM, 4000);
-   if (memlock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto & [ id, mem ] : glPrivateMemory) {
          if (Memory IS mem.Address) {
             MemInfo->Start       = Memory;
@@ -404,10 +399,10 @@ ERROR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
             return ERR_Okay;
          }
       }
+      log.warning("Private memory address %p is not valid.", Memory);
+      return ERR_MemoryDoesNotExist;
    }
-
-   log.warning("Private memory address %p is not valid.", Memory);
-   return ERR_MemoryDoesNotExist;
+   else return log.warning(ERR_SystemLocked);
 }
 
 /*********************************************************************************************************************

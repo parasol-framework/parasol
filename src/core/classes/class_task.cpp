@@ -1399,7 +1399,7 @@ static ERROR TASK_Init(extTask *Self, APTR Void)
       Self->ProcessID = glProcessID;
 
 #ifdef _WIN32
-      Self->Lock = get_threadlock();
+      glTaskLock = get_threadlock(); // This lock can be used by other threads to wake the main task.
 
       LONG i;
       char buffer[300];

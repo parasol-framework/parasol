@@ -174,8 +174,7 @@ static ERROR object_free(BaseClass *Object)
    free_children(Object);
 
    if (Object->defined(NF::TIMER_SUB)) {
-      ThreadLock lock(TL_TIMER, 200);
-      if (lock.granted()) {
+      if (auto lock = std::unique_lock{glmTimer, 200ms}) {
          for (auto it=glTimers.begin(); it != glTimers.end(); ) {
             if (it->SubscriberID IS Object->UID) {
                log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, it->Interval);
@@ -190,8 +189,9 @@ static ERROR object_free(BaseClass *Object)
    if (mc->OpenCount > 0) mc->OpenCount--;
 
    if (Object->Name[0]) { // Remove the object from the name lookup list
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) remove_object_hash(Object);
+      if (auto olock = std::unique_lock{glmObjectLookup, 4s}) {
+         remove_object_hash(Object);
+      }
    }
 
    // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
@@ -276,8 +276,7 @@ static void free_children(OBJECTPTR Object)
 {
    pf::Log log;
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (!glObjectChildren[Object->UID].empty()) {
          const auto children = glObjectChildren[Object->UID]; // Take an immutable copy of the resource list
 
@@ -638,13 +637,9 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          if (Callback) call->Callback = *Callback;
          else call->Callback.Type = 0;
 
-         struct thSetData setdata = {
-            .Data = call,
-            .Size = argssize
-         };
-         Action(MT_ThSetData, thread, &setdata);
+         thSetData(thread, call, argssize);
 
-         error = Action(AC_Activate, thread, NULL);
+         error = thread->activate();
       }
 
       if (error) {
@@ -724,8 +719,7 @@ LockFailed:
 
 ERROR CheckObjectExists(OBJECTID ObjectID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       LONG result = ERR_False;
       auto mem = glPrivateMemory.find(ObjectID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
@@ -902,8 +896,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Resu
       }
    }
 
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
       if (glObjectLookup.contains(InitialName)) {
          auto &list = glObjectLookup[InitialName];
          if (!ClassID) {
@@ -993,8 +986,7 @@ obj: The address of the object is returned, or NULL if the ID does not relate to
 
 OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if (((mem->second.Flags & MEM::OBJECT) != MEM::NIL) and (mem->second.Object)) {
             if (mem->second.Object->UID IS ObjectID) {
@@ -1027,8 +1019,7 @@ oid: Returns the ID of the object's owner.  If the object does not have a owner 
 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if (mem->second.Object) return mem->second.Object->OwnerID;
       }
@@ -1232,8 +1223,7 @@ ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 
    log.trace("#%d, List: %p", ObjectID, List);
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto id : glObjectChildren[ObjectID]) {
          auto mem = glPrivateMemory.find(id);
          if (mem IS glPrivateMemory.end()) continue;
@@ -1673,8 +1663,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    // Track the object's memory header to the new owner
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(Object->UID);
       if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
       mem->second.OwnerID = Owner->UID;
@@ -1794,20 +1783,20 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (!lock.granted()) return log.warning(ERR_LockFailed);
 
-   // Remove any existing name first.
+   if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
+      // Remove any existing name first.
 
-   if (Object->Name[0]) remove_object_hash(Object);
+      if (Object->Name[0]) remove_object_hash(Object);
 
-   LONG i;
-   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
-   Object->Name[i] = 0;
+      LONG i;
+      for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
+      Object->Name[i] = 0;
 
-   if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
-
-   return ERR_Okay;
+      if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_LockFailed);
 }
 
 /*********************************************************************************************************************

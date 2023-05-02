@@ -187,35 +187,35 @@ ERROR ScanDir(DirInfo *Dir)
    // Support for scanning of volume names
 
    if ((Dir->prvPath[0] IS ':') or (!Dir->prvPath[0])) {
-      ThreadLock lock(TL_VOLUMES, 4000);
-      if (!lock.granted()) return log.warning(ERR_LockFailed);
+      if (auto lock = std::unique_lock{glmVolumes, 4s}) {
+         LONG count = 0;
+         for (auto const &pair : glVolumes) {
+            if (count IS Dir->prvIndex) {
+               Dir->prvIndex++;
+               auto &volume = pair.first;
+               LONG j = StrCopy(volume.c_str(), file->Name, MAX_FILENAME-2);
+               if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
+                  file->Name[j++] = ':';
+                  file->Name[j] = 0;
+               }
 
-      LONG count = 0;
-      for (auto const &pair : glVolumes) {
-         if (count IS Dir->prvIndex) {
-            Dir->prvIndex++;
-            auto &volume = pair.first;
-            LONG j = StrCopy(volume.c_str(), file->Name, MAX_FILENAME-2);
-            if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
-               file->Name[j++] = ':';
-               file->Name[j] = 0;
+               if (glVolumes[volume]["Hidden"] == "Yes") {
+                  file->Flags |= RDF::HIDDEN;
+               }
+
+               if (glVolumes[volume].contains("Label")) {
+                  AddInfoTag(file, "Label", glVolumes[volume]["Label"].c_str());
+               }
+
+               file->Flags |= RDF::VOLUME;
+               return ERR_Okay;
             }
-
-            if (glVolumes[volume]["Hidden"] == "Yes") {
-               file->Flags |= RDF::HIDDEN;
-            }
-
-            if (glVolumes[volume].contains("Label")) {
-               AddInfoTag(file, "Label", glVolumes[volume]["Label"].c_str());
-            }
-
-            file->Flags |= RDF::VOLUME;
-            return ERR_Okay;
+            else count++;
          }
-         else count++;
-      }
 
-      return ERR_DirEmpty;
+         return ERR_DirEmpty;
+      }
+      else return log.warning(ERR_SystemLocked);
    }
 
    // In all other cases, pass functionality to the filesystem driver.
@@ -224,10 +224,8 @@ ERROR ScanDir(DirInfo *Dir)
    if (Dir->prvVirtualID IS DEFAULT_VIRTUALID) {
       error = fs_scandir(Dir);
    }
-   else {
-      if (glVirtual.contains(Dir->prvVirtualID)) {
-         if (glVirtual[Dir->prvVirtualID].ScanDir) error = glVirtual[Dir->prvVirtualID].ScanDir(Dir);
-      }
+   else if (glVirtual.contains(Dir->prvVirtualID)) {
+      if (glVirtual[Dir->prvVirtualID].ScanDir) error = glVirtual[Dir->prvVirtualID].ScanDir(Dir);
    }
 
    if ((file->Name[0]) and ((Dir->prvFlags & RDF::DATE) != RDF::NIL)) {

@@ -9,6 +9,10 @@
 #include <functional>
 #include <mutex>
 #include <sstream>
+#include <condition_variable>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -169,34 +173,25 @@ struct ThreadActionMessage {
    FUNCTION  Callback;  // Callback function to execute on action completion.
 };
 
-enum class ALF : UWORD {
-   NIL = 0,
-   SHARED = 0x0001,
-   RECURSIVE = 0x0002,
-};
+//********************************************************************************************************************
 
-DEFINE_ENUM_FLAG_OPERATORS(ALF)
+extern std::mutex glmPrint;               // For message logging only.
+extern std::mutex glmThreadPool;
 
-enum {
-   TL_GENERIC=0,
-   TL_TIMER,
-   TL_OBJECT_LOOKUP, // For glObjectLookup
-   TL_PRIVATE_MEM,
-   TL_PRINT,
-   TL_OBJECT_LOCKING, // For LockObject() and ReleaseObject()
-   TL_MSGHANDLER,
-   TL_THREADPOOL,
-   TL_VOLUMES,
-   TL_CLASSDB,
-   TL_FIELDKEYS,
-   TL_END
-};
+extern std::timed_mutex glmGeneric;       // A misc. internal mutex, strictly not recursive.
+extern std::timed_mutex glmObjectLocking; // For LockObject() and ReleaseObject()
+extern std::timed_mutex glmVolumes;       // For glVolumes
+extern std::timed_mutex glmClassDB;       // For glClassDB
+extern std::timed_mutex glmFieldKeys;     // For glFields
 
-enum {
-   CN_PRIVATE_MEM=0,
-   CN_OBJECTS,
-   CN_END
-};
+extern std::recursive_timed_mutex glmTimer;        // For timer subscriptions.
+extern std::recursive_timed_mutex glmObjectLookup; // For glObjectLookup
+
+extern std::recursive_mutex glmMemory;
+extern std::recursive_mutex glmMsgHandler;
+
+extern std::condition_variable_any cvResources;
+extern std::condition_variable_any cvObjects;
 
 //********************************************************************************************************************
 
@@ -408,9 +403,10 @@ class extThread : public objThread {
       LONG ThreadID;
       WINHANDLE Msgs[2];
    #endif
-   std::atomic_bool Active;
    FUNCTION Routine;
    FUNCTION Callback;
+   std::atomic_bool Active;
+   bool Pooled;
 };
 
 class extTask : public objTask {
@@ -445,7 +441,6 @@ class extTask : public objTask {
    #ifdef _WIN32
       STRING Env;
       APTR Platform;
-      WINHANDLE Lock;
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
 };
@@ -636,16 +631,16 @@ extern bool glLogThreads;
 extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
-extern RootModule *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
+extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
 extern OpenInfo *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
 extern const ActionTable ActionTable[];
 extern const Function    glFunctions[];
-extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
-extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
-extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
-extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
-extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
+extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
+extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
+extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
+extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
+extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
 extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
 extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
@@ -698,7 +693,7 @@ extern BYTE fs_initialised;
 extern APTR glPageFault;
 extern bool glScanClasses;
 extern UBYTE glTimerCycle;
-extern LONG glDebugMemory;
+extern bool glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
 extern std::atomic_int glUniqueMsgID;
 
@@ -727,6 +722,7 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 #ifdef _WIN32
 extern WINHANDLE glProcessHandle;
 extern THREADVAR bool tlMessageBreak;
+extern WINHANDLE glTaskLock;
 #endif
 
 #ifdef __unix__
@@ -1044,17 +1040,6 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
    ERROR send_thread_msg(LONG, LONG, APTR, LONG);
 #endif
 
-ERROR alloc_private_lock(UBYTE, ALF);
-ERROR alloc_private_cond(UBYTE, ALF);
-void  free_private_lock(UBYTE);
-void  free_private_cond(UBYTE);
-ERROR thread_lock(UBYTE, LONG);
-void  thread_unlock(UBYTE);
-ERROR cond_wait(UBYTE, UBYTE, LONG);
-
-void cond_wake_all(UBYTE);
-void cond_wake_single(UBYTE);
-
 #ifdef _WIN32
 void activate_console(BYTE);
 void free_threadlock(void);
@@ -1197,33 +1182,7 @@ inline ULONG reverse_long(ULONG Value) {
 }
 
 //********************************************************************************************************************
-
-class ThreadLock { // C++ wrapper for terminating resources when scope is lost
-   private:
-      UBYTE lock_type;
-
-   public:
-      ERROR error;
-
-      ThreadLock(UBYTE Lock, LONG Timeout) {
-         lock_type = Lock;
-         error = thread_lock(Lock, Timeout);
-      }
-
-      ~ThreadLock() { if (!error) thread_unlock(lock_type); }
-
-      bool granted() { return error == ERR_Okay; }
-
-      void release() {
-         if (!error) {
-            thread_unlock(lock_type);
-            error = ERR_NotLocked;
-         }
-      }
-};
-
-//********************************************************************************************************************
-// NOTE: To be called with TL_OBJECT_LOOKUP only.
+// NOTE: To be called with glmObjectLookup only.
 
 inline void remove_object_hash(OBJECTPTR Object)
 {

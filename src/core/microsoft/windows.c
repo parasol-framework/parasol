@@ -572,17 +572,6 @@ int alloc_public_waitlock(HANDLE *Lock, const char *Name)
 #endif
 }
 
-int open_public_waitlock(HANDLE *Lock, const char *Name)
-{
-   HANDLE event;
-
-   if ((event = OpenEvent(SYNCHRONIZE|EVENT_MODIFY_STATE, FALSE, Name))) {
-      *Lock = event;
-      return ERR_Okay;
-   }
-   else return ERR_SystemCall;
-}
-
 void free_public_waitlock(HANDLE Lock)
 {
    CloseHandle(Lock);
@@ -611,131 +600,7 @@ LONG wake_waitlock(HANDLE Lock, LONG TotalSleepers)
    return error;
 }
 
-LONG sleep_waitlock(HANDLE Handle, LONG Time)
-{
-   LONG result;
-
-   if (Time IS -1) Time = INFINITE;
-
-   result = WaitForSingleObject(Handle, Time);
-
-   if (result IS WAIT_OBJECT_0) return 0;
-   else if (result IS WAIT_TIMEOUT) return 1;
-   else if (result IS WAIT_ABANDONED) return 2;
-   else return 3;
-}
-
 //********************************************************************************************************************
-
-#define MAX_LOCKS 32
-
-static CRITICAL_SECTION locks[MAX_LOCKS];
-
-int alloc_private_lock(UBYTE Index, int Flags)
-{
-   //MSG("alloc_private_lock(%d, $%x)\n", (int)Index, Flags);
-
-   if ((Index >= 0) AND (Index < MAX_LOCKS)) {
-      InitializeCriticalSection(&locks[Index]);
-      return ERR_Okay;
-   }
-   else return ERR_OutOfBounds;
-}
-
-void free_private_lock(UBYTE Index)
-{
-   DeleteCriticalSection(&locks[Index]);
-   ZeroMemory(&locks[Index], sizeof(locks[0]));
-}
-
-void winInitializeCriticalSection(APTR Lock)
-{
-   InitializeCriticalSection(Lock);
-}
-
-void winDeleteCriticalSection(APTR Lock)
-{
-   DeleteCriticalSection(Lock);
-}
-
-//********************************************************************************************************************
-
-static CONDITION_VARIABLE conds[MAX_LOCKS];
-
-int alloc_private_cond(UBYTE Index)
-{
-   //MSG("alloc_private_cond(%d)\n", (int)Index);
-
-   if ((Index >= 0) AND (Index < MAX_LOCKS)) {
-      InitializeConditionVariable(&conds[Index]);
-      return ERR_Okay;
-   }
-   else return ERR_OutOfBounds;
-}
-
-void free_private_cond(UBYTE Index)
-{
-   // Deallocation of condition variables is not necessary on Windows.
-   ZeroMemory(&conds[Index], sizeof(conds[0]));
-}
-
-/*********************************************************************************************************************
-** Windows compatible locking management functions.
-*/
-
-int thread_lock(UBYTE Index, int Timeout)
-{
-   EnterCriticalSection(&locks[Index]); // Always succeeds (if it returns)
-   return ERR_Okay;
-}
-
-void thread_unlock(UBYTE Index)
-{
-   LeaveCriticalSection(&locks[Index]);
-}
-
-// You must call this function with a thread-lock already established.
-
-LONG cond_wait(UBYTE LockIndex, UBYTE CondIndex, LONG Timeout)
-{
-   BOOL result;
-   if (Timeout IS -1) result = SleepConditionVariableCS(&conds[CondIndex], &locks[LockIndex], INFINITE);
-   else result = SleepConditionVariableCS(&conds[CondIndex], &locks[LockIndex], Timeout);
-
-   if (!result) {
-      if (GetLastError() IS ERROR_TIMEOUT) return ERR_TimeOut;
-      else return ERR_Failed;
-   }
-   else return ERR_Okay;
-}
-
-// A matching thread-lock is a good idea for this call.
-
-void cond_wake_all(UBYTE CondIndex)
-{
-   WakeAllConditionVariable(&conds[CondIndex]); // Wake all threads waiting on the condition variable.
-}
-
-void cond_wake_single(UBYTE CondIndex)
-{
-   WakeConditionVariable(&conds[CondIndex]); // Wake only one thread waiting on the condition variable.
-}
-
-void winEnterCriticalSection(APTR Section)
-{
-   EnterCriticalSection(Section); // Critical sections may nest.
-}
-
-void winLeaveCriticalSection(APTR Section)
-{
-   LeaveCriticalSection(Section);
-}
-
-LONG winTryEnterCriticalSection(APTR Section)
-{
-   if (TryEnterCriticalSection(Section)) return ERR_Okay;
-   else return ERR_Failed;
-}
 
 #ifdef __CYGWIN__
 static int strnicmp(const char *s1, const char *s2, size_t n)

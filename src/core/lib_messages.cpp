@@ -49,8 +49,7 @@ static ERROR msghandler_free(APTR Address)
    pf::Log log("RemoveMsgHandler");
    log.trace("Handle: %p", Address);
 
-   ThreadLock lock(TL_MSGHANDLER, 5000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMsgHandler}) {
       MsgHandler *h = (MsgHandler *)Address;
       if (h IS glLastMsgHandler) glLastMsgHandler = h->Prev;
       if (h IS glMsgHandlers) glMsgHandlers = h->Next;
@@ -142,8 +141,7 @@ ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION *Routine, MsgHandler **H
 
    log.branch("Custom: %p, MsgType: %d", Custom, MsgType);
 
-   ThreadLock lock(TL_MSGHANDLER, 5000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMsgHandler}) {
       MsgHandler *handler;
       if (!AllocMemory(sizeof(MsgHandler), MEM::MANAGED, (APTR *)&handler, NULL)) {
          set_memory_manager(handler, &glResourceMsgHandler);
@@ -308,8 +306,8 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
    bool breaking = false;
    ERROR error;
 
-   ThreadLock lock(TL_MSGHANDLER, 5000); // A persistent lock on message handlers is optimal
-   if (!lock.granted()) return log.warning(ERR_SystemLocked);
+   auto granted = std::unique_lock{glmMsgHandler}; // A persistent lock on message handlers is optimal
+   if (!granted) return log.warning(ERR_SystemLocked);
 
    do { // Standard message handler for the core process.
       // Call all objects on the timer list (managed by SubscribeTimer()).  To manage timer locking cleanly, the loop
@@ -319,7 +317,7 @@ ERROR ProcessMessages(PMF Flags, LONG TimeOut)
       glTimerCycle++;
 timer_cycle:
       if ((glTaskState IS TSTATE::STOPPING) and ((Flags & PMF::SYSTEM_NO_BREAK) IS PMF::NIL));
-      else if (!thread_lock(TL_TIMER, 200)) {
+      else if (glmTimer.try_lock_for(200ms)) {
          LARGE current_time = PreciseTime();
          for (auto timer=glTimers.begin(); timer != glTimers.end(); ) {
             if (current_time < timer->NextCall) { timer++; continue; }
@@ -341,7 +339,7 @@ timer_cycle:
                OBJECTPTR subscriber;
                if (!timer->SubscriberID) { // Internal subscriptions like process_janitor() don't have a subscriber
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
-                  thread_unlock(TL_TIMER);
+                  glmTimer.unlock();
                   relock = true;
                   error = routine(NULL, elapsed, current_time);
                }
@@ -349,7 +347,7 @@ timer_cycle:
                   pf::SwitchContext context(subscriber);
 
                   auto routine = (ERROR (*)(OBJECTPTR, LARGE, LARGE))timer->Routine.StdC.Routine;
-                  thread_unlock(TL_TIMER);
+                  glmTimer.unlock();
                   relock = true;
 
                   error = routine(subscriber, elapsed, current_time);
@@ -365,7 +363,7 @@ timer_cycle:
                   { "CurrentTime", FD_LARGE, { .Large = current_time } }
                };
 
-               thread_unlock(TL_TIMER);
+               glmTimer.unlock();
                relock = true;
 
                auto script = (objScript *)timer->Routine.Script.Script;
@@ -387,7 +385,7 @@ timer_cycle:
             if (relock) goto timer_cycle;
          } // for
 
-         thread_unlock(TL_TIMER);
+         glmTimer.unlock();
       }
 
       // Consume queued messages
@@ -462,12 +460,9 @@ timer_cycle:
          // Wait for someone to communicate with us, or stall until an interrupt is due.
 
          LARGE sleep_time = timeout_end;
-         {
-            ThreadLock lock(TL_TIMER, 200);
-            if (lock.granted()) {
-               for (const auto &timer : glTimers) {
-                  if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
-               }
+         if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+            for (const auto &timer : glTimers) {
+               if (timer.NextCall < sleep_time) sleep_time = timer.NextCall;
             }
          }
 
@@ -1267,7 +1262,7 @@ static ERROR wake_task(void)
 
 #elif _WIN32
 
-   wake_waitlock(glCurrentTask->Lock, 1);
+   wake_waitlock(glTaskLock, 1);
 
 #endif
 
