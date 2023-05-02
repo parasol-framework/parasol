@@ -54,53 +54,64 @@ static void free_children(OBJECTPTR Object);
 
 //********************************************************************************************************************
 
+ERROR msg_free(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   // Lock the object via conventional means to guarantee thread safety.
+   OBJECTPTR obj;
+   if (!AccessObject(((OBJECTID *)Message)[0], 10000, &obj)) {
+      obj->Locked = false; // Required to allow the object to be freed while maintaining a lock via the Queue mechanism.
+      FreeResource(obj);
+   }
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Object termination hook for FreeResource()
+
 static ERROR object_free(BaseClass *Object)
 {
    pf::Log log("Free");
 
-   Object->threadLock();
+   ScopedObjectAccess objlock(Object);
+   if (!objlock.granted()) return ERR_AccessObject;
+
    ObjectContext new_context(Object, AC_Free);
 
    auto mc = Object->ExtClass;
    if (!mc) {
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
-      Object->threadRelease();
       return ERR_Okay;
-   }
-
-   // Check to see if the object is currently locked from AccessObject().  If it is, we mark it for deletion so that we
-   // can safely get rid of it during ReleaseObject().
-
-   if ((Object->Locked) or (Object->ThreadPending)) {
-      log.debug("Object #%d locked; marking for deletion.", Object->UID);
-      Object->Flags |= NF::UNLOCK_FREE;
-      Object->threadRelease();
-      return ERR_InUse;
    }
 
    // Return if the object is currently in the process of being freed (i.e. avoid recursion)
 
-   if (Object->defined(NF::FREE)) {
-      log.trace("Object already marked with NF::FREE.");
-      Object->threadRelease();
+   if (Object->Locked) {
+      log.debug("Object #%d locked; marking for deletion.", Object->UID);
+      Object->Flags |= NF::FREE_ON_UNLOCK;
+      return ERR_InUse;
+   }
+
+   // If the object is locked from LockObject() then we mark it for collection and return.
+   // Collection is achieved via the message queue as the safest and predictable option.
+
+   if (Object->terminating()) {
+      log.trace("Object already marked for termination.");
       return ERR_InUse;
    }
 
    if (Object->ActionDepth > 0) {
-      // Free() is being called while the object itself is still in use.
-      // This can be an issue with objects that haven't been locked with AccessObject().
-      log.trace("Free() attempt while object is in use.");
+      // The object is still in use.  This should only be triggered if the object wasn't locked with LockObject().
+      log.trace("Object in use; marking for collection.");
       if (!Object->defined(NF::COLLECT)) {
          Object->Flags |= NF::COLLECT;
          SendMessage(MSGID_FREE, MSF::NIL, &Object->UID, sizeof(OBJECTID));
       }
-      Object->threadRelease();
       return ERR_InUse;
    }
 
    if (Object->Class->ClassID IS ID_METACLASS)   log.branch("%s, Owner: %d", Object->className(), Object->OwnerID);
    else if (Object->Class->ClassID IS ID_MODULE) log.branch("%s, Owner: %d", ((extModule *)Object)->Name, Object->OwnerID);
-   else if (Object->Name[0])              log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
+   else if (Object->Name[0])                     log.branch("Name: %s, Owner: %d", Object->Name, Object->OwnerID);
    else log.branch("Owner: %d", Object->OwnerID);
 
    // If the object wants to be warned when the free process is about to be executed, it will subscribe to the
@@ -114,10 +125,7 @@ static ERROR object_free(BaseClass *Object)
 
             log.msg("Object will be destroyed despite being in use.");
          }
-         else {
-            Object->threadRelease();
-            return ERR_InUse;
-         }
+         else return ERR_InUse;
       }
    }
 
@@ -129,10 +137,7 @@ static ERROR object_free(BaseClass *Object)
                // objects from locking up the shutdown process).
                log.msg("Object will be destroyed despite being in use.");
             }
-            else {
-               Object->threadRelease();
-               return ERR_InUse;
-            }
+            else return ERR_InUse;
          }
       }
    }
@@ -140,11 +145,11 @@ static ERROR object_free(BaseClass *Object)
    // Mark the object as being in the free process.  The mark prevents any further access to the object via
    // AccessObject().  Classes may also use the flag to check if an object is in the process of being freed.
 
-   Object->Flags = (Object->Flags|NF::FREE) & (~NF::UNLOCK_FREE);
+   Object->Flags = (Object->Flags|NF::FREE) & (~NF::FREE_ON_UNLOCK);
 
    NotifySubscribers(Object, AC_Free, NULL, ERR_Okay);
 
-   if (mc->ActionTable[AC_Free].PerformAction) {  // If the class that formed the object is a sub-class, we call its Free() support first, and then the base-class to clean up.
+   if (mc->ActionTable[AC_Free].PerformAction) {  // Could be sub-class or base-class
       mc->ActionTable[AC_Free].PerformAction(Object, NULL);
    }
 
@@ -169,8 +174,7 @@ static ERROR object_free(BaseClass *Object)
    free_children(Object);
 
    if (Object->defined(NF::TIMER_SUB)) {
-      ThreadLock lock(TL_TIMER, 200);
-      if (lock.granted()) {
+      if (auto lock = std::unique_lock{glmTimer, 200ms}) {
          for (auto it=glTimers.begin(); it != glTimers.end(); ) {
             if (it->SubscriberID IS Object->UID) {
                log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, it->Interval);
@@ -185,8 +189,9 @@ static ERROR object_free(BaseClass *Object)
    if (mc->OpenCount > 0) mc->OpenCount--;
 
    if (Object->Name[0]) { // Remove the object from the name lookup list
-      ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-      if (lock.granted()) remove_object_hash(Object);
+      if (auto olock = std::unique_lock{glmObjectLookup, 4s}) {
+         remove_object_hash(Object);
+      }
    }
 
    // Clear the object header.  This helps to raise problems in any areas of code that may attempt to use the object
@@ -231,11 +236,11 @@ struct thread_data {
 static ERROR thread_action(extThread *Thread)
 {
    ERROR error;
-   thread_data *data = (thread_data *)Thread->Data;
+   auto data = (thread_data *)Thread->Data;
    OBJECTPTR obj = data->Object;
 
    if (!(error = LockObject(obj, 5000))) { // Access the object and process the action.
-      __sync_sub_and_fetch(&obj->ThreadPending, 1);
+      --obj->ThreadPending;
       error = Action(data->ActionID, obj, data->Parameters ? (data + 1) : NULL);
 
       if (data->Parameters) { // Free any temporary buffers that were allocated.
@@ -243,12 +248,10 @@ static ERROR thread_action(extThread *Thread)
          else local_free_args(data + 1, ((extMetaClass *)obj->Class)->Methods[-data->ActionID].Args);
       }
 
-      if (obj->defined(NF::FREE)) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
+      if (obj->terminating()) obj = NULL; // Clear the obj pointer because the object will be deleted on release.
       ReleaseObject(data->Object);
    }
-   else {
-      __sync_sub_and_fetch(&obj->ThreadPending, 1);
-   }
+   else --obj->ThreadPending;
 
    // Send a callback notification via messaging if required.  The receiver is in msg_threadaction() in class_thread.c
 
@@ -273,8 +276,7 @@ static void free_children(OBJECTPTR Object)
 {
    pf::Log log;
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (!glObjectChildren[Object->UID].empty()) {
          const auto children = glObjectChildren[Object->UID]; // Take an immutable copy of the resource list
 
@@ -290,7 +292,7 @@ static void free_children(OBJECTPTR Object)
                continue;
             }
 
-            if (!mem.Object->defined(NF::UNLOCK_FREE)) {
+            if (!mem.Object->defined(NF::FREE_ON_UNLOCK)) {
                if (mem.Object->defined(NF::INTEGRAL)) {
                   log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->Class->ClassID), Object->className(), Object->UID);
                }
@@ -386,7 +388,9 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 {
    if (!Object) return ERR_NullArgs;
 
-   Object->threadLock();
+   ScopedObjectAccess lock(Object);
+   if (!lock.granted()) return ERR_AccessObject;
+
    ObjectContext new_context(Object, ActionID);
    Object->ActionDepth++;
    auto cl = Object->ExtClass;
@@ -443,18 +447,6 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    }
 
    Object->ActionDepth--;
-   Object->threadRelease();
-
-#ifdef _DEBUG
-   if (log_depth != tlDepth) {
-      pf::Log log(__FUNCTION__);
-      if (ActionID >= 0) {
-         log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, ActionTable[ActionID].Name, log_depth, tlDepth);
-      }
-      else log.warning("Call to #%d.%s() failed to debranch the log correctly (%d <> %d).", Object->UID, cl->Base->Methods[-ActionID].Name, log_depth, tlDepth);
-   }
-#endif
-
    return error;
 }
 
@@ -593,7 +585,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
 
    log.traceBranch("Action: %d, Object: %d, Parameters: %p, Callback: %p, Key: %d", ActionID, Object->UID, Parameters, Callback, Key);
 
-   __sync_add_and_fetch(&Object->ThreadPending, 1);
+   ++Object->ThreadPending;
 
    ERROR error;
    extThread *thread = NULL;
@@ -645,13 +637,9 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
          if (Callback) call->Callback = *Callback;
          else call->Callback.Type = 0;
 
-         struct thSetData setdata = {
-            .Data = call,
-            .Size = argssize
-         };
-         Action(MT_ThSetData, thread, &setdata);
+         thSetData(thread, call, argssize);
 
-         error = Action(AC_Activate, thread, NULL);
+         error = thread->activate();
       }
 
       if (error) {
@@ -661,7 +649,7 @@ ERROR ActionThread(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTIO
    }
    else error = ERR_NewObject;
 
-   if (error) __sync_sub_and_fetch(&Object->ThreadPending, 1);
+   if (error) --Object->ThreadPending;
 
    return error;
 }
@@ -731,12 +719,11 @@ LockFailed:
 
 ERROR CheckObjectExists(OBJECTID ObjectID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       LONG result = ERR_False;
       auto mem = glPrivateMemory.find(ObjectID);
       if ((mem != glPrivateMemory.end()) and (mem->second.Object)) {
-         if (mem->second.Object->defined(NF::UNLOCK_FREE));
+         if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
          else result = ERR_True;
       }
       return result;
@@ -909,8 +896,7 @@ ERROR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Resu
       }
    }
 
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
       if (glObjectLookup.contains(InitialName)) {
          auto &list = glObjectLookup[InitialName];
          if (!ClassID) {
@@ -952,7 +938,7 @@ Message * GetActionMsg(void)
 {
    if (auto obj = tlContext->resource()) {
       if (obj->defined(NF::MESSAGE) and (obj->ActionDepth IS 1)) {
-         return tlCurrentMsg;
+         return (Message *)tlCurrentMsg;
       }
    }
    return NULL;
@@ -1000,8 +986,7 @@ obj: The address of the object is returned, or NULL if the ID does not relate to
 
 OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if (((mem->second.Flags & MEM::OBJECT) != MEM::NIL) and (mem->second.Object)) {
             if (mem->second.Object->UID IS ObjectID) {
@@ -1034,8 +1019,7 @@ oid: Returns the ID of the object's owner.  If the object does not have a owner 
 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
          if (mem->second.Object) return mem->second.Object->OwnerID;
       }
@@ -1074,6 +1058,8 @@ ERROR InitObject(OBJECTPTR Object)
 {
    pf::Log log("Init");
 
+   ScopedObjectAccess objlock(Object);
+
    auto cl = Object->ExtClass;
 
    if (Object->initialised()) {  // Initialising twice does not cause an error, but send a warning and return
@@ -1084,7 +1070,6 @@ ERROR InitObject(OBJECTPTR Object)
    if (Object->Name[0]) log.branch("%s #%d, Name: %s, Owner: %d", cl->ClassName, Object->UID, Object->Name, Object->OwnerID);
    else log.branch("%s #%d, Owner: %d", cl->ClassName, Object->UID, Object->OwnerID);
 
-   Object->threadLock();
    ObjectContext new_context(Object, AC_Init);
 
    bool use_subclass = false;
@@ -1105,7 +1090,6 @@ ERROR InitObject(OBJECTPTR Object)
          if (!error) Object->Flags |= NF::INITIALISED;
       }
 
-      Object->threadRelease();
       return error;
    }
    else {
@@ -1139,7 +1123,6 @@ ERROR InitObject(OBJECTPTR Object)
                Object->Flags |= NF::RECLASSED; // This flag indicates that the object originally belonged to the base-class
             }
 
-            Object->threadRelease();
             return ERR_Okay;
          }
 
@@ -1194,14 +1177,10 @@ ERROR InitObject(OBJECTPTR Object)
                      log.msg("Object class switched to sub-class \"%s\".", Object->className());
                      Object->Flags |= NF::INITIALISED;
                      Object->ExtClass->OpenCount++;
-                     Object->threadRelease();
                      return ERR_Okay;
                   }
                }
-               else {
-                  Object->threadRelease();
-                  return ERR_Okay;
-               }
+               else return ERR_Okay;
             }
             else log.warning("Failed to load module for class #%d.", subclass_id);
          }
@@ -1211,7 +1190,6 @@ ERROR InitObject(OBJECTPTR Object)
       Object->Class = cl;  // Put back the original to retain object integrity
    }
 
-   Object->threadRelease();
    return error;
 }
 
@@ -1245,8 +1223,7 @@ ERROR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 
    log.trace("#%d, List: %p", ObjectID, List);
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto id : glObjectChildren[ObjectID]) {
          auto mem = glPrivateMemory.find(id);
          if (mem IS glPrivateMemory.end()) continue;
@@ -1325,7 +1302,7 @@ ERROR NewObject(LARGE ClassID, NF Flags, OBJECTPTR *Object)
 
    if ((mc->Flags & CLF::NO_OWNERSHIP) != CLF::NIL) Flags |= NF::UNTRACKED;
 
-   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter, LONG(Flags));
+   if ((Flags & NF::SUPPRESS_LOG) IS NF::NIL) log.branch("%s #%d, Flags: $%x", mc->ClassName, glPrivateIDCounter.load(std::memory_order_relaxed), LONG(Flags));
 
    OBJECTPTR head = NULL;
    MEMORYID head_id;
@@ -1686,8 +1663,7 @@ ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 
    // Track the object's memory header to the new owner
 
-   ThreadLock lock(TL_PRIVATE_MEM, 4000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmMemory}) {
       auto mem = glPrivateMemory.find(Object->UID);
       if (mem IS glPrivateMemory.end()) return log.warning(ERR_SystemCorrupt);
       mem->second.OwnerID = Owner->UID;
@@ -1807,20 +1783,20 @@ ERROR SetName(OBJECTPTR Object, CSTRING NewName)
    if ((!Object) or (!NewName)) return log.warning(ERR_NullArgs);
 
    ScopedObjectAccess objlock(Object);
-   ThreadLock lock(TL_OBJECT_LOOKUP, 4000);
-   if (!lock.granted()) return log.warning(ERR_LockFailed);
 
-   // Remove any existing name first.
+   if (auto lock = std::unique_lock{glmObjectLookup, 4s}) {
+      // Remove any existing name first.
 
-   if (Object->Name[0]) remove_object_hash(Object);
+      if (Object->Name[0]) remove_object_hash(Object);
 
-   LONG i;
-   for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
-   Object->Name[i] = 0;
+      LONG i;
+      for (i=0; (i < (MAX_NAME_LEN-1)) and (NewName[i]); i++) Object->Name[i] = sn_lookup[UBYTE(NewName[i])];
+      Object->Name[i] = 0;
 
-   if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
-
-   return ERR_Okay;
+      if (Object->Name[0]) glObjectLookup[Object->Name].push_back(Object);
+      return ERR_Okay;
+   }
+   else return log.warning(ERR_LockFailed);
 }
 
 /*********************************************************************************************************************

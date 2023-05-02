@@ -2,7 +2,7 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For Windows builds -G"MinGW Makefiles" must be added to the above commands.
 # A build can target a local folder by adding -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
@@ -59,7 +59,8 @@ option (DISABLE_SCINTILLA "Disable Scintilla API" OFF)
 option (DISABLE_SVG       "Disable SVG support" OFF)
 option (DISABLE_VECTOR    "Disable Vector API" OFF)
 option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling a distribution" OFF)
-option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." ON)
+option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
+option (INSTALL_TESTS     "Install the test programs." OFF)
 option (ENABLE_ANALYSIS   "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
 
 set (CMAKE_CXX_STANDARD 20)
@@ -167,6 +168,14 @@ endif ()
 
 if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
    message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev")
+endif ()
+
+if (WIN32)
+   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
+   set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
+   set(INIT_LINK "init-win")
+else ()
+   set(INIT_LINK "init-unix")
 endif ()
 
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
@@ -458,11 +467,6 @@ if (X11_Xrandr_FOUND)
    add_subdirectory (src/xrandr)
 endif ()
 
-if (WIN32)
-   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
-   set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
-endif ()
-
 # --------------------------------------------------------------------------------------------------------------------
 # Parasol executable
 
@@ -475,11 +479,11 @@ endif ()
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
    add_executable (parasol_cmd WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
-   target_link_libraries (parasol_cmd PRIVATE init-win)
 else ()
    add_executable (parasol_cmd "src/launcher/parasol.cpp")
-   target_link_libraries (parasol_cmd PRIVATE init-unix)
 endif ()
+
+target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
 
 target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 
@@ -535,20 +539,20 @@ if (PARASOL_INSTALL)
 
 if (WIN32)
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "styles")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "fonts")
-   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "styles/icons")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "config/styles")
+   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "config/styles/icons")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
    endif ()
 else ()
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}")
-   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/styles/icons")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
+   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}/config")
+   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/config/styles/icons")
    install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
    if (INSTALL_EXAMPLES)
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")

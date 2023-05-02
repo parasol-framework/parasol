@@ -94,8 +94,7 @@ extern THREADVAR char tlFieldName[10]; // $12345678\0
 
 CSTRING FieldName(ULONG FieldID)
 {
-   ThreadLock lock(TL_FIELDKEYS, 1000);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmFieldKeys, 1s}) {
       if (glFields.contains(FieldID)) return glFields[FieldID].c_str();
    }
    snprintf(tlFieldName, sizeof(tlFieldName), "$%.8x", FieldID);

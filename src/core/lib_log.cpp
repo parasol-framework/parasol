@@ -122,7 +122,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
    if (tlLogStatus <= 0) return;
 
-   ThreadLock lock(TL_PRINT, -1);
+   std::lock_guard lock(glmPrint);
 
    if (!Format) Format = "";
 
@@ -202,7 +202,7 @@ void LogF(CSTRING Header, CSTRING Format, ...)
 
    msglevel += tlBaseLine;
    if (glLogLevel >= msglevel) {
-      //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
+      if (glLogThreads) fprintf(stderr, "%.4d ", get_thread_id());
 
       #if defined(__unix__) and !defined(__ANDROID__)
          bool flushdbg;
@@ -402,15 +402,14 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       BYTE msgstate;
       BYTE adjust = 0;
 
-      ThreadLock lock(TL_PRINT, -1);
+      std::lock_guard lock(glmPrint);
 
       if ((Header) and (!*Header)) Header = NULL;
 
       if ((Flags & (VLF::BRANCH|VLF::FUNCTION)) != VLF::NIL) msgstate = MS_FUNCTION;
       else msgstate = MS_MSG;
 
-      //fprintf(stderr, "%.8d. ", winGetCurrentThreadId());
-      //fprintf(stderr, "%p ", ctx);
+      if (glLogThreads) fprintf(stderr, "%.4d ", get_thread_id());
 
       #if defined(__unix__) and !defined(__ANDROID__)
          bool flushdbg;

@@ -1,7 +1,7 @@
 // DEPRECATED
 
 #include <parasol/main.h>
-#include <startup.h>
+#include <parasol/startup.h>
 #include <parasol/modules/core.h>
 #include <string.h>
 #include <sstream>

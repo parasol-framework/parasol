@@ -326,12 +326,9 @@ class extPointer : public objPointer {
    OBJECTID CursorReleaseID;
    OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
    OBJECTID DragParent;         // Parent of the draggable surface
-   MEMORYID MessageQueue;       // Message port of the task that holds the cursor
-   MEMORYID AnchorMsgQueue;     // Message port of the task that holds the cursor anchor
    LONG     CursorRelease;
    PTC      BufferCursor;
    CRF      BufferFlags;
-   MEMORYID BufferQueue;
    OBJECTID BufferOwner;
    OBJECTID BufferObject;
    char     DragData[8];          // Data preferences for current drag & drop item

@@ -370,8 +370,7 @@ ERROR AnalysePath(CSTRING Path, LOC *PathType)
 
    LONG len = StrLength(Path);
    if (Path[len-1] IS ':') {
-      ThreadLock lock(TL_VOLUMES, 6000);
-      if (lock.granted()) {
+      if (auto lock = std::unique_lock{glmVolumes, 6s}) {
          std::string path_vol(Path, len-1);
          if (glVolumes.contains(path_vol)) {
             if (PathType) *PathType = LOC::VOLUME;
@@ -812,8 +811,7 @@ ERROR get_file_info(CSTRING Path, FileInfo *Info, LONG InfoSize)
 
       error = ERR_Okay;
 
-      ThreadLock lock(TL_VOLUMES, 4000);
-      if (lock.granted()) {
+      if (auto lock = std::unique_lock{glmVolumes, 4s}) {
          if (glVolumes.contains(NameBuffer)) {
             if (glVolumes[NameBuffer]["Hidden"] == "Yes") Info->Flags |= RDF::HIDDEN;
          }
@@ -2752,24 +2750,22 @@ restart:
       for (pathend=0; (Path[pathend]) and (Path[pathend] != ':'); pathend++);
       std::string vol(Path, pathend);
 
-      {
-         ThreadLock lock(TL_VOLUMES, 2000); // We keep this lock localised so that it doesn't impact ResolvePath()
-         if (lock.granted()) {
-            if (glVolumes.contains(vol)) {
-               if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
+      if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+         // We keep this lock localised so that it doesn't impact ResolvePath()
+         if (glVolumes.contains(vol)) {
+            if (!glVolumes[vol]["Path"].compare(0, 6, "EXT:")) Info->DeviceFlags |= DEVICE::SOFTWARE; // Virtual device
 
-               if (glVolumes[vol].contains("Device")) {
-                  auto &device = glVolumes[vol]["Device"];
-                  if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
-                  else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
-                  else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
-                  else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
-                  else log.warning("Device '%s' unrecognised.", device.c_str());
-               }
+            if (glVolumes[vol].contains("Device")) {
+               auto &device = glVolumes[vol]["Device"];
+               if (!device.compare("disk"))     Info->DeviceFlags |= DEVICE::FLOPPY_DISK|DEVICE::REMOVABLE|DEVICE::READ|DEVICE::WRITE;
+               else if (!device.compare("hd"))  Info->DeviceFlags |= DEVICE::HARD_DISK|DEVICE::READ|DEVICE::WRITE;
+               else if (!device.compare("cd"))  Info->DeviceFlags |= DEVICE::COMPACT_DISC|DEVICE::REMOVABLE|DEVICE::READ;
+               else if (!device.compare("usb")) Info->DeviceFlags |= DEVICE::USB|DEVICE::REMOVABLE;
+               else log.warning("Device '%s' unrecognised.", device.c_str());
             }
          }
-         else return log.warning(ERR_LockFailed);
       }
+      else return log.warning(ERR_SystemLocked);
 
       if (Info->DeviceFlags IS DEVICE::NIL) {
          // Unable to find a device reference for the volume, so try to resolve the path and try again.

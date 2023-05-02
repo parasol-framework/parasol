@@ -2,7 +2,7 @@
 
 module({ name="Core", copyright="Paul Manias 1996-2023" }, function()
   c_include("<stdarg.h>", "<inttypes.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -274,7 +274,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "UNTRACKED: An object created with this flag will not be tracked back to the object that created it.",
     "INITIALISED: Read-only indicator if the object has been initialised.",
     "INTEGRAL: Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.",
-    "UNLOCK_FREE: Read-only indicator for when the object is marked for deletion.",
+    "FREE_ON_UNLOCK: Read-only indicator for when the object is marked for deletion.",
     "FREE: Read-only indicator for when the object is being freed.",
     "TIMER_SUB: The object is subscribed to a timer interval.",
     "SUPPRESS_LOG: Private.  Turns off the initial log message.",
@@ -327,7 +327,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TERMINATED: The process has closed.")
 
   enum("RES", { type="int", start=1 },
-    "MESSAGE_QUEUE: Use this resource to retrieve the message queue ID of the current task.",
+    "FREE_SWAP: The total amount of free swap memory.",
     "CONSOLE_FD: Internal reference to the FD of the console.",
     "KEY_STATE: Maintains the state of key qualifiers such as caps-lock and the shift keys.",
     "USER_ID: Internal",
@@ -342,7 +342,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "LOG_DEPTH: The current depth of log messages.",
     "JNI_ENV: Return the current JNI environment string.",
     "THREAD_ID: Return the ID of the current thread.",
-    "CURRENT_MSG: Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.",
     "OPEN_INFO: Pointer to the OpenInfo structure originally used to initialise the system.",
     "EXCEPTION_HANDLER: Internal",
     "NET_PROCESSING: Internal windows resource for Network module",
@@ -350,8 +349,7 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
-    "FREE_MEMORY: The total amount of free memory.",
-    "FREE_SWAP: The total amount of free swap memory."
+    "FREE_MEMORY: The total amount of free memory."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -858,14 +856,14 @@ struct FieldValue {
 
   struct("FieldArray", { comment="Used to construct class blueprints for the MetaClass." }, [[
     cstr   Name      # The name of the field, e.g. "Width"
-    uint   Flags     # Special flags that describe the field
-    maxint Arg       # Can be a pointer or an integer value
     ptr    GetField  # void GetField(*Object, APTR Result);
     ptr    SetField  # ERROR SetField(*Object, APTR Value);
+    maxint Arg       # Can be a pointer or an integer value
+    uint   Flags     # Special flags that describe the field
   ]],
   [[
   template <class G = APTR, class S = APTR, class T = MAXINT> FieldArray(CSTRING pName, ULONG pFlags, G pGetField = NULL, S pSetField = NULL, T pArg = 0) :
-     Name(pName), Flags(pFlags), Arg((MAXINT)pArg), GetField((APTR)pGetField), SetField((APTR)pSetField)
+     Name(pName), GetField((APTR)pGetField), SetField((APTR)pSetField), Arg((MAXINT)pArg), Flags(pFlags)
      { }
   ]])
 
@@ -903,11 +901,11 @@ struct FieldValue {
   -- Structures for defining method and action invocations.
 
   struct("ActionArray", { }, [[
-    int ActionCode  # Action identifier
     ptr Routine     # Pointer to the function entry point
+    int ActionCode  # Action identifier
   ]],
   [[
-  template <class T> ActionArray(LONG pID, T pRoutine) : ActionCode(pID), Routine((APTR)pRoutine) { }
+  template <class T> ActionArray(LONG pID, T pRoutine) : Routine((APTR)pRoutine), ActionCode(pID) { }
   ]])
 
   struct("MethodEntry", { restrict="c" }, [[
@@ -935,17 +933,17 @@ struct FieldValue {
     cid ClassID   # The class ID of the referenced object.
   ]])
 
-  struct("Message", { comment="Messaging structures.  Note: This structure is utilised by NextMsg" }, [[
-     large Time    # A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
-     int UniqueID  # A unique identifier automatically created by SendMessage().
-     int Type      # A message type identifier as defined by the client.
-     int Size      # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
+  struct("Message", { comment="Message header." }, [[
+     large Time  # A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().
+     int UID     # A unique identifier automatically created by SendMessage().
+     int Type    # A message type identifier as defined by the client.
+     int Size    # The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.</>
   ]])
 
   struct("MemInfo", { type="meminfo" }, [[
     ptr  Start         # The starting address of the memory block (does not apply to shared blocks).
     oid  ObjectID      # The object that owns the memory block.
-    int  Size          # The size of the memory block.
+    uint  Size         # The size of the memory block.
     int(MEM) Flags     # The type of memory.
     mem  MemoryID      # The unique ID for this block.
     short AccessCount  # Total number of active locks on this block.
@@ -1374,12 +1372,15 @@ inline ERROR ClearMemory(APTR Memory, LONG Length) {
    return ERR_Okay;
 }
 
-// If AUTO_OBJECT_LOCK is enabled, objects will be automatically locked to prevent thread-clashes.
-// NB: Turning this off will cause issues between threads unless they call the necessary locking functions.
-
-//#define AUTO_OBJECT_LOCK 1
-
 namespace pf {
+
+static THREADVAR LONG _tlUniqueThreadID = 0;
+
+inline LONG _get_thread_id(void) {
+   if (_tlUniqueThreadID) return _tlUniqueThreadID;
+   _tlUniqueThreadID = GetResource(RES::THREAD_ID);
+   return _tlUniqueThreadID;
+}
 
 // For extremely verbose debug logs, run cmake with -DPARASOL_VLOG=ON
 
@@ -1530,19 +1531,19 @@ struct BaseClass { // Must be 64-bit aligned
       objMetaClass *Class;          // [Public] Class pointer
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
-   APTR     ChildPrivate;       // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;        // The creator (via NewObject) is permitted to store a custom data pointer here.
-   OBJECTID UID;                // Unique object identifier
-   OBJECTID OwnerID;            // The owner of this object
-   NF       Flags;              // Object flags
-   LONG     NotifyFlags[2];     // Action subscription flags - space for 64 actions max
-   volatile LONG  ThreadID;     // Managed by locking functions
-   char Name[MAX_NAME_LEN];     // The name of the object (optional)
-   UBYTE ThreadPending;         // ActionThread() increments this.
-   volatile BYTE Queue;         // Managed by locking functions
-   volatile BYTE SleepQueue;    //
-   volatile bool Locked;        // Set if locked by AccessObject()/LockObject()
-   BYTE ActionDepth;            // Incremented each time an action or method is called on the object
+   APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
+   APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   OBJECTID UID;                 // Unique object identifier
+   OBJECTID OwnerID;             // The owner of this object
+   NF       Flags;               // Object flags
+   LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
+   volatile LONG  ThreadID;      // Managed by locking functions
+   char Name[MAX_NAME_LEN];      // The name of the object (optional)
+   std::atomic_uchar ThreadPending; // ActionThread() increments this.
+   std::atomic_char Queue;       // Counter of locks gained by incQueue()
+   std::atomic_char SleepQueue;  // For the use of LockObject() only
+   std::atomic_bool Locked;      // Set if locked by AccessObject()/LockObject()
+   BYTE ActionDepth;             // Incremented each time an action or method is called on the object
 
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
@@ -1560,46 +1561,24 @@ struct BaseClass { // Must be 64-bit aligned
       return (Flags & NF::FREE) != NF::NIL;
    }
 
-   inline ERROR threadLock() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (INC_QUEUE(this) IS 1) {
-            ThreadID = get_thread_id();
-            return ERR_Okay;
-         }
-         else {
-            if (ThreadID IS get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
-            SUB_QUEUE(this); // Put the lock count back to normal before LockObject()
-            return LockObject(this, -1); // Can fail if object is marked for deletion.
-         }
-      #else
+   // Use lock() to quickly obtain an object lock without a call to LockObject()
+
+   inline ERROR lock() {
+      if (++Queue IS 1) {
+         ThreadID = pf::_get_thread_id();
          return ERR_Okay;
-      #endif
+      }
+      else {
+         if (ThreadID IS pf::_get_thread_id()) return ERR_Okay; // If this is for the same thread then it's a nested lock, so there's no issue.
+         --Queue; // Restore the lock count
+         return LockObject(this, -1); // Can fail if object is marked for deletion.
+      }
    }
 
-   inline void threadRelease() {
-      #ifdef AUTO_OBJECT_LOCK
-         if (SleepQueue > 0) ReleaseObject(this);
-         else SUB_QUEUE(this);
-      #endif
-   }
-
-   // These are fast in-line calls for object locking.  They attempt to quickly 'steal' the
-   // object lock if the queue value was at zero.
-
-   inline LONG incQueue() {
-      return __sync_add_and_fetch(&Queue, 1);
-   }
-
-   inline LONG subQueue() {
-      return __sync_sub_and_fetch(&Queue, 1);
-   }
-
-   inline LONG incSleep() {
-      return __sync_add_and_fetch(&SleepQueue, 1);
-   }
-
-   inline LONG subSleep() {
-      return __sync_sub_and_fetch(&SleepQueue, 1);
+   inline void unlock() {
+      // Prefer to use ReleaseObject() if there are threads that need to be woken
+      if (SleepQueue.load() > 0) ReleaseObject(this);
+      else --Queue;
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
@@ -1615,26 +1594,26 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR set(ULONG FieldID, const FUNCTION *Value) { return SetField(this, (FIELD)FieldID|TFUNCTION, Value); }
    inline ERROR set(ULONG FieldID, const char *Value)     { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERROR set(ULONG FieldID, const unsigned char *Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR set(ULONG FieldID, const std::string &Value) { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
-   inline ERROR set(ULONG FieldID, const Variable *Value) { return SetField(this, (FIELD)FieldID|TVAR, Value); }
+   inline ERROR set(ULONG FieldID, const std::string &Value)   { return SetField(this, (FIELD)FieldID|TSTRING, Value.c_str()); }
+   inline ERROR set(ULONG FieldID, const Variable *Value)      { return SetField(this, (FIELD)FieldID|TVAR, Value); }
    // Works both for regular data pointers and function pointers if field is defined correctly.
    inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
 
    inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
-   inline ERROR get(ULONG FieldID, LONG *Value) { return GetField(this, (FIELD)FieldID|TLONG, Value); }
-   inline ERROR get(ULONG FieldID, LARGE *Value) { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
-   inline ERROR get(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
-   inline ERROR get(ULONG FieldID, STRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
-   inline ERROR get(ULONG FieldID, CSTRING *Value) { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, LONG *Value)     { return GetField(this, (FIELD)FieldID|TLONG, Value); }
+   inline ERROR get(ULONG FieldID, LARGE *Value)    { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
+   inline ERROR get(ULONG FieldID, DOUBLE *Value)   { return GetField(this, (FIELD)FieldID|TDOUBLE, Value); }
+   inline ERROR get(ULONG FieldID, STRING *Value)   { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
+   inline ERROR get(ULONG FieldID, CSTRING *Value)  { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
-   inline ERROR getPtr(ULONG FieldID, APTR Value) { return GetField(this, (FIELD)FieldID|TPTR, Value); }
+   inline ERROR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
    inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
 
    template <typename... Args> ERROR setFields(Args&&... pFields) {
       pf::Log log("setFields");
 
-      threadLock();
+      lock();
 
       std::initializer_list<pf::FieldValue> Fields = { std::forward<Args>(pFields)... };
 
@@ -1648,7 +1627,7 @@ struct BaseClass { // Must be 64-bit aligned
                log.warning("Field \"%s\" of class %s is init-only.", field->Name, className());
             }
             else {
-               if (target != this) target->threadLock();
+               if (target != this) target->lock();
 
                ERROR error;
                if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
@@ -1662,25 +1641,25 @@ struct BaseClass { // Must be 64-bit aligned
                }
                else error = field->WriteValue(target, field, f.Type, &f.Long, 1);
 
-               if (target != this) target->threadRelease();
+               if (target != this) target->unlock();
 
                // NB: NoSupport is considered a 'soft' error that does not warrant failure.
 
                if ((error) and (error != ERR_NoSupport)) {
                   log.warning("(%s:%d) Failed to set field %s (error #%d).", target->className(), target->UID, field->Name, error);
-                  threadRelease();
+                  unlock();
                   return error;
                }
             }
          }
          else {
             log.warning("Field %s is not supported by class %s.", FieldName(f.FieldID), className());
-            threadRelease();
+            unlock();
             return ERR_UnsupportedField;
          }
       }
 
-      threadRelease();
+      unlock();
       return ERR_Okay;
    }
 
@@ -1751,7 +1730,7 @@ class Create {
                      return;
                   }
                   else {
-                     target->threadLock();
+                     target->lock();
 
                      if (f.Type & (FD_POINTER|FD_STRING|FD_ARRAY|FD_FUNCTION|FD_VARIABLE)) {
                         error = field->WriteValue(target, field, f.Type, f.Pointer, 0);
@@ -1766,7 +1745,7 @@ class Create {
                         error = field->WriteValue(target, field, f.Type, &f.Long, 1);
                      }
 
-                     target->threadRelease();
+                     target->unlock();
 
                      // NB: NoSupport is considered a 'soft' error that does not warrant failure.
 
@@ -1860,6 +1839,7 @@ inline ERROR acRefresh(OBJECTPTR Object) { return Action(AC_Refresh, Object, NUL
 inline ERROR acReset(OBJECTPTR Object) { return Action(AC_Reset,Object,NULL); }
 inline ERROR acSaveSettings(OBJECTPTR Object) { return Action(AC_SaveSettings,Object,NULL); }
 inline ERROR acShow(OBJECTPTR Object) { return Action(AC_Show,Object,NULL); }
+inline ERROR acSignal(OBJECTPTR Object) { return Action(AC_Signal,Object,NULL); }
 inline ERROR acSort(OBJECTPTR Object) { return Action(AC_Sort,Object,NULL); }
 inline ERROR acUnlock(OBJECTPTR Object) { return Action(AC_Unlock,Object,NULL); }
 
@@ -1881,6 +1861,13 @@ inline ERROR acDrawArea(OBJECTPTR Object, LONG X, LONG Y, LONG Width, LONG Heigh
 inline ERROR acDataFeed(OBJECTPTR Object, OBJECTPTR Sender, DATA Datatype, const void *Buffer, LONG Size) {
    struct acDataFeed args = { Sender, Datatype, Buffer, Size };
    return Action(AC_DataFeed, Object, &args);
+}
+
+inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
+   struct acGetVar args = { FieldName, Buffer, Size };
+   ERROR error = Action(AC_GetVar, Object, &args);
+   if ((error) and (Buffer)) Buffer[0] = 0;
+   return error;
 }
 
 inline ERROR acMove(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z) {
@@ -1931,18 +1918,6 @@ inline ERROR acScrollToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, STP
    return Action(AC_ScrollToPoint, Object, &args);
 }
 
-inline ERROR acUndo(OBJECTPTR Object, LONG Steps) {
-   struct acUndo args = { Steps };
-   return Action(AC_Undo, Object, &args);
-}
-
-inline ERROR acGetVar(OBJECTPTR Object, CSTRING FieldName, STRING Buffer, LONG Size) {
-   struct acGetVar args = { FieldName, Buffer, Size };
-   ERROR error = Action(AC_GetVar, Object, &args);
-   if ((error) and (Buffer)) Buffer[0] = 0;
-   return error;
-}
-
 inline ERROR acMoveToPoint(OBJECTPTR Object, DOUBLE X, DOUBLE Y, DOUBLE Z, MTF Flags) {
    struct acMoveToPoint moveto = { X, Y, Z, Flags };
    return Action(AC_MoveToPoint, Object, &moveto);
@@ -1977,6 +1952,11 @@ inline ERROR acSetVars(OBJECTPTR Object, CSTRING tags, ...) {
    }
    va_end(list);
    return ERR_Okay;
+}
+
+inline ERROR acUndo(OBJECTPTR Object, LONG Steps) {
+   struct acUndo args = { Steps };
+   return Action(AC_Undo, Object, &args);
 }
 
 inline ERROR acWrite(OBJECTPTR Object, CPTR Buffer, LONG Bytes, LONG *Result) {
@@ -2227,8 +2207,7 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   ]])
 
   methods("Thread", "Th", {
-    { id=1, name="SetData" },
-    { id=2, name="Wait" }
+    { id=1, name="SetData" }
   })
 
   class("Thread", { src="../classes/class_thread.cpp", output="../classes/class_thread_def.c" }, [[

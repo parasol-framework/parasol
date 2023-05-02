@@ -5,19 +5,8 @@ Functions that are internal to the Core.
 *********************************************************************************************************************/
 
 #ifdef __unix__
-   #include <unistd.h>
-   #include <signal.h>
-   #include <sys/ipc.h>
-   #ifndef __ANDROID__
-      #include <sys/shm.h>
-      #include <sys/sem.h>
-      #include <sys/msg.h>
-   #endif
-   #include <sys/types.h>
-   #include <sys/wait.h>
-   #include <string.h>
-   #include <errno.h>
-   #include <signal.h>
+ #include <signal.h>
+ #include <sys/wait.h>
 #endif
 
 #include "defs.h"
@@ -25,57 +14,37 @@ Functions that are internal to the Core.
 using namespace pf;
 
 //********************************************************************************************************************
-// Determine whether or not a process is alive
 
-ERROR validate_process(LONG ProcessID)
+#ifdef __APPLE__
+struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
 {
-   pf::Log log(__FUNCTION__);
-   static LONG glValidating = 0;
+   // OSX doesn't support anonymous sockets, so we use /tmp instead.
+   static THREADVAR struct sockaddr_un tlSocket;
+   tlSocket.sun_family = AF_UNIX;
+   *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
+   return &tlSocket;
+}
+#elif __unix__
+struct sockaddr_un * get_socket_path(LONG ProcessID, socklen_t *Size)
+{
+   static THREADVAR struct sockaddr_un tlSocket;
+   static THREADVAR bool init = false;
 
-   log.function("PID: %d", ProcessID);
-
-   if (glValidating) return ERR_Okay;
-   if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
-   if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR_Okay;
-
-   #ifdef _WIN32
-      // On Windows we don't check if the process is alive because validation can often occur during the final shutdown
-      // phase of the other process.
-   #elif __unix__
-      if ((kill(ProcessID, 0) IS -1) and (errno IS ESRCH));
-      else return ERR_Okay;
-   #else
-      log.error("This platform does not support validate_process()");
-      return ERR_Okay;
-   #endif
-
-   OBJECTID task_id = 0;
-   for (auto it = glTasks.begin(); it != glTasks.end(); it++) {
-      if (it->ProcessID IS ProcessID) {
-         task_id = it->TaskID;
-         glTasks.erase(it);
-         break;
-      }
+   if (!init) {
+      tlSocket.sun_family = AF_UNIX;
+      ClearMemory(tlSocket.sun_path, sizeof(tlSocket.sun_path));
+      tlSocket.sun_path[0] = '\0';
+      tlSocket.sun_path[1] = 'p';
+      tlSocket.sun_path[2] = 's';
+      tlSocket.sun_path[3] = 'l';
+      init = true;
    }
 
-   if (!task_id) return ERR_False;
-
-   evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
-   BroadcastEvent(&task_removed, sizeof(task_removed));
-
-   glValidating = 0;
-   return ERR_False; // Return ERR_False to indicate that the task was not healthy
+   ((LONG *)(tlSocket.sun_path+4))[0] = ProcessID;
+   *Size = sizeof(sa_family_t) + 4 + sizeof(LONG);
+   return &tlSocket;
 }
-
-//********************************************************************************************************************
-
-TaskRecord * find_process(LONG ProcessID)
-{
-   for (auto &task : glTasks) {
-      if (ProcessID IS task.ProcessID) return &task;
-   }
-   return NULL;
-}
+#endif
 
 //********************************************************************************************************************
 
@@ -97,10 +66,13 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
    while ((childprocess = waitpid(-1, &status, WNOHANG)) > 0) {
       log.warning("Zombie process #%d discovered.", childprocess);
 
-      if (auto task = find_process(childprocess)) {
-         task->ReturnCode = WEXITSTATUS(status);
-         task->Returned = TRUE;
-         validate_process(childprocess);
+      for (auto &task : glTasks) {
+         if (childprocess IS task.ProcessID) {
+            task.ReturnCode = WEXITSTATUS(status);
+            task.Returned   = true;
+            validate_process(childprocess);
+            break;
+         }
       }
    }
 
@@ -122,19 +94,6 @@ ERROR process_janitor(OBJECTID SubscriberID, LONG Elapsed, LONG TotalElapsed)
 #endif
 
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
-
-static THREADVAR LONG tlUniqueThreadID = 0;
-static LONG glThreadIDCount = 1;
-
-LONG get_thread_id(void)
-{
-   if (tlUniqueThreadID) return tlUniqueThreadID;
-   tlUniqueThreadID = __sync_add_and_fetch(&glThreadIDCount, 1);
-   return tlUniqueThreadID;
 }
 
 /*********************************************************************************************************************

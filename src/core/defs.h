@@ -9,6 +9,10 @@
 #include <functional>
 #include <mutex>
 #include <sstream>
+#include <condition_variable>
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
@@ -158,6 +162,7 @@ struct ActionEntry {
 
 struct ThreadMessage {
    OBJECTID ThreadID;    // Internal
+   FUNCTION Callback;
 };
 
 struct ThreadActionMessage {
@@ -168,34 +173,25 @@ struct ThreadActionMessage {
    FUNCTION  Callback;  // Callback function to execute on action completion.
 };
 
-enum class ALF : UWORD {
-   NIL = 0,
-   SHARED = 0x0001,
-   RECURSIVE = 0x0002,
-};
+//********************************************************************************************************************
 
-DEFINE_ENUM_FLAG_OPERATORS(ALF)
+extern std::mutex glmPrint;               // For message logging only.
+extern std::mutex glmThreadPool;
 
-enum {
-   TL_GENERIC=0,
-   TL_TIMER,
-   TL_OBJECT_LOOKUP,
-   TL_PRIVATE_MEM,
-   TL_PRINT,
-   TL_PRIVATE_OBJECTS,
-   TL_MSGHANDLER,
-   TL_THREADPOOL,
-   TL_VOLUMES,
-   TL_CLASSDB,
-   TL_FIELDKEYS,
-   TL_END
-};
+extern std::timed_mutex glmGeneric;       // A misc. internal mutex, strictly not recursive.
+extern std::timed_mutex glmObjectLocking; // For LockObject() and ReleaseObject()
+extern std::timed_mutex glmVolumes;       // For glVolumes
+extern std::timed_mutex glmClassDB;       // For glClassDB
+extern std::timed_mutex glmFieldKeys;     // For glFields
 
-enum {
-   CN_PRIVATE_MEM=0,
-   CN_OBJECTS,
-   CN_END
-};
+extern std::recursive_timed_mutex glmTimer;        // For timer subscriptions.
+extern std::recursive_timed_mutex glmObjectLookup; // For glObjectLookup
+
+extern std::recursive_mutex glmMemory;
+extern std::recursive_mutex glmMsgHandler;
+
+extern std::condition_variable_any cvResources;
+extern std::condition_variable_any cvObjects;
 
 //********************************************************************************************************************
 
@@ -219,7 +215,7 @@ public:
    ULONG    Size;       // 4GB max
    volatile LONG ThreadLockID = 0;
    MEM      Flags;
-   volatile WORD AccessCount = 0; // Total number of locks
+   WORD     AccessCount = 0; // Total number of locks
 
    PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, ULONG aSize, MEM aFlags) :
       Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
@@ -407,10 +403,10 @@ class extThread : public objThread {
       LONG ThreadID;
       WINHANDLE Msgs[2];
    #endif
-   BYTE Active;
-   BYTE Waiting;
    FUNCTION Routine;
    FUNCTION Callback;
+   std::atomic_bool Active;
+   bool Pooled;
 };
 
 class extTask : public objTask {
@@ -445,7 +441,6 @@ class extTask : public objTask {
    #ifdef _WIN32
       STRING Env;
       APTR Platform;
-      WINHANDLE Lock;
    #endif
    struct ActionEntry Actions[AC_END]; // Action routines to be intercepted by the program
 };
@@ -632,19 +627,20 @@ extern std::string glRootPath;
 extern char glDisplayDriver[28];
 extern bool glShowIO, glShowPrivate;
 extern bool glJanitorActive;
+extern bool glLogThreads;
 extern WORD glLogLevel, glMaxDepth;
 extern TSTATE glTaskState;
 extern LARGE glTimeLog;
-extern struct RootModule     *glModuleList;    // Locked with TL_GENERIC.  Maintained as a linked-list; hashmap unsuitable.
-extern struct OpenInfo       *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
+extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
+extern OpenInfo *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
-extern const struct ActionTable ActionTable[];
-extern const struct Function    glFunctions[];
-extern std::list<CoreTimer> glTimers;           // Locked with TL_TIMER
-extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with TL_OBJECT_LOOKUP
-extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with TL_PRIVATE_MEM: Note that best performance for looking up ID's is achieved as a sorted array.
-extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with TL_PRIVATE_MEM.  Sorted with the most recent private memory first
-extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with TL_PRIVATE_MEM.  Sorted with most recent object first
+extern const ActionTable ActionTable[];
+extern const Function    glFunctions[];
+extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
+extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
+extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
+extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
+extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
 extern std::unordered_map<CLASSID, ClassRecord> glClassDB;
 extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 extern std::unordered_map<ULONG, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
@@ -653,16 +649,15 @@ extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // Volum
 extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[ERR_END+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
-extern MEMORYID glTaskMessageMID;        // Read-only
 extern LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
-extern LONG glMessageIDCount;
-extern LONG glGlobalIDCount;
-extern LONG glPrivateIDCounter;
+extern std::atomic_int glMessageIDCount;
+extern std::atomic_int glGlobalIDCount;
+extern std::atomic_int glPrivateIDCounter;
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
-extern UWORD glFunctionID;
+extern std::atomic_ushort glFunctionID;
 extern BYTE glProgramStage;
 extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
@@ -674,7 +669,7 @@ extern objTime *glTime;
 extern objConfig *glDatatypes;
 extern objFile *glClassFile;
 extern CSTRING glIDL;
-extern struct BaseClass glDummyObject;
+extern BaseClass glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 
@@ -698,18 +693,19 @@ extern BYTE fs_initialised;
 extern APTR glPageFault;
 extern bool glScanClasses;
 extern UBYTE glTimerCycle;
-extern LONG glDebugMemory;
+extern bool glDebugMemory;
 extern struct CoreBase *LocalCoreBase;
+extern std::atomic_int glUniqueMsgID;
 
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
 extern THREADVAR class ObjectContext *tlContext;
-extern THREADVAR struct Message *tlCurrentMsg;
+extern THREADVAR struct TaskMessage *tlCurrentMsg;
+extern THREADVAR bool tlMainThread;
 extern THREADVAR WORD tlMsgRecursion;
 extern THREADVAR WORD tlDepth;
 extern THREADVAR WORD tlLogStatus;
-extern THREADVAR BYTE tlMainThread;
 extern THREADVAR WORD tlPreventSleep;
 extern THREADVAR WORD tlPublicLockCount;
 extern THREADVAR WORD tlPrivateLockCount;
@@ -725,7 +721,8 @@ extern void (*glNetProcessMessages)(LONG, APTR);
 
 #ifdef _WIN32
 extern WINHANDLE glProcessHandle;
-extern THREADVAR WORD tlMessageBreak;
+extern THREADVAR bool tlMessageBreak;
+extern WINHANDLE glTaskLock;
 #endif
 
 #ifdef __unix__
@@ -738,30 +735,94 @@ extern struct FileMonitor *glFileMonitor;
 
 extern struct MsgHandler *glMsgHandlers, *glLastMsgHandler;
 
-//********************************************************************************************************************
-// Message structure and internal ID's for standard Task-to-Task messages.
-
-#define SIZE_MSGBUFFER (1024 * 64)
-
-struct TaskMessage {
+class TaskMessage {
+   public:
+   // struct Message - START
    LARGE Time;
-   LONG UniqueID;   // Unique identifier for this particular message
-   LONG Type;       // Message type ID
-   LONG DataSize;   // Size of the data (does not include the size of the TaskMessage structure)
-   LONG NextMsg;    // Offset to the next message
-   // Data follows
+   LONG  UID;
+   LONG  Type;
+   LONG  Size;
+   // struct Message - END
+   private:
+   char *ExtBuffer;
+   std::array<char, 64> Buffer;
+
+   // Constructors
+
+   public:
+   TaskMessage() : Size(0), ExtBuffer(NULL) { }
+
+   TaskMessage(LONG pType, APTR pData = NULL, LONG pSize = 0) {
+      Time = PreciseTime();
+      UID  = ++glUniqueMsgID;
+      Type = pType;
+      Size = 0;
+      ExtBuffer = NULL;
+      if ((pData) and (pSize)) setBuffer(pData, pSize);
+   }
+
+   ~TaskMessage() {
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+   }
+
+   // Move constructor
+   TaskMessage(TaskMessage &&other) noexcept {
+      ExtBuffer = NULL;
+      copy_from(other);
+      other.Size = 0;
+      other.ExtBuffer = NULL; // Source loses its buffer
+   }
+
+   // Copy constructor
+   TaskMessage(const TaskMessage &other) {
+      ExtBuffer = NULL;
+      copy_from(other);
+   }
+
+   // Move assignment
+   TaskMessage& operator=(TaskMessage &&other) noexcept {
+      if (this == &other) return *this;
+      copy_from(other);
+      other.Size = 0;
+      other.ExtBuffer = NULL; // Source loses its buffer
+      return *this;
+   }
+
+   // Copy assignment
+   TaskMessage& operator=(const TaskMessage& other) {
+      if (this == &other) return *this;
+      copy_from(other);
+      return *this;
+   }
+
+   // Public methods
+
+   char * getBuffer() { return ExtBuffer ? ExtBuffer : Buffer.data(); }
+
+   void setBuffer(APTR pData, size_t pSize) {
+      if (ExtBuffer) { delete[] ExtBuffer; ExtBuffer = NULL; }
+
+      if (pSize <= Buffer.size()) CopyMemory(pData, Buffer.data(), pSize);
+      else {
+         ExtBuffer = new char[pSize];
+         CopyMemory(pData, ExtBuffer, pSize);
+      }
+
+      Size = pSize;
+   }
+
+   private:
+   inline void copy_from(const TaskMessage &Source, bool Constructor = false) {
+      Time = Source.Time;
+      UID  = Source.UID;
+      Type = Source.Type;
+      Size = Source.Size;
+      if (Source.ExtBuffer) setBuffer(Source.ExtBuffer, Size);
+      else if (Size) CopyMemory(Source.Buffer.data(), Buffer.data(), Size);
+   }
 };
 
-struct MessageHeader {
-   LONG NextEntry;     // Byte offset for the next message to be stored
-   WORD Count;         // Count of messages stored in the buffer
-   LONG CompressReset; // Manages message queue compression
-   BYTE Buffer[SIZE_MSGBUFFER + sizeof(struct TaskMessage)];
-};
-
-struct ValidateMessage {
-   LONG ProcessID;
-};
+extern std::vector<TaskMessage> glQueue;
 
 //********************************************************************************************************************
 // ObjectContext is used to represent the object that has the current context in terms of the run-time call stack.
@@ -946,6 +1007,7 @@ Field * lookup_id(OBJECTPTR, ULONG, OBJECTPTR *);
 ERROR  msg_event(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadcallback(APTR, LONG, LONG, APTR, LONG);
 ERROR  msg_threadaction(APTR, LONG, LONG, APTR, LONG);
+ERROR  msg_free(APTR, LONG, LONG, APTR, LONG);
 void   optimise_write_field(Field &);
 void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
@@ -960,8 +1022,6 @@ ERROR  validate_process(LONG);
 void   free_iconv(void);
 ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
-
-#define REF_WAKELOCK           get_threadlock()
 
 #ifdef _WIN32
    ERROR open_public_waitlock(WINHANDLE *, CSTRING);
@@ -979,17 +1039,6 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
    ERROR public_cond_wait(THREADLOCK *, CONDLOCK *, LONG);
    ERROR send_thread_msg(LONG, LONG, APTR, LONG);
 #endif
-
-ERROR alloc_private_lock(UBYTE, ALF);
-ERROR alloc_private_cond(UBYTE, ALF);
-void  free_private_lock(UBYTE);
-void  free_private_cond(UBYTE);
-ERROR thread_lock(UBYTE, LONG);
-void  thread_unlock(UBYTE);
-ERROR cond_wait(UBYTE, UBYTE, LONG);
-
-void cond_wake_all(UBYTE);
-void cond_wake_single(UBYTE);
 
 #ifdef _WIN32
 void activate_console(BYTE);
@@ -1094,17 +1143,17 @@ class ScopedObjectAccess {
       ERROR error;
 
       ScopedObjectAccess(OBJECTPTR Object) {
-         error = Object->threadLock();
+         error = Object->lock();
          obj = Object;
       }
 
-      ~ScopedObjectAccess() { if (!error) obj->threadRelease(); }
+      ~ScopedObjectAccess() { if (!error) obj->unlock(); }
 
       bool granted() { return error == ERR_Okay; }
 
       void release() {
          if (!error) {
-            obj->threadRelease();
+            obj->unlock();
             error = ERR_NotLocked;
          }
       }
@@ -1133,33 +1182,7 @@ inline ULONG reverse_long(ULONG Value) {
 }
 
 //********************************************************************************************************************
-
-class ThreadLock { // C++ wrapper for terminating resources when scope is lost
-   private:
-      UBYTE lock_type;
-
-   public:
-      ERROR error;
-
-      ThreadLock(UBYTE Lock, LONG Timeout) {
-         lock_type = Lock;
-         error = thread_lock(Lock, Timeout);
-      }
-
-      ~ThreadLock() { if (!error) thread_unlock(lock_type); }
-
-      bool granted() { return error == ERR_Okay; }
-
-      void release() {
-         if (!error) {
-            thread_unlock(lock_type);
-            error = ERR_NotLocked;
-         }
-      }
-};
-
-//********************************************************************************************************************
-// NOTE: To be called with TL_OBJECT_LOOKUP only.
+// NOTE: To be called with glmObjectLookup only.
 
 inline void remove_object_hash(OBJECTPTR Object)
 {

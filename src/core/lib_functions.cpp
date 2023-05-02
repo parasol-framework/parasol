@@ -67,17 +67,15 @@ LONG AllocateID(IDTYPE Type)
    pf::Log log(__FUNCTION__);
 
    if (Type IS IDTYPE::MESSAGE) {
-      LONG id = __sync_add_and_fetch(&glMessageIDCount, 1);
+      auto id = ++glMessageIDCount;
       log.function("MessageID: %d", id);
       return id;
    }
    else if (Type IS IDTYPE::GLOBAL) {
-      LONG id = __sync_add_and_fetch(&glGlobalIDCount, 1);
-      return id;
+      return ++glGlobalIDCount;
    }
    else if (Type IS IDTYPE::FUNCTION) {
-      UWORD id = __sync_add_and_fetch(&glFunctionID, 1);
-      return id;
+      return ++glFunctionID;
    }
 
    return 0;
@@ -408,13 +406,11 @@ LARGE GetResource(RES Resource)
 #endif
 
    switch(Resource) {
-      case RES::MESSAGE_QUEUE:   return glTaskMessageMID;
       case RES::PRIVILEGED:      return glPrivileged;
       case RES::LOG_LEVEL:       return glLogLevel;
       case RES::PROCESS_STATE:   return MAXINT(glTaskState);
       case RES::MAX_PROCESSES:   return MAX_TASKS;
       case RES::LOG_DEPTH:       return tlDepth;
-      case RES::CURRENT_MSG:     return (MAXINT)tlCurrentMsg;
       case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
       case RES::THREAD_ID:       return (MAXINT)get_thread_id();
@@ -896,16 +892,15 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
-   ThreadLock lock(TL_TIMER, 200);
-   if (lock.granted()) {
-      LARGE usInterval = (LARGE)(Interval * 1000000.0); // Scale the interval to microseconds
+   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+      auto usInterval = LARGE(Interval * 1000000.0); // Scale the interval to microseconds
       if (usInterval <= 40000) {
          // TODO: Rapid timers should be synchronised with other existing timers to limit the number of
          // interruptions that occur per second.
       }
 
       auto it = glTimers.emplace(glTimers.end());
-      LARGE subscribed = PreciseTime();
+      auto subscribed = PreciseTime();
       it->SubscriberID = subscriber->UID;
       it->Interval     = usInterval;
       it->LastCall     = subscribed;
@@ -921,9 +916,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       // we don't treat the object address as valid when it's been removed from the system.
 
       subscriber->Flags |= NF::TIMER_SUB;
-
       if (Subscription) *Subscription = &*it;
-
       return ERR_Okay;
    }
    else return log.warning(ERR_SystemLocked);
@@ -957,17 +950,16 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
-   ThreadLock lock(TL_TIMER, 200);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
-         LARGE usInterval = -((LARGE)(Interval * 1000000.0));
+         auto usInterval = -(LARGE(Interval * 1000000.0));
          if (usInterval < timer->Interval) timer->Interval = usInterval;
          return ERR_Okay;
       }
       else if (Interval > 0) {
-         LARGE usInterval = (LARGE)(Interval * 1000000.0);
+         auto usInterval = LARGE(Interval * 1000000.0);
          timer->Interval = usInterval;
          timer->NextCall = PreciseTime() + usInterval;
          return ERR_Okay;

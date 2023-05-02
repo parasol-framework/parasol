@@ -169,21 +169,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
-   if (alloc_private_lock(TL_FIELDKEYS, ALF::NIL)) return NULL; // For access to glFields
-   if (alloc_private_lock(TL_CLASSDB, ALF::NIL)) return NULL; // For access to glClassDB
-   if (alloc_private_lock(TL_VOLUMES, ALF::NIL)) return NULL; // For access to glVolumes
-   if (alloc_private_lock(TL_GENERIC, ALF::NIL)) return NULL; // A misc. internal mutex, strictly not recursive.
-   if (alloc_private_lock(TL_TIMER, ALF::NIL)) return NULL; // For timer subscriptions.
-   if (alloc_private_lock(TL_MSGHANDLER, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRINT, ALF::NIL)) return NULL; // For message logging only.
-   if (alloc_private_lock(TL_THREADPOOL, ALF::NIL)) return NULL;
-   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRIVATE_MEM, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_PRIVATE_MEM, ALF::NIL)) return NULL;
-
-   if (alloc_private_lock(TL_PRIVATE_OBJECTS, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
-
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
    // bit set.  E.g. If I am user 500 and the program is run as suid, then the ID's are:
@@ -336,8 +321,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          arg += 2; // Skip '--' as this prepends all Core arguments
 
          if (!StrMatch(arg, "log-memory")) {
-            glShowPrivate = TRUE;
-            glDebugMemory = TRUE;
+            glShowPrivate = true;
+            glDebugMemory = true;
          }
          else if (!StrCompare(arg, "gfx-driver=", 11)) {
             StrCopy(arg+11, glDisplayDriver, sizeof(glDisplayDriver));
@@ -345,7 +330,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
-         else if (!StrMatch(arg, "sync"))        glSync = TRUE;
+         else if (!StrMatch(arg, "sync"))        glSync = true;
+         else if (!StrMatch(arg, "log-threads")) glLogThreads = true;
          else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
          else if (!StrMatch(arg, "log-error"))   glLogLevel = 1;
          else if (!StrMatch(arg, "log-warn"))    glLogLevel = 2;
@@ -1118,9 +1104,9 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    #endif
 
    SetVolume("temp", "user:temp/", "items/trash", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
-   SetVolume("fonts", "system:fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
+   SetVolume("fonts", "system:config/fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
-   SetVolume("styles", "system:styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
+   SetVolume("styles", "system:config/styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
    SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to

@@ -225,6 +225,7 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &
    if (NewObject(ID_BLURFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -248,11 +249,14 @@ static ERROR parse_fe_blur(extSVG *Self, objVectorFilter *Filter, const XMLTag &
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -269,6 +273,7 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
    if (NewObject(ID_OFFSETFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -277,11 +282,14 @@ static ERROR parse_fe_offset(extSVG *Self, objVectorFilter *Filter, const XMLTag
          case SVF_DX: fx->set(FID_XOffset, StrToInt(val)); break;
          case SVF_DY: fx->set(FID_YOffset, StrToInt(val)); break;
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -377,6 +385,7 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
    if (NewObject(ID_COLOURFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -434,11 +443,14 @@ static ERROR parse_fe_colour_matrix(extSVG *Self, objVectorFilter *Filter, const
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -455,6 +467,7 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
    if (NewObject(ID_CONVOLVEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -525,11 +538,14 @@ static ERROR parse_fe_convolve_matrix(extSVG *Self, objVectorFilter *Filter, con
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -548,6 +564,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
 
    fx->set(FID_Type, LONG(Type));
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -584,7 +601,7 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
          case SVF_WIDTH:  set_double(fx, FID_Width, val); break;
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
          default:         log.warning("Unknown %s attribute %s", Tag.name(), Tag.Attribs[a].Name.c_str());
       }
    }
@@ -650,7 +667,10 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -667,6 +687,7 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
    if (NewObject(ID_DISPLACEMENTFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (unsigned a=1; a < Tag.Attribs.size(); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -700,11 +721,14 @@ static ERROR parse_fe_displacement_map(extSVG *Self, objVectorFilter *Filter, co
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
          case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -721,6 +745,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
    if (NewObject(ID_REMAPFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -731,7 +756,7 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
          case SVF_WIDTH:  set_double(fx, FID_Width, val); break;
          case SVF_HEIGHT: set_double(fx, FID_Height, val); break;
          case SVF_IN:     parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
@@ -786,7 +811,10 @@ static ERROR parse_fe_component_xfer(extSVG *Self, objVectorFilter *Filter, cons
       else log.warning("Unrecognised feComponentTransfer child node '%s'", child.name());
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -803,6 +831,7 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
    if (NewObject(ID_COMPOSITEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -885,11 +914,14 @@ static ERROR parse_fe_composite(extSVG *Self, objVectorFilter *Filter, const XML
 
          case SVF_IN2: parse_input(Self, fx, val, FID_MixType, FID_Mix); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -907,6 +939,7 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
    SetOwner(fx, Filter);
 
    ERROR error = ERR_Okay;
+   std::string result_name;
    for (LONG a=1; (a < LONG(Tag.Attribs.size())) and (!error); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -940,11 +973,14 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!error) return fx->init();
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return log.warning(error);
@@ -961,6 +997,7 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
    if (NewObject(ID_TURBULENCEFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -999,12 +1036,14 @@ static ERROR parse_fe_turbulence(extSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -1021,6 +1060,7 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
    if (NewObject(ID_MORPHOLOGYFX, &fx) != ERR_Okay) return ERR_NewObject;
    SetOwner(fx, Filter);
 
+   std::string result_name;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
@@ -1046,11 +1086,14 @@ static ERROR parse_fe_morphology(extSVG *Self, objVectorFilter *Filter, const XM
 
          case SVF_IN: parse_input(Self, fx, val, FID_SourceType, FID_Input); break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
-   if (!fx->init()) return ERR_Okay;
+   if (!fx->init()) {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
    else {
       FreeResource(fx);
       return ERR_Init;
@@ -1069,7 +1112,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState &State, objVect
    SetOwner(fx, Filter);
 
    bool required = false;
-   std::string ref;
+   std::string ref, result_name;
 
    ERROR error = ERR_Okay;
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
@@ -1084,7 +1127,7 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState &State, objVect
          case SVF_PRESERVEASPECTRATIO: fx->set(FID_AspectRatio, LONG(parse_aspect_ratio(val))); break;
          case SVF_XLINK_HREF: ref = val; break;
          case SVF_EXTERNALRESOURCESREQUIRED: required = StrMatch("true", val) IS ERR_Okay; break;
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
@@ -1103,7 +1146,10 @@ static ERROR parse_fe_source(extSVG *Self, objXML *XML, svgState &State, objVect
 
       if (vector) {
          fx->set(FID_SourceName, ref);
-         if (!(error = fx->init())) return ERR_Okay;
+         if (!(error = fx->init())) {
+            if (!result_name.empty()) parse_result(Self, fx, result_name);
+            return ERR_Okay;
+         }
       }
       else error = ERR_Search;
    }
@@ -1138,6 +1184,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
 
    bool image_required = false;
    std::string path;
+   std::string result_name;
 
    for (LONG a=1; a < LONG(Tag.Attribs.size()); a++) {
       auto &val = Tag.Attribs[a].Value;
@@ -1169,7 +1216,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
             if (!StrMatch("true", val)) image_required = true;
             break;
 
-         case SVF_RESULT: parse_result(Self, fx, val); break;
+         case SVF_RESULT: result_name = val; break;
       }
    }
 
@@ -1186,7 +1233,7 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
             return log.warning(ERR_InvalidValue);
          }
 
-         for (UWORD i=0; path[i]; i++) {
+         for (unsigned i=0; path[i]; i++) {
             if (path[i] IS '/') {
                while (path[i+1] IS '.') i++;
                if (path[i+1] IS '/') {
@@ -1208,7 +1255,10 @@ static ERROR parse_fe_image(extSVG *Self, objXML *XML, svgState &State, objVecto
       if (image_required) return error;
       else return ERR_Okay;
    }
-   else return ERR_Okay;
+   else {
+      if (!result_name.empty()) parse_result(Self, fx, result_name);
+      return ERR_Okay;
+   }
 }
 
 //********************************************************************************************************************

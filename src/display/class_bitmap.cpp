@@ -1008,7 +1008,13 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
          if (!Self->Size) return log.warning(ERR_FieldNotSet);
 
-         if (!Self->x11.XShmImage) {
+         if (glHeadless) {
+            if (!AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data)) {
+               Self->prvAFlags |= BF_DATA;
+            }
+            else return log.warning(ERR_AllocMemory);
+         }
+         else if (!Self->x11.XShmImage) {
             log.extmsg("Allocating a memory based XImage.");
             if (!alloc_shm(Self->Size, &Self->Data, &Self->x11.ShmInfo.shmid)) {
                Self->prvAFlags |= BF_DATA;
@@ -1018,42 +1024,40 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
                else if (Self->LineWidth & 0x0002) alignment = 16;
                else alignment = 32;
 
-               if (!glHeadless) {
-                  Self->x11.ximage.width            = Self->Width;  // Image width
-                  Self->x11.ximage.height           = Self->Height; // Image height
-                  Self->x11.ximage.xoffset          = 0;            // Number of pixels offset in X direction
-                  Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
-                  Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
-                  if (glX11ShmImage) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
-                  Self->x11.ximage.byte_order       = LSBFirst;     // LSBFirst / MSBFirst
-                  Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
-                  Self->x11.ximage.bitmap_bit_order = LSBFirst;     // LSBFirst / MSBFirst
-                  Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
-                  if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
-                  else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
-                  Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
-                  Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
-                  Self->x11.ximage.red_mask         = 0;
-                  Self->x11.ximage.green_mask       = 0;
-                  Self->x11.ximage.blue_mask        = 0;
-                  XInitImage(&Self->x11.ximage);
+               Self->x11.ximage.width            = Self->Width;  // Image width
+               Self->x11.ximage.height           = Self->Height; // Image height
+               Self->x11.ximage.xoffset          = 0;            // Number of pixels offset in X direction
+               Self->x11.ximage.format           = ZPixmap;      // XYBitmap, XYPixmap, ZPixmap
+               Self->x11.ximage.data             = (char *)Self->Data; // Pointer to image data
+               if (glX11ShmImage) Self->x11.ximage.obdata = (char *)&Self->x11.ShmInfo; // Magic pointer for the XShm extension
+               Self->x11.ximage.byte_order       = LSBFirst;     // LSBFirst / MSBFirst
+               Self->x11.ximage.bitmap_unit      = alignment;    // Quant. of scanline - 8, 16, 32
+               Self->x11.ximage.bitmap_bit_order = LSBFirst;     // LSBFirst / MSBFirst
+               Self->x11.ximage.bitmap_pad       = alignment;    // 8, 16, 32, either XY or Zpixmap
+               if ((Self->BitsPerPixel IS 32) and ((Self->Flags & BMF::ALPHA_CHANNEL) IS BMF::NIL)) Self->x11.ximage.depth = 24;
+               else Self->x11.ximage.depth = Self->BitsPerPixel;            // Actual bits per pixel
+               Self->x11.ximage.bytes_per_line   = Self->LineWidth;         // Accelerator to next line
+               Self->x11.ximage.bits_per_pixel   = Self->BytesPerPixel * 8; // Bits per pixel-group
+               Self->x11.ximage.red_mask         = 0;
+               Self->x11.ximage.green_mask       = 0;
+               Self->x11.ximage.blue_mask        = 0;
+               XInitImage(&Self->x11.ximage);
 
-                  // If the XShm extension is available, try using it.  Using XShm allows the
-                  // X11 server to copy image memory straight to the display rather than
-                  // having it messaged.
+               // If the XShm extension is available, try using it.  Using XShm allows the
+               // X11 server to copy image memory straight to the display rather than
+               // having it messaged.
 
-                  if (glX11ShmImage) {
-                     Self->x11.ShmInfo.readOnly = False;
-                     Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
+               if (glX11ShmImage) {
+                  Self->x11.ShmInfo.readOnly = False;
+                  Self->x11.ShmInfo.shmaddr  = (char *)Self->Data;
 
-                     // Attach the memory block to the X11 server
+                  // Attach the memory block to the X11 server
 
-                     if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
-                        Self->x11.XShmImage = true;
-                        XSync(XDisplay, TRUE);
-                     }
-                     else log.warning(ERR_SystemCall);
+                  if (XShmAttach(XDisplay, &Self->x11.ShmInfo)) {
+                     Self->x11.XShmImage = true;
+                     XSync(XDisplay, TRUE);
                   }
+                  else log.warning(ERR_SystemCall);
                }
             }
             else return log.warning(ERR_AllocMemory);
@@ -1120,17 +1124,20 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
 
 #ifdef __xwindows__
 
-   if ((!glHeadless) and (Self->x11.drawable)) {
-      XVisualInfo visual, *info;
-      LONG items;
-      visual.bits_per_rgb = Self->BytesPerPixel * 8;
-      if ((info = XGetVisualInfo(XDisplay, VisualBitsPerRGBMask, &visual, &items))) {
-         gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
-         XFree(info);
+   if (!glHeadless) {
+      if (Self->x11.drawable) {
+         XVisualInfo visual, *info;
+         LONG items;
+         visual.bits_per_rgb = Self->BytesPerPixel * 8;
+         if ((info = XGetVisualInfo(XDisplay, VisualBitsPerRGBMask, &visual, &items))) {
+            gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, info->red_mask, info->green_mask, info->blue_mask, 0xff000000);
+            XFree(info);
+         }
+         else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
       }
-      else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
+      else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, Self->x11.ximage.red_mask, Self->x11.ximage.green_mask, Self->x11.ximage.blue_mask, 0xff000000);
    }
-   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, Self->x11.ximage.red_mask, Self->x11.ximage.green_mask, Self->x11.ximage.blue_mask, 0xff000000);
+   else gfxGetColourFormat(Self->ColourFormat, Self->BitsPerPixel, 0, 0, 0, 0);
 
 #elif _WIN32
 
@@ -1172,7 +1179,6 @@ static ERROR BITMAP_Init(extBitmap *Self, APTR Void)
    }
 
    if (((Self->Flags & BMF::NO_DATA) IS BMF::NIL) and ((Self->Flags & BMF::CLEAR) != BMF::NIL)) {
-      log.trace("Clearing Bitmap...");
       acClear(Self);
    }
 
@@ -1786,7 +1792,7 @@ setfields:
    }
 
 #ifdef __xwindows__
-   XSync(XDisplay, False);
+   if (!glHeadless) XSync(XDisplay, False);
 #endif
    return ERR_Okay;
 }

@@ -75,24 +75,6 @@ if (thread.ok()) thread-&gt;activate(thread);
       </result>
     </method>
 
-    <method>
-      <name>Wait</name>
-      <comment>Waits for a thread to be completed.</comment>
-      <prototype>ERROR thWait(OBJECTPTR Object, LONG TimeOut)</prototype>
-      <input>
-        <param type="LONG" name="TimeOut">A timeout value measured in milliseconds.</param>
-      </input>
-      <description>
-<p>Call the Wait method to wait for a thread to complete its activity.  Incoming messages will continue to be processed by <function module="Core">ProcessMessages</function> while waiting.</p>
-      </description>
-      <result>
-        <error code="Okay">The thread is no longer active.</error>
-        <error code="Args">The TimeOut value is invalid.</error>
-        <error code="TimeOut">The timeout was reached before the thread was terminated.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
   </methods>
 
   <fields>

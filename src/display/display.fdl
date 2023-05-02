@@ -315,7 +315,6 @@ module({ name="Display", copyright="Paul Manias 2003-2023", version=1.0, status=
     short XOffset        # Offset all X coordinate references by the given value.
     short YOffset        # Offset all Y coordinate references by the given value.
     struct(ColourFormat) Format  # The colour format of this bitmap's pixels, or alternatively use CSRF::DEFAULT_FORMAT.
-    ptr  Private        # A private pointer reserved for internal usage
   ]])
 
   methods("Bitmap", "Bmp", {

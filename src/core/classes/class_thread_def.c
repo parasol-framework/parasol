@@ -6,11 +6,9 @@ static const struct FieldDef clThreadFlags[] = {
 };
 
 FDEF maSetData[] = { { "Data", FD_BUFFER|FD_PTR }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
-FDEF maWait[] = { { "TimeOut", FD_LONG }, { 0, 0 } };
 
 static const struct MethodEntry clThreadMethods[] = {
    { -1, (APTR)THREAD_SetData, "SetData", maSetData, sizeof(struct thSetData) },
-   { -2, (APTR)THREAD_Wait, "Wait", maWait, sizeof(struct thWait) },
    { 0, 0, 0, 0, 0 }
 };
 

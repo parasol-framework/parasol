@@ -188,12 +188,12 @@
 #define ERR_InvalidHTTPResponse 161
 #define ERR_InvalidReference 162
 #define ERR_Exception 163
-#define ERR_GlobalInstanceLocked 164
+#define ERR_ThreadAlreadyActive 164
 #define ERR_OpenGL 165
 #define ERR_OutsideMainThread 166
 #define ERR_UseSubClass 167
 #define ERR_WrongType 168
-#define ERR_AllocMutex 169
+#define ERR_ThreadNotLocked 169
 #define ERR_LockMutex 170
 #define ERR_SetVolume 171
 #define ERR_Decompression 172

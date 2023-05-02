@@ -54,58 +54,79 @@ objMetaClass *glCompressedStreamClass = 0;
 #ifdef __ANDROID__
 objMetaClass *glAssetClass = 0;
 #endif
-BYTE fs_initialised = FALSE;
-APTR glPageFault = NULL;
-bool glScanClasses = false;
+BYTE fs_initialised  = FALSE;
+APTR glPageFault     = NULL;
+bool glScanClasses   = false;
 bool glJanitorActive = false;
-LONG glDebugMemory = FALSE;
+bool glDebugMemory   = false;
 struct CoreBase *LocalCoreBase = NULL;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
 std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
-std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
-std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
-std::unordered_map<CLASSID, ClassRecord> glClassDB;
-std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
-std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
-std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-std::unordered_map<ULONG, std::string> glFields;
-std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-std::list<FDRecord> glFDTable;
-std::list<CoreTimer> glTimers;
-std::vector<TaskRecord> glTasks;
-std::vector<FDRecord> glRegisterFD;
 
-struct RootModule     *glModuleList    = NULL;
-struct OpenInfo       *glOpenInfo      = NULL;
-struct MsgHandler     *glMsgHandlers   = NULL, *glLastMsgHandler = 0;
+std::condition_variable_any cvObjects;
+std::condition_variable_any cvResources;
+
+std::list<CoreTimer> glTimers;
+std::list<FDRecord> glFDTable;
+
+std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
+std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;
+
+std::mutex glmPrint;
+std::mutex glmThreadPool;
+std::recursive_mutex glmMemory;
+std::recursive_mutex glmMsgHandler;
+std::recursive_timed_mutex glmObjectLookup;
+std::recursive_timed_mutex glmTimer;
+std::timed_mutex glmClassDB;
+std::timed_mutex glmFieldKeys;
+std::timed_mutex glmGeneric;
+std::timed_mutex glmObjectLocking;
+std::timed_mutex glmVolumes;
+
+std::unordered_map<CLASSID, ClassRecord> glClassDB;
+std::unordered_map<CLASSID, extMetaClass *> glClassMap;
+std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
+std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
+std::unordered_map<ULONG, std::string> glFields;
+
+std::vector<FDRecord> glRegisterFD;
+std::vector<TaskMessage> glQueue;
+std::vector<TaskRecord> glTasks;
+
+struct RootModule *glModuleList   = NULL;
+struct OpenInfo   *glOpenInfo     = NULL;
+struct MsgHandler *glMsgHandlers  = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
 extTask *glCurrentTask = NULL;
 objConfig *glDatatypes = NULL;
 
 APTR glJNIEnv = 0;
-UWORD glFunctionID = 3333; // IDTYPE_FUNCTION
+std::atomic_ushort glFunctionID = 3333; // IDTYPE_FUNCTION
 LONG glStdErrFlags = 0;
 TIMER glCacheTimer = 0;
 LONG glMemoryFD = -1;
-LONG glTaskMessageMID = 0;
 LONG glValidateProcessID = 0;
 LONG glProcessID = 0;
 LONG glEUID = -1, glEGID = -1, glGID = -1, glUID = -1;
-LONG glPrivateIDCounter = 500;
-LONG glMessageIDCount = 10000;
-LONG glGlobalIDCount = 1;
+std::atomic_int glPrivateIDCounter = 500;
+std::atomic_int glMessageIDCount = 10000;
+std::atomic_int glGlobalIDCount = 1;
 LONG glEventMask = 0;
 TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
 BYTE glFDProtected = 0;
 CSTRING glIDL = MOD_IDL;
+std::atomic_int glUniqueMsgID = 1;
 
 #ifdef __unix__
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
+  WINHANDLE glTaskLock = 0;
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()
@@ -125,6 +146,7 @@ bool glShowIO       = false;
 bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
+bool glLogThreads   = false;
 BYTE glProgramStage = STAGE_STARTUP;
 TSTATE glTaskState  = TSTATE::RUNNING;
 LONG glInotify = -1;
@@ -165,7 +187,7 @@ THREADVAR LONG glForceUID = -1, glForceGID = -1;
 THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
 THREADVAR WORD tlDepth     = 0;
 THREADVAR WORD tlLogStatus = 1;
-THREADVAR BYTE tlMainThread = FALSE; // Will be set to TRUE on open, any other threads will remain FALSE.
+THREADVAR bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
 THREADVAR WORD tlPreventSleep = 0;
 THREADVAR WORD tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
@@ -178,17 +200,15 @@ OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
-THREADVAR struct Message *tlCurrentMsg = 0;
+THREADVAR struct TaskMessage *tlCurrentMsg = NULL;
 
-ERROR (*glMessageHandler)(struct Message *) = 0;
-void (*glVideoRecovery)(void) = 0;
-void (*glKeyboardRecovery)(void) = 0;
-void (*glNetProcessMessages)(LONG, APTR) = 0;
-
-// Imported string variables
+ERROR (*glMessageHandler)(struct Message *) = NULL;
+void (*glVideoRecovery)(void) = NULL;
+void (*glKeyboardRecovery)(void) = NULL;
+void (*glNetProcessMessages)(LONG, APTR) = NULL;
 
 #ifdef __ANDROID__
-static struct AndroidBase *AndroidBase = 0;
+static struct AndroidBase *AndroidBase = NULL;
 #endif
 
 //********************************************************************************************************************

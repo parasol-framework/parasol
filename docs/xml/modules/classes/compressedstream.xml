@@ -222,6 +222,7 @@
     <constants lookup="NF" comment="Flags that can be passed to NewObject().  If a flag needs to be stored with the object, it must be specified in the lower word.">
       <const name="COLLECT">Marked for garbage collection.</const>
       <const name="FREE">Read-only indicator for when the object is being freed.</const>
+      <const name="FREE_ON_UNLOCK">Read-only indicator for when the object is marked for deletion.</const>
       <const name="INITIALISED">Read-only indicator if the object has been initialised.</const>
       <const name="INTEGRAL">Integral objects can only be allocated by classes that need to adopt the functionality of said object.  Integral objects do not appear in the object tree, effectively making them hidden from view.</const>
       <const name="MESSAGE">Action has been called against the object through the message system (managed by ProcessMessages()).</const>
@@ -231,7 +232,6 @@
       <const name="SIGNALLED">The object has been signalled and is awaiting processing.</const>
       <const name="TIMER_SUB">The object is subscribed to a timer interval.</const>
       <const name="UNIQUE">Use to allocate an object that has a guaranteed unique name.  This will prevent code from shadowing any object that exists with the same name, which can be imperative when creating shared objects.  If it is discovered that an identically named object exists, NewObject() will return ERR_ObjectExists.  This flag works in conjunction with the Name argument.</const>
-      <const name="UNLOCK_FREE">Read-only indicator for when the object is marked for deletion.</const>
       <const name="UNTRACKED">An object created with this flag will not be tracked back to the object that created it.</const>
     </constants>
 
@@ -302,7 +302,6 @@
     <constants lookup="RES">
       <const name="CORE_IDL">Refers to the Core module's compressed IDL string.</const>
       <const name="CPU_SPEED">The average top-speed of all CPU cores in Mhz.</const>
-      <const name="CURRENT_MSG">Returns a Message structure if the program is currently processing a message - otherwise returns NULL.  This resource type is meaningful only during a ProcessMessages call.</const>
       <const name="FREE_MEMORY">The total amount of free memory.</const>
       <const name="FREE_SWAP">The total amount of free swap memory.</const>
       <const name="JNI_ENV">Return the current JNI environment string.</const>
@@ -310,7 +309,6 @@
       <const name="LOG_DEPTH">The current depth of log messages.</const>
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
       <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
-      <const name="MESSAGE_QUEUE">Use this resource to retrieve the message queue ID of the current task.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
       <const name="PARENT_CONTEXT">Read-only pointer to the parent object of the current context.</const>
       <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
@@ -427,15 +425,15 @@
     <struct name="MemInfo" typeName="MEMINFO">
       <field name="Start" type="APTR">The starting address of the memory block (does not apply to shared blocks).</field>
       <field name="ObjectID" type="OBJECTID">The object that owns the memory block.</field>
-      <field name="Size" type="LONG">The size of the memory block.</field>
+      <field name="Size" type="ULONG">The size of the memory block.</field>
       <field name="Flags" type="MEM" lookup="MEM">The type of memory.</field>
       <field name="MemoryID" type="MEMORYID">The unique ID for this block.</field>
       <field name="AccessCount" type="WORD">Total number of active locks on this block.</field>
     </struct>
 
-    <struct name="Message" comment="Messaging structures.  Note: This structure is utilised by NextMsg">
+    <struct name="Message" comment="Message header.">
       <field name="Time" type="LARGE">A timestamp acquired from PreciseTime() when the message was first passed to SendMessage().</field>
-      <field name="UniqueID" type="LONG">A unique identifier automatically created by SendMessage().</field>
+      <field name="UID" type="LONG">A unique identifier automatically created by SendMessage().</field>
       <field name="Type" type="LONG">A message type identifier as defined by the client.</field>
       <field name="Size" type="LONG">The size of the message data, in bytes.  If there is no data associated with the message, the Size will be set to zero.&lt;/&gt;</field>
     </struct>

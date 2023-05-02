@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -76,6 +75,19 @@ struct ActionThread {
 static std::vector<struct ActionThread> glActionThreads;
 
 //********************************************************************************************************************
+// Returns a unique ID for the active thread.  The ID has no relationship with the host operating system.
+
+static THREADVAR LONG tlUniqueThreadID = 0;
+static std::atomic_int glThreadIDCount = 1;
+
+LONG get_thread_id(void)
+{
+   if (tlUniqueThreadID) return tlUniqueThreadID;
+   tlUniqueThreadID = glThreadIDCount++;
+   return tlUniqueThreadID;
+}
+
+//********************************************************************************************************************
 // Retrieve a thread object from the thread pool.
 
 ERROR threadpool_get(extThread **Result)
@@ -84,26 +96,30 @@ ERROR threadpool_get(extThread **Result)
 
    log.traceBranch("");
 
-   ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) {
+   glmThreadPool.lock();
+
       for (auto &at : glActionThreads) {
          if ((at.Thread) and (!at.InUse)) {
             at.InUse = true;
             *Result = at.Thread;
+            glmThreadPool.unlock();
             return ERR_Okay;
          }
       }
 
-      if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
-         if (glActionThreads.size() < THREADPOOL_MAX) {
-            glActionThreads.emplace_back(thread);
-         }
-         *Result = thread;
-         return ERR_Okay;
+   glmThreadPool.unlock();
+
+   if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
+      glmThreadPool.lock();
+      if (glActionThreads.size() < THREADPOOL_MAX) {
+         glActionThreads.emplace_back(thread);
+         thread->Pooled = true;
       }
-      else return log.warning(ERR_CreateObject);
+      *Result = thread;
+      glmThreadPool.unlock();
+      return ERR_Okay;
    }
-   else return log.warning(ERR_Lock);
+   else return log.warning(ERR_CreateObject);
 }
 
 //********************************************************************************************************************
@@ -115,20 +131,20 @@ void threadpool_release(extThread *Thread)
 
    log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glActionThreads.size());
 
-   ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) {
-      for (auto &at : glActionThreads) {
-         if (at.Thread IS Thread) {
-            at.InUse = false;
-            return;
-         }
+   glmThreadPool.lock();
+   for (auto &at : glActionThreads) {
+      if (at.Thread IS Thread) {
+         at.InUse = false;
+         Thread->Active = false; // For pooled threads we mark them as inactive manually.
+         glmThreadPool.unlock();
+         return;
       }
-
-      // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
-
-      lock.release();
-      FreeResource(Thread);
    }
+
+   // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
+
+   glmThreadPool.unlock();
+   FreeResource(Thread);
 }
 
 //********************************************************************************************************************
@@ -136,12 +152,12 @@ void threadpool_release(extThread *Thread)
 
 void remove_threadpool(void)
 {
-   pf::Log log("Core");
-
-   log.branch("Removing the internal thread pool, size %d.", (LONG)glActionThreads.size());
-
-   ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) glActionThreads.clear();
+   if (!glActionThreads.empty()) {
+      pf::Log log("Core");
+      log.branch("Removing the action thread pool of %d threads.", (LONG)glActionThreads.size());
+      std::lock_guard lock(glmThreadPool);
+      glActionThreads.clear();
+   }
 }
 
 //********************************************************************************************************************
@@ -150,9 +166,8 @@ void remove_threadpool(void)
 
 ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   ThreadActionMessage *msg;
-
-   if (!(msg = (ThreadActionMessage *)Message)) return ERR_Okay;
+   auto msg = (ThreadActionMessage *)Message;
+   if (!msg) return ERR_Okay;
 
    if (msg->Callback.Type IS CALL_STDC) {
       auto routine = (void (*)(ACTIONID, OBJECTPTR, ERROR, LONG))msg->Callback.StdC.Routine;
@@ -179,37 +194,43 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
 
 //********************************************************************************************************************
 // Called whenever a MSGID_THREAD_CALLBACK message is caught by ProcessMessages().  See thread_entry() for usage.
-// This is NOT called if the developer did not define a Callback reference.
 
 ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
-   ThreadMessage *msg;
-   if (!(msg = (ThreadMessage *)Message)) return ERR_Okay;
+   pf::Log log;
 
-   extThread *thread;
-   if (!AccessObject(msg->ThreadID, 5000, (OBJECTPTR *)&thread)) {
-      thread->Active = FALSE; // Because marking the thread as inactive is not done until the message is received by the core program
+   auto msg = (ThreadMessage *)Message;
+   auto uid = msg->ThreadID;
 
-      if (thread->Callback.Type IS CALL_STDC) {
-         auto callback = (void (*)(extThread *))thread->Callback.StdC.Routine;
-         callback(thread);
-      }
-      else if (thread->Callback.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = thread->Callback.Script.Script)) {
-            if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = thread } } };
-               scCallback(script, thread->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleaseObject(script);
-            }
+   log.branch("Executing completion callback for thread #%d", uid);
+
+   if (msg->Callback.Type IS CALL_STDC) {
+      auto callback = (void (*)(OBJECTID))msg->Callback.StdC.Routine;
+      callback(uid);
+   }
+   else if (msg->Callback.Type IS CALL_SCRIPT) {
+      if (auto script = msg->Callback.Script.Script) {
+         if (!LockObject(script, 5000)) {
+            const ScriptArg args[] = { { "Thread", FD_OBJECTID, { .Long = uid } } };
+            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+            ReleaseObject(script);
          }
       }
-
-      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) FreeResource(thread);
-
-      ReleaseObject(thread);
    }
-   else return ERR_AccessObject;
+
+   // NB: Assume 'msg' is unstable after this point because the callback may have modified the message table.
+
+   ScopedObjectLock<extThread> thread(uid, 10000);
+   if (thread.granted()) {
+      // NB: If a client wants notification of the thread ending, they can use WaitForObjects()
+      // if not using callbacks.
+      thread->Active = false;
+      if ((thread->Flags & THF::AUTO_FREE) != THF::NIL) {
+         FreeResource(*thread);
+      }
+      else acSignal(*thread); // Convenience for the client
+   }
+   else log.warning(ERR_AccessObject);
 
    return ERR_Okay;
 }
@@ -226,14 +247,21 @@ static int thread_entry(extThread *Self)
 static void * thread_entry(extThread *Self)
 #endif
 {
-   // Note that the Active flag will have been set to true prior to entry.
-   tlThreadCrashed = TRUE;
-   tlThreadRef = Self;
+   auto uid = Self->UID;
+
+   // Note that the Active flag will have been set to true prior to entry, and will remain until msg_threadcallback()
+   // is called.
+
+   // Configure crash indicators and a cleanup operation
+
+   tlThreadCrashed = true;
+   tlThreadRef     = Self;
    pthread_cleanup_push(&thread_entry_cleanup, Self);
 
-   // ENTRY
+   ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
+   bool pooled = Self->Pooled;
 
-   if (Self->Routine.Type) {
+   {
       // Replace the default dummy context with one that pertains to the thread
       ObjectContext thread_ctx(Self, 0);
 
@@ -242,45 +270,24 @@ static void * thread_entry(extThread *Self)
          Self->Error = routine(Self);
       }
       else if (Self->Routine.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Self->Routine.Script.Script)) {
-            if (!LockObject(script, 5000)) {
-               const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
-               scCallback(script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-               ReleaseObject(script);
-            }
+         ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
+         if (script.granted()) {
+            const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
+            scCallback(*script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }
-
-      tlThreadRef = NULL;
-
-      if (!LockObject(Self, 10000)) {
-         NotifySubscribers(Self, AC_Signal, NULL, ERR_Okay); // Signalling thread completion is required by THREAD_Wait()
-
-         if (Self->Callback.Type) {
-            // A message needs to be placed on the process' message queue with a reference to the thread object
-            // so the callback can be processed by the main program thread.  See msg_threadcallback()
-
-            ThreadMessage msg;
-            msg.ThreadID = Self->UID;
-            SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg)); // See msg_threadcallback()
-
-            //Self->Active = FALSE; // Commented out because we don't want the active flag to be disabled until the callback is processed (for safety reasons).
-         }
-         else if ((Self->Flags & THF::AUTO_FREE) != THF::NIL) {
-            Self->Active = FALSE;
-            FreeResource(Self);
-         }
-         else Self->Active = FALSE;
-
-         ReleaseObject(Self);
-      }
-
-      // Please note that the Thread object/memory should be presumed terminated from this point
    }
 
-   tlThreadCrashed = FALSE;
-   pthread_cleanup_pop(TRUE);
+   // Please no references to Self after this point.  It is possible that the Thread object has been forcibly removed
+   // if the client routine is persistently running during shutdown.
+
+   // See msg_threadcallback()
+   if (!pooled) SendMessage(MSGID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &msg, sizeof(msg));
+
+   // Reset the crash indicators and invoke the cleanup code.
+   tlThreadRef     = NULL;
+   tlThreadCrashed = false;
+   pthread_cleanup_pop(true);
    return 0;
 }
 
@@ -290,8 +297,9 @@ static void * thread_entry(extThread *Self)
 static void thread_entry_cleanup(void *Arg)
 {
    if (tlThreadCrashed) {
-      LogF("!Parasol","A thread in this program has crashed.");
-      if (tlThreadRef) tlThreadRef->Active = FALSE;
+      pf::Log log("thread_cleanup");
+      log.error("A thread in this program has crashed.");
+      if (tlThreadRef) tlThreadRef->Active = false;
    }
 
    #ifdef _WIN32
@@ -309,11 +317,17 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
 {
    pf::Log log;
 
-   if (Self->Active) return ERR_NothingDone;
+   if (Self->Active) return ERR_ThreadAlreadyActive;
 
-   Self->Active = TRUE;
+   // Thread objects MUST be locked prior to activation.  There is otherwise a genuine risk that the object
+   // could be terminated by code operating outside of the thread space while it is active.
+
+   if (Self->Queue.load() < 1) return log.warning(ERR_ThreadNotLocked);
+
+   Self->Active = true; // Indicate that the thread is running
 
 #ifdef __unix__
+
    pthread_attr_t attr;
    pthread_attr_init(&attr);
    // On Linux it is better not to set the stack size, as it implies you intend to manually allocate the stack and guard it...
@@ -327,6 +341,8 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
       strerror_r(errno, errstr, sizeof(errstr));
       log.warning("pthread_create() failed with error: %s.", errstr);
       pthread_attr_destroy(&attr);
+      Self->Active = false;
+      return log.warning(ERR_SystemCall);
    }
 
 #elif _WIN32
@@ -334,13 +350,14 @@ static ERROR THREAD_Activate(extThread *Self, APTR Void)
    if ((Self->Handle = winCreateThread((APTR)&thread_entry, Self, Self->StackSize, &Self->ThreadID))) {
       return ERR_Okay;
    }
+   else {
+      Self->Active = false;
+      return log.warning(ERR_SystemCall);
+   }
 
 #else
    #error Platform support for threads is required.
 #endif
-
-   Self->Active = FALSE;
-   return log.warning(ERR_Failed);
 }
 
 /*********************************************************************************************************************
@@ -365,7 +382,7 @@ static ERROR THREAD_Deactivate(extThread *Self, APTR Void)
          #warning Add code to kill threads.
       #endif
 
-      Self->Active = FALSE;
+      Self->Active = false;
    }
 
    return ERR_Okay;
@@ -396,6 +413,7 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
       if (Self->Msgs[1]) { winCloseHandle(Self->Msgs[1]); Self->Msgs[1] = 0; }
    #endif
 
+   Self->~extThread();
    return ERR_Okay;
 }
 
@@ -403,25 +421,13 @@ static ERROR THREAD_Free(extThread *Self, APTR Void)
 
 static ERROR THREAD_FreeWarning(extThread *Self, APTR Void)
 {
-   pf::Log log;
-
    if (!Self->Active) return ERR_Okay;
-
-   if (!tlMainThread) { // Only the main thread should be terminating child threads.
+   else {
+      pf::Log log;
+      log.debug("Thread is still running, marking for auto termination.");
       Self->Flags |= THF::AUTO_FREE;
       return ERR_InUse;
    }
-
-   log.msg("Attempt to free an active thread.  Process will wait for the thread to terminate.");
-   struct thWait wait = { 60 * 1000 };
-   Action(MT_ThWait, Self, &wait);
-
-   if (Self->Active) {
-      log.warning("Thread #%d still in use - marking it for automatic termination.", Self->UID);
-      Self->Flags |= THF::AUTO_FREE;
-      return ERR_InUse;
-   }
-   else return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -440,6 +446,7 @@ static ERROR THREAD_Init(extThread *Self, APTR Void)
 
 static ERROR THREAD_NewObject(extThread *Self, APTR Void)
 {
+   new (Self) extThread;
    Self->StackSize = 16384;
    #ifdef __unix__
       Self->Msgs[0] = -1;
@@ -496,36 +503,6 @@ static ERROR THREAD_SetData(extThread *Self, struct thSetData *Args)
       return ERR_Okay;
    }
    else return log.warning(ERR_AllocMemory);
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-Wait: Waits for a thread to be completed.
-
-Call the Wait method to wait for a thread to complete its activity.  Incoming messages will continue to be processed
-by ~ProcessMessages() while waiting.
-
--INPUT-
-int TimeOut: A timeout value measured in milliseconds.
-
--ERRORS-
-Okay: The thread is no longer active.
-NullArgs
-Args: The TimeOut value is invalid.
-TimeOut: The timeout was reached before the thread was terminated.
--END-
-
-*********************************************************************************************************************/
-
-static ERROR THREAD_Wait(extThread *Self, struct thWait *Args)
-{
-   pf::Log log;
-
-   if (!Args) return log.warning(ERR_NullArgs);
-
-   ObjectSignal sig[2] = { { .Object = Self }, { 0 } };
-   return WaitForObjects(PMF::SYSTEM_NO_BREAK, Args->TimeOut, sig);
 }
 
 /*********************************************************************************************************************

@@ -2,6 +2,7 @@
 
 static const struct ActionArray clMergeFXActions[] = {
    { AC_Draw, MERGEFX_Draw },
+   { AC_Free, MERGEFX_Free },
    { AC_NewObject, MERGEFX_NewObject },
    { 0, NULL }
 };

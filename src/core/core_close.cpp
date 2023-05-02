@@ -1,8 +1,5 @@
 
 static void free_private_memory(void);
-#ifdef __unix__
-static void free_shared_control(void);
-#endif
 
 //********************************************************************************************************************
 
@@ -93,8 +90,6 @@ EXPORT void CloseCore(void)
          glTasks.clear();
       }
    #endif
-
-   glTaskMessageMID = 0;
 
    // Run the video recovery routine if one has been set and we have crashed
 
@@ -241,18 +236,6 @@ EXPORT void CloseCore(void)
       free_threadlocks();
       winShutdown();
    #endif
-
-   free_private_lock(TL_FIELDKEYS);
-   free_private_lock(TL_CLASSDB);
-   free_private_lock(TL_VOLUMES);
-   free_private_lock(TL_GENERIC);
-   free_private_lock(TL_TIMER);
-   free_private_lock(TL_MSGHANDLER);
-   free_private_lock(TL_OBJECT_LOOKUP);
-   free_private_lock(TL_THREADPOOL);
-   free_private_lock(TL_PRIVATE_MEM);
-   free_private_lock(TL_PRINT);       // NB: After TL_PRINT is freed, any calls to message printing functions will result in a crash.
-   free_private_cond(CN_PRIVATE_MEM);
 
    #ifdef __APPLE__
       LONG socklen;
@@ -445,16 +428,3 @@ static void free_private_memory(void)
 
    if ((glCrashStatus) and (count > 0)) log.msg("%d memory blocks were freed.", count);
 }
-
-//********************************************************************************************************************
-
-#ifdef __unix__
-static void free_shared_control(void)
-{
-   if (glSocket != -1) {
-      close(glSocket);
-      glSocket = -1;
-   }
-}
-#endif
-

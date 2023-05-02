@@ -5,62 +5,74 @@ that is distributed with this package.  Please refer to it for further informati
 
 **********************************************************************************************************************
 
-This program tests the locking of memory between threads.
+This program tests the locking of private objects between threads.
 
 *********************************************************************************************************************/
 
 #include <pthread.h>
 #include <parasol/startup.h>
+#include <parasol/vector.hpp>
 
-CSTRING ProgName = "MemoryLocking";
-static volatile MEMORYID glMemoryID = 0;
-static ULONG glTotalThreads = 2;
-static ULONG glLockAttempts = 20;
-static LONG glAccessGap = 2000;
-static bool glTerminateMemory = false;
-static bool glTestAllocation = false;
+CSTRING ProgName = "ObjectLocking";
+static volatile OBJECTPTR glConfig = NULL;
+static ULONG glTotalThreads = 8;
+static ULONG glLockAttempts = 200;
+static LONG glAccessGap = 200000;
+static bool glTerminateObject = false;
 
 struct thread_info{
    pthread_t thread;
    int index;
 };
 
+#define QUICKLOCK
+
 //********************************************************************************************************************
 
-static void * test_locking(void *Arg)
+static void * thread_entry(void *Arg)
 {
    pf::Log log(__FUNCTION__);
+   ERROR error;
+
    auto info = (thread_info *)Arg;
 
    info->index = GetResource(RES::THREAD_ID);
    log.msg("----- Thread %d is starting now.", info->index);
 
    for (unsigned i=0; i < glLockAttempts; i++) {
-      if (!glMemoryID) break;
-      //log.branch("Attempt %d.%d: Acquiring the memory.", info->index, i);
-
-      BYTE *memory;
-      if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, &memory); !error) {
-         memory[0]++;
-         log.msg("%d.%d: Memory acquired.", info->index, i);
+      if (!glConfig) break;
+      //log.branch("Attempt %d.%d: Acquiring the object.", info->index, i);
+      #ifdef QUICKLOCK
+      if (!(error = glConfig->lock())) {
+      #else
+      if (!(error = LockObject(glConfig, 30000))) {
+      #endif
+         glConfig->ActionDepth++;
+         log.msg("%d.%d: Object acquired.", info->index, i);
          WaitTime(0, 2000);
-         if (memory[0] > 1) log.warning("--- MAJOR ERROR %d: More than one thread has access to this memory!", info->index);
-         memory[0]--;
+         if (glConfig->ActionDepth > 1) log.error("--- MAJOR ERROR: More than one thread has access to this object!");
+         glConfig->ActionDepth--;
 
          // Test that object removal works in ReleaseObject() and that waiting threads fail peacefully.
 
-         if (glTerminateMemory) {
+         if (glTerminateObject) {
             if (i >= glLockAttempts-2) {
-               FreeResource(memory);
-               ReleaseMemory(glMemoryID);
-               memory = NULL;
+               FreeResource(glConfig);
+               #ifdef QUICKLOCK
+               glConfig->unlock();
+               #else
+               ReleaseObject(glConfig);
+               #endif
+               glConfig = NULL;
                break;
             }
          }
 
-         ReleaseMemory(glMemoryID);
-
-         log.msg("%d: Memory released.", info->index);
+         #ifdef QUICKLOCK
+         glConfig->unlock();
+         #else
+         ReleaseObject(glConfig);
+         #endif
 
          #ifdef __unix__
             sched_yield();
@@ -75,43 +87,17 @@ static void * test_locking(void *Arg)
 }
 
 //********************************************************************************************************************
-// Allocate and free sets of memory blocks at random intervals.
-
-static const LONG TOTAL_ALLOC = 2000;
-
-static void * test_allocation(void *Arg)
-{
-   APTR memory[TOTAL_ALLOC];
-
-   LONG i, j;
-   LONG start = 0;
-   for (i=0; i < TOTAL_ALLOC; i++) {
-      AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], NULL);
-      if (rand() % 10 > 7) {
-         for (j=start; j < i; j++) {
-            FreeResource(memory[j]);
-         }
-         start = j;
-      }
-   }
-
-   for (j=start; j < i; j++) {
-      FreeResource(memory[j]);
-   }
-
-   return NULL;
-}
-
-//********************************************************************************************************************
 
 int main(int argc, CSTRING *argv)
 {
+   pf::Log log;
+   pf::vector<std::string> *args;
+
    if (auto msg = init_parasol(argc, argv)) {
       printf("%s\n", msg);
       return -1;
    }
 
-   pf::vector<std::string> *args;
    if ((!CurrentTask()->getPtr(FID_Parameters, &args)) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (!StrMatch(args[0][i], "-threads")) {
@@ -126,33 +112,36 @@ int main(int argc, CSTRING *argv)
             if (++i < args->size()) glAccessGap = StrToInt(args[0][i]);
             else break;
          }
-         else if (!StrMatch(args[0][i], "-terminate")) glTerminateMemory = true;
-         else if (!StrMatch(args[0][i], "-alloc")) glTestAllocation = true;
+         else if (!StrMatch(args[0][i], "-terminate")) glTerminateObject = TRUE;
       }
    }
 
-   AllocMemory(10000, MEM::DATA, NULL, (MEMORYID *)&glMemoryID);
+   glConfig = objConfig::create::global();
 
-   printf("Spawning %d threads...\n", glTotalThreads);
+   #ifdef QUICKLOCK
+      log.msg("Quick-locking will be tested.");
+   #endif
+
+   log.msg("Spawning %d threads...", glTotalThreads);
 
    thread_info glThreads[glTotalThreads];
 
    for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
-      if (glTestAllocation) pthread_create(&glThreads[i].thread, NULL, &test_allocation, &glThreads[i]);
-      else pthread_create(&glThreads[i].thread, NULL, &test_locking, &glThreads[i]);
+      pthread_create(&glThreads[i].thread, NULL, &thread_entry, &glThreads[i]);
    }
 
-   // Main block now waits for both threads to terminate, before it exits.  If main block exits, both threads exit,
-   // even if the threads have not finished their work
+   // Main block now waits for all threads to terminate before it exits.
+   // If main block exits, all threads exit, even if the threads have not
+   // finished their work
 
-   printf("Waiting for thread completion.\n");
+   log.msg("Waiting for thread completion.");
 
    for (unsigned i=0; i < glTotalThreads; i++) {
       pthread_join(glThreads[i].thread, NULL);
    }
 
-   FreeResource(glMemoryID);
+   FreeResource(glConfig);
 
    printf("Testing complete.\n");
 
