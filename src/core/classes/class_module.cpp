@@ -143,8 +143,8 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
       Self->LibraryBase = NULL;
    }
 
-   ThreadLock lock(TL_GENERIC, 200);
-   if (lock.granted()) { // Patch the gap
+   if (auto lock = std::unique_lock{glmGeneric, 200ms}) {
+      // Patch the gap
       if (Self->Prev) Self->Prev->Next = Self->Next;
       else glModuleList = Self->Next;
 

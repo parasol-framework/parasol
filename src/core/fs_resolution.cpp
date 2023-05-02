@@ -319,16 +319,13 @@ static ERROR resolve(STRING Source, STRING Dest, RSF Flags)
 
    Source[pos-1] = 0; // Remove the volume symbol for the string comparison
 
-   {
-      ThreadLock lock(TL_VOLUMES, 2000);
-      if (lock.granted()) {
-         if (glVolumes.contains(Source)) {
-            StrCopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
-         }
-         else fullpath[0] = 0;
+   if (auto lock = std::unique_lock{glmVolumes, 2s}) {
+      if (glVolumes.contains(Source)) {
+         StrCopy(glVolumes[Source]["Path"], fullpath, sizeof(fullpath));
       }
-      else return log.warning(ERR_LockFailed);
+      else fullpath[0] = 0;
    }
+   else return log.warning(ERR_SystemLocked);
 
    if (!fullpath[0]) {
       log.msg("No matching volume for \"%s\".", Source);

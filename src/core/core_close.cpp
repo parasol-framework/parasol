@@ -237,18 +237,6 @@ EXPORT void CloseCore(void)
       winShutdown();
    #endif
 
-   free_private_lock(TL_FIELDKEYS);
-   free_private_lock(TL_CLASSDB);
-   free_private_lock(TL_VOLUMES);
-   free_private_lock(TL_GENERIC);
-   free_private_lock(TL_TIMER);
-   free_private_lock(TL_MSGHANDLER);
-   free_private_lock(TL_OBJECT_LOOKUP);
-   free_private_lock(TL_THREADPOOL);
-   free_private_lock(TL_PRIVATE_MEM);
-   free_private_lock(TL_PRINT);       // NB: After TL_PRINT is freed, any calls to message printing functions will result in a crash.
-   free_private_cond(CN_PRIVATE_MEM);
-
    #ifdef __APPLE__
       LONG socklen;
       struct sockaddr_un *sockpath = get_socket_path(glProcessID, &socklen);

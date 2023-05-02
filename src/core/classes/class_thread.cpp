@@ -96,26 +96,27 @@ ERROR threadpool_get(extThread **Result)
 
    log.traceBranch("");
 
-   ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) {
+   glmThreadPool.lock();
+
       for (auto &at : glActionThreads) {
          if ((at.Thread) and (!at.InUse)) {
             at.InUse = true;
             *Result = at.Thread;
+            glmThreadPool.unlock();
             return ERR_Okay;
          }
       }
 
-      if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
-         if (glActionThreads.size() < THREADPOOL_MAX) {
-            glActionThreads.emplace_back(thread);
-         }
-         *Result = thread;
-         return ERR_Okay;
-      }
-      else return log.warning(ERR_CreateObject);
+   glmThreadPool.unlock();
+
+   if (auto thread = extThread::create::untracked(fl::Name("ActionThread"))) {
+      glmThreadPool.lock();
+      if (glActionThreads.size() < THREADPOOL_MAX) glActionThreads.emplace_back(thread);
+      *Result = thread;
+      glmThreadPool.unlock();
+      return ERR_Okay;
    }
-   else return log.warning(ERR_Lock);
+   else return log.warning(ERR_CreateObject);
 }
 
 //********************************************************************************************************************
@@ -127,20 +128,19 @@ void threadpool_release(extThread *Thread)
 
    log.traceBranch("Thread: #%d, Total: %d", Thread->UID, (LONG)glActionThreads.size());
 
-   ThreadLock lock(TL_THREADPOOL, 2000);
-   if (lock.granted()) {
-      for (auto &at : glActionThreads) {
-         if (at.Thread IS Thread) {
-            at.InUse = false;
-            return;
-         }
+   glmThreadPool.lock();
+   for (auto &at : glActionThreads) {
+      if (at.Thread IS Thread) {
+         at.InUse = false;
+         glmThreadPool.unlock();
+         return;
       }
-
-      // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
-
-      lock.release();
-      FreeResource(Thread);
    }
+
+   // If the thread object is not pooled, assume it was allocated dynamically from threadpool_get() and destroy it.
+
+   glmThreadPool.unlock();
+   FreeResource(Thread);
 }
 
 //********************************************************************************************************************
@@ -151,8 +151,8 @@ void remove_threadpool(void)
    if (!glActionThreads.empty()) {
       pf::Log log("Core");
       log.branch("Removing the action thread pool of %d threads.", (LONG)glActionThreads.size());
-      ThreadLock lock(TL_THREADPOOL, 2000);
-      if (lock.granted()) glActionThreads.clear();
+      std::lock_guard lock(glmThreadPool);
+      glActionThreads.clear();
    }
 }
 

@@ -169,21 +169,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
    }
 
-   if (alloc_private_lock(TL_FIELDKEYS, ALF::NIL)) return NULL; // For access to glFields
-   if (alloc_private_lock(TL_CLASSDB, ALF::NIL)) return NULL; // For access to glClassDB
-   if (alloc_private_lock(TL_VOLUMES, ALF::NIL)) return NULL; // For access to glVolumes
-   if (alloc_private_lock(TL_GENERIC, ALF::NIL)) return NULL; // A misc. internal mutex, strictly not recursive.
-   if (alloc_private_lock(TL_TIMER, ALF::NIL)) return NULL; // For timer subscriptions.
-   if (alloc_private_lock(TL_MSGHANDLER, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRINT, ALF::NIL)) return NULL; // For message logging only.
-   if (alloc_private_lock(TL_THREADPOOL, ALF::NIL)) return NULL;
-   if (alloc_private_lock(TL_OBJECT_LOOKUP, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_lock(TL_PRIVATE_MEM, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_PRIVATE_MEM, ALF::NIL)) return NULL;
-
-   if (alloc_private_lock(TL_OBJECT_LOCKING, ALF::RECURSIVE)) return NULL;
-   if (alloc_private_cond(CN_OBJECTS, ALF::NIL)) return NULL;
-
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
    // bit set.  E.g. If I am user 500 and the program is run as suid, then the ID's are:

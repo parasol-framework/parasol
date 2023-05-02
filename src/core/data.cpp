@@ -76,6 +76,19 @@ std::list<CoreTimer> glTimers;
 std::vector<TaskRecord> glTasks;
 std::vector<FDRecord> glRegisterFD;
 std::vector<TaskMessage> glQueue;
+std::condition_variable_any cvResources;
+std::condition_variable_any cvObjects;
+std::mutex glmPrint;
+std::recursive_mutex glmMemory;
+std::recursive_mutex glmMsgHandler;
+std::recursive_timed_mutex glmObjectLookup;
+std::recursive_timed_mutex glmTimer;
+std::timed_mutex glmClassDB;
+std::timed_mutex glmFieldKeys;
+std::timed_mutex glmGeneric;
+std::timed_mutex glmObjectLocking;
+std::recursive_mutex glmThreadPool;
+std::timed_mutex glmVolumes;
 
 struct RootModule *glModuleList   = NULL;
 struct OpenInfo   *glOpenInfo     = NULL;
@@ -107,6 +120,7 @@ std::atomic_int glUniqueMsgID = 1;
   THREADVAR LONG glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
+  WINHANDLE glTaskLock = 0;
 #endif
 
 HOSTHANDLE glConsoleFD = (HOSTHANDLE)-1; // Managed by GetResource()

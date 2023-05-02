@@ -892,9 +892,8 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
    if (Callback->Type IS CALL_SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Interval: %.3fs", Interval);
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DEBUG, "Callback: %p, Interval: %.3fs", Callback->StdC.Routine, Interval);
 
-   ThreadLock lock(TL_TIMER, 200);
-   if (lock.granted()) {
-      LARGE usInterval = (LARGE)(Interval * 1000000.0); // Scale the interval to microseconds
+   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+      auto usInterval = LARGE(Interval * 1000000.0); // Scale the interval to microseconds
       if (usInterval <= 40000) {
          // TODO: Rapid timers should be synchronised with other existing timers to limit the number of
          // interruptions that occur per second.
@@ -917,9 +916,7 @@ ERROR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
       // we don't treat the object address as valid when it's been removed from the system.
 
       subscriber->Flags |= NF::TIMER_SUB;
-
       if (Subscription) *Subscription = &*it;
-
       return ERR_Okay;
    }
    else return log.warning(ERR_SystemLocked);
@@ -953,8 +950,7 @@ ERROR UpdateTimer(APTR Subscription, DOUBLE Interval)
 
    log.msg(VLF::EXTAPI|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
-   ThreadLock lock(TL_TIMER, 200);
-   if (lock.granted()) {
+   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
       auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)
