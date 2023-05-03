@@ -76,7 +76,7 @@ if (XDGA_INSTALLED)
 endif ()
 
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 

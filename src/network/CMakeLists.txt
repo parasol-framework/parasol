@@ -7,7 +7,7 @@ idl_all ("${MOD}.fdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD
    FILES "network.cpp"
    ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 

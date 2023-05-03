@@ -75,7 +75,7 @@ if (BUILD_DEFS)
    add_dependencies (build_headers core_defs)
 endif ()
 
-add_library (core SHARED)
+add_library (core)
 
 set_module_defaults (core)
 

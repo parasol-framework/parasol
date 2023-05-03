@@ -67,7 +67,7 @@ set (LEXERS
 
 # Build the library
 
-add_library (scintilla SHARED)
+add_library (scintilla)
 
 target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
 

@@ -22,7 +22,7 @@ if (WIN32)
    set (C_INCLUDE_PATH "")
 endif ()
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 

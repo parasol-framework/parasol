@@ -9,7 +9,7 @@ set (SOURCES "${MOD}.cpp"
    "lib/pngrtran.c" "lib/pngrutil.c" "lib/pngtrans.c" "lib/pngwrite.c" "lib/pngwtran.c"
    "lib/pngwutil.c" "lib/pngmem.c" "lib/pngerror.c")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 
