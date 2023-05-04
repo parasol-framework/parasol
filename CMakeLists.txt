@@ -33,8 +33,7 @@ cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they
 
 # To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 
-option (PARASOL_STATIC   "Build as a static library" OFF)
-option (PARASOL_SHARED   "Build as a shared library" ON)
+option (PARASOL_STATIC   "Build framework as a set of static libraries instead of the default modular build." OFF)
 option (PARASOL_INSTALL  "Create installation targets (chain builders may want to disable this)" ON)
 option (PARASOL_VLOG     "Enable verbose log messages in the generated binaries" OFF)
 if (UNIX)
@@ -71,6 +70,12 @@ set(BUILD_RPATH_USE_ORIGIN TRUE)
 
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
+
+if (PARASOL_STATIC)
+   set (BUILD_SHARED_LIBS OFF)
+else ()
+   set (BUILD_SHARED_LIBS ON)
+endif ()
 
 if (RUN_ANYWHERE)
    set (PARASOL_ROOT "${CMAKE_INSTALL_PREFIX}")
@@ -312,31 +317,39 @@ endfunction ()
 # This is a convenience function that configures the default settings needed for Parasol modules
 
 function (set_module_defaults ARG_TARGET)
-   target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
-
    target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
-   if (CMAKE_BUILD_TYPE MATCHES "Release")
-      set_target_properties (${ARG_TARGET} PROPERTIES LINK_FLAGS_RELEASE -s)
-   endif ()
+   # Collect code and data that is never referenced
+   target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
 
-   set_target_properties (${ARG_TARGET}
-      PROPERTIES
-      PREFIX ""
-      CXX_STANDARD 20
-      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
+   if (PARASOL_STATIC)
+      set_target_properties (${ARG_TARGET}
+         PROPERTIES
+         CMAKE_POSITION_INDEPENDENT_CODE ON # Enables -fPIC and -fPIE in gcc
+         CXX_STANDARD 20)
+   else ()
+      if (CMAKE_BUILD_TYPE MATCHES "Release")
+         set_target_properties (${ARG_TARGET} PROPERTIES LINK_FLAGS_RELEASE -s)
+      endif ()
 
-   if (PARASOL_INSTALL)
-      if (WIN32)
-         install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
-      else ()
-         install(TARGETS ${ARG_TARGET}
-            RUNTIME DESTINATION "${LIB_TARGET}"
-            ARCHIVE DESTINATION "${LIB_TARGET}"
-            LIBRARY DESTINATION "${LIB_TARGET}")
+      set_target_properties (${ARG_TARGET}
+         PROPERTIES
+         PREFIX ""
+         CXX_STANDARD 20
+         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
+         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
+
+      if (PARASOL_INSTALL)
+         if (WIN32)
+            install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
+         else ()
+            install(TARGETS ${ARG_TARGET}
+               RUNTIME DESTINATION "${LIB_TARGET}"
+               ARCHIVE DESTINATION "${LIB_TARGET}"
+               LIBRARY DESTINATION "${LIB_TARGET}")
+         endif ()
       endif ()
    endif ()
 endfunction ()
@@ -467,39 +480,7 @@ if (X11_Xrandr_FOUND)
    add_subdirectory (src/xrandr)
 endif ()
 
-# --------------------------------------------------------------------------------------------------------------------
-# Parasol executable
-
-if (RUN_ANYWHERE)
-   set (CMAKE_INSTALL_RPATH "$ORIGIN/lib/lib")
-else ()
-   set (CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib/parasol")
-endif ()
-
-if (WIN32)
-   # Specifying the WIN32 option will generate a Windows GUI application
-   add_executable (parasol_cmd WIN32 "src/launcher/parasol.cpp" "src/launcher/sandbox-win.cpp" "src/link/resource.rc")
-else ()
-   add_executable (parasol_cmd "src/launcher/parasol.cpp")
-endif ()
-
-target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
-
-target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
-
-if (CMAKE_BUILD_TYPE MATCHES "Release")
-   message (STATUS "Symbols will be stripped from this build (no debugging).")
-   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
-else ()
-   message (STATUS "Symbols will be left intact in this build (debug enabled).")
-   set_target_properties (parasol_cmd PROPERTIES CXX_STANDARD 20 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release")
-endif ()
-
-set_target_properties (parasol_cmd PROPERTIES OUTPUT_NAME "parasol")
-
-# Attach headers to the Parasol binary so that we can ensure that all headers are built
-
-add_dependencies (parasol_cmd build_headers)
+add_subdirectory (src/launcher)
 
 # --------------------------------------------------------------------------------------------------------------------
 # Generate the platform configuration header
@@ -531,50 +512,27 @@ if (PARASOL_INSTALL)
       install (FILES "${CMAKE_BINARY_DIR}/parasol/config.h" DESTINATION "include/parasol/")
    endif ()
 
-   if (RUN_ANYWHERE)
-      install (TARGETS parasol_cmd DESTINATION .)
+   if (WIN32)
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "config/styles")
+      install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "config/styles/icons")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
+      if (INSTALL_EXAMPLES)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
+      endif ()
    else ()
-      install (TARGETS parasol_cmd DESTINATION "bin")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}/config")
+      install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/config/styles/icons")
+      install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
+      if (INSTALL_EXAMPLES)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")
+      endif ()
    endif ()
-
-if (WIN32)
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "config/styles")
-   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "config/styles/icons")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
-   if (INSTALL_EXAMPLES)
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
-   endif ()
-else ()
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}/config")
-   install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/config/styles/icons")
-   install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
-   if (INSTALL_EXAMPLES)
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples" DESTINATION "${SHARE_TARGET}")
-   endif ()
-endif ()
-
-if (WIN32) # MSYS2/MinGW builds have library dependencies that we need to take a copy of.
-   find_file(MSYS_DEP2 "libstdc++-6.dll" HINTS "/mingw64/bin")
-   if (NOT MSYS_DEP2 STREQUAL "MSYS_DEP2-NOTFOUND")
-      install (FILES ${MSYS_DEP2} DESTINATION .)
-   endif ()
-
-   find_file(MSYS_DEP4 "libgcc_s_seh-1.dll" HINTS "/mingw64/bin")
-   if (NOT MSYS_DEP4 STREQUAL "MSYS_DEP4-NOTFOUND")
-      install (FILES ${MSYS_DEP4} DESTINATION .)
-   endif ()
-
-   find_file(MSYS_DEP5 "libwinpthread-1.dll" HINTS "/mingw64/bin")
-   if (NOT MSYS_DEP5 STREQUAL "MSYS_DEP5-NOTFOUND")
-      install (FILES ${MSYS_DEP5} DESTINATION .)
-   endif ()
-endif ()
 
    install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
 
@@ -582,11 +540,10 @@ endif ()
 
    install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
 
-if (RUN_ANYWHERE)
-   install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe from the command-line.\")")
-else ()
-   install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
-endif ()
-
+   if (RUN_ANYWHERE)
+      install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe from the command-line.\")")
+   else ()
+      install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
+   endif ()
 endif ()
 

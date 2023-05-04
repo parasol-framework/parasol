@@ -38,7 +38,7 @@ set (FT_SOURCE
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/base/ftdebug.c"
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/pshinter/pshinter.c")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 

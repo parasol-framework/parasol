@@ -8,7 +8,7 @@ idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
 
 idl_def ("${MOD}.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 

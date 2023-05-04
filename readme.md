@@ -25,6 +25,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback supporting WAV and MP3 files.
 * Hundreds of standardised scalable icons are included for application building.  Fonts are also standardised for cross-platform consistency.
+* Can be used as an enhanced Lua framework by Lua developers in need of broad UI features and full system integration.
 * WIP: Extensive text editing widget implemented with scintilla.org.
 
 ### Application Example
