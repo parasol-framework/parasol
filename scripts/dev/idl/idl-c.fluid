@@ -1734,6 +1734,9 @@ function functionNames(Prefix, ...)
          macro = function() -- Default macro, to be overridden by documented function
             return 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname ..
                '(Args... pArgs) { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
+         end,
+         staticMacro = function()
+            return 'template <typename... Args> ERROR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
          end
       }
 
@@ -2151,11 +2154,21 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
       end
+
+      func.staticMacro = function()
+         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(argSeq,"void") .. ");"
+      end
    else
       func.macro = function()
          return "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+      end
+
+      func.staticMacro = function()
+         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(argSeq,"void") .. ");"
       end
    end
 end
@@ -2212,19 +2225,30 @@ function saveOutput()
          if (glOutput[a] == "__FUNCTION_TABLE__") then
             local out = ''
             out = "struct " .. glModule.name .. "Base {\n"
+            out = out .. "#ifndef PARASOL_STATIC\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.def) then
                   out = out .. func.def .. "\n"
                end
             end
+            out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "};\n\n"
             out = out .. "#ifndef PRV_" .. glModule.name:upper() .. "_MODULE\n"
+
+            out = out .. "#ifndef PARASOL_STATIC\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.macro) then
                   out = out .. func.macro() .. "\n"
                end
             end
+            out = out .. "#else\n"
+            for k, func in ipairs(glFunctions) do
+               if nz(func.staticMacro) then
+                  out = out .. func.staticMacro() .. "\n"
+               end
+            end
+            out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "#endif\n\n"
             file.acWrite(out, out:len())
          else

@@ -549,7 +549,11 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 extern "C" {
 
+#ifndef PARASOL_STATIC
 #define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+#else
+#define MODULE_COREBASE static struct CoreBase *CoreBase;
+#endif
 
 #ifdef MOD_NAME
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));

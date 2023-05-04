@@ -1513,7 +1513,11 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 extern "C" {
 
+#ifndef PARASOL_STATIC
 #define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+#else
+#define MODULE_COREBASE static struct CoreBase *CoreBase;
+#endif
 
 #ifdef MOD_NAME
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
@@ -2006,6 +2010,7 @@ struct ScriptArg { // For use with scExec
 };
 
 struct CoreBase {
+#ifndef PARASOL_STATIC
    ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
@@ -2115,9 +2120,11 @@ struct CoreBase {
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
    ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_CORE_MODULE
+#ifndef PARASOL_STATIC
 extern struct CoreBase *CoreBase;
 inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
@@ -2228,6 +2235,117 @@ inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBa
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
+#else
+extern ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
+extern ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
+extern void ActionList(struct ActionTable ** Actions, LONG * Size);
+extern ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
+extern CSTRING ResolveClassID(CLASSID ID);
+extern LONG AllocateID(IDTYPE Type);
+extern ERROR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
+extern ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result);
+extern ERROR CheckAction(OBJECTPTR Object, LONG Action);
+extern ERROR CheckMemoryExists(MEMORYID ID);
+extern ERROR CheckObjectExists(OBJECTID Object);
+extern ERROR InitObject(OBJECTPTR Object);
+template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags);
+extern OBJECTPTR CurrentContext(void);
+extern ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
+extern LONG AdjustLogLevel(LONG Adjust);
+template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags);
+extern ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
+extern objMetaClass * FindClass(CLASSID ClassID);
+extern ERROR AnalysePath(CSTRING Path, LOC * Type);
+extern LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+extern ERROR FreeResource(MEMORYID ID);
+extern CLASSID GetClassID(OBJECTID Object);
+extern OBJECTID GetOwnerID(OBJECTID Object);
+extern ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
+extern ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
+extern ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
+extern const struct SystemState * GetSystemState(void);
+extern ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
+extern ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
+extern ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
+extern ERROR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
+extern ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
+extern ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
+extern ERROR NewObject(LARGE ClassID, NF Flags, APTR Object);
+extern void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
+extern ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
+extern CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
+extern ERROR ProcessMessages(PMF Flags, LONG TimeOut);
+extern ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
+extern ERROR ReallocMemory(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID);
+extern ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
+extern ERROR ReleaseMemory(MEMORYID MemoryID);
+extern CLASSID ResolveClassName(CSTRING Name);
+extern ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size);
+extern ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
+extern OBJECTPTR SetContext(OBJECTPTR Object);
+template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags);
+extern CSTRING FieldName(ULONG FieldID);
+extern ERROR ScanDir(struct DirInfo * Info);
+extern ERROR SetName(OBJECTPTR Object, CSTRING Name);
+extern void LogReturn(void);
+extern ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
+extern ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
+extern ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
+extern ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
+extern ERROR UpdateTimer(APTR Subscription, DOUBLE Interval);
+extern ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action);
+extern void UnsubscribeEvent(APTR Handle);
+extern ERROR BroadcastEvent(APTR Event, LONG EventSize);
+extern void WaitTime(LONG Seconds, LONG MicroSeconds);
+extern LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
+extern ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
+extern LARGE GetResource(RES Resource);
+extern LARGE SetResource(RES Resource, LARGE Value);
+extern ERROR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
+extern STT StrDatatype(CSTRING String);
+extern void UnloadFile(struct CacheFile * Cache);
+extern ERROR CreateFolder(CSTRING Path, PERMIT Permissions);
+extern ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
+extern ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
+extern ERROR DeleteVolume(CSTRING Name);
+extern ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+extern ERROR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size);
+extern ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
+extern ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args);
+extern LARGE PreciseTime(void);
+extern ERROR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info);
+extern OBJECTPTR GetObjectPtr(OBJECTID Object);
+extern struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target);
+extern CSTRING GetErrorMsg(ERROR Error);
+extern struct Message * GetActionMsg(void);
+extern ERROR FuncError(CSTRING Header, ERROR Error);
+extern ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
+extern ULONG StrHash(CSTRING String, LONG CaseSensitive);
+extern ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds);
+extern void ReleaseObject(OBJECTPTR Object);
+extern ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
+extern ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+extern void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
+extern void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
+extern LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+extern ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
+extern ERROR SetResourcePath(RP PathType, CSTRING Path);
+extern objTask * CurrentTask(void);
+extern CSTRING ResolveGroupID(LONG Group);
+extern CSTRING ResolveUserID(LONG User);
+extern ERROR CreateLink(CSTRING From, CSTRING To);
+extern ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
+extern LONG UTF8CharOffset(CSTRING String, LONG Offset);
+extern LONG UTF8Length(CSTRING String);
+extern LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
+extern LONG UTF8PrevLength(CSTRING String, LONG Offset);
+extern LONG UTF8CharLength(CSTRING String);
+extern ULONG UTF8ReadValue(CSTRING String, LONG * Length);
+extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
+extern ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+extern ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
+extern ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
+#endif // PARASOL_STATIC
 #endif
 
 

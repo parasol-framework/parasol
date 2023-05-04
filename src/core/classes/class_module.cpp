@@ -693,6 +693,7 @@ After initialisation, the Version field will be updated to reflect the actual ve
 
 APTR build_jump_table(const Function *FList)
 {
+#ifndef PARASOL_STATIC
    if (!FList) return NULL;
 
    pf::Log log(__FUNCTION__);
@@ -709,7 +710,7 @@ APTR build_jump_table(const Function *FList)
       return functions;
    }
    else log.warning(ERR_AllocMemory);
-
+#endif
    return NULL;
 }
 

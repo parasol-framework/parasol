@@ -514,6 +514,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    fs_initialised = true;
 
+#ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
       objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
@@ -546,6 +547,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
       else glScanClasses = true; // If no file, a database rebuild is required.
    }
+#endif
 
    if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, &newargs, newargs.size());
 
@@ -562,9 +564,12 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
+#ifndef PARASOL_STATIC
    // Generate the Core table for our new task
-
    LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
+#else
+   LocalCoreBase = NULL;
+#endif
 
    // Broadcast the creation of the new task
 
@@ -1065,16 +1070,17 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
+      #ifndef PARASOL_STATIC
       if (!glModulePath.empty()) {
          SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
-      else {
-         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
-      }
+      else SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      #endif
    #elif __unix__
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
+      #ifndef PARASOL_STATIC
       if (!glModulePath.empty()) {
          SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
@@ -1082,6 +1088,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string path = glRootPath + "lib/parasol/";
          SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
+      #endif
 
       SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
@@ -1338,13 +1345,14 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       }
    }
 
+#ifndef PARASOL_STATIC
    // Change glModulePath to an absolute path to optimise the loading of modules.
-
    STRING mpath;
    if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
       glModulePath = mpath;
       FreeResource(mpath);
    }
+#endif
 
    return ERR_Okay;
 }
