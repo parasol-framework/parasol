@@ -33,8 +33,7 @@ cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they
 
 # To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 
-option (PARASOL_STATIC   "Build as a static library" OFF)
-option (PARASOL_SHARED   "Build as a shared library" ON)
+option (PARASOL_STATIC   "Build framework as a set of static libraries instead of the default modular build." OFF)
 option (PARASOL_INSTALL  "Create installation targets (chain builders may want to disable this)" ON)
 option (PARASOL_VLOG     "Enable verbose log messages in the generated binaries" OFF)
 if (UNIX)
@@ -44,7 +43,6 @@ else ()
 endif ()
 option (BUILD_TESTS       "Build/enable tests" ON)
 option (BUILD_DEFS        "Auto-generate C/C++ headers and documentation" ON)
-option (BUILD_MODULAR     "Compile a modular build with multiple libraries.  Turn off to build a monolith." ON)
 option (DISABLE_SSL       "Disable built-in SSL support even if available on this system" OFF)
 option (DISABLE_X11       "Disable X11 even if available on this system" OFF)
 option (DISABLE_AUDIO     "Disable audio API" OFF)
@@ -73,10 +71,10 @@ set(BUILD_RPATH_USE_ORIGIN TRUE)
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
 
-if (BUILD_MODULAR)
-   set (BUILD_SHARED_LIBS ON)
-else ()
+if (PARASOL_STATIC)
    set (BUILD_SHARED_LIBS OFF)
+else ()
+   set (BUILD_SHARED_LIBS ON)
 endif ()
 
 if (RUN_ANYWHERE)
@@ -319,31 +317,39 @@ endfunction ()
 # This is a convenience function that configures the default settings needed for Parasol modules
 
 function (set_module_defaults ARG_TARGET)
-   target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
-
    target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
-   if (CMAKE_BUILD_TYPE MATCHES "Release")
-      set_target_properties (${ARG_TARGET} PROPERTIES LINK_FLAGS_RELEASE -s)
-   endif ()
+   # Collect code and data that is never referenced
+   target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
 
-   set_target_properties (${ARG_TARGET}
-      PROPERTIES
-      PREFIX ""
-      CXX_STANDARD 20
-      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
+   if (PARASOL_STATIC)
+      set_target_properties (${ARG_TARGET}
+         PROPERTIES
+         CMAKE_POSITION_INDEPENDENT_CODE ON # Enables -fPIC and -fPIE in gcc
+         CXX_STANDARD 20)
+   else ()
+      if (CMAKE_BUILD_TYPE MATCHES "Release")
+         set_target_properties (${ARG_TARGET} PROPERTIES LINK_FLAGS_RELEASE -s)
+      endif ()
 
-   if (PARASOL_INSTALL)
-      if (WIN32)
-         install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
-      else ()
-         install(TARGETS ${ARG_TARGET}
-            RUNTIME DESTINATION "${LIB_TARGET}"
-            ARCHIVE DESTINATION "${LIB_TARGET}"
-            LIBRARY DESTINATION "${LIB_TARGET}")
+      set_target_properties (${ARG_TARGET}
+         PROPERTIES
+         PREFIX ""
+         CXX_STANDARD 20
+         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
+         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
+
+      if (PARASOL_INSTALL)
+         if (WIN32)
+            install(TARGETS ${ARG_TARGET} RUNTIME DESTINATION "${LIB_TARGET}")
+         else ()
+            install(TARGETS ${ARG_TARGET}
+               RUNTIME DESTINATION "${LIB_TARGET}"
+               ARCHIVE DESTINATION "${LIB_TARGET}"
+               LIBRARY DESTINATION "${LIB_TARGET}")
+         endif ()
       endif ()
    endif ()
 endfunction ()
