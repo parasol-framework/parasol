@@ -10,6 +10,11 @@
 # Build:   cmake --build release -j 8 -- -O
 # Install: sudo cmake --install release
 # Test:    make -C release test ARGS=--verbose
+#
+# A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
+# This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds
+# should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
+# build across multiple projects can otherwise lead to confusing outcomes.
 
 cmake_minimum_required(VERSION 3.13)
 
@@ -327,7 +332,6 @@ function (set_module_defaults ARG_TARGET)
    if (PARASOL_STATIC)
       set_target_properties (${ARG_TARGET}
          PROPERTIES
-         CMAKE_POSITION_INDEPENDENT_CODE ON # Enables -fPIC and -fPIE in gcc
          CXX_STANDARD 20)
    else ()
       if (CMAKE_BUILD_TYPE MATCHES "Release")
@@ -338,6 +342,7 @@ function (set_module_defaults ARG_TARGET)
          PROPERTIES
          PREFIX ""
          CXX_STANDARD 20
+         CMAKE_POSITION_INDEPENDENT_CODE ON # Enables -fPIC and -fPIE in gcc
          LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
          RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 
@@ -513,9 +518,13 @@ if (PARASOL_INSTALL)
    endif ()
 
    if (WIN32)
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
+      if (NOT DISABLE_SSL)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
+      if (NOT DISABLE_FONT)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "config/styles")
       install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "config/styles/icons")
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
@@ -523,9 +532,13 @@ if (PARASOL_INSTALL)
          install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
       endif ()
    else ()
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
+      if (NOT DISABLE_SSL)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
+      if (NOT DISABLE_FONT)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}/config")
       install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/config/styles/icons")
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
@@ -534,11 +547,11 @@ if (PARASOL_INSTALL)
       endif ()
    endif ()
 
-   install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-
-   install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning ${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\")")
-
-   install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   if (NOT PARASOL_STATIC)
+      install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
+      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning ${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\")")
+      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   endif ()
 
    if (RUN_ANYWHERE)
       install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe from the command-line.\")")
