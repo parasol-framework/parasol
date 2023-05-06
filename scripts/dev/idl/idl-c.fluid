@@ -2049,7 +2049,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       error("Function '" .. Name .. "' is not declared in the FDL.  Known functions are:\n" .. list)
    end
 
-   func.status      = Status
+   if (Status) then func.status = Status:lower() end
    func.comment     = Comment
    func.description = Description
    func.category    = Category

@@ -332,7 +332,7 @@ exit:
 -FUNCTION-
 VLogF: Sends formatted messages to the standard log.
 ExtPrototype: VLF Flags, const char *Header, const char *Message, va_list Args
-Status: private
+Status: Internal
 
 Please refer to LogF().  This function is not intended for external use.
 
@@ -528,7 +528,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
 -FUNCTION-
 FuncError: Sends basic error messages to the application log.
-Status: private
+Status: Internal
 
 This function outputs a message to the application log.  It uses the codes listed in the system/errors.h file to
 display the correct string to the user.  The following example `FuncError(ERR_Write)` would produce input such
@@ -638,7 +638,7 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 
 -FUNCTION-
 LogReturn: Revert to the previous branch in the application logging tree.
-Status: private
+Status: Internal
 
 Use LogReturn() to reverse any previous log message that created an indented branch.  Consider the following
 example that uses a tilde to create a new branch:
