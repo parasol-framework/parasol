@@ -1517,10 +1517,16 @@ extern "C" {
 #define MODULE_COREBASE struct CoreBase *CoreBase = 0;
 #else
 #define MODULE_COREBASE static struct CoreBase *CoreBase;
+extern void CloseCore(void);
+extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
 #endif
 
 #ifdef MOD_NAME
+#ifdef PARASOL_STATIC
+#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) static ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#else
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
 #define MOD_NAME NULL
@@ -1799,7 +1805,6 @@ struct ModHeader {
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
-
       HeaderVersion = MODULE_HEADER_VERSION;
       Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;
@@ -2236,6 +2241,7 @@ inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { retur
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
 inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 #else
+extern "C" {
 extern ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
 extern ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
 extern void ActionList(struct ActionTable ** Actions, LONG * Size);
@@ -2248,11 +2254,9 @@ extern ERROR CheckAction(OBJECTPTR Object, LONG Action);
 extern ERROR CheckMemoryExists(MEMORYID ID);
 extern ERROR CheckObjectExists(OBJECTID Object);
 extern ERROR InitObject(OBJECTPTR Object);
-template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags);
 extern OBJECTPTR CurrentContext(void);
 extern ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
 extern LONG AdjustLogLevel(LONG Adjust);
-template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags);
 extern ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
 extern objMetaClass * FindClass(CLASSID ClassID);
 extern ERROR AnalysePath(CSTRING Path, LOC * Type);
@@ -2283,7 +2287,7 @@ extern CLASSID ResolveClassName(CSTRING Name);
 extern ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size);
 extern ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern OBJECTPTR SetContext(OBJECTPTR Object);
-template<class... Args> ERROR SetField(OBJECTPTR Object, FIELD Field, Args... Tags);
+extern ERROR SetField(OBJECTPTR Object, FIELD Field, ...);
 extern CSTRING FieldName(ULONG FieldID);
 extern ERROR ScanDir(struct DirInfo * Info);
 extern ERROR SetName(OBJECTPTR Object, CSTRING Name);
@@ -2345,6 +2349,7 @@ extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 extern ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
 extern ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
+}
 #endif // PARASOL_STATIC
 #endif
 

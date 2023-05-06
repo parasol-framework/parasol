@@ -989,7 +989,9 @@ extern void remove_archive(class extCompression *);
 
 void   print_diagnosis(LONG);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
+#ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
+#endif
 ERROR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
 ERROR  create_archive_volume(void);

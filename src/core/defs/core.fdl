@@ -553,10 +553,16 @@ extern "C" {
 #define MODULE_COREBASE struct CoreBase *CoreBase = 0;
 #else
 #define MODULE_COREBASE static struct CoreBase *CoreBase;
+extern void CloseCore(void);
+extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
 #endif
 
 #ifdef MOD_NAME
+#ifdef PARASOL_STATIC
+#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) static ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#else
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
 #define MOD_NAME NULL
@@ -842,7 +848,6 @@ struct FieldValue {
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
-
       HeaderVersion = MODULE_HEADER_VERSION;
       Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;

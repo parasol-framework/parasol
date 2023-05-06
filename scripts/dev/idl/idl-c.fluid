@@ -2064,7 +2064,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    local outValues  = ""
    local argSeq     = ""
-   local baseArgs
+   local jumpArgs
    local proto      = ""
    local doc_proto  = ""
    local variadic   = false
@@ -2092,7 +2092,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
                argSeq = argSeq .. "APTR " .. param.name
             elseif (param.type == '...') then
-               baseArgs = argSeq .. "..."
+               jumpArgs = argSeq .. "..."
                argSeq = argSeq .. "Args... Tags"
             else
                argSeq = argSeq .. param.type .. " " .. cName(param)
@@ -2130,19 +2130,19 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 
    if Def.ext_proto then
-      baseArgs = Def.ext_proto
+      jumpArgs = Def.ext_proto
       argSeq   = Def.ext_proto
       if (string.sub(argSeq, -3) == '...') then
          argSeq = string.sub(argSeq, 1, -4) .. "Args... Tags"
       end
-   elseif not baseArgs then
-      baseArgs = argSeq
+   elseif not jumpArgs then
+      jumpArgs = argSeq
    end
 
    -- The func.def is used for building the jump table
    func.def = "   " .. nz(response.type,"NIL")
    if Def.attrib then func.def = func.def .. " " .. nz(Def.attrib,"") end
-   func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(baseArgs,"void") .. ");"
+   func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(jumpArgs,"void") .. ");"
 
    func.c_proto = proto
    func.doc_proto = doc_proto
@@ -2156,8 +2156,8 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       end
 
       func.staticMacro = function()
-         return "template<class... Args> " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(argSeq,"void") .. ");"
+         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(jumpArgs,"void") .. ");"
       end
    else
       func.macro = function()
@@ -2168,7 +2168,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
       func.staticMacro = function()
          return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
-            "(" .. nz(argSeq,"void") .. ");"
+            "(" .. nz(jumpArgs,"void") .. ");"
       end
    end
 end
@@ -2243,11 +2243,13 @@ function saveOutput()
                end
             end
             out = out .. "#else\n"
+            out = out .. 'extern "C" {\n'
             for k, func in ipairs(glFunctions) do
-               if nz(func.staticMacro) then
+               if nz(func.staticMacro) and (func.status != 'private') then
                   out = out .. func.staticMacro() .. "\n"
                end
             end
+            out = out .. "}\n"
             out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "#endif\n\n"
             file.acWrite(out, out:len())
@@ -2290,7 +2292,7 @@ function buildPrototypes()
    end
 
    if nz(glFunctions) then
-      local proto = '#ifdef  __cplusplus\nextern "C" {\n#endif\n\n'
+      local proto = 'extern "C" {\n'
 
       for k, func in ipairs(glFunctions) do
          if (glPrototypes == "static") then proto = proto .. "static " end
@@ -2306,7 +2308,7 @@ function buildPrototypes()
          func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
          proto = proto .. func.prototype .. ";\n"
       end
-      proto = proto .. '\n#ifdef  __cplusplus\n}\n#endif\n'
+      proto = proto .. '\n} // extern c\n'
       return proto
    else
       return ""

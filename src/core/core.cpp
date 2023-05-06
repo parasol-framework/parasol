@@ -108,7 +108,7 @@ extern "C" ERROR add_storage_class(void);
 
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
-extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
+extern "C" EXPORT ERROR OpenCore(OpenInfo *, struct CoreBase **);
 static ERROR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
@@ -148,7 +148,7 @@ void _init(void)
 
 //********************************************************************************************************************
 
-EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
+EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 {
    #ifdef __unix__
       struct timeval tmday;
@@ -159,7 +159,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
    LONG i;
 
-   if (!Info) return NULL;
+   if (!Info) return ERR_Failed;
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
    glOpenInfo   = Info;
    tlMainThread = TRUE;
@@ -246,7 +246,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
             fprintf(stderr, "Failed to determine root folder.\n");
-            return NULL;
+            return ERR_Failed;
          }
          if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
@@ -278,7 +278,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       if (Info->CoreVersion > VER_CORE) {
          KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
          if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
-         return NULL;
+         return ERR_CoreVersion;
       }
    }
 
@@ -458,19 +458,19 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
                   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-                  return NULL;
+                  return ERR_SystemCall;
                }
             }
             else {
                if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-               return NULL;
+               return ERR_SystemCall;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
          if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-         return NULL;
+         return ERR_SystemCall;
       }
 
       RegisterFD(glSocket, RFD::READ, NULL, NULL);
@@ -486,30 +486,30 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    init_metaclass();
 
-   if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_task_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_thread_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_module_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_time_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_config_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_storage_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_file_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_script_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_archive_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_compression_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
    #ifdef __ANDROID__
-   if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_asset_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
    #endif
 
    if (!(glCurrentTask = extTask::create::untracked())) {
       CloseCore();
-      return NULL;
+      return ERR_CreateObject;
    }
 
    if (init_volumes(volumes)) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
-      return NULL;
+      return ERR_Failed;
    }
 
    fs_initialised = true;
@@ -576,12 +576,14 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
+#ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) != OPF::NIL) {
       log.msg("Class scanning has been enforced by user request.");
       glScanClasses = true;
    }
 
    if (glScanClasses) scan_classes();
+#endif
 
    #ifdef _DEBUG
       print_class_list();
@@ -592,7 +594,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    glSystemState = 0; // Indicates that initialisation is complete.
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
-   return LocalCoreBase;
+   *JumpTable = LocalCoreBase;
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
