@@ -132,6 +132,14 @@ endif ()
 
 target_link_libraries (core PRIVATE zlib)
 
+if (PARASOL_STATIC)
+   target_link_libraries (core PRIVATE audio display fluid font http json mp3 network picture jpeg svg vector xml)
+
+   if (X11_Xrandr_FOUND)
+      target_link_libraries (core PRIVATE xrandr)
+   endif ()
+endif ()
+
 if (WIN32)
    target_sources (core PRIVATE microsoft/windows.c)
    target_link_libraries (core PRIVATE wsock32 psapi)

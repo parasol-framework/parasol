@@ -1,6 +1,7 @@
 # Scintilla module
 
 set (MOD scintilla)
+set (INC_MOD_SCINTILLA TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs

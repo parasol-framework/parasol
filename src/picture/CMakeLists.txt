@@ -1,6 +1,7 @@
 # Picture module
 
 set (MOD picture)
+set (INC_MOD_PICTURE TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs APPEND_IDL "${MOD}_def.c" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h")
 

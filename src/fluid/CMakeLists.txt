@@ -1,6 +1,7 @@
 # Fluid has a dependency on the installation of libffi, found in the 3rdparty folder.
 
 set (MOD "fluid")
+set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 
 # IDL processing for headers and documentation
 

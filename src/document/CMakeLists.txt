@@ -1,6 +1,7 @@
 # Document module
 
 set (MOD "document")
+set (INC_MOD_DOCUMENT TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "module_def.c"
    FILES "${MOD}.cpp"

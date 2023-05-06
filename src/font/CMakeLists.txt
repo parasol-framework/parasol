@@ -8,6 +8,7 @@
 # Do a standard compile and then look in objs/ to see what .o files were created.
 
 set (MOD "font")
+set (INC_MOD_FONT TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs

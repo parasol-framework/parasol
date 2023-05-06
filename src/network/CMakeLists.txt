@@ -1,6 +1,7 @@
 # Network module
 
 set (MOD network)
+set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"

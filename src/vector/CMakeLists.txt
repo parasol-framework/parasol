@@ -1,6 +1,7 @@
 # Vector module
 
 set (MOD vector)
+set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
    FILES "vector_functions.cpp"
