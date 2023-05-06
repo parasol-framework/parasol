@@ -1392,4 +1392,5 @@ static STRUCTS glStructures = {
 };
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_display_module() { return &ModHeader; }
 

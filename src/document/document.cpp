@@ -992,3 +992,4 @@ static ERROR add_document_class(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DOCUMENT, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

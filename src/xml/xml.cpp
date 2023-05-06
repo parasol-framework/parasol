@@ -1754,4 +1754,7 @@ static STRUCTS glStructures = {
    { "XMLTag", sizeof(XMLTag) }
 };
 
+//********************************************************************************************************************
+
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_XML, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }

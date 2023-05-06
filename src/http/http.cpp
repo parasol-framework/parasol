@@ -1703,3 +1703,4 @@ static ERROR create_http_class(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_HTTP, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_http_module() { return &ModHeader; }

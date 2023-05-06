@@ -357,3 +357,4 @@ static ERROR CMDExpunge(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_jpeg_module() { return &ModHeader; }

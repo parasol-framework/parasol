@@ -856,6 +856,7 @@ static STRUCTS glStructures = {
 };
 
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_network_module() { return &ModHeader; }
 
 /*********************************************************************************************************************
                                                      BACKTRACE IT

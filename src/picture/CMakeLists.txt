@@ -10,9 +10,7 @@ set (SOURCES "${MOD}.cpp"
    "lib/pngwutil.c" "lib/pngmem.c" "lib/pngerror.c")
 
 add_library (${MOD})
-
 set_module_defaults (${MOD})
-
 target_sources (${MOD} PRIVATE ${SOURCES})
 
 target_include_directories (${MOD} PRIVATE

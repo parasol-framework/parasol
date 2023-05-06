@@ -330,3 +330,4 @@ static ERROR CMDExpunge(void)
 }
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_XRANDR, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_xrandr_module() { return &ModHeader; }

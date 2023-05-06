@@ -1430,3 +1430,5 @@ static ERROR create_picture_class(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_picture_module() { return &ModHeader; }
+
