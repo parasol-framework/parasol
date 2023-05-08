@@ -123,6 +123,10 @@ DLLCALL void WINAPI CloseHandle(APTR);
 
 static std::string glHomeFolderName;
 
+#include "static_modules.cpp"
+
+//********************************************************************************************************************
+
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
 {
@@ -569,6 +573,8 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
 #else
    LocalCoreBase = NULL;
+
+   register_static_modules();
 #endif
 
    // Broadcast the creation of the new task
