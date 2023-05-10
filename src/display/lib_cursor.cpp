@@ -8,6 +8,8 @@ Name: Cursor
 
 #include "defs.h"
 
+using namespace display;
+
 #ifdef __xwindows__
 
 struct XCursor {
@@ -102,8 +104,7 @@ void free_xcursors(void)
 //********************************************************************************************************************
 
 #ifdef _WIN32
-
-APTR GetWinCursor(PTC CursorID)
+HCURSOR GetWinCursor(PTC CursorID)
 {
    for (WORD i=0; i < ARRAYSIZE(winCursors); i++) {
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
@@ -114,7 +115,6 @@ APTR GetWinCursor(PTC CursorID)
    return winCursors[0].WinCursor;
 }
 #endif
-
 
 /*********************************************************************************************************************
 

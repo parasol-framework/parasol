@@ -8,6 +8,8 @@ Name: Bitmap
 
 #include "defs.h"
 
+using namespace display;
+
 static size_t glDitherSize = 0;
 
 //********************************************************************************************************************

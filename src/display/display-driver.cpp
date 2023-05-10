@@ -7,6 +7,8 @@ that is distributed with this package.  Please refer to it for further informati
 
 #include "defs.h"
 
+using namespace display;
+
 ERROR GET_HDensity(extDisplay *Self, LONG *Value);
 ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 

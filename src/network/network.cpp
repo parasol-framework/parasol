@@ -231,7 +231,6 @@ inline ULONG cpu_be32(ULONG x) {
 #endif
 
 struct CoreBase *CoreBase;
-static OBJECTPTR glModule = NULL;
 
 #ifdef ENABLE_SSL
 static BYTE ssl_init = FALSE;
@@ -284,8 +283,6 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log;
 
    CoreBase = argCoreBase;
-
-   argModule->getPtr(FID_Root, &glModule);
 
    if (init_netsocket()) return ERR_AddClass;
    if (init_clientsocket()) return ERR_AddClass;

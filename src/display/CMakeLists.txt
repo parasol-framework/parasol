@@ -86,7 +86,7 @@ target_include_directories (${MOD} PRIVATE
 
 if (WIN32)
    target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid m)
-   target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.c" ${CLASSES})
+   target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})
    add_compile_definitions ("WIN_DRAGDROP")
 elseif (ANDROID)
    # Android uses OpenGL.  A separate driver library is compiled for this purpose.

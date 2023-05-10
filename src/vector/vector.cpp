@@ -89,7 +89,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return error;
 }
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modFont)    { FreeResource(modFont); modFont = NULL; }

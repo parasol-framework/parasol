@@ -31,6 +31,7 @@ areas.
 #undef __xwindows__
 #include "../defs.h"
 #include <parasol/modules/picture.h>
+using namespace display;
 
 static ERROR SET_Opacity(extSurface *, DOUBLE);
 static ERROR SET_XOffset(extSurface *, Variable *);

@@ -16,6 +16,8 @@ used for all interactions with this service.
 
 #include "defs.h"
 
+using namespace display;
+
 static ERROR GET_ButtonOrder(extPointer *, CSTRING *);
 static ERROR GET_ButtonState(extPointer *, LONG *);
 

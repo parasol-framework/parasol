@@ -37,6 +37,8 @@ actions.
 
 #include "defs.h"
 
+using namespace display;
+
 #ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall

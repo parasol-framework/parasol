@@ -7,6 +7,7 @@
 
 #define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
 #define WINVER 0x0600
+#define NO_STRICT // Turn off type management due to C++ mangling issues.
 
 #include "keys.h"
 #include <windows.h>
@@ -33,6 +34,12 @@ struct winextra {
    int borderless;   // 12
 };
 
+#if defined(_MSC_VER)
+typedef __int64 LARGE;
+#else
+typedef long long LARGE;
+#endif
+
 #define IDT_RESIZE_WINDOW 1
 
 #define WE_SURFACE     0
@@ -44,10 +51,6 @@ struct winextra {
 
 #define KEY_SURFACE 0x03929323
 
-#define OR  ||
-#define AND &&
-#define IS  ==
-
 #define WIN_LMB 0x0001
 #define WIN_RMB 0x0002
 #define WIN_MMB 0x0004
@@ -57,91 +60,14 @@ struct winextra {
 #define WM_ICONNOTIFY (WM_USER + 101)
 #define ID_TRAY 100
 
-enum {
-   CT_DATA=0,
-   CT_AUDIO,
-   CT_IMAGE,
-   CT_FILE,
-   CT_OBJECT,
-   CT_TEXT,
-   CT_END      // End
-};
-
-#define CLIP_DATA    (1<<CT_DATA)   // 1
-#define CLIP_AUDIO   (1<<CT_AUDIO)  // 2
-#define CLIP_IMAGE   (1<<CT_IMAGE)  // 4
-#define CLIP_FILE    (1<<CT_FILE)   // 8
-#define CLIP_OBJECT  (1<<CT_OBJECT) // 16
-#define CLIP_TEXT    (1<<CT_TEXT)   // 32
-
-#define HIDA_GetPIDLFolder(pida) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[0])
-#define HIDA_GetPIDLItem(pida, i) (LPCITEMIDLIST)(((LPBYTE)pida)+(pida)->aoffset[i+1])
-
 #ifdef _DEBUG
 #define MSG(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define MSG(...)
 #endif
 
-static HANDLE glHeap = NULL;
-static BYTE glOleInit = 0;
-static UINT fmtShellIDList;
-
-enum { // From core.h
-   DATA_TEXT=1,    // Standard ascii text
-   DATA_RAW,       // Raw unprocessed data
-   DATA_DEVICE_INPUT, // Device activity
-   DATA_XML,       // Markup based text data.  NOTE: For clipboard data, the top-level encapsulating tag must declare the type of XML, e.g. <html>, <ripple>.  For plain XML, use <xml>
-   DATA_AUDIO,     // Audio file data, recognised by the Sound class
-   DATA_RECORD,    // Database record
-   DATA_IMAGE,     // Image file data, recognised by the Image class
-   DATA_REQUEST,   // Make a request for item data
-   DATA_RECEIPT,   // Receipt for item data, in response to an earlier request
-   DATA_FILE,      // File location (the data will reflect the complete file path)
-   DATA_CONTENT    // Document content (between XML tags) - sent by document objects only
-};
-
-typedef struct rkDropTarget {
-   IDropTarget idt;
-   LONG lRefCount;
-
-   struct WinDT *DataItems;
-   int    TotalItems;
-	char   *tb_pDragFile;
-   IDataObject *CurrentDataObject;
-   void *ItemData;
-} RK_IDROPTARGET;
-
-typedef struct rkDropTargetVTable
-{
-   BEGIN_INTERFACE
-      HRESULT (STDMETHODCALLTYPE *QueryInterface)(struct rkDropTarget *pThis, REFIID riid, void  **ppvObject);
-      ULONG (STDMETHODCALLTYPE *AddRef)(struct rkDropTarget *pThis);
-      ULONG (STDMETHODCALLTYPE *Release)(struct rkDropTarget *pThis);
-      HRESULT (STDMETHODCALLTYPE *DragEnter)(struct rkDropTarget *pThis, IDataObject *pDataObject, DWORD dwKeyState, POINTL pt, DWORD *pdwEffect);
-      HRESULT (STDMETHODCALLTYPE *DragOver)(struct rkDropTarget *pThis, DWORD dwKeyState, POINTL pt, DWORD *pdwEffect);
-      HRESULT (STDMETHODCALLTYPE *DragLeave)(struct rkDropTarget *pThis);
-      HRESULT (STDMETHODCALLTYPE *Drop)(struct rkDropTarget *pThis, IDataObject *pDataObject, DWORD dwKeyState, POINT pt, DWORD *pdwEffect);
-   END_INTERFACE
-} RK_IDROPTARGET_VTBL;
-
-static ULONG   STDMETHODCALLTYPE RKDT_AddRef(struct rkDropTarget *Self);
-static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObject *Data, DWORD grfKeyState, POINT pt, DWORD * pdwEffect);
-static int     STDMETHODCALLTYPE RKDT_AssessDatatype(struct rkDropTarget *Self, IDataObject *Data, char *Result, int Length);
-static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IDataObject *Data, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect);
-
 extern HINSTANCE glInstance;
-void RepaintWindow(int, int, int, int, int);
 void KillMessageHook(void);
-static LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
-
-void report_windows_clip_text(void *);
-void report_windows_clip_utf16(void *);
-void report_windows_files(LPIDA, int);
-void report_windows_hdrop(LPIDA, int);
-void win_clipboard_updated(void);
-
-void winCopyClipboard(void);
 
 static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
@@ -151,13 +77,6 @@ char glTrayIcon = FALSE, glTaskBar = TRUE, glStickToFront = FALSE;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
 static BYTE glScreenClassInit = 0;
-static DWORD glIgnoreClip = 0;
-static UINT fmtShellIDList = 0;
-static UINT fmtPasteSucceeded = 0;
-static UINT fmtPerformedDropEffect = 0;
-static UINT fmtPreferredDropEffect = 0;
-static UINT fmtParasolClip = 0;
-static int glClipboardUpdates = 0;
 
 #ifdef DBGMSG
 static struct {
@@ -216,10 +135,16 @@ static struct {
  { WM_WININICHANGE, "WM_WININICHANGE" }, { WM_KEYFIRST, "WM_KEYFIRST" }, { WM_KEYLAST, "WM_KEYLAST" }, { WM_SYNCPAINT, "WM_SYNCPAINT" },
  { 0, 0 }
 };
-
 #endif
 
-static LONG winInitDragDrop(HWND Window);
+int winLookupSurfaceID(HWND Window)
+{
+   return int(LARGE(GetProp(Window, "SurfaceID")));
+}
+
+namespace display {
+
+extern void RepaintWindow(int, int, int, int, int);
 
 /*
 static void printerror(void)
@@ -277,13 +202,13 @@ void winReleaseDC(HWND Window, HDC DC)
 //********************************************************************************************************************
 // If an error occurs, the DPI values are not updated.
 
-void winGetDPI(LONG *HDPI, LONG *VDPI)
+void winGetDPI(int *HDPI, int *VDPI)
 {
    // The SetProcessDPIAware() function was introduced in Windows Vista - we use it dynamically.
 
-   static BYTE dpi_called = FALSE;
+   static bool dpi_called = false;
    if (!dpi_called) {
-      dpi_called = TRUE;
+      dpi_called = true;
       HMODULE hUser32 = LoadLibrary("user32.dll");
       typedef BOOL (*SetProcessDPIAwareFunc)();
       SetProcessDPIAwareFunc setDPIAware = (SetProcessDPIAwareFunc)GetProcAddress(hUser32, "SetProcessDPIAware");
@@ -291,8 +216,7 @@ void winGetDPI(LONG *HDPI, LONG *VDPI)
       FreeLibrary(hUser32);
    }
 
-   HDC screen;
-   if ((screen = GetDC(NULL))) {
+   if (auto screen = GetDC(NULL)) {
       *HDPI = GetDeviceCaps(screen, LOGPIXELSX);
       *VDPI = GetDeviceCaps(screen, LOGPIXELSY);
       if (*HDPI < 96) *HDPI = 96;
@@ -316,9 +240,9 @@ char GetMonitorSizeFromEDID(const HKEY hDevRegKey, short *WidthMm, short *Height
     TCHAR valueName[NAME_SIZE];
     BYTE EDIDdata[1024];
     DWORD edidsize=sizeof(EDIDdata);
-    int i, retValue;
+    int retValue;
 
-    for (i = 0, retValue = ERROR_SUCCESS; retValue != ERROR_NO_MORE_ITEMS; ++i) {
+    for (int i = 0, retValue = ERROR_SUCCESS; retValue != ERROR_NO_MORE_ITEMS; ++i) {
         retValue = RegEnumValue ( hDevRegKey, i, &valueName[0], &AcutalValueNameLength, NULL, &dwType, EDIDdata, &edidsize);
         if (retValue != ERROR_SUCCESS || 0 != _tcscmp(valueName,_T("EDID"))) continue;
         *WidthMm  = ((EDIDdata[68] & 0xF0) << 4) + EDIDdata[66];
@@ -351,7 +275,7 @@ char GetSizeForDevID(const char * *TargetDevID, short *WidthMm, short *HeightMm)
 
       if (SetupDiEnumDeviceInfo(devInfo,i,&devInfoData)) {
          HKEY hDevRegKey = SetupDiOpenDevRegKey(devInfo,&devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
-         if(!hDevRegKey || (hDevRegKey == INVALID_HANDLE_VALUE)) continue;
+         if(!hDevRegKey or (hDevRegKey == INVALID_HANDLE_VALUE)) continue;
          bRes = GetMonitorSizeFromEDID(hDevRegKey, WidthMm, HeightMm);
          RegCloseKey(hDevRegKey);
       }
@@ -362,12 +286,9 @@ char GetSizeForDevID(const char * *TargetDevID, short *WidthMm, short *HeightMm)
 
 void get_dpi(void)
 {
-    short WidthMm, HeightMm;
-
-    DISPLAY_DEVICE dd;
-    dd.cb = sizeof(dd);
-    DWORD dev = 0; // device index
-
+   DISPLAY_DEVICE dd;
+   dd.cb = sizeof(dd);
+   DWORD dev = 0; // device index
    char bFoundDevice = FALSE;
    while (EnumDisplayDevices(0, dev, &dd, 0) && !bFoundDevice) {
       DISPLAY_DEVICE ddMon;
@@ -380,8 +301,9 @@ void get_dpi(void)
             // THIS IS UNTESTED
             char device_id[9], buffer[80];
             vsprintf(buffer, sizeof(buffer), "%s", ddMon.DeviceID);
-            for (i=9; buffer[i] AND (buffer[i] != '\\'); i++);
+            for (i=9; buffer[i] and (buffer[i] != '\\'); i++);
             StrCopy(buffer+i, device_id, 8);
+            short WidthMm, HeightMm;
             bFoundDevice = GetSizeForDevID(&device_id, &WidthMm, &HeightMm);
          }
          devMon++;
@@ -447,7 +369,7 @@ static const LPCTSTR glWinCursors[] = {
    IDC_SIZEALL
 };
 
-static int glCancelAutoPlayMsg = 0;
+static unsigned int glCancelAutoPlayMsg = 0;
 
 //********************************************************************************************************************
 
@@ -468,9 +390,7 @@ void winSetClassCursor(HWND Window, HCURSOR Cursor)
 
 void winInitCursors(struct WinCursor *Cursor, int Total)
 {
-   int i;
-
-   for (i=0; i < Total; i++) {
+   for (int i=0; i < Total; i++) {
       if (glWinCursors[i]) Cursor[i].WinCursor = LoadCursor(NULL, glWinCursors[i]);
       else Cursor[i].WinCursor = NULL;
    }
@@ -481,12 +401,10 @@ void winInitCursors(struct WinCursor *Cursor, int Total)
 
 //********************************************************************************************************************
 
-void winSetCursorPos(double X, double Y)
+void winSetCursorPos(int X, int Y)
 {
-   POINT point;
    if (glMainScreen) {
-      point.x = X;
-      point.y = Y;
+      POINT point = { .x = X, .y = Y };
       ClientToScreen(glMainScreen, &point);
       SetCursorPos(point.x, point.y);
    }
@@ -498,17 +416,6 @@ void winShowCursor(int State)
 {
    ShowCursor(State);
 }
-
-//********************************************************************************************************************
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
-int winLookupSurfaceID(HWND Window)
-{
-   return (int)GetProp(Window, "SurfaceID");
-   //return GetWindowLong(Window, WE_SURFACE);
-}
-#pragma GCC diagnostic pop
 
 //********************************************************************************************************************
 
@@ -549,7 +456,7 @@ void winMinimiseWindow(HWND Window)
 
 //********************************************************************************************************************
 
-int winReadKey(char *Key, char *Value, char *Buffer, int Length)
+int winReadKey(char *Key, char *Value, unsigned char *Buffer, int Length)
 {
    HKEY handle;
    DWORD length;
@@ -566,9 +473,7 @@ int winReadKey(char *Key, char *Value, char *Buffer, int Length)
    return errnum;
 }
 
-/*********************************************************************************************************************
-** Function: winGetDisplaySettings()
-*/
+//********************************************************************************************************************
 
 int winGetDisplaySettings(int *bits, int *bytes, int *amtcolours)
 {
@@ -577,7 +482,7 @@ int winGetDisplaySettings(int *bits, int *bytes, int *amtcolours)
    devmode.dmDriverExtra = 0;
 
    if (EnumDisplaySettings(NULL, -1, &devmode)) {
-      *bits  = devmode.dmBitsPerPel;
+      *bits = devmode.dmBitsPerPel;
 
       if (*bits <= 8) *bits = 24; // Pretend that the screen is 24 bit even though it is 256 colours, as this produces better results
 
@@ -631,7 +536,7 @@ int winGetWindowInfo(HWND Window, int *X, int *Y, int *Width, int *Height, int *
 
 static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
 {
-   if (glCursorEntry IS FALSE) {
+   if (glCursorEntry == FALSE) {
       winSetCursor(glDefaultCursor);
       glCursorEntry = TRUE;
 
@@ -649,8 +554,7 @@ static void HandleMovement(HWND window, WPARAM wparam, LPARAM lparam)
    // Get the absolute position of the mouse pointer relative to the desktop, then convert the coordinates relative to
    // the main window.
 
-   int surface_id;
-   if ((surface_id = winLookupSurfaceID(window))) {
+   if (auto surface_id = winLookupSurfaceID(window)) {
       POINT point;
       GetCursorPos(&point);
       MsgMovement(surface_id, point.x, point.y, (int)(lparam & 0xffff), (lparam>>16) & 0xffff);
@@ -664,8 +568,7 @@ static void HandleWheel(HWND window, WPARAM wparam, LPARAM lparam)
    // Get the absolute position of the mouse pointer relative to the desktop, then convert the coordinates relative to
    // the main window.
 
-   int surface_id;
-   if ((surface_id = winLookupSurfaceID(window))) {
+   if (auto surface_id = winLookupSurfaceID(window)) {
       double delta = -((DOUBLE)GET_WHEEL_DELTA_WPARAM(wparam) / (DOUBLE)WHEEL_DELTA) * 3.0;
       MsgWheelMovement(surface_id, delta);
    }
@@ -705,7 +608,7 @@ static void HandleKeyPress(WPARAM value)
    int left, top, width, height;
    POINT point;
 
-   if ((glQualifiers & KQ_CTRL) AND (value IS VK_F11)) {
+   if ((glQualifiers & KQ_CTRL) and (value == VK_F11)) {
       // If CTRL+F11 is pressed, maximise the window to full screen
 
       if (glMainScreen) {
@@ -718,7 +621,7 @@ static void HandleKeyPress(WPARAM value)
          left = ((winrect.right - winrect.left) - (client.right - client.left)) / 2;
          top = point.y - winrect.top;
 
-         if ((-left IS winrect.left) AND (-top IS winrect.top)) {
+         if ((-left == winrect.left) and (-top == winrect.top)) {
             SetWindowPos(glMainScreen, HWND_NOTOPMOST, 0, 0, desktop.right, desktop.bottom, 0);
          }
          else {
@@ -735,7 +638,7 @@ static void HandleKeyPress(WPARAM value)
 
    UBYTE keystate[256];
    WCHAR printable[2];
-   LONG result;
+   int result;
 
    printable[0] = 0;
 
@@ -758,7 +661,7 @@ static void HandleKeyPress(WPARAM value)
 
       int flags = 0;
       if ((value >= 0x60) && (value < 0x70)) flags |= KQ_NUM_PAD;
-      if (LOWORD(GetKeyState(VK_CAPITAL)) IS 1) flags |= KQ_CAPS_LOCK;
+      if (LOWORD(GetKeyState(VK_CAPITAL)) == 1) flags |= KQ_CAPS_LOCK;
       if (keyconv[value]) MsgKeyPress(flags|glQualifiers, keyconv[value], printable[0]);
       else MSG("No equivalent key value for MS key %d.\n", (int)value);
    }
@@ -771,7 +674,7 @@ static void HandleKeyRelease(WPARAM value)
 {
    char keystate[256];
    glQualifiers = 0;
-   if (GetKeyboardState(keystate)) {
+   if (GetKeyboardState((unsigned char *)keystate)) {
       if (keystate[VK_LMENU] & 0x80)    glQualifiers |= KQ_L_ALT;
       if (keystate[VK_RMENU] & 0x80)    glQualifiers |= KQ_R_ALT;
       if (keystate[VK_LSHIFT] & 0x80)   glQualifiers |= KQ_L_SHIFT;
@@ -804,7 +707,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 #ifdef DBGMSG
    int i;
    for (i=0; wincmd[i].code; i++) {
-      if (msgcode IS wincmd[i].code) {
+      if (msgcode == wincmd[i].code) {
          fprintf(stderr, "WinProc: %s, $%.8x, $%.8x, Window: %p\n", wincmd[i].name, (int)wParam, (int)lParam, window);
          break;
       }
@@ -856,7 +759,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          //
          // lParam = The window that is going to be activated.  This will be 0 if the window belongs to some other task.
 
-         if ((!lParam) OR (GetWindowLong((HWND)lParam, WE_INTERACTIVE) IS TRUE)) {
+         if ((!lParam) or (GetWindowLong((HWND)lParam, WE_INTERACTIVE) == TRUE)) {
             MSG("WM_NCACTIVATE: Allow activation of window %p\n", (HWND)lParam);
             glDeferredActiveWindow = 0;
             return DefWindowProc(window, msgcode, wParam, lParam);
@@ -880,13 +783,13 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
       case WM_ACTIVATE:
          //HWND otherwindow = lParam;
-         if (LOWORD(wParam) IS WA_ACTIVE) {
+         if (LOWORD(wParam) == WA_ACTIVE) {
             // Window activated by some method other than a mouse click
          }
-         else if (LOWORD(wParam) IS WA_CLICKACTIVE) {
+         else if (LOWORD(wParam) == WA_CLICKACTIVE) {
             // Window activated by a mouse click
          }
-         else if (LOWORD(wParam) IS WA_INACTIVE) {
+         else if (LOWORD(wParam) == WA_INACTIVE) {
             // Window deactivated
          }
 
@@ -943,7 +846,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
                newwidth  = cwidth;
                newheight = cheight;
                CheckWindowSize(surfaceid, &newwidth, &newheight);
-               if ((newwidth != cwidth) OR (newheight != cheight)) {
+               if ((newwidth != cwidth) or (newheight != cheight)) {
                   ZeroMemory(&win, sizeof(WINDOWPLACEMENT));
                   win.length = sizeof(WINDOWPLACEMENT);
                   GetWindowPlacement(window, &win);
@@ -978,10 +881,10 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          int cwidth  = (rect->right - rect->left) - ((winrect.right - winrect.left) - (client.right - client.left));
          int cheight = (rect->bottom - rect->top) - ((winrect.bottom- winrect.top) - (client.bottom - client.top));
          CheckWindowSize(winLookupSurfaceID(window), &cwidth, &cheight);
-         if ((wParam IS WMSZ_BOTTOMRIGHT) OR (wParam IS WMSZ_RIGHT) OR (wParam IS WMSZ_TOPRIGHT))    rect->right  = rect->left + cwidth + ((winrect.right - winrect.left) - (client.right - client.left));
-         if ((wParam IS WMSZ_BOTTOMRIGHT) OR (wParam IS WMSZ_BOTTOM) OR (wParam IS WMSZ_BOTTOMLEFT)) rect->bottom = rect->top + cheight + (winrect.bottom - client.bottom - winrect.top);
-         if ((wParam IS WMSZ_BOTTOMLEFT) OR (wParam IS WMSZ_LEFT) OR (wParam IS WMSZ_TOPLEFT))       rect->left   = rect->right - cwidth - ((winrect.right - winrect.left) - (client.right - client.left));
-         if ((wParam IS WMSZ_TOPLEFT) OR (wParam IS WMSZ_TOP) OR (wParam IS WMSZ_TOPRIGHT))          rect->top    = rect->bottom - cheight - ((winrect.bottom - winrect.top) - (client.bottom - client.top));
+         if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_RIGHT) or (wParam == WMSZ_TOPRIGHT))    rect->right  = rect->left + cwidth + ((winrect.right - winrect.left) - (client.right - client.left));
+         if ((wParam == WMSZ_BOTTOMRIGHT) or (wParam == WMSZ_BOTTOM) or (wParam == WMSZ_BOTTOMLEFT)) rect->bottom = rect->top + cheight + (winrect.bottom - client.bottom - winrect.top);
+         if ((wParam == WMSZ_BOTTOMLEFT) or (wParam == WMSZ_LEFT) or (wParam == WMSZ_TOPLEFT))       rect->left   = rect->right - cwidth - ((winrect.right - winrect.left) - (client.right - client.left));
+         if ((wParam == WMSZ_TOPLEFT) or (wParam == WMSZ_TOP) or (wParam == WMSZ_TOPRIGHT))          rect->top    = rect->bottom - cheight - ((winrect.bottom - winrect.top) - (client.bottom - client.top));
          return 0;
       }
 
@@ -994,14 +897,14 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_KEYDOWN:       HandleKeyPress(wParam); return 0;
 
       case WM_SYSKEYDOWN:    // The ALT keys are treated differently to everything else
-                             if (wParam IS VK_MENU) {
+                             if (wParam == VK_MENU) {
                                 if (lParam & (1<<24)) HandleKeyPress(VK_RMENU);
                                 else HandleKeyPress(VK_MENU);
                              }
                              else HandleKeyPress(wParam);
                              return 0;
 
-      case WM_SYSKEYUP:      if (wParam IS VK_MENU) {
+      case WM_SYSKEYUP:      if (wParam == VK_MENU) {
                                 if (lParam & (1<<24)) HandleKeyRelease(VK_RMENU);
                                 else HandleKeyRelease(VK_MENU);
                              }
@@ -1026,7 +929,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_MBUTTONUP:     HandleButtonRelease(window, WIN_MMB); return 0;
 
       case WM_ICONNOTIFY:
-         if (lParam IS WM_LBUTTONDOWN) {
+         if (lParam == WM_LBUTTONDOWN) {
             ShowWindow(window, SW_SHOWNORMAL); // Bring window out of minimisation
             SetForegroundWindow(window); // Focus is required in order to go to the front
             SetWindowPos(window, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE);
@@ -1037,7 +940,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             }
 */
          }
-         else if (lParam IS WM_RBUTTONUP) {
+         else if (lParam == WM_RBUTTONUP) {
 #if 0
             ShowWindow(window, SW_SHOWNORMAL);
 
@@ -1079,7 +982,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
       case WM_ENTERSIZEMOVE:
          MSG("WM_ENTERSIZEMOVE\n");
-         SetTimer(window, IDT_RESIZE_WINDOW, 20, &msg_timeout); // Set a timer to help when DispatchMessage() doesn't return in good time.
+         SetTimer(window, IDT_RESIZE_WINDOW, 20, (TIMERPROC)&msg_timeout); // Set a timer to help when DispatchMessage() doesn't return in good time.
          return 0;
 
       case WM_EXITSIZEMOVE:
@@ -1094,7 +997,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             glCancelAutoPlayMsg = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
          }
 
-         if (msgcode IS glCancelAutoPlayMsg) {
+         if (msgcode == glCancelAutoPlayMsg) {
             fprintf(stderr, "An AutoPlay window has been cancelled.\n");
             return TRUE;       // cancel auto-play
          }
@@ -1128,12 +1031,10 @@ void winDisableBatching(void)
 
 int winGetDesktopSize(int *width, int *height)
 {
-   HWND window;
-   RECT rect;
-
    *width = 800;
    *height = 600;
-   if ((window = GetDesktopWindow())) {
+   if (auto window = GetDesktopWindow()) {
+      RECT rect;
       if (GetWindowRect(window, &rect)) {
          *width  = rect.right;
          *height = rect.bottom;
@@ -1149,11 +1050,7 @@ int winCreateScreenClass(void)
 {
    WNDCLASSEX winclass;
 
-   if (!fmtShellIDList) fmtShellIDList = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
-   if (!fmtPasteSucceeded) fmtPasteSucceeded = RegisterClipboardFormat(CFSTR_PASTESUCCEEDED);
-   if (!fmtPerformedDropEffect) fmtPerformedDropEffect = RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT);
-   if (!fmtPreferredDropEffect) fmtPreferredDropEffect = RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
-   if (!fmtParasolClip) fmtParasolClip = RegisterClipboardFormat("Parasol");
+   winCreateScreenClassClipboard();
 
    if (!glCancelAutoPlayMsg) {
       glCancelAutoPlayMsg = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
@@ -1179,8 +1076,8 @@ int winCreateScreenClass(void)
 
       if (!glOleInit) {
          HRESULT result = OleInitialize(NULL);
-         if (result IS S_OK) glOleInit = 1; // 1 = Successful initialisation
-         else if (result IS S_FALSE) glOleInit = 2; // 2 = Attempted initialisation failed.
+         if (result == S_OK) glOleInit = 1; // 1 = Successful initialisation
+         else if (result == S_FALSE) glOleInit = 2; // 2 = Attempted initialisation failed.
       }
 
       return 1;
@@ -1189,8 +1086,6 @@ int winCreateScreenClass(void)
 }
 
 /*********************************************************************************************************************
-** Function: winCreateScreen()
-**
 ** WS_EX_ACCEPTFILES: Specifies that a window created with this style accepts drag-drop files.
 ** WS_EX_APPWINDOW: Forces a top-level window onto the taskbar when the window is visible.
 ** WS_EX_CLIENTEDGE: Specifies that a window has a border with a sunken edge.
@@ -1237,8 +1132,8 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
 {
    if (!Name) Name = "Parasol";
 
-   char interactive;
-   if ((Borderless) AND (!glTrayIcon) AND (!glTaskBar)) interactive = FALSE;
+   bool interactive;
+   if ((Borderless) and (!glTrayIcon) and (!glTaskBar)) interactive = FALSE;
    else interactive = TRUE;
 
    HWND Window;
@@ -1289,7 +1184,7 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
 
    if (glStickToFront > 0) glStickToFront--;
 
-   if ((Composite) OR (Opacity < 255)) {
+   if ((Composite) or (Opacity < 255)) {
       SetLastError(0);
       if (!SetWindowLong(Window, GWL_EXSTYLE, GetWindowLong(Window, GWL_EXSTYLE) | WS_EX_LAYERED)) {
          if (!GetLastError()) {
@@ -1307,7 +1202,7 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
    SetWindowLong(Window, WE_INTERACTIVE, interactive);
    SetWindowLong(Window, WE_BORDERLESS, Borderless);
 
-   if ((Desktop) AND (!glMainScreen)) glMainScreen = Window;
+   if ((Desktop) and (!glMainScreen)) glMainScreen = Window;
 
    AddClipboardFormatListener(Window);
 
@@ -1322,16 +1217,14 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
 
 HWND winCreateChild(HWND Parent, int X, int Y, int Width, int Height)
 {
-   HWND Window;
-
-   if ((Window = CreateWindowEx(
-      0, // WS_EX_NOPARENTNOTIFY
-      "ScreenClass", "Parasol Child Window",
-      WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,
-      0, 0, Width, Height,
-      Parent,
-      (HMENU)0,
-      glInstance, 0))) {
+   if (auto Window = CreateWindowEx(
+         0, // WS_EX_NOPARENTNOTIFY
+         "ScreenClass", "Parasol Child Window",
+         WS_CHILD|WS_CLIPCHILDREN|WS_CLIPSIBLINGS,
+         0, 0, Width, Height,
+         Parent,
+         (HMENU)0,
+         glInstance, 0)) {
 
       glMainScreen = Window;
 
@@ -1389,29 +1282,6 @@ void winGetWindowTitle(HWND Window, char *Buffer, int Size)
 void winSetWindowTitle(HWND window, const char *title)
 {
    SetWindowText(window, title);
-}
-
-//********************************************************************************************************************
-
-int winShowWindow(HWND window, int Maximise)
-{
-   int result;
-
-   if (GetWindowLong(window, WE_BORDERLESS) IS TRUE) {
-      // Raw surfaces (composites, borderless windows etc) do not get the focus automatically.
-      // This mirrors the functionality within the Parasol desktop.
-
-      result = ShowWindow(window, Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
-   }
-   else {
-      if ((!Maximise) AND (IsIconic(window))) {
-         // Window is minimised - restore it to its original position
-         result = ShowWindow(window, SW_RESTORE);
-      }
-      else result = ShowWindow(window, Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
-   }
-
-   return result;
 }
 
 //********************************************************************************************************************
@@ -1481,15 +1351,15 @@ int winResizeWindow(HWND Window, int X, int Y, int Width, int Height)
    info.cbSize = sizeof(info);
    if (!GetWindowInfo(Window, &info)) return 0;
 
-   if (X IS 0x7fffffff) X = info.rcClient.left;
-   if (Y IS 0x7fffffff) Y = info.rcClient.top;
+   if (X == 0x7fffffff) X = info.rcClient.left;
+   if (Y == 0x7fffffff) Y = info.rcClient.top;
 
    // Return if the current size is the same as the 'new' size
 
-   if ((Width IS (info.rcClient.right - info.rcClient.left)) AND
-       (Height IS (info.rcClient.bottom - info.rcClient.top)) AND
-       (X IS info.rcClient.left) AND
-       (Y IS info.rcClient.top)) return 1;
+   if ((Width == (info.rcClient.right - info.rcClient.left)) and
+       (Height == (info.rcClient.bottom - info.rcClient.top)) and
+       (X == info.rcClient.left) and
+       (Y == info.rcClient.top)) return 1;
 
    // Convert the client coordinates to window coordinates
 
@@ -1551,17 +1421,14 @@ void precalc_rgb(unsigned char *Data, unsigned char *Dest, int Width, int Height
 
 void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
    int Height, int XDest, int YDest, int ScanWidth, int ScanHeight,
-   int BPP, void *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, int Opacity)
+   int BPP, unsigned char *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, unsigned char Opacity)
 {
-   HDC dcMemory;
-   HBITMAP bmp;
-   HBITMAP *pOldBitmap;
    POINT ptSrc = { 0, 0 };
    SIZE size;
    char direct_blit;
    BITMAPV4HEADER info;
    RECT rect;
-   void *alpha_data;
+   unsigned char *alpha_data;
 
    info.bV4Size          = sizeof(info);
    info.bV4Width         = ScanWidth;     // Width in pixels
@@ -1584,10 +1451,10 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
 
    // NB: wingdi.h sometimes defines bV4Compression as bV4V4Compression
 
-   if (BPP IS 24) info.bV4V4Compression = BI_RGB; // Must use BI_RGB in 24bit mode, or GDI does nothing
+   if (BPP == 24) info.bV4V4Compression = BI_RGB; // Must use BI_RGB in 24bit mode, or GDI does nothing
    else info.bV4V4Compression = BI_BITFIELDS; // Must use BI_BITFIELDS and set the RGB masks in other packed modes
 
-   if (info.bV4BitCount IS 15) info.bV4BitCount = 16;
+   if (info.bV4BitCount == 15) info.bV4BitCount = 16;
 
    direct_blit = TRUE;
    if (GetWindowLong(Window, GWL_EXSTYLE) & WS_EX_LAYERED) {
@@ -1598,43 +1465,34 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
          size.cx = rect.right - rect.left;
          size.cy = rect.bottom - rect.top;
 
-         dcMemory = NULL;
-         if (!dcMemory) {
-            if ((dcMemory = CreateCompatibleDC(WindowDC))) {
-               if (!(bmp = CreateDIBSection(WindowDC, (BITMAPINFO *)&info, DIB_RGB_COLORS, &alpha_data, NULL, 0))) {
-                  DeleteDC(dcMemory);
-                  dcMemory = NULL;
-               }
+         if (auto dcMemory = CreateCompatibleDC(WindowDC)) {
+            if (auto bmp = CreateDIBSection(WindowDC, (BITMAPINFO *)&info, DIB_RGB_COLORS, (void **)&alpha_data, NULL, 0)) {
+               //printf("bpp %d, XD %d, YD %d, Width %d, Height %d, X %d, Y %d, ScanHeight %d\n", (int)BPP, XDest, YDest, Width, Height, X, Y, ScanHeight);
+
+               precalc_rgb(Data, alpha_data, ScanWidth, ScanHeight);
+
+               // SetDIBitsToDevice() defines the size of the window for UpdateLayeredWindow().  This is crazy, because
+               // that means that the entire layer needs to be updated every time, making this process terribly slow.
+               // However MS documentation confirms as much in the API documentation.
+
+               X = 0;
+               Y = 0;
+               XDest = 0;
+               YDest = 0;
+               Width = size.cx;
+               Height = size.cy;
+
+               auto pOldBitmap = SelectObject(dcMemory, bmp);
+               SetDIBitsToDevice(dcMemory, XDest, YDest, Width, Height, X, ScanHeight - (Y + Height), 0, ScanHeight, alpha_data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
+
+               UpdateLayeredWindow(Window, NULL, NULL, &size, dcMemory, &ptSrc, 0, &blend_alpha, ULW_ALPHA);
+
+               direct_blit = FALSE;
+               SelectObject(dcMemory, pOldBitmap);
+               DeleteObject(bmp);
             }
-         }
-
-         if (dcMemory) {
-            //printf("bpp %d, XD %d, YD %d, Width %d, Height %d, X %d, Y %d, ScanHeight %d\n", (int)BPP, XDest, YDest, Width, Height, X, Y, ScanHeight);
-
-            precalc_rgb(Data, alpha_data, ScanWidth, ScanHeight);
-
-            // SetDIBitsToDevice() defines the size of the window for UpdateLayeredWindow().  This is crazy, because
-            // that means that the entire layer needs to be updated every time, making this process terribly slow.
-            // However MS documentation confirms as much in the API documentation.
-
-            X = 0;
-            Y = 0;
-            XDest = 0;
-            YDest = 0;
-            Width = size.cx;
-            Height = size.cy;
-
-            pOldBitmap = SelectObject(dcMemory, bmp);
-            SetDIBitsToDevice(dcMemory, XDest, YDest, Width, Height, X, ScanHeight - (Y + Height), 0, ScanHeight, alpha_data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
-
-            UpdateLayeredWindow(Window, NULL, NULL, &size, dcMemory, &ptSrc, 0, &blend_alpha, ULW_ALPHA);
-
-            direct_blit = FALSE;
-            SelectObject(dcMemory, pOldBitmap);
-            DeleteObject(bmp);
             DeleteDC(dcMemory);
          }
-         //else printf("Failed to create DC and/or temporary bitmap.");
       }
       else SetLayeredWindowAttributes(Window, 0, Opacity, LWA_ALPHA);
    }
@@ -1646,7 +1504,7 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
 
 //********************************************************************************************************************
 
-LONG winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamask)
+int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamask)
 {
    PIXELFORMATDESCRIPTOR  pfd;
    const unsigned char formats[] = { 0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff };
@@ -1675,19 +1533,17 @@ LONG winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphama
 
 //********************************************************************************************************************
 
-void winGetError(LONG Error, char *Buffer, LONG BufferSize)
+void winGetError(int Error, char *Buffer, int BufferSize)
 {
    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer, BufferSize, 0);
 }
 
 //********************************************************************************************************************
 
-void winDrawLine(HDC hdc, LONG x1, LONG y1, LONG x2, LONG y2, UBYTE *rgb)
+void winDrawLine(HDC hdc, int x1, int y1, int x2, int y2, UBYTE *rgb)
 {
-   HPEN pen, oldpen;
-
-   if ((pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2])))) {
-      if ((oldpen = SelectObject(hdc, pen))) {
+   if (auto pen = CreatePen(PS_SOLID, 1, RGB(rgb[0], rgb[1], rgb[2]))) {
+      if (auto oldpen = SelectObject(hdc, pen)) {
          MoveToEx(hdc, x1, y1, NULL);
          LineTo(hdc, x2, y2);
          SelectObject(hdc, oldpen);
@@ -1698,16 +1554,15 @@ void winDrawLine(HDC hdc, LONG x1, LONG y1, LONG x2, LONG y2, UBYTE *rgb)
 
 //********************************************************************************************************************
 
-void winDrawRectangle(HDC hdc, LONG x, LONG y, LONG width, LONG height, UBYTE red, UBYTE green, UBYTE blue)
+void winDrawRectangle(HDC hdc, int x, int y, int width, int height, UBYTE red, UBYTE green, UBYTE blue)
 {
    RECT rect;
-   HBRUSH brush;
 
    rect.left   = x;
    rect.top    = y;
    rect.right  = x + width;
    rect.bottom = y + height;
-   brush = CreateSolidBrush(RGB(red,green,blue));
+   auto brush = CreateSolidBrush(RGB(red,green,blue));
    FillRect(hdc, &rect, brush);
    DeleteObject(brush);
 }
@@ -1716,16 +1571,14 @@ void winDrawRectangle(HDC hdc, LONG x, LONG y, LONG width, LONG height, UBYTE re
 ** Sets a new clipping region for a DC.
 */
 
-LONG winSetClipping(HDC hdc, LONG left, LONG top, LONG right, LONG bottom)
+int winSetClipping(HDC hdc, int left, int top, int right, int bottom)
 {
-   HRGN region;
-
-   if ((!right) OR (!bottom)) {
+   if ((!right) or (!bottom)) {
       SelectClipRgn(hdc, NULL);
       return 1;
    }
 
-   if ((region = CreateRectRgn(left, top, right, bottom))) {
+   if (auto region = CreateRectRgn(left, top, right, bottom)) {
       SelectClipRgn(hdc, region);
       DeleteObject(region);
       return 1;
@@ -1735,7 +1588,7 @@ LONG winSetClipping(HDC hdc, LONG left, LONG top, LONG right, LONG bottom)
 
 //********************************************************************************************************************
 
-LONG winBlit(HDC dest, LONG xdest, LONG ydest, LONG width, LONG height, HDC src, LONG x, LONG y)
+int winBlit(HDC dest, int xdest, int ydest, int width, int height, HDC src, int x, int y)
 {
    if (!BitBlt(dest, xdest, ydest, width, height, src, x, y, SRCCOPY)) {
       return GetLastError();
@@ -1759,9 +1612,9 @@ void winDeleteObject(void *Object)
 
 //********************************************************************************************************************
 
-void winSetDIBitsToDevice(HDC hdc, LONG xdest, LONG ydest, LONG width, LONG height,
-        LONG xstart, LONG ystart, LONG scanwidth, LONG scanheight, LONG bpp, void *data,
-        LONG redmask, LONG greenmask, LONG bluemask)
+void winSetDIBitsToDevice(HDC hdc, int xdest, int ydest, int width, int height,
+        int xstart, int ystart, int scanwidth, int scanheight, int bpp, void *data,
+        int redmask, int greenmask, int bluemask)
 {
    BITMAPV4HEADER info;
 
@@ -1786,10 +1639,10 @@ void winSetDIBitsToDevice(HDC hdc, LONG xdest, LONG ydest, LONG width, LONG heig
 
    // NB: wingdi.h sometimes defines bV4Compression as bV4V4Compression
 
-   if (bpp IS 24) info.bV4V4Compression = BI_RGB; // Must use BI_RGB in 24bit mode, or GDI does nothing
+   if (bpp == 24) info.bV4V4Compression = BI_RGB; // Must use BI_RGB in 24bit mode, or GDI does nothing
    else info.bV4V4Compression = BI_BITFIELDS; // Must use BI_BITFIELDS and set the RGB masks in other packed modes
 
-   if (info.bV4BitCount IS 15) info.bV4BitCount = 16;
+   if (info.bV4BitCount == 15) info.bV4BitCount = 16;
 
    ystart = scanheight - (ystart + height);
    SetDIBitsToDevice(hdc, xdest, ydest, width, height, xstart, ystart, 0, scanheight, data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
@@ -1804,7 +1657,7 @@ void winDeleteDC(HDC hdc)
 
 //********************************************************************************************************************
 
-void winGetPixel(HDC hdc, LONG x, LONG y, UBYTE *rgb)
+void winGetPixel(HDC hdc, int x, int y, UBYTE *rgb)
 {
    COLORREF col;
    col = GetPixel(hdc, x, y);
@@ -1815,7 +1668,7 @@ void winGetPixel(HDC hdc, LONG x, LONG y, UBYTE *rgb)
 
 //********************************************************************************************************************
 
-HBITMAP winCreateBitmap(LONG width, LONG height, LONG bpp)
+HBITMAP winCreateBitmap(int width, int height, int bpp)
 {
    return CreateBitmap(width, height, 1, bpp, NULL);
 }
@@ -1825,822 +1678,53 @@ HBITMAP winCreateBitmap(LONG width, LONG height, LONG bpp)
 // mask shape.
 
 void winDrawTransparentBitmap(HDC hdcDest, HDC hdcSrc, HBITMAP hBitmap,
-        LONG x, LONG y, LONG xsrc, LONG ysrc, LONG width, LONG height,
-        LONG maskx, LONG masky, HDC hdcMask)
+        int x, int y, int xsrc, int ysrc, int width, int height,
+        int maskx, int masky, HDC hdcMask)
 {
-   if ((!hdcMask) OR (!hdcDest) OR (!hdcSrc)) return;
+   if ((!hdcMask) or (!hdcDest) or (!hdcSrc)) return;
 
    BitBlt(hdcDest, x, y, width, height, hdcMask, maskx, masky, SRCAND);   // Mask out the places where the bitmap will be placed.
    BitBlt(hdcDest, x, y, width, height, hdcSrc, xsrc, ysrc, SRCPAINT);    // XOR the bitmap with the background on the destination DC.
 }
 
 //********************************************************************************************************************
-// Get a pointer to our interface
-
-static HRESULT STDMETHODCALLTYPE RKDT_QueryInterface(struct rkDropTarget *Self, REFIID iid, void ** ppvObject)
-{
-   MSG("rkDropTarget::QueryInterface()\n");
-
-	if (ppvObject IS NULL) return E_POINTER;
-
-	// Supports IID_IUnknown and IID_IDropTarget
-	if (IsEqualGUID(iid, &IID_IUnknown) OR IsEqualGUID(iid, &IID_IDropTarget)) {
-		*ppvObject = (void *)Self;
-		RKDT_AddRef(Self);
-		return S_OK;
-	}
-
-	return E_NOINTERFACE;
-}
-
-//********************************************************************************************************************
-
-static ULONG STDMETHODCALLTYPE RKDT_AddRef(struct rkDropTarget *Self)
-{
-   MSG("rkDropTarget::AddRef()\n");
-   return InterlockedIncrement(&Self->lRefCount);
-}
-
-//********************************************************************************************************************
-
-static ULONG STDMETHODCALLTYPE RKDT_Release(struct rkDropTarget *Self)
-{
-   MSG("rkDropTarget::Release()\n");
-
-   LONG nCount;
-   if ((nCount = InterlockedDecrement(&Self->lRefCount)) == 0) {
-      if (Self->ItemData) {
-         free(Self->ItemData);
-         Self->ItemData = NULL;
-      }
-
-      if (Self->DataItems) {
-         free(Self->DataItems);
-         Self->DataItems = NULL;
-      }
-      if (glHeap) HeapFree(glHeap, 0, Self);
-   }
-
-	return nCount;
-}
-
-//********************************************************************************************************************
-// The drag action continues
-
-static HRESULT STDMETHODCALLTYPE RKDT_DragOver(struct rkDropTarget *Self, DWORD grfKeyState, POINTL pt, DWORD * pdwEffect)
-{
-   MSG("rkDropTarget::DragOver()\n");
-	*pdwEffect = DROPEFFECT_COPY;
-	return S_OK;
-}
-
-//********************************************************************************************************************
-// The drag action leaves your window - no dropping
-
-static HRESULT STDMETHODCALLTYPE RKDT_DragLeave()
-{
-   MSG("rkDropTarget::DragLeave()\n");
-	return S_OK;
-}
-
-//********************************************************************************************************************
-// The drag action enters your window - get the item
-
-static HRESULT STDMETHODCALLTYPE RKDT_DragEnter(struct rkDropTarget *Self, IDataObject *Data, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
-{
-   MSG("rkDropTarget::DragEnter %dx%d\n", (int)pt.x, (int)pt.y);
-
-   //HWND window = WindowFromPoint(pt);
-
-   // Use DROPEFFECT_NONE if the datatype isn't supported, otherwise use DROPEFFECT_COPY.
-
-	*pdwEffect = DROPEFFECT_COPY;
-	return S_OK;
-}
-
-//********************************************************************************************************************
-// Convert the windows datatypes to Parasol datatypes.
-
-static int STDMETHODCALLTYPE RKDT_AssessDatatype(struct rkDropTarget *Self, IDataObject *Data, char *Result, int Length)
-{
-   IEnumFORMATETC *eformat;
-   FORMATETC fmt;
-   int i;
-   char dt;
-
-   i = 0;
-   if (Data->lpVtbl->EnumFormatEtc(Data, DATADIR_GET, &eformat) IS S_OK) {
-      while (eformat->lpVtbl->Next(eformat, 1, &fmt, NULL) IS S_OK) {
-         TCHAR szBuf[100];
-         if (GetClipboardFormatName(fmt.cfFormat, szBuf, sizeof(szBuf))) {
-            MSG("Format name: %d '%s'\n", fmt.cfFormat, szBuf);
-         }
-         else MSG("Format: %d\n", fmt.cfFormat);
-
-         switch (fmt.cfFormat) {
-            case CF_TEXT:
-            case CF_UNICODETEXT:
-            case CF_OEMTEXT:
-               dt = DATA_TEXT; break;
-
-            case CF_HDROP:
-               dt = DATA_FILE; break;
-
-            case CF_BITMAP:
-            case CF_DIB:
-            case CF_METAFILEPICT:
-            case CF_TIFF:
-               dt = DATA_IMAGE; break;
-
-            case CF_RIFF:
-            case CF_WAVE:
-               dt = DATA_AUDIO; break;
-
-            //case CF_HTML:
-            //   dt = DATA_XML; break;
-
-            default:
-               dt = 0; break;
-         }
-
-         if (dt) Result[i++] = dt;
-         if (i >= Length-1) break;
-      }
-      eformat->lpVtbl->Release(eformat);
-   }
-
-   Result[i] = 0;
-   return i;
-}
-
-//********************************************************************************************************************
-// The data have been dropped here, so process it
-
-static HRESULT STDMETHODCALLTYPE RKDT_Drop(struct rkDropTarget *Self, IDataObject *Data, DWORD grfKeyState, POINT pt, DWORD * pdwEffect)
-{
-   HWND window;
-   int surface_id, total;
-   char datatypes[10];
-
-   MSG("rkDropTarget::Drop(%dx%d)\n", (int)pt.x, (int)pt.y);
-
-	*pdwEffect = DROPEFFECT_NONE;
-
-   window = WindowFromPoint(pt);
-   surface_id = winLookupSurfaceID(window);
-   if (!surface_id) {
-      MSG("rkDropTarget::Drop() Unable to determine surface ID from window, aborting.\n");
-      return S_OK;
-   }
-
-   if (!(total = RKDT_AssessDatatype(Self, Data, datatypes, sizeof(datatypes)))) {
-      MSG("rkDropTarget::Drop() Datatype not recognised or supported.\n");
-      return S_OK;
-   }
-
-   // Calling winDragDropFromHost() will send an AC_DragDrop to the underlying surface.  If an object accepts the data,
-   // it will send a DATA_REQUEST to the Display that represents the surface.  At this point we can copy the
-   // clipboard from the host and send it to the client.  This entire process will occur within this call, so long as
-   // all the calls are direct and the messaging system isn't used.  Otherwise the data will be lost as Windows
-   // cannot be expected to hold onto the data after this method returns.
-
-   Self->CurrentDataObject = Data;
-   winDragDropFromHost_Drop(surface_id, datatypes);
-   Self->CurrentDataObject = NULL;
-
-	*pdwEffect = DROPEFFECT_COPY;
-
-   return S_OK;
-}
-
-//********************************************************************************************************************
-
-static int get_data(struct rkDropTarget *Self, char *Preference, struct WinDT **OutData, int *OutTotal)
-{
-	IDataObject *data;
-   STGMEDIUM stgm;
-	FORMATETC fmt = { CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-   int p, error;
-
-   MSG("rkDropTarget::GetData()\n");
-
-   if ((!Preference) OR (!OutData) OR (!OutTotal)) return ERR_NullArgs;
-
-   if (Self->ItemData) {
-      free(Self->ItemData);
-      Self->ItemData = NULL;
-   }
-
-   if (Self->DataItems) {
-      free(Self->DataItems);
-      Self->DataItems = NULL;
-   }
-
-   data = Self->CurrentDataObject;
-   for (p=0; p < 4; p++) { // Up to 4 data preferences may be specified
-      switch (Preference[p]) {
-         case DATA_TEXT:
-         case DATA_XML: {
-            int chars, u8len, i, size;
-            unsigned short value;
-            unsigned char *u8str;
-            unsigned short *wstr;
-
-            fmt.cfFormat = CF_UNICODETEXT;
-	         if (data->lpVtbl->GetData(data, &fmt, &stgm) IS S_OK) {
-               if ((wstr = (unsigned short *)GlobalLock(stgm.hGlobal))) {
-                  u8len = 0;
-                  for (chars=0; wstr[chars]; chars++) {
-                     if (wstr[chars] < 128) u8len++;
-                     else if (wstr[chars] < 0x800) u8len += 2;
-                     else u8len += 3;
-                  }
-
-                  if ((Self->ItemData = malloc(u8len+1))) {
-                     u8str = (unsigned char *)Self->ItemData;
-                     i = 0;
-                     for (chars=0; wstr[chars]; chars++) {
-                        value = wstr[chars];
-                        if (value < 128) {
-                           u8str[i++] = (unsigned char)value;
-                        }
-                        else if (value < 0x800) {
-                           u8str[i+1] = (value & 0x3f) | 0x80;
-                           value  = value>>6;
-                           u8str[i] = value | 0xc0;
-                           i += 2;
-                        }
-                        else {
-                           u8str[i+2] = (value & 0x3f)|0x80;
-                           value  = value>>6;
-                           u8str[i+1] = (value & 0x3f)|0x80;
-                           value  = value>>6;
-                           u8str[i] = value | 0xe0;
-                           i += 3;
-                        }
-                     }
-                     u8str[i++] = 0;
-
-                     if ((Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT)))) {
-                        Self->DataItems[0].Datatype = DATA_TEXT;
-                        Self->DataItems[0].Length = i;
-                        Self->DataItems[0].Data = Self->ItemData;
-                        *OutData  = Self->DataItems;
-                        *OutTotal = 1;
-                        error = ERR_Okay;
-                     }
-                     else error = ERR_AllocMemory;
-                  }
-                  else error = ERR_AllocMemory;
-
-                  GlobalUnlock(stgm.hGlobal);
-               }
-               else error = ERR_Lock;
-
-               ReleaseStgMedium(&stgm);
-               return error;
-            }
-
-            fmt.cfFormat = CF_TEXT;
-	         if (data->lpVtbl->GetData(data, &fmt, &stgm) IS S_OK) {
-               unsigned char *str;
-               if ((str = (unsigned char *)GlobalLock(stgm.hGlobal))) {
-                  size = GlobalSize(stgm.hGlobal);
-                  if ((Self->ItemData = malloc(size))) {
-                     memcpy(Self->ItemData, str, size);
-
-                     if ((Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT)))) {
-                        Self->DataItems[0].Datatype = DATA_TEXT;
-                        Self->DataItems[0].Length   = size;
-                        Self->DataItems[0].Data     = Self->ItemData;
-                        *OutData  = Self->DataItems;
-                        *OutTotal = 1;
-                        error = ERR_Okay;
-                     }
-                     else error = ERR_AllocMemory;
-                  }
-                  else error = ERR_AllocMemory;
-                  GlobalUnlock(stgm.hGlobal);
-               }
-               else error = ERR_Lock;
-
-               ReleaseStgMedium(&stgm);
-               return error;
-            }
-
-            break;
-         }
-
-         case DATA_IMAGE: {
-            int size;
-
-            fmt.cfFormat = CF_TIFF;
-	         if (data->lpVtbl->GetData(data, &fmt, &stgm) IS S_OK) {
-               unsigned char *raw;
-               if ((raw = (unsigned char *)GlobalLock(stgm.hGlobal))) {
-                  size = GlobalSize(stgm.hGlobal);
-                  if ((Self->ItemData = malloc(size))) {
-                     memcpy(Self->ItemData, raw, size);
-
-                     if ((Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT)))) {
-                        Self->DataItems[0].Datatype = DATA_IMAGE;
-                        Self->DataItems[0].Length   = size;
-                        Self->DataItems[0].Data     = Self->ItemData;
-                        *OutData  = Self->DataItems;
-                        *OutTotal = 1;
-                        error = ERR_Okay;
-                     }
-                     else error = ERR_AllocMemory;
-                  }
-                  else error = ERR_AllocMemory;
-                  GlobalUnlock(stgm.hGlobal);
-               }
-               else error = ERR_Lock;
-
-               ReleaseStgMedium(&stgm);
-               return error;
-            }
-
-            break;
-         }
-
-         case DATA_AUDIO: {
-            int size;
-
-            fmt.cfFormat = CF_RIFF;
-	         if (data->lpVtbl->GetData(data, &fmt, &stgm) IS S_OK) {
-               unsigned char *raw;
-               if ((raw = (unsigned char *)GlobalLock(stgm.hGlobal))) {
-                  size = GlobalSize(stgm.hGlobal);
-                  if ((Self->ItemData = malloc(size))) {
-                     memcpy(Self->ItemData, raw, size);
-
-                     if ((Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT)))) {
-                        Self->DataItems[0].Datatype = DATA_AUDIO;
-                        Self->DataItems[0].Length   = size;
-                        Self->DataItems[0].Data     = Self->ItemData;
-                        *OutData  = Self->DataItems;
-                        *OutTotal = 1;
-                        error = ERR_Okay;
-                     }
-                     else error = ERR_AllocMemory;
-                  }
-                  else error = ERR_AllocMemory;
-                  GlobalUnlock(stgm.hGlobal);
-               }
-               else error = ERR_Lock;
-
-               ReleaseStgMedium(&stgm);
-               return error;
-            }
-
-            break;
-         }
-
-         case DATA_FILE: {
-            HDROP raw;
-            int i, total, item, len, size;
-            TCHAR path[MAX_PATH];
-            char *str;
-
-            fmt.cfFormat = CF_HDROP;
-	         if (data->lpVtbl->GetData(data, &fmt, &stgm) IS S_OK) {
-               if ((raw = (HDROP)GlobalLock(stgm.hGlobal))) {
-                  total = DragQueryFile(raw, 0xffffffff, NULL, 0);
-
-                  size = 0;
-                  for (i=0; i < total; i++) {
-                     size += DragQueryFile(raw, i, path, sizeof(path)) + 1;
-                  }
-
-                  if ((Self->ItemData = malloc(size))) {
-                     if ((Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT) * total))) {
-                        str = (char *)Self->ItemData;
-                        for (item=0; item < total; item++) {
-                           len = DragQueryFile(raw, item, str, MAX_PATH) + 1;
-
-                           Self->DataItems[item].Datatype = DATA_FILE;
-                           Self->DataItems[item].Length   = len;
-                           Self->DataItems[item].Data     = str;
-                           str += len;
-                        }
-                        *OutData  = Self->DataItems;
-                        *OutTotal = total;
-                        error = ERR_Okay;
-                     }
-                     else error = ERR_AllocMemory;
-                  }
-                  else error = ERR_AllocMemory;
-                  GlobalUnlock(stgm.hGlobal);
-               }
-               else error = ERR_Lock;
-
-               ReleaseStgMedium(&stgm);
-               return error;
-            }
-
-            fmt.cfFormat = fmtShellIDList;
-            if (data->lpVtbl->GetData(data, &fmt, &stgm) IS S_OK) {
-               LPIDA pida;
-               TCHAR path[MAX_PATH], folderpath[MAX_PATH];
-               LPCITEMIDLIST item, folder;
-               int pos, j, index, folderlen;
-
-               MSG("ShellIDList discovered.\n");
-
-               error = ERR_Okay;
-
-               if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
-                  folder = HIDA_GetPIDLFolder(pida);
-                  if (SHGetPathFromIDList(folder, folderpath)) {
-                     // Calculate the size of the file strings: (FolderLength * Total) + (Lengths of each filename)
-
-                     for (folderlen=0; folderpath[folderlen]; folderlen++);
-                     size = folderlen * pida->cidl;
-
-                     // Add lengths of each file name
-
-                     for (index=0; index < (int)pida->cidl; index++) {
-                        item = HIDA_GetPIDLItem(pida, index);
-                        if (SHGetPathFromIDList(item, path)) {
-                           for (j=0; path[j]; j++);
-                           while ((j > 0) AND (path[j-1] != '/') AND (path[j-1] != '\\')) j--;
-                           for (i=0; path[j+i]; i++);
-                           size += i + 1;
-                        }
-                        else {
-                           error = ERR_Failed;
-                           break;
-                        }
-                     }
-
-                     if (!error) {
-                        if ((Self->ItemData = malloc(size)) AND (Self->DataItems = (struct WinDT *)malloc(sizeof(struct WinDT) * pida->cidl))) {
-                           char *str = (char *)Self->ItemData;
-                           pos = 0;
-                           for (index=0; index < (int)pida->cidl; index++) {
-                              item = HIDA_GetPIDLItem(pida, index);
-                              if (SHGetPathFromIDList(item, path)) {
-                                 Self->DataItems[index].Datatype = DATA_FILE;
-                                 Self->DataItems[index].Data     = str + pos;
-
-                                 // Copy the root folder path first
-
-                                 for (j=0; folderpath[j]; j++) str[pos++] = folderpath[j];
-
-                                 // Go to the end of the string and then find the start of the filename
-
-                                 for (j=0; path[j]; j++);
-                                 while ((j > 0) AND (path[j-1] != '/') AND (path[j-1] != '\\')) j--;
-
-                                 while (path[j]) str[pos++] = path[j++];
-                                 str[pos++] = 0;
-
-                                 Self->DataItems[index].Length = (int)(((char *)str + pos) - (char *)Self->DataItems[index].Data);
-                              }
-                              else {
-                                 error = ERR_Failed;
-                                 break;
-                              }
-                           }
-
-                           if (!error) {
-                              *OutData  = Self->DataItems;
-                              *OutTotal = pida->cidl;
-                           }
-                        }
-                        else error = ERR_AllocMemory;
-                     }
-                  }
-                  else error = ERR_Failed;
-
-                  GlobalUnlock(stgm.hGlobal);
-               }
-               else error = ERR_Lock;
-
-               ReleaseStgMedium(&stgm);
-               return error;
-            }
-            break;
-         }
-      }
-   }
-
-#if 0
-   // Other means of data access
-	WCHAR *strFileName;
-   switch (stgMedium.tymed) {
-      case TYMED_FILE:
-         strFileName = stgMedium.lpszFileName;
-         //...
-         CoTaskMemFree(stgMedium.lpszFileName);
-         break;
-
-      case TYMED_ISTREAM:
-         tb_pDragFile = new COleStreamFile(stgMedium.pstm);
-         DWORD siz = tb_pDragFile->GetLength();
-         LPTSTR buffer = Data.GetBufferSetLength((int)siz);
-         tb_pDragFile->Read(buffer, (UINT)siz); // typesafe here because GetLength >=0
-         Data.ReleaseBuffer();
-         break;
-   }
-#endif
-
-   return ERR_Failed;
-}
-
-//********************************************************************************************************************
-
-static RK_IDROPTARGET *glDropTarget = NULL;
-
-static LONG winInitDragDrop(HWND Window)
-{
-   MSG("Initialising drag and drop.\n");
-
-   fmtShellIDList = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
-
-   glHeap = GetProcessHeap();
-
-   if (!glDropTarget) {
-      static RK_IDROPTARGET_VTBL idt_vtbl = {
-         RKDT_QueryInterface,
-         RKDT_AddRef,
-         RKDT_Release,
-         RKDT_DragEnter,
-         RKDT_DragOver,
-         RKDT_DragLeave,
-         RKDT_Drop
-      };
-
-      if (!(glDropTarget = HeapAlloc(glHeap, 0, sizeof(RK_IDROPTARGET)))) return ERR_Failed;
-      glDropTarget->idt.lpVtbl   = (void *)&idt_vtbl;
-      glDropTarget->lRefCount    = 1;
-      glDropTarget->tb_pDragFile = NULL;
-   }
-
-   if (RegisterDragDrop(Window, &glDropTarget->idt) != S_OK) {
-      MSG("RegisterDragDrop() failed.\n");
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-int winGetData(char *Preference, struct WinDT **OutData, int *OutTotal)
-{
-   if ((!Preference) OR (!OutData) OR (!OutTotal)) return ERR_NullArgs;
-   if (!glDropTarget) return ERR_Failed;
-   return get_data(glDropTarget, Preference, OutData, OutTotal);
-}
-
-//********************************************************************************************************************
-
-void winClearClipboard(void)
-{
-   if (OpenClipboard(NULL)) {
-      EmptyClipboard();
-      CloseClipboard();
-   }
-}
-
-//********************************************************************************************************************
-// Called from clipAddFile(), clipAddText() etc
-
-int winAddClip(int Datatype, const void *Data, int Size, int Cut)
-{
-   UINT format;
-   HGLOBAL hdata;
-   char * pdata;
-
-   MSG("winAddClip()\n");
-
-   switch(Datatype) {
-      case CLIP_DATA:   return ERR_NoSupport; break;
-      case CLIP_AUDIO:  format = CF_WAVE; break;
-      case CLIP_IMAGE:  format = CF_BITMAP; break;
-      case CLIP_FILE:   format = CF_HDROP; Size += sizeof(DROPFILES); break;
-      case CLIP_OBJECT: return ERR_NoSupport; break;
-      case CLIP_TEXT:   format = CF_UNICODETEXT; break;
-      default:
-         return ERR_NoSupport;
-   }
-
-   if (OpenClipboard(NULL)) {
-      int error;
-
-      EmptyClipboard();
-
-      if ((hdata = GlobalAlloc(GMEM_DDESHARE, Size))) {
-         if ((pdata = (char *)GlobalLock(hdata))) {
-            memcpy(pdata, Data, Size);
-            GlobalUnlock(hdata);
-
-            glIgnoreClip = GetTickCount();
-
-            SetClipboardData(format, hdata);
-            error = ERR_Okay;
-         }
-         else error = ERR_Lock;
-      }
-      else error = ERR_AllocMemory;
-
-      CloseClipboard();
-      return error;
-   }
-   else return ERR_Failed;
-
-   return ERR_NoSupport;
-}
-
-//********************************************************************************************************************
-
-void winGetClip(int Datatype)
-{
-   UINT format;
-
-   switch (Datatype) {
-      case CLIP_DATA:   return; break;
-      case CLIP_AUDIO:  format = CF_WAVE; break;
-      case CLIP_IMAGE:  format = CF_BITMAP; break;
-      case CLIP_FILE:   format = CF_HDROP; break;
-      case CLIP_OBJECT: return; break;
-      case CLIP_TEXT:   format = CF_UNICODETEXT; break;
-      default:
-         return;
-   }
-
-   GetClipboardData(CF_UNICODETEXT);
-}
-
-//********************************************************************************************************************
-// The clipboard ID increments every time that a new item appears on the Windows clipboard.
-
-int winCurrentClipboardID(void)
-{
-   return glClipboardUpdates;
-}
-
-//********************************************************************************************************************
-
-void winCopyClipboard(void)
-{
-   void *pdata;
-   IDataObject *pDataObj;
-   IEnumFORMATETC *pEnumFmt;
-   FORMATETC fmt;
-
-   if (!glOleInit) {
-      MSG("OLE not initialised.\n");
-      return;
-   }
-
-   MSG("winCopyClipboard()\n");
-
-   glIgnoreClip = GetTickCount(); // Needed to avoid automated successive calls to this function.
-
-   HRESULT result; // Other apps can block the clipboard, so we need to be able to reattempt access.
-	for (int attempt=0; attempt < 8; attempt++) {
-      result = OleGetClipboard(&pDataObj);
-      if (result IS S_OK) break;
-      Sleep(1);
-	}
-
-   if (result IS S_OK) {
-      // Enumerate the formats supported by this clip.  It is assumed that the formats
-      // that are encountered first have priority.
-
-      if (pDataObj->lpVtbl->EnumFormatEtc(pDataObj, DATADIR_GET, &pEnumFmt) IS S_OK) {
-         while (pEnumFmt->lpVtbl->Next(pEnumFmt, 1, &fmt, NULL) IS S_OK) {
-            if (fmt.cfFormat IS CF_UNICODETEXT) {
-               FORMATETC fmt = { CF_UNICODETEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-               STGMEDIUM stgm;
-               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
-                  if ((pdata = GlobalLock(stgm.hGlobal))) {
-                     report_windows_clip_utf16(pdata);
-                     GlobalUnlock(stgm.hGlobal);
-                  }
-                  ReleaseStgMedium(&stgm);
-               }
-               break;
-            }
-            else if ((fmt.cfFormat IS CF_TEXT) OR (fmt.cfFormat IS CF_OEMTEXT) OR (fmt.cfFormat IS CF_DSPTEXT)) {
-               FORMATETC fmt = { CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-               STGMEDIUM stgm;
-               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
-                  if ((pdata = GlobalLock(stgm.hGlobal))) {
-                     report_windows_clip_utf16(pdata);
-                     GlobalUnlock(stgm.hGlobal);
-                  }
-                  ReleaseStgMedium(&stgm);
-               }
-               break;
-            }
-            else if (fmt.cfFormat IS CF_HDROP) {
-               FORMATETC fmt = { CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-               STGMEDIUM stgm, effect;
-               LPIDA pida;
-               DWORD *effect_data;
-               char cut_operation = 0;
-
-               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
-                  FORMATETC fmt = { fmtPreferredDropEffect, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-                  if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &effect) IS S_OK) {
-                     if ((effect_data = (DWORD *)GlobalLock(effect.hGlobal))) {
-                        if (*effect_data IS DROPEFFECT_MOVE) cut_operation = 1;
-                        GlobalUnlock(effect.hGlobal);
-                     }
-                     ReleaseStgMedium(&effect);
-                  }
-
-                  if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
-                     report_windows_hdrop(pida, cut_operation);
-                     GlobalUnlock(stgm.hGlobal);
-                  }
-               }
-               break;
-            }
-            else if (fmt.cfFormat IS fmtShellIDList) {
-               // List of files found
-               FORMATETC fmt = { fmtShellIDList, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-               STGMEDIUM stgm, effect;
-               LPIDA pida;
-               DWORD *effect_data;
-               char cut_operation = 0;
-
-               if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &stgm) IS S_OK) {
-                  FORMATETC fmt = { fmtPreferredDropEffect, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-                  if (pDataObj->lpVtbl->GetData(pDataObj, &fmt, &effect) IS S_OK) {
-                     if ((effect_data = (DWORD *)GlobalLock(effect.hGlobal))) {
-                        if (*effect_data IS DROPEFFECT_MOVE) cut_operation = 1;
-                        GlobalUnlock(effect.hGlobal);
-                     }
-                     ReleaseStgMedium(&effect);
-                  }
-
-                  if ((pida = (LPIDA)GlobalLock(stgm.hGlobal))) {
-                     report_windows_files(pida, cut_operation);
-                     GlobalUnlock(stgm.hGlobal);
-                  }
-                  ReleaseStgMedium(&stgm);
-                }
-                break;
-            }
-         }
-         pEnumFmt->lpVtbl->Release(pEnumFmt);
-      }
-      else MSG("EnumFormatEtc() failed.\n");
-
-      pDataObj->lpVtbl->Release(pDataObj);
-   }
-   else MSG("OleGetClipboard() failed.\n");
-}
-
-//********************************************************************************************************************
-
-int winExtractFile(LPIDA pida, int Index, char *Result, int Size)
-{
-   TCHAR path[MAX_PATH];
-
-   if (Index >= (int)pida->cidl) return 0;
-
-   LPCITEMIDLIST list = HIDA_GetPIDLFolder(pida);
-   if (SHGetPathFromIDList(list, path)) {
-      int pos, j;
-      for (pos=0; (path[pos]) AND (pos < Size-1); pos++) Result[pos] = path[pos];
-      if ((Result[pos-1] != '\\') AND (pos < Size-1)) Result[pos++] = '\\';
-
-      list = HIDA_GetPIDLItem(pida, Index);
-      if (SHGetPathFromIDList(list, path)) {
-         for (j=0; path[j]; j++);
-         while ((j > 0) AND (path[j-1] != '/') AND (path[j-1] != '\\')) j--;
-
-         while ((path[j]) AND (pos < Size-1)) Result[pos++] = path[j++];
-         Result[pos] = 0;
-
-         return 1;
-      }
-      else return 0;
-   }
-   else return 0;
-}
-
-//********************************************************************************************************************
 
 void winTerminate(void)
 {
-   if (glDropTarget) {
-      RKDT_Release(glDropTarget);
-      glDropTarget = NULL;
-   }
+   winTerminateClipboard();
 
    if (glScreenClassInit) {
       UnregisterClass("ScreenClass", GetModuleHandle(NULL));
       glScreenClassInit = 0;
    }
 
-   if (glOleInit IS 1) {
+   if (glOleInit == 1) {
       OleUninitialize();
       glOleInit = 0;
    }
 }
+
+//********************************************************************************************************************
+
+int winShowWindow(HANDLE window, int Maximise)
+{
+   int result;
+
+   if (GetWindowLong(HWND(window), WE_BORDERLESS) == TRUE) {
+      // Raw surfaces (composites, borderless windows etc) do not get the focus automatically.
+      // This mirrors the functionality within the Parasol desktop.
+
+      result = ShowWindow(HWND(window), Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
+   }
+   else {
+      if ((!Maximise) and (IsIconic(HWND(window)))) {
+         // Window is minimised - restore it to its original position
+         result = ShowWindow(HWND(window), SW_RESTORE);
+      }
+      else result = ShowWindow(HWND(window), Maximise ? SW_SHOWMAXIMIZED : SW_SHOWNOACTIVATE);
+   }
+
+   return result;
+}
+
+} // namespace

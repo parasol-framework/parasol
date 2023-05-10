@@ -227,7 +227,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *Y = delta.y>>FT_DOWNSIZE;
 }
 
-INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
+inline LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
    if ((!Glyph) or (!PrevGlyph)) return 0;
 
@@ -238,7 +238,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 
 //********************************************************************************************************************
 
-INLINE void calc_lines(extFont *Self)
+inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if ((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) {

@@ -30,6 +30,8 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 
 #include "defs.h"
 
+using namespace display;
+
 #define MAX_CLIPS 10 // Maximum number of clips stored in the historical buffer
 
 static const FieldDef glDatatypes[] = {
@@ -110,7 +112,7 @@ static ERROR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &I
    list << '\0'; // An extra null byte is required to terminate the list for Windows HDROP
 
    auto str = list.str();
-   winAddClip(CLIPTYPE::FILE, str.c_str(), str.size(), Cut);
+   winAddClip(LONG(CLIPTYPE::FILE), str.c_str(), str.size(), Cut);
    return ERR_Okay;
 #else
    return ERR_NoSupport;
@@ -145,7 +147,7 @@ static ERROR add_text_to_host(objClipboard *Self, CSTRING String, LONG Length = 
    }
    utf16[i] = 0;
 
-   auto error = winAddClip(CLIPTYPE::TEXT, utf16.data(), utf16.size() * sizeof(UWORD), false);
+   auto error = winAddClip(LONG(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(UWORD), false);
    if (error) log.warning(error);
    return error;
 #else

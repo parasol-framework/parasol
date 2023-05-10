@@ -24,6 +24,8 @@ mind the implications of creating a shared display.
 
 #include "defs.h"
 
+using namespace display;
+
 // Class definition at end of this source file.
 
 static ERROR DISPLAY_Resize(extDisplay *, struct acResize *);
