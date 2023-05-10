@@ -56,11 +56,10 @@ extern "C" {
 
 #include "hashes.h"
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
 
 #include "defs.h"
 
-struct DisplayBase *DisplayBase;
 OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
 OBJECTPTR clFluid = NULL;

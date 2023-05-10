@@ -133,7 +133,7 @@ endif ()
 target_link_libraries (core PRIVATE zlib)
 
 if (PARASOL_STATIC)
-   target_link_libraries (core PRIVATE audio display fluid font http json mp3 network picture jpeg svg vector xml)
+   target_link_libraries (core PRIVATE audio display fluid font http json mp3 network picture jpeg scintilla svg vector xml)
 
    if (X11_Xrandr_FOUND)
       target_link_libraries (core PRIVATE xrandr)

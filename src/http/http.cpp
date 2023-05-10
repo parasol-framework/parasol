@@ -116,8 +116,8 @@ typedef char HASHHEX[HASHHEXLEN+1];
 
 static ERROR create_http_class(void);
 
-MODULE_COREBASE;
-struct NetworkBase *NetworkBase;
+JUMPTABLE_CORE
+JUMPTABLE_NETWORK
 static OBJECTPTR modNetwork = NULL;
 static OBJECTPTR clHTTP = NULL;
 static objProxy *glProxy = NULL;

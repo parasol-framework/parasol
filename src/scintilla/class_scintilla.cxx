@@ -105,10 +105,10 @@ capabilities.
 
 #include "module_def.c"
 
-MODULE_COREBASE;
-struct DisplayBase *DisplayBase;
-struct FontBase *FontBase;
-struct VectorBase *VectorBase;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+JUMPTABLE_VECTOR
+JUMPTABLE_FONT
 
 static OBJECTPTR clScintilla = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
@@ -255,7 +255,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (modDisplay)  { FreeResource(modDisplay);  modDisplay = NULL; }
    if (modFont)     { FreeResource(modFont);     modFont = NULL; }

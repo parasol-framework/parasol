@@ -21,8 +21,9 @@ extern "C" {
 #include "lib/jpegint.h"
 }
 
-struct CoreBase *CoreBase = NULL;
-struct DisplayBase *DisplayBase = NULL;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 

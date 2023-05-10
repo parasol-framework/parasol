@@ -32,9 +32,10 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 using namespace pf;
 
-MODULE_COREBASE;
-struct DisplayBase *DisplayBase;
-struct VectorBase *VectorBase;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+JUMPTABLE_VECTOR
+
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG { // Private variables for RSVG

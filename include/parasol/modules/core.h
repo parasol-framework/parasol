@@ -1513,10 +1513,7 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 extern "C" {
 
-#ifndef PARASOL_STATIC
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
-#else
-#define MODULE_COREBASE static struct CoreBase *CoreBase;
+#ifdef PARASOL_STATIC
 extern void CloseCore(void);
 extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
 #endif
@@ -2013,6 +2010,12 @@ struct ScriptArg { // For use with scExec
       DOUBLE Double;
    };
 };
+
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_CORE static struct CoreBase *CoreBase;
+#else
+#define JUMPTABLE_CORE struct CoreBase *CoreBase;
+#endif
 
 struct CoreBase {
 #ifndef PARASOL_STATIC

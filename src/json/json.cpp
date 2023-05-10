@@ -56,7 +56,8 @@ It will be translated to the following when loaded into an XML object:
 #include <algorithm>
 #include <sstream>
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
+
 static OBJECTPTR clJSON = NULL;
 
 static ERROR JSON_Init(objXML *, APTR);

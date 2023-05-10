@@ -307,7 +307,14 @@ class objFont : public BaseClass {
 
 };
 
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_FONT static struct FontBase *FontBase;
+#else
+#define JUMPTABLE_FONT struct FontBase *FontBase;
+#endif
+
 struct FontBase {
+#ifndef PARASOL_STATIC
    ERROR (*_GetList)(struct FontList ** Result);
    LONG (*_StringWidth)(objFont * Font, CSTRING String, LONG Chars);
    void (*_StringSize)(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
@@ -318,9 +325,11 @@ struct FontBase {
    ERROR (*_InstallFont)(CSTRING Files);
    ERROR (*_RemoveFont)(CSTRING Name);
    ERROR (*_SelectFont)(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_FONT_MODULE
+#ifndef PARASOL_STATIC
 extern struct FontBase *FontBase;
 inline ERROR fntGetList(struct FontList ** Result) { return FontBase->_GetList(Result); }
 inline LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars) { return FontBase->_StringWidth(Font,String,Chars); }
@@ -332,5 +341,19 @@ inline APTR fntFreetypeHandle(void) { return FontBase->_FreetypeHandle(); }
 inline ERROR fntInstallFont(CSTRING Files) { return FontBase->_InstallFont(Files); }
 inline ERROR fntRemoveFont(CSTRING Name) { return FontBase->_RemoveFont(Name); }
 inline ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path) { return FontBase->_SelectFont(Name,Style,Point,Flags,Path); }
+#else
+extern "C" {
+extern ERROR fntGetList(struct FontList ** Result);
+extern LONG fntStringWidth(objFont * Font, CSTRING String, LONG Chars);
+extern void fntStringSize(objFont * Font, CSTRING String, LONG Chars, LONG Wrap, LONG * Width, LONG * Rows);
+extern ERROR fntConvertCoords(objFont * Font, CSTRING String, LONG X, LONG Y, LONG * Column, LONG * Row, LONG * ByteColumn, LONG * BytePos, LONG * CharX);
+extern LONG fntCharWidth(objFont * Font, ULONG Char, ULONG KChar, LONG * Kerning);
+extern DOUBLE fntSetDefaultSize(DOUBLE Size);
+extern APTR fntFreetypeHandle(void);
+extern ERROR fntInstallFont(CSTRING Files);
+extern ERROR fntRemoveFont(CSTRING Name);
+extern ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING * Path);
+}
+#endif // PARASOL_STATIC
 #endif
 

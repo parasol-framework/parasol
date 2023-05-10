@@ -35,7 +35,8 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 #include <functional>
 #include <sstream>
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
+
 static OBJECTPTR clXML = NULL;
 static ULONG glTagID = 1;
 

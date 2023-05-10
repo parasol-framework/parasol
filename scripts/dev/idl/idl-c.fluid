@@ -2224,7 +2224,13 @@ function saveOutput()
       for a=1, #glOutput do
          if (glOutput[a] == "__FUNCTION_TABLE__") then
             local out = ''
-            out = "struct " .. glModule.name .. "Base {\n"
+            out = out .. "#ifdef PARASOL_STATIC\n"
+            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " static struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out = out .. "#else\n"
+            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out = out .. "#endif\n\n"
+
+            out = out .. "struct " .. glModule.name .. "Base {\n"
             out = out .. "#ifndef PARASOL_STATIC\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.def) then

@@ -14,7 +14,7 @@ idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/font.h"
    FILES "font.cpp"
-   ARGS "--output-defs=font_def.c" "--output-proto=font_def.c" "--prototypes=static"
+   ARGS  "--output-defs=font_def.c" "--output-proto=font_def.c"
    APPEND_IDL "font_def.c")
 
 # A bug in (MinGW?) GCC requires that mno-ms-bitfields is applied to ensure that __packed__ works correctly.

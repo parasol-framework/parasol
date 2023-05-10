@@ -8,9 +8,9 @@ that is distributed with this package.  Please refer to it for further informati
 //#include "vector.h"
 #include "idl.h"
 
-struct CoreBase *CoreBase;
-struct DisplayBase *DisplayBase;
-struct FontBase *FontBase;
+JUMPTABLE_DISPLAY
+JUMPTABLE_CORE
+JUMPTABLE_FONT
 
 OBJECTPTR clVectorScene = NULL, clVectorViewport = NULL, clVectorGroup = NULL, clVectorColour = NULL;
 OBJECTPTR clVectorEllipse = NULL, clVectorRectangle = NULL, clVectorPath = NULL, clVectorWave = NULL;
@@ -24,8 +24,8 @@ OBJECTPTR clSourceFX = NULL, clRemapFX = NULL, clLightingFX = NULL, clDisplaceme
 static OBJECTPTR modDisplay = NULL;
 static OBJECTPTR modFont = NULL;
 
-std::recursive_mutex glFocusLock;
-std::vector<extVector *> glFocusList; // The first reference is the most foreground object with the focus
+std::recursive_mutex glVectorFocusLock;
+std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
 
 static ERROR init_clip(void);
 static ERROR init_ellipse(void);

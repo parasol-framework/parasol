@@ -277,9 +277,9 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    }
 
    {
-      const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
-      auto pos = std::find(glFocusList.begin(), glFocusList.end(), Self);
-      if (pos != glFocusList.end()) glFocusList.erase(pos, glFocusList.end());
+      const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
+      auto pos = std::find(glVectorFocusList.begin(), glVectorFocusList.end(), Self);
+      if (pos != glVectorFocusList.end()) glVectorFocusList.erase(pos, glVectorFocusList.end());
    }
 
    {

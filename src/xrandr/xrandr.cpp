@@ -10,10 +10,10 @@
 static LONG  xrNotify(XEvent *);
 static ERROR xrSetDisplayMode(LONG *, LONG *);
 static void  xrSelectInput(Window);
-static LONG xrGetDisplayTotal(void);
+static LONG  xrGetDisplayTotal(void);
 static struct xrMode * xrGetDisplayMode(LONG);
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
 static struct _XDisplay *XDisplay;
 static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
 static XRRScreenSize *glSizes = glCustomSizes;

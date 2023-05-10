@@ -45,12 +45,12 @@ significant differences between the source and destination bitmap types.
 
 using namespace pf;
 
-MODULE_COREBASE;
-static RootModule *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
-struct DisplayBase *DisplayBase = NULL;
 static THREADVAR bool tlError = false;
+
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
 
 static ERROR decompress_png(extPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);

@@ -1975,7 +1975,14 @@ class objVectorViewport : public objVector {
    using create = pf::Create<objVectorViewport>;
 };
 
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_VECTOR static struct VectorBase *VectorBase;
+#else
+#define JUMPTABLE_VECTOR struct VectorBase *VectorBase;
+#endif
+
 struct VectorBase {
+#ifndef PARASOL_STATIC
    ERROR (*_DrawPath)(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
    void (*_FreePath)(APTR Path);
    ERROR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
@@ -2002,9 +2009,11 @@ struct VectorBase {
    ERROR (*_Scale)(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
    ERROR (*_ParseTransform)(struct VectorMatrix * Matrix, CSTRING Transform);
    ERROR (*_ResetMatrix)(struct VectorMatrix * Matrix);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_VECTOR_MODULE
+#ifndef PARASOL_STATIC
 extern struct VectorBase *VectorBase;
 inline ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
 inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
@@ -2032,6 +2041,36 @@ inline ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix
 inline ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y) { return VectorBase->_Scale(Matrix,X,Y); }
 inline ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform) { return VectorBase->_ParseTransform(Matrix,Transform); }
 inline ERROR vecResetMatrix(struct VectorMatrix * Matrix) { return VectorBase->_ResetMatrix(Matrix); }
+#else
+extern "C" {
+extern ERROR vecDrawPath(objBitmap * Bitmap, APTR Path, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern void vecFreePath(APTR Path);
+extern ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
+extern ERROR vecGeneratePath(CSTRING Sequence, APTR Path);
+extern ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
+extern ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern);
+extern void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
+extern void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y);
+extern void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y);
+extern void vecArcTo(APTR Path, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
+extern void vecCurve3(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void vecSmooth3(APTR Path, DOUBLE X, DOUBLE Y);
+extern void vecCurve4(APTR Path, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+extern void vecSmooth4(APTR Path, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern void vecClosePath(APTR Path);
+extern void vecRewindPath(APTR Path);
+extern LONG vecGetVertex(APTR Path, DOUBLE * X, DOUBLE * Y);
+extern ERROR vecApplyPath(APTR Path, OBJECTPTR VectorPath);
+extern ERROR vecRotate(struct VectorMatrix * Matrix, DOUBLE Angle, DOUBLE CenterX, DOUBLE CenterY);
+extern ERROR vecTranslate(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERROR vecSkew(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERROR vecMultiply(struct VectorMatrix * Matrix, DOUBLE ScaleX, DOUBLE ShearY, DOUBLE ShearX, DOUBLE ScaleY, DOUBLE TranslateX, DOUBLE TranslateY);
+extern ERROR vecMultiplyMatrix(struct VectorMatrix * Target, struct VectorMatrix * Source);
+extern ERROR vecScale(struct VectorMatrix * Matrix, DOUBLE X, DOUBLE Y);
+extern ERROR vecParseTransform(struct VectorMatrix * Matrix, CSTRING Transform);
+extern ERROR vecResetMatrix(struct VectorMatrix * Matrix);
+}
+#endif // PARASOL_STATIC
 #endif
 
 //********************************************************************************************************************

@@ -508,7 +508,14 @@ class objSound : public BaseClass {
 
 };
 
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_AUDIO static struct AudioBase *AudioBase;
+#else
+#define JUMPTABLE_AUDIO struct AudioBase *AudioBase;
+#endif
+
 struct AudioBase {
+#ifndef PARASOL_STATIC
    ERROR (*_MixContinue)(objAudio * Audio, LONG Handle);
    ERROR (*_MixFrequency)(objAudio * Audio, LONG Handle, LONG Frequency);
    ERROR (*_MixMute)(objAudio * Audio, LONG Handle, LONG Mute);
@@ -521,9 +528,11 @@ struct AudioBase {
    ERROR (*_MixVolume)(objAudio * Audio, LONG Handle, DOUBLE Volume);
    ERROR (*_MixStartSequence)(objAudio * Audio, LONG Handle);
    ERROR (*_MixEndSequence)(objAudio * Audio, LONG Handle);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_AUDIO_MODULE
+#ifndef PARASOL_STATIC
 extern struct AudioBase *AudioBase;
 inline ERROR sndMixContinue(objAudio * Audio, LONG Handle) { return AudioBase->_MixContinue(Audio,Handle); }
 inline ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency) { return AudioBase->_MixFrequency(Audio,Handle,Frequency); }
@@ -537,5 +546,21 @@ inline ERROR sndMixStopLoop(objAudio * Audio, LONG Handle) { return AudioBase->_
 inline ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume) { return AudioBase->_MixVolume(Audio,Handle,Volume); }
 inline ERROR sndMixStartSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixStartSequence(Audio,Handle); }
 inline ERROR sndMixEndSequence(objAudio * Audio, LONG Handle) { return AudioBase->_MixEndSequence(Audio,Handle); }
+#else
+extern "C" {
+extern ERROR sndMixContinue(objAudio * Audio, LONG Handle);
+extern ERROR sndMixFrequency(objAudio * Audio, LONG Handle, LONG Frequency);
+extern ERROR sndMixMute(objAudio * Audio, LONG Handle, LONG Mute);
+extern ERROR sndMixPan(objAudio * Audio, LONG Handle, DOUBLE Pan);
+extern ERROR sndMixPlay(objAudio * Audio, LONG Handle, LONG Position);
+extern ERROR sndMixRate(objAudio * Audio, LONG Handle, LONG Rate);
+extern ERROR sndMixSample(objAudio * Audio, LONG Handle, LONG Sample);
+extern ERROR sndMixStop(objAudio * Audio, LONG Handle);
+extern ERROR sndMixStopLoop(objAudio * Audio, LONG Handle);
+extern ERROR sndMixVolume(objAudio * Audio, LONG Handle, DOUBLE Volume);
+extern ERROR sndMixStartSequence(objAudio * Audio, LONG Handle);
+extern ERROR sndMixEndSequence(objAudio * Audio, LONG Handle);
+}
+#endif // PARASOL_STATIC
 #endif
 

@@ -25,11 +25,10 @@ using namespace pf;
 
 #define VER_MP3 1.0
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
+JUMPTABLE_AUDIO
 
 static OBJECTPTR modAudio = NULL;
-struct AudioBase *AudioBase;
-
 static OBJECTPTR clMP3 = NULL;
 
 const LONG COMMENT_TRACK = 29;
