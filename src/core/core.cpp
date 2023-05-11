@@ -575,6 +575,12 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    LocalCoreBase = NULL;
 
    register_static_modules();
+
+   // Initialise all the modules because we don't retain a class database in static builds.
+
+   for (auto & [ name, hdr ] : glStaticModules) {
+      objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+   }
 #endif
 
    // Broadcast the creation of the new task

@@ -4211,13 +4211,19 @@ class objModule : public BaseClass {
    public:
    static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
-         APTR functionbase;
-         if (!module->getPtr(FID_ModBase, &functionbase)) {
+         #ifdef PARASOL_STATIC
             if (Module) *Module = module;
-            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            if (Functions) ((APTR *)Functions)[0] = NULL;
             return ERR_Okay;
-         }
-         else return ERR_GetField;
+         #else
+            APTR functionbase;
+            if (!module->getPtr(FID_ModBase, &functionbase)) {
+               if (Module) *Module = module;
+               if (Functions) ((APTR *)Functions)[0] = functionbase;
+               return ERR_Okay;
+            }
+            else return ERR_GetField;
+         #endif
       }
       else return ERR_CreateObject;
    }

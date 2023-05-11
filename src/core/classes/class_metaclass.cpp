@@ -343,6 +343,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
       }();
    }
 
+#ifndef PARASOL_STATIC
    if (save) {
       // Saving is only necessary if this is a new dictionary entry.
       if (auto lock = std::unique_lock{glmClassDB, 3s}) {
@@ -369,6 +370,7 @@ ERROR CLASS_Init(extMetaClass *Self, APTR Void)
       }
       else return log.warning(ERR_SystemLocked);
    }
+#endif
 
    return ERR_Okay;
 }
@@ -1085,6 +1087,7 @@ static ERROR OBJECT_SetName(OBJECTPTR Self, CSTRING Name)
 // If the classes.bin file is missing or incomplete, this code will scan for every module installed in the system and
 // initialise it so that all classes can be registered in the class database.
 
+#ifndef PARASOL_STATIC
 void scan_classes(void)
 {
    pf::Log log("Core");
@@ -1127,6 +1130,7 @@ void scan_classes(void)
 
    log.msg("Class scan complete.");
 }
+#endif
 
 //********************************************************************************************************************
 // Lookup the fields declared by a MetaClass, as opposed to the fields of the MetaClass itself.

@@ -38,7 +38,9 @@ std::string glModulePath = "" _MODULE_PATH ""; // NB: This path will be updated 
 
 char glDisplayDriver[28] = "";
 
+#ifndef PARASOL_STATIC
 CSTRING glClassBinPath = "system:config/classes.bin";
+#endif
 objMetaClass *glRootModuleClass  = 0;
 objMetaClass *glModuleClass      = 0;
 objMetaClass *glTaskClass        = 0;

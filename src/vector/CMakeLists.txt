@@ -57,4 +57,5 @@ target_include_directories (${MOD} PRIVATE
 target_precompile_headers(${MOD} PRIVATE
    vector.h)
 
-target_link_libraries (${MOD} PRIVATE "m")
+target_link_libraries (${MOD} PUBLIC linear_rgb)
+target_link_libraries (${MOD} PRIVATE m)

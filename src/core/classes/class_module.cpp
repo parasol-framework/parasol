@@ -507,9 +507,12 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
+   #ifdef PARASOL_STATIC
+   if ((Args->Address = winGetProcAddress(NULL, Args->Name))) {
+   #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
-
    if ((Args->Address = winGetProcAddress(Self->Root->LibraryBase, Args->Name))) {
+   #endif
       return ERR_Okay;
    }
    else {
@@ -517,9 +520,12 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
       return ERR_NotFound;
    }
 #elif __unix__
+   #ifdef PARASOL_STATIC
+   if ((Args->Address = dlsym(RTLD_DEFAULT, Args->Name))) {
+   #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
-
    if ((Args->Address = dlsym(Self->Root->LibraryBase, Args->Name))) {
+   #endif
       return ERR_Okay;
    }
    else {

@@ -49,7 +49,7 @@ using namespace pf;
 //#include "agg_conv_marker.h"
 //#include "agg_vcgen_markers_term.h"
 
-#include <parasol/linear_rgb.h>
+#include "../link/linear_rgb.h"
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS

@@ -71,7 +71,7 @@ set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
-set(BUILD_RPATH_USE_ORIGIN TRUE)
+set (BUILD_RPATH_USE_ORIGIN TRUE)
 
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
@@ -181,10 +181,14 @@ if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
 endif ()
 
 if (WIN32)
-   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
-   set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
-   set(INIT_LINK "init-win")
+   if (PARASOL_STATIC)
+      set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+   else ()
+      set (CMAKE_EXE_LINKER_FLAGS "-static")
+   endif ()
+   set (INIT_LINK "init-win")
 else ()
+   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
    set(INIT_LINK "init-unix")
 endif ()
 
@@ -371,9 +375,6 @@ else ()
 #   set (PARASOL_ARCH "-m32")
 endif ()
 
-set (CMAKE_CXX_STANDARD 11)
-set (CMAKE_CXX_STANDARD_REQUIRED True)
-
 # Set system-specific compiler flags
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -424,6 +425,13 @@ if (MINGW)
   enable_language (RC)
   set (CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff -i <SOURCE> -o <OBJECT>")
 endif (MINGW)
+
+# --------------------------------------------------------------------------------------------------------------------
+# Sub-libraries are defined as linkable objects so that they work correctly between static and modular builds.
+
+add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
+
+# --------------------------------------------------------------------------------------------------------------------
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised

@@ -549,88 +549,62 @@ error: Returns the same code that was specified in the Error parameter.
 ERROR FuncError(CSTRING Header, ERROR Code)
 {
    if (tlLogStatus <= 0) return Code;
+   if (glLogLevel < 2) return Code;
+   if ((tlDepth >= glMaxDepth) or (tlLogStatus <= 0)) return Code;
 
-   // Issue a LogReturn() call if the error code is negative
-
-   bool step = false;
-   if (Code < 0) {
-      Code = -Code;
-      step = true;
-   }
-
-   if (glLogLevel < 2) {
-      if (step) LogReturn();
-      return Code;
-   }
-
-   if ((tlDepth >= glMaxDepth) or (tlLogStatus <= 0)) {
-      if (step) LogReturn();
-      return Code;
-   }
-
-   if ((Code < glTotalMessages) and (Code > 0)) {
-      // Print the header
-
-      auto ctx = tlContext;
-      auto obj = tlContext->object();
-      if (!Header) {
-         if (ctx->Action > 0) Header = ActionTable[ctx->Action].Name;
-         else if (ctx->Action < 0) {
-            if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
-            else Header = "Method";
-         }
-         else Header = "Function";
+   auto ctx = tlContext;
+   auto obj = tlContext->object();
+   if (!Header) {
+      if (ctx->Action > 0) Header = ActionTable[ctx->Action].Name;
+      else if (ctx->Action < 0) {
+         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
+         else Header = "Method";
       }
-
-      #ifdef __ANDROID__
-         if (obj->Class) {
-            STRING name;
-
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->Name;
-
-            if (ctx->Field) {
-                __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, obj->UID, ctx->Field->Name, glMessages[Code]);
-            }
-            else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, obj->UID, glMessages[Code]);
-         }
-         else __android_log_print(ANDROID_LOG_ERROR, Header, "%s", glMessages[Code]);
-      #else
-         char msgheader[COLUMN1+1];
-         CSTRING name, histart = "", hiend = "";
-
-         #ifdef ESC_OUTPUT
-            if (glLogLevel > 2) {
-               #ifdef _WIN32
-                  histart = "!";
-               #else
-                  histart = "\033[1m";
-                  hiend = "\033[0m";
-               #endif
-            }
-         #endif
-
-         fmsg(Header, msgheader, MS_MSG, 2);
-
-         if (obj->Class) {
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->ClassName;
-
-            if (ctx->Field) {
-               fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[Code], hiend);
-            }
-            else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[Code], hiend);
-         }
-         else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
-
-         #if defined(__unix__) && !defined(__ANDROID__)
-            if (glSync) { fflush(0); fsync(STDERR_FILENO); }
-         #endif
-      #endif
+      else Header = "Function";
    }
-   else LogF(Header,"Code: %d", Code);
 
-   if (step) LogReturn();
+   #ifdef __ANDROID__
+      if (obj->Class) {
+         STRING name = obj->Name[0] ? obj->Name : obj->Class->Name;
+
+         if (ctx->Field) {
+             __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d:%s] %s", name, obj->UID, ctx->Field->Name, glMessages[Code]);
+         }
+         else __android_log_print(ANDROID_LOG_ERROR, Header, "[%s:%d] %s", name, obj->UID, glMessages[Code]);
+      }
+      else __android_log_print(ANDROID_LOG_ERROR, Header, "%s", glMessages[Code]);
+   #else
+      char msgheader[COLUMN1+1];
+      CSTRING histart = "", hiend = "";
+
+      #ifdef ESC_OUTPUT
+         if (glLogLevel > 2) {
+            #ifdef _WIN32
+               histart = "!";
+            #else
+               histart = "\033[1m";
+               hiend = "\033[0m";
+            #endif
+         }
+      #endif
+
+      fmsg(Header, msgheader, MS_MSG, 2);
+
+      if (obj->Class) {
+         CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
+
+         if (ctx->Field) {
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->Field->Name, glMessages[Code], hiend);
+         }
+         else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[Code], hiend);
+      }
+      else fprintf(stderr, "%s%s%s%s\n", histart, msgheader, glMessages[Code], hiend);
+
+      #if defined(__unix__) && !defined(__ANDROID__)
+         if (glSync) { fflush(0); fsync(STDERR_FILENO); }
+      #endif
+   #endif
+
    return Code;
 }
 

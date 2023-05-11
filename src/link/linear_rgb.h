@@ -23,7 +23,7 @@ private:
    }
 
 public:
-   rgb_to_linear() {
+   inline rgb_to_linear() {
       // Initialise conversion tables
       for (LONG i=0; i < 256; i++) {
          r2l[i] = conv_r2l((DOUBLE)i * (1.0 / 255.0));

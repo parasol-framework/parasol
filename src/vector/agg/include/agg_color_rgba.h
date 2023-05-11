@@ -11,7 +11,7 @@
 
 #include <math.h>
 #include "agg_basics.h"
-#include <parasol/linear_rgb.h>
+#include "../../../link/linear_rgb.h"
 
 namespace agg {
    // Supported byte orders for RGB and RGBA pixel formats

@@ -14,7 +14,6 @@ ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 
 //********************************************************************************************************************
 
-rgb_to_linear glLinearRGB;
 std::array<UBYTE, 256 * 256> glAlphaLookup;
 
 #ifdef __xwindows__
@@ -718,6 +717,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &glModule);
 
+#ifndef PARASOL_STATIC
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       create_pointer_class();
       create_display_class();
@@ -726,6 +726,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_surface_class();
       return ERR_Okay;
    }
+#endif
 
    if (auto driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER)) {
       log.msg("User requested display driver '%s'", driver_name);
@@ -868,20 +869,16 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #elif _WIN32
 
-   {
-      if ((glInstance = winGetModuleHandle())) {
-         if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
-      }
-      else return log.warning(ERR_SystemCall);
-
-      winDisableBatching();
-
-      winInitCursors(winCursors, ARRAYSIZE(winCursors));
+   if ((glInstance = winGetModuleHandle())) {
+      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
    }
+   else return log.warning(ERR_SystemCall);
+
+   winDisableBatching();
+
+   winInitCursors(winCursors, ARRAYSIZE(winCursors));
 
 #endif
-
-   // Initialise our classes
 
    if (create_pointer_class() != ERR_Okay) return log.warning(ERR_AddClass);
    if (create_display_class() != ERR_Okay) return log.warning(ERR_AddClass);

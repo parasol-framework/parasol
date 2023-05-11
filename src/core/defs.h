@@ -674,7 +674,10 @@ extern BaseClass glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 
+#ifndef PARASOL_STATIC
 extern CSTRING glClassBinPath;
+#endif
+
 extern objMetaClass *glRootModuleClass;
 extern objMetaClass *glModuleClass;
 extern objMetaClass *glTaskClass;
@@ -1016,7 +1019,11 @@ void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 ERROR  resolve_args(APTR, const FunctionField *);
+
+#ifndef PARASOL_STATIC
 void   scan_classes(void);
+#endif
+
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);

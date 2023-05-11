@@ -84,6 +84,8 @@ set_module_defaults (${MOD})
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
+target_link_libraries (${MOD} PUBLIC linear_rgb)
+
 if (WIN32)
    target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid m)
    target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})

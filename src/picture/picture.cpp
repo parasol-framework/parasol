@@ -39,7 +39,7 @@ significant differences between the source and destination bitmap types.
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
-#include <parasol/linear_rgb.h>
+#include "../link/linear_rgb.h"
 
 #include "picture.h"
 
@@ -58,8 +58,6 @@ static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
 static ERROR create_picture_class(void);
-
-rgb_to_linear glLinearRGB;
 
 //********************************************************************************************************************
 
