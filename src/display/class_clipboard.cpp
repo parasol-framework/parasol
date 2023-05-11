@@ -30,7 +30,9 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 
 #include "defs.h"
 
+#ifdef _WIN32
 using namespace display;
+#endif
 
 #define MAX_CLIPS 10 // Maximum number of clips stored in the historical buffer
 

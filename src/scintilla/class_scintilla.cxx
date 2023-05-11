@@ -231,7 +231,7 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 
 //********************************************************************************************************************
 
-ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 

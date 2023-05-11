@@ -229,7 +229,7 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
          }
       }
       else {
-         log.warning("%s: %s", name, (CSTRING)dlerror());
+         log.warning("%s: %s", Self->Name, (CSTRING)dlerror());
          return ERR_NoSupport;
       }
 

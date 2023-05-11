@@ -30,7 +30,7 @@ static void write_string(objFile *File, CSTRING String)
 
 //********************************************************************************************************************
 
-ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log("XRandR");
    WORD i;
@@ -318,7 +318,7 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
 
 #include "module_def.c"
 
-ERROR CMDOpen(OBJECTPTR Module)
+static ERROR CMDOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;

@@ -8,7 +8,9 @@ Name: Cursor
 
 #include "defs.h"
 
+#ifdef _WIN32
 using namespace display;
+#endif
 
 #ifdef __xwindows__
 
