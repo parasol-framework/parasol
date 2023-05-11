@@ -7,7 +7,6 @@ set (FUNCTIONS # Full paths are required for add_custom_command() dependencies t
    "${CMAKE_CURRENT_SOURCE_DIR}/display-driver.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_bitmap.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_display.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/lib_surfaces.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_cursor.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/lib_input.cpp")
 
