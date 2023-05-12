@@ -182,6 +182,7 @@ endif ()
 
 if (WIN32)
    if (PARASOL_STATIC)
+      # NB: MinGW does not guarantee that libgcc and libstdc++ will be static even if these flags are specified.
       set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
    else ()
       set (CMAKE_EXE_LINKER_FLAGS "-static")
@@ -330,8 +331,12 @@ function (set_module_defaults ARG_TARGET)
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
-   # Collect code and data that is never referenced
-   target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
+   if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+
+   else ()
+      # Collect code and data that is never referenced
+      target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
+   endif ()
 
    if (PARASOL_STATIC)
       set_target_properties (${ARG_TARGET}
@@ -375,48 +380,52 @@ else ()
 #   set (PARASOL_ARCH "-m32")
 endif ()
 
-# Set system-specific compiler flags
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-   add_definitions ("-D_DARWIN_C_SOURCE")
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
-   add_definitions ("-D_GNU_SOURCE")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
-elseif (WIN32)
-   add_definitions ("-D_WIN32" "-U__unix__")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
-   if (PRINTF64_ID)
-      add_definitions ("-DPRINTF64I")
-   endif ()
-   if (PRINTF64_PRID)
-      add_definitions ("-DPRINTF64_PRID")
-   endif ()
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
-# TODO
-endif ()
-
-if (ENABLE_ANALYSIS)
-   # NB: The use of dlclose() is not permitted when analysis is enabled because it upsets the log output.
-   # In addition, gdb breakpoints are unlikely to work with these features enabled.
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
-endif ()
-
 if (PARASOL_VLOG)
    add_definitions ("-D_DEBUG")
 endif ()
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
+# Set system-specific compiler flags
 
-# These default compile options are for use by target_compile_options()
-# TODO: Utilise target_compile_options() in the makefiles
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
 
-set (GCC_COMPAT "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU>")
-set (DEFAULT_GCC_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
-set (DEFAULT_GCXX_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+else ()
+   if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+      add_definitions ("-D_DARWIN_C_SOURCE")
+   elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+      add_definitions ("-D_GNU_SOURCE")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
+   elseif (WIN32)
+      add_definitions ("-D_WIN32" "-U__unix__")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
+      if (PRINTF64_ID)
+         add_definitions ("-DPRINTF64I")
+      endif ()
+      if (PRINTF64_PRID)
+         add_definitions ("-DPRINTF64_PRID")
+      endif ()
+   elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
+   # TODO
+   endif ()
+
+   if (ENABLE_ANALYSIS)
+      # NB: The use of dlclose() is not permitted when analysis is enabled because it upsets the log output.
+      # In addition, gdb breakpoints are unlikely to work with these features enabled.
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+   endif ()
+
+   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
+   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
+
+   # These default compile options are for use by target_compile_options()
+   # TODO: Utilise target_compile_options() in the makefiles
+
+   set (GCC_COMPAT "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU>")
+   set (DEFAULT_GCC_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+   set (DEFAULT_GCXX_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+endif ()
 
 # Support for building Windows resource files with MINGW
 
@@ -437,7 +446,13 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 add_subdirectory (src/link)
 add_subdirectory (src/core)
+
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+# TODO: Support MSVC builds of the Fluid libraries.
+else ()
 add_subdirectory (src/fluid)
+endif ()
+
 add_subdirectory (src/xml)
 add_subdirectory (src/json)
 

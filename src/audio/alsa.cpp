@@ -73,6 +73,7 @@ static ERROR init_audio(extAudio *Self)
             }
             snd_ctl_close(ctlhandle);
          }
+
          if (snd_card_next(&card) < 0) card = -1;
       }
    }

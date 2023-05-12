@@ -15,7 +15,11 @@
 #define INLINE static inline
 #endif
 
+#if defined(_MSC_VER)
+#define THREADVAR __declspec( thread )
+#else
 #define THREADVAR __thread
+#endif
 
 #cmakedefine REVERSE_BYTEORDER
 

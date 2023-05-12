@@ -2492,7 +2492,7 @@ inline STRING StrClone(CSTRING String)
 {
    if (!String) return NULL;
 
-   LONG len = strlen(String);
+   auto len = LONG(strlen(String));
    STRING newstr;
    if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
@@ -2502,7 +2502,7 @@ inline STRING StrClone(CSTRING String)
 }
 
 inline LONG StrLength(CSTRING String) {
-   if (String) return strlen(String);
+   if (String) return LONG(strlen(String));
    else return 0;
 }
 
@@ -2536,7 +2536,7 @@ template <class T> inline DOUBLE StrToFloat(T &&String) {
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    auto str = std::to_string(Integer);
-   auto len = str.copy(String, StringSize-1);
+   auto len = LONG(str.copy(String, StringSize-1));
    String[len] = 0;
    return len;
 }
@@ -4056,7 +4056,7 @@ class objTask : public BaseClass {
    inline ERROR setParameters(pf::vector<std::string> *Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x08805300, Value, Value->size());
+      return field->WriteValue(target, field, 0x08805300, Value, LONG(Value->size()));
    }
 
    inline ERROR setErrorCallback(FUNCTION Value) {

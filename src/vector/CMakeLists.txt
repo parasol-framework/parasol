@@ -13,8 +13,12 @@ add_library (${MOD})
 
 set_module_defaults (${MOD})
 
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+
+else ()
 target_compile_options (${MOD} PRIVATE
   "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-Wno-narrowing;-Wno-uninitialized>>")
+endif ()
 
 #add_definitions ("-DDBG_DRAW=1")
 

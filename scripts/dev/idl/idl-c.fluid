@@ -1596,7 +1596,7 @@ function outputClassHeader(class, Private, Custom)
                   elseif bit.band(f.flags, FD_ARRAY) != 0 then
                      if bit.band(f.flags, FD_CPP) != 0 then
                         local flags = string.format('%08x', f.flags):sub(-8)
-                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Value->size());')
+                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
                      else
                         local flags = string.format('%08x', f.flags):sub(-8)
                         output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')

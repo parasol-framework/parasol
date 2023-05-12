@@ -70,7 +70,11 @@ set (LEXERS
 
 add_library (scintilla)
 
-target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+
+else ()
+   target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
+endif ()
 
 set_module_defaults (scintilla)
 

@@ -345,7 +345,7 @@ class extMetaClass : public objMetaClass {
    std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
    std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-   struct RootModule *Root;             // Root module that owns this class, if any.
+   class RootModule *Root;             // Root module that owns this class, if any.
    UBYTE Integral[8];                   // Integral object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
@@ -498,7 +498,7 @@ struct ClassRecord {
 
       Name.assign(pClass->ClassName);
 
-      if (pPath.has_value()) pPath.value();
+      if (pPath.has_value()) Path.assign(pPath.value());
       else if (pClass->Path) Path.assign(pClass->Path);
 
       if (pClass->FileExtension) Match.assign(pClass->FileExtension);
@@ -520,7 +520,7 @@ struct ClassRecord {
       if (File->write(&ParentID, sizeof(ParentID), NULL)) return ERR_Write;
       if (File->write(&Category, sizeof(Category), NULL)) return ERR_Write;
 
-      LONG size = Name.size();
+      auto size = LONG(Name.size());
       File->write(&size, sizeof(size));
       File->write(Name.c_str(), size);
 
