@@ -2580,6 +2580,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 #include "surface_fields.cpp"
 #include "surface_dimensions.cpp"
 #include "surface_resize.cpp"
+#include "../lib_surfaces.cpp"
 
 //********************************************************************************************************************
 

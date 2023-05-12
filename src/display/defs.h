@@ -1,3 +1,4 @@
+#pragma once
 
 #define __system__
 //#define DEBUG
