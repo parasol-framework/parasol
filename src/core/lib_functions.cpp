@@ -417,6 +417,13 @@ LARGE GetResource(RES Resource)
       case RES::CORE_IDL:        return (MAXINT)glIDL;
       case RES::DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
 
+      case RES::STATIC_BUILD:
+         #ifdef PARASOL_STATIC
+            return 1;
+         #else
+            return 0;
+         #endif
+
       case RES::PARENT_CONTEXT: {
          // Return the first parent context that differs to the current context.  This avoids any confusion
          // arising from the the current object making calls to itself.

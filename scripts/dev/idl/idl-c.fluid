@@ -872,15 +872,19 @@ function class(Name, Options, Blueprint, Private, Custom)
 
    if (type(class.src) == 'string') then class.src = { class.src } end -- Convert string to an array of strings
 
-   -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
-   -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
+   if (mSys.GetResource(RES_STATIC_BUILD) == 0) then
+      -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
+      -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
 
-   if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
-      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
-   else
-      if (glFeedback == 'verbose') then
-         print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
+      if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
+         class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+      else
+         if (glFeedback == 'verbose') then
+            print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
+         end
       end
+   else
+      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
    end
 
    -- Process methods and fields defined in the source code (if available)

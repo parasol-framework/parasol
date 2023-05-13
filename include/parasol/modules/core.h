@@ -1120,6 +1120,7 @@ enum class RES : LONG {
    TOTAL_SWAP = 21,
    CPU_SPEED = 22,
    FREE_MEMORY = 23,
+   STATIC_BUILD = 24,
 };
 
 // Path types for SetResourcePath()
