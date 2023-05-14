@@ -15,10 +15,6 @@ endif ()
 
 target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
 
-if (PARASOL_STATIC)
-   target_link_libraries (parasol_cmd PRIVATE core)
-endif ()
-
 target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 
 if (CMAKE_BUILD_TYPE MATCHES "Release")
