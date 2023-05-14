@@ -1530,13 +1530,26 @@ extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
 #define MOD_NAME NULL
 #endif
 
-#ifdef _DEBUG
- #define MSG(...)  LogF(0,__VA_ARGS__)
- #define FMSG(...) LogF(__VA_ARGS__)
-#else
- #define MSG(...)
- #define FMSG(...)
+inline void FMSG(CSTRING, CSTRING, ...) __attribute__((format(printf, 2, 3)));
+inline void MSG(CSTRING, ...) __attribute__((format(printf, 1, 2)));
+
+inline void FMSG(CSTRING Function, CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
 #endif
+}
+
+inline void MSG(CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
+#endif
+}
 
 }
 
@@ -2036,7 +2049,7 @@ struct CoreBase {
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
-   void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
+   ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
    ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERROR (*_AnalysePath)(CSTRING Path, LOC * Type);
@@ -2128,7 +2141,6 @@ struct CoreBase {
    LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
-   ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 #endif // PARASOL_STATIC
 };
 
@@ -2151,7 +2163,7 @@ template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
-template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
+inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERROR AnalysePath(CSTRING Path, LOC * Type) { return CoreBase->_AnalysePath(Path,Type); }
@@ -2243,7 +2255,6 @@ inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UT
 inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
-inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 #else
 extern "C" {
 extern ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
@@ -2261,6 +2272,7 @@ extern ERROR InitObject(OBJECTPTR Object);
 extern OBJECTPTR CurrentContext(void);
 extern ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
 extern LONG AdjustLogLevel(LONG Adjust);
+extern ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 extern ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
 extern objMetaClass * FindClass(CLASSID ClassID);
 extern ERROR AnalysePath(CSTRING Path, LOC * Type);
@@ -2352,7 +2364,6 @@ extern ULONG UTF8ReadValue(CSTRING String, LONG * Length);
 extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
 extern ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
-extern ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
 }
 #endif // PARASOL_STATIC
 #endif

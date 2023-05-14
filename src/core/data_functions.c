@@ -54,7 +54,6 @@ FDEF argsInitObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPT
 FDEF argsListChildren[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTID }, { "List", FD_PTR }, { 0, 0 } };
 FDEF argsLoadFile[] = { { "Error", FD_LONG|FD_ERROR }, { "Path", FD_STR }, { "Flags", FD_LONG }, { "CacheFile:Cache", FD_PTR|FD_STRUCT|FD_RESOURCE|FD_RESULT }, { 0, 0 } };
 FDEF argsLockObject[] = { { "Error", FD_LONG|FD_ERROR }, { "Object", FD_OBJECTPTR }, { "MilliSeconds", FD_LONG }, { 0, 0 } };
-FDEF argsLogF[] = { { "Void", FD_VOID }, { "Header", FD_STR }, { "Message", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsLogReturn[] = { { "Void", FD_VOID }, { 0, 0 } };
 FDEF argsMemoryIDInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "ID", FD_LONG }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF argsMemoryPtrInfo[] = { { "Error", FD_LONG|FD_ERROR }, { "Address", FD_PTR }, { "MemInfo:MemInfo", FD_BUFFER|FD_PTR|FD_STRUCT }, { "Size", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
@@ -131,7 +130,7 @@ const struct Function glFunctions[] = {
    { (APTR)CurrentContext, "CurrentContext", argsCurrentContext },
    { (APTR)GetFieldArray, "GetFieldArray", argsGetFieldArray },
    { (APTR)AdjustLogLevel, "AdjustLogLevel", argsAdjustLogLevel },
-   { (APTR)LogF, "LogF", argsLogF },
+   { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { (APTR)FindObject, "FindObject", argsFindObject },
    { (APTR)FindClass, "FindClass", argsFindClass },
    { (APTR)AnalysePath, "AnalysePath", argsAnalysePath },
@@ -223,7 +222,6 @@ const struct Function glFunctions[] = {
    { (APTR)UTF8WriteValue, "UTF8WriteValue", argsUTF8WriteValue },
    { (APTR)CopyFile, "CopyFile", argsCopyFile },
    { (APTR)WaitForObjects, "WaitForObjects", argsWaitForObjects },
-   { (APTR)ReadFileToBuffer, "ReadFileToBuffer", argsReadFileToBuffer },
    { NULL, NULL, NULL }
 };
 

@@ -57,14 +57,14 @@ static THREADVAR LONG tlBaseLine = 0;
 -FUNCTION-
 AdjustLogLevel: Adjusts the base-line of all log messages.
 
-This function adjusts the detail level of all messages that are sent to the program log via ~LogF().  To illustrate by
-example, setting the Adjust value to 1 would result in level 5 log messages being raised to level 6.  If the user's
-maximum log level output is 5, such messages would no longer appear in the log until the base-line is reduced to normal.
+This function adjusts the detail level of all outgoing log messages.  To illustrate by example, setting the Adjust
+value to 1 would result in level 5 log messages being bumped to level 6.  If the user's maximum log level output is
+5, no further log messages will be output until the base-line is reduced to normal.
 
 The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result
 in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable
-means of eliminating that noise if the user has the log level set to 5 (debug).  If there is a need to see the mesages,
-re-running the program with a deeper log level of 7 or more would make them visible.
+means of eliminating that noise if the user has the log level set to 5 (API level).  If there is a need to see the
+messages, re-running the program with a deeper log level of 7 or more would make them visible.
 
 Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the
 previous base-line, call this function again with a negation of the previously passed value.
@@ -88,253 +88,25 @@ LONG AdjustLogLevel(LONG BaseLine)
 /*********************************************************************************************************************
 
 -FUNCTION-
-LogF: Sends formatted messages to the standard log.
-Attribute: __attribute__((format(printf, 2, 3)))
-Status: private
+VLogF: Sends formatted messages to the standard log.
+ExtPrototype: VLF Flags, const char *Header, const char *Message, va_list Args
+Status: Internal
 
-The LogF() function follows the same functionality and rules as the ANSI printf() function, with the difference that
-it is passed through a log filter before appearing as output.  Imposed limits restrict the length of the message to
-256 bytes, although a 120 byte limit is recommended where possible.
+This function manages the output of application log messages by sending them through a log filter, which must be
+enabled by the user.  If no logging is enabled or if the filter is not passed, the function does nothing.
+
+Log message formatting follows the same guidelines as the printf() function.
 
 The following example will print the default width of a Display object to the log.
 
 <pre>
 if (!NewObject(ID_DISPLAY, 0, &display)) {
    if (!display->init(display)) {
-      LogF("Demo","The width of the display is: %d", display-&gt;Width);
+      VLogF(VLF::API, "Demo","The width of the display is: %d", display-&gt;Width);
    }
    FreeResource(display);
 }
 </pre>
-
--INPUT-
-cstr Header: A short name for the first column. Typically function names are placed here, so that the origin of the message is obvious.
-cstr Message: A formatted message to print.
-printf Tags: As per printf() rules, one parameter for every % symbol that has been used in the Message string is required.
--END-
-
-*********************************************************************************************************************/
-
-void LogF(CSTRING Header, CSTRING Format, ...)
-{
-   CSTRING name, action;
-   BYTE msglevel, new_branch, msgstate, adjust = 0;
-
-   if (tlLogStatus <= 0) return;
-
-   std::lock_guard lock(glmPrint);
-
-   if (!Format) Format = "";
-
-   if (Header) {
-      if (*Header IS '~') { // ~ is the create-branch code
-         new_branch = true;
-         msgstate = MS_FUNCTION;
-         Header++;
-      }
-      else {
-         new_branch = false;
-         msgstate = MS_MSG;
-      }
-
-      if (*Header IS '!') { // ! and @ are error level codes
-         msglevel = 1;
-         Header++;
-
-         if (*Header IS '!') { // Extremely important error message that the user should see '!!'
-            #ifdef __ANDROID__
-               va_list arg;
-               va_start(arg, Format);
-               __android_log_vprint(ANDROID_LOG_ERROR, Header, Format, arg);
-               va_end(arg);
-            #else
-               #ifdef ESC_OUTPUT
-                  #ifdef _WIN32
-                     fprintf(stderr, "!%s ", Header);
-                  #else
-                     fprintf(stderr, "\033[1m%s ", Header);
-                  #endif
-               #else
-                  fprintf(stderr, "%s ", Header);
-               #endif
-
-               va_list arg;
-               va_start(arg, Format);
-               vfprintf(stderr, Format, arg);
-               va_end(arg);
-
-               #ifdef ESC_OUTPUT
-                  fprintf(stderr, "\033[0m");
-               #endif
-
-               fprintf(stderr, "\n");
-            #endif
-
-            goto exit;
-         }
-      }
-      else if (*Header IS '@') {
-         if (glLogLevel < 2) goto exit;
-         msglevel = 2;
-         Header++;
-      }
-      else if (*Header IS '#') {
-         msgstate = MS_FUNCTION;
-         msglevel = 3;
-         Header++;
-      }
-      else {
-         msglevel = 3;
-         if ((*Header >= '1') and (*Header <= '9')) { // Numbers are detail indicators
-            msglevel = *Header - '1' + 3;
-            Header++;
-         }
-      }
-
-      if (!*Header) Header = NULL;
-   }
-   else {
-      if (glLogLevel < 3) return;
-      msglevel = 3;
-      new_branch = false;
-      msgstate = MS_NONE;
-   }
-
-   msglevel += tlBaseLine;
-   if (glLogLevel >= msglevel) {
-      if (glLogThreads) fprintf(stderr, "%.4d ", get_thread_id());
-
-      #if defined(__unix__) and !defined(__ANDROID__)
-         bool flushdbg;
-         if (glLogLevel >= 3) {
-            flushdbg = true;
-            if (tlPublicLockCount) flushdbg = false;
-            if (flushdbg) fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags & (~O_NONBLOCK));
-         }
-         else flushdbg = false;
-      #endif
-
-      #ifdef ESC_OUTPUT
-         if ((glLogLevel > 2) and (msglevel <= 2)) {
-            #ifdef _WIN32
-               fprintf(stderr, "!");
-               adjust = 1;
-            #else
-               fprintf(stderr, "\033[1m");
-            #endif
-         }
-      #endif
-
-      // If no header is provided, make one to match the current context
-
-      auto ctx = tlContext;
-      auto obj = tlContext->object();
-      if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
-      else if (ctx->Action < 0) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;
-         else action = "Method";
-      }
-      else action = "App";
-
-      if (!Header) {
-         Header = action;
-         action = NULL;
-      }
-
-      #ifdef __ANDROID__
-         char msgheader[COLUMN1+1];
-
-         fmsg(Header, msgheader, msgstate, 0);
-
-         if (obj->Class) {
-            char msg[180];
-
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->Name;
-
-            if (glLogLevel > 5) {
-               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s%s%s:%d:%s] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name, Format);
-               else snprintf(msg, sizeof(msg), "[%s%s%s:%d] %s", (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, Format);
-            }
-            else {
-               if (ctx->Field) snprintf(msg, sizeof(msg), "[%s:%d:%s] %s", name, obj->UID, ctx->Field->Name, Format);
-               else snprintf(msg, sizeof(msg), "[%s:%d] %s", name, obj->UID, Format);
-            }
-
-            va_list arg;
-            va_start(arg, Format);
-            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, msg, arg);
-            va_end(arg);
-         }
-         else {
-            va_list arg;
-            va_start(arg, Format);
-            __android_log_vprint((msglevel <= 2) ? ANDROID_LOG_ERROR : ANDROID_LOG_INFO, msgheader, Format, arg);
-            va_end(arg);
-         }
-
-      #else
-         char msgheader[COLUMN1+1];
-         if (glLogLevel > 2) {
-            fmsg(Header, msgheader, msgstate, adjust); // Print header with indenting
-         }
-         else {
-            size_t len;
-            for (len=0; (Header[len]) and (len < sizeof(msgheader)-2); len++) msgheader[len] = Header[len];
-            msgheader[len++] = ' ';
-            msgheader[len] = 0;
-         }
-
-         if (obj->Class) {
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->ClassName;
-
-            if (glLogLevel > 5) {
-               if (ctx->Field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->Field->Name);
-               }
-               else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
-            }
-            else if (ctx->Field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->Field->Name);
-            }
-            else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
-         }
-         else fprintf(stderr, "%s", msgheader);
-
-         va_list arg;
-         va_start(arg, Format);
-         vfprintf(stderr, Format, arg);
-         va_end(arg);
-
-         #if defined(ESC_OUTPUT) and !defined(_WIN32)
-            if ((glLogLevel > 2) and (msglevel <= 2)) fprintf(stderr, "\033[0m");
-         #endif
-
-         fprintf(stderr, "\n");
-
-         #if defined(__unix__) and !defined(__ANDROID__)
-            if (flushdbg) {
-               fflush(0); // A fflush() appears to be enough - using fsync() will synchronise to disk, which we don't want by default (slow)
-               if (glSync) fsync(STDERR_FILENO);
-               fcntl(STDERR_FILENO, F_SETFL, glStdErrFlags);
-            }
-         #endif
-      #endif
-   }
-
-exit:
-   if (new_branch) tlDepth++;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-VLogF: Sends formatted messages to the standard log.
-ExtPrototype: VLF Flags, const char *Header, const char *Message, va_list Args
-Status: Internal
-
-Please refer to LogF().  This function is not intended for external use.
 
 -INPUT-
 int(VLF) Flags: Optional flags
@@ -614,34 +386,8 @@ ERROR FuncError(CSTRING Header, ERROR Code)
 LogReturn: Revert to the previous branch in the application logging tree.
 Status: Internal
 
-Use LogReturn() to reverse any previous log message that created an indented branch.  Consider the following
-example that uses a tilde to create a new branch:
-
-<pre>
-LogF("~Hello:","World.");
-   LogF("Goodbye:","World.");
-LogReturn();
-LogF("Log:","Back to normal.");
-</pre>
-
-This will produce the following output:
-
-<pre>
-Hello         World.
- Goodbye      World.
-Log           Back to normal.
-</pre>
-
-If the code was missing the LogReturn() call, the log would be permanently out of step as follows:
-
-<pre>
-Hello         World.
- Goodbye      World.
- Log          Back to normal.
-</pre>
-
-In C++ the scope-managed `pf::Log` class should be used instead.  It automatically debranches the messaging chain
-when code goes out of scope.
+Use LogReturn() to reverse any previous log message that created an indented branch.  This function is considered
+internal, and clients must use the scope-managed `pf::Log` class for branched log output.
 
 -END-
 
