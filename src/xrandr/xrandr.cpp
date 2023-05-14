@@ -10,10 +10,10 @@
 static LONG  xrNotify(XEvent *);
 static ERROR xrSetDisplayMode(LONG *, LONG *);
 static void  xrSelectInput(Window);
-static LONG xrGetDisplayTotal(void);
+static LONG  xrGetDisplayTotal(void);
 static struct xrMode * xrGetDisplayMode(LONG);
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
 static struct _XDisplay *XDisplay;
 static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
 static XRRScreenSize *glSizes = glCustomSizes;
@@ -30,7 +30,7 @@ static void write_string(objFile *File, CSTRING String)
 
 //********************************************************************************************************************
 
-ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    pf::Log log("XRandR");
    WORD i;
@@ -318,7 +318,7 @@ static struct xrMode * xrGetDisplayMode(LONG Index)
 
 #include "module_def.c"
 
-ERROR CMDOpen(OBJECTPTR Module)
+static ERROR CMDOpen(OBJECTPTR Module)
 {
    Module->set(FID_FunctionList, glFunctions);
    return ERR_Okay;
@@ -330,3 +330,4 @@ static ERROR CMDExpunge(void)
 }
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_XRANDR, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_xrandr_module() { return &ModHeader; }

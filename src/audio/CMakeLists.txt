@@ -2,6 +2,7 @@
 # Debian system preparation: "apt-get install libasound2-dev"
 
 set (MOD "audio")
+set (INC_MOD_AUDIO TRUE PARENT_SCOPE)
 
    CHECK_C_SOURCE_COMPILES ("
 #include <alsa/asoundlib.h>

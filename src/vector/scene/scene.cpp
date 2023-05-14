@@ -669,15 +669,15 @@ VectorViewport object is initialised.
 //********************************************************************************************************************
 // Apply focus to a vector and all other vectors within that tree branch (not necessarily just the viewports).
 // Also sends LostFocus notifications to vectors that previously had the focus.
-// The glFocusList maintains the current focus state, with the most foreground vector at the beginning.
+// The glVectorFocusList maintains the current focus state, with the most foreground vector at the beginning.
 //
 // If Vector is NULL then the focus is dropped from all vectors.
 
 void apply_focus(extVectorScene *Scene, extVector *Vector)
 {
-   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
+   const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 
-   if ((!glFocusList.empty()) and (Vector IS glFocusList.front())) return;
+   if ((!glVectorFocusList.empty()) and (Vector IS glVectorFocusList.front())) return;
 
    std::vector<extVector *> focus_gained; // The first reference is the most foreground object
 
@@ -705,11 +705,11 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
    for (auto const fgv : focus_gained) {
       bool no_focus = true, lost_focus_to_child = false, was_child_now_primary = false;
 
-      if (!glFocusList.empty()) {
-         no_focus = std::find(glFocusList.begin(), glFocusList.end(), fgv) IS glFocusList.end();
+      if (!glVectorFocusList.empty()) {
+         no_focus = std::find(glVectorFocusList.begin(), glVectorFocusList.end(), fgv) IS glVectorFocusList.end();
          if (!no_focus) {
-            lost_focus_to_child = ((fgv IS glFocusList.front()) and (focus_event IS FM::CHILD_HAS_FOCUS));
-            was_child_now_primary = ((fgv != glFocusList.front()) and (focus_event IS FM::HAS_FOCUS));
+            lost_focus_to_child = ((fgv IS glVectorFocusList.front()) and (focus_event IS FM::CHILD_HAS_FOCUS));
+            was_child_now_primary = ((fgv != glVectorFocusList.front()) and (focus_event IS FM::HAS_FOCUS));
          }
       }
 
@@ -724,7 +724,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
 
    // Report lost focus events, starting from the foreground.
 
-   for (auto const fv : glFocusList) {
+   for (auto const fv : glVectorFocusList) {
       if (std::find(focus_gained.begin(), focus_gained.end(), fv) IS focus_gained.end()) {
          pf::ScopedObjectLock<extVector> vec(fv, 1000);
          if (vec.granted()) send_feedback(fv, FM::LOST_FOCUS);
@@ -732,7 +732,7 @@ void apply_focus(extVectorScene *Scene, extVector *Vector)
       else break;
    }
 
-   glFocusList = focus_gained;
+   glVectorFocusList = focus_gained;
 }
 
 //********************************************************************************************************************
@@ -859,7 +859,7 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
 
 static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 {
-   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
+   const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
 
    if (Event->Code IS KEY::TAB) {
       if ((Event->Qualifiers & KQ::RELEASED) IS KQ::NIL) return;
@@ -868,7 +868,7 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
 
       if (((Event->Qualifiers & KQ::QUALIFIERS) IS KQ::NIL) or (reverse)) {
          if (Self->KeyboardSubscriptions.size() > 1) {
-            for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
+            for (auto it=glVectorFocusList.begin(); it != glVectorFocusList.end(); it++) {
                auto find = Self->KeyboardSubscriptions.find(*it);
                if (find != Self->KeyboardSubscriptions.end()) {
                   if (reverse) {
@@ -897,7 +897,7 @@ static void scene_key_event(extVectorScene *Self, evKey *Event, LONG Size)
    for (auto vi = Self->KeyboardSubscriptions.begin(); vi != Self->KeyboardSubscriptions.end(); vi++) {
       auto const vector = *vi;
       // Use the focus list to determine where the key event needs to be sent.
-      for (auto it=glFocusList.begin(); it != glFocusList.end(); it++) {
+      for (auto it=glVectorFocusList.begin(); it != glVectorFocusList.end(); it++) {
          if (*it IS vector) {
             vector_keyboard_events(vector, Event);
             break;

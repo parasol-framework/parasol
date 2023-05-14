@@ -8,12 +8,13 @@
 # Do a standard compile and then look in objs/ to see what .o files were created.
 
 set (MOD "font")
+set (INC_MOD_FONT TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/font.h"
    FILES "font.cpp"
-   ARGS "--output-defs=font_def.c" "--output-proto=font_def.c" "--prototypes=static"
+   ARGS  "--output-defs=font_def.c" "--output-proto=font_def.c"
    APPEND_IDL "font_def.c")
 
 # A bug in (MinGW?) GCC requires that mno-ms-bitfields is applied to ensure that __packed__ works correctly.

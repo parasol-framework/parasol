@@ -41,6 +41,8 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
+JUMPTABLE_DISPLAY
+
 static int input_unsubscribe(lua_State *Lua);
 static void focus_event(lua_State *, evFocus *, LONG);
 static void key_event(struct finput *, evKey *, LONG);

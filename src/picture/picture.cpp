@@ -39,18 +39,18 @@ significant differences between the source and destination bitmap types.
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
-#include <parasol/linear_rgb.h>
+#include "../link/linear_rgb.h"
 
 #include "picture.h"
 
 using namespace pf;
 
-MODULE_COREBASE;
-static RootModule *modPicture = NULL;
 static OBJECTPTR clPicture = NULL;
 static OBJECTPTR modDisplay = NULL;
-struct DisplayBase *DisplayBase = NULL;
 static THREADVAR bool tlError = false;
+
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
 
 static ERROR decompress_png(extPicture *, objBitmap *, int, int, png_structp, png_infop, png_uint_32, png_uint_32);
 static void read_row_callback(png_structp, png_uint_32, int);
@@ -58,8 +58,6 @@ static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
 static ERROR create_picture_class(void);
-
-rgb_to_linear glLinearRGB;
 
 //********************************************************************************************************************
 
@@ -89,7 +87,6 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (argModule->getPtr(FID_Root, &modPicture) != ERR_Okay) return ERR_GetField;
    if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    return(create_picture_class());
@@ -1430,3 +1427,5 @@ static ERROR create_picture_class(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_picture_module() { return &ModHeader; }
+

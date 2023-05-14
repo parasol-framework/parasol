@@ -345,7 +345,7 @@ class extMetaClass : public objMetaClass {
    std::vector<Field> FieldLookup;      // Field dictionary for base-class fields
    std::vector<MethodEntry> Methods;    // Original method array supplied by the module.
    const struct FieldArray *SubFields;  // Extra fields defined by the sub-class
-   struct RootModule *Root;             // Root module that owns this class, if any.
+   class RootModule *Root;             // Root module that owns this class, if any.
    UBYTE Integral[8];                   // Integral object references (by field indexes), in order
    STRING Location;                     // Location of the class binary, this field exists purely for caching the location string if the client reads it
    ActionEntry ActionTable[AC_END];
@@ -498,7 +498,7 @@ struct ClassRecord {
 
       Name.assign(pClass->ClassName);
 
-      if (pPath.has_value()) pPath.value();
+      if (pPath.has_value()) Path.assign(pPath.value());
       else if (pClass->Path) Path.assign(pClass->Path);
 
       if (pClass->FileExtension) Match.assign(pClass->FileExtension);
@@ -520,7 +520,7 @@ struct ClassRecord {
       if (File->write(&ParentID, sizeof(ParentID), NULL)) return ERR_Write;
       if (File->write(&Category, sizeof(Category), NULL)) return ERR_Write;
 
-      LONG size = Name.size();
+      auto size = LONG(Name.size());
       File->write(&size, sizeof(size));
       File->write(Name.c_str(), size);
 
@@ -638,6 +638,7 @@ extern const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
 extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
+extern std::unordered_map<std::string, ModHeader *> glStaticModules;
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
@@ -673,7 +674,10 @@ extern BaseClass glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
 
+#ifndef PARASOL_STATIC
 extern CSTRING glClassBinPath;
+#endif
+
 extern objMetaClass *glRootModuleClass;
 extern objMetaClass *glModuleClass;
 extern objMetaClass *glTaskClass;
@@ -989,7 +993,9 @@ extern void remove_archive(class extCompression *);
 
 void   print_diagnosis(LONG);
 CSTRING action_name(OBJECTPTR Object, LONG ActionID);
+#ifndef PARASOL_STATIC
 APTR   build_jump_table(const Function *);
+#endif
 ERROR  copy_args(const FunctionField *, LONG, BYTE *, BYTE *, LONG, LONG *, CSTRING);
 ERROR  copy_field_to_buffer(OBJECTPTR, Field *, LONG, APTR, CSTRING, LONG *);
 ERROR  create_archive_volume(void);
@@ -1013,7 +1019,11 @@ void   PrepareSleep(void);
 ERROR  process_janitor(OBJECTID, LONG, LONG);
 void   remove_process_waitlocks(void);
 ERROR  resolve_args(APTR, const FunctionField *);
+
+#ifndef PARASOL_STATIC
 void   scan_classes(void);
+#endif
+
 void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);

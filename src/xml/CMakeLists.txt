@@ -1,6 +1,7 @@
 # XML Module
 
 set (MOD xml)
+set (INC_MOD_XML TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"

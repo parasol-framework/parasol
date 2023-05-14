@@ -230,8 +230,7 @@ inline ULONG cpu_be32(ULONG x) {
 #define be16_cpu(x) (x)
 #endif
 
-struct CoreBase *CoreBase;
-static OBJECTPTR glModule = NULL;
+JUMPTABLE_CORE
 
 #ifdef ENABLE_SSL
 static BYTE ssl_init = FALSE;
@@ -284,8 +283,6 @@ ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log;
 
    CoreBase = argCoreBase;
-
-   argModule->getPtr(FID_Root, &glModule);
 
    if (init_netsocket()) return ERR_AddClass;
    if (init_clientsocket()) return ERR_AddClass;
@@ -381,7 +378,7 @@ struct(IPAddress) IPAddress: A pointer to the IPAddress structure.
 
 *********************************************************************************************************************/
 
-static CSTRING netAddressToStr(IPAddress *Address)
+CSTRING netAddressToStr(IPAddress *Address)
 {
    pf::Log log(__FUNCTION__);
 
@@ -432,7 +429,7 @@ Failed:  The String was not a valid IP Address.
 
 *********************************************************************************************************************/
 
-static ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
+ERROR netStrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR_NullArgs;
 
@@ -468,7 +465,7 @@ uint: The word in network byte order
 
 *********************************************************************************************************************/
 
-static ULONG netHostToShort(ULONG Value)
+ULONG netHostToShort(ULONG Value)
 {
    return (ULONG)htons((UWORD)Value);
 }
@@ -488,7 +485,7 @@ uint: The long in network byte order
 
 *********************************************************************************************************************/
 
-static ULONG netHostToLong(ULONG Value)
+ULONG netHostToLong(ULONG Value)
 {
    return htonl(Value);
 }
@@ -508,7 +505,7 @@ uint: The Value in host byte order
 
 *********************************************************************************************************************/
 
-static ULONG netShortToHost(ULONG Value)
+ULONG netShortToHost(ULONG Value)
 {
    return (ULONG)ntohs((UWORD)Value);
 }
@@ -528,7 +525,7 @@ uint: The Value in host byte order.
 
 *********************************************************************************************************************/
 
-static ULONG netLongToHost(ULONG Value)
+ULONG netLongToHost(ULONG Value)
 {
    return ntohl(Value);
 }
@@ -559,7 +556,7 @@ NullArgs: The NetSocket argument was not specified.
 
 *********************************************************************************************************************/
 
-static ERROR netSetSSL(extNetSocket *Socket, ...)
+ERROR netSetSSL(extNetSocket *Socket, ...)
 {
 #ifdef ENABLE_SSL
    LONG value, tagid;
@@ -856,6 +853,7 @@ static STRUCTS glStructures = {
 };
 
 PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_network_module() { return &ModHeader; }
 
 /*********************************************************************************************************************
                                                      BACKTRACE IT

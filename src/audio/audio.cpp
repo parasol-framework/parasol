@@ -53,7 +53,7 @@ static ERROR CMDOpen(OBJECTPTR);
 
 #include "module_def.c"
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
 static OBJECTPTR glAudioModule = NULL;
 static OBJECTPTR clAudio = 0;
 static std::unordered_map<OBJECTID, LONG> glSoundChannels;
@@ -63,12 +63,14 @@ ERROR add_audio_class(void);
 ERROR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
+
+void end_of_stream(OBJECTPTR, LONG);
+
 static void audio_stopped_event(extAudio &, LONG);
 static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERROR init_audio(extAudio *);
 static ERROR audio_timer(extAudio *, LARGE, LARGE);
-void end_of_stream(OBJECTPTR, LONG);
 
 #include "audio.h"
 
@@ -161,4 +163,7 @@ static STRUCTS glStructures = {
    { "AudioLoop", sizeof(AudioLoop) }
 };
 
+//********************************************************************************************************************
+
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_AUDIO, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_audio_module() { return &ModHeader; }

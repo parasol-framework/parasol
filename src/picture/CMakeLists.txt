@@ -1,6 +1,7 @@
 # Picture module
 
 set (MOD picture)
+set (INC_MOD_PICTURE TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs APPEND_IDL "${MOD}_def.c" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h")
 
@@ -10,14 +11,13 @@ set (SOURCES "${MOD}.cpp"
    "lib/pngwutil.c" "lib/pngmem.c" "lib/pngerror.c")
 
 add_library (${MOD})
-
 set_module_defaults (${MOD})
-
 target_sources (${MOD} PRIVATE ${SOURCES})
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib"
    ${ZLIB_HEADERS})
 
+target_link_libraries (${MOD} PUBLIC linear_rgb)
 target_link_libraries (${MOD} PRIVATE m zlib)
 

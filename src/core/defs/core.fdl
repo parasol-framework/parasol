@@ -349,7 +349,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
-    "FREE_MEMORY: The total amount of free memory."
+    "FREE_MEMORY: The total amount of free memory.",
+    "STATIC_BUILD: Returns true if the runtime is a statically linked build."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -549,10 +550,17 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 extern "C" {
 
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+#ifdef PARASOL_STATIC
+extern void CloseCore(void);
+extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+#endif
 
 #ifdef MOD_NAME
+#ifdef PARASOL_STATIC
+#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) static ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#else
 #define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
 #define MOD_NAME NULL
@@ -838,7 +846,6 @@ struct FieldValue {
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
-
       HeaderVersion = MODULE_HEADER_VERSION;
       Flags         = MHF::DEFAULT;
       ModVersion    = pVersion;
@@ -1317,7 +1324,7 @@ inline STRING StrClone(CSTRING String)
 {
    if (!String) return NULL;
 
-   LONG len = strlen(String);
+   auto len = LONG(strlen(String));
    STRING newstr;
    if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
@@ -1327,7 +1334,7 @@ inline STRING StrClone(CSTRING String)
 }
 
 inline LONG StrLength(CSTRING String) {
-   if (String) return strlen(String);
+   if (String) return LONG(strlen(String));
    else return 0;
 }
 
@@ -1361,7 +1368,7 @@ template <class T> inline DOUBLE StrToFloat(T &&String) {
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    auto str = std::to_string(Integer);
-   auto len = str.copy(String, StringSize-1);
+   auto len = LONG(str.copy(String, StringSize-1));
    String[len] = 0;
    return len;
 }
@@ -2234,13 +2241,19 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   [[
    static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
       if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
-         APTR functionbase;
-         if (!module->getPtr(FID_ModBase, &functionbase)) {
+         #ifdef PARASOL_STATIC
             if (Module) *Module = module;
-            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            if (Functions) ((APTR *)Functions)[0] = NULL;
             return ERR_Okay;
-         }
-         else return ERR_GetField;
+         #else
+            APTR functionbase;
+            if (!module->getPtr(FID_ModBase, &functionbase)) {
+               if (Module) *Module = module;
+               if (Functions) ((APTR *)Functions)[0] = functionbase;
+               return ERR_Okay;
+            }
+            else return ERR_GetField;
+         #endif
       }
       else return ERR_CreateObject;
    }

@@ -633,7 +633,9 @@ function docModuleHeader()
 end
 
 function docFunction(Function)
-   if string.find(nz(Function.status,''), '^[Pp]rivate') or (string.find(nz(Function.comment,''), '^[Pp]rivate')) then
+   if string.find(nz(Function.status,''), '^[Pp]rivate') or
+      string.find(nz(Function.status,''), '^[Ii]nternal') or
+      string.find(nz(Function.comment,''), '^[Pp]rivate') then
       return ''
    end
 

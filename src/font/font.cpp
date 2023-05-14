@@ -64,8 +64,10 @@ static const UBYTE glWrapBreaks[256] = {
 //********************************************************************************************************************
 
 OBJECTPTR modFont = NULL;
-struct CoreBase *CoreBase;
-struct DisplayBase *DisplayBase;
+
+JUMPTABLE_DISPLAY
+JUMPTABLE_CORE
+
 static OBJECTPTR clFont = NULL;
 static OBJECTPTR modDisplay = NULL;
 static FT_Library glFTLibrary = NULL;
@@ -227,7 +229,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *Y = delta.y>>FT_DOWNSIZE;
 }
 
-INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
+inline LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
    if ((!Glyph) or (!PrevGlyph)) return 0;
 
@@ -238,7 +240,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 
 //********************************************************************************************************************
 
-INLINE void calc_lines(extFont *Self)
+inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if ((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) {
@@ -333,7 +335,7 @@ int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
+LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 {
    if (Kerning) *Kerning = 0;
 
@@ -379,7 +381,7 @@ AccessObject: Font configuration information could not be accessed.
 
 *********************************************************************************************************************/
 
-static ERROR fntGetList(FontList **Result)
+ERROR fntGetList(FontList **Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -474,7 +476,7 @@ int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, 
 
 *********************************************************************************************************************/
 
-static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
    font_glyph *cache;
    ULONG unicode;
@@ -617,7 +619,7 @@ ptr: A handle to the FreeType library will be returned.
 
 *********************************************************************************************************************/
 
-static APTR fntFreetypeHandle(void)
+APTR fntFreetypeHandle(void)
 {
    return glFTLibrary;
 }
@@ -643,7 +645,7 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *********************************************************************************************************************/
 
-static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
+LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 {
    if ((!Font) or (!String)) return 0;
    if (!Font->initialised()) return 0;
@@ -730,7 +732,7 @@ FieldNotSet: The String field has not been set.
 
 *********************************************************************************************************************/
 
-static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
+ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
    LONG *ByteColumn, LONG *BytePos, LONG *CharX)
 {
    font_glyph *cache;
@@ -845,7 +847,7 @@ double: The previous font size is returned.
 
 *********************************************************************************************************************/
 
-static DOUBLE fntSetDefaultSize(DOUBLE Size)
+DOUBLE fntSetDefaultSize(DOUBLE Size)
 {
    DOUBLE previous;
    if ((Size < 6) or (Size > 100)) return glDefaultPoint;
@@ -883,7 +885,7 @@ NoSupport: One of the font files is in an unsupported file format.
 
 *********************************************************************************************************************/
 
-static ERROR fntInstallFont(CSTRING Files)
+ERROR fntInstallFont(CSTRING Files)
 {
    pf::Log log(__FUNCTION__);
 
@@ -945,7 +947,7 @@ DeleteFile: Removal aborted due to a file deletion failure.
 
 *********************************************************************************************************************/
 
-static ERROR fntRemoveFont(CSTRING Name)
+ERROR fntRemoveFont(CSTRING Name)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1042,7 +1044,7 @@ static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::str
    return std::nullopt;
 }
 
-static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path)
+ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1614,3 +1616,4 @@ static STRUCTS glStructures = {
 };
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_font_module() { return &ModHeader; }

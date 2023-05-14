@@ -1,6 +1,7 @@
 # SVG module
 
 set (MOD svg)
+set (INC_MOD_SVG TRUE PARENT_SCOPE)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"

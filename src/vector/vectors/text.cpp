@@ -45,13 +45,14 @@ where large glyphs were oriented around sharp corners.  The process would look s
 
 #include <ft2build.h>
 #include <freetype/freetype.h>
+#include <freetype/ftsizes.h>
 
 #define DEFAULT_WEIGHT 400
 
 FT_Error (*EFT_Set_Pixel_Sizes)(FT_Face, FT_UInt pixel_width, FT_UInt pixel_height );
 FT_Error (*EFT_Set_Char_Size)(FT_Face, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt horz_resolution, FT_UInt vert_resolution );
 FT_Error (*EFT_Get_Kerning)(FT_Face, FT_UInt left_glyph, FT_UInt right_glyph, FT_UInt kern_mode, FT_Vector *akerning);
-FT_Error (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
+FT_UInt  (*EFT_Get_Char_Index)(FT_Face, FT_ULong charcode);
 FT_Error (*EFT_Load_Glyph)(FT_Face, FT_UInt glyph_index, FT_Int32  load_flags);
 FT_Error (*EFT_Activate_Size)(FT_Size);
 FT_Error (*EFT_New_Size)(FT_Face, FT_Size *);
@@ -2430,6 +2431,15 @@ static const FieldArray clTextFields[] = {
 
 static ERROR init_text(void)
 {
+#ifdef PARASOL_STATIC
+   EFT_Set_Pixel_Sizes = &FT_Set_Pixel_Sizes;
+   EFT_Set_Char_Size   = &FT_Set_Char_Size;
+   EFT_Get_Kerning     = &FT_Get_Kerning;
+   EFT_Get_Char_Index  = &FT_Get_Char_Index;
+   EFT_Load_Glyph      = &FT_Load_Glyph;
+   EFT_New_Size        = &FT_New_Size;
+   EFT_Activate_Size   = &FT_Activate_Size;
+#else
    if (modResolveSymbol(modFont, "FT_Set_Pixel_Sizes", (APTR *)&EFT_Set_Pixel_Sizes)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Set_Char_Size", (APTR *)&EFT_Set_Char_Size)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Get_Kerning", (APTR *)&EFT_Get_Kerning)) return ERR_ResolveSymbol;
@@ -2437,6 +2447,7 @@ static ERROR init_text(void)
    if (modResolveSymbol(modFont, "FT_Load_Glyph", (APTR *)&EFT_Load_Glyph)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_New_Size", (APTR *)&EFT_New_Size)) return ERR_ResolveSymbol;
    if (modResolveSymbol(modFont, "FT_Activate_Size", (APTR *)&EFT_Activate_Size)) return ERR_ResolveSymbol;
+#endif
 
    FID_FreetypeFace = StrHash("FreetypeFace", FALSE);
 

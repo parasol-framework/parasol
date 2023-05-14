@@ -23,7 +23,7 @@ private:
    }
 
 public:
-   rgb_to_linear() {
+   inline rgb_to_linear() {
       // Initialise conversion tables
       for (LONG i=0; i < 256; i++) {
          r2l[i] = conv_r2l((DOUBLE)i * (1.0 / 255.0));
@@ -60,18 +60,18 @@ public:
    }
 
    inline static FLOAT f_convert(FLOAT Value) {
-      if (Value <= 0.04045) return Value /= 12.92;
+      if (Value <= 0.04045) return Value / 12.92;
       else return std::pow((Value + 0.055) / 1.055, 2.4);
    }
 
    inline static void convert(FRGB &Colour) {
-      if (Colour.Red <= 0.04045) Colour.Red /= 12.92;
+      if (Colour.Red <= 0.04045) Colour.Red = Colour.Red / 12.92;
       else Colour.Red = std::pow((Colour.Red + 0.055) / 1.055, 2.4);
 
-      if (Colour.Green <= 0.04045) Colour.Green /= 12.92;
+      if (Colour.Green <= 0.04045) Colour.Green = Colour.Green / 12.92;
       else Colour.Green = std::pow((Colour.Green + 0.055) / 1.055, 2.4);
 
-      if (Colour.Blue <= 0.04045) Colour.Blue /= 12.92;
+      if (Colour.Blue <= 0.04045) Colour.Blue = Colour.Blue / 12.92;
       else Colour.Blue = std::pow((Colour.Blue + 0.055) / 1.055, 2.4);
    }
 

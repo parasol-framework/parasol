@@ -25,11 +25,10 @@ using namespace pf;
 
 #define VER_MP3 1.0
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
+JUMPTABLE_AUDIO
 
 static OBJECTPTR modAudio = NULL;
-struct AudioBase *AudioBase;
-
 static OBJECTPTR clMP3 = NULL;
 
 const LONG COMMENT_TRACK = 29;
@@ -902,3 +901,4 @@ static ERROR CMDExpunge(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, VER_MP3, NULL, NULL)
+extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

@@ -25,7 +25,6 @@ extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
-extern struct DisplayBase *DisplayBase;
 extern OBJECTPTR clFluid;
 extern std::unordered_map<std::string, ULONG> glStructSizes;
 

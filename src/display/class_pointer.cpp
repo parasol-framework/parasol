@@ -16,6 +16,10 @@ used for all interactions with this service.
 
 #include "defs.h"
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 static ERROR GET_ButtonOrder(extPointer *, CSTRING *);
 static ERROR GET_ButtonState(extPointer *, LONG *);
 

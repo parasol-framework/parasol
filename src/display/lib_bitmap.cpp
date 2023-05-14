@@ -8,6 +8,10 @@ Name: Bitmap
 
 #include "defs.h"
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 static size_t glDitherSize = 0;
 
 //********************************************************************************************************************

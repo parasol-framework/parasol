@@ -32,6 +32,10 @@ areas.
 #include "../defs.h"
 #include <parasol/modules/picture.h>
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 static ERROR SET_Opacity(extSurface *, DOUBLE);
 static ERROR SET_XOffset(extSurface *, Variable *);
 static ERROR SET_YOffset(extSurface *, Variable *);
@@ -2576,6 +2580,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 #include "surface_fields.cpp"
 #include "surface_dimensions.cpp"
 #include "surface_resize.cpp"
+#include "../lib_surfaces.cpp"
 
 //********************************************************************************************************************
 

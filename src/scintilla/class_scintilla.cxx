@@ -105,10 +105,10 @@ capabilities.
 
 #include "module_def.c"
 
-MODULE_COREBASE;
-struct DisplayBase *DisplayBase;
-struct FontBase *FontBase;
-struct VectorBase *VectorBase;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+JUMPTABLE_VECTOR
+JUMPTABLE_FONT
 
 static OBJECTPTR clScintilla = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
@@ -231,7 +231,7 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 
 //********************************************************************************************************************
 
-ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -255,7 +255,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 //********************************************************************************************************************
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (modDisplay)  { FreeResource(modDisplay);  modDisplay = NULL; }
    if (modFont)     { FreeResource(modFont);     modFont = NULL; }
@@ -2552,3 +2552,4 @@ static ERROR create_scintilla(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }

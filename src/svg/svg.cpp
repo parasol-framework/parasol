@@ -32,9 +32,10 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 using namespace pf;
 
-MODULE_COREBASE;
-struct DisplayBase *DisplayBase;
-struct VectorBase *VectorBase;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+JUMPTABLE_VECTOR
+
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG { // Private variables for RSVG
@@ -136,7 +137,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_Okay;
 }
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modVector)  { FreeResource(modVector);  modVector = NULL; }
@@ -154,3 +155,4 @@ ERROR CMDExpunge(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_svg_module() { return &ModHeader; }

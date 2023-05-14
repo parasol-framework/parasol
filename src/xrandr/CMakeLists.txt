@@ -2,6 +2,7 @@
 # Used by the Display module for full-screen graphics
 
 set (MOD xrandr)
+set (INC_MOD_XRANDR TRUE PARENT_SCOPE)
 
 CHECK_C_SOURCE_COMPILES ("
 #include <X11/extensions/Xrandr.h>

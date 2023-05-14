@@ -56,11 +56,10 @@ extern "C" {
 
 #include "hashes.h"
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
 
 #include "defs.h"
 
-struct DisplayBase *DisplayBase;
 OBJECTPTR modDisplay = NULL; // Required by fluid_input.c
 OBJECTPTR modFluid = NULL;
 OBJECTPTR clFluid = NULL;
@@ -815,3 +814,4 @@ static void stack_dump(lua_State *L)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

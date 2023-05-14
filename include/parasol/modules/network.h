@@ -627,7 +627,14 @@ inline ERROR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR 
    if ((*NewNetSocketOut = objNetSocket::create::global(fl::Listener(ListenerID), fl::UserData(UserData)))) return ERR_Okay;
    else return ERR_CreateObject;
 }
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_NETWORK static struct NetworkBase *NetworkBase;
+#else
+#define JUMPTABLE_NETWORK struct NetworkBase *NetworkBase;
+#endif
+
 struct NetworkBase {
+#ifndef PARASOL_STATIC
    ERROR (*_StrToAddress)(CSTRING String, struct IPAddress * Address);
    CSTRING (*_AddressToStr)(struct IPAddress * IPAddress);
    ULONG (*_HostToShort)(ULONG Value);
@@ -635,9 +642,11 @@ struct NetworkBase {
    ULONG (*_ShortToHost)(ULONG Value);
    ULONG (*_LongToHost)(ULONG Value);
    ERROR (*_SetSSL)(objNetSocket * NetSocket, ...);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_NETWORK_MODULE
+#ifndef PARASOL_STATIC
 extern struct NetworkBase *NetworkBase;
 inline ERROR netStrToAddress(CSTRING String, struct IPAddress * Address) { return NetworkBase->_StrToAddress(String,Address); }
 inline CSTRING netAddressToStr(struct IPAddress * IPAddress) { return NetworkBase->_AddressToStr(IPAddress); }
@@ -646,5 +655,16 @@ inline ULONG netHostToLong(ULONG Value) { return NetworkBase->_HostToLong(Value)
 inline ULONG netShortToHost(ULONG Value) { return NetworkBase->_ShortToHost(Value); }
 inline ULONG netLongToHost(ULONG Value) { return NetworkBase->_LongToHost(Value); }
 template<class... Args> ERROR netSetSSL(objNetSocket * NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
+#else
+extern "C" {
+extern ERROR netStrToAddress(CSTRING String, struct IPAddress * Address);
+extern CSTRING netAddressToStr(struct IPAddress * IPAddress);
+extern ULONG netHostToShort(ULONG Value);
+extern ULONG netHostToLong(ULONG Value);
+extern ULONG netShortToHost(ULONG Value);
+extern ULONG netLongToHost(ULONG Value);
+extern ERROR netSetSSL(objNetSocket * NetSocket, ...);
+}
+#endif // PARASOL_STATIC
 #endif
 

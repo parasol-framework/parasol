@@ -764,7 +764,8 @@ HANDLE winLoadLibrary(LPCSTR Name)
 
 FARPROC winGetProcAddress(HMODULE Module, LPCSTR Name)
 {
-   return GetProcAddress(Module, Name);
+   if (!Module) return GetProcAddress(GetModuleHandle(NULL), Name);
+   else return GetProcAddress(Module, Name);
 }
 
 //********************************************************************************************************************

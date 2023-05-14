@@ -108,7 +108,7 @@ extern "C" ERROR add_storage_class(void);
 
 LONG InitCore(void);
 extern "C" EXPORT void CloseCore(void);
-extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
+extern "C" EXPORT ERROR OpenCore(OpenInfo *, struct CoreBase **);
 static ERROR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
@@ -122,6 +122,10 @@ DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 
 static std::string glHomeFolderName;
+
+#include "static_modules.cpp"
+
+//********************************************************************************************************************
 
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
@@ -148,7 +152,7 @@ void _init(void)
 
 //********************************************************************************************************************
 
-EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
+EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 {
    #ifdef __unix__
       struct timeval tmday;
@@ -159,7 +163,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
    LONG i;
 
-   if (!Info) return NULL;
+   if (!Info) return ERR_Failed;
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
    glOpenInfo   = Info;
    tlMainThread = TRUE;
@@ -246,7 +250,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
             fprintf(stderr, "Failed to determine root folder.\n");
-            return NULL;
+            return ERR_Failed;
          }
          if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
@@ -278,7 +282,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       if (Info->CoreVersion > VER_CORE) {
          KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
          if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
-         return NULL;
+         return ERR_CoreVersion;
       }
    }
 
@@ -458,19 +462,19 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
                   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-                  return NULL;
+                  return ERR_SystemCall;
                }
             }
             else {
                if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-               return NULL;
+               return ERR_SystemCall;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
          if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-         return NULL;
+         return ERR_SystemCall;
       }
 
       RegisterFD(glSocket, RFD::READ, NULL, NULL);
@@ -486,34 +490,35 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 
    init_metaclass();
 
-   if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_task_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_thread_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_module_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_time_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_config_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_storage_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_file_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_script_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_archive_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_compression_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
    #ifdef __ANDROID__
-   if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_asset_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
    #endif
 
    if (!(glCurrentTask = extTask::create::untracked())) {
       CloseCore();
-      return NULL;
+      return ERR_CreateObject;
    }
 
    if (init_volumes(volumes)) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
-      return NULL;
+      return ERR_Failed;
    }
 
    fs_initialised = true;
 
+#ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
       objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
@@ -546,6 +551,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
       else glScanClasses = true; // If no file, a database rebuild is required.
    }
+#endif
 
    if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, &newargs, newargs.size());
 
@@ -562,21 +568,34 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
+#ifndef PARASOL_STATIC
    // Generate the Core table for our new task
-
    LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
+#else
+   LocalCoreBase = NULL;
+
+   register_static_modules();
+
+   // Initialise all the modules because we don't retain a class database in static builds.
+
+   for (auto & [ name, hdr ] : glStaticModules) {
+      objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+   }
+#endif
 
    // Broadcast the creation of the new task
 
    evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
+#ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) != OPF::NIL) {
       log.msg("Class scanning has been enforced by user request.");
       glScanClasses = true;
    }
 
    if (glScanClasses) scan_classes();
+#endif
 
    #ifdef _DEBUG
       print_class_list();
@@ -587,7 +606,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    glSystemState = 0; // Indicates that initialisation is complete.
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
-   return LocalCoreBase;
+   *JumpTable = LocalCoreBase;
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -1065,16 +1085,17 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
+      #ifndef PARASOL_STATIC
       if (!glModulePath.empty()) {
          SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
-      else {
-         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
-      }
+      else SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      #endif
    #elif __unix__
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
+      #ifndef PARASOL_STATIC
       if (!glModulePath.empty()) {
          SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
@@ -1082,6 +1103,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string path = glRootPath + "lib/parasol/";
          SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
+      #endif
 
       SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
@@ -1338,13 +1360,14 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       }
    }
 
+#ifndef PARASOL_STATIC
    // Change glModulePath to an absolute path to optimise the loading of modules.
-
    STRING mpath;
    if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
       glModulePath = mpath;
       FreeResource(mpath);
    }
+#endif
 
    return ERR_Okay;
 }

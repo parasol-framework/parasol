@@ -13,11 +13,7 @@ else ()
    add_executable (parasol_cmd "parasol.cpp")
 endif ()
 
-if (PARASOL_STATIC)
-   target_link_libraries (parasol_cmd PRIVATE core display json ${INIT_LINK})
-else ()
-   target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
-endif ()
+target_link_libraries (parasol_cmd PRIVATE ${INIT_LINK})
 
 target_include_directories (parasol_cmd PRIVATE "${PROJECT_SOURCE_DIR}/src/link")
 

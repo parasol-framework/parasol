@@ -1,6 +1,7 @@
 # HTTP Module
 
 set (MOD http)
+set (INC_MOD_HTTP TRUE PARENT_SCOPE)
 
 # Use XXD to convert the auth.fluid script to a C binary file
 

@@ -1,7 +1,6 @@
 /*********************************************************************************************************************
 
-This file is in the public domain and may be distributed and modified without
-restriction.
+This file is in the public domain and may be distributed and modified without restriction.
 
 *********************************************************************************************************************/
 
@@ -15,48 +14,30 @@ restriction.
 
 #include <parasol/main.h>
 
+#ifndef PARASOL_STATIC
+
 #ifndef _ROOT_PATH
 #define _ROOT_PATH "/usr/local"
 #endif
 
-extern "C" void program(void);
-
 struct CoreBase *CoreBase;
-
-extern "C" void close_parasol(void);
-
-//********************************************************************************************************************
-
-void usererror(CSTRING Message)
-{
-   printf("%s\n", Message);
-}
-
-//********************************************************************************************************************
-// Main execution point.
-
-static APTR glCoreHandle = 0;
+static APTR glCoreHandle = NULL;
+typedef ERROR OPENCORE(struct OpenInfo *, struct CoreBase **);
 typedef void CLOSECORE(void);
-static CLOSECORE *closecore = NULL;
+static CLOSECORE *CloseCore = NULL;
+#else
+static struct CoreBase *CoreBase; // Dummy
+#endif
+
+//********************************************************************************************************************
 
 extern "C" const char * init_parasol(int argc, CSTRING *argv)
 {
-   glCoreHandle = NULL;
-   CSTRING msg  = NULL;
+   struct OpenInfo info = { .Flags = OPF::NIL };
 
+#ifndef PARASOL_STATIC
    char root_path[232] = ""; // NB: Assigned to info.RootPath
    char core_path[256] = "";
-
-   struct OpenInfo info;
-   info.Detail    = 0;
-   info.MaxDepth  = 14;
-   info.Args      = argv;
-   info.ArgCount  = argc;
-   info.CoreVersion = 0; // Minimum required core version
-   info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
-   info.Error     = ERR_Okay;
-   info.RootPath  = root_path;
-   info.Flags     = OPF::CORE_VERSION|OPF::COMPILED_AGAINST|OPF::ARGS|OPF::ERROR|OPF::ROOT_PATH;
 
    // Check for a local installation in the CWD.
 
@@ -95,8 +76,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
                strncpy(root_path, _ROOT_PATH"/", sizeof(root_path));
                strncpy(core_path, _ROOT_PATH"/lib/parasol/core.so", sizeof(core_path));
                if (stat(core_path, &corestat)) {
-                  msg = "Failed to find the location of the core.so library";
-                  goto failed_lib_open;
+                  return "Failed to find the location of the core.so library";
                }
             }
          }
@@ -105,36 +85,39 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
 
    if ((!core_path[0]) or (!(glCoreHandle = dlopen(core_path, RTLD_NOW)))) {
       fprintf(stderr, "%s: %s\n", core_path, dlerror());
-      msg = "Failed to open the core library.";
-      goto failed_lib_open;
+      return "Failed to open the core library.";
    }
 
-   typedef struct CoreBase * OPENCORE(struct OpenInfo *);
+   auto OpenCore = (OPENCORE *)dlsym(glCoreHandle, "OpenCore");
+   if (!OpenCore) return "Could not find the OpenCore symbol in the Core library.";
 
-   OPENCORE *opencore;
-   if (!(opencore = (OPENCORE *)dlsym(glCoreHandle, "OpenCore"))) {
-      msg = "Could not find the OpenCore symbol in the Core library.";
-      goto failed_lib_sym;
-   }
+   auto CloseCore = (CLOSECORE *)dlsym(glCoreHandle, "CloseCore");
+   if (!CloseCore) return "Could not find the CloseCore symbol.";
 
-   if (!(closecore = (CLOSECORE *)dlsym(glCoreHandle, "CloseCore"))) {
-      msg = "Could not find the CloseCore symbol.";
-      goto failed_lib_sym;
-   }
+   info.RootPath  = root_path;
+   info.Flags = OPF::ROOT_PATH;
+#endif
 
-   if ((CoreBase = opencore(&info)));
-   else if (info.Error IS ERR_CoreVersion) msg = "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
-   else msg = "Failed to initialise Parasol.  Run again with --log-info.";
+   info.Detail    = 0;
+   info.MaxDepth  = 14;
+   info.Args      = argv;
+   info.ArgCount  = argc;
+   info.CoreVersion = 0; // Minimum required core version
+   info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
+   info.Error     = ERR_Okay;
+   info.Flags     = OPF::CORE_VERSION|OPF::COMPILED_AGAINST|OPF::ARGS|OPF::ERROR;
 
-failed_lib_sym:
-failed_lib_open:
-   return msg;
+   if (!OpenCore(&info, &CoreBase)) return NULL;
+   else if (info.Error IS ERR_CoreVersion) return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
+   else return "Failed to initialise Parasol.  Run again with --log-info.";
 }
 
 //********************************************************************************************************************
 
 extern "C" void close_parasol(void)
 {
-   if (closecore) closecore();
+   CloseCore();
+#ifndef PARASOL_STATIC
    if (glCoreHandle) dlclose(glCoreHandle);
+#endif
 }

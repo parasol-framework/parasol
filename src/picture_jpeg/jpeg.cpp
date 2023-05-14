@@ -21,8 +21,9 @@ extern "C" {
 #include "lib/jpegint.h"
 }
 
-struct CoreBase *CoreBase = NULL;
-struct DisplayBase *DisplayBase = NULL;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+
 static OBJECTPTR clJPEG = NULL;
 static OBJECTPTR modDisplay = NULL;
 
@@ -357,3 +358,4 @@ static ERROR CMDExpunge(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_jpeg_module() { return &ModHeader; }

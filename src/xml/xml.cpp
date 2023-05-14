@@ -35,7 +35,8 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 #include <functional>
 #include <sstream>
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
+
 static OBJECTPTR clXML = NULL;
 static ULONG glTagID = 1;
 
@@ -1754,4 +1755,7 @@ static STRUCTS glStructures = {
    { "XMLTag", sizeof(XMLTag) }
 };
 
+//********************************************************************************************************************
+
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_XML, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }

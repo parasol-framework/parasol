@@ -10,6 +10,11 @@
 # Build:   cmake --build release -j 8 -- -O
 # Install: sudo cmake --install release
 # Test:    make -C release test ARGS=--verbose
+#
+# A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
+# This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds
+# should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
+# build across multiple projects can otherwise lead to confusing outcomes.
 
 cmake_minimum_required(VERSION 3.13)
 
@@ -66,7 +71,7 @@ set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
 
-set(BUILD_RPATH_USE_ORIGIN TRUE)
+set (BUILD_RPATH_USE_ORIGIN TRUE)
 
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
@@ -176,11 +181,21 @@ if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
 endif ()
 
 if (WIN32)
-   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
-   set(CMAKE_EXE_LINKER_FLAGS "-static") #-static-libgcc -static-libstdc++
-   set(INIT_LINK "init-win")
+   if (PARASOL_STATIC)
+      # NB: MinGW does not guarantee that libgcc and libstdc++ will be static even if these flags are specified.
+      set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+      set (INIT_LINK "init-win" core)
+   else ()
+      set (CMAKE_EXE_LINKER_FLAGS "-static")
+      set (INIT_LINK "init-win")
+   endif ()
 else ()
-   set(INIT_LINK "init-unix")
+   # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
+   if (PARASOL_STATIC)
+      set (INIT_LINK "init-unix" core)
+   else ()
+      set (INIT_LINK "init-unix")
+   endif ()
 endif ()
 
 add_custom_target(build_headers ALL COMMENT "Generate headers and definition files on the fly")
@@ -321,13 +336,16 @@ function (set_module_defaults ARG_TARGET)
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
-   # Collect code and data that is never referenced
-   target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
+   if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+
+   else ()
+      # Collect code and data that is never referenced
+      target_link_options (${ARG_TARGET} PRIVATE "$<${GCC_COMPAT}:$<LINK_ONLY:LINKER:--gc-sections>>")
+   endif ()
 
    if (PARASOL_STATIC)
       set_target_properties (${ARG_TARGET}
          PROPERTIES
-         CMAKE_POSITION_INDEPENDENT_CODE ON # Enables -fPIC and -fPIE in gcc
          CXX_STANDARD 20)
    else ()
       if (CMAKE_BUILD_TYPE MATCHES "Release")
@@ -338,6 +356,7 @@ function (set_module_defaults ARG_TARGET)
          PROPERTIES
          PREFIX ""
          CXX_STANDARD 20
+         CMAKE_POSITION_INDEPENDENT_CODE ON # Enables -fPIC and -fPIE in gcc
          LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib"
          RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/release/lib")
 
@@ -366,51 +385,52 @@ else ()
 #   set (PARASOL_ARCH "-m32")
 endif ()
 
-set (CMAKE_CXX_STANDARD 11)
-set (CMAKE_CXX_STANDARD_REQUIRED True)
-
-# Set system-specific compiler flags
-
-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-   add_definitions ("-D_DARWIN_C_SOURCE")
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
-   add_definitions ("-D_GNU_SOURCE")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
-elseif (WIN32)
-   add_definitions ("-D_WIN32" "-U__unix__")
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
-   if (PRINTF64_ID)
-      add_definitions ("-DPRINTF64I")
-   endif ()
-   if (PRINTF64_PRID)
-      add_definitions ("-DPRINTF64_PRID")
-   endif ()
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
-# TODO
-endif ()
-
-if (ENABLE_ANALYSIS)
-   # NB: The use of dlclose() is not permitted when analysis is enabled because it upsets the log output.
-   # In addition, gdb breakpoints are unlikely to work with these features enabled.
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
-endif ()
-
 if (PARASOL_VLOG)
    add_definitions ("-D_DEBUG")
 endif ()
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
+# Set system-specific compiler flags
 
-# These default compile options are for use by target_compile_options()
-# TODO: Utilise target_compile_options() in the makefiles
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
 
-set (GCC_COMPAT "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU>")
-set (DEFAULT_GCC_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
-set (DEFAULT_GCXX_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+else ()
+   if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+      add_definitions ("-D_DARWIN_C_SOURCE")
+   elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+      add_definitions ("-D_GNU_SOURCE")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
+   elseif (WIN32)
+      add_definitions ("-D_WIN32" "-U__unix__")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
+      if (PRINTF64_ID)
+         add_definitions ("-DPRINTF64I")
+      endif ()
+      if (PRINTF64_PRID)
+         add_definitions ("-DPRINTF64_PRID")
+      endif ()
+   elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
+   # TODO
+   endif ()
+
+   if (ENABLE_ANALYSIS)
+      # NB: The use of dlclose() is not permitted when analysis is enabled because it upsets the log output.
+      # In addition, gdb breakpoints are unlikely to work with these features enabled.
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=leak -DANALYSIS_ENABLED")
+   endif ()
+
+   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
+   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-empty-body -Wno-unused-result -Wno-format-zero-length -Wno-unused-but-set-variable -Wno-stringop-overflow")
+
+   # These default compile options are for use by target_compile_options()
+   # TODO: Utilise target_compile_options() in the makefiles
+
+   set (GCC_COMPAT "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU>")
+   set (DEFAULT_GCC_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+   set (DEFAULT_GCXX_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+endif ()
 
 # Support for building Windows resource files with MINGW
 
@@ -420,11 +440,24 @@ if (MINGW)
   set (CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> -O coff -i <SOURCE> -o <OBJECT>")
 endif (MINGW)
 
+# --------------------------------------------------------------------------------------------------------------------
+# Sub-libraries are defined as linkable objects so that they work correctly between static and modular builds.
+
+add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
+
+# --------------------------------------------------------------------------------------------------------------------
+
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 add_subdirectory (src/link)
 add_subdirectory (src/core)
+
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+# TODO: Support MSVC builds of the Fluid libraries.
+else ()
 add_subdirectory (src/fluid)
+endif ()
+
 add_subdirectory (src/xml)
 add_subdirectory (src/json)
 
@@ -513,9 +546,13 @@ if (PARASOL_INSTALL)
    endif ()
 
    if (WIN32)
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
+      if (NOT DISABLE_SSL)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl/" DESTINATION "config/ssl")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users/" DESTINATION "config/users")
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
+      if (NOT DISABLE_FONT)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts/" DESTINATION "config/fonts")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles/" DESTINATION "config/styles")
       install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "config/styles/icons")
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts/" DESTINATION "scripts")
@@ -523,9 +560,13 @@ if (PARASOL_INSTALL)
          install (DIRECTORY "${PROJECT_SOURCE_DIR}/examples/" DESTINATION "examples")
       endif ()
    else ()
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
+      if (NOT DISABLE_SSL)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/ssl" DESTINATION "${SHARE_TARGET}/config")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/users" DESTINATION "${SHARE_TARGET}/config")
-      install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
+      if (NOT DISABLE_FONT)
+         install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/fonts" DESTINATION "${SHARE_TARGET}/config")
+      endif ()
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/data/styles" DESTINATION "${SHARE_TARGET}/config")
       install (FILES "${CMAKE_BINARY_DIR}/icons/Default.zip" DESTINATION "${SHARE_TARGET}/config/styles/icons")
       install (DIRECTORY "${PROJECT_SOURCE_DIR}/scripts" DESTINATION "${SHARE_TARGET}")
@@ -534,11 +575,11 @@ if (PARASOL_INSTALL)
       endif ()
    endif ()
 
-   install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-
-   install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning ${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\")")
-
-   install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   if (NOT PARASOL_STATIC)
+      install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
+      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning ${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\")")
+      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+   endif ()
 
    if (RUN_ANYWHERE)
       install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}'.  You may need to add this folder to your PATH variable in order to run parasol.exe from the command-line.\")")
