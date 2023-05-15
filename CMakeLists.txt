@@ -469,7 +469,7 @@ if (NOT DISABLE_DISPLAY)
    add_subdirectory (src/display)
 endif ()
 
-if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR))
+if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
    #add_subdirectory (src/document)
 endif ()
 

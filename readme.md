@@ -25,7 +25,8 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback supporting WAV and MP3 files.
 * Hundreds of standardised scalable icons are included for application building.  Fonts are also standardised for cross-platform consistency.
-* Can be used as an enhanced Lua framework by Lua developers in need of broad UI features and full system integration.
+* Highly customised static builds are supported.  If you only need the vector API for drawing graphics in your C++ project, build options are available to support that.
+* Parasol can be used as an enhanced Lua framework by Lua developers in need of broad UI features and full system integration.
 * WIP: Extensive text editing widget implemented with scintilla.org.
 
 ### Application Example
@@ -147,11 +148,57 @@ parasol --log-error examples/widgets.fluid
 
 Try running a second time with `--log-debug` to observe run-time log output while toying with the example.  Try a few of the other examples to get a feel for what you can achieve, and load them into a text editor to see how they were created.
 
-## 5. Next Steps
+## 5. Build Options
+
+The following build options and their default values may be of interest if you'd like to tweak the build process:
+
+```
+BUILD_TESTS       ON  Build tests (does not automatically run them).
+BUILD_DEFS        ON  Auto-generate C/C++ headers and documentation.
+RUN_ANYWHERE      OFF Build a framework that can run from any folder without installation.
+PARASOL_INSTALL   ON  Create installation targets.  If OFF, the build won't install anything.
+INSTALL_EXAMPLES  OFF Install the example scripts.
+INSTALL_INCLUDES  OFF Install the header files.
+INSTALL_TESTS     OFF Install the test programs.
+ENABLE_ANALYSIS   OFF Enable run-time address analysis if available.  Incompatible with gdb.
+```
+
+### 5.1 Static Builds
+
+Parasol is built as a set of categorised API's such as 'display', 'network' and 'vector'.  Each API is compiled in its own individual library file.  By default we build them as shared libraries for loading on demand, which is ideal for general purposes as it prevents scripts and programs from loading unnecessary features.
+
+If you're using Parasol for a specific run-time application that you're developing, it will probably be more useful to create a static build so that the framework is embedded with your application.  In addition, you can choose the specific API's that are needed for your program - so if you don't need networking for example, that entire category of features can be switched off for faster compiling.
+
+To enable a static build, use the `-DPARASOL_STATIC=ON` build option.  Your program's cmake file should link to the framework with `target_link_libraries (your_program PRIVATE ${INIT_LINK})`.
+
+To choose the API's that you need, see the next section.
+
+### 5.2 Disabling APIs
+
+By default, every available API will be compiled in the framework unless they are individually switched off.  You can disable a given API with `-DDISABLE_<API_NAME>`, where `<API_NAME>` is one of the following choices:
+
+```
+AUDIO     Audio API
+DISPLAY   Display API
+DOCUMENT  Document API (dependent on Display, Vector, Font)
+FONT      Font API (dependent on Display)
+HTTP      HTTP API (dependent on Network)
+MP3       MP3 support (dependent on Audio)
+NETWORK   Network API
+PICTURE   Picture API (dependent on Display)
+JPEG      JPEG support (dependent on Picture)
+SCINTILLA Scintilla API (dependent on Display, Vector, Font)
+SVG       SVG support  (dependent on Display, Vector, Font)
+VECTOR    Vector API  (dependent on Display, Font)
+```
+
+If you disable an API that has dependencies then the dependent APIs will not be included in the build.  For instance, disabling Network will also result in HTTP being disabled.
+
+## 6. Next Steps
 
 Full documentation for developers is available online from our [main website](https://www.parasol.ws).
 
-## 6. Source Code Licensing
+## 7. Source Code Licensing
 
 Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2023.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
