@@ -17,7 +17,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Features
 
-* Multi-functional: Integrate your C++ code with our system libraries, or write programs quickly in Fluid, our integrated Lua-based scripting language.
+* Multi-functional: Integrate your C++ code with our API or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
 * Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.
 * Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
@@ -25,7 +25,6 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 * Full system abstraction for building cross-platform applications (file I/O, clipboards, threads, object management)
 * Multi-channel audio playback supporting WAV and MP3 files.
 * Hundreds of standardised scalable icons are included for application building.  Fonts are also standardised for cross-platform consistency.
-* Highly customised static builds are supported.  If you only need the vector API for drawing graphics in your C++ project, build options are available to support that.
 * Parasol can be used as an enhanced Lua framework by Lua developers in need of broad UI features and full system integration.
 * WIP: Extensive text editing widget implemented with scintilla.org.
 
