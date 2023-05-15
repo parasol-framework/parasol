@@ -946,7 +946,7 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
 {
    InputEvent event = {
       .Next        = NULL,
-      .Value       = Vector->UID,
+      .Value       = DOUBLE(Vector->UID),
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
       .OverID      = Vector->UID,
@@ -968,7 +968,7 @@ static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X
 {
    InputEvent event = {
       .Next        = NULL,
-      .Value       = Vector->UID,
+      .Value       = DOUBLE(Vector->UID),
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
       .OverID      = Vector->UID,

@@ -2474,7 +2474,7 @@ inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
    memmove(Dest, Src, Length);
 }
 
-inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+[[nodiscard]] inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
 {
    LONG i;
    LONG pos = 0;
@@ -2487,7 +2487,7 @@ inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
    return -1;
 }
 
-inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+[[nodiscard]] inline LONG StrSearch(CSTRING Keyword, CSTRING String)
 {
    LONG i;
    LONG pos = 0;
@@ -2500,7 +2500,7 @@ inline LONG StrSearch(CSTRING Keyword, CSTRING String)
    return -1;
 }
 
-inline STRING StrClone(CSTRING String)
+[[nodiscard]] inline STRING StrClone(CSTRING String)
 {
    if (!String) return NULL;
 
@@ -2513,7 +2513,7 @@ inline STRING StrClone(CSTRING String)
    else return NULL;
 }
 
-inline LONG StrLength(CSTRING String) {
+[[nodiscard]] inline LONG StrLength(CSTRING String) {
    if (String) return LONG(strlen(String));
    else return 0;
 }
@@ -2563,7 +2563,7 @@ namespace pf {
 
 static THREADVAR LONG _tlUniqueThreadID = 0;
 
-inline LONG _get_thread_id(void) {
+[[nodiscard]] inline LONG _get_thread_id(void) {
    if (_tlUniqueThreadID) return _tlUniqueThreadID;
    _tlUniqueThreadID = GetResource(RES::THREAD_ID);
    return _tlUniqueThreadID;

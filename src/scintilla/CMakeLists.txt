@@ -70,7 +70,7 @@ set (LEXERS
 
 add_library (scintilla)
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*|Ninja.*")
 
 else ()
    target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")

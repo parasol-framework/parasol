@@ -336,7 +336,7 @@ function (set_module_defaults ARG_TARGET)
 
    add_definitions ("-DMOD_NAME=${ARG_TARGET}")
 
-   if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+   if (CMAKE_GENERATOR MATCHES "Visual Studio.*|Ninja.*")
 
    else ()
       # Collect code and data that is never referenced
@@ -391,7 +391,7 @@ endif ()
 
 # Set system-specific compiler flags
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+if (CMAKE_GENERATOR MATCHES "Visual Studio.*|Ninja.*")
 
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")

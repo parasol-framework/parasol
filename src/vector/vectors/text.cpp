@@ -131,7 +131,7 @@ class TextLine : public std::string {
 public:
    TextLine() : std::string { } { }
    TextLine(const char *Value) : std::string{ Value } { }
-   TextLine(const char *Value, int Total) : std::string{ Value, Total } { }
+   TextLine(const char *Value, size_t Total) : std::string{ Value, Total } { }
    TextLine(std::string Value) : std::string{ Value } { }
 
    std::vector<CharPos> chars;
