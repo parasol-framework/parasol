@@ -167,7 +167,7 @@ ENABLE_ANALYSIS   OFF Enable run-time address analysis if available.  Incompatib
 
 Parasol is built as a set of categorised API's such as 'display', 'network' and 'vector'.  Each API is compiled in its own individual library file.  By default we build them as shared libraries for loading on demand, which is ideal for general purposes as it prevents scripts and programs from loading unnecessary features.
 
-If you're using Parasol for a specific run-time application that you're developing, it will probably be more useful to create a static build so that the framework is embedded with your application.  In addition, you can choose the specific API's that are needed for your program - so if you don't need networking for example, that entire category of features can be switched off for faster compiling.
+If you're using Parasol for a specific run-time application that you're developing, it will probably be more useful to create a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation.
 
 To enable a static build, use the `-DPARASOL_STATIC=ON` build option.  Your program's cmake file should link to the framework with `target_link_libraries (your_program PRIVATE ${INIT_LINK})`.
 
@@ -175,24 +175,24 @@ To choose the API's that you need, see the next section.
 
 ### 5.2 Disabling APIs
 
-By default, every available API will be compiled in the framework unless they are individually switched off.  You can disable a given API with `-DDISABLE_<API_NAME>`, where `<API_NAME>` is one of the following choices:
+By default, every available API will be compiled in the framework unless they are individually switched off.  You can disable a given API with `-DDISABLE_<API_NAME>=TRUE`, where `<API_NAME>` is one of the following choices:
 
 ```
-AUDIO     Audio API
-DISPLAY   Display API
-DOCUMENT  Document API (dependent on Display, Vector, Font)
-FONT      Font API (dependent on Display)
-HTTP      HTTP API (dependent on Network)
-MP3       MP3 support (dependent on Audio)
-NETWORK   Network API
-PICTURE   Picture API (dependent on Display)
-JPEG      JPEG support (dependent on Picture)
-SCINTILLA Scintilla API (dependent on Display, Vector, Font)
-SVG       SVG support  (dependent on Display, Vector, Font)
-VECTOR    Vector API  (dependent on Display, Font)
+AUDIO      Audio API
+DISPLAY    Display API
+DOCUMENT   Document API   Dependent on Display, Vector, Font
+FONT       Font API       Dependent on Display
+HTTP       HTTP API       Dependent on Network
+MP3        MP3 support    Dependent on Audio
+NETWORK    Network API
+PICTURE    Picture API    Dependent on Display
+JPEG       JPEG support   Dependent on Picture
+SCINTILLA  Scintilla API  Dependent on Display, Vector, Font
+SVG        SVG support    Dependent on Display, Vector, Font
+VECTOR     Vector API     Dependent on Display, Font
 ```
 
-If you disable an API that has dependencies then the dependent APIs will not be included in the build.  For instance, disabling Network will also result in HTTP being disabled.
+If you disable an API that has dependencies, the dependent APIs will not be included in the build.  For instance, disabling Network will also result in HTTP being disabled.
 
 ## 6. Next Steps
 
