@@ -566,13 +566,26 @@ extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
 #define MOD_NAME NULL
 #endif
 
-#ifdef _DEBUG
- #define MSG(...)  LogF(0,__VA_ARGS__)
- #define FMSG(...) LogF(__VA_ARGS__)
-#else
- #define MSG(...)
- #define FMSG(...)
+inline void FMSG(CSTRING, CSTRING, ...) __attribute__((format(printf, 2, 3)));
+inline void MSG(CSTRING, ...) __attribute__((format(printf, 1, 2)));
+
+inline void FMSG(CSTRING Function, CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
 #endif
+}
+
+inline void MSG(CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
+#endif
+}
 
 }
 
@@ -1093,7 +1106,7 @@ struct ScriptArg { // For use with scExec
     "CurrentContext",
     "GetFieldArray",
     "AdjustLogLevel",
-    "LogF",
+    "ReadFileToBuffer",
     "FindObject",
     "FindClass",
     "AnalysePath",
@@ -1184,8 +1197,7 @@ struct ScriptArg { // For use with scExec
     "UTF8ReadValue",
     "UTF8WriteValue",
     "CopyFile",
-    "WaitForObjects",
-    "ReadFileToBuffer")
+    "WaitForObjects")
 
   c_insert([[
 
