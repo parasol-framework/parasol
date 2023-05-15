@@ -17,7 +17,7 @@ Parasol's ongoing development is focused on enhancing vector graphics programmin
 
 ### Features
 
-* Multi-functional: Integrate your C++ code with our API or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
+* Multi-functional: Integrate your C++ code with our API, or write programs in Fluid, our integrated Lua-based scripting language.  Custom C++ builds are supported if you only need a particular feature such as the vector graphics engine for your project.
 * Build fully scalable UI's using our vector based widgets.  Windows, checkboxes, buttons, dialogs, text and more are supported.
 * Load SVG files into a vector scene graph, interact with them via our API and save the output in SVG (saving is WIP).  Or just create vector scenes from scratch!
 * Multi-platform compatible networking API, providing coverage for TCP/IP Sockets, HTTP, SSL.
@@ -152,14 +152,14 @@ Try running a second time with `--log-debug` to observe run-time log output whil
 The following build options and their default values may be of interest if you'd like to tweak the build process:
 
 ```
-BUILD_TESTS       ON  Build tests (does not automatically run them).
-BUILD_DEFS        ON  Auto-generate C/C++ headers and documentation.
-RUN_ANYWHERE      OFF Build a framework that can run from any folder without installation.
-PARASOL_INSTALL   ON  Create installation targets.  If OFF, the build won't install anything.
-INSTALL_EXAMPLES  OFF Install the example scripts.
-INSTALL_INCLUDES  OFF Install the header files.
-INSTALL_TESTS     OFF Install the test programs.
-ENABLE_ANALYSIS   OFF Enable run-time address analysis if available.  Incompatible with gdb.
+BUILD_TESTS       ON   Build tests (does not automatically run them).
+BUILD_DEFS        ON   Auto-generate C/C++ headers and documentation.
+RUN_ANYWHERE      OFF  Build a framework that can run from any folder without installation.
+PARASOL_INSTALL   ON   Create installation targets.  If OFF, the build won't install anything.
+INSTALL_EXAMPLES  OFF  Install the example scripts.
+INSTALL_INCLUDES  OFF  Install the header files.
+INSTALL_TESTS     OFF  Install the test programs.
+ENABLE_ANALYSIS   OFF  Enable run-time address analysis if available.  Incompatible with gdb.
 ```
 
 ### 5.1 Static Builds
