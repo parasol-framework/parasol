@@ -74,6 +74,7 @@ if (MSVC)
 
 else ()
    target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
+   add_compile_options("-Wno-char-subscripts")
 endif ()
 
 set_module_defaults (scintilla)
@@ -86,3 +87,4 @@ target_include_directories (scintilla PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/include")
 
 add_definitions ("-DSCI_NAMESPACE" "-D__PARASOL__" "-DSCI_LEXER")
+
