@@ -320,13 +320,13 @@ class objXML : public BaseClass {
 
 //********************************************************************************************************************
 
-template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
 }
 
-template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());

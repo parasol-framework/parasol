@@ -305,7 +305,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
    else if (Vector->Visibility IS VIS::COLLAPSE) xmlNewAttrib(tag, "visibility", "collapse");
    else if (Vector->Visibility IS VIS::INHERIT)  xmlNewAttrib(tag, "visibility", "inherit");
 
-   STRING stroke_width;
+   CSTRING stroke_width;
    if ((!error) and (!Vector->get(FID_StrokeWidth, &stroke_width))) {
       if (!stroke_width) stroke_width = "0";
       if ((stroke_width[0] != '1') and (stroke_width[1] != 0)) {

@@ -9,6 +9,8 @@ related to this Package.  The original libjpeg source code can be obtained from 
 
 *********************************************************************************************************************/
 
+#include <array>
+
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
 #include <parasol/modules/display.h>
@@ -284,12 +286,12 @@ static ERROR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    jpeg_start_compress(&cinfo, TRUE);
 
    {
-      UBYTE buffer[3 * Self->Bitmap->Width];
+      auto buffer = std::make_unique<UBYTE[]>(3 * Self->Bitmap->Width);
       JSAMPROW row_pointer[1];
       RGB8 rgb;
 
       for (LONG y=0; y < Self->Bitmap->Height; y++) {
-         row_pointer[0] = buffer;
+         row_pointer[0] = buffer.get();
          WORD index = 0;
          for (LONG x=0; x < Self->Bitmap->Width; x++) {
             Self->Bitmap->ReadUCRPixel(Self->Bitmap, x, y, &rgb);

@@ -66,13 +66,15 @@ set (LEXERS
    "scintilla/lexers/LexSQL.cxx"
    "scintilla/lexers/LexVB.cxx")
 
-# Build the library
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+   add_compile_options ("-Wno-char-subscripts")
+endif ()
+
+add_compile_definitions ("SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
 
 add_library (scintilla)
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
-
-else ()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
 endif ()
 
@@ -84,5 +86,3 @@ target_include_directories (scintilla PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/src"
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/lexlib"
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/include")
-
-add_definitions ("-DSCI_NAMESPACE" "-D__PARASOL__" "-DSCI_LEXER")

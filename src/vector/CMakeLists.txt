@@ -13,7 +13,7 @@ add_library (${MOD})
 
 set_module_defaults (${MOD})
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
+if (MSVC)
 
 else ()
 target_compile_options (${MOD} PRIVATE
