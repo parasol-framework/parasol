@@ -6,25 +6,9 @@ set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 idl_c ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
-link_directories("${CMAKE_BINARY_DIR}/libffi-3.3/lib" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
+link_directories("${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
-# FFI library custom build
-
-ExternalProject_Add(
-   libffi
-   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
-   CONFIGURE_COMMAND "sh" "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/configure"
-      "--srcdir=${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
-      "--disable-dependency-tracking"
-      "--disable-docs"
-      "--prefix=${CMAKE_BINARY_DIR}/libffi-3.3"
-      "--includedir=${CMAKE_BINARY_DIR}/libffi-3.3/include"
-      "CFLAGS=${CFLAGS} -fPIC" # fPIC has to be forced because some Linux environments need it for the static build
-   BUILD_COMMAND "${CMAKE_MAKE_PROGRAM}"
-   INSTALL_COMMAND "${CMAKE_MAKE_PROGRAM}" "install"
-   BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
-   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
-   COMMENT "Compiling FFI library")
+add_subdirectory (libffi-3.3)
 
 # LuaJIT library custom build
 # Activate BUILD_ALWAYS if you're working on the library code.
@@ -46,7 +30,7 @@ add_library (${MOD})
 
 set_module_defaults (${MOD})
 
-add_dependencies (${MOD} libffi luajit)
+add_dependencies (${MOD} luajit)
 
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp"
@@ -57,8 +41,8 @@ target_include_directories (${MOD} PRIVATE
    "luajit-2.1/src")
 
 target_link_libraries (${MOD} PRIVATE
-   "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
    "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
+   libffi
    m) # The link order matters, math must come last
 
 add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")

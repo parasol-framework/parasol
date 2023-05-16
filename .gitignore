@@ -50,7 +50,6 @@
 debug-install/
 local/
 src/android/
-src/fluid/libffi-3.3/
 src/fluid/luajit-2.0.5/doc/
 src/fluid/luajit-2.0.5/src/lj_bcdef.h
 src/fluid/luajit-2.0.5/src/lj_ffdef.h
