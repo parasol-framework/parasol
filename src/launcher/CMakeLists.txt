@@ -32,7 +32,8 @@ set_target_properties (parasol_cmd PROPERTIES OUTPUT_NAME "parasol")
 add_dependencies (parasol_cmd build_headers)
 
 if (PARASOL_INSTALL)
-   if (WIN32) # MSYS2/MinGW builds have library dependencies that we need to take a copy of.
+   if (WIN32 AND NOT MSVC)
+      # MSYS2/MinGW builds have library dependencies that we need to take a copy of.
       find_file(MSYS_DEP2 "libstdc++-6.dll" HINTS "/mingw64/bin")
       if (NOT MSYS_DEP2 STREQUAL "MSYS_DEP2-NOTFOUND")
          install (FILES ${MSYS_DEP2} DESTINATION .)

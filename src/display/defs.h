@@ -22,6 +22,7 @@
 #include <mutex>
 #include <queue>
 #include <sstream>
+#include <array>
 #include <math.h>
 
 #ifdef __linux__
@@ -610,11 +611,11 @@ inline LONG find_bitmap_owner(LONG Index)
 
 inline LONG find_surface_list(extSurface *Surface, LONG Limit = -1)
 {
-   if (Limit IS -1) Limit = glSurfaces.size();
+   if (Limit IS -1) Limit = LONG(glSurfaces.size());
    else if (Limit > LONG(glSurfaces.size())) {
       pf::Log log(__FUNCTION__);
       log.warning("Invalid Limit parameter of %d (max %d)", Limit, LONG(glSurfaces.size()));
-      Limit = glSurfaces.size();
+      Limit = LONG(glSurfaces.size());
    }
 
    for (LONG i=0; i < Limit; i++) {
@@ -626,11 +627,11 @@ inline LONG find_surface_list(extSurface *Surface, LONG Limit = -1)
 
 inline LONG find_surface_list(OBJECTID SurfaceID, LONG Limit = -1)
 {
-   if (Limit IS -1) Limit = glSurfaces.size();
+   if (Limit IS -1) Limit = LONG(glSurfaces.size());
    else if (Limit > LONG(glSurfaces.size())) {
       pf::Log log(__FUNCTION__);
       log.warning("Invalid Limit parameter of %d (max %d)", Limit, LONG(glSurfaces.size()));
-      Limit = glSurfaces.size();
+      Limit = LONG(glSurfaces.size());
    }
 
    for (LONG i=0; i < Limit; i++) {

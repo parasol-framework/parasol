@@ -1,5 +1,3 @@
-# Fluid has a dependency on the installation of libffi, found in the 3rdparty folder.
-
 set (MOD "fluid")
 set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 
@@ -63,7 +61,7 @@ target_link_libraries (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
    m) # The link order matters, math must come last
 
-add_definitions ("-DLUAJIT_ENABLE_LUA52COMPAT")
+add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
 
 flute_test(fluid_catch "${CMAKE_CURRENT_SOURCE_DIR}/tests/catch.fluid")
 flute_test(fluid_nz "${CMAKE_CURRENT_SOURCE_DIR}/tests/nz.fluid")

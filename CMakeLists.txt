@@ -334,9 +334,9 @@ endfunction ()
 function (set_module_defaults ARG_TARGET)
    target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
-   add_definitions ("-DMOD_NAME=${ARG_TARGET}")
+   add_compile_definitions ("MOD_NAME=${ARG_TARGET}")
 
-   if (CMAKE_GENERATOR MATCHES "Visual Studio.*|Ninja.*")
+   if (MSVC)
 
    else ()
       # Collect code and data that is never referenced
@@ -386,18 +386,19 @@ else ()
 endif ()
 
 if (PARASOL_VLOG)
-   add_definitions ("-D_DEBUG")
+   add_compile_definitions ("_DEBUG")
 endif ()
 
 # Set system-specific compiler flags
 
-if (CMAKE_GENERATOR MATCHES "Visual Studio.*|Ninja.*")
-
+if (MSVC)
+   # Turn off ugly warnings
+   add_compile_definitions("_CRT_SECURE_NO_WARNINGS" )
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-      add_definitions ("-D_DARWIN_C_SOURCE")
+      add_compile_definitions ("_DARWIN_C_SOURCE")
    elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
-      add_definitions ("-D_GNU_SOURCE")
+      add_compile_definitions ("_GNU_SOURCE")
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing")
    elseif (WIN32)
@@ -405,10 +406,10 @@ else ()
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -fdiagnostics-color=auto -fdata-sections -ffunction-sections -fno-strict-aliasing -Wno-pointer-sign ${PARASOL_ARCH}")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -fdiagnostics-color=auto -ffunction-sections -fno-strict-aliasing ${PARASOL_ARCH}")
       if (PRINTF64_ID)
-         add_definitions ("-DPRINTF64I")
+         add_compile_definitions ("PRINTF64I")
       endif ()
       if (PRINTF64_PRID)
-         add_definitions ("-DPRINTF64_PRID")
+         add_compile_definitions ("PRINTF64_PRID")
       endif ()
    elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
    # TODO
@@ -448,16 +449,12 @@ add_library(linear_rgb OBJECT src/link/linear_rgb.cpp)
 # --------------------------------------------------------------------------------------------------------------------
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
+
 add_subdirectory (src/link)
 add_subdirectory (src/core)
-
-if (CMAKE_GENERATOR MATCHES "Visual Studio.*")
-# TODO: Support MSVC builds of the Fluid libraries.
-else ()
 add_subdirectory (src/fluid)
-endif ()
-
 add_subdirectory (src/xml)
 add_subdirectory (src/json)
 

@@ -315,8 +315,8 @@ struct obj_read {
        return 0;
    }
 
-   obj_read(ULONG pHash, const JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
-   obj_read(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(ULONG pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(ULONG pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
    obj_read(ULONG pHash) : Hash(pHash) { }
 };
 
