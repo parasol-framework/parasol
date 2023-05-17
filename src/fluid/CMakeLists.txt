@@ -42,7 +42,7 @@ add_library (${MOD})
 
 set_module_defaults (${MOD})
 
-add_dependencies (${MOD} luajit)
+add_dependencies (${MOD} libffi-3.3 luajit)
 
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp"
@@ -53,8 +53,8 @@ target_include_directories (${MOD} PRIVATE
    "luajit-2.1/src")
 
 target_link_libraries (${MOD} PRIVATE
-   "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
    "${CMAKE_BINARY_DIR}/libffi-3.3/lib/liblibffi.a"
+   "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
    m) # The link order matters, math must come last
 
 add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
