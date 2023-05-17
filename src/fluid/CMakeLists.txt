@@ -18,7 +18,9 @@ ExternalProject_Add(libffi-3.3
       ${GLOBAL_THIRDPARTY_LIB_ARGS}
       -DCMAKE_BUILD_TYPE=Release
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libffi-3.3
-   INSTALL_DIR ${CMAKE_BINARY_DIR}/libffi-3.3)
+   INSTALL_DIR ${CMAKE_BINARY_DIR}/libffi-3.3
+   BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
+   COMMENT "Compiling FFI library")
 
 # LuaJIT library custom build
 # Activate BUILD_ALWAYS if you're working on the library code.
