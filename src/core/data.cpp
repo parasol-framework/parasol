@@ -61,6 +61,7 @@ APTR glPageFault     = NULL;
 bool glScanClasses   = false;
 bool glJanitorActive = false;
 bool glDebugMemory   = false;
+bool glEnableCrashHandler = true;
 struct CoreBase *LocalCoreBase = NULL;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.

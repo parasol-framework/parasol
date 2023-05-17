@@ -91,7 +91,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    auto OpenCore = (OPENCORE *)dlsym(glCoreHandle, "OpenCore");
    if (!OpenCore) return "Could not find the OpenCore symbol in the Core library.";
 
-   auto CloseCore = (CLOSECORE *)dlsym(glCoreHandle, "CloseCore");
+   CloseCore = (CLOSECORE *)dlsym(glCoreHandle, "CloseCore");
    if (!CloseCore) return "Could not find the CloseCore symbol.";
 
    info.RootPath  = root_path;
