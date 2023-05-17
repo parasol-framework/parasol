@@ -21,33 +21,33 @@ set(LT_OBJDIR .libs/)
 
 check_type_size (size_t SIZEOF_SIZE_T)
 
-if(SIZEOF_SIZE_T STREQUAL "")
-    set(size_t "unsinged int")
-endif()
+if (SIZEOF_SIZE_T STREQUAL "")
+    set(size_t "unsigned int")
+endif ()
 
-if(MSVC)
+if (MSVC)
     get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
-else()
+else ()
     enable_language(ASM)
-endif()
+endif ()
 
-set(FFI_EXEC_TRAMPOLINE_TABLE 0)
-if(TARGET_PLATFORM STREQUAL X86_WIN64)
-    if(MSVC)
-        list(APPEND WIN_ASSEMBLY_LIST src/x86/win64_intel.S)
+set (FFI_EXEC_TRAMPOLINE_TABLE 0)
+if (TARGET_PLATFORM STREQUAL X86_WIN64)
+    if (MSVC)
+        list (APPEND WIN_ASSEMBLY_LIST src/x86/win64_intel.S)
         enable_language(ASM_MASM)
-    else()
+    else ()
         list(APPEND SOURCES_LIST src/x86/win64.S)
-    endif()
-    list(APPEND SOURCES_LIST src/x86/ffiw64.c)
+    endif ()
+    list (APPEND SOURCES_LIST src/x86/ffiw64.c)
 
-    set(TARGETDIR x86)
-elseif(TARGET_PLATFORM STREQUAL X86_64)
-    list(APPEND SOURCES_LIST
+    set (TARGETDIR x86)
+elseif (TARGET_PLATFORM STREQUAL X86_64)
+    list (APPEND SOURCES_LIST
         src/x86/ffi64.c
         src/x86/unix64.S)
 
-    if(SIZEOF_SIZE_T EQUAL 4 AND TARGET_PLATFORM MATCHES X86.*)
+    if (SIZEOF_SIZE_T EQUAL 4 AND TARGET_PLATFORM MATCHES X86.*)
         set(CMAKE_REQUIRED_FLAGS "-Werror")
 
         check_c_source_compiles(
@@ -62,11 +62,11 @@ elseif(TARGET_PLATFORM STREQUAL X86_64)
         set(CMAKE_REQUIRED_FLAGS)
     endif()
 
-    if(NOT TARGET_X32)
+    if (NOT TARGET_X32)
         list(APPEND SOURCES_LIST
              src/x86/ffiw64.c
              src/x86/win64.S)
-    endif()
+    endif ()
 
     set(TARGETDIR x86)
 elseif(TARGET_PLATFORM MATCHES X86.*)
