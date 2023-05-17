@@ -8,9 +8,7 @@ include(CheckTypeSize)
 
 # options in AC counterpart can be overriden from command-line
 # e.g.:  cmake .. -DFFI_MMAP_EXEC_EMUTRAMP_PAX=1 -DVERSION=X.Y
-if(NOT DEFINED VERSION)
-    set(VERSION 3.x-dev)
-endif()
+set(VERSION 3.3)
 set(PACKAGE libffi)
 set(PACKAGE_BUGREPORT http://github.com/libffi/libffi/issues)
 set(PACKAGE_NAME ${PACKAGE})

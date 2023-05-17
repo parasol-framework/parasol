@@ -8,7 +8,14 @@ idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
 
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
-add_subdirectory (libffi-3.3)
+ExternalProject_Add(libffi-3.3
+   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3
+   CMAKE_ARGS
+      ${GLOBAL_DEFAULT_ARGS}
+      ${GLOBAL_THIRDPARTY_LIB_ARGS}
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libffi-3.3
+   INSTALL_DIR ${CMAKE_BINARY_DIR}/libffi-3.3)
 
 # LuaJIT library custom build
 # Activate BUILD_ALWAYS if you're working on the library code.
@@ -42,7 +49,7 @@ target_include_directories (${MOD} PRIVATE
 
 target_link_libraries (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
-   libffi
+   "${CMAKE_BINARY_DIR}/libffi-3.3/lib/liblibffi.a"
    m) # The link order matters, math must come last
 
 add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
