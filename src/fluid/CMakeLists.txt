@@ -8,7 +8,10 @@ idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
 
 link_directories("${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
+# We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
+
 ExternalProject_Add(libffi-3.3
+   #BUILD_ALWAYS TRUE
    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3
    CMAKE_ARGS
       ${GLOBAL_DEFAULT_ARGS}
