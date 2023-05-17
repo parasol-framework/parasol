@@ -625,7 +625,7 @@ extern std::string glSystemPath;
 extern std::string glModulePath;
 extern std::string glRootPath;
 extern char glDisplayDriver[28];
-extern bool glShowIO, glShowPrivate;
+extern bool glShowIO, glShowPrivate, glEnableCrashHandler;
 extern bool glJanitorActive;
 extern bool glLogThreads;
 extern WORD glLogLevel, glMaxDepth;

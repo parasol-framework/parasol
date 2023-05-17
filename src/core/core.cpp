@@ -334,6 +334,7 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
+         else if (!StrMatch(arg, "no-crash-handler")) glEnableCrashHandler = false;
          else if (!StrMatch(arg, "sync"))        glSync = true;
          else if (!StrMatch(arg, "log-threads")) glLogThreads = true;
          else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
@@ -388,22 +389,23 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #endif
 
 #ifdef __unix__
-   // Subscribe to the following signals so that we can handle system crashes correctly.
-
    struct sigaction sig;
 
    sig.sa_flags = SA_SIGINFO;
-   sig.sa_sigaction = CrashHandler;
-   sigaction(SIGINT,  &sig, 0);  // Interrupt from keyboard
-   sigaction(SIGHUP,  &sig, 0);  // Hang up detected on controlling terminal
-   sigaction(SIGQUIT, &sig, 0);  // Quit from keyboard (ctrl-c)
-   sigaction(SIGTERM, &sig, 0);  // Termination signal
-   sigaction(SIGSEGV, &sig, 0);  // Illegal read/write of a memory location
-   sigaction(SIGFPE,  &sig, 0);  // Floating point exception
-   sigaction(SIGILL,  &sig, 0);  // Illegal instruction
+   if (glEnableCrashHandler) {
+      // Subscribe to the following signals for active crash management.
+      sig.sa_sigaction = CrashHandler;
+      sigaction(SIGINT,  &sig, 0);  // Interrupt from keyboard
+      sigaction(SIGHUP,  &sig, 0);  // Hang up detected on controlling terminal
+      sigaction(SIGQUIT, &sig, 0);  // Quit from keyboard (ctrl-c)
+      sigaction(SIGTERM, &sig, 0);  // Termination signal
+      sigaction(SIGSEGV, &sig, 0);  // Illegal read/write of a memory location
+      sigaction(SIGFPE,  &sig, 0);  // Floating point exception
+      sigaction(SIGILL,  &sig, 0);  // Illegal instruction
 
-   sig.sa_sigaction = DiagnosisHandler;
-   sigaction(SIGUSR1, &sig, 0);      // Print a status report for user signal #1
+      sig.sa_sigaction = DiagnosisHandler;
+      sigaction(SIGUSR1, &sig, 0);      // Print a status report for user signal #1
+   }
 
    sig.sa_sigaction = NullHandler;
    sigaction(SIGALRM, &sig, 0);       // Do nothing when alarms are signalled
