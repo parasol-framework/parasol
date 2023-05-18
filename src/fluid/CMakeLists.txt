@@ -6,33 +6,30 @@ set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 idl_c ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
-link_directories("${CMAKE_BINARY_DIR}/libffi-3.3/lib" "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
+link_directories("${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
-# FFI library custom build
+# We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
+# Activate BUILD_ALWAYS if you're working on the library code.
 
-ExternalProject_Add(
-   libffi
-   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
-   CONFIGURE_COMMAND "sh" "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3/configure"
-      "--srcdir=${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
-      "--disable-dependency-tracking"
-      "--disable-docs"
-      "--prefix=${CMAKE_BINARY_DIR}/libffi-3.3"
-      "--includedir=${CMAKE_BINARY_DIR}/libffi-3.3/include"
-   BUILD_COMMAND "${CMAKE_MAKE_PROGRAM}"
-   INSTALL_COMMAND "${CMAKE_MAKE_PROGRAM}" "install"
-   BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
-   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3"
+ExternalProject_Add(libffi-3.3
+   #BUILD_ALWAYS TRUE
+   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libffi-3.3
+   CMAKE_ARGS
+      ${GLOBAL_DEFAULT_ARGS}
+      ${GLOBAL_THIRDPARTY_LIB_ARGS}
+      -DCMAKE_BUILD_TYPE=Release
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libffi-3.3
+   INSTALL_DIR ${CMAKE_BINARY_DIR}/libffi-3.3
+   BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/libffi-3.3/lib/liblibffi.a"
    COMMENT "Compiling FFI library")
 
 # LuaJIT library custom build
-# Activate BUILD_ALWAYS if you're working on the library code.
 
 ExternalProject_Add(
    luajit
    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src"
    CONFIGURE_COMMAND ""
-#   BUILD_ALWAYS TRUE
+   #BUILD_ALWAYS TRUE
    BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
    INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
    BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
@@ -45,7 +42,7 @@ add_library (${MOD})
 
 set_module_defaults (${MOD})
 
-add_dependencies (${MOD} libffi luajit)
+add_dependencies (${MOD} libffi-3.3 luajit)
 
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
    "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp"
@@ -56,7 +53,7 @@ target_include_directories (${MOD} PRIVATE
    "luajit-2.1/src")
 
 target_link_libraries (${MOD} PRIVATE
-   "${CMAKE_BINARY_DIR}/libffi-3.3/lib/libffi.a"
+   "${CMAKE_BINARY_DIR}/libffi-3.3/lib/liblibffi.a"
    "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
    m) # The link order matters, math must come last
 
