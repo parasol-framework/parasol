@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-project (libffi VERSION 2023.4.19 LANGUAGES C CXX)
+project (libffi VERSION 3.3 LANGUAGES C)
 
 if ("${CMAKE_C_COMPILER_ARCHITECTURE_ID}" STREQUAL "")
    set (HOST_ARCH ${CMAKE_SYSTEM_PROCESSOR})
@@ -62,7 +62,7 @@ else ()
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fomit-frame-pointer -fstrict-aliasing -ffast-math")
 endif ()
 
-message(STATUS "Building for TARGET_PLATFORM: ${TARGET_PLATFORM} with CFLAGS ${CMAKE_C_FLAGS}")
+message(STATUS "Building for TARGET_PLATFORM: ${TARGET_PLATFORM}")
 
 add_library (libffi STATIC)
 set_property (TARGET libffi PROPERTY POSITION_INDEPENDENT_CODE 1)
