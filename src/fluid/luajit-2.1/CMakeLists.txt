@@ -53,6 +53,7 @@ endif ()
 
 if ( WIN32 AND NOT CYGWIN )
   add_compile_definitions ("LUAJIT_OS=LUAJIT_OS_WINDOWS")
+  add_compile_options("-malign-double")
   set ( LJVM_MODE coffasm )
 elseif ( APPLE )
   set ( CMAKE_EXE_LINKER_FLAGS "-pagezero_size 10000 -image_base 100000000 ${CMAKE_EXE_LINKER_FLAGS}" )
