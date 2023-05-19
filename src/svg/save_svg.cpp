@@ -14,7 +14,7 @@ static ERROR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG 
 
    if (!(error = Vector->get(FID_Sequence, &path))) {
       LONG new_index;
-      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<path/>", &new_index);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<path/>", &new_index);
       if (!error) {
          XMLTag *tag;
          error = xmlGetTag(XML, new_index, &tag);
@@ -40,7 +40,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
       LONG def_index = 0;
       for (auto & [ key, def ] : *defs) {
          if (!def_index) {
-            if ((error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<defs/>", &def_index))) return error;
+            if ((error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<defs/>", &def_index))) return error;
          }
 
          log.msg("Processing definition %s (%x)", def->Class->ClassName, def->Class->ClassID);
@@ -118,7 +118,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                LONG total_stops, stop_index;
                if (!GetFieldArray(gradient, FID_Stops, &stops, &total_stops)) {
                   for (LONG s=0; (s < total_stops) and (!error); s++) {
-                     if (!(error = xmlInsertStatement(XML, def_index, XMI::CHILD_END, "<stop/>", &stop_index))) {
+                     if (!(error = xmlInsertXML(XML, def_index, XMI::CHILD_END, "<stop/>", &stop_index))) {
                         XMLTag *stop_tag;
                         error = xmlGetTag(XML, stop_index, &stop_tag);
                         if (!error) xmlNewAttrib(stop_tag, "offset", std::to_string(stops[s].Offset));
@@ -402,7 +402,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       DOUBLE rx, ry, x, y, width, height;
       LONG dim;
 
-      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<rect/>", &new_index);
+      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<rect/>", &new_index);
       if (!error) error = xmlGetTag(XML, new_index, &tag);
       if (!error) error = Vector->get(FID_Dimensions, &dim);
 

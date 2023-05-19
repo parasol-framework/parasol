@@ -609,7 +609,11 @@ template <class T> T roundup(T Num, LONG Alignment) {
 // in to debug builds.
 
 #ifdef _DEBUG
- #define DEBUG_BREAK asm("int $3");
+ #ifdef _MSC_VER
+  #define DEBUG_BREAK __asm("int $3");
+ #else
+  #define DEBUG_BREAK asm("int $3");
+ #endif
 #else
  #define DEBUG_BREAK
 #endif
