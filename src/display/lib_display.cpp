@@ -72,7 +72,7 @@ int(DT): Returns an integer indicating the display type.
 DT gfxGetDisplayType(void)
 {
 #ifdef _WIN32
-   return DT::WINDOWS;
+   return DT::WINGDI;
 #elif __xwindows__
    return DT::X11;
 #elif _GLES_

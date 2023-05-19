@@ -321,7 +321,7 @@ enum class DT : LONG {
    NIL = 0,
    NATIVE = 1,
    X11 = 2,
-   WINDOWS = 3,
+   WINGDI = 3,
    GLES = 4,
 };
 

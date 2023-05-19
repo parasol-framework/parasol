@@ -1144,7 +1144,7 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    #ifdef __xwindows__
       Self->DisplayType = DT::X11;
    #elif _WIN32
-      Self->DisplayType = DT::WINDOWS;
+      Self->DisplayType = DT::WINGDI;
    #elif _GLES_
       Self->DisplayType = DT::GLES;
    #else

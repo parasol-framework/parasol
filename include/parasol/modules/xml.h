@@ -353,7 +353,7 @@ inline void xmlNewAttrib(XMLTag *Tag, const std::string Name, const std::string 
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
+template <class T> inline ERROR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
    auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
    if (!error) {

@@ -57,7 +57,7 @@ include_directories (${CMAKE_CURRENT_BINARY_DIR})
 include_directories (include)
 
 if (MSVC)
-   #set (CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+   set (CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 else ()
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fomit-frame-pointer -fstrict-aliasing -ffast-math")
 endif ()

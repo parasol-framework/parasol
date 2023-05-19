@@ -81,7 +81,7 @@ FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { 
 #ifdef _DEBUG
 static void flTestCall1(void);
 static LONG flTestCall2(void);
-static STRING flTestCall3(void);
+static CSTRING flTestCall3(void);
 static void flTestCall4(LONG, LARGE);
 static LONG flTestCall5(LONG, LONG, LONG, LONG, LONG, LARGE);
 static LARGE flTestCall6(LONG, LARGE, LARGE, LONG, LARGE, DOUBLE);
@@ -125,7 +125,7 @@ static LONG flTestCall2(void)
    return 0xdedbeef;
 }
 
-static STRING flTestCall3(void)
+static CSTRING flTestCall3(void)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Returning 'hello world'");
@@ -648,10 +648,8 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
       for (j=0; (Line[j] != '\n') and (Line[j] != '\r') and (Line[j]); j++);
 
       if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
-         char linebuf[j + 1];
-         CopyMemory(Line, linebuf, j);
-         linebuf[j] = 0;
-         make_struct(Lua, name, linebuf);
+         std::string linebuf(Line, j);
+         make_struct(Lua, name, linebuf.c_str());
          while ((Line[j] IS '\n') or (Line[j] IS '\r')) j++;
          return Line + j;
       }

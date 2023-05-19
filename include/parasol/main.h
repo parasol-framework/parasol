@@ -6,7 +6,10 @@
 #endif
 
 #ifdef _MSC_VER
-#pragma warning (disable : 4244 4311 4312) // Disable annoying VC++ typecast warnings
+#pragma warning (disable : 4244 4311 4312 4267 4244) // Disable annoying VC++ typecast warnings
+
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
 #endif
 
 #include <parasol/system/types.h>

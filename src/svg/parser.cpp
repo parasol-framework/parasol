@@ -2831,7 +2831,7 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, objXML *X
                //    oblique 12pt "Helvetica Nue", serif; font-stretch: condensed
                //
                // [ [ <'font-style'> || <'font-variant'> || <'font-weight'> ]? <'font-size'> [ / <'line-height'> ]? <'font-family'> ] | caption | icon | menu | message-box | small-caption | status-bar | inherit
-               #warning Add support for text font attribute
+               // TODO Add support for text font attribute
                return ERR_NoSupport;
             }
 
