@@ -705,7 +705,7 @@
     <constants lookup="DT" comment="Flags for GetDisplayType().">
       <const name="GLES">The display is driven by OpenGLES.</const>
       <const name="NATIVE">The display is native (supported by internal drivers).</const>
-      <const name="WINDOWS">The display is driven by Microsoft Windows drivers.</const>
+      <const name="WINGDI">The display is driven by Microsoft Windows drivers.</const>
       <const name="X11">The display is driven by the X Window System (X11, X.Org, XFree86)</const>
     </constants>
 

@@ -1259,7 +1259,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (gfxGetDisplayType() IS DT::NATIVE) Self->Flags &= ~(RNF::COMPOSITE);
 
-      if (((gfxGetDisplayType() IS DT::WINDOWS) or (gfxGetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
+      if (((gfxGetDisplayType() IS DT::WINGDI) or (gfxGetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
          if (glpMaximise) scrflags |= SCR::MAXIMISE;
          if (glpFullScreen) scrflags |= SCR::MAXIMISE|SCR::BORDERLESS;
       }

@@ -851,7 +851,7 @@ static ERROR GET_Procedures(objScript *Self, pf::vector<std::string> **Value, LO
 
 static ERROR save_binary(objScript *Self, OBJECTPTR Target)
 {
-   #warning No support for save_binary() yet.
+   // TODO No support for save_binary() yet.
 
    return ERR_NoSupport;
 /*

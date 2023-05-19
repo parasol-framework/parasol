@@ -18,7 +18,7 @@ template <class T> void output_attribvalue(T &&String, std::stringstream &Output
 
 //********************************************************************************************************************
 
-#warning TODO: Support processing of ENTITY declarations in the doctype.
+// TODO: Support processing of ENTITY declarations in the doctype.
 
 static void parse_doctype(extXML *Self, CSTRING Input)
 {

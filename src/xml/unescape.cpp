@@ -275,7 +275,7 @@ static void xml_unescape(extXML *Self, std::string &String)
    auto c = String.find('&');
    while (c != std::string::npos) {
       if (String[c + 1] IS '#') { // Numeric escape code detected.
-         LONG len = c + 2;
+         auto len = c + 2;
          ULONG unicode = 0;
 
          if (String[len] IS 'x') { // Hexadecimal literal

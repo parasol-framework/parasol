@@ -653,7 +653,7 @@ int fcmd_loadfile(lua_State *Lua)
             }
 
             if (!lua_load(Lua, &code_reader, &handle, path+i)) {
-#warning Code compilation not currently supported
+               // TODO Code compilation not currently supported
             /*
                if (recompile) {
                   objFile::create cachefile = {

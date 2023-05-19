@@ -588,7 +588,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 #elif _WIN32
       LONG width, height, bits, bytes, colours, hdpi, vdpi;
 
-      #warning TODO: Allow the user to set a custom DPI via style values.
+      // TODO: Allow the user to set a custom DPI via style values.
 
       winGetDesktopSize(&width, &height);
       winGetDisplaySettings(&bits, &bytes, &colours);
@@ -916,7 +916,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (config.ok()) {
       cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
 
-      if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINDOWS)) {
+      if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
          if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
             cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
