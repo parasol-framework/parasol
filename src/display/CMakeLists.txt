@@ -33,11 +33,14 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
       PRE_BUILD
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}" "--output-proto=prototypes.h" "--output-defs=module_def.c" "--files={" ${FUNCTIONS} "}"
-      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
+      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
+              "--output-proto=prototypes.h" "--output-defs=module_def.c" "--files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
+      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
+              "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
       DEPENDS
          "${MOD}.fdl"
          ${FUNCTIONS}
+         "lib_surfaces.cpp"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       COMMENT "Producing C definition files for the ${MOD} module"
       VERBATIM)
