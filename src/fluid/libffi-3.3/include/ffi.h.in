@@ -116,9 +116,9 @@ typedef struct _ffi_type
    *know* they are going to link with the static library.  */
 #if defined _MSC_VER
 # if defined FFI_BUILDING_DLL /* Building libffi.DLL with msvcc.sh */
-#  define FFI_API __declspec(dllexport)
+#  define FFI_API
 # elif !defined FFI_BUILDING  /* Importing libffi.DLL */
-#  define FFI_API __declspec(dllimport)
+#  define FFI_API
 # else                        /* Building/linking static library */
 #  define FFI_API
 # endif
@@ -269,7 +269,7 @@ typedef ffi_raw ffi_java_raw;
 #endif
 
 
-FFI_API 
+FFI_API
 void ffi_raw_call (ffi_cif *cif,
 		   void (*fn)(void),
 		   void *rvalue,
@@ -288,15 +288,15 @@ FFI_API
 void ffi_java_raw_call (ffi_cif *cif,
 			void (*fn)(void),
 			void *rvalue,
-			ffi_java_raw *avalue) __attribute__((deprecated));
+			ffi_java_raw *avalue);
 #endif
 
 FFI_API
-void ffi_java_ptrarray_to_raw (ffi_cif *cif, void **args, ffi_java_raw *raw) __attribute__((deprecated));
+void ffi_java_ptrarray_to_raw (ffi_cif *cif, void **args, ffi_java_raw *raw);
 FFI_API
-void ffi_java_raw_to_ptrarray (ffi_cif *cif, ffi_java_raw *raw, void **args) __attribute__((deprecated));
+void ffi_java_raw_to_ptrarray (ffi_cif *cif, ffi_java_raw *raw, void **args);
 FFI_API
-size_t ffi_java_raw_size (ffi_cif *cif) __attribute__((deprecated));
+size_t ffi_java_raw_size (ffi_cif *cif);
 
 /* ---- Definitions for closures ----------------------------------------- */
 
@@ -338,7 +338,7 @@ ffi_prep_closure (ffi_closure*,
 #if defined(__GNUC__) && (((__GNUC__ * 100) + __GNUC_MINOR__) >= 405)
   __attribute__((deprecated ("use ffi_prep_closure_loc instead")))
 #elif defined(__GNUC__) && __GNUC__ >= 3
-  __attribute__((deprecated))
+
 #endif
   ;
 
@@ -363,8 +363,8 @@ typedef struct {
 
 #if !FFI_NATIVE_RAW_API
 
-  /* If this is enabled, then a raw closure has the same layout 
-     as a regular closure.  We use this to install an intermediate 
+  /* If this is enabled, then a raw closure has the same layout
+     as a regular closure.  We use this to install an intermediate
      handler to do the transaltion, void** -> ffi_raw*.  */
 
   void     (*translate_args)(ffi_cif*,void*,void**,void*);
@@ -389,8 +389,8 @@ typedef struct {
 
 #if !FFI_NATIVE_RAW_API
 
-  /* If this is enabled, then a raw closure has the same layout 
-     as a regular closure.  We use this to install an intermediate 
+  /* If this is enabled, then a raw closure has the same layout
+     as a regular closure.  We use this to install an intermediate
      handler to do the translation, void** -> ffi_raw*.  */
 
   void     (*translate_args)(ffi_cif*,void*,void**,void*);
@@ -421,14 +421,14 @@ FFI_API ffi_status
 ffi_prep_java_raw_closure (ffi_java_raw_closure*,
 		           ffi_cif *cif,
 		           void (*fun)(ffi_cif*,void*,ffi_java_raw*,void*),
-		           void *user_data) __attribute__((deprecated));
+		           void *user_data);
 
 FFI_API ffi_status
 ffi_prep_java_raw_closure_loc (ffi_java_raw_closure*,
 			       ffi_cif *cif,
 			       void (*fun)(ffi_cif*,void*,ffi_java_raw*,void*),
 			       void *user_data,
-			       void *codeloc) __attribute__((deprecated));
+			       void *codeloc);
 #endif
 
 #endif /* FFI_CLOSURES */
@@ -451,7 +451,7 @@ FFI_API void ffi_call_go (ffi_cif *cif, void (*fn)(void), void *rvalue,
 
 /* ---- Public interface definition -------------------------------------- */
 
-FFI_API 
+FFI_API
 ffi_status ffi_prep_cif(ffi_cif *cif,
 			ffi_abi abi,
 			unsigned int nargs,
@@ -484,18 +484,18 @@ ffi_status ffi_get_struct_offsets (ffi_abi abi, ffi_type *struct_type,
 #endif
 
 /* If these change, update src/mips/ffitarget.h. */
-#define FFI_TYPE_VOID       0    
+#define FFI_TYPE_VOID       0
 #define FFI_TYPE_INT        1
-#define FFI_TYPE_FLOAT      2    
+#define FFI_TYPE_FLOAT      2
 #define FFI_TYPE_DOUBLE     3
 #if @HAVE_LONG_DOUBLE@
 #define FFI_TYPE_LONGDOUBLE 4
 #else
 #define FFI_TYPE_LONGDOUBLE FFI_TYPE_DOUBLE
 #endif
-#define FFI_TYPE_UINT8      5   
+#define FFI_TYPE_UINT8      5
 #define FFI_TYPE_SINT8      6
-#define FFI_TYPE_UINT16     7 
+#define FFI_TYPE_UINT16     7
 #define FFI_TYPE_SINT16     8
 #define FFI_TYPE_UINT32     9
 #define FFI_TYPE_SINT32     10

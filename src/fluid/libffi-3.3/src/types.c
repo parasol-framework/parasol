@@ -38,7 +38,7 @@ struct struct_align_##name {			\
   char c;					\
   type x;					\
 };						\
-extern					\
+					\
 maybe_const ffi_type ffi_type_##name = {	\
   sizeof(type),					\
   offsetof(struct struct_align_##name, x),	\
@@ -53,7 +53,7 @@ struct struct_align_complex_##name {			\
   char c;						\
   _Complex type x;					\
 };							\
-extern						\
+						\
 maybe_const ffi_type ffi_type_complex_##name = {	\
   sizeof(_Complex type),				\
   offsetof(struct struct_align_complex_##name, x),	\
@@ -62,7 +62,7 @@ maybe_const ffi_type ffi_type_complex_##name = {	\
 }
 
 /* Size and alignment are fake here. They must not be 0. */
-extern const ffi_type ffi_type_void = {
+const ffi_type ffi_type_void = {
   1, 1, FFI_TYPE_VOID, NULL
 };
 
