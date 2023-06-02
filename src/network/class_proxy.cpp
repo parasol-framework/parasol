@@ -819,10 +819,10 @@ static ERROR get_record(extProxy *Self)
       if (!cfgReadValue(glConfig, Self->GroupName, "Username", &str))      Self->Username = StrClone(str);
       if (!cfgReadValue(glConfig, Self->GroupName, "Password", &str))      Self->Password = StrClone(str);
       if (!cfgReadValue(glConfig, Self->GroupName, "Name", &str))          Self->ProxyName = StrClone(str);
-      if (!cfgRead(glConfig, Self->GroupName, "Port", &Self->Port));
-      if (!cfgRead(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort));
-      if (!cfgRead(glConfig, Self->GroupName, "Enabled", &Self->Enabled));
-      if (!cfgRead(glConfig, Self->GroupName, "Host", &Self->Host));
+      cfgRead(glConfig, Self->GroupName, "Port", &Self->Port);
+      cfgRead(glConfig, Self->GroupName, "ServerPort", &Self->ServerPort);
+      cfgRead(glConfig, Self->GroupName, "Enabled", &Self->Enabled);
+      cfgRead(glConfig, Self->GroupName, "Host", &Self->Host);
       return ERR_Okay;
    }
    else return log.error(ERR_NotFound);

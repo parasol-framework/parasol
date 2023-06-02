@@ -340,7 +340,7 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level) __att
 static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
 {
    pf::Log log(Header);
-   UBYTE spacing[*Level + 1];
+   auto spacing = std::make_unique<UBYTE[]>(*Level + 1);
    LONG i;
 
    *Level = *Level + 1;
@@ -355,7 +355,7 @@ static void debug_tree_ptrs(CSTRING Header, OBJECTPTR Vector, LONG *Level)
       }
       else if (Vector->Class->BaseClassID IS ID_VECTOR) {
          auto shape = (objVector *)Vector;
-         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing, get_name(shape));
+         log.msg("%p<-%p->%p Child %p %s%s", shape->Prev, shape, shape->Next, shape->Child, spacing.get(), get_name(shape));
          if (shape->Child) debug_tree_ptrs(Header, shape->Child, Level);
          Vector = shape->Next;
       }

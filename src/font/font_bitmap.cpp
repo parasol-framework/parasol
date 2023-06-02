@@ -143,8 +143,8 @@ public:
 
                LONG sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
                if (Chars[i].Width > 8) {
-                  UBYTE buffer[sz];
-                  ClearMemory(buffer, sz);
+                  auto buffer = std::make_unique<UBYTE[]>(sz);
+                  ClearMemory(buffer.get(), sz);
 
                   UBYTE *gfx = mData + Chars[i].Offset;
                   LONG bytewidth = (Chars[i].Width + 7)>>3;
@@ -155,7 +155,7 @@ public:
                      }
                   }
 
-                  CopyMemory(buffer, gfx, pos);
+                  CopyMemory(buffer.get(), gfx, pos);
                }
             }
          }

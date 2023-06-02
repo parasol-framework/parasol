@@ -82,7 +82,7 @@ static ERROR get_mix_amount(extAudio *Self, SAMPLE *MixLeft)
 // Functions for use by dsound.cpp
 
 #ifdef _WIN32
-int dsReadData(BaseClass *Self, void *Buffer, int Length) {
+extern "C" int dsReadData(BaseClass *Self, void *Buffer, int Length) {
    if (Self->Class->BaseClassID IS ID_SOUND) {
       LONG result;
       if (((objSound *)Self)->read(Buffer, Length, &result)) return 0;
@@ -114,7 +114,7 @@ int dsReadData(BaseClass *Self, void *Buffer, int Length) {
    else return 0;
 }
 
-void dsSeekData(BaseClass *Self, LONG Offset) {
+extern "C" void dsSeekData(BaseClass *Self, LONG Offset) {
    if (Self->Class->BaseClassID IS ID_SOUND) {
       ((objSound *)Self)->seek(Offset, SEEK::START);
    }

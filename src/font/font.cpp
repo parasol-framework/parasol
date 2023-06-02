@@ -31,6 +31,7 @@ Font: Provides font management functionality and hosts the Font class.
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
 
+#include <sstream>
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
@@ -83,8 +84,8 @@ class extFont : public objFont {
    UBYTE *prvData;
    std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
    struct FontCharacter *prvChar;
-   struct BitmapCache   *BmpCache;
-   struct font_glyph    prvTempGlyph;
+   class BitmapCache   *BmpCache;
+   font_glyph prvTempGlyph;
    LONG prvLineCount;
    LONG prvStrWidth;
    WORD prvSpaceWidth;          // Pixel width of word breaks
@@ -1542,7 +1543,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
             file->seekStart(font_offset);
 
             {
-               winFont fonts[font_count];
+               auto fonts = std::make_unique<winFont[]>(font_count);
 
                // Get the offset and size of each font entry
 

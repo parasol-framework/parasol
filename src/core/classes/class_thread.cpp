@@ -256,7 +256,9 @@ static void * thread_entry(extThread *Self)
 
    tlThreadCrashed = true;
    tlThreadRef     = Self;
+   #ifdef __GNUC__
    pthread_cleanup_push(&thread_entry_cleanup, Self);
+   #endif
 
    ThreadMessage msg = { .ThreadID = uid, .Callback = Self->Callback };
    bool pooled = Self->Pooled;
@@ -287,7 +289,9 @@ static void * thread_entry(extThread *Self)
    // Reset the crash indicators and invoke the cleanup code.
    tlThreadRef     = NULL;
    tlThreadCrashed = false;
+   #ifdef __GNUC__
    pthread_cleanup_pop(true);
+   #endif
    return 0;
 }
 

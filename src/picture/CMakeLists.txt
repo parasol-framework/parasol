@@ -19,5 +19,5 @@ target_include_directories (${MOD} PRIVATE
    ${ZLIB_HEADERS})
 
 target_link_libraries (${MOD} PUBLIC linear_rgb)
-target_link_libraries (${MOD} PRIVATE m zlib)
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK} zlib)
 

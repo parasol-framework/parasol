@@ -64,7 +64,7 @@ ERROR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
 
-void end_of_stream(OBJECTPTR, LONG);
+extern "C" void end_of_stream(OBJECTPTR, LONG);
 
 static void audio_stopped_event(extAudio &, LONG);
 static ERROR set_channel_volume(extAudio *, struct AudioChannel *);
@@ -80,8 +80,8 @@ static ERROR audio_timer(extAudio *, LARGE, LARGE);
 #define USE_WIN32_PLAYBACK TRUE // All Sound objects get an independent DirectSound channel if enabled
 #include "windows.h"
 
-char * dsInitDevice(int);
-void dsCloseDevice(void);
+extern "C" char * dsInitDevice(int);
+extern "C" void dsCloseDevice(void);
 #endif
 
 #ifdef ALSA_ENABLED

@@ -73,12 +73,12 @@ static ERROR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LO
             auto def = prv->Structs.find(struct_name(std::string((CSTRING)Field->Arg)));
             if (def != prv->Structs.end()) {
                LONG aligned_size = ALIGN64(def->second.Size);
-               UBYTE structbuf[total * aligned_size];
+               auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
 
                for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                   LONG index = lua_tointeger(Lua, -2) - 1;
                   if ((index >= 0) and (index < total)) {
-                     APTR sti = structbuf + (aligned_size * index);
+                     APTR sti = structbuf.get() + (aligned_size * index);
                      LONG type = lua_type(Lua, -1);
                      if (type IS LUA_TTABLE) {
                         lua_pop(Lua, 2);
@@ -96,7 +96,7 @@ static ERROR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LO
                   }
                }
 
-               return SetArray(Object, Field->FieldID, structbuf, total);
+               return SetArray(Object, Field->FieldID, structbuf.get(), total);
             }
             else return ERR_SetValueNotArray;
          }
@@ -447,12 +447,12 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                   auto def = prv->Structs.find(struct_name(std::string((CSTRING)field->Arg)));
                   if (def != prv->Structs.end()) {
                      LONG aligned_size = ALIGN64(def->second.Size);
-                     UBYTE structbuf[total * aligned_size];
+                     auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
 
                      for (lua_pushnil(Lua); lua_next(Lua, t); lua_pop(Lua, 1)) {
                         LONG index = lua_tointeger(Lua, -2) - 1;
                         if ((index >= 0) and (index < total)) {
-                           APTR sti = structbuf + (aligned_size * index);
+                           APTR sti = structbuf.get() + (aligned_size * index);
                            LONG type = lua_type(Lua, -1);
                            if (type IS LUA_TTABLE) {
                               lua_pop(Lua, 2);
@@ -470,7 +470,7 @@ static ERROR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG
                         }
                      }
 
-                     return SetArray(target, field->FieldID, structbuf, total);
+                     return SetArray(target, field->FieldID, structbuf.get(), total);
                   }
                   else return ERR_SetValueNotArray;
                }

@@ -9,6 +9,10 @@
 #define WINVER 0x0600
 #define NO_STRICT // Turn off type management due to C++ mangling issues.
 
+#ifdef _MSC_VER
+#pragma warning (disable : 4244 4311 4312 4267 4244 4068) // Disable annoying VC++ warnings
+#endif
+
 #include "keys.h"
 #include <windows.h>
 #include <windowsx.h>

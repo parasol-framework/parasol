@@ -11,6 +11,8 @@
 #include <sstream>
 #include <condition_variable>
 #include <chrono>
+#include <array>
+#include <atomic>
 
 using namespace std::chrono_literals;
 
@@ -634,7 +636,7 @@ extern LARGE glTimeLog;
 extern RootModule *glModuleList;    // Locked with glmGeneric.  Maintained as a linked-list; hashmap unsuitable.
 extern OpenInfo *glOpenInfo;      // Read-only.  The OpenInfo structure initially passed to OpenCore()
 extern extTask *glCurrentTask;
-extern const ActionTable ActionTable[];
+extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
 extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
@@ -650,7 +652,7 @@ extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // Volum
 extern std::vector<TaskRecord> glTasks;
 extern const CSTRING glMessages[ERR_END+1];       // Read-only table of error messages.
 extern const LONG glTotalMessages;
-extern LONG glProcessID;   // Read only
+extern "C" LONG glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern LONG glStdErrFlags; // Read only
 extern LONG glValidateProcessID; // Not a threading concern
@@ -659,7 +661,7 @@ extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
 extern WORD glCrashStatus, glCodeIndex, glLastCodeIndex, glSystemState;
 extern std::atomic_ushort glFunctionID;
-extern BYTE glProgramStage;
+extern "C" BYTE glProgramStage;
 extern bool glPrivileged, glSync;
 extern TIMER glCacheTimer;
 extern APTR glJNIEnv;
@@ -669,10 +671,10 @@ extern OBJECTPTR glLocale;
 extern objTime *glTime;
 extern objConfig *glDatatypes;
 extern objFile *glClassFile;
-extern CSTRING glIDL;
 extern BaseClass glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
+extern ModHeader glCoreHeader;
 
 #ifndef PARASOL_STATIC
 extern CSTRING glClassBinPath;
@@ -705,7 +707,7 @@ extern std::atomic_int glUniqueMsgID;
 // Thread specific variables - these do not require locks.
 
 extern THREADVAR class ObjectContext *tlContext;
-extern THREADVAR struct TaskMessage *tlCurrentMsg;
+extern THREADVAR class TaskMessage *tlCurrentMsg;
 extern THREADVAR bool tlMainThread;
 extern THREADVAR WORD tlMsgRecursion;
 extern THREADVAR WORD tlDepth;
@@ -724,7 +726,7 @@ extern void (*glKeyboardRecovery)(void);
 extern void (*glNetProcessMessages)(LONG, APTR);
 
 #ifdef _WIN32
-extern WINHANDLE glProcessHandle;
+extern "C" WINHANDLE glProcessHandle;
 extern THREADVAR bool tlMessageBreak;
 extern WINHANDLE glTaskLock;
 #endif
@@ -983,7 +985,7 @@ LONG   convert_permissions(PERMIT);
 void   set_memory_manager(APTR, ResourceManager *);
 BYTE   strip_folder(STRING) __attribute__ ((unused));
 ERROR  get_file_info(CSTRING, FileInfo *, LONG);
-ERROR  convert_errno(LONG Error, ERROR Default);
+extern "C" ERROR  convert_errno(LONG Error, ERROR Default);
 void   free_file_cache(void);
 
 EXPORT void Expunge(WORD);
@@ -1028,20 +1030,20 @@ void   remove_threadpool(void);
 ERROR  threadpool_get(extThread **);
 void   threadpool_release(extThread *);
 ERROR  writeval_default(OBJECTPTR, Field *, LONG, const void *, LONG);
-ERROR  validate_process(LONG);
+extern "C" ERROR validate_process(LONG);
 void   free_iconv(void);
 ERROR  check_paths(CSTRING, PERMIT);
 void   merge_groups(ConfigGroups &, ConfigGroups &);
 
 #ifdef _WIN32
-   ERROR open_public_waitlock(WINHANDLE *, CSTRING);
-   WINHANDLE get_threadlock(void);
-   void  free_threadlocks(void);
-   ERROR wake_waitlock(WINHANDLE, LONG);
-   ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
-   void  free_public_waitlock(WINHANDLE);
-   ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
-   LONG  sleep_waitlock(WINHANDLE, LONG);
+   extern "C" ERROR open_public_waitlock(WINHANDLE *, CSTRING);
+   extern "C" WINHANDLE get_threadlock(void);
+   extern "C" void  free_threadlocks(void);
+   extern "C" ERROR wake_waitlock(WINHANDLE, LONG);
+   extern "C" ERROR alloc_public_waitlock(WINHANDLE *, const char *Name);
+   extern "C" void  free_public_waitlock(WINHANDLE);
+   extern "C" ERROR send_thread_msg(WINHANDLE, LONG Type, APTR, LONG);
+   extern "C" LONG  sleep_waitlock(WINHANDLE, LONG);
 #else
    struct sockaddr_un * get_socket_path(LONG, socklen_t *);
    ERROR alloc_public_cond(CONDLOCK *, ALF);
@@ -1051,91 +1053,91 @@ void   merge_groups(ConfigGroups &, ConfigGroups &);
 #endif
 
 #ifdef _WIN32
-void activate_console(BYTE);
-void free_threadlock(void);
-LONG winCheckProcessExists(LONG);
-LONG winCloseHandle(WINHANDLE);
-LONG winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
-LONG winCreateSharedMemory(STRING, LONG, LONG, WINHANDLE *, APTR *);
-WINHANDLE winCreateThread(APTR Function, APTR Arg, LONG StackSize, LONG *ID);
-LONG winGetCurrentThreadId(void);
-void winDeathBringer(LONG Value);
-LONG winDuplicateHandle(LONG, LONG, LONG, LONG *);
-void winEnterCriticalSection(APTR);
-STRING winFormatMessage(LONG, char *, LONG);
-LONG winFreeLibrary(WINHANDLE);
-void winFreeProcess(APTR);
-LONG winGetEnv(CSTRING, STRING, LONG);
-LONG winGetExeDirectory(LONG, STRING);
-LONG winGetCurrentDirectory(LONG, STRING);
-WINHANDLE winGetCurrentProcess(void);
-LONG winGetCurrentProcessId(void);
-LONG winGetExitCodeProcess(WINHANDLE, LONG *Code);
-long long winGetFileSize(STRING);
-APTR winGetProcAddress(WINHANDLE, CSTRING);
-WINHANDLE winGetStdInput(void);
-LARGE winGetTickCount(void);
-void winInitialise(int *, void *);
-void winInitializeCriticalSection(APTR Lock);
-LONG winIsDebuggerPresent(void);
-void winDeleteCriticalSection(APTR Lock);
-LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *ProcessResult, BYTE, STRING, STRING, LONG *);
-void winLeaveCriticalSection(APTR);
-WINHANDLE winLoadLibrary(CSTRING);
-void winLowerPriority(void);
-void winProcessMessages(void);
-LONG winReadStd(APTR, LONG, APTR Buffer, LONG *Size);
-LONG winReadPipe(WINHANDLE FD, APTR Buffer, LONG *Size);
-void winResetStdOut(APTR, APTR Buffer, LONG *Size);
-void winResetStdErr(APTR, APTR Buffer, LONG *Size);
-LONG winWritePipe(WINHANDLE FD, CPTR Buffer, LONG *Size);
-void winSelect(WINHANDLE FD, char *Read, char *Write);
-void winSetEnv(CSTRING, CSTRING);
-void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, LONG *));
-void winShutdown(void);
-void winSleep(LONG);
-int winTerminateApp(int dwPID, int dwTimeout);
-void winTerminateThread(WINHANDLE);
-LONG winTryEnterCriticalSection(APTR);
-LONG winUnmapViewOfFile(APTR);
-LONG winWaitForSingleObject(WINHANDLE, LONG);
-LONG winWaitForObjects(LONG Total, WINHANDLE *, LONG Time, BYTE WinMsgs);
-LONG winWaitThread(WINHANDLE, LONG);
-LONG winWriteStd(APTR, CPTR Buffer, LONG Size);
-int winDeleteFile(char *Path);
-LONG winCheckDirectoryExists(CSTRING);
-LONG winCreateDir(CSTRING);
-LONG winCurrentDirectory(STRING, LONG);
-LONG winFileInfo(CSTRING, long long *, struct DateTime *, BYTE *);
-void winFindClose(WINHANDLE);
-void winFindNextChangeNotification(WINHANDLE);
-void winGetAttrib(CSTRING, LONG *);
-BYTE winGetCommand(char *, char *, LONG);
-LONG winGetFreeDiskSpace(UBYTE, LARGE *, LARGE *);
-LONG winGetLogicalDrives(void);
-LONG winGetLogicalDriveStrings(STRING, LONG);
-LONG winGetDriveType(STRING);
-LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart);
-LONG winGetUserFolder(STRING, LONG);
-LONG winGetUserName(STRING, LONG);
-LONG winGetWatchBufferSize(void);
-LONG winMoveFile(STRING, STRING);
-LONG winReadChanges(WINHANDLE, APTR, LONG NotifyFlags, char *, LONG, LONG *);
-LONG winReadKey(CSTRING, CSTRING, STRING, LONG);
-LONG winReadRootKey(CSTRING, STRING, STRING, LONG);
-LONG winReadStdInput(WINHANDLE FD, APTR Buffer, LONG BufferSize, LONG *Size);
-LONG winScan(APTR *, STRING, STRING, LARGE *, struct DateTime *, struct DateTime *, BYTE *, BYTE *, BYTE *, BYTE *);
-LONG winSetAttrib(CSTRING, LONG);
-LONG winSetEOF(CSTRING, LARGE);
-LONG winTestLocation(CSTRING, BYTE);
-LONG winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
-void winFindCloseChangeNotification(WINHANDLE);
-APTR winFindDirectory(STRING, APTR *, STRING);
-APTR winFindFile(STRING, APTR *, STRING);
-LONG winSetFileTime(CSTRING, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
-LONG winResetDate(STRING);
-void winSetDllDirectory(CSTRING);
-void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
+extern "C" void activate_console(BYTE);
+extern "C" void free_threadlock(void);
+extern "C" LONG winCheckProcessExists(LONG);
+extern "C" LONG winCloseHandle(WINHANDLE);
+extern "C" LONG winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
+extern "C" LONG winCreateSharedMemory(STRING, LONG, LONG, WINHANDLE *, APTR *);
+extern "C" WINHANDLE winCreateThread(APTR Function, APTR Arg, LONG StackSize, LONG *ID);
+extern "C" LONG winGetCurrentThreadId(void);
+extern "C" void winDeathBringer(LONG Value);
+extern "C" LONG winDuplicateHandle(LONG, LONG, LONG, LONG *);
+extern "C" void winEnterCriticalSection(APTR);
+extern "C" STRING winFormatMessage(LONG, char *, LONG);
+extern "C" LONG winFreeLibrary(WINHANDLE);
+extern "C" void winFreeProcess(APTR);
+extern "C" LONG winGetEnv(CSTRING, STRING, LONG);
+extern "C" LONG winGetExeDirectory(LONG, STRING);
+extern "C" LONG winGetCurrentDirectory(LONG, STRING);
+extern "C" WINHANDLE winGetCurrentProcess(void);
+extern "C" LONG winGetCurrentProcessId(void);
+extern "C" LONG winGetExitCodeProcess(WINHANDLE, LONG *Code);
+extern "C" long long winGetFileSize(STRING);
+extern "C" APTR winGetProcAddress(WINHANDLE, CSTRING);
+extern "C" WINHANDLE winGetStdInput(void);
+extern "C" LARGE winGetTickCount(void);
+extern "C" void winInitialise(int *, void *);
+extern "C" void winInitializeCriticalSection(APTR Lock);
+extern "C" LONG winIsDebuggerPresent(void);
+extern "C" void winDeleteCriticalSection(APTR Lock);
+extern "C" LONG winLaunchProcess(APTR, STRING, STRING, BYTE Group, BYTE Redirect, APTR *ProcessResult, BYTE, STRING, STRING, LONG *);
+extern "C" void winLeaveCriticalSection(APTR);
+extern "C" WINHANDLE winLoadLibrary(CSTRING);
+extern "C" void winLowerPriority(void);
+extern "C" void winProcessMessages(void);
+extern "C" LONG winReadStd(APTR, LONG, APTR Buffer, LONG *Size);
+extern "C" LONG winReadPipe(WINHANDLE FD, APTR Buffer, LONG *Size);
+extern "C" void winResetStdOut(APTR, APTR Buffer, LONG *Size);
+extern "C" void winResetStdErr(APTR, APTR Buffer, LONG *Size);
+extern "C" LONG winWritePipe(WINHANDLE FD, CPTR Buffer, LONG *Size);
+extern "C" void winSelect(WINHANDLE FD, char *Read, char *Write);
+extern "C" void winSetEnv(CSTRING, CSTRING);
+extern "C" void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, LONG *));
+extern "C" void winShutdown(void);
+extern "C" void winSleep(LONG);
+extern "C" int winTerminateApp(int dwPID, int dwTimeout);
+extern "C" void winTerminateThread(WINHANDLE);
+extern "C" LONG winTryEnterCriticalSection(APTR);
+extern "C" LONG winUnmapViewOfFile(APTR);
+extern "C" LONG winWaitForSingleObject(WINHANDLE, LONG);
+extern "C" LONG winWaitForObjects(LONG Total, WINHANDLE *, LONG Time, BYTE WinMsgs);
+extern "C" LONG winWaitThread(WINHANDLE, LONG);
+extern "C" LONG winWriteStd(APTR, CPTR Buffer, LONG Size);
+extern "C" int winDeleteFile(char *Path);
+extern "C" LONG winCheckDirectoryExists(CSTRING);
+extern "C" LONG winCreateDir(CSTRING);
+extern "C" LONG winCurrentDirectory(STRING, LONG);
+extern "C" LONG winFileInfo(CSTRING, long long *, struct DateTime *, BYTE *);
+extern "C" void winFindClose(WINHANDLE);
+extern "C" void winFindNextChangeNotification(WINHANDLE);
+extern "C" void winGetAttrib(CSTRING, LONG *);
+extern "C" BYTE winGetCommand(char *, char *, LONG);
+extern "C" LONG winGetFreeDiskSpace(UBYTE, LARGE *, LARGE *);
+extern "C" LONG winGetLogicalDrives(void);
+extern "C" LONG winGetLogicalDriveStrings(STRING, LONG);
+extern "C" LONG winGetDriveType(STRING);
+extern "C" LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart);
+extern "C" LONG winGetUserFolder(STRING, LONG);
+extern "C" LONG winGetUserName(STRING, LONG);
+extern "C" LONG winGetWatchBufferSize(void);
+extern "C" LONG winMoveFile(STRING, STRING);
+extern "C" LONG winReadChanges(WINHANDLE, APTR, LONG NotifyFlags, char *, LONG, LONG *);
+extern "C" LONG winReadKey(CSTRING, CSTRING, STRING, LONG);
+extern "C" LONG winReadRootKey(CSTRING, STRING, STRING, LONG);
+extern "C" LONG winReadStdInput(WINHANDLE FD, APTR Buffer, LONG BufferSize, LONG *Size);
+extern "C" LONG winScan(APTR *, STRING, STRING, LARGE *, struct DateTime *, struct DateTime *, BYTE *, BYTE *, BYTE *, BYTE *);
+extern "C" LONG winSetAttrib(CSTRING, LONG);
+extern "C" LONG winSetEOF(CSTRING, LARGE);
+extern "C" LONG winTestLocation(CSTRING, BYTE);
+extern "C" LONG winWatchFile(LONG, CSTRING, APTR, WINHANDLE *, LONG *);
+extern "C" void winFindCloseChangeNotification(WINHANDLE);
+extern "C" APTR winFindDirectory(STRING, APTR *, STRING);
+extern "C" APTR winFindFile(STRING, APTR *, STRING);
+extern "C" LONG winSetFileTime(CSTRING, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second);
+extern "C" LONG winResetDate(STRING);
+extern "C" void winSetDllDirectory(CSTRING);
+extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, BYTE));
 
 #endif
 

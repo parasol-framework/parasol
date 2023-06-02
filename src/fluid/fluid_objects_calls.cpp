@@ -8,8 +8,8 @@ static int object_action_call_args(lua_State *Lua)
    LONG action_id = lua_tointeger(Lua, lua_upvalueindex(2));
    bool release = false;
 
-   BYTE argbuffer[glActions[action_id].Size+8]; // +8 for overflow protection in build_args()
-   ERROR error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer, NULL);
+   auto argbuffer = std::make_unique<BYTE[]>(glActions[action_id].Size+8); // +8 for overflow protection in build_args()
+   ERROR error = build_args(Lua, glActions[action_id].Args, glActions[action_id].Size, argbuffer.get(), NULL);
    if (error) {
       luaL_error(Lua, "Argument build failure for %s.", glActions[action_id].Name);
       return 0;
@@ -18,13 +18,13 @@ static int object_action_call_args(lua_State *Lua)
    LONG results = 1;
    if (object->DelayCall) {
       object->DelayCall = false;
-      error = QueueAction(action_id, object->UID, argbuffer);
+      error = QueueAction(action_id, object->UID, argbuffer.get());
       lua_pushinteger(Lua, error);
    }
    else {
-      if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer);
+      if (object->ObjectPtr) error = Action(action_id, object->ObjectPtr, argbuffer.get());
       else if (auto obj = access_object(object)) {
-         error = Action(action_id, obj, argbuffer);
+         error = Action(action_id, obj, argbuffer.get());
          release = true;
       }
       else error = ERR_AccessObject;
@@ -34,7 +34,7 @@ static int object_action_call_args(lua_State *Lua)
       // quite common when returning ERR_Terminate).
 
       lua_pushinteger(Lua, error);
-      results += get_results(Lua, glActions[action_id].Args, argbuffer);
+      results += get_results(Lua, glActions[action_id].Args, argbuffer.get());
    }
 
    if (release) release_object(object);
@@ -77,9 +77,9 @@ static int object_method_call_args(lua_State *Lua)
    auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   BYTE argbuffer[method->Size+8]; // +8 for overflow protection in build_args()
+   auto argbuffer = std::make_unique<BYTE[]>(method->Size+8); // +8 for overflow protection in build_args()
    LONG resultcount;
-   ERROR error = build_args(Lua, method->Args, method->Size, argbuffer, &resultcount);
+   ERROR error = build_args(Lua, method->Args, method->Size, argbuffer.get(), &resultcount);
    if (error) {
       luaL_error(Lua, "Argument build failure for method %s.", method->Name);
       return 0;
@@ -89,20 +89,20 @@ static int object_method_call_args(lua_State *Lua)
    bool release = false;
    if (def->DelayCall) {
       def->DelayCall = false;
-      error = QueueAction(method->MethodID, def->UID, (APTR)&argbuffer);
+      error = QueueAction(method->MethodID, def->UID, (APTR)argbuffer.get());
       lua_pushinteger(Lua, error);
    }
    else {
-      if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, &argbuffer);
+      if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, argbuffer.get());
       else if (auto obj = access_object(def)) {
-         error = Action(method->MethodID, obj, argbuffer);
+         error = Action(method->MethodID, obj, argbuffer.get());
          release = true;
       }
       else error = ERR_AccessObject;
 
       lua_pushinteger(Lua, error);
 
-      if (!def->DelayCall) results += get_results(Lua, method->Args, (const BYTE *)argbuffer);
+      if (!def->DelayCall) results += get_results(Lua, method->Args, (const BYTE *)argbuffer.get());
    }
 
    if (release) release_object(def);

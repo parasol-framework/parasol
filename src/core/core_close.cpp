@@ -261,7 +261,7 @@ EXPORT void CloseCore(void)
 // NOTE: If forced expunging occurs, it usually means that two modules have loaded each other.  This means that they
 // will always have an open count of at least 1 each.
 
-#warning TODO: Expunging cannot occur while other threads are active.  In that case, the expunge should be delayed until no additional threads are running.
+// TODO: Expunging cannot occur while other threads are active.  In that case, the expunge should be delayed until no additional threads are running.
 
 EXPORT void Expunge(WORD Force)
 {

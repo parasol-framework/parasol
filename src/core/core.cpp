@@ -26,7 +26,13 @@ This documentation is intended for technical reference and is not suitable as an
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <unistd.h>
+
+#ifdef _MSC_VER
+ #include <io.h>
+#else
+ #include <unistd.h>
+#endif
+
 #include <forward_list>
 #include <sstream>
 
@@ -169,9 +175,7 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    tlMainThread = TRUE;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
 
-   if (glProcessID) {
-      fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
-   }
+   if (glProcessID) fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
@@ -1007,7 +1011,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
 //********************************************************************************************************************
 
-ERROR convert_errno(LONG Error, ERROR Default)
+extern "C" ERROR convert_errno(LONG Error, ERROR Default)
 {
    switch (Error) {
       case 0:       return ERR_Okay;

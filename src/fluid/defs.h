@@ -339,8 +339,8 @@ struct obj_write {
        return 0;
    }
 
-   obj_write(ULONG pHash, const JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
-   obj_write(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(ULONG pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(ULONG pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
    obj_write(ULONG pHash) : Hash(pHash) { }
 };
 

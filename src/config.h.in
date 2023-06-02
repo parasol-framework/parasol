@@ -146,11 +146,11 @@ typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit 
 #endif
 
 #ifdef _WIN32
-#ifndef _WINDEF_H
-#define __export __declspec(dllexport)
-#endif
+ #if !defined(_WINDEF_H) || defined(_MSC_VER)
+  #define __export __declspec(dllexport)
+ #endif
 #else
-#define __export
+ #define __export
 #endif
 
 #define EXPORT __export

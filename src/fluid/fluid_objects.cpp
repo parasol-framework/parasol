@@ -28,7 +28,9 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
-#define RMSG(a...) //MSG(a) // Enable if you want to debug results returned from functions, actions etc
+template<class... Args> void RMSG(Args...) {
+   //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
+}
 
 static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_var, OJH_getVar;
 static ULONG OJH_set, OJH_setVar, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
@@ -764,7 +766,7 @@ static int object_children(lua_State *Lua)
    pf::vector<ChildEntry> list;
    if (!ListChildren(def->UID, &list)) {
       LONG index = 0;
-      LONG id[list.size()];
+      auto id = std::make_unique<LONG[]>(list.size());
       for (auto &rec : list) {
          if (class_id) {
             if (rec.ClassID IS class_id) id[index++] = rec.ObjectID;
@@ -772,7 +774,7 @@ static int object_children(lua_State *Lua)
          else id[index++] = rec.ObjectID;
       }
 
-      make_table(Lua, FD_LONG, index, &id);
+      make_table(Lua, FD_LONG, index, id.get());
    }
    else make_table(Lua, FD_LONG, 0, NULL);
 

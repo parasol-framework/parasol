@@ -85,8 +85,10 @@ static STRUCTS glStructures = {
    { "pfBase64Encode",      sizeof(pfBase64Encode) }
 };
 
+#include "../idl.h"
+
 static RootModule glCoreRoot;
-static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "core");
+ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);

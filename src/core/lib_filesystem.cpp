@@ -65,7 +65,18 @@ typedef int HANDLE;
  #include <stdlib.h>
  #include <stdio.h>
  #include <errno.h>
- #include <unistd.h>
+ #ifdef _MSC_VER
+  #define S_IRUSR _S_IREAD
+  #define S_IWUSR _S_IWRITE
+  #ifndef _S_ISTYPE
+   #define _S_ISTYPE(mode, mask)  (((mode) & _S_IFMT) == (mask))
+   #define S_ISREG(mode) _S_ISTYPE((mode), _S_IFREG)
+   #define S_ISDIR(mode) _S_ISTYPE((mode), _S_IFDIR)
+  #endif
+  #define stat64 stat
+ #else
+  #include <unistd.h>
+ #endif
  #include <sys/types.h>
  #include <sys/stat.h>
  #include <time.h>
@@ -1282,7 +1293,7 @@ ERROR test_path(STRING Path, RSF Flags)
          return ERR_Okay;
       }
 #else
-      else if (!access(Path, F_OK)) {
+      else if (!access(Path, 0)) {
          return ERR_Okay;
       }
       //else log.trace("access() failed.");
@@ -1534,25 +1545,14 @@ PERMIT convert_fs_permissions(LONG Permissions)
 ERROR check_paths(CSTRING Path, PERMIT Permissions)
 {
    pf::Log log(__FUNCTION__);
-
    log.traceBranch("%s", Path);
 
-   LONG i = StrLength(Path);
-
-   {
-      char path[i+1];
-      CopyMemory(Path, path, i);
-
-      while (i > 0) {
-         if ((path[i-1] IS ':') or (path[i-1] IS '/') or (path[i-1] IS '\\')) {
-            path[i] = 0;
-            return CreateFolder(path, Permissions);
-         }
-         i--;
-      }
+   std::string path(Path);
+   if (auto i = path.find_last_of(":/\\"); i != std::string::npos) {
+      path.resize(i);
+      return CreateFolder(path.c_str(), Permissions);
    }
-
-   return ERR_Failed;
+   else return ERR_Failed;
 }
 
 //********************************************************************************************************************
@@ -2684,10 +2684,8 @@ ERROR fs_getinfo(CSTRING Path, FileInfo *Info, LONG InfoSize)
    // TimeStamp has to match that produced by GET_TimeStamp
 
    struct stat64 stats;
-   struct tm *local;
-
    if (!stat64(Path, &stats)) {
-      if ((local = localtime(&stats.st_mtime))) {
+      if (auto local = localtime(&stats.st_mtime)) {
          Info->Modified.Year   = 1900 + local->tm_year;
          Info->Modified.Month  = local->tm_mon + 1;
          Info->Modified.Day    = local->tm_mday;
@@ -2775,7 +2773,7 @@ restart:
 
             #ifdef _WIN32
              // On win32 we can get the drive information from the drive letter
-             #warning TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
+             // TODO: Write Win32 code to discover the drive type in GetDeviceInfo().
             #endif
 
             location = resolve;
@@ -2899,7 +2897,7 @@ ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
    LONG secureflags = convert_permissions(Permissions);
 
    if (mkdir(Path, secureflags) IS -1) {
-      char buffer[StrLength(Path)+1];
+      auto buffer = std::make_unique<char[]>(StrLength(Path)+1);
 
       if (errno IS EEXIST) {
          log.msg("A folder or file already exists at \"%s\"", Path);
@@ -2954,7 +2952,7 @@ ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
    ERROR error;
    LONG i;
    if ((error = winCreateDir(Path))) {
-      char buffer[StrLength(Path)+1];
+      auto buffer = std::make_unique<char[]>(StrLength(Path)+1);
 
       if (error IS ERR_FileExists) return ERR_FileExists;
 
@@ -2966,8 +2964,8 @@ ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
          buffer[i] = Path[i];
          if ((i >= 3) and (buffer[i] IS '\\')) {
             buffer[i+1] = 0;
-            log.trace("%s", buffer);
-            winCreateDir(buffer);
+            log.trace("%s", buffer.get());
+            winCreateDir(buffer.get());
          }
       }
 

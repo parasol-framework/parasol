@@ -123,11 +123,11 @@ static ERROR process_args(void)
 
 //********************************************************************************************************************
 
-int main(int argc, CSTRING *argv)
+extern "C" int main(int argc, char **argv)
 {
    pf::Log log("Parasol");
 
-   if (auto msg = init_parasol(argc, argv)) {
+   if (auto msg = init_parasol(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
          if (!strcmp(argv[i], "--verify")) return 0;
       }

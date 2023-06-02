@@ -2,6 +2,10 @@
 #define _WIN32_WINNT 0x0600 // Allow Windows Vista function calls
 #define WINVER 0x0600
 
+#ifdef _MSC_VER
+#pragma warning (disable : 4244 4311 4312 4267 4244 4068) // Disable annoying VC++ typecast warnings
+#endif
+
 #include "keys.h"
 #include <windows.h>
 #include <windowsx.h>
@@ -237,7 +241,7 @@ static HRESULT STDMETHODCALLTYPE RKDT_DragOver(struct rkDropTarget *Self, DWORD 
 //********************************************************************************************************************
 // The drag action leaves your window - no dropping
 
-static HRESULT STDMETHODCALLTYPE RKDT_DragLeave()
+static HRESULT STDMETHODCALLTYPE RKDT_DragLeave(struct rkDropTarget *Self)
 {
    MSG("rkDropTarget::DragLeave()\n");
 	return S_OK;

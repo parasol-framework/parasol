@@ -179,11 +179,11 @@ static ERROR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *
    log.traceBranch("Args: %p, Buffer: %p", args, Buffer);
 
    for (LONG i=0; args[i].Name; i++) {
-      char name[StrLength(args[i].Name)+1];
+      auto name = std::make_unique<char[]>(StrLength(args[i].Name)+1);
       for (j=0; args[i].Name[j]; j++) name[j] = std::tolower(args[i].Name[j]);
       name[j] = 0;
 
-      lua_pushlstring(Lua, name, j);
+      lua_pushlstring(Lua, name.get(), j);
 
       // Note: If the object is public and the call was messaged from a foreign process, all strings/pointers are
       // invalid because the message handlers cannot do deep pointer resolution of the structure we receive from
@@ -671,13 +671,13 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
    ERROR error;
    bool compile = false;
    LONG loaded_size = 0;
-   pf::ScopedObject<objFile> src_file;
+   objFile *src_file = NULL;
    if ((!Self->String) and (Self->Path)) {
       LARGE src_ts, src_size;
 
-      if ((src_file.obj = objFile::create::integral(fl::Path(Self->Path)))) {
-         error = src_file.obj->get(FID_TimeStamp, &src_ts);
-         if (!error) error = src_file.obj->get(FID_Size, &src_size);
+      if ((src_file = objFile::create::integral(fl::Path(Self->Path)))) {
+         error = src_file->get(FID_TimeStamp, &src_ts);
+         if (!error) error = src_file->get(FID_Size, &src_size);
       }
       else error = ERR_File;
 
@@ -744,15 +744,18 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
          new (prv) prvFluid;
          if ((prv->SaveCompiled = compile)) {
             DateTime *dt;
-            if (!src_file.obj->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
-            src_file.obj->get(FID_Permissions, (LONG *)&prv->CachePermissions);
+            if (!src_file->getPtr(FID_Date, &dt)) prv->CacheDate = *dt;
+            src_file->get(FID_Permissions, (LONG *)&prv->CachePermissions);
             prv->LoadedSize = loaded_size;
          }
       }
       else error = ERR_AllocMemory;
    }
 
-   if (error) return log.warning(error);
+   if (error) {
+      if (src_file) FreeResource(src_file);
+      return log.warning(error);
+   }
 
    log.trace("Opening a Lua instance.");
 
@@ -760,11 +763,13 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
       log.warning("Failed to open a Lua instance.");
       FreeResource(Self->ChildPrivate);
       Self->ChildPrivate = NULL;
+      if (src_file) FreeResource(src_file);
       return ERR_Failed;
    }
 
    if (!(str = Self->String)) {
       log.trace("No statement specified at this stage.");
+      if (src_file) FreeResource(src_file);
       return ERR_Okay; // Assume that the script's text will be incoming later
    }
 
@@ -778,6 +783,7 @@ static ERROR FLUID_Init(objScript *Self, APTR Void)
 
    }
 
+   if (src_file) FreeResource(src_file);
    return ERR_Okay;
 }
 
@@ -1019,11 +1025,10 @@ static ERROR run_script(objScript *Self)
          log.warning("%s", str);
 
          #ifdef _DEBUG
-            STRING *list;
+            pf::vector<std::string> *list;
             LONG total_procedures;
             if (!GET_Procedures(Self, &list, &total_procedures)) {
-               for (LONG i=0; i < total_procedures; i++) log.trace("%s", list[i]);
-               FreeResource(list);
+               for (LONG i=0; i < total_procedures; i++) log.trace("%s", list[0][i]);
             }
          #endif
 
@@ -1046,18 +1051,19 @@ static ERROR run_script(objScript *Self)
       LONG results = lua_gettop(prv->Lua) - top + 1;
 
       if (results > 0) {
-         CSTRING array[results+1];
-         LONG i;
+         std::vector<CSTRING> array;
+         array.resize(results+1);
 
          // NB: The Results field will take a clone of the Lua strings, so this sub-routine is safe to pass
          // on Lua's temporary string results.
 
+         LONG i;
          for (i=0; i < results; i++) {
             array[i] = lua_tostring(prv->Lua, -results+i);
             log.trace("Result: %d/%d: %s", i, results, array[i]);
          }
          array[i] = NULL;
-         SetArray(Self, FID_Results, array, i);
+         SetArray(Self, FID_Results, array.data(), i);
          lua_pop(prv->Lua, results);  // pop returned values
       }
 

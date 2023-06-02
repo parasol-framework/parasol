@@ -16,7 +16,7 @@
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.15)
 
 include (CheckIncludeFiles)
 include (CheckTypeSize)
@@ -180,10 +180,16 @@ if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
    message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev")
 endif ()
 
+if (NOT MSVC)
+   set (MATH_LINK m)
+endif ()
+
 if (WIN32)
    if (PARASOL_STATIC)
       # NB: MinGW does not guarantee that libgcc and libstdc++ will be static even if these flags are specified.
-      set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+      if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+         set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+      endif ()
       set (INIT_LINK "init-win" core)
    else ()
       set (CMAKE_EXE_LINKER_FLAGS "-static")
@@ -393,7 +399,12 @@ endif ()
 
 if (MSVC)
    # Turn off ugly warnings
-   add_compile_definitions("_CRT_SECURE_NO_WARNINGS" )
+   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS" )
+   set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+   # These options override sub-projects linking to incorrect standard libraries.
+   # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
+   add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
+   # add_link_options ("/VERBOSE:LIB")
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       add_compile_definitions ("_DARWIN_C_SOURCE")

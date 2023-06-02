@@ -30,6 +30,7 @@ capabilities.
 #include <assert.h>
 #include <limits.h>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <map>
 
@@ -2192,16 +2193,11 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
       CSTRING errstr;
       if ((Error) and (errstr = GetErrorMsg(Error))) {
-         LONG len = StrLength(Message);
-         char buffer[len+120];
-         if (Message) {
-            len = StrCopy(Message, buffer, sizeof(buffer));
-            len += StrCopy("\n\nDetails: ", buffer+len, sizeof(buffer)-len);
-         }
-         else len = StrCopy("Error: ", buffer, sizeof(buffer));
+         std::ostringstream buffer;
+         if (Message) buffer << Message << "\n\nDetails: " << errstr;
+         else buffer << "Error: " << errstr;
 
-         StrCopy(errstr, buffer+len, sizeof(buffer)-len);
-         acSetVar(dialog, "message", buffer);
+         acSetVar(dialog, "message", buffer.str().c_str());
       }
       else acSetVar(dialog, "message", Message);
 

@@ -1844,7 +1844,7 @@ static void add_line(extVectorText *Self, std::string String, LONG Offset, LONG 
    // Stop the string from exceeding the acceptable character limit
 
    if (Length >= Self->txCharLimit) {
-      LONG i;
+      LONG i = 0;
       for (LONG unicodelen=0, i=0; (i < Length) and (unicodelen < Self->txCharLimit); unicodelen++) {
          for (++i; (String[i] & 0xc0) IS 0x80; i++);
       }

@@ -18,8 +18,10 @@ extern "C" {
 
 #include <ffi.h>
 
-#undef RMSG
-#define RMSG(a...) //log.msg(a)
+template<class... Args> void RMSG(Args...) {
+   //log.msg(Args)
+}
+
 #define MAX_MODULE_ARGS 16
 
 static int module_call(lua_State *);

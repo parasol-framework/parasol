@@ -645,25 +645,18 @@ static ERROR scan_zip(extCompression *Self)
 
          ZipFile entry;
 
-         char name[zipentry.namelen+1];
-         if (!acRead(Self->FileIO, name, zipentry.namelen, &result)) {
-            name[zipentry.namelen] = 0;
-            entry.Name.assign(name);
-         }
-         else return log.warning(ERR_Read);
+         entry.Name.resize(zipentry.namelen);
+         if (acRead(Self->FileIO, (APTR)entry.Name.c_str(), zipentry.namelen, &result)) return log.warning(ERR_Read);
 
-         if (zipentry.extralen > 0) {
-            char extra[zipentry.extralen];
-            struct acRead read = { extra, zipentry.extralen };
+         if (zipentry.extralen > 0) { // Not currently used
+            std::string extra(zipentry.extralen, '\0');
+            struct acRead read = { (APTR)extra.c_str(), zipentry.extralen };
             if (Action(AC_Read, Self->FileIO, &read)) return log.warning(ERR_Read);
          }
 
          if (zipentry.commentlen > 0) {
-            char comment[zipentry.commentlen];
-            if (!acRead(Self->FileIO, comment, zipentry.commentlen, &result)) {
-               entry.Comment.assign(comment, zipentry.commentlen);
-            }
-            else return log.warning(ERR_Read);
+            entry.Comment.resize(zipentry.commentlen);
+            if (acRead(Self->FileIO, (APTR)entry.Comment.c_str(), zipentry.commentlen, &result)) return log.warning(ERR_Read);
          }
 
          entry.NameLen        = zipentry.namelen;

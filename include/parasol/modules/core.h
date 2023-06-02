@@ -1515,8 +1515,8 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 extern "C" {
 
 #ifdef PARASOL_STATIC
-extern void CloseCore(void);
-extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+extern "C" EXPORT void CloseCore(void);
+extern "C" EXPORT ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
 #endif
 
 #ifdef MOD_NAME
@@ -1574,9 +1574,9 @@ template <class T> T roundup(T Num, LONG Alignment) {
 
 #ifdef _DEBUG
  #ifdef _MSC_VER
-  #define DEBUG_BREAK __asm("int $3");
+  #define DEBUG_BREAK __debugbreak();
  #else
-  #define DEBUG_BREAK asm("int $3");
+  #define DEBUG_BREAK raise(SIGTRAP);
  #endif
 #else
  #define DEBUG_BREAK
@@ -1811,7 +1811,7 @@ struct ModHeader {
    ERROR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
    CSTRING Name;                                    // Name of the module
    STRUCTS *StructDefs;
-   struct RootModule *Root;
+   class RootModule *Root;
    ModHeader(ERROR (*pInit)(OBJECTPTR, struct CoreBase *),
       void  (*pClose)(OBJECTPTR),
       ERROR (*pOpen)(OBJECTPTR),
@@ -2724,10 +2724,10 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    OBJECTID UID;                 // Unique object identifier
    OBJECTID OwnerID;             // The owner of this object
    NF       Flags;               // Object flags
-   LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
@@ -4221,7 +4221,7 @@ class objModule : public BaseClass {
    DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
    APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
-   struct RootModule * Root;                // For internal use only.
+   class RootModule * Root;                 // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
    MOF    Flags;                            // Optional flags.
    public:

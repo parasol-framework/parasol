@@ -6,7 +6,7 @@
 #endif
 
 #ifdef _MSC_VER
-#pragma warning (disable : 4244 4311 4312 4267 4244) // Disable annoying VC++ typecast warnings
+#pragma warning (disable : 4244 4311 4312 4267 4244 4068) // Disable annoying VC++ typecast warnings
 
 #define strncasecmp _strnicmp
 #define strcasecmp _stricmp
@@ -69,18 +69,6 @@ template <typename F> deferred_call<F> Defer(F&& f) {
 }
 
 //********************************************************************************************************************
-
-template <class T = BaseClass>
-class ScopedObject { // C++ wrapper for automatically freeing an object
-   public:
-      T *obj;
-
-      ScopedObject(T *Object) { obj = Object; }
-      ScopedObject() { obj = NULL; }
-      ~ScopedObject() { if (obj) FreeResource(obj); }
-};
-
-//********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = BaseClass>
@@ -114,7 +102,7 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
 template <class T>
 class GuardedResource { // C++ wrapper for terminating resources when scope is lost
    private:
-      APTR resource;
+      T *resource;
    public:
       GuardedResource(T Resource) { resource = Resource; }
       ~GuardedResource() { FreeResource(resource); }

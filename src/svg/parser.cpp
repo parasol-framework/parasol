@@ -2338,9 +2338,9 @@ static ERROR xtag_animatetransform(extSVG *Self, objXML *XML, const XMLTag &Tag,
             break;
 
          case SVF_ATTRIBUTETYPE: // Namespace of the target attribute: XML, CSS, auto
-            if (!StrMatch("XML", value));
-            else if (!StrMatch("CSS", value));
-            else if (!StrMatch("auto", value));
+            //if (!StrMatch("XML", value));
+            //else if (!StrMatch("CSS", value));
+            //else if (!StrMatch("auto", value));
             break;
 
          case SVF_ID:

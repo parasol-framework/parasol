@@ -1106,7 +1106,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       //   The thread-lock is released by another task (see wake_task).
       //   A window message is received (if tlMessageBreak is true)
 
-      WINHANDLE handles[glFDTable.size()+1]; // +1 for thread-lock
+      auto handles = std::make_unique<WINHANDLE[]>(glFDTable.size()+1); // +1 for thread-lock
       handles[0] = get_threadlock();
       LONG total = 1;
 
@@ -1137,7 +1137,7 @@ ERROR sleep_task(LONG Timeout, BYTE SystemOnly)
       LONG sleeptime = time_end - (PreciseTime() / 1000LL);
       if (sleeptime < 0) sleeptime = 0;
 
-      LONG i = winWaitForObjects(total, handles, sleeptime, tlMessageBreak);
+      LONG i = winWaitForObjects(total, handles.get(), sleeptime, tlMessageBreak);
 
       // Return Codes/Reasons for breaking:
       //

@@ -4,7 +4,6 @@
 #include "defs.h"
 #include <parasol/main.h>
 #include <parasol/modules/core.h>
-#include "idl.h"
 
 #ifdef __unix__
 // In Unix/Linux builds it is assumed that the install location is static.  Dynamic loading is enabled
@@ -100,9 +99,9 @@ std::vector<FDRecord> glRegisterFD;
 std::vector<TaskMessage> glQueue;
 std::vector<TaskRecord> glTasks;
 
-struct RootModule *glModuleList   = NULL;
-struct OpenInfo   *glOpenInfo     = NULL;
-struct MsgHandler *glMsgHandlers  = NULL, *glLastMsgHandler = 0;
+class RootModule  *glModuleList  = NULL;
+struct OpenInfo   *glOpenInfo    = NULL;
+struct MsgHandler *glMsgHandlers = NULL, *glLastMsgHandler = 0;
 
 objFile *glClassFile   = NULL;
 extTask *glCurrentTask = NULL;
@@ -123,7 +122,6 @@ LONG glEventMask = 0;
 TIMER glProcessJanitor = 0;
 UBYTE glTimerCycle = 1;
 BYTE glFDProtected = 0;
-CSTRING glIDL = MOD_IDL;
 std::atomic_int glUniqueMsgID = 1;
 
 #ifdef __unix__
@@ -151,7 +149,7 @@ bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 bool glLogThreads   = false;
-BYTE glProgramStage = STAGE_STARTUP;
+extern "C" BYTE glProgramStage = STAGE_STARTUP;
 TSTATE glTaskState  = TSTATE::RUNNING;
 LONG glInotify = -1;
 
@@ -198,13 +196,13 @@ THREADVAR WORD tlPrivateLockCount = 0; // Count of private *memory* locks held p
 
 struct BaseClass glDummyObject;
 class ObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
-THREADVAR struct ObjectContext *tlContext = &glTopContext;
+THREADVAR ObjectContext *tlContext = &glTopContext;
 
 OBJECTPTR glLocale = NULL;
 objTime *glTime = NULL;
 
 THREADVAR WORD tlMsgRecursion = 0;
-THREADVAR struct TaskMessage *tlCurrentMsg = NULL;
+THREADVAR TaskMessage *tlCurrentMsg = NULL;
 
 ERROR (*glMessageHandler)(struct Message *) = NULL;
 void (*glVideoRecovery)(void) = NULL;

@@ -16,7 +16,7 @@ class extAudio;
 
 struct PlatformData {
    LPDIRECTSOUNDBUFFER SoundBuffer;
-   struct BaseClass *Object;
+   BaseClass *Object;
    DWORD  BufferLength;
    DWORD  Position;      // Total number of bytes that have so far been loaded from the audio data source
    DWORD  SampleLength;  // Total length of the original sample
@@ -27,8 +27,8 @@ struct PlatformData {
    bool   Loop;
 };
 
-int dsReadData(struct BaseClass *, void *, int);
-void dsSeekData(struct BaseClass *, int);
+extern "C" int dsReadData(BaseClass *, void *, int);
+extern "C" void dsSeekData(BaseClass *, int);
 
 #include "windows.h"
 
@@ -44,12 +44,12 @@ static HRESULT (WINAPI *dsDirectSoundCreate)(const GUID *, LPDIRECTSOUND *, IUnk
 inline int linear2ds(float Volume)
 {
    if (Volume <= 0.01) return DSBVOLUME_MIN;
-   else return (int)floorf(2000.0 * log10f(Volume) + 0.5);
+   else return (int)floor(2000.0 * log10(Volume) + 0.5);
 }
 
 //********************************************************************************************************************
 
-const char * dsInitDevice(int mixRate)
+extern "C" const char * dsInitDevice(int mixRate)
 {
    glWindow = GetDesktopWindow();
 
@@ -77,7 +77,7 @@ const char * dsInitDevice(int mixRate)
 
 //********************************************************************************************************************
 
-void dsCloseDevice(void)
+extern "C" void dsCloseDevice(void)
 {
    if (!glDirectSound) return;
 
@@ -109,7 +109,7 @@ static const GUID pa_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT = { STATIC_KSDATAFORMAT_SUB
 //********************************************************************************************************************
 // SampleLength: The byte length of the raw audio data, excludes all file headers.
 
-const char * sndCreateBuffer(struct BaseClass *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
+extern "C" const char * sndCreateBuffer(BaseClass *Object, void *Wave, int BufferLength, int SampleLength, PlatformData *Sound, int Stream)
 {
    if (!glDirectSound) return 0;
 
@@ -246,7 +246,7 @@ int sndPlay(PlatformData *Sound, bool Loop, int Offset)
 // Streaming audio process for WAV or raw audio samples played via the Sound class.  This is regularly called by the
 // Sound class' timer.
 
-int sndStreamAudio(PlatformData *Sound)
+extern "C" int sndStreamAudio(PlatformData *Sound)
 {
    unsigned char *write, *write2;
 

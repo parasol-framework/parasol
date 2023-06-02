@@ -476,7 +476,7 @@ static ERROR msg_quit(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG 
 //********************************************************************************************************************
 // Determine whether or not a process is alive
 
-ERROR validate_process(LONG ProcessID)
+extern "C" ERROR validate_process(LONG ProcessID)
 {
    pf::Log log(__FUNCTION__);
    static LONG glValidating = 0;
@@ -1301,12 +1301,10 @@ static ERROR TASK_GetEnv(extTask *Self, struct taskGetEnv *Args)
             }
 
             if (len > 0) {
-               char path[len];
-               CopyMemory(str, path, len);
-               path[len] = 0;
+               std::string path(str, len);
 
                APTR keyhandle;
-               if (!RegOpenKeyExA(keys[ki].ID, path, 0, KEY_READ, &keyhandle)) {
+               if (!RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ, &keyhandle)) {
                   LONG type;
                   LONG envlen = ENV_SIZE;
                   if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, Self->Env, &envlen)) {
@@ -1590,7 +1588,7 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
 #ifdef _WIN32
 
    if (Args->Name[0] IS '\\') {
-      LONG i, ki, len;
+      LONG ki, len;
       const struct {
          ULONG ID;
          CSTRING HKey;
@@ -1611,36 +1609,32 @@ static ERROR TASK_SetEnv(extTask *Self, struct taskSetEnv *Args)
             for (len=StrLength(str); (len > 0) and (str[len] != '\\'); len--);
 
             if (len > 0) {
-               char path[len];
-               for (i=0; i < len; i++) path[i] = str[i];
-               path[i] = 0;
-
+               std::string path(str, len);
                APTR keyhandle;
-               if (!RegOpenKeyExA(keys[ki].ID, path, 0, KEY_READ|KEY_WRITE, &keyhandle)) {
+               if (!RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ|KEY_WRITE, &keyhandle)) {
                   LONG type;
-
-                  if (!RegQueryValueExA(keyhandle, str+i+1, 0, &type, NULL, NULL)) {
+                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, NULL, NULL)) {
                      // Numerical registry types can be converted into strings
 
                      switch(type) {
                         case REG_DWORD: {
                            LONG int32 = StrToInt(Args->Value);
-                           RegSetValueExA(keyhandle, str+i+1, 0, REG_DWORD, &int32, sizeof(int32));
+                           RegSetValueExA(keyhandle, str+len+1, 0, REG_DWORD, &int32, sizeof(int32));
                            break;
                         }
 
                         case REG_QWORD: {
                            LARGE int64 = StrToInt(Args->Value);
-                           RegSetValueExA(keyhandle, str+i+1, 0, REG_QWORD, &int64, sizeof(int64));
+                           RegSetValueExA(keyhandle, str+len+1, 0, REG_QWORD, &int64, sizeof(int64));
                            break;
                         }
 
                         default: {
-                           RegSetValueExA(keyhandle, str+i+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
+                           RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
                         }
                      }
                   }
-                  else RegSetValueExA(keyhandle, str+i+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
+                  else RegSetValueExA(keyhandle, str+len+1, 0, REG_SZ, Args->Value, StrLength(Args->Value)+1);
 
                   winCloseHandle(keyhandle);
                }

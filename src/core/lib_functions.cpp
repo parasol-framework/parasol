@@ -404,6 +404,7 @@ LARGE GetResource(RES Resource)
 #ifdef __linux__
    struct sysinfo sys;
 #endif
+   extern char glIDL[];
 
    switch(Resource) {
       case RES::PRIVILEGED:      return glPrivileged;

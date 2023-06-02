@@ -10,7 +10,11 @@
 #include "parser.h"
 
 #include <string.h>
+
+#ifndef _MSC_VER
 #include <strings.h>
+#endif
+
 #include <stdbool.h>
 #include <assert.h>
 
@@ -108,7 +112,7 @@ const char* katana_string_to_characters(struct KatanaInternalParser * parser, co
     assert(NULL != str);
     if (NULL == str)
         return NULL;
-    
+
     char* buffer = katana_parser_allocate(parser, sizeof(char) * (str->length + 1));
     memcpy(buffer, str->data, str->length);
     buffer[str->length] = '\0';
@@ -120,7 +124,7 @@ const char* katana_string_to_characters_with_prefix_char(struct KatanaInternalPa
     assert(str);
     if (NULL == str)
         return NULL;
-    
+
     char* buffer = katana_parser_allocate(parser, sizeof(char) * (str->length + 2));
     memcpy((buffer + 1), str->data, str->length);
     buffer[0] = prefix;
