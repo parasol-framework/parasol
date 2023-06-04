@@ -128,7 +128,6 @@ typedef void * APTR;           // 32 or 64 bit untyped pointer
 typedef char * STRING;         // string pointer (NULL terminated)
 typedef char * SSTRING;        // signed string pointer (NULL terminated)
 typedef const char * CSTRING;
-typedef const char * CSSTRING; // Obsolete
 typedef void * OBJECT;           // Object pointer
 typedef struct BaseClass * OBJECTPTR; // Object pointer
 typedef LARGE EVENTID;
@@ -146,8 +145,8 @@ typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit 
 #endif
 
 #ifdef _WIN32
- #if !defined(_WINDEF_H) || defined(_MSC_VER)
-  #define __export __declspec(dllexport)
+ #if (!defined(_WINDEF_H)) || defined(_MSC_VER)
+  #define __export extern "C" __declspec(dllexport)
  #endif
 #else
  #define __export

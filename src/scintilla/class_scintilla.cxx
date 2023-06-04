@@ -236,9 +236,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("font", &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("vector", &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    OBJECTID id;
    if (!FindObject("glStyle", ID_XML, FOF::NIL, &id)) {
@@ -2547,5 +2547,5 @@ static ERROR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }

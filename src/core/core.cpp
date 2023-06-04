@@ -280,16 +280,6 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       glSystemPath = glRootPath;
    }
 
-   // Process the Information structure
-
-   if ((Info->Flags & OPF::CORE_VERSION) != OPF::NIL) {
-      if (Info->CoreVersion > VER_CORE) {
-         KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
-         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
-         return ERR_CoreVersion;
-      }
-   }
-
    // Debug processing
 
    if ((Info->Flags & OPF::DETAIL) != OPF::NIL)  glLogLevel = (WORD)Info->Detail;
@@ -356,7 +346,7 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
          else if (!StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
-         else newargs.push_back(arg);
+         else newargs.push_back(Info->Args[i]);
       }
 
       if (glLogLevel > 2) {
@@ -486,10 +476,7 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       RegisterFD(glSocket, RFD::READ, NULL, NULL);
    #endif
 
-   // Print task information
-
-   log.msg("Version: %.1f : Process: %d", VER_CORE, glProcessID);
-   log.msg("Sync: %s, Root: %s", (glSync) ? "Y" : "N", glRootPath.c_str());
+   log.msg("Process: %d, Sync: %s, Root: %s", glProcessID, (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
@@ -1164,16 +1151,15 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    std::string buffer("config:users/default/");
 
    #ifdef __unix__
-      STRING homedir, logname;
-      if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
+      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (StrMatch("/", homedir) != ERR_Okay)) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
          SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE);
 
-         buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
+         buffer += "/." + glHomeFolderName + "/";
       }
-      else if ((logname = getenv("LOGNAME")) and (logname[0])) {
+      else if (auto logname = getenv("LOGNAME"); logname and (logname[0])) {
          buffer = std::string("config:users/") + logname + "/";
       }
    #elif _WIN32
@@ -1182,7 +1168,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
       char user_folder[256];
       if (winGetUserFolder(user_folder, sizeof(user_folder))) {
-         buffer = user_folder + glHomeFolderName + std::to_string(F2T(VER_CORE)) + std::to_string(REV_CORE) + "\\";
+         buffer = user_folder + glHomeFolderName + "\\";
       }
       else if (winGetUserName(user_folder, sizeof(user_folder)) and (user_folder[0])) {
          buffer.append(user_folder);
@@ -1233,21 +1219,18 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 #ifdef _WIN32
    {
       char buffer[256];
-      LONG len;
-      if ((len = winGetLogicalDriveStrings(buffer, sizeof(buffer))) > 0) {
+      if (auto len = winGetLogicalDriveStrings(buffer, sizeof(buffer)); len > 0) {
          char disk[] = "disk1";
          char cd[]   = "cd1";
          char hd[]   = "drive1";
          char net[]  = "net1";
 
          for (LONG i=0; i < len; i++) {
-            LONG type = winGetDriveType(buffer+i);
+            auto type = winGetDriveType(buffer+i);
 
             buffer[i+2] = '/';
 
-            char label[2];
-            label[0] = buffer[i];
-            label[1] = 0;
+            char label[2] = { buffer[i], 0 };
 
             if (type IS DRIVETYPE_REMOVABLE) {
                SetVolume(disk, buffer+i, "devices/storage", label, "disk", VOLUME::NIL);

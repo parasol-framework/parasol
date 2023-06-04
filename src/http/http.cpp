@@ -287,7 +287,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("network", &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
 
    glProxy = objProxy::create::global();
 
@@ -1702,5 +1702,5 @@ static ERROR create_http_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_HTTP, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_http_module() { return &ModHeader; }

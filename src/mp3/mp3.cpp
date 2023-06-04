@@ -876,7 +876,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("audio", MODVERSION_AUDIO, &modAudio, &AudioBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("audio", &modAudio, &AudioBase) != ERR_Okay) return ERR_InitModule;
 
    clMP3 = objMetaClass::create::global(
       fl::BaseClassID(ID_SOUND),
@@ -900,5 +900,5 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, VER_MP3, NULL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, NULL, NULL)
 extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

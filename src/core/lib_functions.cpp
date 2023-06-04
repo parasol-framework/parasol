@@ -533,9 +533,7 @@ const SystemState * GetSystemState(void)
    if (!initialised) {
       initialised = true;
 
-      state.ConsoleFD     = glConsoleFD;
-      state.CoreVersion   = VER_CORE;
-      state.CoreRevision  = REV_CORE;
+      state.ConsoleFD = glConsoleFD;
       #ifdef __unix__
          state.Platform = "Linux";
       #elif _WIN32

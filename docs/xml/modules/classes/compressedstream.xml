@@ -446,8 +446,6 @@
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
-      <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
-      <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 

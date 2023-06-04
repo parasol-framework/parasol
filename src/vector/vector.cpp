@@ -46,8 +46,8 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase)) return ERR_InitModule;
-   if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase)) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase)) return ERR_InitModule;
+   if (objModule::load("font", &modFont, &FontBase)) return ERR_InitModule;
 
    ERROR error;
    if ((error = init_vectorscene())) return error; // Base class
@@ -161,5 +161,5 @@ static STRUCTS glStructures = {
    { "VectorPoint",  sizeof(VectorPoint) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_VECTOR, MOD_IDL, &glStructures)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_vector_module() { return &ModHeader; }

@@ -811,5 +811,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, VER_FLUID, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

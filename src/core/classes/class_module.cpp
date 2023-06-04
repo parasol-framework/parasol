@@ -88,7 +88,7 @@ static STRUCTS glStructures = {
 #include "../idl.h"
 
 static RootModule glCoreRoot;
-ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "core");
+ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);
@@ -108,7 +108,6 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray glModuleFields[] = {
-   { "Version",      FDF_DOUBLE|FDF_RI },
    { "FunctionList", FDF_POINTER|FDF_RW },
    { "ModBase",      FDF_POINTER|FDF_R },
    { "Root",         FDF_POINTER|FDF_R },
@@ -141,11 +140,11 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
 
    if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
       log.trace("Module location is absolute.");
-      path = Self->Name;
+      path.assign(Self->Name);
 
       STRING volume;
       if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
-         path = volume;
+         path.assign(volume);
          FreeResource(volume);
       }
       else {
@@ -157,7 +156,7 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
    if (path.empty()) {
       #ifdef __unix__
          if (!glModulePath.empty()) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
-            path = glModulePath;
+            path.assign(glModulePath);
             if (path.back() != '/') path.push_back('/');
          }
          else path = glRootPath + "lib/parasol/";
@@ -380,10 +379,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
 
          master->Header     = table;
-         Self->Version      = table->ModVersion;
          master->Table      = table;
          master->Name       = table->Name;
-         master->ModVersion = table->ModVersion;
          master->Init       = table->Init;
          master->Open       = table->Open;
          master->Expunge    = table->Expunge;
@@ -589,22 +586,10 @@ Root field refers to a RootModule object that reflects this single instance of t
 ModBase: The Module's function base (jump table) must be read from this field.
 
 Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains
-vectors that point to all functions that are published by the module.
+vectors that point to all functions that are published by the module.  This is considered an internal feature that
+is hidden by system headers.
 
-The jump table is unique to the instance of the module. This allows each module to use a different function model
-between versions, without losing backwards compatibility.  When a module is opened, it can check the requested
-#Version and return a custom-built jump table to the program.  Thus if a function were changed in a
-future module version, older programs would be re-routed to a routine that provides backwards compatibility to
-the newer function model.
-
-By default, jump tables are arranged as an array of function pointers accessible through a well defined structure.
-The template for making calls is `FunctionBase-&gt;FunctionCall()`
-
-Header files will normally include macros to simplify the function call:
-
-<pre>#define FunctionCall      FunctionBase-&gt;FunctionCall</pre>
-
-The jump table is invalid once the module is destroyed.
+If the module is unloaded at any time then the jump table becomes invalid.
 
 -FIELD-
 Name: The name of the module.
@@ -637,25 +622,6 @@ static ERROR SET_Name(extModule *Self, CSTRING Name)
 
    return ERR_Okay;
 }
-
-/*********************************************************************************************************************
-
--FIELD-
-Version: Minimum required version number.
-
-When opening a module, the value that you insert in the Version field will reflect the minimum version and revision
-number required of the module file.  If the module's version number is less than the version that you specify, then
-the initialisation procedure will be aborted.
-
-The Version field is also useful for ensuring that the function base returned by a module matches your program's
-expectations.  For instance, if you write your program against a 1.0 version of a module but the user's machine has a
-2.0 version installed, there could be incompatibilities.  By specifying the required version number, the module can
-provide backwards-compatible functionality for your software.
-
-After initialisation, the Version field will be updated to reflect the actual version of the Module.
--END-
-
-**********************************************************************************************************************/
 
 //********************************************************************************************************************
 // Builds jump tables that link programs to modules.
@@ -751,9 +717,7 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
          glCoreRoot.Name        = "Core";
-         glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;
-         glCoreRoot.ModVersion  = VER_CORE;
          glCoreRoot.Table       = &glCoreHeader;
          glCoreRoot.Header      = &glCoreHeader;
       }

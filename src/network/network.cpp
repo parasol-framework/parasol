@@ -852,7 +852,7 @@ static STRUCTS glStructures = {
    { "NetQueue",  sizeof(NetQueue) }
 };
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MODVERSION_NETWORK, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_network_module() { return &ModHeader; }
 
 /*********************************************************************************************************************

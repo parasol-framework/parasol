@@ -149,7 +149,7 @@ bool glShowPrivate  = false;
 bool glPrivileged   = false;
 bool glSync         = false;
 bool glLogThreads   = false;
-extern "C" BYTE glProgramStage = STAGE_STARTUP;
+BYTE glProgramStage = STAGE_STARTUP;
 TSTATE glTaskState  = TSTATE::RUNNING;
 LONG glInotify = -1;
 

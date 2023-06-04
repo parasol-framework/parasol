@@ -70,7 +70,7 @@ Here's an example of a simple client application written in Fluid.  It loads an 
 
 ## 2. Checkout
 
-Release builds can be [downloaded directly](https://github.com/parasol-framework/parasol/releases/latest) from GitHub so that you don't need to compile the framework yourself.  If you're happy with this then you can skip the rest of this readme and head to the [main website](https://www.parasol.ws) for further information on usage.
+Release builds can be [downloaded directly](https://github.com/parasol-framework/parasol/releases/latest) from GitHub so that you don't need to compile the framework yourself.  If you're happy with downloading an archive then you can skip the rest of this readme and head to the [main website](https://www.parasol.ws) for further information on usage.
 
 To build your own framework, checkout the source code from the `release` branch of our GitHub repository:
 
@@ -109,7 +109,7 @@ If problems occur at any stage during the build and you suspect an issue in the 
 
 ## 3.2 Windows Builds (GCC or Visual Studio)
 
-On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, Visual Studio has a lower barrier of entry and produces a build that is fully integrated with the native Windows environment.  GCC is a better compiler, but will produce executables that are dependent on three additional DLLs that must be included with the program.  The differences between optimised builds in either environment are negligible.
+On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, Visual Studio has a lower barrier of entry and produces a build that is fully integrated with the native Windows environment.  GCC has more features, but will produce executables that are dependent on three additional DLLs that must be included with the program.  The differences between optimised builds in either environment are negligible, but VS also produces binaries that are 25 to 33 percent smaller.
 
 ### 3.2.1 Visual Studio Builds
 
@@ -123,11 +123,11 @@ cmake -S . -B visual-studio -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE -DB
 
 To compile a release build, run `cmake --build visual-studio -j 8 --config Release`.
 
-To install a release build, run `cmake --install visual-studio --config Release`.
+To install a release build to the local folder, run `cmake --install visual-studio --config Release`.
 
-Debug builds are used by switching from `--config Release` to `--config Debug` in the above.
+Debug builds are created by switching from `--config Release` to `--config Debug` in the above.
 
-### 3.2.2 GCC Builds
+### 3.2.2 GCC Builds for Windows
 
 MSYS2 and MinGW are required for a GCC based Windows build.  Please note that the default MSYS2 release of GCC is not supported.  The MinGW toolchain must be installed as indicated below.
 
@@ -146,10 +146,10 @@ cmake --build release -j 8 -- -O
 cmake --install release
 ```
 
-If you need to use GDB to debug the framework then the following would suffice:
+If you need to use GDB to debug the framework then the following would suffice.  In this case we are going to install to a local folder so that the build will not interfere with the release installation.
 
 ```
-cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles"
+cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles" -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE -DBUILD_DEFS=OFF
 cmake --build debug -j 8 -- -O
 cmake --install debug
 ```
@@ -183,9 +183,9 @@ ENABLE_ANALYSIS   OFF  Enable run-time address analysis if available.  Incompati
 
 ### 5.1 Static Builds
 
-Parasol is built as a set of categorised API's such as 'display', 'network' and 'vector'.  Each API is compiled in its own individual library file.  By default we build them as shared libraries for loading on demand, which is ideal for general purposes as it prevents scripts and programs from loading unnecessary features.
+Parasol is built as a set of categorised API's such as 'display', 'network' and 'vector'.  Each API is compiled in its own individual library file.  By default we build them as shared libraries as it prevents scripts and programs from loading unnecessary features.
 
-If you're using Parasol for a specific run-time application that you're developing, it will probably be more useful to create a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation.
+If you're using Parasol for a specific run-time application that you're developing, you probably want a static build so that the framework is embedded with your application.  In addition, you can choose each specific API needed for your program - so if you didn't need networking, that entire category of features can be switched off for faster compilation.
 
 To enable a static build, use the `-DPARASOL_STATIC=ON` build option.  Your program's cmake file should link to the framework with `target_link_libraries (your_program PRIVATE ${INIT_LINK})`.
 
@@ -210,7 +210,7 @@ SVG        SVG support    Dependent on Display, Vector, Font
 VECTOR     Vector API     Dependent on Display, Font
 ```
 
-If you disable an API that has dependencies, the dependent APIs will not be included in the build.  For instance, disabling Network will also result in HTTP being disabled.
+If you disable an API that has child dependencies, the dependent APIs will not be included in the build.  For instance, disabling Network will also result in HTTP being disabled.
 
 ## 6. Next Steps
 

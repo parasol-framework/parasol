@@ -53,10 +53,8 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.MaxDepth    = 14;
    info.Args        = argv;
    info.ArgCount    = argc;
-   info.CoreVersion = 0; // Minimum required core version
-   info.CompiledAgainst = VER_CORE; // The core that this code is compiled against
    info.Error = ERR_Okay;
-   info.Flags = OPF::CORE_VERSION|OPF::COMPILED_AGAINST|OPF::ARGS|OPF::ERROR;
+   info.Flags = OPF::ARGS|OPF::ERROR;
 
    if (!OpenCore(&info, &CoreBase)) return NULL;
    else if (info.Error IS ERR_CoreVersion) {
