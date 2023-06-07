@@ -9,7 +9,8 @@
 #
 # Build:   cmake --build release -j 8 -- -O
 # Install: sudo cmake --install release
-# Test:    make -C release test ARGS=--verbose
+# Test:    [GCC] make -C release test ARGS=--verbose
+#          [MSVC] cd visual-studio; ctest -V -C Release
 #
 # A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
 # This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds

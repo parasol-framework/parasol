@@ -90,12 +90,8 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <access read="R">Read</access>
       <type>APTR</type>
       <description>
-<p>Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains vectors that point to all functions that are published by the module.</p>
-<p>The jump table is unique to the instance of the module. This allows each module to use a different function model between versions, without losing backwards compatibility.  When a module is opened, it can check the requested #Version and return a custom-built jump table to the program.  Thus if a function were changed in a future module version, older programs would be re-routed to a routine that provides backwards compatibility to the newer function model.</p>
-<p>By default, jump tables are arranged as an array of function pointers accessible through a well defined structure. The template for making calls is <code>FunctionBase-&gt;FunctionCall()</code></p>
-<p>Header files will normally include macros to simplify the function call:</p>
-<pre>#define FunctionCall      FunctionBase-&gt;FunctionCall</pre>
-<p>The jump table is invalid once the module is destroyed.</p>
+<p>Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains vectors that point to all functions that are published by the module.  This is considered an internal feature that is hidden by system headers.</p>
+<p>If the module is unloaded at any time then the jump table becomes invalid.</p>
       </description>
     </field>
 

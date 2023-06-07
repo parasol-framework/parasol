@@ -40,6 +40,7 @@ if (MSVC)
       CONFIGURE_COMMAND ""
       BUILD_COMMAND cd "${LUAJIT_SRC}" && "msvcbuild.bat" "static"
       BUILD_BYPRODUCTS ${LUAJIT_LINK}
+      INSTALL_COMMAND ""
       UPDATE_COMMAND ""
       COMMENT "Compiling LuaJIT library")
 else ()
