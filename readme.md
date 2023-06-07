@@ -109,7 +109,7 @@ If problems occur at any stage during the build and you suspect an issue in the 
 
 ## 3.2 Windows Builds (GCC or Visual Studio)
 
-On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, Visual Studio has a lower barrier of entry and produces a build that is fully integrated with the native Windows environment.  GCC has more features, but will produce executables that are dependent on three additional DLLs that must be included with the program.  The differences between optimised builds in either environment are negligible, but VS also produces binaries that are 25 to 33 percent smaller.
+On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, Visual Studio has a lower barrier of entry and produces a build that is fully integrated with the native Windows environment.  GCC has more features, but will produce executables that are dependent on three additional DLLs that must be included with the program.  Optimised builds produced by VS are approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
 
 ### 3.2.1 Visual Studio Builds
 
