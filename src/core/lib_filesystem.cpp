@@ -2911,13 +2911,13 @@ ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
          if ((i > 0) and (buffer[i] IS '/')) {
             buffer[i+1] = 0;
 
-            log.msg("%s", buffer);
+            log.msg("%s", buffer.get());
 
-            if (((err = mkdir(buffer, secureflags)) IS -1) and (errno != EEXIST)) break;
+            if (((err = mkdir(buffer.get(), secureflags)) IS -1) and (errno != EEXIST)) break;
 
             if (!err) {
-               if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
-               if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer, secureflags);
+               if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer.get(), glForceUID, glForceGID);
+               if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer.get(), secureflags);
             }
          }
       }
@@ -2929,14 +2929,14 @@ ERROR fs_makedir(CSTRING Path, PERMIT Permissions)
       else if (Path[i-1] != '/') {
          // If the path did not end with a slash, there is still one last folder to create
          buffer[i] = 0;
-         log.msg("%s", buffer);
-         if (((err = mkdir(buffer, secureflags)) IS -1) and (errno != EEXIST)) {
+         log.msg("%s", buffer.get());
+         if (((err = mkdir(buffer.get(), secureflags)) IS -1) and (errno != EEXIST)) {
             log.warning("Failed to create folder \"%s\".", Path);
             return convert_errno(errno, ERR_SystemCall);
          }
          if (!err) {
-            if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer, glForceUID, glForceGID);
-            if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer, secureflags);
+            if ((glForceUID != -1) or (glForceGID != -1)) chown(buffer.get(), glForceUID, glForceGID);
+            if (secureflags & (S_ISUID|S_ISGID)) chmod(buffer.get(), secureflags);
          }
       }
    }
