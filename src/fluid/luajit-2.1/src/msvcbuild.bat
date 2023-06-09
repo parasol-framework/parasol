@@ -7,8 +7,6 @@
 @rem
 @rem   nogc64   disable LJ_GC64 mode for x64
 @rem   debug    emit debug symbols
-@rem   amalg    amalgamated build
-@rem   static   static linkage
 
 @if not defined INCLUDE goto :FAIL
 
@@ -22,10 +20,12 @@
 @set DASMDIR=..\dynasm
 @set DASM=%DASMDIR%\dynasm.lua
 @set DASC=vm_x64.dasc
-@set LJDLLNAME=lua51.dll
 @set LJLIBNAME=lua51.lib
 @set BUILDTYPE=release
 @set ALL_LIB=lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
+
+@rem If you need to rebuild LuaJIT then delete the output library.
+if exist %LJLIBNAME% exit 0
 
 %LJCOMPILE% host\minilua.c
 @if errorlevel 1 goto :BAD
@@ -80,27 +80,10 @@ buildvm -m folddef -o lj_folddef.h lj_opt_fold.c
 @set LJLINK=%LJLINK% /opt:ref /opt:icf /incremental:no
 :NODEBUG
 @set LJLINK=%LJLINK% /%BUILDTYPE%
-@if "%1"=="amalg" goto :AMALGDLL
-@if "%1"=="static" goto :STATIC
-%LJCOMPILE% /MD /DLUA_BUILD_AS_DLL lj_*.c lib_*.c
-@if errorlevel 1 goto :BAD
-%LJLINK% /DLL /out:%LJDLLNAME% lj_*.obj lib_*.obj
-@if errorlevel 1 goto :BAD
-@goto :MTDLL
-:STATIC
 %LJCOMPILE% lj_*.c lib_*.c
 @if errorlevel 1 goto :BAD
 %LJLIB% /OUT:%LJLIBNAME% lj_*.obj lib_*.obj
 @if errorlevel 1 goto :BAD
-@goto :MTDLL
-:AMALGDLL
-%LJCOMPILE% /MD /DLUA_BUILD_AS_DLL ljamalg.c
-@if errorlevel 1 goto :BAD
-%LJLINK% /DLL /out:%LJDLLNAME% ljamalg.obj lj_vm.obj
-@if errorlevel 1 goto :BAD
-:MTDLL
-if exist %LJDLLNAME%.manifest^
-  %LJMT% -manifest %LJDLLNAME%.manifest -outputresource:%LJDLLNAME%;2
 
 %LJCOMPILE% luajit.c
 @if errorlevel 1 goto :BAD

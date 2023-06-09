@@ -7,7 +7,7 @@ idl_c ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashe
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
 set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
-link_directories (${LUAJIT_SRC})
+#link_directories (${LUAJIT_SRC})
 
 # We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
@@ -38,7 +38,9 @@ if (MSVC)
       luajit
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
-      BUILD_COMMAND cd "${LUAJIT_SRC}" && "msvcbuild.bat" "static"
+      BUILD_IN_SOURCE TRUE
+      BUILD_ALWAYS FALSE
+      BUILD_COMMAND "msvcbuild.bat" "static"
       BUILD_BYPRODUCTS ${LUAJIT_LINK}
       INSTALL_COMMAND ""
       UPDATE_COMMAND ""
