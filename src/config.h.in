@@ -146,7 +146,7 @@ typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit 
 
 #ifdef _WIN32
  #if (!defined(_WINDEF_H)) || defined(_MSC_VER)
-  #define __export extern "C" __declspec(dllexport)
+  #define __export __declspec(dllexport)
  #endif
 #else
  #define __export

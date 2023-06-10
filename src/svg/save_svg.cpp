@@ -56,7 +56,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                case VGT::LINEAR:
                default:           gradient_type = "<linearGradient/>"; break;
             }
-            XMLTag *tag;
+            XMLTag *tag = NULL;
             error = xmlInsertStatement(XML, def_index, XMI::CHILD_END, gradient_type, &tag);
 
             if (!error) xmlNewAttrib(tag, "id", key);
