@@ -65,7 +65,7 @@ static STRUCTS glStructures = {
    { "MemInfo",             sizeof(MemInfo) },
    { "Message",             sizeof(Message) },
    { "MethodEntry",         sizeof(MethodEntry) },
-   { "ModHeader",           sizeof(ModHeader) },
+   { "ModHeader",           sizeof(struct ModHeader) },
    { "MsgHandler",          sizeof(MsgHandler) },
    { "ObjectSignal",        sizeof(ObjectSignal) },
    { "RGB16",               sizeof(RGB16) },
@@ -88,7 +88,7 @@ static STRUCTS glStructures = {
 #include "../idl.h"
 
 static RootModule glCoreRoot;
-ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
+struct ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);
@@ -98,7 +98,7 @@ static void free_module(MODHANDLE handle);
 
 static ERROR GET_Name(extModule *, CSTRING *);
 
-static ERROR SET_Header(extModule *, ModHeader *);
+static ERROR SET_Header(extModule *, struct ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
@@ -130,7 +130,7 @@ static const ActionArray glModuleActions[] = {
 //********************************************************************************************************************
 
 #ifndef PARASOL_STATIC
-static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
+static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
    pf::Log log(__FUNCTION__);
    std::string path;
@@ -223,7 +223,7 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
 
       if ((Root->LibraryBase = dlopen(path.c_str(), ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
          if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
-            if (!(*Table = (ModHeader *)dlsym(Root->LibraryBase, "ModHeader"))) {
+            if (!(*Table = (struct ModHeader *)dlsym(Root->LibraryBase, "ModHeader"))) {
                log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                return ERR_NotFound;
             }
@@ -238,8 +238,8 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
 
       if ((Root->LibraryBase = winLoadLibrary(path.c_str()))) {
          if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
-            if (!(*Table = (ModHeader *)winGetProcAddress(Root->LibraryBase, "ModHeader"))) {
-               if (!(*Table = (ModHeader *)winGetProcAddress(Root->LibraryBase, "_ModHeader"))) {
+            if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "ModHeader"))) {
+               if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "_ModHeader"))) {
                   log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                   return ERR_NotFound;
                }
@@ -288,7 +288,7 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
    return ERR_Okay;
 }
 
-static ERROR ROOTMODULE_GET_Header(RootModule *Self, ModHeader **Value)
+static ERROR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 {
    *Value = Self->Header;
    return ERR_Okay;
@@ -336,7 +336,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    log.trace("Finding module %s (%s)", Self->Name, name);
 
    RootModule *master;
-   ModHeader *table = NULL;
+   struct ModHeader *table = NULL;
    if ((master = check_resident(Self, name))) {
       Self->Root = master;
    }
@@ -566,7 +566,7 @@ than on disk.
 
 **********************************************************************************************************************/
 
-static ERROR SET_Header(extModule *Self, ModHeader *Value)
+static ERROR SET_Header(extModule *Self, struct ModHeader *Value)
 {
    if (!Value) return ERR_Failed;
    Self->Header = Value;

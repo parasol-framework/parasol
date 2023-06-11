@@ -6,7 +6,7 @@ set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
 idl_all ("${MOD}.fdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"
    FILES "network.cpp"
-   ARGS "--output-defs=module_def.c" "--output-proto=module_def.c")
+   ARGS "output-defs=module_def.c" "output-proto=module_def.c")
 
 add_library (${MOD})
 

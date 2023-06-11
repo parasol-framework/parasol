@@ -87,7 +87,7 @@ std::timed_mutex glmGeneric;
 std::timed_mutex glmObjectLocking;
 std::timed_mutex glmVolumes;
 
-std::unordered_map<std::string, ModHeader *> glStaticModules;
+std::unordered_map<std::string, struct ModHeader *> glStaticModules;
 std::unordered_map<CLASSID, ClassRecord> glClassDB;
 std::unordered_map<CLASSID, extMetaClass *> glClassMap;
 std::unordered_map<OBJECTID, ObjectSignal> glWFOList;

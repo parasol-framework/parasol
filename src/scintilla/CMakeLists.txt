@@ -6,7 +6,7 @@ set (INC_MOD_SCINTILLA TRUE PARENT_SCOPE)
 idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static"
+   ARGS "output-defs=module_def.c" "output-proto=module_def.c" "prototypes=static"
    APPEND_IDL "module_def.c")
 
 set (SOURCE

@@ -255,7 +255,7 @@ void auto_load_include(lua_State *Lua, objMetaClass *MetaClass)
 
          OBJECTPTR mod;
          if (!(error = MetaClass->getPtr(FID_RootModule, &mod))) {
-            ModHeader *header;
+            struct ModHeader *header;
 
             if ((!(error = mod->getPtr(FID_Header, &header))) and (header)) {
                if (auto structs = header->StructDefs) {
@@ -605,7 +605,7 @@ ERROR load_include(objScript *Script, CSTRING IncName)
 
          OBJECTPTR root;
          if (!(error = module->getPtr(FID_Root, &root))) {
-            ModHeader *header;
+            struct ModHeader *header;
             if ((!(error = root->getPtr(FID_Header, &header)) and (header))) {
                if (auto structs = header->StructDefs) {
                   for (auto &s : structs[0]) glStructSizes[s.first] = s.second;

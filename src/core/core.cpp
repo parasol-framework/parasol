@@ -113,8 +113,8 @@ extern "C" ERROR add_file_class(void);
 extern "C" ERROR add_storage_class(void);
 
 LONG InitCore(void);
-extern "C" EXPORT void CloseCore(void);
-extern "C" EXPORT ERROR OpenCore(OpenInfo *, struct CoreBase **);
+__export void CloseCore(void);
+__export ERROR OpenCore(OpenInfo *, struct CoreBase **);
 static ERROR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
@@ -158,7 +158,7 @@ void _init(void)
 
 //********************************************************************************************************************
 
-EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
+ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 {
    #ifdef __unix__
       struct timeval tmday;
@@ -601,16 +601,6 @@ EXPORT ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    *JumpTable = LocalCoreBase;
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// Performs a system cleanup by expunging unused memory, modules etc.
-
-EXPORT void CleanSystem(LONG Flags)
-{
-   pf::Log log("Core");
-   log.msg("Flags: $%.8x", Flags);
-   Expunge(FALSE);
 }
 
 //********************************************************************************************************************

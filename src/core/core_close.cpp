@@ -3,7 +3,7 @@ static void free_private_memory(void);
 
 //********************************************************************************************************************
 
-EXPORT void CloseCore(void)
+void CloseCore(void)
 {
    pf::Log log("Shutdown");
 
@@ -263,7 +263,7 @@ EXPORT void CloseCore(void)
 
 // TODO: Expunging cannot occur while other threads are active.  In that case, the expunge should be delayed until no additional threads are running.
 
-EXPORT void Expunge(WORD Force)
+__export void Expunge(WORD Force)
 {
    pf::Log log(__FUNCTION__);
 

@@ -239,15 +239,15 @@ function (idl_all)
       endif ()
 
       if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
+         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
-      list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}"
-         "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
+      list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${ARGV0}"
+         "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}"
-            "--output=${IDLC_APPEND_IDL}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" "--append")
+         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=${ARGV0}"
+            "output=${IDLC_APPEND_IDL}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" "append")
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
@@ -282,12 +282,12 @@ function (idl_c)
       endif ()
 
       if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
+         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -316,12 +316,12 @@ function (idl_def)
       endif ()
 
       if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
+         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"

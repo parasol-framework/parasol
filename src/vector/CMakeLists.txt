@@ -5,7 +5,7 @@ set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
    FILES "vector_functions.cpp"
-   ARGS "--output-defs=module_def.c")
+   ARGS "output-defs=module_def.c")
 
 idl_def ("${MOD}.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
 

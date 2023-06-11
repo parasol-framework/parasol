@@ -640,7 +640,7 @@ extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
 extern std::map<std::string, std::vector<BaseClass *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
-extern std::unordered_map<std::string, ModHeader *> glStaticModules;
+extern std::unordered_map<std::string, struct ModHeader *> glStaticModules;
 extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
@@ -674,7 +674,7 @@ extern objFile *glClassFile;
 extern BaseClass glDummyObject;
 extern TIMER glProcessJanitor;
 extern LONG glEventMask;
-extern ModHeader glCoreHeader;
+extern struct ModHeader glCoreHeader;
 
 #ifndef PARASOL_STATIC
 extern CSTRING glClassBinPath;
@@ -988,7 +988,7 @@ ERROR  get_file_info(CSTRING, FileInfo *, LONG);
 extern "C" ERROR  convert_errno(LONG Error, ERROR Default);
 void   free_file_cache(void);
 
-EXPORT void Expunge(WORD);
+__export void Expunge(WORD);
 
 extern void add_archive(class extCompression *);
 extern void remove_archive(class extCompression *);

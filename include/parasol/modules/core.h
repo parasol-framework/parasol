@@ -1499,18 +1499,18 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #define MOD_IDL NULL
 
-extern "C" {
-
 #ifdef PARASOL_STATIC
-extern "C" __export void CloseCore(void);
-extern "C" __export ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+__export void CloseCore(void);
+__export ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+#else
+__export struct ModHeader ModHeader;
 #endif
 
 #ifdef MOD_NAME
 #ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
 #else
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) __export ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1536,8 +1536,6 @@ inline void MSG(CSTRING Message, ...) {
    VLogF(VLF::API, header, Message, arg);
    va_end(arg);
 #endif
-}
-
 }
 
 #define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
