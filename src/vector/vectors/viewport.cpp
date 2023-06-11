@@ -110,7 +110,7 @@ static ERROR VECTORVIEWPORT_Free(extVectorViewport *Self, APTR Void)
 {
    if (Self->vpClipMask) { FreeResource(Self->vpClipMask); Self->vpClipMask = NULL; }
 
-   if ((Self->Scene) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
+   if ((Self->Scene) and (!Self->Scene->collecting()) and (!((extVectorScene *)Self->Scene)->ResizeSubscriptions.empty())) {
       if (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self)) {
          ((extVectorScene *)Self->Scene)->ResizeSubscriptions.erase(Self);
       }
