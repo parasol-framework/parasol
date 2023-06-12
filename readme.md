@@ -109,16 +109,18 @@ If problems occur at any stage during the build and you suspect an issue in the 
 
 ## 3.2 Windows Builds (GCC or Visual Studio)
 
-On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, Visual Studio has a lower barrier of entry and produces a build that is fully integrated with the native Windows environment.  GCC has more features, but will produce executables that are dependent on three additional DLLs that must be included with the program.  Optimised builds produced by VS are approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
+On Windows you can choose between a Visual Studio (MSVC) build or a GCC build environment.  Between the two, we recommend using Visual Studio.  There are a number of reasons, but ultimately the optimised builds produced by VS are approximately 25 to 33 percent smaller and 10% faster than the GCC equivalent.
 
 ### 3.2.1 Visual Studio Builds
 
-Obtain the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and choose 'Desktop Development with C++' on install.  Your Start Menu will include a new launch option for 'Developer PowerShell for VS' that you can use to open a correctly preconfigured build environment.
+If you opt to install the full [Visual Studio C++](https://visualstudio.microsoft.com/vs/features/cplusplus/) suite from Microsoft, it will do most of the heavy lifting for you behind the scenes when it detects Parasol's CMake files.  Consequently there is little instruction required if choosing that option, we just suggest adding `-j 8` to the cmake build options for faster builds.
+
+You can alternatively opt for a leaner build environment with MSVC Build Tools and get more hands-on with the build process.  Obtain the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and choose 'Desktop Development with C++' on install.  Your Start Menu will include a new launch option for 'Developer PowerShell for VS' that you can use to open a correctly preconfigured build environment.
 
 Using PowerShell you should cd to the Parasol Framework folder and run cmake for configuration as follows:
 
 ```
-cmake -S . -B visual-studio -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE -DBUILD_DEFS=OFF -DPARASOL_STATIC=ON
+cmake -S . -B visual-studio -DCMAKE_INSTALL_PREFIX=local -DBUILD_DEFS=OFF -DPARASOL_STATIC=ON
 ```
 
 To compile a release build, run `cmake --build visual-studio -j 8 --config Release`.
@@ -149,7 +151,7 @@ cmake --install release
 If you need to use GDB to debug the framework then the following would suffice.  In this case we are going to install to a local folder so that the build will not interfere with the release installation.
 
 ```
-cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles" -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE -DBUILD_DEFS=OFF
+cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -G"MinGW Makefiles" -DCMAKE_INSTALL_PREFIX=local -DBUILD_DEFS=OFF
 cmake --build debug -j 8 -- -O
 cmake --install debug
 ```
