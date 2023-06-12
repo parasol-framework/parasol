@@ -225,7 +225,7 @@ void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
 
 WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr *Addr, int *AddrLen)
 {
-   WSW_SOCKET client_handle = accept(SocketHandle, Addr, AddrLen);
+   auto client_handle = WSW_SOCKET(accept(SocketHandle, Addr, AddrLen));
    //printf("win_accept() FD %d, NetSocket %p\n", client_handle, NetSocket);
 
    ULONG non_blocking = 1;
@@ -384,10 +384,11 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
       if (Write) flags |= FD_WRITE;
       if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
 
-      glNetLookup[handle].Reference = NetSocket;
-      glNetLookup[handle].SocketHandle = handle;
-      glNetLookup[handle].Flags = flags;
-      return handle;
+      auto sock = WSW_SOCKET(handle);
+      glNetLookup[sock].Reference = NetSocket;
+      glNetLookup[sock].SocketHandle = sock;
+      glNetLookup[sock].Flags = flags;
+      return sock;
    }
    else return (WSW_SOCKET)INVALID_SOCKET;
 }

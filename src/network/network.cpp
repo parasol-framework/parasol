@@ -48,6 +48,12 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 struct DNSEntry {
    std::string HostName;
    std::vector<IPAddress> Addresses;    // IP address list
+
+   DNSEntry & operator=(DNSEntry other) {
+      std::swap(HostName, other.HostName);
+      std::swap(Addresses, other.Addresses);
+      return *this;
+   }
 };
 
 #ifdef __linux__

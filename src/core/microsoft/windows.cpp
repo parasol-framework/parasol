@@ -240,6 +240,25 @@ extern "C" LONG convert_errno(LONG Error, LONG Default);
 extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
 //********************************************************************************************************************
+
+extern "C" char * winFormatMessage(LONG Error, char *Buffer, LONG BufferSize)
+{
+   DWORD i = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error ? Error : GetLastError(), 0, Buffer, BufferSize, NULL);
+   while ((i > 0) and (Buffer[i-1] <= 0x20)) i--; // Windows puts whitespace at the end of error strings for some reason
+   Buffer[i] = 0;
+   return Buffer;
+}
+
+static void printerror(void)
+{
+   LPVOID lpMsgBuf;
+   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
+      GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+   fprintf(stderr, "WinError: %s", (LPTSTR)lpMsgBuf);
+   LocalFree(lpMsgBuf);
+}
+
+//********************************************************************************************************************
 // Console checker for Cygwin
 
 BYTE is_console(HANDLE h)
@@ -767,7 +786,7 @@ extern "C" LONG winFreeLibrary(HMODULE Module)
 
 extern "C" HANDLE winLoadLibrary(LPCSTR Name)
 {
-   HANDLE h = LoadLibraryExA(Name, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS);
+   HANDLE h = LoadLibraryExA(Name, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS|LOAD_LIBRARY_SEARCH_SYSTEM32);
    return h;
 }
 
@@ -1265,25 +1284,6 @@ extern "C" void winEnumSpecialFolders(void (*enumfolder)(const char *, const cha
 extern "C" LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart)
 {
    return GetFullPathName(Path, PathLength, Output, NamePart);
-}
-
-//********************************************************************************************************************
-
-extern "C" char * winFormatMessage(LONG Error, char *Buffer, LONG BufferSize)
-{
-   DWORD i = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error ? Error : GetLastError(), 0, Buffer, BufferSize, NULL);
-   while ((i > 0) and (Buffer[i-1] <= 0x20)) i--; // Windows puts whitespace at the end of error strings for some reason
-   Buffer[i] = 0;
-   return Buffer;
-}
-
-static void printerror(void)
-{
-   LPVOID lpMsgBuf;
-   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-      GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
-   fprintf(stderr, "WinError: %s", (LPTSTR)lpMsgBuf);
-   LocalFree(lpMsgBuf);
 }
 
 //********************************************************************************************************************
