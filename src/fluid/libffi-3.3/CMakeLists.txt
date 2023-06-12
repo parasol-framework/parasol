@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.15)
 
 project (libffi VERSION 3.3 LANGUAGES C)
 
@@ -58,6 +58,7 @@ include_directories (include)
 
 if (MSVC)
    set (CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+   set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 else ()
    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fomit-frame-pointer -fstrict-aliasing -ffast-math")
 endif ()

@@ -176,7 +176,7 @@ ERROR track_layer(extSurface *Self)
       }
 
       record.setArea(glSurfaces[parent].Left + Self->X, glSurfaces[parent].Top + Self->Y,
-         record.Left + Self->Width, record.Top + Self->Height);
+         record.X + Self->Width, record.Y + Self->Height);
 
       record.Level = glSurfaces[parent].Level + 1;
 

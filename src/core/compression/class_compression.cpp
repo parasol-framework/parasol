@@ -55,6 +55,14 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 #include <parasol/main.h>
 #include <sstream>
 
+#ifdef __GNUC__
+#define PACK(D) D __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK(D) __pragma(pack(push, 1)) D __pragma(pack(pop))
+#endif
+
 //********************************************************************************************************************
 // Central folder structure for each archived file.  This appears at the end of the zip file.
 
@@ -78,7 +86,7 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 #define LIST_OFFSET         42  // Relative offset of local header
 #define LIST_LENGTH         46  // END
 
-struct zipentry {
+PACK(struct zipentry {
    UBYTE version;
    UBYTE ostype;
    UBYTE required_version;
@@ -96,7 +104,7 @@ struct zipentry {
    UWORD ifile;
    ULONG attrib;
    ULONG offset;
-} __attribute__((__packed__));
+});
 
 //********************************************************************************************************************
 
@@ -107,7 +115,7 @@ struct zipentry {
 #define TAIL_COMMENTLEN     20
 #define TAIL_LENGTH         22
 
-struct ziptail {
+PACK(struct ziptail {
    ULONG header;
    ULONG size;
    UWORD filecount;
@@ -115,7 +123,7 @@ struct ziptail {
    ULONG listsize;
    ULONG listoffset;
    UWORD commentlen;
-} __attribute__((__packed__));
+});
 
 #define ZIP_PARASOL 0x7e // Use this identifier to declare Parasol zipped files
 

@@ -223,7 +223,7 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
 
                // Scan the list of available fonts to find the closest point size for our font
 
-               winFont fonts[font_count];
+               auto fonts = std::make_unique<winFont[]>(font_count);
 
                for (LONG i=0; i < font_count; i++) {
                   UWORD offset, size;
@@ -513,22 +513,20 @@ useful for pairing bitmap fonts with a scalable equivalent.
 
 static ERROR SET_Face(extFont *Self, CSTRING Value)
 {
-   LONG i, j, k;
+   LONG i, j;
 
    if ((Value) and (Value[0])) {
       if (!StrCompare("SRC:", Value, 4)) {
-         for (i=4; Value[i]; i++);
-         char path[i-4];
+         std::ostringstream path;
          LONG coloncount = 0;
-         for (i=4,k=0; Value[i]; i++) {
+         for (i=4; Value[i]; i++) {
             if (Value[i] IS ':') {
                coloncount++;
                if (coloncount > 1) break;
             }
-            path[k++] = Value[i];
+            path << Value[i];
          }
-         path[k] = 0;
-         Self->Path = StrClone(path);
+         Self->Path = StrClone(path.str().c_str());
          Self->prvFace[0] = 0;
       }
       else {

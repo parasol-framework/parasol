@@ -343,7 +343,7 @@ namespace agg {
 
         AGG_INLINE self_type gradient(const self_type& c, double k) const {
             self_type ret;
-            calc_type ik = uround(k * base_scale);
+            calc_type ik = uround(k * int(base_scale));
             ret.r = value_type(calc_type(r) + (((calc_type(c.r) - r) * ik) >> base_shift));
             ret.g = value_type(calc_type(g) + (((calc_type(c.g) - g) * ik) >> base_shift));
             ret.b = value_type(calc_type(b) + (((calc_type(c.b) - b) * ik) >> base_shift));
@@ -587,7 +587,7 @@ namespace agg {
 
         AGG_INLINE self_type gradient(const self_type& c, double k) const {
             self_type ret;
-            calc_type ik = uround(k * base_scale);
+            calc_type ik = uround(k * int(base_scale));
             ret.r = value_type(calc_type(r) + (((calc_type(c.r) - r) * ik) >> base_shift));
             ret.g = value_type(calc_type(g) + (((calc_type(c.g) - g) * ik) >> base_shift));
             ret.b = value_type(calc_type(b) + (((calc_type(c.b) - b) * ik) >> base_shift));

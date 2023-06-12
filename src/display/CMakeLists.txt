@@ -33,10 +33,10 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
       "${DOCS}/modules/classes/pointer.xml"
       "${DOCS}/modules/classes/surface.xml"
       PRE_BUILD
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--sdk=${PROJECT_SOURCE_DIR}"
-              "--output-proto=prototypes.h" "--output-defs=module_def.c" "--files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
-      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${MOD}.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
-              "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
+      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${MOD}.fdl" "sdk=${PROJECT_SOURCE_DIR}"
+              "output-proto=prototypes.h" "output-defs=module_def.c" "files={" ${FUNCTIONS} "lib_surfaces.cpp" "}"
+      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=${MOD}.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h"
+              "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${MOD}.fdl"
          ${FUNCTIONS}
@@ -89,7 +89,7 @@ target_include_directories (${MOD} PRIVATE
 target_link_libraries (${MOD} PUBLIC linear_rgb)
 
 if (WIN32)
-   target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid m)
+   target_link_libraries (${MOD} PRIVATE ole32 gdi32 uuid ${MATH_LINK})
    target_sources (${MOD} PRIVATE ${FUNCTIONS} "win32/windows.cpp" "win32/clipboard.c" ${CLASSES})
    add_compile_definitions ("WIN_DRAGDROP")
 elseif (ANDROID)
@@ -97,7 +97,7 @@ elseif (ANDROID)
    add_library (display-gles1 SHARED)
    target_sources (display-gles1 PRIVATE ${FUNCTIONS} "android/android.cpp" ${CLASSES})
    add_compile_definitions ("_GLES_" "_GLES1_")
-   target_link_libraries (display-gles1 PRIVATE m android EGL GLESv1_CM)
+   target_link_libraries (display-gles1 PRIVATE ${MATH_LINK} android EGL GLESv1_CM)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
    # GL3 Link: -ljnigraphics -lEGL -lGLESv3 -DGLES3
 else ()
@@ -106,6 +106,6 @@ else ()
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
    target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
-   target_link_libraries (${MOD} PRIVATE m Xext X11) # x11/libXxf86dga.a
+   target_link_libraries (${MOD} PRIVATE ${MATH_LINK} Xext X11) # x11/libXxf86dga.a
    add_compile_definitions ("__X11DGA__" "__xwindows__")
 endif ()

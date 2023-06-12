@@ -166,17 +166,17 @@ static int thread_action(lua_State *Lua)
    log.trace("#%d/%p, Action: %s/%d, Key: %d, Args: %d", object->UID, object->ObjectPtr, action, action_id, key, argsize);
 
    if (argsize > 0) {
-      BYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
+      auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
       LONG resultcount;
 
-      if (!(error = build_args(Lua, args, argsize, argbuffer, &resultcount))) {
+      if (!(error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount))) {
          if (object->ObjectPtr) {
-            error = ActionThread(action_id, object->ObjectPtr, argbuffer, &callback, key);
+            error = ActionThread(action_id, object->ObjectPtr, argbuffer.get(), &callback, key);
          }
          else {
             if (!resultcount) {
                if (auto obj = access_object(object)) {
-                  error = ActionThread(action_id, obj, argbuffer, &callback, key);
+                  error = ActionThread(action_id, obj, argbuffer.get(), &callback, key);
                   release_object(object);
                }
             }
@@ -250,21 +250,21 @@ static int thread_method(lua_State *Lua)
                else callback.Type = 0;
 
                if (argsize > 0) {
-                  BYTE argbuffer[argsize+8]; // +8 for overflow protection in build_args()
+                  auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
                   LONG resultcount;
 
                   lua_remove(Lua, 1); // Remove all 4 required arguments so that the user's custom parameters are then left on the stack
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
                   lua_remove(Lua, 1);
-                  if (!(error = build_args(Lua, args, argsize, argbuffer, &resultcount))) {
+                  if (!(error = build_args(Lua, args, argsize, argbuffer.get(), &resultcount))) {
                      if (object->ObjectPtr) {
-                        error = ActionThread(action_id, object->ObjectPtr, argbuffer, &callback, key);
+                        error = ActionThread(action_id, object->ObjectPtr, argbuffer.get(), &callback, key);
                      }
                      else {
                         if (!resultcount) {
                            if ((obj = access_object(object))) {
-                              error = ActionThread(action_id, obj, argbuffer, &callback, key);
+                              error = ActionThread(action_id, obj, argbuffer.get(), &callback, key);
                               release_object(object);
                            }
                         }

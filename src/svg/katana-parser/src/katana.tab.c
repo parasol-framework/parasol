@@ -40,7 +40,9 @@
    define necessary library symbols; they are noted "INFRINGES ON
    USER NAME SPACE" below.  */
 
+#ifndef _MSC_VER
 #include <strings.h>
+#endif
 
 /* Identify Bison output.  */
 #define YYBISON 1
@@ -80,7 +82,7 @@
 #define YYENABLE_NLS 0
 #define YYLTYPE_IS_TRIVIAL 1
 #define YYMAXDEPTH 10000
-    
+
 #ifdef KATANA_BISON_DEBUG
 #if KATANA_BISON_DEBUG
 #ifdef YYDEBUG
@@ -2412,7 +2414,7 @@ yyreduce:
 
     {
         (yyval.mediaQueryExpList) = katana_new_media_query_exp_list(parser);
-        katana_media_query_exp_list_add(parser, (yyvsp[0].mediaQueryExp), (yyval.mediaQueryExpList));   
+        katana_media_query_exp_list_add(parser, (yyvsp[0].mediaQueryExp), (yyval.mediaQueryExpList));
     }
 
     break;
@@ -2421,7 +2423,7 @@ yyreduce:
 
     {
         (yyval.mediaQueryExpList) = (yyvsp[-4].mediaQueryExpList);
-        katana_media_query_exp_list_add(parser, (yyvsp[0].mediaQueryExp), (yyval.mediaQueryExpList));   
+        katana_media_query_exp_list_add(parser, (yyvsp[0].mediaQueryExp), (yyval.mediaQueryExpList));
     }
 
     break;
@@ -2993,7 +2995,7 @@ yyreduce:
 
   case 153:
 
-    { 
+    {
         katana_string_clear(parser, &(yyval.string));
     }
 
@@ -3348,7 +3350,7 @@ yyreduce:
         (yyval.selector) = katana_new_selector(parser);
         (yyval.selector)->match = KatanaSelectorMatchPseudoClass;
         katana_selector_set_argument(parser, (yyval.selector), &(yyvsp[-2].string));
-        
+
         katana_string_to_lowercase(parser, &(yyvsp[-4].string));
         katana_selector_set_value(parser, (yyval.selector), &(yyvsp[-4].string));
         katana_selector_extract_pseudo_type((yyval.selector));
@@ -3691,10 +3693,10 @@ yyreduce:
 
   case 236:
 
-    { (yyval.value) = katana_new_value(parser); (yyval.value)->id = KatanaValueInvalid; 
-    //(yyval.value)->string = "#"; 
+    { (yyval.value) = katana_new_value(parser); (yyval.value)->id = KatanaValueInvalid;
+    //(yyval.value)->string = "#";
     KatanaParserString tmp = {"#", 1};
-    katana_value_set_string(parser, yyval.value, &tmp); 
+    katana_value_set_string(parser, yyval.value, &tmp);
     (yyval.value)->isInt = false; (yyval.value)->unit = KATANA_VALUE_PARSER_HEXCOLOR; }
 
     break;

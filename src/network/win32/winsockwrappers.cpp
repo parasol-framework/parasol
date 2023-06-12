@@ -39,8 +39,6 @@ enum {
 };
 
 #define IS ==
-#define OR ||
-#define AND &&
 
 #define MAX_SOCKETS 40
 
@@ -54,25 +52,11 @@ public:
 };
 
 static std::recursive_mutex csNetLookup;
-static std::unordered_map<WSW_SOCKET, struct socket_info> glNetLookup;
+static std::unordered_map<WSW_SOCKET, socket_info> glNetLookup;
 static char glSocketsDisabled = FALSE;
 static HWND glNetWindow = 0;
 static char glNetClassInit = FALSE;
 static char glWinsockInitialised = FALSE;
-
-static struct socket_info * lookup_socket_by_ref(void *Reference)
-{
-   const lock_guard<recursive_mutex> lock(csNetLookup);
-
-   for (auto it=glNetLookup.begin(); it != glNetLookup.end(); it++) {
-      if (it->second.Reference IS Reference) {
-         struct socket_info *info = &it->second;
-         return info;
-      }
-   }
-
-   return NULL;
-}
 
 //********************************************************************************************************************
 
@@ -170,15 +154,15 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          if (error IS WSAEWOULDBLOCK) error = ERR_Okay;
          else if (error) error = convert_error(error);
 
-         struct socket_info *info = &glNetLookup[(WSW_SOCKET)wParam];
-         if ((info->Flags & FD_READ) AND (!glSocketsDisabled)) {
+         socket_info *info = &glNetLookup[(WSW_SOCKET)wParam];
+         if ((info->Flags & FD_READ) and (!glSocketsDisabled)) {
             WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags & (~FD_READ));
          }
 
          if (info->Reference) win32_netresponse((struct BaseClass *)info->Reference, info->SocketHandle, state, error);
          else printf("win_messages() Missing reference for FD %d, state %d\n", info->SocketHandle, state);
 
-         if ((resub) AND (!glSocketsDisabled)) {
+         if ((resub) and (!glSocketsDisabled)) {
             WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags);
          }
          return 0;
@@ -224,7 +208,7 @@ void win_net_processing(int Status, void *Args)
 void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
 {
    const lock_guard<recursive_mutex> lock(csNetLookup);
-   struct socket_info *sock = &glNetLookup[Socket];
+   socket_info *sock = &glNetLookup[Socket];
 
    if (Read IS 0) sock->Flags &= ~FD_READ;
    else if (Read IS 1) sock->Flags |= FD_READ;
@@ -241,7 +225,7 @@ void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
 
 WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr *Addr, int *AddrLen)
 {
-   WSW_SOCKET client_handle = accept(SocketHandle, Addr, AddrLen);
+   auto client_handle = WSW_SOCKET(accept(SocketHandle, Addr, AddrLen));
    //printf("win_accept() FD %d, NetSocket %p\n", client_handle, NetSocket);
 
    ULONG non_blocking = 1;
@@ -346,7 +330,7 @@ int WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, int Len, int Flags, int *
 {
    *Result = 0;
    if (!Len) return ERR_Okay;
-   LONG result = recv(SocketHandle, reinterpret_cast<char *>(Buffer), Len, Flags);
+   auto result = recv(SocketHandle, reinterpret_cast<char *>(Buffer), Len, Flags);
    if (result > 0) {
       *Result = result;
       return ERR_Okay;
@@ -392,8 +376,7 @@ int win_shutdown(WSW_SOCKET S, int How)
 
 WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
 {
-   WSW_SOCKET handle;
-   if ((handle = socket(PF_INET, SOCK_STREAM, 0)) != INVALID_SOCKET) {
+   if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
       u_long non_blocking = 1;
       ioctlsocket(handle, FIONBIO, &non_blocking);
       int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
@@ -401,10 +384,11 @@ WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
       if (Write) flags |= FD_WRITE;
       if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
 
-      glNetLookup[handle].Reference = NetSocket;
-      glNetLookup[handle].SocketHandle = handle;
-      glNetLookup[handle].Flags = flags;
-      return handle;
+      auto sock = WSW_SOCKET(handle);
+      glNetLookup[sock].Reference = NetSocket;
+      glNetLookup[sock].SocketHandle = sock;
+      glNetLookup[sock].Flags = flags;
+      return sock;
    }
    else return (WSW_SOCKET)INVALID_SOCKET;
 }
@@ -497,8 +481,7 @@ const char * StartupWinsock() // Return zero if succesful
    if (!glWinsockInitialised) {
       WSADATA wsadata;
       unsigned short version_requested = MAKEWORD(1, 1);
-      int code;
-      if ((code = WSAStartup(version_requested, &wsadata)) != 0) {
+      if (auto code = WSAStartup(version_requested, &wsadata)) {
          switch (code) {
             case WSASYSNOTREADY: return "WSASYSNOTREADY";
             case WSAVERNOTSUPPORTED: return "WSAVERNOTSUPPORTED";

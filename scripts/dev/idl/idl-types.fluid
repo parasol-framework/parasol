@@ -196,13 +196,23 @@ function cType(Field, Origin)
    end
 
    do
-      local const, struct = Field.type:match("^(c-)struct%((.+)%)$")
+      local const, struct = Field.type:match("^(c-)class%((.+)%)$")
+      if (struct) then
+         Field.isClass = true
+      else
+         const, struct = Field.type:match("^(c-)struct%((.+)%)$")
+      end
+
       if (struct != nil) then
          local ptr_struct = struct:match("%*(.+)")
          if (ptr_struct != nil) then struct = ptr_struct end
 
          Field.struct = struct
-         Field.type = 'struct ' .. struct
+         if Field.isClass then
+            Field.type = 'class ' .. struct
+         else
+            Field.type = 'struct ' .. struct
+         end
 
          if (glStructures[struct] != nil) then
             glActiveRefs['STRUCT:' .. struct] = 1

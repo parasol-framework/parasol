@@ -122,7 +122,7 @@ static OBJECTPTR modNetwork = NULL;
 static OBJECTPTR clHTTP = NULL;
 static objProxy *glProxy = NULL;
 
-extern UBYTE glAuthScript[];
+extern "C" UBYTE glAuthScript[];
 static LONG glAuthScriptLength;
 
 class extHTTP : public objHTTP {
@@ -287,7 +287,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("network", MODVERSION_NETWORK, &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("network", &modNetwork, &NetworkBase) != ERR_Okay) return ERR_InitModule;
 
    glProxy = objProxy::create::global();
 
@@ -497,7 +497,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                   log.trace("Multiple input files detected.");
                   Self->InputPos = 0;
                   parse_file(Self, cmd);
-                  Self->flInput = objFile::create::integral(fl::Path(cmd.str()), fl::Flags(FL::READ));
+                  Self->flInput = objFile::create::integral(fl::Path(cmd.str().c_str()), fl::Flags(FL::READ));
                }
                else Self->flInput = objFile::create::integral(fl::Path(Self->InputFile), fl::Flags(FL::READ));
 
@@ -521,7 +521,7 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
                if (!Self->Size) {
                   pf::ScopedObjectLock<BaseClass> input(Self->InputObjectID, 3000);
                   if (input.granted()) {
-                     if (!input->get(FID_Size, &Self->ContentLength));
+                     input->get(FID_Size, &Self->ContentLength);
                   }
                }
                else Self->ContentLength = Self->Size;
@@ -597,13 +597,13 @@ static ERROR HTTP_Activate(extHTTP *Self, APTR Void)
             std::string buffer(Self->Username);
             buffer.append(":");
             buffer.append(Self->Password);
-            char output[buffer.length() * 2];
+            auto output = std::make_unique<char[]>(buffer.length() * 2);
 
             pfBase64Encode state;
 
             cmd << "Authorization: Basic ";
-            auto len = Base64Encode(&state, buffer.c_str(), buffer.length(), output, buffer.length() * 2);
-            cmd.write(output, len);
+            auto len = Base64Encode(&state, buffer.c_str(), buffer.length(), output.get(), buffer.length() * 2);
+            cmd.write(output.get(), len);
             cmd << CRLF;
          }
 
@@ -779,7 +779,7 @@ static ERROR HTTP_Free(extHTTP *Self, APTR Args)
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = NULL; }
 
    if (Self->Password) {
-      for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
+      for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = char(0xff);
       FreeResource(Self->Password);
       Self->Password = NULL;
    }
@@ -1702,5 +1702,5 @@ static ERROR create_http_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_HTTP, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_http_module() { return &ModHeader; }

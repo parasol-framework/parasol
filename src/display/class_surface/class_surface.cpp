@@ -873,8 +873,8 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    // placed first, then the lost-focus chain.
 
    LONG event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
-   UBYTE buffer[event_size];
-   auto ev = (evFocus *)buffer;
+   auto buffer = std::make_unique<BYTE[]>(event_size);
+   auto ev = (evFocus *)(buffer.get());
    ev->EventID        = EVID_GUI_SURFACE_FOCUS;
    ev->TotalWithFocus = glFocusList.size();
    ev->TotalLostFocus = lostfocus.size();

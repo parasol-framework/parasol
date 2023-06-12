@@ -36,10 +36,6 @@ in a file.
  #include <grp.h>
  #include <pwd.h>
  #include <signal.h>
- #include <stdlib.h>
- #include <stdio.h>
- #include <string.h>
- #include <time.h>
  #include <utime.h>
  #include <sys/types.h>
  #include <sys/stat.h>
@@ -62,22 +58,20 @@ in a file.
  #endif
 #endif
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <string.h>
 
 #ifdef _WIN32
  #include <io.h>
- #include <fcntl.h>
- #include <stdlib.h>
- #include <stdio.h>
- #include <errno.h>
- #include <unistd.h>
- #include <sys/types.h>
- #include <sys/stat.h>
- #include <time.h>
- #include <string.h>
+ #ifndef _MSC_VER
+  #include <unistd.h>
+ #endif
 
  #define open64   open
  #define lseek64  lseek
@@ -88,6 +82,18 @@ in a file.
  #include <sys/mount.h>
  #define lseek64  lseek
  #define ftruncate64 ftruncate
+#endif
+
+#ifdef _MSC_VER
+ #define S_IRUSR _S_IREAD
+ #define S_IWUSR _S_IWRITE
+ #ifndef _S_ISTYPE
+  #define _S_ISTYPE(mode, mask)  (((mode) & _S_IFMT) == (mask))
+  #define S_ISREG(mode) _S_ISTYPE((mode), _S_IFREG)
+  #define S_ISDIR(mode) _S_ISTYPE((mode), _S_IFDIR)
+ #endif
+ #define stat64 stat
+ #define fstat64 fstat
 #endif
 
 #include <parasol/main.h>
@@ -573,7 +579,7 @@ NoPermission: Permission was denied when accessing or creating the file.
 static ERROR FILE_Init(extFile *Self, APTR Void)
 {
    pf::Log log;
-   LONG j, len;
+   LONG len;
    ERROR error;
 
    // If the BUFFER flag is set then the file will be located in RAM.  Very little initialisation is needed for this.
@@ -653,10 +659,8 @@ retrydir:
       if (len > 512) return log.warning(ERR_BufferOverflow);
 
       if ((Self->Path[len-1] != '/') and (Self->Path[len-1] != '\\') and (Self->Path[len-1] != ':')) {
-         char buffer[len+1];
-         for (j=0; j < len; j++) buffer[j] = Self->Path[j];
-         buffer[j] = 0;
-         if (Self->setPath(CSTRING(buffer)) != ERR_Okay) {
+         std::string buffer(Self->Path, len);
+         if (Self->setPath(buffer.c_str()) != ERR_Okay) {
             return log.warning(ERR_SetField);
          }
       }

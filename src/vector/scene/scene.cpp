@@ -795,7 +795,7 @@ static void process_resize_msgs(extVectorScene *Self)
       for (auto it=Self->PendingResizeMsgs.begin(); it != Self->PendingResizeMsgs.end(); it++) {
          extVectorViewport *view = *it;
 
-         auto list = Self->ResizeSubscriptions[view];
+         auto list = Self->ResizeSubscriptions[view]; // take copy
          for (auto &sub : list) {
             ERROR result;
             auto vector = sub.first;

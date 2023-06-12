@@ -1,7 +1,9 @@
 
 #define PRV_VECTOR_MODULE
 
-#define DBG_TRANSFORM(args...) //log.trace(args)
+template<class... Args> void DBG_TRANSFORM(Args...) {
+   //log.trace(Args)
+}
 
 #define FIXED_DPI 96 // Freetype measurements are based on this DPI.
 #define FT_DOWNSIZE 6
@@ -65,13 +67,13 @@ extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffe
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
 
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-typedef class objVectorTransition;
-typedef class extVectorText;
-typedef class extVector;
-typedef class extVectorScene;
-typedef class extFilterEffect;
-typedef class extVectorViewport;
-typedef class extVectorClip;
+class objVectorTransition;
+class extVectorText;
+class extVector;
+class extVectorScene;
+class extFilterEffect;
+class extVectorViewport;
+class extVectorClip;
 
 //********************************************************************************************************************
 
@@ -323,7 +325,7 @@ struct TabOrderedVector {
    bool operator()(const extVector *a, const extVector *b) const;
 };
 
-__inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector *b) const {
+inline bool TabOrderedVector::operator()(const extVector *a, const extVector *b) const {
    if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
@@ -340,7 +342,7 @@ class extVectorScene : public objVectorScene {
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
-   std::vector<struct InputBoundary> InputBoundaries;
+   std::vector<InputBoundary> InputBoundaries;
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
@@ -668,7 +670,7 @@ public:
    int8u * next_y() {
       ++m_y;
       m_x = m_x0;
-      if (m_pix_ptr and m_y >= 0 and m_y < m_src->height()) {
+      if (m_pix_ptr and m_y >= 0 and m_y < int(m_src->height())) {
          return m_pix_ptr = m_src->row_ptr(m_y) + (m_x * m_src->mBytesPerPixel);
       }
       m_pix_ptr = 0;

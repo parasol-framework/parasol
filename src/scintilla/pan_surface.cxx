@@ -309,39 +309,30 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *String, int len, Scintilla::ColourAllocated fore)
 {
    pf::Log log(__FUNCTION__);
-   objFont *font;
    ULONG col32;
-   LONG i;
-   char nstr[len+1];
 
-   for (i=0; i < len; ++i) nstr[i] = String[i];
-   nstr[i] = 0;
+   std::string nstr(String, len);
 
    col32 = fore.AsLong();
 
-   DBGDRAW("panDrawTextBase()","Bitmap: %p, #%.8x, String: %.10s TO %dx%d", bitmap, col32, nstr, rc.left, rc.top);
+   DBGDRAW("panDrawTextBase()","Bitmap: %p, #%.8x, String: %.10s TO %dx%d", bitmap, col32, nstr.c_str(), rc.left, rc.top);
 
    if (!bitmap) return;
 
-   font = (objFont *)GetFont(font_);//static_cast<OBJECTPTR>(font_.GetID());
+   if (auto font = (objFont *)GetFont(font_)) { //static_cast<OBJECTPTR>(font_.GetID());
+      BitmapClipper clipper(bitmap, cliprect);
 
-   if (!font) {
-      log.warning("Font is NULL.");
-      return;
+      font->setFields(fl::String(nstr));
+      font->Bitmap = bitmap;
+      font->X = rc.left;
+      font->Y = rc.top + font->Leading;
+      font->Colour.Red   = SCIRED(col32);
+      font->Colour.Green = SCIGREEN(col32);
+      font->Colour.Blue  = SCIBLUE(col32);
+      font->Colour.Alpha = 255;
+
+      acDraw(font);
    }
-
-   BitmapClipper clipper(bitmap, cliprect);
-
-   font->setFields(fl::String(nstr));
-   font->Bitmap = bitmap;
-   font->X = rc.left;
-   font->Y = rc.top + font->Leading;
-   font->Colour.Red   = SCIRED(col32);
-   font->Colour.Green = SCIGREEN(col32);
-   font->Colour.Blue  = SCIBLUE(col32);
-   font->Colour.Alpha = 255;
-
-   acDraw(font);
 }
 
 /****************************************************************************/

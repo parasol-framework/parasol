@@ -30,6 +30,7 @@ capabilities.
 #include <assert.h>
 #include <limits.h>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <map>
 
@@ -235,9 +236,9 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("font", &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("vector", &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    OBJECTID id;
    if (!FindObject("glStyle", ID_XML, FOF::NIL, &id)) {
@@ -2192,16 +2193,11 @@ static void error_dialog(CSTRING Title, CSTRING Message, ERROR Error)
 
       CSTRING errstr;
       if ((Error) and (errstr = GetErrorMsg(Error))) {
-         LONG len = StrLength(Message);
-         char buffer[len+120];
-         if (Message) {
-            len = StrCopy(Message, buffer, sizeof(buffer));
-            len += StrCopy("\n\nDetails: ", buffer+len, sizeof(buffer)-len);
-         }
-         else len = StrCopy("Error: ", buffer, sizeof(buffer));
+         std::ostringstream buffer;
+         if (Message) buffer << Message << "\n\nDetails: " << errstr;
+         else buffer << "Error: " << errstr;
 
-         StrCopy(errstr, buffer+len, sizeof(buffer)-len);
-         acSetVar(dialog, "message", buffer);
+         acSetVar(dialog, "message", buffer.str().c_str());
       }
       else acSetVar(dialog, "message", Message);
 
@@ -2551,5 +2547,5 @@ static ERROR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }

@@ -87,7 +87,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    return(create_picture_class());
 }
@@ -665,8 +665,8 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    if ((bmp->BitsPerPixel IS 8) or (bmp->BitsPerPixel IS 24)) {
       if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         UBYTE row[bmp->Width * 4];
-         row_pointers = row;
+         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         row_pointers = row.get();
          UBYTE *data = bmp->Data;
          UBYTE *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
@@ -678,7 +678,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = mask[maskx++];  // Alpha
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
@@ -693,8 +693,8 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    }
    else if (bmp->BitsPerPixel IS 32) {
       if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
-         UBYTE row[bmp->Width * 4];
-         row_pointers = row;
+         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         row_pointers = row.get();
          UBYTE *data = bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
@@ -704,15 +704,15 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];  // Red
                row[i++] = data[x+3];  // Alpha
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
       }
       else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         UBYTE row[bmp->Width * 4];
+         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
 
-         row_pointers = row;
+         row_pointers = row.get();
          UBYTE *data = bmp->Data;
          UBYTE *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
@@ -724,15 +724,15 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+2];     // Red
                row[i++] = mask[maskx++]; // Alpha
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
             mask += Self->Mask->LineWidth;
          }
       }
       else {
-         UBYTE row[bmp->Width * 3];
-         row_pointers = row;
+         auto row = std::make_unique<UBYTE[]>(bmp->Width * 3);
+         row_pointers = row.get();
          UBYTE *data = bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             i = 0;
@@ -741,7 +741,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data += bmp->LineWidth;
          }
@@ -749,8 +749,8 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    }
    else if (bmp->BytesPerPixel IS 2) {
       if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         UBYTE row[bmp->Width * 4];
-         row_pointers = row;
+         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         row_pointers = row.get();
          UWORD *data = (UWORD *)bmp->Data;
          UBYTE *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
@@ -762,16 +762,15 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = bmp->unpackRed(data[x]);
                row[i++] = mask[maskx++];
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
          }
       }
       else {
-         UBYTE row[bmp->Width * 3];
-
-         row_pointers = row;
+         auto row = std::make_unique<UBYTE[]>(bmp->Width * 3);
+         row_pointers = row.get();
          UWORD *data = (UWORD *)bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
@@ -780,7 +779,7 @@ static ERROR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
                row[i++] = bmp->unpackGreen(data[x]);
                row[i++] = bmp->unpackRed(data[x]);
             }
-            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row, bmp->Width);
+            if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
             data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
          }
@@ -1426,6 +1425,6 @@ static ERROR create_picture_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_picture_module() { return &ModHeader; }
 

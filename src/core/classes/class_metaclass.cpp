@@ -51,7 +51,7 @@ static ERROR GET_Location(extMetaClass *, CSTRING *);
 static ERROR GET_Methods(extMetaClass *, const MethodEntry **, LONG *);
 static ERROR GET_Module(extMetaClass *, CSTRING *);
 static ERROR GET_PrivateObjects(extMetaClass *, OBJECTID **, LONG *);
-static ERROR GET_RootModule(extMetaClass *, struct RootModule **);
+static ERROR GET_RootModule(extMetaClass *, class RootModule **);
 static ERROR GET_Dictionary(extMetaClass *, struct Field **, LONG *);
 static ERROR GET_SubFields(extMetaClass *, const FieldArray **, LONG *);
 
@@ -760,7 +760,7 @@ RootModule: Returns a direct reference to the RootModule object that hosts the c
 
 *********************************************************************************************************************/
 
-static ERROR GET_RootModule(extMetaClass *Self, struct RootModule **Value)
+static ERROR GET_RootModule(extMetaClass *Self, class RootModule **Value)
 {
    *Value = Self->Root;
    return ERR_Okay;

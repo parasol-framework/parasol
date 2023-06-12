@@ -4,19 +4,21 @@
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 # Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DDISABLE_SSL=TRUE -DCMAKE_INSTALL_PREFIX=parasol-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
-# For Windows builds -G"MinGW Makefiles" must be added to the above commands.
+# For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
+#
 # A build can target a local folder by adding -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
 #
 # Build:   cmake --build release -j 8 -- -O
 # Install: sudo cmake --install release
-# Test:    make -C release test ARGS=--verbose
+# Test:    [GCC] make -C release test ARGS=--verbose
+#          [MSVC] cd visual-studio; ctest -V -C Release
 #
 # A static build can be enabled with -DPARASOL_STATIC=ON if the intention is to embed Parasol into another project.
 # This is particularly useful if you intend to use specific features like the vector graphics API.  Static builds
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.15)
 
 include (CheckIncludeFiles)
 include (CheckTypeSize)
@@ -32,7 +34,7 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
    include(CTest)
 endif()
 
-project (Parasol VERSION 2023.4.19 LANGUAGES C CXX)
+project (Parasol VERSION 2023.6.12 LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
 
@@ -180,10 +182,16 @@ if (FLUTE_SCRIPT STREQUAL "FLUTE_SCRIPT-NOTFOUND")
    message (FATAL_ERROR "The flute.fluid script was not found in ${PROJECT_SOURCE_DIR}/scripts/dev")
 endif ()
 
+if (NOT MSVC)
+   set (MATH_LINK m)
+endif ()
+
 if (WIN32)
    if (PARASOL_STATIC)
       # NB: MinGW does not guarantee that libgcc and libstdc++ will be static even if these flags are specified.
-      set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+      if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+         set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+      endif ()
       set (INIT_LINK "init-win" core)
    else ()
       set (CMAKE_EXE_LINKER_FLAGS "-static")
@@ -232,15 +240,15 @@ function (idl_all)
       endif ()
 
       if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
+         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
-      list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=${ARGV0}"
-         "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
+      list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=${ARGV0}"
+         "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS})
 
       if (DEFINED IDLC_APPEND_IDL)
-         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=${ARGV0}"
-            "--output=${IDLC_APPEND_IDL}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" "--append")
+         list (APPEND COMMAND_LIST COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=${ARGV0}"
+            "output=${IDLC_APPEND_IDL}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" "append")
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
@@ -275,12 +283,12 @@ function (idl_c)
       endif ()
 
       if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
+         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_C_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing C header file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -309,12 +317,12 @@ function (idl_def)
       endif ()
 
       if (DEFINED IDLC_FILES)
-         list (APPEND IDLC_ARGS "--files={" ${IDLC_FILES} "}")
+         list (APPEND IDLC_ARGS "files={" ${IDLC_FILES} "}")
       endif ()
 
       add_custom_command (OUTPUT ${IDLC_OUTPUT}
          PRE_BUILD
-         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "--src=${ARGV0}" "--output=${IDLC_OUTPUT}" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c" ${IDLC_ARGS}
+         COMMAND "${PARASOL_CMD}" "${IDL_DEF_SCRIPT}" "--log-warning" "src=${ARGV0}" "output=${IDLC_OUTPUT}" "sdk=${PROJECT_SOURCE_DIR}" "format=c" ${IDLC_ARGS}
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DEPENDS ${ARGV0}
          COMMENT "Producing definition file ${IDLC_OUTPUT} from ${ARGV0}"
@@ -393,7 +401,12 @@ endif ()
 
 if (MSVC)
    # Turn off ugly warnings
-   add_compile_definitions("_CRT_SECURE_NO_WARNINGS" )
+   add_compile_definitions ("_CRT_SECURE_NO_WARNINGS" )
+   set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+   # These options override sub-projects linking to incorrect standard libraries.
+   # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
+   add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
+   # add_link_options ("/VERBOSE:LIB")
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       add_compile_definitions ("_DARWIN_C_SOURCE")
@@ -577,9 +590,9 @@ if (PARASOL_INSTALL)
    endif ()
 
    if (NOT PARASOL_STATIC)
-      install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\" \"${PARASOL_ROOT}/config/modules.bin\")")
-      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning ${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\")")
-      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --gfx-driver=headless \"${PARASOL_ROOT}/scripts/dev/verify-modules.fluid\" WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
+      install (CODE "file(REMOVE \"${PARASOL_ROOT}/config/classes.bin\")")
+      install (CODE "MESSAGE(STATUS \"${PARASOL_CMD_TARGET} --log-warning --verify\")")
+      install (CODE "execute_process(COMMAND \"${PARASOL_CMD_TARGET}\" --log-warning --verify WORKING_DIRECTORY \"${CMAKE_INSTALL_PREFIX}\")")
    endif ()
 
    if (RUN_ANYWHERE)

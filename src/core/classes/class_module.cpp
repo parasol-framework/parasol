@@ -65,7 +65,7 @@ static STRUCTS glStructures = {
    { "MemInfo",             sizeof(MemInfo) },
    { "Message",             sizeof(Message) },
    { "MethodEntry",         sizeof(MethodEntry) },
-   { "ModHeader",           sizeof(ModHeader) },
+   { "ModHeader",           sizeof(struct ModHeader) },
    { "MsgHandler",          sizeof(MsgHandler) },
    { "ObjectSignal",        sizeof(ObjectSignal) },
    { "RGB16",               sizeof(RGB16) },
@@ -85,8 +85,10 @@ static STRUCTS glStructures = {
    { "pfBase64Encode",      sizeof(pfBase64Encode) }
 };
 
+#include "../idl.h"
+
 static RootModule glCoreRoot;
-static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "core");
+struct ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);
@@ -96,7 +98,7 @@ static void free_module(MODHANDLE handle);
 
 static ERROR GET_Name(extModule *, CSTRING *);
 
-static ERROR SET_Header(extModule *, ModHeader *);
+static ERROR SET_Header(extModule *, struct ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
@@ -106,7 +108,6 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray glModuleFields[] = {
-   { "Version",      FDF_DOUBLE|FDF_RI },
    { "FunctionList", FDF_POINTER|FDF_RW },
    { "ModBase",      FDF_POINTER|FDF_R },
    { "Root",         FDF_POINTER|FDF_R },
@@ -129,7 +130,7 @@ static const ActionArray glModuleActions[] = {
 //********************************************************************************************************************
 
 #ifndef PARASOL_STATIC
-static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
+static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
 {
    pf::Log log(__FUNCTION__);
    std::string path;
@@ -139,11 +140,11 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
 
    if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
       log.trace("Module location is absolute.");
-      path = Self->Name;
+      path.assign(Self->Name);
 
       STRING volume;
       if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
-         path = volume;
+         path.assign(volume);
          FreeResource(volume);
       }
       else {
@@ -155,7 +156,7 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
    if (path.empty()) {
       #ifdef __unix__
          if (!glModulePath.empty()) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
-            path = glModulePath;
+            path.assign(glModulePath);
             if (path.back() != '/') path.push_back('/');
          }
          else path = glRootPath + "lib/parasol/";
@@ -222,7 +223,7 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
 
       if ((Root->LibraryBase = dlopen(path.c_str(), ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
          if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
-            if (!(*Table = (ModHeader *)dlsym(Root->LibraryBase, "ModHeader"))) {
+            if (!(*Table = (struct ModHeader *)dlsym(Root->LibraryBase, "ModHeader"))) {
                log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                return ERR_NotFound;
             }
@@ -237,8 +238,8 @@ static ERROR load_mod(extModule *Self, RootModule *Root, ModHeader **Table)
 
       if ((Root->LibraryBase = winLoadLibrary(path.c_str()))) {
          if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
-            if (!(*Table = (ModHeader *)winGetProcAddress(Root->LibraryBase, "ModHeader"))) {
-               if (!(*Table = (ModHeader *)winGetProcAddress(Root->LibraryBase, "_ModHeader"))) {
+            if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "ModHeader"))) {
+               if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "_ModHeader"))) {
                   log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
                   return ERR_NotFound;
                }
@@ -287,7 +288,7 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
    return ERR_Okay;
 }
 
-static ERROR ROOTMODULE_GET_Header(RootModule *Self, ModHeader **Value)
+static ERROR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 {
    *Value = Self->Header;
    return ERR_Okay;
@@ -335,7 +336,7 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    log.trace("Finding module %s (%s)", Self->Name, name);
 
    RootModule *master;
-   ModHeader *table = NULL;
+   struct ModHeader *table = NULL;
    if ((master = check_resident(Self, name))) {
       Self->Root = master;
    }
@@ -378,10 +379,8 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
 
          master->Header     = table;
-         Self->Version      = table->ModVersion;
          master->Table      = table;
          master->Name       = table->Name;
-         master->ModVersion = table->ModVersion;
          master->Init       = table->Init;
          master->Open       = table->Open;
          master->Expunge    = table->Expunge;
@@ -567,7 +566,7 @@ than on disk.
 
 **********************************************************************************************************************/
 
-static ERROR SET_Header(extModule *Self, ModHeader *Value)
+static ERROR SET_Header(extModule *Self, struct ModHeader *Value)
 {
    if (!Value) return ERR_Failed;
    Self->Header = Value;
@@ -587,22 +586,10 @@ Root field refers to a RootModule object that reflects this single instance of t
 ModBase: The Module's function base (jump table) must be read from this field.
 
 Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains
-vectors that point to all functions that are published by the module.
+vectors that point to all functions that are published by the module.  This is considered an internal feature that
+is hidden by system headers.
 
-The jump table is unique to the instance of the module. This allows each module to use a different function model
-between versions, without losing backwards compatibility.  When a module is opened, it can check the requested
-#Version and return a custom-built jump table to the program.  Thus if a function were changed in a
-future module version, older programs would be re-routed to a routine that provides backwards compatibility to
-the newer function model.
-
-By default, jump tables are arranged as an array of function pointers accessible through a well defined structure.
-The template for making calls is `FunctionBase-&gt;FunctionCall()`
-
-Header files will normally include macros to simplify the function call:
-
-<pre>#define FunctionCall      FunctionBase-&gt;FunctionCall</pre>
-
-The jump table is invalid once the module is destroyed.
+If the module is unloaded at any time then the jump table becomes invalid.
 
 -FIELD-
 Name: The name of the module.
@@ -635,25 +622,6 @@ static ERROR SET_Name(extModule *Self, CSTRING Name)
 
    return ERR_Okay;
 }
-
-/*********************************************************************************************************************
-
--FIELD-
-Version: Minimum required version number.
-
-When opening a module, the value that you insert in the Version field will reflect the minimum version and revision
-number required of the module file.  If the module's version number is less than the version that you specify, then
-the initialisation procedure will be aborted.
-
-The Version field is also useful for ensuring that the function base returned by a module matches your program's
-expectations.  For instance, if you write your program against a 1.0 version of a module but the user's machine has a
-2.0 version installed, there could be incompatibilities.  By specifying the required version number, the module can
-provide backwards-compatible functionality for your software.
-
-After initialisation, the Version field will be updated to reflect the actual version of the Module.
--END-
-
-**********************************************************************************************************************/
 
 //********************************************************************************************************************
 // Builds jump tables that link programs to modules.
@@ -749,9 +717,7 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
          glCoreRoot.Name        = "Core";
-         glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;
-         glCoreRoot.ModVersion  = VER_CORE;
          glCoreRoot.Table       = &glCoreHeader;
          glCoreRoot.Header      = &glCoreHeader;
       }

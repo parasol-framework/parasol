@@ -523,7 +523,7 @@ static ERROR socket_incoming(objNetSocket *Socket)
                      // authorisation attempts are required in order to receive the 401 from the server first).
 
                      if ((Self->AuthPreset IS FALSE) or (Self->AuthRetries >= 2)) {
-                        for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = 0xff;
+                        for (LONG i=0; Self->Password[i]; i++) Self->Password[i] = char(0xff);
                         FreeResource(Self->Password);
                         Self->Password = NULL;
                      }

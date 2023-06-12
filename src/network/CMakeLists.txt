@@ -6,7 +6,7 @@ set (INC_MOD_NETWORK TRUE PARENT_SCOPE)
 idl_all ("${MOD}.fdl" NAME "${MOD}_defs" OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    APPEND_IDL "module_def.c"
    FILES "network.cpp"
-   ARGS "--output-defs=module_def.c" "--output-proto=module_def.c")
+   ARGS "output-defs=module_def.c" "output-proto=module_def.c")
 
 add_library (${MOD})
 
@@ -25,13 +25,14 @@ else ()
 endif ()
 
 if (WIN32)
+   add_compile_definitions ("_WINSOCK_DEPRECATED_NO_WARNINGS")
    target_sources (${MOD} PRIVATE "win32/winsockwrappers.cpp")
    list (APPEND NETWORK_LIBS wsock32 gdi32 ws2_32)
 endif ()
 
 target_link_libraries (${MOD} PRIVATE ${NETWORK_LIBS})
 
-add_definitions ("-DMAX_ALIASES=64" "-DMAX_ADDRESSES=32" "-DHAVE_CONFIG_H=1")
+add_compile_definitions ("MAX_ALIASES=64" "MAX_ADDRESSES=32" "HAVE_CONFIG_H=1")
 
 flute_test (network_dns "${CMAKE_CURRENT_SOURCE_DIR}/tests/dns-parallel.fluid")
 flute_test (network_server_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/server-io.fluid")

@@ -848,9 +848,9 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &modDocument);
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("font", MODVERSION_FONT, &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("font", &modFont, &FontBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("vector", &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    FID_LayoutSurface = StrHash("LayoutSurface", 0);
 
@@ -991,5 +991,5 @@ static ERROR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DOCUMENT, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

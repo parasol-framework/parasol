@@ -49,7 +49,7 @@ struct eventsub {
 
 static struct eventsub *glEventList = NULL;
 static UBYTE glCallSignal = 0;
-static UBYTE glEventListAltered = FALSE;
+static bool glEventListAltered = false;
 
 static std::unordered_map<ULONG, std::string> glEventNames;
 
@@ -329,7 +329,7 @@ restart:
             event->Callback(event->Custom, Message, MsgSize);
          }
 
-         if (glEventListAltered IS true) goto restart;
+         if (glEventListAltered) goto restart;
       }
 
       event = event->Next;

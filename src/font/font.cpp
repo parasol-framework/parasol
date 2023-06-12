@@ -31,6 +31,7 @@ Font: Provides font management functionality and hosts the Font class.
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
 
+#include <sstream>
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
@@ -83,8 +84,8 @@ class extFont : public objFont {
    UBYTE *prvData;
    std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
    struct FontCharacter *prvChar;
-   struct BitmapCache   *BmpCache;
-   struct font_glyph    prvTempGlyph;
+   class BitmapCache   *BmpCache;
+   font_glyph prvTempGlyph;
    LONG prvLineCount;
    LONG prvStrWidth;
    WORD prvSpaceWidth;          // Pixel width of word breaks
@@ -266,7 +267,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &modFont);
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    if (FT_Init_FreeType(&glFTLibrary)) {
       log.warning("Failed to initialise the FreeType font library.");
@@ -1542,7 +1543,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
             file->seekStart(font_offset);
 
             {
-               winFont fonts[font_count];
+               auto fonts = std::make_unique<winFont[]>(font_count);
 
                // Get the offset and size of each font entry
 
@@ -1615,5 +1616,5 @@ static STRUCTS glStructures = {
    { "FontList", sizeof(FontList) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT, MOD_IDL, &glStructures)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_font_module() { return &ModHeader; }

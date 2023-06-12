@@ -1757,5 +1757,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MODVERSION_XML, MOD_IDL, &glStructures)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }

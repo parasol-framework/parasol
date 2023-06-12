@@ -313,7 +313,7 @@ static int input_subscribe(lua_State *Lua)
    ERROR error;
    if (!modDisplay) {
       pf::SwitchContext context(modFluid);
-      if ((error = objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase))) {
+      if ((error = objModule::load("display", &modDisplay, &DisplayBase))) {
          luaL_error(Lua, "Failed to load display module.");
          return 0;
       }

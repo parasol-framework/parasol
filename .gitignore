@@ -39,6 +39,7 @@
 /debug/*
 /release/*
 /parasol-*/
+/visual-studio/
 
 /install/
 /packages/

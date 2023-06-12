@@ -107,4 +107,4 @@ target_sources (${MOD} PRIVATE
 
 target_include_directories (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
-target_link_libraries (${MOD} PRIVATE m)
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})

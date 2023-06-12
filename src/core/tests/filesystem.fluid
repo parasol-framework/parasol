@@ -143,7 +143,6 @@ function testFileIcons()
       { path='fonts:fonts.cfg',                 icon='icons:filetypes/text' },
       { path='fonts:license-courier-prime.txt', icon='icons:filetypes/text' },
       { path='fonts:truetype/Micro-6.ttf',      icon='icons:filetypes/font' },
-      { path='parasol:include/parasol/main.h',  icon='icons:filetypes/source_h' },
       { path='scripts:common.fluid',            icon='icons:filetypes/source' },
       { path='styles:default/values.xml',       icon='icons:filetypes/xml' }
    }

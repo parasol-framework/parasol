@@ -858,22 +858,19 @@ enum class STT : LONG {
 
 enum class OPF : ULONG {
    NIL = 0,
-   DEPRECATED = 0x00000001,
-   CORE_VERSION = 0x00000002,
-   OPTIONS = 0x00000004,
-   MAX_DEPTH = 0x00000008,
-   DETAIL = 0x00000010,
-   SHOW_MEMORY = 0x00000020,
-   SHOW_IO = 0x00000040,
-   SHOW_ERRORS = 0x00000080,
-   ARGS = 0x00000100,
-   ERROR = 0x00000200,
-   COMPILED_AGAINST = 0x00000400,
-   PRIVILEGED = 0x00000800,
-   SYSTEM_PATH = 0x00001000,
-   MODULE_PATH = 0x00002000,
-   ROOT_PATH = 0x00004000,
-   SCAN_MODULES = 0x00008000,
+   OPTIONS = 0x00000001,
+   MAX_DEPTH = 0x00000002,
+   DETAIL = 0x00000004,
+   SHOW_MEMORY = 0x00000008,
+   SHOW_IO = 0x00000010,
+   SHOW_ERRORS = 0x00000020,
+   ARGS = 0x00000040,
+   ERROR = 0x00000080,
+   PRIVILEGED = 0x00000100,
+   SYSTEM_PATH = 0x00000200,
+   MODULE_PATH = 0x00000400,
+   ROOT_PATH = 0x00000800,
+   SCAN_MODULES = 0x00001000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(OPF)
@@ -1051,13 +1048,6 @@ enum class NF : ULONG {
 DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define MAX_FILENAME 256
-
-// Module file header constants
-
-#define MODULE_HEADER_V1 1297040385
-#define MODULE_HEADER_V2 1297040386
-#define MODULE_HEADER_VERSION 1297040386
-#define MODULE_HEADER EXPORT struct ModHeader ModHeader
 
 #define MAX_NAME_LEN 32
 
@@ -1500,9 +1490,6 @@ struct Edges {
 #define __attribute__(a)
 #endif
 
-#define VER_CORE (1.0f)  // Core version + revision
-#define REV_CORE (0)     // Core revision as a whole number
-
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
@@ -1512,18 +1499,18 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #define MOD_IDL NULL
 
-extern "C" {
-
 #ifdef PARASOL_STATIC
-extern void CloseCore(void);
-extern ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+__export void CloseCore(void);
+__export ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+#else
+__export struct ModHeader ModHeader;
 #endif
 
 #ifdef MOD_NAME
 #ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) static ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
 #else
-#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1551,8 +1538,6 @@ inline void MSG(CSTRING Message, ...) {
 #endif
 }
 
-}
-
 #define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
 
 namespace pf {
@@ -1574,9 +1559,9 @@ template <class T> T roundup(T Num, LONG Alignment) {
 
 #ifdef _DEBUG
  #ifdef _MSC_VER
-  #define DEBUG_BREAK __asm("int $3");
+  #define DEBUG_BREAK __debugbreak();
  #else
-  #define DEBUG_BREAK asm("int $3");
+  #define DEBUG_BREAK raise(SIGTRAP);
  #endif
 #else
  #define DEBUG_BREAK
@@ -1640,8 +1625,6 @@ struct OpenInfo {
    LONG    Detail;          // OPF::DETAIL
    LONG    ArgCount;        // OPF::ARGS
    ERROR   Error;           // OPF::ERROR
-   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -1800,10 +1783,7 @@ struct Function {
 };
 
 struct ModHeader {
-   LONG    HeaderVersion;                           // The version of this structure.
    MHF     Flags;                                   // Special flags, type of function table wanted from the Core
-   FLOAT   ModVersion;                              // Version of this module
-   FLOAT   CoreVersion;                             // Core version compiled against
    CSTRING Definitions;                             // Module definition string, usable by run-time languages such as Fluid
    ERROR (*Init)(OBJECTPTR, struct CoreBase *);     // A one-off initialisation routine for when the module is first opened.
    void (*Close)(OBJECTPTR);                        // A function that will be called each time the module is closed.
@@ -1811,19 +1791,15 @@ struct ModHeader {
    ERROR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
    CSTRING Name;                                    // Name of the module
    STRUCTS *StructDefs;
-   struct RootModule *Root;
+   class RootModule *Root;
    ModHeader(ERROR (*pInit)(OBJECTPTR, struct CoreBase *),
       void  (*pClose)(OBJECTPTR),
       ERROR (*pOpen)(OBJECTPTR),
       ERROR (*pExpunge)(void),
-      FLOAT pVersion,
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
-      HeaderVersion = MODULE_HEADER_VERSION;
       Flags         = MHF::DEFAULT;
-      ModVersion    = pVersion;
-      CoreVersion   = VER_CORE;
       Definitions   = pDef;
       StructDefs    = pStructs;
       Init          = pInit;
@@ -1855,8 +1831,6 @@ struct FieldDef {
 struct SystemState {
    CSTRING Platform;        // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
    HOSTHANDLE ConsoleFD;    // Internal
-   LONG    CoreVersion;     // Reflects the Core version number.
-   LONG    CoreRevision;    // Reflects the Core revision number.
    LONG    Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
@@ -2724,10 +2698,10 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    OBJECTID UID;                 // Unique object identifier
    OBJECTID OwnerID;             // The owner of this object
    NF       Flags;               // Object flags
-   LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
@@ -4218,15 +4192,14 @@ class objModule : public BaseClass {
 
    using create = pf::Create<objModule>;
 
-   DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
-   APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
-   struct RootModule * Root;                // For internal use only.
+   APTR ModBase;                            // The Module's function base (jump table) must be read from this field.
+   class RootModule * Root;                 // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
-   MOF    Flags;                            // Optional flags.
+   MOF  Flags;                              // Optional flags.
    public:
-   static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
+   static ERROR load(std::string Name, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
          #ifdef PARASOL_STATIC
             if (Module) *Module = module;
             if (Functions) ((APTR *)Functions)[0] = NULL;
@@ -4250,12 +4223,6 @@ class objModule : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setVersion(const DOUBLE Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->Version = Value;
-      return ERR_Okay;
-   }
-
    inline ERROR setFunctionList(const struct Function * Value) {
       this->FunctionList = Value;
       return ERR_Okay;
@@ -4275,7 +4242,7 @@ class objModule : public BaseClass {
 
    template <class T> inline ERROR setName(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 

@@ -14,13 +14,15 @@ idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/font.h"
    FILES "font.cpp"
-   ARGS  "--output-defs=font_def.c" "--output-proto=font_def.c"
+   ARGS  "output-defs=font_def.c" "output-proto=font_def.c"
    APPEND_IDL "font_def.c")
 
 # A bug in (MinGW?) GCC requires that mno-ms-bitfields is applied to ensure that __packed__ works correctly.
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-ms-bitfields")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
+if (NOT MSVC)
+   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-ms-bitfields")
+   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
+endif ()
 
 set (FT_SOURCE
    "${CMAKE_CURRENT_SOURCE_DIR}/freetype-2.10.2/src/autofit/autofit.c"
@@ -51,7 +53,7 @@ target_include_directories (${MOD} PRIVATE
    "freetype-2.10.2/include/freetype/config"
    "freetype-2.10.2/builds/unix")
 
-target_link_libraries (${MOD} PRIVATE "m")
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 
 #-DFT_DEBUG_LEVEL_ERROR -DFT_DEBUG_LEVEL_TRACE
 add_definitions ("-DFT_CONFIG_MODULES_H=<ftmodule.h>" "-DFT_CONFIG_CONFIG_H=<ftconfig.h>" "-DFT2_BUILD_LIBRARY" "-DDLL_EXPORT=1")

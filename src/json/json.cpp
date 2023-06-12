@@ -638,5 +638,5 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, NULL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, NULL, NULL)
 extern "C" struct ModHeader * register_json_module() { return &ModHeader; }

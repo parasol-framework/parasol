@@ -13,7 +13,7 @@ XRANDR_INSTALLED)
 
 if (XRANDR_INSTALLED)
    idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp"
-      ARGS "--output-defs=module_def.c" "--prototypes=static")
+      ARGS "output-defs=module_def.c" "prototypes=static")
 
    link_directories("/usr/X11R6/lib" "/usr/lib")
 
