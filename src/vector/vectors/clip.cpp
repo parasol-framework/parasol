@@ -215,6 +215,8 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 
 //********************************************************************************************************************
 
+#include "clip_def.cpp"
+
 static const ActionArray clClipActions[] = {
    { AC_Draw,      CLIP_Draw },
    { AC_Free,      CLIP_Free },
@@ -223,14 +225,8 @@ static const ActionArray clClipActions[] = {
    { 0, NULL }
 };
 
-static const FieldDef clClipUnits[] = {
-   { "BoundingBox", VUNIT::BOUNDING_BOX },  // Coordinates are relative to the object's bounding box
-   { "UserSpace",   VUNIT::USERSPACE },    // Coordinates are relative to the current viewport
-   { NULL, 0 }
-};
-
 static const FieldArray clClipFields[] = {
-   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clClipUnits },
+   { "Units",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, CLIP_GET_Units, CLIP_SET_Units, &clVectorClipVUNIT },
    { "Transform", FDF_VIRTUAL|FDF_STRING|FDF_W, NULL, CLIP_SET_Transform },
    END_FIELD
 };
