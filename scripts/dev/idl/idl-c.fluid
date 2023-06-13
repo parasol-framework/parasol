@@ -891,6 +891,16 @@ function class(Name, Options, Blueprint, Private, Custom)
 
    local cdef = processClassFields(class, Blueprint)
 
+   if nz(Options.references) then
+      for _, v in pairs(Options.references) do
+         if nz(glCustomTypes[v]) then
+            cdef = cdef .. outputLookup(class.name .. v, glCustomTypes[v].list)
+         else
+            print('Reference to lookup ' .. v .. ' not found.')
+         end
+      end
+   end
+
    class.actions = { }
    if (class.src != nil) then
       -- Process -METHOD- and -FIELD- definitions
@@ -1327,6 +1337,35 @@ function findClassField(class, fieldName)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+
+function outputLookup(Name, List)
+    local sorted = { }
+    for _, v in pairs(List) do
+        table.insert(sorted, v)
+    end
+
+    table.sort(sorted, function(a,b)
+        if (a.value == b.value) then
+            return a.name < b.name
+        else
+            return a.value < b.value
+        end
+    end)
+
+    local list = ''
+    for _, v in ipairs(sorted) do
+        if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
+            -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
+            local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
+            if hash_id:match('^0x[8f][%dabcdef]+') != nil then hash_id = '(LONG)' .. hash_id end
+            list = list .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
+        end
+    end
+
+    return 'static const struct FieldDef cl' .. Name .. '[] = {\n' .. list .. '   { NULL, 0 }\n};\n\n'
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Process the formal field definitions in a class blueprint.
 
 function processClassFields(class, Blueprint)
@@ -1403,29 +1442,7 @@ function processClassFields(class, Blueprint)
          end
 
          if (f.ref != nil) then
-            cdef = cdef .. 'static const struct FieldDef cl' .. class.name .. f.name .. '[] = {\n'
-
-            local sorted = { }
-            for _, v in pairs(f.ref.list) do
-               table.insert(sorted, v)
-            end
-            table.sort(sorted, function(a,b)
-               if (a.value == b.value) then
-                  return a.name < b.name
-               else
-                  return a.value < b.value
-               end
-            end)
-
-            for _, v in ipairs(sorted) do
-               if (v.name:upper() != 'PRIVATE') and (v.name:upper() != 'END') then
-                  -- Note: This unusual formatting solution helps to resolve output problems on 64-bit Linux
-                  local hash_id = '0x' .. string.format('%08x', v.value):sub(-8)
-                  if hash_id:match('^0x[8f][%dabcdef]+') != nil then hash_id = '(LONG)' .. hash_id end
-                  cdef = cdef .. string.format("   { \"%s\", %s },\n", shortName(v.name), hash_id)
-               end
-            end
-            cdef = cdef .. '   { NULL, 0 }\n};\n\n'
+            cdef = cdef .. outputLookup(class.name .. f.name, f.ref.list)
          end
 
          if not nz(f.fullType) then error('The fullType is not defined for field ' .. nz(f.name,'NIL')) end

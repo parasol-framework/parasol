@@ -933,23 +933,15 @@ static const FieldDef clViewDimensions[] = {
    { NULL, 0 }
 };
 
-static const FieldDef clViewOverflow[] = {
-   { "Hidden",  VOF::HIDDEN },
-   { "Visible", VOF::VISIBLE },
-   { "Scroll",  VOF::SCROLL },
-   { "Inherit", VOF::INHERIT },
-   { NULL, 0 }
-};
-
 static const FieldArray clViewFields[] = {
    { "AbsX",         FDF_VIRTUAL|FDF_LONG|FDF_R, VIEW_GET_AbsX },
    { "AbsY",         FDF_VIRTUAL|FDF_LONG|FDF_R, VIEW_GET_AbsY },
    { "AspectRatio",  FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, VIEW_GET_AspectRatio, VIEW_SET_AspectRatio, &clAspectRatio },
    { "Dimensions",   FDF_VIRTUAL|FDF_LONGFLAGS|FDF_R, VIEW_GET_Dimensions, VIEW_SET_Dimensions, &clViewDimensions },
    { "DragCallback", FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, VIEW_GET_DragCallback, VIEW_SET_DragCallback },
-   { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_Overflow, VIEW_SET_Overflow, &clViewOverflow },
-   { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowX, VIEW_SET_OverflowX, &clViewOverflow },
-   { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowY, VIEW_SET_OverflowY, &clViewOverflow },
+   { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_Overflow, VIEW_SET_Overflow, &clVectorViewportVOF },
+   { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowX, VIEW_SET_OverflowX, &clVectorViewportVOF },
+   { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowY, VIEW_SET_OverflowY, &clVectorViewportVOF },
    { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_X,       VIEW_SET_X },
    { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_Y,       VIEW_SET_Y },
    { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_XOffset, VIEW_SET_XOffset },

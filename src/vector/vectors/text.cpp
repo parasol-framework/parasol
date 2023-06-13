@@ -2358,15 +2358,6 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 
 #include "text_def.cpp"
 
-static const FieldDef clTextFlags[] = {
-   { "Underline",   VTXF::UNDERLINE },
-   { "Overline",    VTXF::OVERLINE },
-   { "LineThrough", VTXF::LINE_THROUGH },
-   { "Blink",       VTXF::BLINK },
-   { "Editable",    VTXF::EDITABLE },
-   { NULL, 0 }
-};
-
 static const FieldDef clTextAlign[] = {
    { "Left",       ALIGN::LEFT },
    { "Horizontal", ALIGN::HORIZONTAL },
@@ -2375,21 +2366,6 @@ static const FieldDef clTextAlign[] = {
    { "Start",      ALIGN::LEFT },
    { "Middle",     ALIGN::HORIZONTAL },
    { "End",        ALIGN::RIGHT },
-   { NULL, 0 }
-};
-
-static const FieldDef clTextStretch[] = {
-   { "Normal",         VTS::NORMAL },
-   { "Wider",          VTS::WIDER },
-   { "Narrower",       VTS::NARROWER },
-   { "UltraCondensed", VTS::ULTRA_CONDENSED },
-   { "ExtraCondensed", VTS::EXTRA_CONDENSED },
-   { "Condensed",      VTS::CONDENSED },
-   { "SemiCondensed",  VTS::SEMI_CONDENSED },
-   { "Expanded",       VTS::EXPANDED },
-   { "SemiExpanded",   VTS::SEMI_EXPANDED },
-   { "ExtraExpanded",  VTS::EXTRA_EXPANDED },
-   { "UltraExpanded",  VTS::ULTRA_EXPANDED },
    { NULL, 0 }
 };
 
@@ -2410,7 +2386,7 @@ static const FieldArray clTextFields[] = {
    { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeInside, TEXT_SET_ShapeInside, ID_VECTOR },
    { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeSubtract, TEXT_SET_ShapeSubtract, ID_VECTOR },
    { "TextLength",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_TextLength, TEXT_SET_TextLength },
-   { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Flags, TEXT_SET_Flags, &clTextFlags },
+   { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Flags, TEXT_SET_Flags, &clVectorTextVTXF },
    { "TextWidth",     FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_TextWidth },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_StartOffset, TEXT_SET_StartOffset },
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },

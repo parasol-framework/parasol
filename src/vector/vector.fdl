@@ -537,7 +537,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     { id=30, name="DeleteLine" }
   })
 
-  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp"  })
+  class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp", references={ 'VTXF', 'VTS' }  })
 
   class('VectorWave', { base='Vector', src='vectors/wave.cpp' })
 
@@ -551,10 +551,10 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 
   class('VectorEllipse', { base='Vector', src='vectors/ellipse.cpp' })
 
-  class('VectorClip', { base='Vector', src='vectors/clip.cpp' })
+  class('VectorClip', { base='Vector', references={ 'VUNIT' }, src='vectors/clip.cpp', output='vectors/clip_def.cpp' })
 
-  class('VectorViewport', { base='Vector', src='vectors/viewport.cpp', output="vectors/viewport_def.cpp" })
-
+  class('VectorViewport', { base='Vector', references={ 'VOF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
+   
   functionNames("vec",
     "DrawPath",
     "FreePath",
