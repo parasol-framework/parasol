@@ -215,7 +215,7 @@ static ERROR CLIP_SET_Units(extVectorClip *Self, VUNIT Value)
 
 //********************************************************************************************************************
 
-#include "vectors/clip_def.cpp"
+#include "clip_def.cpp"
 
 static const ActionArray clClipActions[] = {
    { AC_Draw,      CLIP_Draw },
