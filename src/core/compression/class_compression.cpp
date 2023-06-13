@@ -55,14 +55,6 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 #include <parasol/main.h>
 #include <sstream>
 
-#ifdef __GNUC__
-#define PACK(D) D __attribute__((__packed__))
-#endif
-
-#ifdef _MSC_VER
-#define PACK(D) __pragma(pack(push, 1)) D __pragma(pack(pop))
-#endif
-
 //********************************************************************************************************************
 // Central folder structure for each archived file.  This appears at the end of the zip file.
 
