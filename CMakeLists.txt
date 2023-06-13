@@ -41,7 +41,7 @@ cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they
 # To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 
 option (PARASOL_STATIC   "Build framework as a set of static libraries instead of the default modular build." OFF)
-option (PARASOL_INSTALL  "Create installation targets (chain builders may want to disable this)" ON)
+option (PARASOL_INSTALL  "Create installation targets" ON)
 option (PARASOL_VLOG     "Enable verbose log messages in the generated binaries" OFF)
 if (UNIX)
    option (RUN_ANYWHERE  "Build a framework that can run directly from the main folder.  Typically used if redefining CMAKE_INSTALL_PREFIX" OFF)
