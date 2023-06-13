@@ -12,6 +12,14 @@
 #define strcasecmp _stricmp
 #endif
 
+#ifdef __GNUC__
+#define PACK(D) D __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK(D) __pragma(pack(push, 1)) D __pragma(pack(pop))
+#endif
+
 #include <parasol/system/types.h>
 #include <parasol/vector.hpp>
 #include <parasol/system/registry.h>
