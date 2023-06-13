@@ -25,7 +25,7 @@ static const struct FieldDef clDisplayFlags[] = {
 static const struct FieldDef clDisplayDisplayType[] = {
    { "Native", 0x00000001 },
    { "X11", 0x00000002 },
-   { "Windows", 0x00000003 },
+   { "Wingdi", 0x00000003 },
    { "Gles", 0x00000004 },
    { NULL, 0 }
 };

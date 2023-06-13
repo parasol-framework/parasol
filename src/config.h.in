@@ -2,7 +2,6 @@
 #define PLATFORM_CONFIG_H
 
 #cmakedefine PARASOL_STATIC
-#cmakedefine PARASOL_SHARED
 
 #cmakedefine CMAKE_SYSTEM_NAME @CMAKE_SYSTEM_NAME@
 #cmakedefine CMAKE_SIZEOF_VOID_P @CMAKE_SIZEOF_VOID_P@
@@ -16,9 +15,31 @@
 #define INLINE static inline
 #endif
 
+#if defined(_MSC_VER)
+#define THREADVAR __declspec( thread )
+#else
 #define THREADVAR __thread
+#endif
 
 #cmakedefine REVERSE_BYTEORDER
+
+#ifdef PARASOL_STATIC
+#cmakedefine INC_MOD_AUDIO
+#cmakedefine INC_MOD_DISPLAY
+#cmakedefine INC_MOD_FLUID
+#cmakedefine INC_MOD_FONT
+#cmakedefine INC_MOD_HTTP
+#cmakedefine INC_MOD_JPEG
+#cmakedefine INC_MOD_JSON
+#cmakedefine INC_MOD_MP3
+#cmakedefine INC_MOD_NETWORK
+#cmakedefine INC_MOD_PICTURE
+#cmakedefine INC_MOD_SCINTILLA
+#cmakedefine INC_MOD_SVG
+#cmakedefine INC_MOD_VECTOR
+#cmakedefine INC_MOD_XML
+#cmakedefine INC_MOD_XRANDR
+#endif
 
 /*****************************************************************************
 ** Standard data types.
@@ -107,7 +128,6 @@ typedef void * APTR;           // 32 or 64 bit untyped pointer
 typedef char * STRING;         // string pointer (NULL terminated)
 typedef char * SSTRING;        // signed string pointer (NULL terminated)
 typedef const char * CSTRING;
-typedef const char * CSSTRING; // Obsolete
 typedef void * OBJECT;           // Object pointer
 typedef struct BaseClass * OBJECTPTR; // Object pointer
 typedef LARGE EVENTID;
@@ -124,15 +144,15 @@ typedef void * OBJECT64 __attribute__ ((aligned (8)));  // 64-bit untyped object
 typedef struct BaseClass * OBJECTPTR64 __attribute__ ((aligned (8))); // 64-bit typed object pointer
 #endif
 
-#ifdef _WIN32
-#ifndef _WINDEF_H
-#define __export __declspec(dllexport)
-#endif
+#ifdef _MSC_VER
+ #define __export extern "C" __declspec(dllexport)
+#elif _WIN32
+ #if !defined(_WINDEF_H)
+  #define __export extern "C" __declspec(dllexport)
+ #endif
 #else
-#define __export
+ #define __export  extern "C"
 #endif
-
-#define EXPORT __export
 
 #ifndef __arm__
 #define __x86__         // Does the CPU support the x86 instruction set? (i486 minimum)

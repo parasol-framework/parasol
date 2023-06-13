@@ -32,9 +32,10 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 
 using namespace pf;
 
-MODULE_COREBASE;
-struct DisplayBase *DisplayBase;
-struct VectorBase *VectorBase;
+JUMPTABLE_CORE
+JUMPTABLE_DISPLAY
+JUMPTABLE_VECTOR
+
 static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL;
 
 struct prvSVG { // Private variables for RSVG
@@ -128,15 +129,15 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
-   if (objModule::load("vector", MODVERSION_VECTOR, &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("vector", &modVector, &VectorBase) != ERR_Okay) return ERR_InitModule;
 
    if (init_svg()) return ERR_AddClass;
    if (init_rsvg()) return ERR_AddClass;
    return ERR_Okay;
 }
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
    if (modVector)  { FreeResource(modVector);  modVector = NULL; }
@@ -153,4 +154,5 @@ ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
+extern "C" struct ModHeader * register_svg_module() { return &ModHeader; }

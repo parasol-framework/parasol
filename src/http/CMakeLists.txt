@@ -1,6 +1,7 @@
 # HTTP Module
 
 set (MOD http)
+set (INC_MOD_HTTP TRUE PARENT_SCOPE)
 
 # Use XXD to convert the auth.fluid script to a C binary file
 
@@ -20,7 +21,7 @@ endif ()
 
 idl_all ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" APPEND_IDL "${MOD}_def.c")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 set_module_defaults (${MOD})
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "auth.c")
 

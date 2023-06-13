@@ -1,7 +1,9 @@
 
 #define PRV_VECTOR_MODULE
 
-#define DBG_TRANSFORM(args...) //log.trace(args)
+template<class... Args> void DBG_TRANSFORM(Args...) {
+   //log.trace(Args)
+}
 
 #define FIXED_DPI 96 // Freetype measurements are based on this DPI.
 #define FT_DOWNSIZE 6
@@ -49,7 +51,7 @@ using namespace pf;
 //#include "agg_conv_marker.h"
 //#include "agg_vcgen_markers_term.h"
 
-#include <parasol/linear_rgb.h>
+#include "../link/linear_rgb.h"
 
 #include <math.h>
 #define __STDC_FORMAT_MACROS
@@ -64,17 +66,14 @@ extern OBJECTPTR clVectorSpiral, clVectorShape, clVectorTransition, clImageFX, c
 extern OBJECTPTR clBlurFX, clColourFX, clCompositeFX, clConvolveFX, clFilterEffect, clDisplacementFX;
 extern OBJECTPTR clFloodFX, clMergeFX, clMorphologyFX, clOffsetFX, clTurbulenceFX, clRemapFX, clLightingFX;
 
-extern struct DisplayBase *DisplayBase;
-extern struct FontBase *FontBase;
-
 typedef agg::pod_auto_array<agg::rgba8, 256> GRADIENT_TABLE;
-typedef class objVectorTransition;
-typedef class extVectorText;
-typedef class extVector;
-typedef class extVectorScene;
-typedef class extFilterEffect;
-typedef class extVectorViewport;
-typedef class extVectorClip;
+class objVectorTransition;
+class extVectorText;
+class extVector;
+class extVectorScene;
+class extFilterEffect;
+class extVectorViewport;
+class extVectorClip;
 
 //********************************************************************************************************************
 
@@ -326,7 +325,7 @@ struct TabOrderedVector {
    bool operator()(const extVector *a, const extVector *b) const;
 };
 
-__inline__ bool TabOrderedVector::operator()(const extVector *a, const extVector *b) const {
+inline bool TabOrderedVector::operator()(const extVector *a, const extVector *b) const {
    if (a->TabOrder == b->TabOrder) return a->UID < b->UID;
    else return a->TabOrder < b->TabOrder;
 }
@@ -343,7 +342,7 @@ class extVectorScene : public objVectorScene {
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
-   std::vector<struct InputBoundary> InputBoundaries;
+   std::vector<InputBoundary> InputBoundaries;
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
@@ -480,8 +479,8 @@ extern ERROR render_filter(extVectorFilter *, extVectorViewport *, extVector *, 
 extern objBitmap * get_source_graphic(extVectorFilter *);
 
 extern const FieldDef clAspectRatio[];
-extern std::recursive_mutex glFocusLock;
-extern std::vector<extVector *> glFocusList; // The first reference is the most foreground object with the focus
+extern std::recursive_mutex glVectorFocusLock;
+extern std::vector<extVector *> glVectorFocusList; // The first reference is the most foreground object with the focus
 
 //********************************************************************************************************************
 // Mark a vector and all its children as needing some form of recomputation.
@@ -671,7 +670,7 @@ public:
    int8u * next_y() {
       ++m_y;
       m_x = m_x0;
-      if (m_pix_ptr and m_y >= 0 and m_y < m_src->height()) {
+      if (m_pix_ptr and m_y >= 0 and m_y < int(m_src->height())) {
          return m_pix_ptr = m_src->row_ptr(m_y) + (m_x * m_src->mBytesPerPixel);
       }
       m_pix_ptr = 0;
@@ -901,29 +900,30 @@ void configure_stroke(extVector &Vector, T &Stroke)
 extern agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma;
 
 extern void get_text_xy(extVectorText *);
-extern void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
-extern ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
-extern void  vecClosePath(class SimpleVector *);
-extern void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
-extern void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
-extern ERROR vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
-extern void  vecFreePath(APTR);
-extern ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
-extern ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
-extern ERROR vecGeneratePath(CSTRING, APTR *);
-extern LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
-extern void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
-extern ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
-extern ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern ERROR  vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
-extern ERROR vecResetMatrix(struct VectorMatrix *);
-extern void  vecRewindPath(class SimpleVector *);
-extern ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
-extern ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
-extern void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-extern ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
-extern void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);
+
+extern "C" void  vecArcTo(class SimpleVector *, DOUBLE RX, DOUBLE RY, DOUBLE Angle, DOUBLE X, DOUBLE Y, ARC Flags);
+extern "C" ERROR vecApplyPath(class SimpleVector *, extVectorPath *);
+extern "C" void  vecClosePath(class SimpleVector *);
+extern "C" void  vecCurve3(class SimpleVector *, DOUBLE CtrlX, DOUBLE CtrlY, DOUBLE X, DOUBLE Y);
+extern "C" void  vecCurve4(class SimpleVector *, DOUBLE CtrlX1, DOUBLE CtrlY1, DOUBLE CtrlX2, DOUBLE CtrlY2, DOUBLE X, DOUBLE Y);
+extern "C" ERROR vecDrawPath(objBitmap *, class SimpleVector *, DOUBLE StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle);
+extern "C" void  vecFreePath(APTR);
+extern "C" ERROR vecGenerateEllipse(DOUBLE, DOUBLE, DOUBLE, DOUBLE, LONG, APTR *);
+extern "C" ERROR vecGenerateRectangle(DOUBLE, DOUBLE, DOUBLE, DOUBLE, APTR *);
+extern "C" ERROR vecGeneratePath(CSTRING, APTR *);
+extern "C" LONG  vecGetVertex(class SimpleVector *, DOUBLE *, DOUBLE *);
+extern "C" void  vecLineTo(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
+extern "C" ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
+extern "C" ERROR vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+extern "C" ERROR vecResetMatrix(struct VectorMatrix *);
+extern "C" void  vecRewindPath(class SimpleVector *);
+extern "C" ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERROR vecScale(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" ERROR vecSkew(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" void  vecSmooth3(class SimpleVector *, DOUBLE, DOUBLE);
+extern "C" void  vecSmooth4(class SimpleVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+extern "C" ERROR vecTranslate(struct VectorMatrix *, DOUBLE, DOUBLE);
+extern "C" void  vecTranslatePath(class SimpleVector *, DOUBLE, DOUBLE);

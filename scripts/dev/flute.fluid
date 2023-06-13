@@ -83,7 +83,7 @@ end
       print("")
       print("Example usage:")
       print("")
-      print("   fluid flute.fluid file=[file]")
+      print("   parasol flute.fluid file=[file]")
       print("")
       return
    end

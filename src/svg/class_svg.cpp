@@ -263,7 +263,7 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
          LONG index = xml->Tags.back().ID;
 
          XMLTag *tag;
-         if (!(error = xmlInsertXML(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
+         if (!(error = xmlInsertStatement(*xml, index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag))) {
             bool multiple_viewports = (Self->Scene->Viewport->Next) ? true : false;
             if (multiple_viewports) {
                if (!(error = save_svg_defs(Self, *xml, Self->Scene, index))) {

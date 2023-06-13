@@ -167,7 +167,7 @@ static ERROR set_playback_trigger(extSound *Self)
 #endif
 
 #ifdef _WIN32
-void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
+extern "C" void end_of_stream(OBJECTPTR Object, LONG BytesRemaining)
 {
    if (Object->Class->BaseClassID IS ID_SOUND) {
       auto Self = (extSound *)Object;

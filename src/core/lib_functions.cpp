@@ -404,6 +404,7 @@ LARGE GetResource(RES Resource)
 #ifdef __linux__
    struct sysinfo sys;
 #endif
+   extern char glIDL[];
 
    switch(Resource) {
       case RES::PRIVILEGED:      return glPrivileged;
@@ -416,6 +417,13 @@ LARGE GetResource(RES Resource)
       case RES::THREAD_ID:       return (MAXINT)get_thread_id();
       case RES::CORE_IDL:        return (MAXINT)glIDL;
       case RES::DISPLAY_DRIVER:  if (glDisplayDriver[0]) return (MAXINT)glDisplayDriver; else return 0;
+
+      case RES::STATIC_BUILD:
+         #ifdef PARASOL_STATIC
+            return 1;
+         #else
+            return 0;
+         #endif
 
       case RES::PARENT_CONTEXT: {
          // Return the first parent context that differs to the current context.  This avoids any confusion
@@ -525,9 +533,7 @@ const SystemState * GetSystemState(void)
    if (!initialised) {
       initialised = true;
 
-      state.ConsoleFD     = glConsoleFD;
-      state.CoreVersion   = VER_CORE;
-      state.CoreRevision  = REV_CORE;
+      state.ConsoleFD = glConsoleFD;
       #ifdef __unix__
          state.Platform = "Linux";
       #elif _WIN32

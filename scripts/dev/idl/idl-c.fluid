@@ -872,15 +872,19 @@ function class(Name, Options, Blueprint, Private, Custom)
 
    if (type(class.src) == 'string') then class.src = { class.src } end -- Convert string to an array of strings
 
-   -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
-   -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
+   if (mSys.GetResource(RES_STATIC_BUILD) == 0) then
+      -- Attempt to load the class into memory.  This introduces a circular reference when the module is not yet
+      -- compiled, so the meta information may only be used for phase 2 output (i.e. documentation).
 
-   if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
-      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
-   else
-      if (glFeedback == 'verbose') then
-         print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
+      if (mSys.AnalysePath('~modules:' .. glModule.name) == ERR_Okay) then
+         class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
+      else
+         if (glFeedback == 'verbose') then
+            print('Module ' .. glModule.name .. ' not compiled, class documentation will not be produced.')
+         end
       end
+   else
+      class.meta = mSys.FindClass(mSys.StrHash(Name, false), 0)
    end
 
    -- Process methods and fields defined in the source code (if available)
@@ -1596,7 +1600,7 @@ function outputClassHeader(class, Private, Custom)
                   elseif bit.band(f.flags, FD_ARRAY) != 0 then
                      if bit.band(f.flags, FD_CPP) != 0 then
                         local flags = string.format('%08x', f.flags):sub(-8)
-                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Value->size());')
+                        output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, LONG(Value->size()));')
                      else
                         local flags = string.format('%08x', f.flags):sub(-8)
                         output(indent .. 'return field->WriteValue(target, field, 0x' .. flags .. ', Value, Elements);')
@@ -1734,6 +1738,9 @@ function functionNames(Prefix, ...)
          macro = function() -- Default macro, to be overridden by documented function
             return 'template <typename... Args> inline ERROR ' .. glFunctionPrefix:lower() .. fname ..
                '(Args... pArgs) { return ' .. glModule.name .. 'Base->_' .. fname .. '(pArgs...); }'
+         end,
+         staticMacro = function()
+            return 'template <typename... Args> ERROR ' .. glFunctionPrefix:lower() .. fname .. '(Args... pArgs);'
          end
       }
 
@@ -2046,7 +2053,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       error("Function '" .. Name .. "' is not declared in the FDL.  Known functions are:\n" .. list)
    end
 
-   func.status      = Status
+   if (Status) then func.status = Status:lower() end
    func.comment     = Comment
    func.description = Description
    func.category    = Category
@@ -2061,7 +2068,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
 
    local outValues  = ""
    local argSeq     = ""
-   local baseArgs
+   local jumpArgs
    local proto      = ""
    local doc_proto  = ""
    local variadic   = false
@@ -2089,7 +2096,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             if (param.type == "APTR *") or (param.type == "OBJECTPTR *") then
                argSeq = argSeq .. "APTR " .. param.name
             elseif (param.type == '...') then
-               baseArgs = argSeq .. "..."
+               jumpArgs = argSeq .. "..."
                argSeq = argSeq .. "Args... Tags"
             else
                argSeq = argSeq .. param.type .. " " .. cName(param)
@@ -2127,19 +2134,19 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    end
 
    if Def.ext_proto then
-      baseArgs = Def.ext_proto
+      jumpArgs = Def.ext_proto
       argSeq   = Def.ext_proto
       if (string.sub(argSeq, -3) == '...') then
          argSeq = string.sub(argSeq, 1, -4) .. "Args... Tags"
       end
-   elseif not baseArgs then
-      baseArgs = argSeq
+   elseif not jumpArgs then
+      jumpArgs = argSeq
    end
 
    -- The func.def is used for building the jump table
    func.def = "   " .. nz(response.type,"NIL")
    if Def.attrib then func.def = func.def .. " " .. nz(Def.attrib,"") end
-   func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(baseArgs,"void") .. ");"
+   func.def = func.def  .. " (*_" .. func.name .. ")(" .. nz(jumpArgs,"void") .. ");"
 
    func.c_proto = proto
    func.doc_proto = doc_proto
@@ -2151,11 +2158,21 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
       end
+
+      func.staticMacro = function()
+         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(jumpArgs,"void") .. ");"
+      end
    else
       func.macro = function()
          return "inline " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
             "(" .. nz(argSeq,"void") .. ")" ..
             " { return " .. glModule.name .. "Base->_" .. func.name .. "(" .. nz(outValues,"") .. "); }"
+      end
+
+      func.staticMacro = function()
+         return "extern " .. nz(response.type,"NIL") .. " " .. glFunctionPrefix:lower() .. func.name ..
+            "(" .. nz(jumpArgs,"void") .. ");"
       end
    end
 end
@@ -2211,20 +2228,39 @@ function saveOutput()
       for a=1, #glOutput do
          if (glOutput[a] == "__FUNCTION_TABLE__") then
             local out = ''
-            out = "struct " .. glModule.name .. "Base {\n"
+            out = out .. "#ifdef PARASOL_STATIC\n"
+            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " static struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out = out .. "#else\n"
+            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out = out .. "#endif\n\n"
+
+            out = out .. "struct " .. glModule.name .. "Base {\n"
+            out = out .. "#ifndef PARASOL_STATIC\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.def) then
                   out = out .. func.def .. "\n"
                end
             end
+            out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "};\n\n"
             out = out .. "#ifndef PRV_" .. glModule.name:upper() .. "_MODULE\n"
+
+            out = out .. "#ifndef PARASOL_STATIC\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
             for k, func in ipairs(glFunctions) do
                if nz(func.macro) then
                   out = out .. func.macro() .. "\n"
                end
             end
+            out = out .. "#else\n"
+            out = out .. 'extern "C" {\n'
+            for k, func in ipairs(glFunctions) do
+               if nz(func.staticMacro) and (func.status != 'private') then
+                  out = out .. func.staticMacro() .. "\n"
+               end
+            end
+            out = out .. "}\n"
+            out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "#endif\n\n"
             file.acWrite(out, out:len())
          else
@@ -2266,7 +2302,7 @@ function buildPrototypes()
    end
 
    if nz(glFunctions) then
-      local proto = '#ifdef  __cplusplus\nextern "C" {\n#endif\n\n'
+      local proto = 'extern "C" {\n'
 
       for k, func in ipairs(glFunctions) do
          if (glPrototypes == "static") then proto = proto .. "static " end
@@ -2282,7 +2318,7 @@ function buildPrototypes()
          func.docPrototype = nz(func.c_response,"void") .. " " .. nz(glFunctionPrefix,"") .. func.name .. "(" .. nz(func.doc_proto,"") .. ")"
          proto = proto .. func.prototype .. ";\n"
       end
-      proto = proto .. '\n#ifdef  __cplusplus\n}\n#endif\n'
+      proto = proto .. '\n} // extern c\n'
       return proto
    else
       return ""
@@ -2422,12 +2458,12 @@ end
       print("source '.fdl' file in the src parameter.  The resulting data will be saved to the file")
       print("referenced in the output parameter.")
       print("")
-      print("  --src          Source FDL file.")
-      print("  --output       Target file for generated C++ headers.")
-      print("  --feedback     Set to 'verbose' to print debug messages.")
-      print("  --output-defs  Target file for generated C++ value definitions.")
-      print("  --output-proto Target file for generated C++ function prototypes.")
-      print("  --prototypes   Set to 'static' to output static prototype functions.")
+      print("  src          Source FDL file.")
+      print("  output       Target file for generated C++ headers.")
+      print("  feedback     Set to 'verbose' to print debug messages.")
+      print("  output-defs  Target file for generated C++ value definitions.")
+      print("  output-proto Target file for generated C++ function prototypes.")
+      print("  prototypes   Set to 'static' to output static prototype functions.")
       return
    end
 
@@ -2457,20 +2493,31 @@ end
 
       local protoDef = buildPrototypes()
 
-      if (glOutputDefs != nil) then
-         local file = obj.new('file', { flags='WRITE|NEW', location=glOutputDefs } )
-         file.acWrite('// Auto-generated by idl-c.fluid\n\n')
-         if (glOutputProto == glOutputDefs) then
-            glOutputProto = nil
-            file.acWrite(protoDef)
-         end
-         file.acWrite(buildDefs())
+      if nz(glOutputDefs) then
+         catch(function()
+            local file = obj.new('file', { flags='WRITE|NEW', location=glOutputDefs } )
+            file.acWrite('// Auto-generated by idl-c.fluid\n\n')
+            if (glOutputProto == glOutputDefs) and nz(protoDef) then
+               glOutputProto = nil
+               file.acWrite(protoDef)
+            end
+            local defs = buildDefs()
+            if nz(defs) then file.acWrite(defs) end
+         end,
+         function(Exception)
+            error('Failed to open or write file "' .. glOutputDefs .. '" ' .. Exception.message)
+         end)
       end
 
-      if (glOutputProto != nil) then
-         local file = obj.new('file', { flags='WRITE|NEW', location=glOutputProto } )
-         file.acWrite('// Auto-generated by idl-c.fluid\n\n')
-         file.acWrite(protoDef)
+      if nz(glOutputProto) then
+         catch(function()
+            local file = obj.new('file', { flags='WRITE|NEW', location=glOutputProto } )
+            file.acWrite('// Auto-generated by idl-c.fluid\n\n')
+            if nz(protoDef) then file.acWrite(protoDef) end
+         end,
+         function(Exception)
+            error('Failed to open or write file "' .. glOutputProto .. '" ' .. Exception.message)
+         end)
       end
 
       saveDocuments()

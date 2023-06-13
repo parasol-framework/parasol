@@ -1,9 +1,9 @@
 # JPEG module
 
 set (MOD jpeg)
+set (INC_MOD_JPEG TRUE PARENT_SCOPE)
 
-add_library (${MOD} SHARED)
-
+add_library (${MOD})
 set_module_defaults (${MOD})
 
 set_source_files_properties(
@@ -107,4 +107,4 @@ target_sources (${MOD} PRIVATE
 
 target_include_directories (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
-target_link_libraries (${MOD} PRIVATE "m")
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})

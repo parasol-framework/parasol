@@ -56,7 +56,8 @@ It will be translated to the following when loaded into an XML object:
 #include <algorithm>
 #include <sstream>
 
-MODULE_COREBASE;
+JUMPTABLE_CORE
+
 static OBJECTPTR clJSON = NULL;
 
 static ERROR JSON_Init(objXML *, APTR);
@@ -94,7 +95,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return ERR_AddClass;
 }
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (clJSON) { FreeResource(clJSON); clJSON = NULL; }
    return ERR_Okay;
@@ -637,4 +638,5 @@ static ERROR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, 1.0, NULL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, NULL, NULL)
+extern "C" struct ModHeader * register_json_module() { return &ModHeader; }

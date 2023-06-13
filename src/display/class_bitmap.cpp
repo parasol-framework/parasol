@@ -38,6 +38,10 @@ actions.
 #include "defs.h"
 
 #ifdef _WIN32
+using namespace display;
+#endif
+
+#ifdef _WIN32
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
 
@@ -164,6 +168,182 @@ FDEF argsReadUCPixel[]  = { { "Value", FD_LONG }, { "Bitmap", FD_OBJECTPTR }, { 
 FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
 FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
 FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
+
+//********************************************************************************************************************
+// Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
+// memory.  These functions are internal, if the user wants to lock a bitmap surface then the Lock() action must be
+// called on the bitmap.
+//
+// Please note: Regarding SURFACE_READ, using this flag will cause the video content to be copied to the bitmap buffer.
+// If you do not need this overhead because the bitmap content is going to be refreshed, then specify SURFACE_WRITE
+// only.  You will still be able to read the bitmap content with the CPU, it just avoids the copy overhead.
+
+#ifdef _WIN32
+
+ERROR lock_surface(extBitmap *Bitmap, WORD Access)
+{
+   if (!Bitmap->Data) {
+      pf::Log log(__FUNCTION__);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
+      return ERR_FieldNotSet;
+   }
+
+   return ERR_Okay;
+}
+
+ERROR unlock_surface(extBitmap *Bitmap)
+{
+   return ERR_Okay;
+}
+
+#elif __xwindows__
+
+ERROR lock_surface(extBitmap *Bitmap, WORD Access)
+{
+   LONG size;
+   WORD alignment;
+
+   if (((Bitmap->Flags & BMF::X11_DGA) != BMF::NIL) and (glDGAAvailable)) {
+      return ERR_Okay;
+   }
+   else if ((Bitmap->x11.drawable) and (Access & SURFACE_READ)) {
+      // If there is an existing readable area, try to reuse it if possible
+      if (Bitmap->x11.readable) {
+         if ((Bitmap->x11.readable->width >= Bitmap->Width) and (Bitmap->x11.readable->height >= Bitmap->Height)) {
+            if (Access & SURFACE_READ) {
+               XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
+                  Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+                  Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
+                  Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+            }
+            return ERR_Okay;
+         }
+         else XDestroyImage(Bitmap->x11.readable);
+      }
+
+      // Generate a fresh XImage from the current drawable
+
+      if (Bitmap->LineWidth & 0x0001) alignment = 8;
+      else if (Bitmap->LineWidth & 0x0002) alignment = 16;
+      else alignment = 32;
+
+      if (Bitmap->Type IS BMP::PLANAR) {
+         size = Bitmap->LineWidth * Bitmap->Height * Bitmap->BitsPerPixel;
+      }
+      else size = Bitmap->LineWidth * Bitmap->Height;
+
+      Bitmap->Data = (UBYTE *)malloc(size);
+
+      if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
+           ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
+         if (Access & SURFACE_READ) {
+            XGetSubImage(XDisplay, Bitmap->x11.drawable, Bitmap->XOffset + Bitmap->Clip.Left,
+               Bitmap->YOffset + Bitmap->Clip.Top, Bitmap->Clip.Right - Bitmap->Clip.Left,
+               Bitmap->Clip.Bottom - Bitmap->Clip.Top, 0xffffffff, ZPixmap, Bitmap->x11.readable,
+               Bitmap->XOffset + Bitmap->Clip.Left, Bitmap->YOffset + Bitmap->Clip.Top);
+         }
+         return ERR_Okay;
+      }
+      else return ERR_Failed;
+   }
+   return ERR_Okay;
+}
+
+ERROR unlock_surface(extBitmap *Bitmap)
+{
+   return ERR_Okay;
+}
+
+#elif _GLES_
+
+ERROR lock_surface(extBitmap *Bitmap, WORD Access)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) {
+      // MEM::VIDEO represents the video display in OpenGL.  Read/write CPU access is not available to this area but
+      // we can use glReadPixels() to get a copy of the framebuffer and then write changes back.  Because this is
+      // extremely bad practice (slow), a debug message is printed to warn the developer to use a different code path.
+      //
+      // Practically the only reason why we allow this is for unusual measures like taking screenshots, grabbing the display for debugging, development testing etc.
+
+      log.warning("Warning: Locking of OpenGL video surfaces for CPU access is bad practice (bitmap: #%d, mem: $%.8x)", Bitmap->UID, Bitmap->DataFlags);
+
+      if (!Bitmap->Data) {
+         if (AllocMemory(Bitmap->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Bitmap->DataFlags, &Bitmap->Data) != ERR_Okay) {
+            return log.warning(ERR_AllocMemory);
+         }
+         Bitmap->prvAFlags |= BF_DATA;
+      }
+
+      if (!lock_graphics_active(__func__)) {
+         if (Access & SURFACE_READ) {
+            //glPixelStorei(GL_PACK_ALIGNMENT, 1); Might be required if width is not 32-bit aligned (i.e. 16 bit uneven width?)
+            glReadPixels(0, 0, Bitmap->Width, Bitmap->Height, Bitmap->prvGLPixel, Bitmap->prvGLFormat, Bitmap->Data);
+         }
+
+         if (Access & SURFACE_WRITE) Bitmap->prvWriteBackBuffer = TRUE;
+         else Bitmap->prvWriteBackBuffer = FALSE;
+
+         unlock_graphics();
+      }
+
+      return ERR_Okay;
+   }
+   else if ((Bitmap->DataFlags & MEM::TEXTURE) != MEM::NIL) {
+      // Using the CPU on BLIT bitmaps is banned - it is considered to be poor programming.  Instead,
+      // MEM::DATA bitmaps should be used when R/W CPU access is desired to a bitmap.
+
+      return log.warning(ERR_NoSupport);
+   }
+
+   if (!Bitmap->Data) {
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.  Memory flags: $%.8x", Bitmap->UID, Bitmap->DataFlags);
+      return ERR_FieldNotSet;
+   }
+
+   return ERR_Okay;
+}
+
+ERROR unlock_surface(extBitmap *Bitmap)
+{
+   if (((Bitmap->DataFlags & MEM::VIDEO) != MEM::NIL) and (Bitmap->prvWriteBackBuffer)) {
+      if (!lock_graphics_active(__func__)) {
+         #ifdef GL_DRAW_PIXELS
+            glDrawPixels(Bitmap->Width, Bitmap->Height, pixel_type, format, Bitmap->Data);
+         #else
+            GLenum glerror;
+            GLuint texture_id;
+            if ((glerror = alloc_texture(Bitmap->Width, Bitmap->Height, &texture_id)) IS GL_NO_ERROR) { // Create a new texture space and bind it.
+               //(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
+               glTexImage2D(GL_TEXTURE_2D, 0, Bitmap->prvGLPixel, Bitmap->Width, Bitmap->Height, 0, Bitmap->prvGLPixel, Bitmap->prvGLFormat, Bitmap->Data); // Copy the bitmap content to the texture. (Target, Level, Bitmap, Border)
+               if ((glerror = glGetError()) IS GL_NO_ERROR) {
+                  // Copy graphics to the frame buffer.
+
+                  glClearColor(0, 0, 0, 1.0);
+                  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+                  glColor4f(1.0f, 1.0f, 1.0f, 1.0f);    // Ensure colour is reset.
+                  glDrawTexiOES(0, 0, 1, Bitmap->Width, Bitmap->Height);
+                  glBindTexture(GL_TEXTURE_2D, 0);
+                  eglSwapBuffers(glEGLDisplay, glEGLSurface);
+               }
+               else log.warning(ERR_OpenGL);
+
+               glDeleteTextures(1, &texture_id);
+            }
+            else log.warning(ERR_OpenGL);
+         #endif
+
+         unlock_graphics();
+      }
+
+      Bitmap->prvWriteBackBuffer = FALSE;
+   }
+
+   return ERR_Okay;
+}
+
+#endif
 
 //********************************************************************************************************************
 

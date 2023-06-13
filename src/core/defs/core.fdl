@@ -160,8 +160,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "STRING: The string represents plain-text.")
 
   flags("OPF", { },
-    "DEPRECATED",
-    "CORE_VERSION",
     "OPTIONS",
     "MAX_DEPTH",
     "DETAIL",
@@ -170,7 +168,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "SHOW_ERRORS",
     "ARGS",
     "ERROR",
-    "COMPILED_AGAINST",
     "PRIVILEGED",
     "SYSTEM_PATH",
     "MODULE_PATH",
@@ -290,13 +287,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 
   const("MAX", { }, { FILENAME = 256 })  -- Maximum length for file names (not necessarily including path)
 
-  const("MODULE", { comment="Module file header constants", restrict="c" }, {
-    HEADER_V1 = 0x4D4F4401,
-    HEADER_V2 = 0x4D4F4402,
-    HEADER_VERSION = 0x4D4F4402, -- Always set to the latest version number of the module header.
-    HEADER = "EXPORT struct ModHeader ModHeader"
-  })
-
   const("MAX", nil, { NAME_LEN = 32 })
 
   const("MSGID", { comment="Reserved message ID's that are handled internally." }, {
@@ -349,7 +339,8 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",
     "CPU_SPEED: The average top-speed of all CPU cores in Mhz.",
-    "FREE_MEMORY: The total amount of free memory."
+    "FREE_MEMORY: The total amount of free memory.",
+    "STATIC_BUILD: Returns true if the runtime is a statically linked build."
   )
 
   enum("RP", { type="int", start=1, comment="Path types for SetResourcePath()" },
@@ -535,9 +526,6 @@ inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_
 #define __attribute__(a)
 #endif
 
-#define VER_CORE (1.0f)  // Core version + revision
-#define REV_CORE (0)     // Core revision as a whole number
-
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
@@ -547,25 +535,43 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #define MOD_IDL NULL
 
-extern "C" {
-
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+#ifdef PARASOL_STATIC
+__export void CloseCore(void);
+__export ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+#else
+__export struct ModHeader ModHeader;
+#endif
 
 #ifdef MOD_NAME
-#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#ifdef PARASOL_STATIC
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#else
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
 #define MOD_NAME NULL
 #endif
 
-#ifdef _DEBUG
- #define MSG(...)  LogF(0,__VA_ARGS__)
- #define FMSG(...) LogF(__VA_ARGS__)
-#else
- #define MSG(...)
- #define FMSG(...)
-#endif
+inline void FMSG(CSTRING, CSTRING, ...) __attribute__((format(printf, 2, 3)));
+inline void MSG(CSTRING, ...) __attribute__((format(printf, 1, 2)));
 
+inline void FMSG(CSTRING Function, CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
+#endif
+}
+
+inline void MSG(CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
+#endif
 }
 
 #define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
@@ -588,7 +594,11 @@ template <class T> T roundup(T Num, LONG Alignment) {
 // in to debug builds.
 
 #ifdef _DEBUG
- #define DEBUG_BREAK asm("int $3");
+ #ifdef _MSC_VER
+  #define DEBUG_BREAK __debugbreak();
+ #else
+  #define DEBUG_BREAK raise(SIGTRAP);
+ #endif
 #else
  #define DEBUG_BREAK
 #endif
@@ -651,8 +661,6 @@ struct OpenInfo {
    LONG    Detail;          // OPF::DETAIL
    LONG    ArgCount;        // OPF::ARGS
    ERROR   Error;           // OPF::ERROR
-   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -816,10 +824,7 @@ struct FieldValue {
   ]])
 
   struct("ModHeader", { comment="Module file header", restrict="c" }, [[
-    int HeaderVersion              # The version of this structure.
     int(MHF) Flags                 # Special flags, type of function table wanted from the Core
-    float ModVersion               # Version of this module
-    float CoreVersion              # Core version compiled against
     cstr Definitions               # Module definition string, usable by run-time languages such as Fluid
     fptr(error obj struct(*CoreBase)) Init # A one-off initialisation routine for when the module is first opened.
     fptr(void obj) Close           # A function that will be called each time the module is closed.
@@ -829,20 +834,15 @@ struct FieldValue {
   ]],
   [[
    STRUCTS *StructDefs;
-   struct RootModule *Root;
+   class RootModule *Root;
    ModHeader(ERROR (*pInit)(OBJECTPTR, struct CoreBase *),
       void  (*pClose)(OBJECTPTR),
       ERROR (*pOpen)(OBJECTPTR),
       ERROR (*pExpunge)(void),
-      FLOAT pVersion,
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
-
-      HeaderVersion = MODULE_HEADER_VERSION;
       Flags         = MHF::DEFAULT;
-      ModVersion    = pVersion;
-      CoreVersion   = VER_CORE;
       Definitions   = pDef;
       StructDefs    = pStructs;
       Init          = pInit;
@@ -878,8 +878,6 @@ struct FieldValue {
   struct("SystemState", { comment="Returned by the GetSystemState() function." }, [[
     cstr Platform      # String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
     hhandle ConsoleFD  # Internal
-    int  CoreVersion   # Reflects the Core version number.
-    int  CoreRevision  # Reflects the Core revision number.
     int  Stage         # The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
   ]])
 
@@ -1086,7 +1084,7 @@ struct ScriptArg { // For use with scExec
     "CurrentContext",
     "GetFieldArray",
     "AdjustLogLevel",
-    "LogF",
+    "ReadFileToBuffer",
     "FindObject",
     "FindClass",
     "AnalysePath",
@@ -1177,10 +1175,9 @@ struct ScriptArg { // For use with scExec
     "UTF8ReadValue",
     "UTF8WriteValue",
     "CopyFile",
-    "WaitForObjects",
-    "ReadFileToBuffer")
+    "WaitForObjects")
 
-  c_insert([[
+  c_insert([=[
 
 //********************************************************************************************************************
 
@@ -1287,7 +1284,7 @@ inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
    memmove(Dest, Src, Length);
 }
 
-inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+[[nodiscard]] inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
 {
    LONG i;
    LONG pos = 0;
@@ -1300,7 +1297,7 @@ inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
    return -1;
 }
 
-inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+[[nodiscard]] inline LONG StrSearch(CSTRING Keyword, CSTRING String)
 {
    LONG i;
    LONG pos = 0;
@@ -1313,11 +1310,11 @@ inline LONG StrSearch(CSTRING Keyword, CSTRING String)
    return -1;
 }
 
-inline STRING StrClone(CSTRING String)
+[[nodiscard]] inline STRING StrClone(CSTRING String)
 {
    if (!String) return NULL;
 
-   LONG len = strlen(String);
+   auto len = LONG(strlen(String));
    STRING newstr;
    if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
@@ -1326,8 +1323,8 @@ inline STRING StrClone(CSTRING String)
    else return NULL;
 }
 
-inline LONG StrLength(CSTRING String) {
-   if (String) return strlen(String);
+[[nodiscard]] inline LONG StrLength(CSTRING String) {
+   if (String) return LONG(strlen(String));
    else return 0;
 }
 
@@ -1361,7 +1358,7 @@ template <class T> inline DOUBLE StrToFloat(T &&String) {
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    auto str = std::to_string(Integer);
-   auto len = str.copy(String, StringSize-1);
+   auto len = LONG(str.copy(String, StringSize-1));
    String[len] = 0;
    return len;
 }
@@ -1376,7 +1373,7 @@ namespace pf {
 
 static THREADVAR LONG _tlUniqueThreadID = 0;
 
-inline LONG _get_thread_id(void) {
+[[nodiscard]] inline LONG _get_thread_id(void) {
    if (_tlUniqueThreadID) return _tlUniqueThreadID;
    _tlUniqueThreadID = GetResource(RES::THREAD_ID);
    return _tlUniqueThreadID;
@@ -1533,10 +1530,10 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    OBJECTID UID;                 // Unique object identifier
    OBJECTID OwnerID;             // The owner of this object
    NF       Flags;               // Object flags
-   LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
@@ -1991,7 +1988,7 @@ inline ERROR acSetVar(OBJECTPTR Object, CSTRING FieldName, CSTRING Value) {
 
 #define GetVar(a,b,c,d)  acGetVar(a,b,c,d)
 #define SetVar(a,b,c)    acSetVar(a,b,c)
-]])
+]=])
 
   methods("MetaClass", "mc", {
     { id=1, name="FindField" }
@@ -2223,24 +2220,29 @@ inline ERROR cfgRead(OBJECTPTR Self, CSTRING Group, CSTRING Key, LONG *Value)
   })
 
   class("Module", { src="../classes/class_module.cpp" }, [[
-    double Version                  # Minimum required version of the module
     cstruct(*Function) FunctionList # Array of functions
     ptr ModBase                     # Ptr to function jump table
-    struct(*RootModule) Root        # Shared details on the module
+    class(*RootModule) Root         # Shared details on the module
     struct(*ModHeader) Header       # For creating in-memory modules only.
     int(MOF) Flags                  # Optional flags
   ]],
   nil,
   [[
-   static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
-         APTR functionbase;
-         if (!module->getPtr(FID_ModBase, &functionbase)) {
+   static ERROR load(std::string Name, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
+         #ifdef PARASOL_STATIC
             if (Module) *Module = module;
-            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            if (Functions) ((APTR *)Functions)[0] = NULL;
             return ERR_Okay;
-         }
-         else return ERR_GetField;
+         #else
+            APTR functionbase;
+            if (!module->getPtr(FID_ModBase, &functionbase)) {
+               if (Module) *Module = module;
+               if (Functions) ((APTR *)Functions)[0] = functionbase;
+               return ERR_Okay;
+            }
+            else return ERR_GetField;
+         #endif
       }
       else return ERR_CreateObject;
    }

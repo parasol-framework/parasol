@@ -320,13 +320,13 @@ class objXML : public BaseClass {
 
 //********************************************************************************************************************
 
-template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
 }
 
-template <class T> inline ERROR xmlSetAttrib(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+template <class T> inline ERROR xmlSetAttribValue(objXML *XML, LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
    auto attrib = to_cstring(Attrib);
    auto buffer = std::to_string(Value);
    return xmlSetAttrib(XML, Tag, Flags, attrib, buffer.c_str());
@@ -353,7 +353,7 @@ inline void xmlNewAttrib(XMLTag *Tag, const std::string Name, const std::string 
    Tag->Attribs.emplace_back(Name, Value);
 }
 
-template <class T> inline ERROR xmlInsertXML(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
+template <class T> inline ERROR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {
    struct xmlInsertXML insert = { Index, Where, to_cstring(Statement) };
    auto error = Action(MT_XMLInsertXML, (OBJECTPTR)Ob, &insert);
    if (!error) {

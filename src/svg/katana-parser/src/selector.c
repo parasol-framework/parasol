@@ -23,7 +23,10 @@
 #include "selector.h"
 #include <string.h>
 #include <assert.h>
+
+#ifndef _MSC_VER
 #include <strings.h>
+#endif
 
 #undef	assert
 #define assert(x)
@@ -56,10 +59,10 @@ KatanaPseudoType katana_parse_pseudo_type(const char* name, bool hasArguments)
     KatanaPseudoType pseudoType = name_to_pseudo_type(name, hasArguments);
     if (pseudoType != KatanaPseudoUnknown)
         return pseudoType;
-    
+
     if (katana_string_has_prefix(name, "-webkit-"))
         return KatanaPseudoWebKitCustomElement;
-    
+
     return KatanaPseudoUnknown;
 }
 
@@ -67,16 +70,16 @@ void katana_selector_extract_pseudo_type(KatanaSelector* selector)
 {
     if (selector->pseudo == KatanaPseudoNotParsed)
         selector->pseudo = KatanaPseudoUnknown;
-    
+
     if (selector->match != KatanaSelectorMatchPseudoClass && selector->match != KatanaSelectorMatchPseudoElement && selector->match != KatanaSelectorMatchPagePseudoClass)
         return;
-    bool hasArguments = (NULL != selector->data->argument) || (NULL != selector->data->selectors);    
+    bool hasArguments = (NULL != selector->data->argument) || (NULL != selector->data->selectors);
     selector->pseudo = katana_parse_pseudo_type(selector->data->value, hasArguments);
-    
+
     bool element = false; // pseudo-element
     bool compat = false; // single colon compatbility mode
     bool isPagePseudoClass = false; // Page pseudo-class
-    
+
     switch (selector->pseudo) {
         case KatanaPseudoAfter:
         case KatanaPseudoBefore:
@@ -167,7 +170,7 @@ void katana_selector_extract_pseudo_type(KatanaSelector* selector)
             isPagePseudoClass = true;
             break;
     }
-    
+
     bool matchPagePseudoClass = (selector->match == KatanaSelectorMatchPagePseudoClass);
     if (matchPagePseudoClass != isPagePseudoClass)
         selector->pseudo = KatanaPseudoUnknown;
@@ -267,11 +270,11 @@ KatanaParserString* katana_build_relation_selector_string(KatanaParser* parser, 
     if ( NULL != relation ) {
         katana_string_prepend_characters(parser, relation, string);
     }
-    
+
     if ( NULL != next ) {
         katana_string_append_string(parser, next, string);
     }
-    
+
     KatanaParserString * result = katana_selector_to_string(parser, tagHistory, (KatanaParserString*)string);
     katana_parser_deallocate(parser, (void*) string->data);
     katana_parser_deallocate(parser, (void*) string);
@@ -282,9 +285,9 @@ KatanaParserString* katana_selector_to_string(KatanaParser* parser, KatanaSelect
 {
     KatanaParserString* string = katana_parser_allocate(parser, sizeof(KatanaParserString));
     katana_string_init(parser, string);
-    
+
     bool tag_is_implicit = true;
-    
+
     if (selector->match == KatanaSelectorMatchTag && tag_is_implicit)
     {
         if ( NULL == selector->tag->prefix )
@@ -308,7 +311,7 @@ KatanaParserString* katana_selector_to_string(KatanaParser* parser, KatanaSelect
         } else if (cs->match == KatanaSelectorMatchPseudoClass || cs->match == KatanaSelectorMatchPagePseudoClass) {
             katana_string_append_characters(parser, ":", string);
             katana_string_append_characters(parser, cs->data->value, string);
-            
+
             switch (cs->pseudo) {
                 case KatanaPseudoAny:
                 case KatanaPseudoNot:
@@ -424,11 +427,11 @@ KatanaParserString* katana_selector_to_string(KatanaParser* parser, KatanaSelect
             }
         }
     }
-    
+
     if ( NULL != next ) {
         katana_string_append_string(parser, (KatanaParserString*)next, string);
     }
-    
+
     return (KatanaParserString*)string;
 }
 
@@ -437,7 +440,7 @@ unsigned calc_specificity_for_one_selector(const KatanaSelector* selector)
     switch ( selector->match ) {
         case KatanaSelectorMatchId:
             return 0x10000;
-            
+
         case KatanaSelectorMatchPseudoClass:
         case KatanaSelectorMatchAttributeExact:
         case KatanaSelectorMatchClass:
@@ -449,14 +452,14 @@ unsigned calc_specificity_for_one_selector(const KatanaSelector* selector)
         case KatanaSelectorMatchAttributeBegin:
         case KatanaSelectorMatchAttributeEnd:
             return 0x100;
-            
+
         case KatanaSelectorMatchTag:
             return !strcasecmp(selector->tag->local, "*") ? 0 : 1;
         case KatanaSelectorMatchUnknown:
         case KatanaSelectorMatchPagePseudoClass:
             return 0;
     }
-    
+
     return 0;
 }
 
@@ -465,14 +468,14 @@ unsigned katana_calc_specificity_for_selector(KatanaSelector* selector)
     if ( NULL == selector ) {
         return 0;
     }
-    
+
     static const unsigned idMask = 0xff0000;
     static const unsigned classMask = 0xff00;
     static const unsigned elementMask = 0xff;
-    
+
     unsigned total = 0;
     unsigned temp = 0;
-    
+
     for (const KatanaSelector * next = selector; next; next = next->tagHistory)
     {
         temp = total + calc_specificity_for_one_selector(next);
@@ -486,7 +489,7 @@ unsigned katana_calc_specificity_for_selector(KatanaSelector* selector)
         else
             total = temp;
     }
-        
+
     return total;
 }
 
@@ -595,10 +598,10 @@ static KatanaPseudoType name_to_pseudo_type(const char* name, bool hasArguments)
 {
     if (NULL == name)
         return KatanaPseudoUnknown;
-    
+
     const KatanaNameToPseudoStruct* pseudoTypeMap;
     size_t count;
-    
+
     if (hasArguments) {
         pseudoTypeMap = kPseudoTypeWithArgumentsMap;
         count = sizeof(kPseudoTypeWithArgumentsMap) / sizeof(KatanaNameToPseudoStruct);
@@ -606,12 +609,12 @@ static KatanaPseudoType name_to_pseudo_type(const char* name, bool hasArguments)
         pseudoTypeMap = kPseudoTypeWithoutArgumentsMap;
         count = sizeof(kPseudoTypeWithoutArgumentsMap) / sizeof(KatanaNameToPseudoStruct);
     }
-    
+
     const KatanaNameToPseudoStruct* match = lower_bound(pseudoTypeMap, count, name);
     if ( match == (pseudoTypeMap + count)
          || 0 != strcasecmp(match->string, name) )
         return KatanaPseudoUnknown;
-    
+
     return match->type;
 }
 
@@ -638,18 +641,18 @@ void test_lower_bound()
 {
     const KatanaNameToPseudoStruct* pseudoTypeMap;
     size_t count;
-    
+
     pseudoTypeMap = kPseudoTypeWithArgumentsMap;
     count = sizeof(kPseudoTypeWithArgumentsMap) / sizeof(KatanaNameToPseudoStruct);
-    
+
     for ( size_t i = 0; i < count; i++ ) {
         const KatanaNameToPseudoStruct* res = lower_bound(pseudoTypeMap, count, pseudoTypeMap[i].string);
         assert(pseudoTypeMap[i].type == res->type);
     }
-    
+
     pseudoTypeMap = kPseudoTypeWithoutArgumentsMap;
     count = sizeof(kPseudoTypeWithoutArgumentsMap) / sizeof(KatanaNameToPseudoStruct);
-    
+
     for ( size_t i = 0; i < count; i++ ) {
         const KatanaNameToPseudoStruct* res = lower_bound(pseudoTypeMap, count, pseudoTypeMap[i].string);
         assert(pseudoTypeMap[i].type == res->type);

@@ -39,7 +39,7 @@ void debug_tree(extVector *Vector, LONG &Level)
    char buffer[80];
    LONG i;
 
-   char indent[Level + 1];
+   auto indent = std::make_unique<char[]>(Level + 1);
    for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
    indent[i] = 0;
 
@@ -53,10 +53,10 @@ void debug_tree(extVector *Vector, LONG &Level)
 
       if ((v->Class->BaseClassID IS ID_VECTOR) and (v->Child)) {
          pf::Log blog(__FUNCTION__);
-         blog.branch("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, v->Name, buffer);
+         blog.branch("#%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
          debug_tree((extVector *)v->Child, Level);
       }
-      else log.msg("#%d%s %s %s %s", v->UID, indent, v->Class->ClassName, v->Name, buffer);
+      else log.msg("#%d%s %s %s %s", v->UID, indent.get(), v->Class->ClassName, v->Name, buffer);
    }
 
    Level--;
@@ -277,9 +277,9 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    }
 
    {
-      const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
-      auto pos = std::find(glFocusList.begin(), glFocusList.end(), Self);
-      if (pos != glFocusList.end()) glFocusList.erase(pos, glFocusList.end());
+      const std::lock_guard<std::recursive_mutex> lock(glVectorFocusLock);
+      auto pos = std::find(glVectorFocusList.begin(), glVectorFocusList.end(), Self);
+      if (pos != glVectorFocusList.end()) glVectorFocusList.erase(pos, glVectorFocusList.end());
    }
 
    {

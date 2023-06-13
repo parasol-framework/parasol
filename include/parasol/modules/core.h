@@ -858,22 +858,19 @@ enum class STT : LONG {
 
 enum class OPF : ULONG {
    NIL = 0,
-   DEPRECATED = 0x00000001,
-   CORE_VERSION = 0x00000002,
-   OPTIONS = 0x00000004,
-   MAX_DEPTH = 0x00000008,
-   DETAIL = 0x00000010,
-   SHOW_MEMORY = 0x00000020,
-   SHOW_IO = 0x00000040,
-   SHOW_ERRORS = 0x00000080,
-   ARGS = 0x00000100,
-   ERROR = 0x00000200,
-   COMPILED_AGAINST = 0x00000400,
-   PRIVILEGED = 0x00000800,
-   SYSTEM_PATH = 0x00001000,
-   MODULE_PATH = 0x00002000,
-   ROOT_PATH = 0x00004000,
-   SCAN_MODULES = 0x00008000,
+   OPTIONS = 0x00000001,
+   MAX_DEPTH = 0x00000002,
+   DETAIL = 0x00000004,
+   SHOW_MEMORY = 0x00000008,
+   SHOW_IO = 0x00000010,
+   SHOW_ERRORS = 0x00000020,
+   ARGS = 0x00000040,
+   ERROR = 0x00000080,
+   PRIVILEGED = 0x00000100,
+   SYSTEM_PATH = 0x00000200,
+   MODULE_PATH = 0x00000400,
+   ROOT_PATH = 0x00000800,
+   SCAN_MODULES = 0x00001000,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(OPF)
@@ -1052,13 +1049,6 @@ DEFINE_ENUM_FLAG_OPERATORS(NF)
 
 #define MAX_FILENAME 256
 
-// Module file header constants
-
-#define MODULE_HEADER_V1 1297040385
-#define MODULE_HEADER_V2 1297040386
-#define MODULE_HEADER_VERSION 1297040386
-#define MODULE_HEADER EXPORT struct ModHeader ModHeader
-
 #define MAX_NAME_LEN 32
 
 // Reserved message ID's that are handled internally.
@@ -1120,6 +1110,7 @@ enum class RES : LONG {
    TOTAL_SWAP = 21,
    CPU_SPEED = 22,
    FREE_MEMORY = 23,
+   STATIC_BUILD = 24,
 };
 
 // Path types for SetResourcePath()
@@ -1499,9 +1490,6 @@ struct Edges {
 #define __attribute__(a)
 #endif
 
-#define VER_CORE (1.0f)  // Core version + revision
-#define REV_CORE (0)     // Core revision as a whole number
-
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #ifndef STRINGIFY
@@ -1511,25 +1499,43 @@ typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
 
 #define MOD_IDL NULL
 
-extern "C" {
-
-#define MODULE_COREBASE struct CoreBase *CoreBase = 0;
+#ifdef PARASOL_STATIC
+__export void CloseCore(void);
+__export ERROR OpenCore(struct OpenInfo *, struct CoreBase **);
+#else
+__export struct ModHeader ModHeader;
+#endif
 
 #ifdef MOD_NAME
-#define PARASOL_MOD(init,close,open,expunge,version,IDL,Structures) EXPORT ModHeader ModHeader(init, close, open, expunge, version, IDL, Structures, TOSTRING(MOD_NAME));
+#ifdef PARASOL_STATIC
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#else
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
 #define MOD_NAME NULL
 #endif
 
-#ifdef _DEBUG
- #define MSG(...)  LogF(0,__VA_ARGS__)
- #define FMSG(...) LogF(__VA_ARGS__)
-#else
- #define MSG(...)
- #define FMSG(...)
-#endif
+inline void FMSG(CSTRING, CSTRING, ...) __attribute__((format(printf, 2, 3)));
+inline void MSG(CSTRING, ...) __attribute__((format(printf, 1, 2)));
 
+inline void FMSG(CSTRING Function, CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
+#endif
+}
+
+inline void MSG(CSTRING Message, ...) {
+#ifdef DEBUG
+   va_list arg;
+   va_start(arg, Message);
+   VLogF(VLF::API, header, Message, arg);
+   va_end(arg);
+#endif
 }
 
 #define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
@@ -1552,7 +1558,11 @@ template <class T> T roundup(T Num, LONG Alignment) {
 // in to debug builds.
 
 #ifdef _DEBUG
- #define DEBUG_BREAK asm("int $3");
+ #ifdef _MSC_VER
+  #define DEBUG_BREAK __debugbreak();
+ #else
+  #define DEBUG_BREAK raise(SIGTRAP);
+ #endif
 #else
  #define DEBUG_BREAK
 #endif
@@ -1615,8 +1625,6 @@ struct OpenInfo {
    LONG    Detail;          // OPF::DETAIL
    LONG    ArgCount;        // OPF::ARGS
    ERROR   Error;           // OPF::ERROR
-   FLOAT   CompiledAgainst; // OPF::COMPILED_AGAINST
-   FLOAT   CoreVersion;     // OPF::CORE_VERSION
 };
 
 // Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
@@ -1775,10 +1783,7 @@ struct Function {
 };
 
 struct ModHeader {
-   LONG    HeaderVersion;                           // The version of this structure.
    MHF     Flags;                                   // Special flags, type of function table wanted from the Core
-   FLOAT   ModVersion;                              // Version of this module
-   FLOAT   CoreVersion;                             // Core version compiled against
    CSTRING Definitions;                             // Module definition string, usable by run-time languages such as Fluid
    ERROR (*Init)(OBJECTPTR, struct CoreBase *);     // A one-off initialisation routine for when the module is first opened.
    void (*Close)(OBJECTPTR);                        // A function that will be called each time the module is closed.
@@ -1786,20 +1791,15 @@ struct ModHeader {
    ERROR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
    CSTRING Name;                                    // Name of the module
    STRUCTS *StructDefs;
-   struct RootModule *Root;
+   class RootModule *Root;
    ModHeader(ERROR (*pInit)(OBJECTPTR, struct CoreBase *),
       void  (*pClose)(OBJECTPTR),
       ERROR (*pOpen)(OBJECTPTR),
       ERROR (*pExpunge)(void),
-      FLOAT pVersion,
       CSTRING pDef,
       STRUCTS *pStructs,
       CSTRING pName) {
-
-      HeaderVersion = MODULE_HEADER_VERSION;
       Flags         = MHF::DEFAULT;
-      ModVersion    = pVersion;
-      CoreVersion   = VER_CORE;
       Definitions   = pDef;
       StructDefs    = pStructs;
       Init          = pInit;
@@ -1831,8 +1831,6 @@ struct FieldDef {
 struct SystemState {
    CSTRING Platform;        // String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.
    HOSTHANDLE ConsoleFD;    // Internal
-   LONG    CoreVersion;     // Reflects the Core version number.
-   LONG    CoreRevision;    // Reflects the Core revision number.
    LONG    Stage;           // The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.
 };
 
@@ -2005,7 +2003,14 @@ struct ScriptArg { // For use with scExec
    };
 };
 
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_CORE static struct CoreBase *CoreBase;
+#else
+#define JUMPTABLE_CORE struct CoreBase *CoreBase;
+#endif
+
 struct CoreBase {
+#ifndef PARASOL_STATIC
    ERROR (*_AccessMemory)(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
    ERROR (*_Action)(LONG Action, OBJECTPTR Object, APTR Parameters);
    void (*_ActionList)(struct ActionTable ** Actions, LONG * Size);
@@ -2022,7 +2027,7 @@ struct CoreBase {
    OBJECTPTR (*_CurrentContext)(void);
    ERROR (*_GetFieldArray)(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
    LONG (*_AdjustLogLevel)(LONG Adjust);
-   void __attribute__((format(printf, 2, 3))) (*_LogF)(CSTRING Header, CSTRING Message, ...);
+   ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
    ERROR (*_FindObject)(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
    objMetaClass * (*_FindClass)(CLASSID ClassID);
    ERROR (*_AnalysePath)(CSTRING Path, LOC * Type);
@@ -2114,10 +2119,11 @@ struct CoreBase {
    LONG (*_UTF8WriteValue)(LONG Value, STRING Buffer, LONG Size);
    ERROR (*_CopyFile)(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
    ERROR (*_WaitForObjects)(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
-   ERROR (*_ReadFileToBuffer)(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_CORE_MODULE
+#ifndef PARASOL_STATIC
 extern struct CoreBase *CoreBase;
 inline ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
@@ -2135,7 +2141,7 @@ template<class... Args> ERROR VirtualVolume(CSTRING Name, Args... Tags) { return
 inline OBJECTPTR CurrentContext(void) { return CoreBase->_CurrentContext(); }
 inline ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements) { return CoreBase->_GetFieldArray(Object,Field,Result,Elements); }
 inline LONG AdjustLogLevel(LONG Adjust) { return CoreBase->_AdjustLogLevel(Adjust); }
-template<class... Args> void LogF(CSTRING Header, CSTRING Message, Args... Tags) { return CoreBase->_LogF(Header,Message,Tags...); }
+inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
 inline ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID) { return CoreBase->_FindObject(Name,ClassID,Flags,ObjectID); }
 inline objMetaClass * FindClass(CLASSID ClassID) { return CoreBase->_FindClass(ClassID); }
 inline ERROR AnalysePath(CSTRING Path, LOC * Type) { return CoreBase->_AnalysePath(Path,Type); }
@@ -2227,7 +2233,117 @@ inline ULONG UTF8ReadValue(CSTRING String, LONG * Length) { return CoreBase->_UT
 inline LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size) { return CoreBase->_UTF8WriteValue(Value,Buffer,Size); }
 inline ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback) { return CoreBase->_CopyFile(Source,Dest,Callback); }
 inline ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals) { return CoreBase->_WaitForObjects(Flags,TimeOut,ObjectSignals); }
-inline ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result) { return CoreBase->_ReadFileToBuffer(Path,Buffer,BufferSize,Result); }
+#else
+extern "C" {
+extern ERROR AccessMemory(MEMORYID Memory, MEM Flags, LONG MilliSeconds, APTR Result);
+extern ERROR Action(LONG Action, OBJECTPTR Object, APTR Parameters);
+extern void ActionList(struct ActionTable ** Actions, LONG * Size);
+extern ERROR ActionMsg(LONG Action, OBJECTID Object, APTR Args);
+extern CSTRING ResolveClassID(CLASSID ID);
+extern LONG AllocateID(IDTYPE Type);
+extern ERROR AllocMemory(LONG Size, MEM Flags, APTR Address, MEMORYID * ID);
+extern ERROR AccessObject(OBJECTID Object, LONG MilliSeconds, APTR Result);
+extern ERROR CheckAction(OBJECTPTR Object, LONG Action);
+extern ERROR CheckMemoryExists(MEMORYID ID);
+extern ERROR CheckObjectExists(OBJECTID Object);
+extern ERROR InitObject(OBJECTPTR Object);
+extern OBJECTPTR CurrentContext(void);
+extern ERROR GetFieldArray(OBJECTPTR Object, FIELD Field, APTR Result, LONG * Elements);
+extern LONG AdjustLogLevel(LONG Adjust);
+extern ERROR ReadFileToBuffer(CSTRING Path, APTR Buffer, LONG BufferSize, LONG * Result);
+extern ERROR FindObject(CSTRING Name, CLASSID ClassID, FOF Flags, OBJECTID * ObjectID);
+extern objMetaClass * FindClass(CLASSID ClassID);
+extern ERROR AnalysePath(CSTRING Path, LOC * Type);
+extern LONG UTF8Copy(CSTRING Src, STRING Dest, LONG Chars, LONG Size);
+extern ERROR FreeResource(MEMORYID ID);
+extern CLASSID GetClassID(OBJECTID Object);
+extern OBJECTID GetOwnerID(OBJECTID Object);
+extern ERROR GetField(OBJECTPTR Object, FIELD Field, APTR Result);
+extern ERROR GetFieldVariable(OBJECTPTR Object, CSTRING Field, STRING Buffer, LONG Size);
+extern ERROR CompareFilePaths(CSTRING PathA, CSTRING PathB);
+extern const struct SystemState * GetSystemState(void);
+extern ERROR ListChildren(OBJECTID Object, pf::vector<ChildEntry> * List);
+extern ERROR Base64Decode(struct pfBase64Decode * State, CSTRING Input, LONG InputSize, APTR Output, LONG * Written);
+extern ERROR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data);
+extern ERROR ResolvePath(CSTRING Path, RSF Flags, STRING * Result);
+extern ERROR MemoryIDInfo(MEMORYID ID, struct MemInfo * MemInfo, LONG Size);
+extern ERROR MemoryPtrInfo(APTR Address, struct MemInfo * MemInfo, LONG Size);
+extern ERROR NewObject(LARGE ClassID, NF Flags, APTR Object);
+extern void NotifySubscribers(OBJECTPTR Object, LONG Action, APTR Args, ERROR Error);
+extern ERROR StrReadLocale(CSTRING Key, CSTRING * Value);
+extern CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
+extern ERROR ProcessMessages(PMF Flags, LONG TimeOut);
+extern ERROR IdentifyFile(CSTRING Path, CLASSID * Class, CLASSID * SubClass);
+extern ERROR ReallocMemory(APTR Memory, ULONG Size, APTR Address, MEMORYID * ID);
+extern ERROR GetMessage(LONG Type, MSF Flags, APTR Buffer, LONG Size);
+extern ERROR ReleaseMemory(MEMORYID MemoryID);
+extern CLASSID ResolveClassName(CSTRING Name);
+extern ERROR SendMessage(LONG Type, MSF Flags, APTR Data, LONG Size);
+extern ERROR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
+extern OBJECTPTR SetContext(OBJECTPTR Object);
+extern ERROR SetField(OBJECTPTR Object, FIELD Field, ...);
+extern CSTRING FieldName(ULONG FieldID);
+extern ERROR ScanDir(struct DirInfo * Info);
+extern ERROR SetName(OBJECTPTR Object, CSTRING Name);
+extern void LogReturn(void);
+extern ERROR StrCompare(CSTRING String1, CSTRING String2, LONG Length, STR Flags);
+extern ERROR SubscribeAction(OBJECTPTR Object, LONG Action, FUNCTION * Callback);
+extern ERROR SubscribeEvent(LARGE Event, FUNCTION * Callback, APTR Custom, APTR Handle);
+extern ERROR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR Subscription);
+extern ERROR UpdateTimer(APTR Subscription, DOUBLE Interval);
+extern ERROR UnsubscribeAction(OBJECTPTR Object, LONG Action);
+extern void UnsubscribeEvent(APTR Handle);
+extern ERROR BroadcastEvent(APTR Event, LONG EventSize);
+extern void WaitTime(LONG Seconds, LONG MicroSeconds);
+extern LARGE GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
+extern ULONG GenCRC32(ULONG CRC, APTR Data, ULONG Length);
+extern LARGE GetResource(RES Resource);
+extern LARGE SetResource(RES Resource, LARGE Value);
+extern ERROR ScanMessages(LONG * Handle, LONG Type, APTR Buffer, LONG Size);
+extern STT StrDatatype(CSTRING String);
+extern void UnloadFile(struct CacheFile * Cache);
+extern ERROR CreateFolder(CSTRING Path, PERMIT Permissions);
+extern ERROR LoadFile(CSTRING Path, LDF Flags, struct CacheFile ** Cache);
+extern ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING Device, VOLUME Flags);
+extern ERROR DeleteVolume(CSTRING Name);
+extern ERROR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+extern ERROR UpdateMessage(LONG Message, LONG Type, APTR Data, LONG Size);
+extern ERROR AddMsgHandler(APTR Custom, LONG MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
+extern ERROR QueueAction(LONG Action, OBJECTID Object, APTR Args);
+extern LARGE PreciseTime(void);
+extern ERROR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info);
+extern OBJECTPTR GetObjectPtr(OBJECTID Object);
+extern struct Field * FindField(OBJECTPTR Object, ULONG FieldID, APTR Target);
+extern CSTRING GetErrorMsg(ERROR Error);
+extern struct Message * GetActionMsg(void);
+extern ERROR FuncError(CSTRING Header, ERROR Error);
+extern ERROR SetArray(OBJECTPTR Object, FIELD Field, APTR Array, LONG Elements);
+extern ULONG StrHash(CSTRING String, LONG CaseSensitive);
+extern ERROR LockObject(OBJECTPTR Object, LONG MilliSeconds);
+extern void ReleaseObject(OBJECTPTR Object);
+extern ERROR ActionThread(LONG Action, OBJECTPTR Object, APTR Args, FUNCTION * Callback, LONG Key);
+extern ERROR AddInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING Value);
+extern void SetDefaultPermissions(LONG User, LONG Group, PERMIT Permissions);
+extern void VLogF(VLF Flags, const char *Header, const char *Message, va_list Args);
+extern LONG Base64Encode(struct pfBase64Encode * State, const void * Input, LONG InputSize, STRING Output, LONG OutputSize);
+extern ERROR ReadInfoTag(struct FileInfo * Info, CSTRING Name, CSTRING * Value);
+extern ERROR SetResourcePath(RP PathType, CSTRING Path);
+extern objTask * CurrentTask(void);
+extern CSTRING ResolveGroupID(LONG Group);
+extern CSTRING ResolveUserID(LONG User);
+extern ERROR CreateLink(CSTRING From, CSTRING To);
+extern ERROR DeleteFile(CSTRING Path, FUNCTION * Callback);
+extern LONG UTF8CharOffset(CSTRING String, LONG Offset);
+extern LONG UTF8Length(CSTRING String);
+extern LONG UTF8OffsetToChar(CSTRING String, LONG Offset);
+extern LONG UTF8PrevLength(CSTRING String, LONG Offset);
+extern LONG UTF8CharLength(CSTRING String);
+extern ULONG UTF8ReadValue(CSTRING String, LONG * Length);
+extern LONG UTF8WriteValue(LONG Value, STRING Buffer, LONG Size);
+extern ERROR CopyFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
+extern ERROR WaitForObjects(PMF Flags, LONG TimeOut, struct ObjectSignal * ObjectSignals);
+}
+#endif // PARASOL_STATIC
 #endif
 
 
@@ -2336,7 +2452,7 @@ inline void CopyMemory(const void *Src, APTR Dest, LONG Length)
    memmove(Dest, Src, Length);
 }
 
-inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
+[[nodiscard]] inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
 {
    LONG i;
    LONG pos = 0;
@@ -2349,7 +2465,7 @@ inline LONG StrSearchCase(CSTRING Keyword, CSTRING String)
    return -1;
 }
 
-inline LONG StrSearch(CSTRING Keyword, CSTRING String)
+[[nodiscard]] inline LONG StrSearch(CSTRING Keyword, CSTRING String)
 {
    LONG i;
    LONG pos = 0;
@@ -2362,11 +2478,11 @@ inline LONG StrSearch(CSTRING Keyword, CSTRING String)
    return -1;
 }
 
-inline STRING StrClone(CSTRING String)
+[[nodiscard]] inline STRING StrClone(CSTRING String)
 {
    if (!String) return NULL;
 
-   LONG len = strlen(String);
+   auto len = LONG(strlen(String));
    STRING newstr;
    if (!AllocMemory(len+1, MEM::STRING, (APTR *)&newstr, NULL)) {
       CopyMemory(String, newstr, len+1);
@@ -2375,8 +2491,8 @@ inline STRING StrClone(CSTRING String)
    else return NULL;
 }
 
-inline LONG StrLength(CSTRING String) {
-   if (String) return strlen(String);
+[[nodiscard]] inline LONG StrLength(CSTRING String) {
+   if (String) return LONG(strlen(String));
    else return 0;
 }
 
@@ -2410,7 +2526,7 @@ template <class T> inline DOUBLE StrToFloat(T &&String) {
 
 inline LONG IntToStr(LARGE Integer, STRING String, LONG StringSize) {
    auto str = std::to_string(Integer);
-   auto len = str.copy(String, StringSize-1);
+   auto len = LONG(str.copy(String, StringSize-1));
    String[len] = 0;
    return len;
 }
@@ -2425,7 +2541,7 @@ namespace pf {
 
 static THREADVAR LONG _tlUniqueThreadID = 0;
 
-inline LONG _get_thread_id(void) {
+[[nodiscard]] inline LONG _get_thread_id(void) {
    if (_tlUniqueThreadID) return _tlUniqueThreadID;
    _tlUniqueThreadID = GetResource(RES::THREAD_ID);
    return _tlUniqueThreadID;
@@ -2582,10 +2698,10 @@ struct BaseClass { // Must be 64-bit aligned
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
    APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    OBJECTID UID;                 // Unique object identifier
    OBJECTID OwnerID;             // The owner of this object
    NF       Flags;               // Object flags
-   LONG     NotifyFlags[2];      // Action subscription flags - space for 64 actions max
    volatile LONG  ThreadID;      // Managed by locking functions
    char Name[MAX_NAME_LEN];      // The name of the object (optional)
    std::atomic_uchar ThreadPending; // ActionThread() increments this.
@@ -3930,7 +4046,7 @@ class objTask : public BaseClass {
    inline ERROR setParameters(pf::vector<std::string> *Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x08805300, Value, Value->size());
+      return field->WriteValue(target, field, 0x08805300, Value, LONG(Value->size()));
    }
 
    inline ERROR setErrorCallback(FUNCTION Value) {
@@ -4076,22 +4192,27 @@ class objModule : public BaseClass {
 
    using create = pf::Create<objModule>;
 
-   DOUBLE Version;                          // Minimum required version number.
    const struct Function * FunctionList;    // Refers to a list of public functions exported by the module.
-   APTR   ModBase;                          // The Module's function base (jump table) must be read from this field.
-   struct RootModule * Root;                // For internal use only.
+   APTR ModBase;                            // The Module's function base (jump table) must be read from this field.
+   class RootModule * Root;                 // For internal use only.
    struct ModHeader * Header;               // For internal usage only.
-   MOF    Flags;                            // Optional flags.
+   MOF  Flags;                              // Optional flags.
    public:
-   static ERROR load(std::string Name, DOUBLE Version, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
-      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()), pf::FieldValue(FID_Version, Version))) {
-         APTR functionbase;
-         if (!module->getPtr(FID_ModBase, &functionbase)) {
+   static ERROR load(std::string Name, OBJECTPTR *Module = NULL, APTR Functions = NULL) {
+      if (auto module = objModule::create::global(pf::FieldValue(FID_Name, Name.c_str()))) {
+         #ifdef PARASOL_STATIC
             if (Module) *Module = module;
-            if (Functions) ((APTR *)Functions)[0] = functionbase;
+            if (Functions) ((APTR *)Functions)[0] = NULL;
             return ERR_Okay;
-         }
-         else return ERR_GetField;
+         #else
+            APTR functionbase;
+            if (!module->getPtr(FID_ModBase, &functionbase)) {
+               if (Module) *Module = module;
+               if (Functions) ((APTR *)Functions)[0] = functionbase;
+               return ERR_Okay;
+            }
+            else return ERR_GetField;
+         #endif
       }
       else return ERR_CreateObject;
    }
@@ -4101,12 +4222,6 @@ class objModule : public BaseClass {
    inline ERROR init() { return InitObject(this); }
 
    // Customised field setting
-
-   inline ERROR setVersion(const DOUBLE Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->Version = Value;
-      return ERR_Okay;
-   }
 
    inline ERROR setFunctionList(const struct Function * Value) {
       this->FunctionList = Value;
@@ -4127,7 +4242,7 @@ class objModule : public BaseClass {
 
    template <class T> inline ERROR setName(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 

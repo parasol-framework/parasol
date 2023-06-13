@@ -22,8 +22,11 @@
 
 IntegrityLevel get_integrity_level();
 static const char * GetIntegrityLevelString(IntegrityLevel integrity_level);
+
+#ifdef __GNUC__
 static LONG str_copy(const char *String, char *Dest, int Length) __attribute__((unused));
 static ERROR set_low_file(LPCWSTR pwszFileName) __attribute__((unused));
+#endif
 
 static LONG str_copy(const char *String, char *Dest, int Length)
 {
@@ -37,6 +40,37 @@ static LONG str_copy(const char *String, char *Dest, int Length)
       else Dest[i] = 0;
    }
    return(i);
+}
+
+//********************************************************************************************************************
+
+static int get_command_line_args(char ** *argv)
+{
+   int argc = 0;
+   auto wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
+   if (!wargv) { *argv = NULL; return 0; }
+
+   // Calculate total space for UTF-8 strings
+   int n = 0;
+   for (int i=0; i < argc; i++) n += WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, NULL, 0, NULL, NULL) + 1;
+
+   *argv = (char **)malloc((argc + 1) * sizeof(char *) + n);
+   auto arg = (char *)&((*argv)[argc + 1]);
+   for (int i=0; i < argc; i++) {
+      (*argv)[i] = arg;
+      arg += WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, arg, n, NULL, NULL) + 1;
+   }
+   (*argv)[argc] = NULL;
+   return argc;
+}
+
+extern "C" int main(int argc, char **argv);
+
+int WINAPI WinMain(HINSTANCE hinstance, HINSTANCE hprevinstance, LPSTR lpcmdline, int ncmdshow)
+{
+   char **argv;
+   auto argc = get_command_line_args(&argv);
+   return main(argc, argv);
 }
 
 //********************************************************************************************************************

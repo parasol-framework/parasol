@@ -1,10 +1,8 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifdef PARASOL_MAIN_H
 typedef void * HWND;
 typedef void * HDC;
+typedef void * HBITMAP;
 typedef void * HANDLE;
 typedef void * HINSTANCE;
 typedef void * WNDPROC;
@@ -31,70 +29,114 @@ struct WinDT {
    void *Data;
 };
 
-void win32RedrawWindow(HWND, HDC, int X, int Y, int Width,
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int glIgnoreClip;
+extern int glClipboardUpdates;
+extern BYTE glOleInit;
+
+int winLookupSurfaceID(HWND);
+void winCreateScreenClassClipboard(void);
+void winDragDropFromHost_Drop(int, char *); // lib_surfaces.cpp
+void win_clipboard_updated(void); // class_clipboard.cpp
+void winTerminateClipboard(void);
+
+#ifdef __cplusplus
+} // extern C
+#endif
+
+#ifdef __cplusplus
+namespace display {
+
+extern "C" int winAddClip(int, const void *, int, int);
+extern "C" void winClearClipboard(void);
+extern "C" void winCopyClipboard(void);
+extern "C" int winExtractFile(void *, int, char *, int);
+extern "C" void winGetClip(int);
+extern "C" int winInitDragDrop(HWND);
+extern "C" int winCurrentClipboardID(void);
+extern "C" int winGetData(char *, struct WinDT **, int *);
+
+extern void winTerminate(void);
+extern HDC winGetDC(HWND);
+extern void winReleaseDC(HWND, HDC);
+extern void winSetSurfaceID(HWND, int);
+extern int winBlit(void *, int, int, int, int, void *, int, int);
+extern void winGetError(int, char *, int);
+extern void * winCreateCompatibleDC(void);
+extern HBITMAP winCreateBitmap(int width, int height, int bpp);
+extern void winDeleteDC(void *);
+extern void winDeleteObject(void *);
+extern void winDrawLine(void *, int, int, int, int, unsigned char *);
+extern void winDrawRectangle(void *, int, int, int, int, unsigned char, unsigned char, unsigned char);
+extern void winGetPixel(void *, int, int, unsigned char *);
+extern int winGetPixelFormat(int *, int *, int *, int *);
+extern void * winSelectObject(void *, void *);
+extern int winSetClipping(HDC, int, int, int, int);
+extern void winSetDIBitsToDevice(void *, int, int, int, int, int, int, int, int, int, void *, int, int, int);
+
+extern void win32RedrawWindow(HWND, HDC, int X, int Y, int Width,
    int Height, int XDest, int YDest, int ScanWidth, int ScanHeight,
-   int BPP, void *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, int Opacity);
-void MsgKeyPress(int, int, int);
-void MsgKeyRelease(int, int);
-void MsgMovement(int, double, double, int, int);
-void MsgWheelMovement(int, float);
-void MsgButtonPress(int, int);
-void MsgFocusState(int SurfaceID, int State);
-void MsgResizedWindow(int, int, int, int, int, int, int, int, int);
-void MsgSetFocus(int SurfaceID);
-void MsgSwitchWindowType(HWND, int);
-void MsgTimer(void);
-void MsgWindowClose(int SurfaceID);
-void MsgWindowDestroyed(int SurfaceID);
+   int BPP, unsigned char *Data, int RedMask, int GreenMask, int BlueMask, int AlphaMask, unsigned char Opacity);
+
+extern void MsgKeyPress(int, int, int);
+extern void MsgKeyRelease(int, int);
+extern void MsgMovement(int, double, double, int, int);
+extern void MsgWheelMovement(int, float);
+extern void MsgButtonPress(int, int);
+extern void MsgFocusState(int SurfaceID, int State);
+extern void MsgResizedWindow(int, int, int, int, int, int, int, int, int);
+extern void MsgSetFocus(int SurfaceID);
+extern void MsgSwitchWindowType(HWND, int);
+extern void MsgTimer(void);
+extern void MsgWindowClose(int SurfaceID);
+extern void MsgWindowDestroyed(int SurfaceID);
 
 void CheckWindowSize(int, int *, int *);
 
 void Win32ManagerLoop(void);
 
-void winGetDPI(LONG *, LONG *);
-int winLookupSurfaceID(HWND);
-HWND winCreateChild(HWND, int, int, int, int);
-HWND winCreateScreen(HWND, int *, int *, int *, int *, char, char, const char *, char, unsigned char, char);
-int winCreateScreenClass(void);
-int winCurrentClipboardID(void);
-void winDisableBatching(void);
-void winRemoveWindowClass(const char *);
-int winProcessMessage(void *);
-int winDestroyWindow(HWND);
-int winDetermineWindow(int, int, int *, int *, int *);
-void winFindClose(HANDLE);
-HANDLE winFindWindow(char *, char *);
-void winFocus(HWND);
-void winFreeDragDrop(void);
-void winGetCoords(HWND, int *, int *, int *, int *, int *, int *, int *, int *);
-int winGetDesktopSize(int *, int *);
-int winGetDisplaySettings(int *, int *, int *);
-void winGetMargins(HWND, int *, int *, int *, int *);
-HINSTANCE winGetModuleHandle(void);
-int winGetWindowInfo(HWND, int *, int *, int *, int *, int *);
-void winGetWindowTitle(HWND, char *, int);
-int winHideWindow(HWND);
-void winInitCursors(struct WinCursor *, int);
-void winMinimiseWindow(HWND);
-int winMoveWindow(HWND, int, int);
-void winMoveToBack(HWND);
-void winMoveToFront(HWND);
-int winReadKey(char *, char *, char *, int);
-int winResizeWindow(HWND, int, int, int, int);
-void winSetCursorPos(double X, double Y);
-void winShowCursor(int);
-void winSetCursor(HCURSOR);
-void winSetSurfaceID(HWND, int);
-int winSettings(int);
-void winSetWindowTitle(HWND, const char *);
-int winShowWindow(HWND, int);
-void winUpdateWindow(HWND);
-void winTerminate(void);
-HDC winGetDC(HWND);
-void winReleaseDC(HWND, HDC);
-void winDragDropFromHost_Drop(int, char *);
-int winGetData(char *, struct WinDT **, int *);
+extern void winGetDPI(int *, int *);
+extern HWND winCreateChild(HWND, int, int, int, int);
+extern HWND winCreateScreen(HWND, int *, int *, int *, int *, char, char, const char *, char, unsigned char, char);
+extern int winCreateScreenClass(void);
+extern void winDisableBatching(void);
+extern void winRemoveWindowClass(const char *);
+extern int winProcessMessage(void *);
+extern int winDestroyWindow(HWND);
+extern int winDetermineWindow(int, int, int *, int *, int *);
+extern void winFindClose(HANDLE);
+extern HANDLE winFindWindow(char *, char *);
+extern void winFocus(HWND);
+extern void winFreeDragDrop(void);
+extern void winGetCoords(HWND, int *, int *, int *, int *, int *, int *, int *, int *);
+extern int winGetDesktopSize(int *, int *);
+extern int winGetDisplaySettings(int *, int *, int *);
+extern void winGetMargins(HWND, int *, int *, int *, int *);
+extern HINSTANCE winGetModuleHandle(void);
+extern int winGetWindowInfo(HWND, int *, int *, int *, int *, int *);
+extern void winGetWindowTitle(HWND, char *, int);
+extern int winHideWindow(HWND);
+extern void winInitCursors(struct WinCursor *, int);
+extern void winMinimiseWindow(HWND);
+extern int winMoveWindow(HWND, int, int);
+extern void winMoveToBack(HWND);
+extern void winMoveToFront(HWND);
+extern int winReadKey(char *, char *, unsigned char *, int);
+extern int winResizeWindow(HWND, int, int, int, int);
+extern void winSetCursorPos(int X, int Y);
+extern void winShowCursor(int);
+extern void winSetCursor(HCURSOR);
+extern void winSetSurfaceID(HWND, int);
+extern int winSettings(int);
+extern void winSetWindowTitle(HWND, const char *);
+extern void winUpdateWindow(HWND);
+extern void winTerminate(void);
+extern HDC winGetDC(HWND);
+extern void winReleaseDC(HWND, HDC);
+extern int winShowWindow(void *, int);
+} // namespace
 
-#ifdef __cplusplus
-}
 #endif

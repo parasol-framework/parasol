@@ -1,19 +1,24 @@
 # Vector module
 
 set (MOD vector)
+set (INC_MOD_VECTOR TRUE PARENT_SCOPE)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/vector.h"
    FILES "vector_functions.cpp"
-   ARGS "--output-defs=module_def.c")
+   ARGS "output-defs=module_def.c")
 
 idl_def ("${MOD}.fdl" NAME ${MOD}_idl OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/idl.h")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
 
+if (MSVC)
+
+else ()
 target_compile_options (${MOD} PRIVATE
   "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-Wno-narrowing;-Wno-uninitialized>>")
+endif ()
 
 #add_definitions ("-DDBG_DRAW=1")
 
@@ -56,4 +61,5 @@ target_include_directories (${MOD} PRIVATE
 target_precompile_headers(${MOD} PRIVATE
    vector.h)
 
-target_link_libraries (${MOD} PRIVATE "m")
+target_link_libraries (${MOD} PUBLIC linear_rgb)
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})

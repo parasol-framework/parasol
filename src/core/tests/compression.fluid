@@ -33,7 +33,7 @@ end
 function testCreateCompress()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip', flags='!NEW' } )
 
-   err = cmp.mtCompressFile('config:classes.bin', '')
+   err = cmp.mtCompressFile('config:fonts/fixed/clean.fon', '')
    if (err != ERR_Okay) then error('CompressFile() failed: ' .. mSys.GetErrorMsg(err)) end
 
    err = cmp.mtCompressFile('fonts:fonts.cfg', '')
@@ -46,7 +46,7 @@ end
 function testDecompressWild()
    local cmp = obj.new('compression', { path='temp:cmp_test_json.zip' } )
 
-   err = cmp.mtDecompressFile('*.bin', 'temp:')
+   err = cmp.mtDecompressFile('*.fon', 'temp:')
    assert(err == ERR_Okay, 'DecompressFile() failed: ' .. mSys.GetErrorMsg(err))
 end
 

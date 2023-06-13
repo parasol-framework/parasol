@@ -1,3 +1,4 @@
+#pragma once
 
 #define __system__
 //#define DEBUG
@@ -21,6 +22,7 @@
 #include <mutex>
 #include <queue>
 #include <sstream>
+#include <array>
 #include <math.h>
 
 #ifdef __linux__
@@ -106,7 +108,7 @@
 
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
-#include <parasol/linear_rgb.h>
+#include "../link/linear_rgb.h"
 
 using namespace pf;
 class extBitmap;
@@ -522,33 +524,11 @@ extern "C" {
 DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI SetPixel(APTR, LONG, LONG, LONG);
 DLLCALL LONG WINAPI GetPixel(APTR, LONG, LONG);
-
-int winAddClip(CLIPTYPE, const void *, int, int);
-void winClearClipboard(void);
-void winCopyClipboard(void);
-int winExtractFile(void *, int, char *, int);
-void winGetClip(CLIPTYPE);
-void winTerminate(void);
-APTR winGetDC(APTR);
-void winReleaseDC(APTR, APTR);
-void winSetSurfaceID(APTR, LONG);
-APTR GetWinCursor(PTC);
-LONG winBlit(APTR, LONG, LONG, LONG, LONG, APTR, LONG, LONG);
-void winGetError(LONG, STRING, LONG);
-APTR winCreateCompatibleDC(void);
-APTR winCreateBitmap(LONG, LONG, LONG);
-void winDeleteDC(APTR);
-void winDeleteObject(void *);
-void winDrawLine(APTR, LONG, LONG, LONG, LONG, UBYTE *);
-void winDrawRectangle(APTR, LONG, LONG, LONG, LONG, UBYTE, UBYTE, UBYTE);
-void winGetPixel(APTR, LONG, LONG, UBYTE *);
-LONG winGetPixelFormat(LONG *, LONG *, LONG *, LONG *);
-APTR winSelectObject(APTR, APTR);
-APTR winSetClipping(APTR, LONG, LONG, LONG, LONG);
-void winSetDIBitsToDevice(APTR, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, LONG, APTR, LONG, LONG, LONG);
 }
 
 #include "win32/windows.h"
+
+HCURSOR GetWinCursor(PTC CursorID);
 
 extern WinCursor winCursors[24];
 
@@ -631,11 +611,11 @@ inline LONG find_bitmap_owner(LONG Index)
 
 inline LONG find_surface_list(extSurface *Surface, LONG Limit = -1)
 {
-   if (Limit IS -1) Limit = glSurfaces.size();
+   if (Limit IS -1) Limit = LONG(glSurfaces.size());
    else if (Limit > LONG(glSurfaces.size())) {
       pf::Log log(__FUNCTION__);
       log.warning("Invalid Limit parameter of %d (max %d)", Limit, LONG(glSurfaces.size()));
-      Limit = glSurfaces.size();
+      Limit = LONG(glSurfaces.size());
    }
 
    for (LONG i=0; i < Limit; i++) {
@@ -647,11 +627,11 @@ inline LONG find_surface_list(extSurface *Surface, LONG Limit = -1)
 
 inline LONG find_surface_list(OBJECTID SurfaceID, LONG Limit = -1)
 {
-   if (Limit IS -1) Limit = glSurfaces.size();
+   if (Limit IS -1) Limit = LONG(glSurfaces.size());
    else if (Limit > LONG(glSurfaces.size())) {
       pf::Log log(__FUNCTION__);
       log.warning("Invalid Limit parameter of %d (max %d)", Limit, LONG(glSurfaces.size()));
-      Limit = glSurfaces.size();
+      Limit = LONG(glSurfaces.size());
    }
 
    for (LONG i=0; i < Limit; i++) {

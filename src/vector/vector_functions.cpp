@@ -23,7 +23,7 @@ inline char read_nibble(CSTRING Str)
    if ((*Str >= '0') and (*Str <= '9')) return (*Str - '0');
    else if ((*Str >= 'A') and (*Str <= 'F')) return ((*Str - 'A')+10);
    else if ((*Str >= 'a') and (*Str <= 'f')) return ((*Str - 'a')+10);
-   else return 0xff;
+   else return char(0xff);
 }
 
 // Resource management for the SimpleVector follows.  NB: This is a beta feature in the Core.

@@ -76,10 +76,10 @@ static ERROR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false)) return log.warning(ERR_Failed);
 
    const UBYTE RGBA[4] = {
-      Self->Target->ColourFormat->RedPos>>3,
-      Self->Target->ColourFormat->GreenPos>>3,
-      Self->Target->ColourFormat->BluePos>>3,
-      Self->Target->ColourFormat->AlphaPos>>3
+      UBYTE(Self->Target->ColourFormat->RedPos>>3),
+      UBYTE(Self->Target->ColourFormat->GreenPos>>3),
+      UBYTE(Self->Target->ColourFormat->BluePos>>3),
+      UBYTE(Self->Target->ColourFormat->AlphaPos>>3)
    };
 
    UBYTE *input = inBmp->Data + (inBmp->Clip.Left * inBmp->BytesPerPixel) + (inBmp->Clip.Top * inBmp->LineWidth);

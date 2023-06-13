@@ -32,6 +32,10 @@ areas.
 #include "../defs.h"
 #include <parasol/modules/picture.h>
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 static ERROR SET_Opacity(extSurface *, DOUBLE);
 static ERROR SET_XOffset(extSurface *, Variable *);
 static ERROR SET_YOffset(extSurface *, Variable *);
@@ -869,8 +873,8 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
    // placed first, then the lost-focus chain.
 
    LONG event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
-   UBYTE buffer[event_size];
-   auto ev = (evFocus *)buffer;
+   auto buffer = std::make_unique<BYTE[]>(event_size);
+   auto ev = (evFocus *)(buffer.get());
    ev->EventID        = EVID_GUI_SURFACE_FOCUS;
    ev->TotalWithFocus = glFocusList.size();
    ev->TotalLostFocus = lostfocus.size();
@@ -1255,7 +1259,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
 
       if (gfxGetDisplayType() IS DT::NATIVE) Self->Flags &= ~(RNF::COMPOSITE);
 
-      if (((gfxGetDisplayType() IS DT::WINDOWS) or (gfxGetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
+      if (((gfxGetDisplayType() IS DT::WINGDI) or (gfxGetDisplayType() IS DT::X11)) and ((Self->Flags & RNF::HOST) != RNF::NIL)) {
          if (glpMaximise) scrflags |= SCR::MAXIMISE;
          if (glpFullScreen) scrflags |= SCR::MAXIMISE|SCR::BORDERLESS;
       }
@@ -2576,6 +2580,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 #include "surface_fields.cpp"
 #include "surface_dimensions.cpp"
 #include "surface_resize.cpp"
+#include "../lib_surfaces.cpp"
 
 //********************************************************************************************************************
 

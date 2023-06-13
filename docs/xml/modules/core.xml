@@ -269,8 +269,8 @@ struct FunctionField argsResize[] = {
       <param type="LONG" name="Adjust">The level of adjustment to make to new log messages.  Zero is the default (no change).  The maximum level is 6.</param>
     </input>
     <description>
-<p>This function adjusts the detail level of all messages that are sent to the program log via <function module="Core">LogF</function>.  To illustrate by example, setting the Adjust value to 1 would result in level 5 log messages being raised to level 6.  If the user's maximum log level output is 5, such messages would no longer appear in the log until the base-line is reduced to normal.</p>
-<p>The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable means of eliminating that noise if the user has the log level set to 5 (debug).  If there is a need to see the mesages, re-running the program with a deeper log level of 7 or more would make them visible.</p>
+<p>This function adjusts the detail level of all outgoing log messages.  To illustrate by example, setting the Adjust value to 1 would result in level 5 log messages being bumped to level 6.  If the user's maximum log level output is 5, no further log messages will be output until the base-line is reduced to normal.</p>
+<p>The main purpose of AdjustLogLevel() is to reduce log noise.  For instance, creating a new desktop window will result in a large number of new log messages.  Raising the base-line by 2 before creating the window would be a reasonable means of eliminating that noise if the user has the log level set to 5 (API level).  If there is a need to see the messages, re-running the program with a deeper log level of 7 or more would make them visible.</p>
 <p>Adjustments to the base-line are accumulative, so small increments of 1 or 2 are encouraged.  To revert logging to the previous base-line, call this function again with a negation of the previously passed value.</p>
     </description>
     <result type="LONG">Returns the absolute base-line value that was active prior to calling this function.</result>
@@ -3036,9 +3036,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
 
     <constants lookup="OPF">
       <const name="ARGS"/>
-      <const name="COMPILED_AGAINST"/>
-      <const name="CORE_VERSION"/>
-      <const name="DEPRECATED"/>
       <const name="DETAIL"/>
       <const name="ERROR"/>
       <const name="MAX_DEPTH"/>
@@ -3161,6 +3158,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="PRIVILEGED">This is set to TRUE if the process has elevated privileges (such as superuser or administrative rights).</const>
       <const name="PRIVILEGED_USER">If this value is set to 1, the process will operate in privileged mode (typically this enables full administrator rights).  This feature will only work for Unix processes that are granted admin rights when launched.  Setting the Value to 0 reverts to the user's permission settings.  SetResource() will return an error code indicating the level of success.</const>
       <const name="PROCESS_STATE">Life-cycle stage of the running process</const>
+      <const name="STATIC_BUILD">Returns true if the runtime is a statically linked build.</const>
       <const name="THREAD_ID">Return the ID of the current thread.</const>
       <const name="TOTAL_MEMORY">The total amount of installed memory.</const>
       <const name="TOTAL_SHARED_MEMORY">The total amount of shared memory in use (system wide).</const>
@@ -3527,8 +3525,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
     <struct name="SystemState" comment="Returned by the GetSystemState() function.">
       <field name="Platform" type="CSTRING">String-based field indicating the user's platform.  Currently returns 'Native', 'Windows', 'OSX' or 'Linux'.</field>
       <field name="ConsoleFD" type="HOSTHANDLE">Internal</field>
-      <field name="CoreVersion" type="LONG">Reflects the Core version number.</field>
-      <field name="CoreRevision" type="LONG">Reflects the Core revision number.</field>
       <field name="Stage" type="LONG">The current operating stage.  -1 = Initialising, 0 indicates normal operating status; 1 means that the program is shutting down; 2 indicates a program restart; 3 is for mode switches.</field>
     </struct>
 

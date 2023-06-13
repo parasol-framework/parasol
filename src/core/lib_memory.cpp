@@ -240,10 +240,12 @@ ERROR FreeResource(MEMORYID MemoryID)
             auto start_mem = (char *)mem.Address - sizeof(LONG) - sizeof(LONG);
             if ((mem.Flags & MEM::MANAGED) != MEM::NIL) {
                start_mem -= sizeof(ResourceManager *);
-               auto rm = ((ResourceManager **)start_mem)[0];
-               if (rm->Free((APTR)mem.Address) IS ERR_InUse) {
-                  // Memory block is in use - the manager will be entrusted to handle this situation appropriately.
-                  return ERR_Okay;
+               if (!glCrashStatus) { // Resource managers are not considered safe in an uncontrolled shutdown
+                  auto rm = ((ResourceManager **)start_mem)[0];
+                  if (rm->Free((APTR)mem.Address) IS ERR_InUse) {
+                     // Memory block is in use - the manager will be entrusted to handle this situation appropriately.
+                     return ERR_Okay;
+                  }
                }
             }
 

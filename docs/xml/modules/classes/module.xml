@@ -90,12 +90,8 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <access read="R">Read</access>
       <type>APTR</type>
       <description>
-<p>Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains vectors that point to all functions that are published by the module.</p>
-<p>The jump table is unique to the instance of the module. This allows each module to use a different function model between versions, without losing backwards compatibility.  When a module is opened, it can check the requested <field>Version</field> and return a custom-built jump table to the program.  Thus if a function were changed in a future module version, older programs would be re-routed to a routine that provides backwards compatibility to the newer function model.</p>
-<p>By default, jump tables are arranged as an array of function pointers accessible through a well defined structure. The template for making calls is <code>FunctionBase-&gt;FunctionCall()</code></p>
-<p>Header files will normally include macros to simplify the function call:</p>
-<pre>#define FunctionCall      FunctionBase-&gt;FunctionCall</pre>
-<p>The jump table is invalid once the module is destroyed.</p>
+<p>Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains vectors that point to all functions that are published by the module.  This is considered an internal feature that is hidden by system headers.</p>
+<p>If the module is unloaded at any time then the jump table becomes invalid.</p>
       </description>
     </field>
 
@@ -107,18 +103,6 @@ if (modDisplay) modDisplay-&gt;getPtr(FID_ModBase, &amp;DisplayBase);
       <description>
 <p>This string pointer specifies the name of the Module.  This name will be used to load the module from the <code>modules:</code> folder, so this field actually reflects part of the module file name.  It is also possible to specify sub-directories before the module name itself - this could become more common in module loading in future.</p>
 <p>It is critical that file extensions do not appear in the Name string, e.g. <code>screen.dll</code> as not all systems may use a <code>.dll</code> extension.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Version</name>
-      <comment>Minimum required version number.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type>DOUBLE</type>
-      <description>
-<p>When opening a module, the value that you insert in the Version field will reflect the minimum version and revision number required of the module file.  If the module's version number is less than the version that you specify, then the initialisation procedure will be aborted.</p>
-<p>The Version field is also useful for ensuring that the function base returned by a module matches your program's expectations.  For instance, if you write your program against a 1.0 version of a module but the user's machine has a 2.0 version installed, there could be incompatibilities.  By specifying the required version number, the module can provide backwards-compatible functionality for your software.</p>
-<p>After initialisation, the Version field will be updated to reflect the actual version of the Module.</p>
       </description>
     </field>
 

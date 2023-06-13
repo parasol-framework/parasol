@@ -26,7 +26,13 @@ This documentation is intended for technical reference and is not suitable as an
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <unistd.h>
+
+#ifdef _MSC_VER
+ #include <io.h>
+#else
+ #include <unistd.h>
+#endif
+
 #include <forward_list>
 #include <sstream>
 
@@ -107,8 +113,8 @@ extern "C" ERROR add_file_class(void);
 extern "C" ERROR add_storage_class(void);
 
 LONG InitCore(void);
-extern "C" EXPORT void CloseCore(void);
-extern "C" EXPORT struct CoreBase * OpenCore(OpenInfo *);
+__export void CloseCore(void);
+__export ERROR OpenCore(OpenInfo *, struct CoreBase **);
 static ERROR init_volumes(const std::forward_list<std::string> &);
 
 #ifdef _WIN32
@@ -122,6 +128,10 @@ DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 
 static std::string glHomeFolderName;
+
+#include "static_modules.cpp"
+
+//********************************************************************************************************************
 
 static void print_class_list(void) __attribute__ ((unused));
 static void print_class_list(void)
@@ -148,7 +158,7 @@ void _init(void)
 
 //********************************************************************************************************************
 
-EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
+ERROR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 {
    #ifdef __unix__
       struct timeval tmday;
@@ -159,15 +169,13 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    #endif
    LONG i;
 
-   if (!Info) return NULL;
+   if (!Info) return ERR_Failed;
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Failed;
    glOpenInfo   = Info;
    tlMainThread = TRUE;
    glCodeIndex  = 0; // Reset the code index so that CloseCore() will work.
 
-   if (glProcessID) {
-      fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
-   }
+   if (glProcessID) fprintf(stderr, "Core module has already been initialised (OpenCore() called more than once.)\n");
 
 #ifdef __unix__
    // Record the 'original' user id and group id, which we need to know in case the binary has been run with the suid
@@ -246,7 +254,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (winGetCurrentDirectory(sizeof(buffer), buffer)) glRootPath = buffer;
          else {
             fprintf(stderr, "Failed to determine root folder.\n");
-            return NULL;
+            return ERR_Failed;
          }
          if (glRootPath.back() != '\\') glRootPath += '\\';
       #else
@@ -270,16 +278,6 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    if (glSystemPath.empty()) {
       // When no system path is specified then treat the install as 'run-anywhere' so that "parasol:" == "system:"
       glSystemPath = glRootPath;
-   }
-
-   // Process the Information structure
-
-   if ((Info->Flags & OPF::CORE_VERSION) != OPF::NIL) {
-      if (Info->CoreVersion > VER_CORE) {
-         KMSG("This program requires version %.1f of the Parasol Core.\n", Info->CoreVersion);
-         if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_CoreVersion;
-         return NULL;
-      }
    }
 
    // Debug processing
@@ -330,6 +328,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if ((!StrMatch(arg, "set-volume")) and (i+1 < Info->ArgCount)) { // --set-volume scripts=my:location/
             volumes.emplace_front(Info->Args[++i]);
          }
+         else if (!StrMatch(arg, "no-crash-handler")) glEnableCrashHandler = false;
          else if (!StrMatch(arg, "sync"))        glSync = true;
          else if (!StrMatch(arg, "log-threads")) glLogThreads = true;
          else if (!StrMatch(arg, "log-none"))    glLogLevel = 0;
@@ -347,7 +346,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
          else if (!StrMatch(arg, "holdpriority")) hold_priority = true;
          #endif
          else if (!StrCompare("home=", arg, 7)) glHomeFolderName.assign(arg + 7);
-         else newargs.push_back(arg);
+         else newargs.push_back(Info->Args[i]);
       }
 
       if (glLogLevel > 2) {
@@ -384,22 +383,23 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
 #endif
 
 #ifdef __unix__
-   // Subscribe to the following signals so that we can handle system crashes correctly.
-
    struct sigaction sig;
 
    sig.sa_flags = SA_SIGINFO;
-   sig.sa_sigaction = CrashHandler;
-   sigaction(SIGINT,  &sig, 0);  // Interrupt from keyboard
-   sigaction(SIGHUP,  &sig, 0);  // Hang up detected on controlling terminal
-   sigaction(SIGQUIT, &sig, 0);  // Quit from keyboard (ctrl-c)
-   sigaction(SIGTERM, &sig, 0);  // Termination signal
-   sigaction(SIGSEGV, &sig, 0);  // Illegal read/write of a memory location
-   sigaction(SIGFPE,  &sig, 0);  // Floating point exception
-   sigaction(SIGILL,  &sig, 0);  // Illegal instruction
+   if (glEnableCrashHandler) {
+      // Subscribe to the following signals for active crash management.
+      sig.sa_sigaction = CrashHandler;
+      sigaction(SIGINT,  &sig, 0);  // Interrupt from keyboard
+      sigaction(SIGHUP,  &sig, 0);  // Hang up detected on controlling terminal
+      sigaction(SIGQUIT, &sig, 0);  // Quit from keyboard (ctrl-c)
+      sigaction(SIGTERM, &sig, 0);  // Termination signal
+      sigaction(SIGSEGV, &sig, 0);  // Illegal read/write of a memory location
+      sigaction(SIGFPE,  &sig, 0);  // Floating point exception
+      sigaction(SIGILL,  &sig, 0);  // Illegal instruction
 
-   sig.sa_sigaction = DiagnosisHandler;
-   sigaction(SIGUSR1, &sig, 0);      // Print a status report for user signal #1
+      sig.sa_sigaction = DiagnosisHandler;
+      sigaction(SIGUSR1, &sig, 0);      // Print a status report for user signal #1
+   }
 
    sig.sa_sigaction = NullHandler;
    sigaction(SIGALRM, &sig, 0);       // Do nothing when alarms are signalled
@@ -458,62 +458,60 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
                KMSG("Attempting to re-use an earlier bind().\n");
                if (setsockopt(glSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) IS -1) {
                   if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-                  return NULL;
+                  return ERR_SystemCall;
                }
             }
             else {
                if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-               return NULL;
+               return ERR_SystemCall;
             }
          }
       }
       else {
          KERR("Failed to create a new socket communication point.\n");
          if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_SystemCall;
-         return NULL;
+         return ERR_SystemCall;
       }
 
       RegisterFD(glSocket, RFD::READ, NULL, NULL);
    #endif
 
-   // Print task information
-
-   log.msg("Version: %.1f : Process: %d", VER_CORE, glProcessID);
-   log.msg("Sync: %s, Root: %s", (glSync) ? "Y" : "N", glRootPath.c_str());
+   log.msg("Process: %d, Sync: %s, Root: %s", glProcessID, (glSync) ? "Y" : "N", glRootPath.c_str());
 #ifdef __unix__
    log.msg("UID: %d (%d), EUID: %d (%d); GID: %d (%d), EGID: %d (%d)", getuid(), glUID, geteuid(), glEUID, getgid(), glGID, getegid(), glEGID);
 #endif
 
    init_metaclass();
 
-   if (add_task_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_thread_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_module_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_time_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_config_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_storage_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_file_class() != ERR_Okay)    { CloseCore(); return NULL; }
-   if (add_script_class() != ERR_Okay)  { CloseCore(); return NULL; }
-   if (add_archive_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return NULL; }
-   if (add_compression_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_task_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_thread_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_module_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_time_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_config_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_storage_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_file_class() != ERR_Okay)    { CloseCore(); return ERR_AddClass; }
+   if (add_script_class() != ERR_Okay)  { CloseCore(); return ERR_AddClass; }
+   if (add_archive_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_compressed_stream_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
+   if (add_compression_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
    #ifdef __ANDROID__
-   if (add_asset_class() != ERR_Okay) { CloseCore(); return NULL; }
+   if (add_asset_class() != ERR_Okay) { CloseCore(); return ERR_AddClass; }
    #endif
 
    if (!(glCurrentTask = extTask::create::untracked())) {
       CloseCore();
-      return NULL;
+      return ERR_CreateObject;
    }
 
    if (init_volumes(volumes)) {
       KERR("Failed to initialise the filesystem.");
       CloseCore();
-      return NULL;
+      return ERR_Failed;
    }
 
    fs_initialised = true;
 
+#ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) IS OPF::NIL) {
       ERROR error;
       objFile::create file = { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
@@ -546,6 +544,7 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
       }
       else glScanClasses = true; // If no file, a database rebuild is required.
    }
+#endif
 
    if (!newargs.empty()) SetArray(glCurrentTask, FID_Parameters, &newargs, newargs.size());
 
@@ -562,21 +561,34 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    }
 #endif
 
+#ifndef PARASOL_STATIC
    // Generate the Core table for our new task
-
    LocalCoreBase = (struct CoreBase *)build_jump_table(glFunctions);
+#else
+   LocalCoreBase = NULL;
+
+   register_static_modules();
+
+   // Initialise all the modules because we don't retain a class database in static builds.
+
+   for (auto & [ name, hdr ] : glStaticModules) {
+      objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
+   }
+#endif
 
    // Broadcast the creation of the new task
 
    evTaskCreated task_created = { EVID_SYSTEM_TASK_CREATED, glCurrentTask->UID };
    BroadcastEvent(&task_created, sizeof(task_created));
 
+#ifndef PARASOL_STATIC
    if ((Info->Flags & OPF::SCAN_MODULES) != OPF::NIL) {
       log.msg("Class scanning has been enforced by user request.");
       glScanClasses = true;
    }
 
    if (glScanClasses) scan_classes();
+#endif
 
    #ifdef _DEBUG
       print_class_list();
@@ -587,17 +599,8 @@ EXPORT struct CoreBase * OpenCore(OpenInfo *Info)
    glSystemState = 0; // Indicates that initialisation is complete.
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR_Okay;
 
-   return LocalCoreBase;
-}
-
-//********************************************************************************************************************
-// Performs a system cleanup by expunging unused memory, modules etc.
-
-EXPORT void CleanSystem(LONG Flags)
-{
-   pf::Log log("Core");
-   log.msg("Flags: $%.8x", Flags);
-   Expunge(FALSE);
+   *JumpTable = LocalCoreBase;
+   return ERR_Okay;
 }
 
 //********************************************************************************************************************
@@ -985,7 +988,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
 //********************************************************************************************************************
 
-ERROR convert_errno(LONG Error, ERROR Default)
+extern "C" ERROR convert_errno(LONG Error, ERROR Default)
 {
    switch (Error) {
       case 0:       return ERR_Okay;
@@ -1065,16 +1068,17 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glRootPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
 
+      #ifndef PARASOL_STATIC
       if (!glModulePath.empty()) {
          SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
-      else {
-         SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
-      }
+      else SetVolume("modules", "system:lib/", "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
+      #endif
    #elif __unix__
       SetVolume("parasol", glRootPath.c_str(), "programs/filemanager", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       SetVolume("system", glSystemPath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
 
+      #ifndef PARASOL_STATIC
       if (!glModulePath.empty()) {
          SetVolume("modules", glModulePath.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
@@ -1082,6 +1086,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
          std::string path = glRootPath + "lib/parasol/";
          SetVolume("modules", path.c_str(), "misc/brick", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
       }
+      #endif
 
       SetVolume("drive1", "/", "devices/storage", "Linux", "hd", VOLUME::REPLACE|VOLUME::SYSTEM);
       SetVolume("etc", "/etc", "tools/cog", NULL, NULL, VOLUME::REPLACE|VOLUME::SYSTEM);
@@ -1136,16 +1141,15 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    std::string buffer("config:users/default/");
 
    #ifdef __unix__
-      STRING homedir, logname;
-      if ((homedir = getenv("HOME")) and (homedir[0]) and (StrMatch("/", homedir) != ERR_Okay)) {
+      if (auto homedir = getenv("HOME"); homedir and homedir[0] and (StrMatch("/", homedir) != ERR_Okay)) {
          buffer = homedir;
          if (buffer.back() IS '/') buffer.pop_back();
 
          SetVolume("home", buffer.c_str(), "users/user", NULL, NULL, VOLUME::REPLACE);
 
-         buffer += "/." + glHomeFolderName + std::to_string(F2T(VER_CORE)) + "/";
+         buffer += "/." + glHomeFolderName + "/";
       }
-      else if ((logname = getenv("LOGNAME")) and (logname[0])) {
+      else if (auto logname = getenv("LOGNAME"); logname and (logname[0])) {
          buffer = std::string("config:users/") + logname + "/";
       }
    #elif _WIN32
@@ -1154,7 +1158,7 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 
       char user_folder[256];
       if (winGetUserFolder(user_folder, sizeof(user_folder))) {
-         buffer = user_folder + glHomeFolderName + std::to_string(F2T(VER_CORE)) + std::to_string(REV_CORE) + "\\";
+         buffer = user_folder + glHomeFolderName + "\\";
       }
       else if (winGetUserName(user_folder, sizeof(user_folder)) and (user_folder[0])) {
          buffer.append(user_folder);
@@ -1205,21 +1209,18 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
 #ifdef _WIN32
    {
       char buffer[256];
-      LONG len;
-      if ((len = winGetLogicalDriveStrings(buffer, sizeof(buffer))) > 0) {
+      if (auto len = winGetLogicalDriveStrings(buffer, sizeof(buffer)); len > 0) {
          char disk[] = "disk1";
          char cd[]   = "cd1";
          char hd[]   = "drive1";
          char net[]  = "net1";
 
          for (LONG i=0; i < len; i++) {
-            LONG type = winGetDriveType(buffer+i);
+            auto type = winGetDriveType(buffer+i);
 
             buffer[i+2] = '/';
 
-            char label[2];
-            label[0] = buffer[i];
-            label[1] = 0;
+            char label[2] = { buffer[i], 0 };
 
             if (type IS DRIVETYPE_REMOVABLE) {
                SetVolume(disk, buffer+i, "devices/storage", label, "disk", VOLUME::NIL);
@@ -1338,13 +1339,14 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
       }
    }
 
+#ifndef PARASOL_STATIC
    // Change glModulePath to an absolute path to optimise the loading of modules.
-
    STRING mpath;
    if (!ResolvePath("modules:", RSF::NO_FILE_CHECK, &mpath)) {
       glModulePath = mpath;
       FreeResource(mpath);
    }
+#endif
 
    return ERR_Okay;
 }

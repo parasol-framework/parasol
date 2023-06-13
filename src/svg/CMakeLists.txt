@@ -1,6 +1,7 @@
 # SVG module
 
 set (MOD svg)
+set (INC_MOD_SVG TRUE PARENT_SCOPE)
 
 idl_c ("${MOD}.fdl" NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
@@ -9,9 +10,14 @@ idl_c ("${MOD}.fdl" NAME ${MOD}_defs
 idl_def ("${MOD}.fdl" NAME ${MOD}_idl
    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}_def.c")
 
-add_library (${MOD} SHARED)
+add_library (${MOD})
 
 set_module_defaults (${MOD})
+
+if (MSVC)
+   # For Katana
+   add_compile_definitions ("YY_NO_UNISTD_H")
+endif ()
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
@@ -25,6 +31,6 @@ target_sources (${MOD} PRIVATE
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/katana-parser/src")
 
-target_link_libraries (${MOD} PRIVATE "m")
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
 
 flute_test (svg_output "tests/test-svg.fluid")

@@ -41,6 +41,8 @@ extern "C" {
 #include "hashes.h"
 #include "defs.h"
 
+JUMPTABLE_DISPLAY
+
 static int input_unsubscribe(lua_State *Lua);
 static void focus_event(lua_State *, evFocus *, LONG);
 static void key_event(struct finput *, evKey *, LONG);
@@ -311,7 +313,7 @@ static int input_subscribe(lua_State *Lua)
    ERROR error;
    if (!modDisplay) {
       pf::SwitchContext context(modFluid);
-      if ((error = objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase))) {
+      if ((error = objModule::load("display", &modDisplay, &DisplayBase))) {
          luaL_error(Lua, "Failed to load display module.");
          return 0;
       }

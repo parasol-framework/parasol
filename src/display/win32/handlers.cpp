@@ -10,6 +10,8 @@ Notes
 
 *********************************************************************************************************************/
 
+namespace display {
+
 void MsgKeyPress(KQ Flags, KEY Value, LONG Printable)
 {
    if (Value IS KEY::NIL) return;
@@ -254,7 +256,7 @@ void CheckWindowSize(OBJECTID SurfaceID, LONG *Width, LONG *Height)
 
 //********************************************************************************************************************
 
-extern "C" void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
+void RepaintWindow(OBJECTID SurfaceID, LONG X, LONG Y, LONG Width, LONG Height)
 {
    if ((Width) and (Height)) {
       struct drwExpose expose = { X, Y, Width, Height, EXF::CHILDREN };
@@ -325,3 +327,5 @@ void MsgShowObject(OBJECTID ObjectID)
    acShow(ObjectID);
    acMoveToFront(ObjectID);
 }
+
+} // namespace

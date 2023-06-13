@@ -56,8 +56,8 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                case VGT::LINEAR:
                default:           gradient_type = "<linearGradient/>"; break;
             }
-            XMLTag *tag;
-            error = xmlInsertXML(XML, def_index, XMI::CHILD_END, gradient_type, &tag);
+            XMLTag *tag = NULL;
+            error = xmlInsertStatement(XML, def_index, XMI::CHILD_END, gradient_type, &tag);
 
             if (!error) xmlNewAttrib(tag, "id", key);
 
@@ -144,7 +144,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             objVectorFilter *filter = (objVectorFilter *)def;
 
             XMLTag *tag;
-            error = xmlInsertXML(XML, def_index, XMI::CHILD_END, "<filter/>", &tag);
+            error = xmlInsertStatement(XML, def_index, XMI::CHILD_END, "<filter/>", &tag);
 
             if (!error) xmlNewAttrib(tag, "id", key);
 
@@ -182,7 +182,7 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
 
             STRING effect_xml;
             if ((!error) and (!filter->get(FID_EffectXML, &effect_xml))) {
-               error = xmlInsertXML(XML, tag->ID, XMI::CHILD, effect_xml, NULL);
+               error = xmlInsertStatement(XML, tag->ID, XMI::CHILD, effect_xml, NULL);
                FreeResource(effect_xml);
             }
          }
@@ -305,7 +305,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
    else if (Vector->Visibility IS VIS::COLLAPSE) xmlNewAttrib(tag, "visibility", "collapse");
    else if (Vector->Visibility IS VIS::INHERIT)  xmlNewAttrib(tag, "visibility", "inherit");
 
-   STRING stroke_width;
+   CSTRING stroke_width;
    if ((!error) and (!Vector->get(FID_StrokeWidth, &stroke_width))) {
       if (!stroke_width) stroke_width = "0";
       if ((stroke_width[0] != '1') and (stroke_width[1] != 0)) {
@@ -343,7 +343,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
       VMF morph_flags;
 
       XMLTag *morph_tag;
-      error = xmlInsertXML(XML, TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
+      error = xmlInsertStatement(XML, TagID, XMI::CHILD_END, "<parasol:morph/>", &morph_tag);
 
       STRING shape_id;
       if ((!error) and (!shape->get(FID_ID, &shape_id)) and (shape_id)) {
@@ -374,10 +374,7 @@ static ERROR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LON
 
       struct rkVectorTransition *tv;
       if ((!error) and (!Vector->getPtr(FID_Transition, &tv))) {
-
-#warning TODO save_svg_scan_std transition support
-
-
+         // TODO save_svg_scan_std transition support
 
 
 
@@ -430,7 +427,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if (!error) error = Vector->get(FID_RadiusY, &ry);
       if (!error) error = Vector->get(FID_CenterX, &cx);
       if (!error) error = Vector->get(FID_CenterY, &cy);
-      if (!error) error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<ellipse/>", &tag);
+      if (!error) error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<ellipse/>", &tag);
 
       if (!error) {
          set_dimension(tag, "rx", rx, dim & DMF_RELATIVE_RADIUS_X);
@@ -452,7 +449,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if ((!Vector->get(FID_Closed, &i)) and (i IS FALSE)) { // Line or Polyline
          if (!(error = GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             if (total_points IS 2) {
-               error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<line/>", &tag);
+               error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<line/>", &tag);
                if (!error) {
                   set_dimension(tag, "x1", points[0].X, points[0].XRelative);
                   set_dimension(tag, "y1", points[0].Y, points[0].YRelative);
@@ -462,7 +459,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
             }
             else {
                std::stringstream buffer;
-               error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<polyline/>", &tag);
+               error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<polyline/>", &tag);
                if (!error) {
                   for (i=0; i < total_points; i++) {
                      buffer << points[i].X << "," << points[i].Y << " ";
@@ -474,7 +471,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
       else {
          std::stringstream buffer;
-         error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<polygon/>", &tag);
+         error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<polygon/>", &tag);
 
          if ((!error) and (!GetFieldArray(Vector, FID_PointsArray, &points, &total_points))) {
             for (i=0; i < total_points; i++) {
@@ -498,7 +495,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       STRING str;
       char buffer[1024];
 
-      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<text/>", &tag);
+      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<text/>", &tag);
 
       if ((!error) and (!Vector->get(FID_X, &x))) set_dimension(tag, "x", x, FALSE);
       if ((!error) and (!Vector->get(FID_Y, &y))) set_dimension(tag, "y", y, FALSE);
@@ -557,14 +554,14 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
    }
    else if (Vector->Class->ClassID IS ID_VECTORGROUP) {
       XMLTag *tag;
-      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<g/>", &tag);
+      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<g/>", &tag);
       if (!error) error = save_svg_scan_std(Self, XML, Vector, tag->ID);
    }
    else if (Vector->Class->ClassID IS ID_VECTORCLIP) {
       XMLTag *tag;
       STRING str;
       if ((!(error = Vector->get(FID_ID, &str))) and (str)) { // The id is an essential requirement
-         error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<clipPath/>", &tag);
+         error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<clipPath/>", &tag);
 
          VUNIT units;
          if (!Vector->get(FID_Units, (LONG *)&units)) {
@@ -583,7 +580,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       DOUBLE dbl;
       LONG dim;
 
-      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<parasol:wave/>", &tag);
+      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<parasol:wave/>", &tag);
 
       if (!error) error = Vector->get(FID_Dimensions, &dim);
 
@@ -609,7 +606,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       DOUBLE dbl;
       LONG dim, length;
 
-      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<parasol:spiral/>", &tag);
+      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<parasol:spiral/>", &tag);
       if (error) return error;
 
       if ((error = Vector->get(FID_Dimensions, &dim))) return error;
@@ -633,7 +630,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       DOUBLE dbl;
       LONG num, dim;
 
-      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<parasol:shape/>", &tag);
+      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<parasol:shape/>", &tag);
 
       if ((error = Vector->get(FID_Dimensions, &dim))) return error;
 
@@ -663,7 +660,7 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       DOUBLE x, y, width, height;
       LONG dim;
 
-      error = xmlInsertXML(XML, Parent, XMI::CHILD_END, "<svg/>", &tag);
+      error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<svg/>", &tag);
 
       if (!error) error = Vector->get(FID_ViewX, &x);
       if (!error) error = Vector->get(FID_ViewY, &y);

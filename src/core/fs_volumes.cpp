@@ -4,6 +4,8 @@ Name: Files
 -END-
 *********************************************************************************************************************/
 
+// included by lib_filesystem.cpp
+
 /*********************************************************************************************************************
 
 -FUNCTION-
@@ -73,16 +75,16 @@ ERROR RenameVolume(CSTRING Volume, CSTRING Name)
 
          // Broadcast the change
 
-         UBYTE evdeleted[sizeof(EVENTID) + vol.size() + 1];
-         ((EVENTID *)evdeleted)[0] = GetEventID(EVG::FILESYSTEM, "volume", "deleted");
-         CopyMemory(vol.c_str(), evdeleted + sizeof(EVENTID), vol.size() + 1);
-         BroadcastEvent(evdeleted, sizeof(EVENTID) + vol.size() + 1);
+         auto evdeleted = std::make_unique<UBYTE[]>(sizeof(EVENTID) + vol.size() + 1);
+         ((EVENTID *)evdeleted.get())[0] = GetEventID(EVG::FILESYSTEM, "volume", "deleted");
+         CopyMemory(vol.c_str(), evdeleted.get() + sizeof(EVENTID), vol.size() + 1);
+         BroadcastEvent(evdeleted.get(), sizeof(EVENTID) + vol.size() + 1);
 
          LONG namelen = StrLength(Name) + 1;
-         UBYTE evcreated[sizeof(EVENTID) + namelen];
-         ((EVENTID *)evcreated)[0] = EVID_FILESYSTEM_VOLUME_CREATED;
-         CopyMemory(Name, evcreated + sizeof(EVENTID), namelen);
-         BroadcastEvent(evcreated, sizeof(EVENTID) + namelen);
+         auto evcreated = std::make_unique<UBYTE[]>(sizeof(EVENTID) + namelen);
+         ((EVENTID *)evcreated.get())[0] = EVID_FILESYSTEM_VOLUME_CREATED;
+         CopyMemory(Name, evcreated.get() + sizeof(EVENTID), namelen);
+         BroadcastEvent(evcreated.get(), sizeof(EVENTID) + namelen);
          return ERR_Okay;
       }
 
@@ -158,10 +160,10 @@ ERROR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING
       if ((Flags & VOLUME::HIDDEN) != VOLUME::NIL) keys["Hidden"] = "Yes";
       if ((Flags & VOLUME::SYSTEM) != VOLUME::NIL) keys["System"] = "Yes";
 
-      UBYTE evbuf[sizeof(EVENTID) + name.size() + 1];
-      ((EVENTID *)evbuf)[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
-      CopyMemory(name.c_str(), evbuf + sizeof(EVENTID), name.size() + 1);
-      BroadcastEvent(evbuf, sizeof(EVENTID) + name.size() + 1);
+      auto evbuf = std::make_unique<UBYTE[]>(sizeof(EVENTID) + name.size() + 1);
+      ((EVENTID *)evbuf.get())[0] = GetEventID(EVG::FILESYSTEM, "volume", "created");
+      CopyMemory(name.c_str(), evbuf.get() + sizeof(EVENTID), name.size() + 1);
+      BroadcastEvent(evbuf.get(), sizeof(EVENTID) + name.size() + 1);
       return ERR_Okay;
    }
    else return log.warning(ERR_SystemLocked);
@@ -188,6 +190,20 @@ Exists: The named volume already exists.
 
 *********************************************************************************************************************/
 
+using CALL_CLOSE_DIR       = ERROR (*)(DirInfo *);
+using CALL_DELETE          = ERROR (*)(STRING, FUNCTION *);
+using CALL_GET_INFO        = ERROR (*)(CSTRING, FileInfo*, LONG);
+using CALL_GET_DEVICE_INFO = ERROR (*)(CSTRING, objStorageDevice*);
+using CALL_IDENTIFY_FILE   = ERROR (*)(STRING, CLASSID*, CLASSID*);
+using CALL_IGNORE_FILE     = void  (*)(extFile*);
+using CALL_MAKE_DIR        = ERROR (*)(CSTRING, PERMIT);
+using CALL_OPEN_DIR        = ERROR (*)(DirInfo*);
+using CALL_RENAME          = ERROR (*)(STRING, STRING);
+using CALL_SAME_FILE       = ERROR (*)(CSTRING, CSTRING);
+using CALL_SCAN_DIR        = ERROR (*)(DirInfo*);
+using CALL_TEST_PATH       = ERROR (*)(CSTRING, RSF, LOC *);
+using CALL_WATCH_PATH      = ERROR (*)(extFile*);
+
 ERROR VirtualVolume(CSTRING Name, ...)
 {
    pf::Log log(__FUNCTION__);
@@ -196,86 +212,41 @@ ERROR VirtualVolume(CSTRING Name, ...)
 
    log.branch("%s", Name);
 
-   ULONG id = StrHash(Name, FALSE);
+   auto id = StrHash(Name, FALSE);
 
    if (glVirtual.contains(id)) return ERR_Exists;
 
    LONG i = StrCopy(Name, glVirtual[id].Name, sizeof(glVirtual[id].Name)-2);
-   glVirtual[id].Name[i++] = ':';
-   glVirtual[id].Name[i] = 0;
-   glVirtual[id].VirtualID = id; // Virtual ID = Hash of the name, not including the colon
+   glVirtual[id].Name[i++]     = ':';
+   glVirtual[id].Name[i]       = 0;
+   glVirtual[id].VirtualID     = id; // Virtual ID = Hash of the name, not including the colon
    glVirtual[id].CaseSensitive = false;
 
    va_list list;
    va_start(list, Name);
    LONG arg = 0;
-   LONG tagid;
-   while ((tagid = va_arg(list, LONG))) {
+   while (auto tagid = va_arg(list, LONG)) {
       switch (VAS(tagid)) {
-         case VAS::DRIVER_SIZE:
-            glVirtual[id].DriverSize = va_arg(list, LONG);
-            break;
-
          case VAS::DEREGISTER:
             glVirtual.erase(id);
             va_end(list);
             return ERR_Okay; // The volume has been removed, so any further tags are redundant.
 
-         case VAS::CASE_SENSITIVE:
-            glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false;
-            break;
-
-         case VAS::CLOSE_DIR:
-            glVirtual[id].CloseDir = va_arg(list, ERROR (*)(DirInfo*));
-            break;
-
-         case VAS::DELETE:
-            glVirtual[id].Delete = va_arg(list, ERROR (*)(STRING, FUNCTION*));
-            break;
-
-         case VAS::GET_INFO:
-            glVirtual[id].GetInfo =  va_arg(list, ERROR (*)(CSTRING, FileInfo*, LONG));
-            break;
-
-         case VAS::GET_DEVICE_INFO:
-            glVirtual[id].GetDeviceInfo = va_arg(list, ERROR (*)(CSTRING, objStorageDevice*));
-            break;
-
-         case VAS::IDENTIFY_FILE:
-            glVirtual[id].IdentifyFile = va_arg(list, ERROR (*)(STRING, CLASSID*, CLASSID*));
-            break;
-
-         case VAS::IGNORE_FILE:
-            glVirtual[id].IgnoreFile = va_arg(list, void (*)(extFile*));
-            break;
-
-         case VAS::MAKE_DIR:
-            glVirtual[id].CreateFolder = va_arg(list, ERROR (*)(CSTRING, PERMIT));
-            break;
-
-         case VAS::OPEN_DIR:
-            glVirtual[id].OpenDir = va_arg(list, ERROR (*)(DirInfo*));
-            break;
-
-         case VAS::RENAME:
-            glVirtual[id].Rename = va_arg(list, ERROR (*)(STRING, STRING));
-            break;
-
-         case VAS::SAME_FILE:
-            glVirtual[id].SameFile = va_arg(list, ERROR (*)(CSTRING, CSTRING));
-            break;
-
-         case VAS::SCAN_DIR:
-            glVirtual[id].ScanDir = va_arg(list, ERROR (*)(DirInfo*));
-            break;
-
-         case VAS::TEST_PATH:
-            glVirtual[id].TestPath = va_arg(list, ERROR (*)(CSTRING, RSF, LOC *));
-            break;
-
-         case VAS::WATCH_PATH:
-            glVirtual[id].WatchPath = va_arg(list, ERROR (*)(extFile*));
-            break;
+         case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize = va_arg(list, LONG); break;
+         case VAS::CASE_SENSITIVE:  glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false; break;
+         case VAS::CLOSE_DIR:       glVirtual[id].CloseDir = va_arg(list, CALL_CLOSE_DIR); break;
+         case VAS::DELETE:          glVirtual[id].Delete = va_arg(list, CALL_DELETE); break;
+         case VAS::GET_INFO:        glVirtual[id].GetInfo =  va_arg(list, CALL_GET_INFO); break;
+         case VAS::GET_DEVICE_INFO: glVirtual[id].GetDeviceInfo = va_arg(list, CALL_GET_DEVICE_INFO); break;
+         case VAS::IDENTIFY_FILE:   glVirtual[id].IdentifyFile = va_arg(list, CALL_IDENTIFY_FILE); break;
+         case VAS::IGNORE_FILE:     glVirtual[id].IgnoreFile = va_arg(list, CALL_IGNORE_FILE); break;
+         case VAS::MAKE_DIR:        glVirtual[id].CreateFolder = va_arg(list, CALL_MAKE_DIR); break;
+         case VAS::OPEN_DIR:        glVirtual[id].OpenDir = va_arg(list, CALL_OPEN_DIR); break;
+         case VAS::RENAME:          glVirtual[id].Rename = va_arg(list, CALL_RENAME); break;
+         case VAS::SAME_FILE:       glVirtual[id].SameFile = va_arg(list, CALL_SAME_FILE); break;
+         case VAS::SCAN_DIR:        glVirtual[id].ScanDir = va_arg(list, CALL_SCAN_DIR); break;
+         case VAS::TEST_PATH:       glVirtual[id].TestPath = va_arg(list, CALL_TEST_PATH); break;
+         case VAS::WATCH_PATH:      glVirtual[id].WatchPath = va_arg(list, CALL_WATCH_PATH); break;
 
          default:
             log.warning("Bad VAS tag $%.8x @ pair index %d, aborting.", tagid, arg);

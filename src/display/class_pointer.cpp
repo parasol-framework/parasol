@@ -16,6 +16,10 @@ used for all interactions with this service.
 
 #include "defs.h"
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 static ERROR GET_ButtonOrder(extPointer *, CSTRING *);
 static ERROR GET_ButtonState(extPointer *, LONG *);
 
@@ -36,7 +40,7 @@ static FunctionField mthGrabX11Pointer[] = { { "Surface", FD_LONG }, { NULL, 0 }
 #endif
 
 static LONG glDefaultSpeed = 160;
-static FLOAT glDefaultAcceleration = 0.8;
+static DOUBLE glDefaultAcceleration = 0.8;
 static TIMER glRepeatTimer = 0;
 
 static ERROR repeat_timer(extPointer *, LARGE, LARGE);

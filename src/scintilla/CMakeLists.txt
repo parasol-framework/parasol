@@ -1,11 +1,12 @@
 # Scintilla module
 
 set (MOD scintilla)
+set (INC_MOD_SCINTILLA TRUE PARENT_SCOPE)
 
 idl_all ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   ARGS "--output-defs=module_def.c" "--output-proto=module_def.c" "--prototypes=static"
+   ARGS "output-defs=module_def.c" "output-proto=module_def.c" "prototypes=static"
    APPEND_IDL "module_def.c")
 
 set (SOURCE
@@ -65,11 +66,17 @@ set (LEXERS
    "scintilla/lexers/LexSQL.cxx"
    "scintilla/lexers/LexVB.cxx")
 
-# Build the library
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+   add_compile_options ("-Wno-char-subscripts")
+endif ()
 
-add_library (scintilla SHARED)
+add_compile_definitions ("SCI_NAMESPACE" "__PARASOL__" "SCI_LEXER")
 
-target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
+add_library (scintilla)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+   target_compile_options (scintilla PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-fpermissive>>")
+endif ()
 
 set_module_defaults (scintilla)
 
@@ -79,5 +86,3 @@ target_include_directories (scintilla PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/src"
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/lexlib"
    "${CMAKE_CURRENT_SOURCE_DIR}/scintilla/include")
-
-add_definitions ("-DSCI_NAMESPACE" "-D__PARASOL__" "-DSCI_LEXER")

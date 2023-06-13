@@ -31,6 +31,7 @@ Font: Provides font management functionality and hosts the Font class.
 #include <parasol/modules/font.h>
 #include <parasol/modules/display.h>
 
+#include <sstream>
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>
@@ -64,8 +65,10 @@ static const UBYTE glWrapBreaks[256] = {
 //********************************************************************************************************************
 
 OBJECTPTR modFont = NULL;
-struct CoreBase *CoreBase;
-struct DisplayBase *DisplayBase;
+
+JUMPTABLE_DISPLAY
+JUMPTABLE_CORE
+
 static OBJECTPTR clFont = NULL;
 static OBJECTPTR modDisplay = NULL;
 static FT_Library glFTLibrary = NULL;
@@ -81,8 +84,8 @@ class extFont : public objFont {
    UBYTE *prvData;
    std::shared_ptr<font_cache> Cache;     // Reference to the Truetype font that is in use
    struct FontCharacter *prvChar;
-   struct BitmapCache   *BmpCache;
-   struct font_glyph    prvTempGlyph;
+   class BitmapCache   *BmpCache;
+   font_glyph prvTempGlyph;
    LONG prvLineCount;
    LONG prvStrWidth;
    WORD prvSpaceWidth;          // Pixel width of word breaks
@@ -227,7 +230,7 @@ INLINE void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, LONG *X, LO
    *Y = delta.y>>FT_DOWNSIZE;
 }
 
-INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
+inline LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
    if ((!Glyph) or (!PrevGlyph)) return 0;
 
@@ -238,7 +241,7 @@ INLINE LONG get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 
 //********************************************************************************************************************
 
-INLINE void calc_lines(extFont *Self)
+inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if ((Self->Flags & FTF::CHAR_CLIP) != FTF::NIL) {
@@ -264,7 +267,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &modFont);
 
-   if (objModule::load("display", MODVERSION_DISPLAY, &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
+   if (objModule::load("display", &modDisplay, &DisplayBase) != ERR_Okay) return ERR_InitModule;
 
    if (FT_Init_FreeType(&glFTLibrary)) {
       log.warning("Failed to initialise the FreeType font library.");
@@ -333,7 +336,7 @@ int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-static LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
+LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 {
    if (Kerning) *Kerning = 0;
 
@@ -379,7 +382,7 @@ AccessObject: Font configuration information could not be accessed.
 
 *********************************************************************************************************************/
 
-static ERROR fntGetList(FontList **Result)
+ERROR fntGetList(FontList **Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -474,7 +477,7 @@ int Wrap:   The pixel position at which word wrapping occurs.  If zero or less, 
 
 *********************************************************************************************************************/
 
-static void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+void fntStringSize(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
    font_glyph *cache;
    ULONG unicode;
@@ -617,7 +620,7 @@ ptr: A handle to the FreeType library will be returned.
 
 *********************************************************************************************************************/
 
-static APTR fntFreetypeHandle(void)
+APTR fntFreetypeHandle(void)
 {
    return glFTLibrary;
 }
@@ -643,7 +646,7 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *********************************************************************************************************************/
 
-static LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
+LONG fntStringWidth(extFont *Font, CSTRING String, LONG Chars)
 {
    if ((!Font) or (!String)) return 0;
    if (!Font->initialised()) return 0;
@@ -730,7 +733,7 @@ FieldNotSet: The String field has not been set.
 
 *********************************************************************************************************************/
 
-static ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
+ERROR fntConvertCoords(extFont *Font, CSTRING String, LONG X, LONG Y, LONG *Column, LONG *Row,
    LONG *ByteColumn, LONG *BytePos, LONG *CharX)
 {
    font_glyph *cache;
@@ -845,7 +848,7 @@ double: The previous font size is returned.
 
 *********************************************************************************************************************/
 
-static DOUBLE fntSetDefaultSize(DOUBLE Size)
+DOUBLE fntSetDefaultSize(DOUBLE Size)
 {
    DOUBLE previous;
    if ((Size < 6) or (Size > 100)) return glDefaultPoint;
@@ -883,7 +886,7 @@ NoSupport: One of the font files is in an unsupported file format.
 
 *********************************************************************************************************************/
 
-static ERROR fntInstallFont(CSTRING Files)
+ERROR fntInstallFont(CSTRING Files)
 {
    pf::Log log(__FUNCTION__);
 
@@ -945,7 +948,7 @@ DeleteFile: Removal aborted due to a file deletion failure.
 
 *********************************************************************************************************************/
 
-static ERROR fntRemoveFont(CSTRING Name)
+ERROR fntRemoveFont(CSTRING Name)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1042,7 +1045,7 @@ static std::optional<std::string> get_font_path(ConfigKeys &Keys, const std::str
    return std::nullopt;
 }
 
-static ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path)
+ERROR fntSelectFont(CSTRING Name, CSTRING Style, LONG Point, FTF Flags, CSTRING *Path)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1540,7 +1543,7 @@ static ERROR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, STRING
             file->seekStart(font_offset);
 
             {
-               winFont fonts[font_count];
+               auto fonts = std::make_unique<winFont[]>(font_count);
 
                // Get the offset and size of each font entry
 
@@ -1613,4 +1616,5 @@ static STRUCTS glStructures = {
    { "FontList", sizeof(FontList) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_FONT, MOD_IDL, &glStructures)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_font_module() { return &ModHeader; }

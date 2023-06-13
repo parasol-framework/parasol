@@ -45,8 +45,6 @@ The following parameters can be used when executing script files:\n\
  --target    [n] The name of an existing object that the script will target for hosting.  Used in multi-tasking\n\
                  environments.\n\
  --time          Print the amount of time that it took to execute the program.\n\
- --sandbox       Applies the PARC sand-boxing feature when executing scripts.\n\
- --allow         For sand-boxed execution, specifies additional access rights and limitations.\n\
 \n\
  --log-info      Activates run-time log messages at INFO level.\n\
  --log-error     Activates run-time log messages at ERROR level.\n"
@@ -69,27 +67,7 @@ static ERROR process_args(void)
             printf(glHelp);
             return ERR_Terminate;
          }
-         else if (!StrMatch(args[i], "--verify")) {
-            // Special internal function that checks that the installation is valid, returning 1 if checks pass.
-
-            static CSTRING modules[] = { // These modules must be present for an installation to be valid.
-               "audio", "display", "fluid", "font", "http", "json", "network", "picture", "svg", "vector", "xml"
-            };
-
-            DirInfo *dir;
-            LONG total = 0;
-            if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
-               while (!ScanDir(dir)) {
-                  FileInfo *folder = dir->Info;
-                  if ((folder->Flags & RDF::FILE) != RDF::NIL) {
-                     for (LONG m=0; m < ARRAYSIZE(modules); m++) {
-                        if (!StrCompare(modules[m], folder->Name)) total++;
-                     }
-                  }
-               }
-               FreeResource(dir);
-            }
-
+         else if (!StrMatch(args[i], "--verify")) { // Dummy option for verifying installs
             return ERR_Terminate;
          }
          else if (!StrMatch(args[i], "--sandbox")) {
@@ -123,11 +101,11 @@ static ERROR process_args(void)
 
 //********************************************************************************************************************
 
-int main(int argc, CSTRING *argv)
+extern "C" int main(int argc, char **argv)
 {
    pf::Log log("Parasol");
 
-   if (auto msg = init_parasol(argc, argv)) {
+   if (auto msg = init_parasol(argc, (CSTRING *)argv)) {
       for (int i=1; i < argc; i++) { // If in --verify mode, return with no error code and print nothing.
          if (!strcmp(argv[i], "--verify")) return 0;
       }

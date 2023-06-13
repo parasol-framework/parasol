@@ -25,7 +25,6 @@ extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
-extern struct DisplayBase *DisplayBase;
 extern OBJECTPTR clFluid;
 extern std::unordered_map<std::string, ULONG> glStructSizes;
 
@@ -316,8 +315,8 @@ struct obj_read {
        return 0;
    }
 
-   obj_read(ULONG pHash, const JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
-   obj_read(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(ULONG pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(ULONG pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
    obj_read(ULONG pHash) : Hash(pHash) { }
 };
 
@@ -340,8 +339,8 @@ struct obj_write {
        return 0;
    }
 
-   obj_write(ULONG pHash, const JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
-   obj_write(ULONG pHash, const JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(ULONG pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(ULONG pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
    obj_write(ULONG pHash) : Hash(pHash) { }
 };
 

@@ -159,7 +159,7 @@ static ERROR object_free(BaseClass *Object)
       }
    }
 
-   if ((Object->NotifyFlags[0]) or (Object->NotifyFlags[1])) {
+   if (Object->NotifyFlags.load()) {
       const std::lock_guard<std::recursive_mutex> lock(glSubLock);
       glSubscriptions.erase(Object->UID);
    }
@@ -431,7 +431,7 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
    if (error & ERF_Notified) {
       error &= ~ERF_Notified;
    }
-   else if ((ActionID > 0) and (Object->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) {
+   else if ((ActionID > 0) and (Object->NotifyFlags.load() & (1LL<<(ActionID & 63)))) {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
       glSubReadOnly++;
@@ -807,7 +807,7 @@ objMetaClass * FindClass(CLASSID ClassID)
          }
          else log.warning("Failed to load module \"%s\"", path.c_str());
       }
-      else log.warning("No module path defined for class \%s\"", glClassDB[ClassID].Name.c_str());
+      else log.warning("No module path defined for class \"%s\"", glClassDB[ClassID].Name.c_str());
    }
    else log.warning("Could not find class $%.8x in memory or dictionary.", ClassID);
 
@@ -1406,7 +1406,7 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if (!Object) { log.warning(ERR_NullArgs); return; }
    if ((ActionID <= 0) or (ActionID >= AC_END)) { log.warning(ERR_Args); return; }
 
-   if (!(Object->NotifyFlags[ActionID>>5] & (1<<(ActionID & 31)))) return;
+   if (!(Object->NotifyFlags.load() & (1LL<<(ActionID & 63)))) return;
 
    const std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
@@ -1444,8 +1444,8 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
       }
    }
    else {
-      log.warning("Unstable subscription flags discovered for object #%d, action %d: %.8x %.8x", Object->UID, ActionID, Object->NotifyFlags[0], Object->NotifyFlags[1]);
-      __atomic_and_fetch(&Object->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
+      log.warning("Unstable subscription flags discovered for object #%d, action %d", Object->UID, ActionID);
+      Object->NotifyFlags.fetch_and(~(1<<(ActionID & 63)), std::memory_order::relaxed);
    }
 }
 
@@ -1865,13 +1865,13 @@ ERROR SubscribeAction(OBJECTPTR Object, ACTIONID ActionID, FUNCTION *Callback)
 
    if (glSubReadOnly) {
       glDelayedSubscribe.emplace_back(Object->UID, ActionID, *Callback);
-      __atomic_or_fetch(&Object->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
+      Object->NotifyFlags.fetch_or(1LL<<(ActionID & 63), std::memory_order::relaxed);
    }
    else {
       std::lock_guard<std::recursive_mutex> lock(glSubLock);
 
       glSubscriptions[Object->UID][ActionID].emplace_back(Callback->StdC.Context, Callback->StdC.Routine);
-      __atomic_or_fetch(&Object->NotifyFlags[ActionID>>5], 1<<(ActionID & 31), __ATOMIC_RELAXED);
+      Object->NotifyFlags.fetch_or(1LL<<(ActionID & 63), std::memory_order::relaxed);
    }
 
    return ERR_Okay;
@@ -1923,9 +1923,9 @@ restart:
             }
 
             if (list.empty()) {
-               __atomic_and_fetch(&Object->NotifyFlags[action>>5], ~(1<<(action & 31)), __ATOMIC_RELAXED);
+               Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
 
-               if ((!Object->NotifyFlags[0]) and (!Object->NotifyFlags[1])) {
+               if (!Object->NotifyFlags.load()) {
                   glSubscriptions.erase(Object->UID);
                   break;
                }
@@ -1947,9 +1947,9 @@ restart:
       }
 
       if (list.empty()) {
-         __atomic_and_fetch(&Object->NotifyFlags[ActionID>>5], ~(1<<(ActionID & 31)), __ATOMIC_RELAXED);
+         Object->NotifyFlags.fetch_and(~(1<<(ActionID & 63)), std::memory_order::relaxed);
 
-         if ((!Object->NotifyFlags[0]) and (!Object->NotifyFlags[1])) {
+         if (!Object->NotifyFlags.load()) {
             glSubscriptions.erase(Object->UID);
          }
          else glSubscriptions[Object->UID].erase(ActionID);

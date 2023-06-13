@@ -24,6 +24,10 @@ mind the implications of creating a shared display.
 
 #include "defs.h"
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 // Class definition at end of this source file.
 
 static ERROR DISPLAY_Resize(extDisplay *, struct acResize *);
@@ -1140,7 +1144,7 @@ static ERROR DISPLAY_NewObject(extDisplay *Self, APTR Void)
    #ifdef __xwindows__
       Self->DisplayType = DT::X11;
    #elif _WIN32
-      Self->DisplayType = DT::WINDOWS;
+      Self->DisplayType = DT::WINGDI;
    #elif _GLES_
       Self->DisplayType = DT::GLES;
    #else

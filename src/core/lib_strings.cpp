@@ -550,7 +550,7 @@ ERROR StrReadLocale(CSTRING Key, CSTRING *Value)
             if (!AndroidBase) {  // Note that the module is terminated through resource tracking, we don't free it during our CMDExpunge() sequence for system integrity reasons.
                pf::SwitchContext ctx(CurrentTask());
                OBJECTPTR module;
-               objModule::load("android", MODVERSION_FLUID, &module, &AndroidBase);
+               objModule::load("android", &module, &AndroidBase);
                if (!AndroidBase) return NULL;
             }
 

@@ -330,8 +330,8 @@ static ERROR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nlResolveAddres
       auto addr_len = StrLength(Args->Address) + 1;
       LONG pkg_size = sizeof(resolve_buffer) + sizeof(IPAddress) + addr_len;
       if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_addr), fl::Flags(THF::AUTO_FREE))) {
-         char buffer[pkg_size];
-         auto rb = (resolve_buffer *)&buffer;
+         auto buffer = std::make_unique<UBYTE[]>(pkg_size);
+         auto rb = (resolve_buffer *)buffer.get();
          rb->NetLookupID = Self->UID;
          rb->ThreadID = th->UID;
          CopyMemory(&ip, (rb + 1), sizeof(ip));
@@ -395,12 +395,12 @@ static ERROR NETLOOKUP_ResolveName(extNetLookup *Self, struct nlResolveName *Arg
    LONG pkg_size = sizeof(resolve_buffer) + StrLength(Args->HostName) + 1;
    if (auto th = objThread::create::integral(fl::Routine((CPTR)thread_resolve_name),
          fl::Flags(THF::AUTO_FREE))) {
-      char buffer[pkg_size];
-      auto rb = (resolve_buffer *)&buffer;
+      auto buffer = std::make_unique<UBYTE[]>(pkg_size);
+      auto rb = (resolve_buffer *)buffer.get();
       rb->NetLookupID = Self->UID;
       rb->ThreadID    = th->UID;
       StrCopy(Args->HostName, (STRING)(rb + 1), pkg_size - sizeof(resolve_buffer));
-      if ((!thSetData(th, buffer, pkg_size)) and (!th->activate())) {
+      if ((!thSetData(th, buffer.get(), pkg_size)) and (!th->activate())) {
          std::lock_guard<std::mutex> lock(*Self->ThreadLock);
          Self->Threads->insert(th->UID);
          return ERR_Okay;

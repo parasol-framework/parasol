@@ -697,7 +697,11 @@ struct lua_State {
   GCRef env;		/* Thread environment (table of globals). */
   void *cframe;		/* End of C stack frame chain. */
   MSize stacksize;	/* True stack size (incl. LJ_STACK_EXTRA). */
-  struct objScript *Script; // PARASOL PATCHED IN
+  #ifdef __cplusplus // PARASOL PATCHED IN
+  class objScript *Script;
+  #else
+  struct objScript *Script;
+  #endif
   uint8_t ProtectedGlobals; // PARASOL PATCHED IN
 };
 

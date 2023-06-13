@@ -7,12 +7,15 @@ that is distributed with this package.  Please refer to it for further informati
 
 #include "defs.h"
 
+#ifdef _WIN32
+using namespace display;
+#endif
+
 ERROR GET_HDensity(extDisplay *Self, LONG *Value);
 ERROR GET_VDensity(extDisplay *Self, LONG *Value);
 
 //********************************************************************************************************************
 
-rgb_to_linear glLinearRGB;
 std::array<UBYTE, 256 * 256> glAlphaLookup;
 
 #ifdef __xwindows__
@@ -585,7 +588,7 @@ ERROR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 #elif _WIN32
       LONG width, height, bits, bytes, colours, hdpi, vdpi;
 
-      #warning TODO: Allow the user to set a custom DPI via style values.
+      // TODO: Allow the user to set a custom DPI via style values.
 
       winGetDesktopSize(&width, &height);
       winGetDisplaySettings(&bits, &bytes, &colours);
@@ -716,6 +719,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    argModule->getPtr(FID_Root, &glModule);
 
+#ifndef PARASOL_STATIC
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       create_pointer_class();
       create_display_class();
@@ -724,6 +728,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       create_surface_class();
       return ERR_Okay;
    }
+#endif
 
    if (auto driver_name = (CSTRING)GetResourcePtr(RES::DISPLAY_DRIVER)) {
       log.msg("User requested display driver '%s'", driver_name);
@@ -746,7 +751,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    #ifdef __ANDROID__
       if (GetResource(RES::SYSTEM_STATE) >= 0) {
-         if (objModule::load("android", MODVERSION_ANDROID, (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
+         if (objModule::load("android", (OBJECTPTR *)&modAndroid, &AndroidBase) != ERR_Okay) return ERR_InitModule;
 
          FUNCTION fInitWindow, fTermWindow;
          SET_CALLBACK_STDC(fInitWindow, &android_init_window); // Sets EGL for re-initialisation and draws the display.
@@ -866,20 +871,16 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #elif _WIN32
 
-   {
-      if ((glInstance = winGetModuleHandle())) {
-         if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
-      }
-      else return log.warning(ERR_SystemCall);
-
-      winDisableBatching();
-
-      winInitCursors(winCursors, ARRAYSIZE(winCursors));
+   if ((glInstance = winGetModuleHandle())) {
+      if (!winCreateScreenClass()) return log.warning(ERR_SystemCall);
    }
+   else return log.warning(ERR_SystemCall);
+
+   winDisableBatching();
+
+   winInitCursors(winCursors, ARRAYSIZE(winCursors));
 
 #endif
-
-   // Initialise our classes
 
    if (create_pointer_class() != ERR_Okay) return log.warning(ERR_AddClass);
    if (create_display_class() != ERR_Okay) return log.warning(ERR_AddClass);
@@ -915,7 +916,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (config.ok()) {
       cfgRead(*config, "DISPLAY", "Maximise", &glpMaximise);
 
-      if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINDOWS)) {
+      if ((glDisplayType IS DT::X11) or (glDisplayType IS DT::WINGDI)) {
          log.msg("Using hosted window dimensions: %dx%d,%dx%d", glpDisplayX, glpDisplayY, glpDisplayWidth, glpDisplayHeight);
          if ((cfgRead(*config, "DISPLAY", "WindowWidth", &glpDisplayWidth) != ERR_Okay) or (!glpDisplayWidth)) {
             cfgRead(*config, "DISPLAY", "Width", &glpDisplayWidth);
@@ -1391,5 +1392,6 @@ static STRUCTS glStructures = {
    { "SurfaceInfo",   sizeof(SurfaceInfoV2) }
 };
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MODVERSION_DISPLAY, MOD_IDL, &glStructures)
+PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, &glStructures)
+extern "C" struct ModHeader * register_display_module() { return &ModHeader; }
 

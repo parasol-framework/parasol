@@ -1,4 +1,6 @@
 
+#ifndef PARASOL_STATIC
+
 extern "C" {
 DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
 DLLCALL LONG WINAPI FreeLibrary(APTR);
@@ -127,3 +129,5 @@ static APTR find_core(char *PathBuffer, int Size)
       return handle;
    }
 }
+
+#endif // PARASOL_STATIC

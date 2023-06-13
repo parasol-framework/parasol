@@ -1,7 +1,13 @@
 #define PRV_FILESYSTEM
 
+#ifdef _MSC_VER
+#pragma warning (disable : 4244 4311 4312 4267 4244 4068) // Disable annoying VC++ warnings
+#endif
+
 #define _WIN32_WINNT 0x0600 // Required for CRITICAL_SECTION - min version. Windows Vista
+#define NO_STRICT // Turn off type management due to C++ mangling issues.
 #define PSAPI_VERSION 1
+
 #include <stdio.h>
 #include <wtypes.h>
 #include <memory.h>
@@ -14,11 +20,15 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#ifdef _MSC_VER
+ #include <io.h>
+#else
+ #include <unistd.h>
+ #include <sys/time.h>
+#endif
 #include <winioctl.h>
 #include <shlobj.h>
 
-#include <sys/time.h>
 #ifdef __CYGWIN__
 #include <sys/timespec.h>
 #endif
@@ -34,14 +44,14 @@
 
 #define STD_TIMEOUT 1000
 #define IS ==
-#define AND &&
-#define OR ||
 
 #ifdef _DEBUG
 #define MSG(...) printf(__VA_ARGS__)
 #else
 #define MSG(...)
 #endif
+
+#include <string>
 
 #define WAITLOCK_EVENTS 1 // Use events instead of semaphores for waitlocks (recommended)
 
@@ -51,27 +61,29 @@ enum {
    STAGE_SHUTDOWN
 };
 
-extern LONG glProcessID;
-extern HANDLE glProcessHandle;
-extern BYTE glProgramStage;
+extern "C" LONG glProcessID;
+extern "C" HANDLE glProcessHandle;
+extern "C" BYTE glProgramStage;
 
 static HANDLE glInstance = 0;
 static HANDLE glMsgWindow = 0;
 HANDLE glValidationSemaphore = 0;
 
+#ifndef _MSC_VER
 WINBASEAPI VOID WINAPI InitializeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableCS(PCONDITION_VARIABLE ConditionVariable, PCRITICAL_SECTION CriticalSection, DWORD dwMilliseconds);
 WINBASEAPI WINBOOL WINAPI SleepConditionVariableSRW(PCONDITION_VARIABLE ConditionVariable, PSRWLOCK SRWLock, DWORD dwMilliseconds, ULONG Flags);
 WINBASEAPI VOID WINAPI WakeAllConditionVariable(PCONDITION_VARIABLE ConditionVariable);
 WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariable);
+#endif
 
-LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue);
-void plFreePrivateSemaphore(HANDLE *Semaphore);
-long long winGetTickCount(void);
+extern "C" LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue);
+extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore);
+extern "C" long long winGetTickCount(void);
 
 static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
-extern LONG validate_process(LONG ProcessID);
+extern "C" LONG validate_process(LONG ProcessID);
 
 typedef void * APTR;
 typedef unsigned char UBYTE;
@@ -81,7 +93,7 @@ static UINT glDeadProcessMsg; // Read only.
 #define LEN_OUTPUTBUFFER 1024
 
 LONG ExceptionFilter(LPEXCEPTION_POINTERS Args);
-char * winFormatMessage(LONG, char *Buffer, LONG BufferSize);
+extern "C" char * winFormatMessage(LONG, char *Buffer, LONG BufferSize);
 static BOOL break_handler(DWORD CtrlType);
 
 static LONG (*glCrashHandler)(LONG, APTR, LONG, APTR) = 0;
@@ -143,8 +155,6 @@ typedef struct DateTime {
 } DateTime;
 
 #define IS ==
-#define OR ||
-#define AND &&
 
 #define DRIVETYPE_REMOVABLE 1
 #define DRIVETYPE_CDROM     2
@@ -225,10 +235,28 @@ struct FileFeedback {
    char   Reserved[32];  // Reserved in case of future expansion
 };
 
-extern LONG CALL_FEEDBACK(struct FileFeedback *);
-extern LONG convert_errno(LONG Error, LONG Default);
+extern "C" LONG CALL_FEEDBACK(struct FileFeedback *);
+extern "C" LONG convert_errno(LONG Error, LONG Default);
+extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
 
-LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size);
+//********************************************************************************************************************
+
+extern "C" char * winFormatMessage(LONG Error, char *Buffer, LONG BufferSize)
+{
+   DWORD i = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error ? Error : GetLastError(), 0, Buffer, BufferSize, NULL);
+   while ((i > 0) and (Buffer[i-1] <= 0x20)) i--; // Windows puts whitespace at the end of error strings for some reason
+   Buffer[i] = 0;
+   return Buffer;
+}
+
+static void printerror(void)
+{
+   LPVOID lpMsgBuf;
+   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
+      GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+   fprintf(stderr, "WinError: %s", (LPTSTR)lpMsgBuf);
+   LocalFree(lpMsgBuf);
+}
 
 //********************************************************************************************************************
 // Console checker for Cygwin
@@ -250,13 +278,13 @@ BYTE is_console(HANDLE h)
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
-void activate_console(BYTE AllowOpenConsole)
+extern "C" void activate_console(BYTE AllowOpenConsole)
 {
-   static BYTE activated = FALSE;
+   static bool activated = false;
 
    if (!activated) {
       char value[8];
-      if (GetEnvironmentVariable("TERM", value, sizeof(value)) OR
+      if (GetEnvironmentVariable("TERM", value, sizeof(value)) or
           GetEnvironmentVariable("PROMPT", value, sizeof(value))) { // TERM defined by Cygwin, Mingw, PROMPT defined by cmd.exe
 
          // NB: Cygwin stdout/err handling is broken and requires the following workaround for ensuring that stdout
@@ -289,7 +317,7 @@ static inline unsigned int LCASEHASH(char *String)
    unsigned int hash = 5381;
    unsigned char c;
    while ((c = *String++)) {
-      if ((c >= 'A') AND (c <= 'Z')) {
+      if ((c >= 'A') and (c <= 'Z')) {
          hash = (hash<<5) + hash + c - 'A' + 'a';
       }
       else hash = (hash<<5) + hash + c;
@@ -364,7 +392,9 @@ static void windows_print_stacktrace(CONTEXT* context)
 
 static const char *glMsgClass = "RKLMessageClass";
 
-LONG winInitialise(unsigned int *PathHash, void *BreakHandler)
+using BREAK_HANDLER = void (*)();
+
+extern "C" LONG winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 {
    MEMORY_BASIC_INFORMATION mbiInfo;
    char path[255];
@@ -388,7 +418,7 @@ LONG winInitialise(unsigned int *PathHash, void *BreakHandler)
       *PathHash = 0;
 
       SetLastError(ERROR_SUCCESS);
-      if (VirtualQuery(winInitialise, &mbiInfo, sizeof(mbiInfo))) {
+      if (VirtualQuery(LPCVOID(winInitialise), &mbiInfo, sizeof(mbiInfo))) {
          if ((len = GetModuleFileName((HINSTANCE)mbiInfo.AllocationBase, path, sizeof(path)))) {
             *PathHash = LCASEHASH(path);
          }
@@ -438,7 +468,7 @@ LONG winInitialise(unsigned int *PathHash, void *BreakHandler)
 //********************************************************************************************************************
 // Platform specific semaphore handling functions.
 
-LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
+extern "C" LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
 {
    SECURITY_ATTRIBUTES security = {
       .nLength = sizeof(SECURITY_ATTRIBUTES),
@@ -449,7 +479,7 @@ LONG plAllocPrivateSemaphore(HANDLE *Semaphore, LONG InitialValue)
    else return ERR_Okay;
 }
 
-void plFreePrivateSemaphore(HANDLE *Semaphore)
+extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
 {
    if (*Semaphore) { CloseHandle(*Semaphore); *Semaphore = 0; }
 }
@@ -458,7 +488,7 @@ void plFreePrivateSemaphore(HANDLE *Semaphore)
 // Broadcast a message saying that our process is dying.  Status should be 0 for an initial broadcast (closure is
 // starting) and 1 if the process has finished and closed the Core cleanly.
 
-void winDeathBringer(LONG Status)
+extern "C" void winDeathBringer(LONG Status)
 {
    static LONG last_status = -1;
    if (Status > last_status) {
@@ -469,7 +499,7 @@ void winDeathBringer(LONG Status)
 
 //********************************************************************************************************************
 
-LONG winIsDebuggerPresent(void)
+extern "C" LONG winIsDebuggerPresent(void)
 {
    return IsDebuggerPresent();
 }
@@ -477,7 +507,7 @@ LONG winIsDebuggerPresent(void)
 //********************************************************************************************************************
 // Remove all allocations here, called at the end of CloseCore()
 
-void winShutdown(void)
+extern "C" void winShutdown(void)
 {
    if (glValidationSemaphore) plFreePrivateSemaphore(&glValidationSemaphore);
 
@@ -507,12 +537,12 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 
    *Free = FALSE;
 
-   if ((OtherProcess IS glProcessID) OR (!OtherProcess)) return OtherHandle;
+   if ((OtherProcess IS glProcessID) or (!OtherProcess)) return OtherHandle;
 
    EnterCriticalSection(&csHandleBank);
 
       for (i=0; i < glHandleCount; i++) { // Return the handle if it is already registered.
-         if ((glHandleBank[i].OtherProcess IS OtherProcess) AND (glHandleBank[i].OtherHandle IS OtherHandle)) {
+         if ((glHandleBank[i].OtherProcess IS OtherProcess) and (glHandleBank[i].OtherHandle IS OtherHandle)) {
             result = glHandleBank[i].LocalHandle;
             LeaveCriticalSection(&csHandleBank);
             return result;
@@ -539,7 +569,7 @@ static HANDLE handle_cache(LONG OtherProcess, HANDLE OtherHandle, BYTE *Free)
 //********************************************************************************************************************
 // The SysLock() function uses these publicly accessible handles for synchronising Core processes.
 
-int alloc_public_waitlock(HANDLE *Lock, const char *Name)
+extern "C" int alloc_public_waitlock(HANDLE *Lock, const char *Name)
 {
 #ifdef WAITLOCK_EVENTS
    HANDLE event;
@@ -572,12 +602,12 @@ int alloc_public_waitlock(HANDLE *Lock, const char *Name)
 #endif
 }
 
-void free_public_waitlock(HANDLE Lock)
+extern "C" void free_public_waitlock(HANDLE Lock)
 {
    CloseHandle(Lock);
 }
 
-LONG wake_waitlock(HANDLE Lock, LONG TotalSleepers)
+extern "C" LONG wake_waitlock(HANDLE Lock, LONG TotalSleepers)
 {
    if (!Lock) return ERR_NullArgs;
 
@@ -620,7 +650,7 @@ static int strnicmp(const char *s1, const char *s2, size_t n)
 
 //********************************************************************************************************************
 
-DWORD winGetExeDirectory(DWORD Length, unsigned char *String)
+extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 {
    LONG len, i;
    WCHAR **list;
@@ -697,7 +727,7 @@ DWORD winGetExeDirectory(DWORD Length, unsigned char *String)
 //
 // See also: display/windows.c
 
-void winProcessMessages(void)
+extern "C" void winProcessMessages(void)
 {
    MSG msg;
    long long time = winGetTickCount() + 100000;
@@ -711,14 +741,14 @@ void winProcessMessages(void)
 
 //********************************************************************************************************************
 
-void winLowerPriority(void)
+extern "C" void winLowerPriority(void)
 {
    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 }
 
 //********************************************************************************************************************
 
-LONG winGetCurrentThreadId(void)
+extern "C" LONG winGetCurrentThreadId(void)
 {
    return GetCurrentThreadId();
 }
@@ -726,7 +756,7 @@ LONG winGetCurrentThreadId(void)
 //********************************************************************************************************************
 // A null-terminator will be included in the output buffer.  Returns 0 on error.
 
-DWORD winGetCurrentDirectory(DWORD Length, unsigned char *String)
+extern "C" DWORD winGetCurrentDirectory(DWORD Length, LPSTR String)
 {
    return GetCurrentDirectory(Length, String);
 }
@@ -734,7 +764,7 @@ DWORD winGetCurrentDirectory(DWORD Length, unsigned char *String)
 //********************************************************************************************************************
 // Checks if a process exists by attempting to open it.
 
-LONG winCheckProcessExists(DWORD ProcessID)
+extern "C" LONG winCheckProcessExists(DWORD ProcessID)
 {
    HANDLE process;
 
@@ -747,36 +777,37 @@ LONG winCheckProcessExists(DWORD ProcessID)
 
 //********************************************************************************************************************
 
-LONG winFreeLibrary(HMODULE Module)
+extern "C" LONG winFreeLibrary(HMODULE Module)
 {
    return FreeLibrary(Module);
 }
 
 //********************************************************************************************************************
 
-HANDLE winLoadLibrary(LPCSTR Name)
+extern "C" HANDLE winLoadLibrary(LPCSTR Name)
 {
-   HANDLE h = LoadLibraryExA(Name, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS);
+   HANDLE h = LoadLibraryExA(Name, NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR|LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_USER_DIRS|LOAD_LIBRARY_SEARCH_SYSTEM32);
    return h;
 }
 
 //********************************************************************************************************************
 
-FARPROC winGetProcAddress(HMODULE Module, LPCSTR Name)
+extern "C" FARPROC winGetProcAddress(HMODULE Module, LPCSTR Name)
 {
-   return GetProcAddress(Module, Name);
+   if (!Module) return GetProcAddress(GetModuleHandle(NULL), Name);
+   else return GetProcAddress(Module, Name);
 }
 
 //********************************************************************************************************************
 
-HANDLE winGetCurrentProcess(void)
+extern "C" HANDLE winGetCurrentProcess(void)
 {
    return GetCurrentProcess();
 }
 
 //********************************************************************************************************************
 
-LONG winGetCurrentProcessId(void)
+extern "C" LONG winGetCurrentProcessId(void)
 {
    return GetCurrentProcessId();
 }
@@ -785,11 +816,11 @@ LONG winGetCurrentProcessId(void)
 
 static BYTE glConsoleMode = TRUE; // Assume running from a terminal by default.
 
-LONG winReadStdInput(HANDLE FD, APTR Buffer, DWORD BufferSize, DWORD *Size)
+extern "C" LONG winReadStdInput(HANDLE FD, APTR Buffer, DWORD BufferSize, DWORD *Size)
 {
    *Size = 0;
 
-   if ((glConsoleMode) AND (ReadConsoleA(GetStdHandle(STD_INPUT_HANDLE), Buffer, BufferSize, Size, NULL))) {
+   if ((glConsoleMode) and (ReadConsoleA(GetStdHandle(STD_INPUT_HANDLE), Buffer, BufferSize, Size, NULL))) {
       return 0; // Read at least 1 character
    }
 
@@ -799,7 +830,7 @@ LONG winReadStdInput(HANDLE FD, APTR Buffer, DWORD BufferSize, DWORD *Size)
 
 //********************************************************************************************************************
 
-HANDLE winGetStdInput(void)
+extern "C" HANDLE winGetStdInput(void)
 {
    static HANDLE in = 0;
    if (!in) {
@@ -814,7 +845,7 @@ HANDLE winGetStdInput(void)
 //********************************************************************************************************************
 // To be used on local handles only.
 
-LONG winWaitForSingleObject(HANDLE Handle, LONG Time)
+extern "C" LONG winWaitForSingleObject(HANDLE Handle, LONG Time)
 {
    if (Time IS -1) Time = INFINITE;
 
@@ -833,20 +864,20 @@ LONG winWaitForSingleObject(HANDLE Handle, LONG Time)
 //   -3 = A message was received in the windows message queue.
 //   -4 = Unknown result returned from windows.
 
-LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
+extern "C" LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
 {
    if (Time IS -1) Time = INFINITE;
 
    int input_flags = WinMsgs ? (QS_INPUT|QS_POSTMESSAGE|QS_TIMER|QS_PAINT|QS_HOTKEY|QS_SENDMESSAGE) : 0;
 
-   LONG result = MsgWaitForMultipleObjects(Total, Handles, FALSE, Time, input_flags);
+   ULONG result = MsgWaitForMultipleObjects(Total, Handles, FALSE, Time, input_flags);
 
    if (result IS WAIT_TIMEOUT) return -1;
-   else if ((result >= WAIT_ABANDONED_0) AND (result < WAIT_ABANDONED_0+Total)) {
+   else if ((result >= WAIT_ABANDONED_0) and (result < WAIT_ABANDONED_0+Total)) {
       Handles[0] = Handles[result - WAIT_ABANDONED_0];
       return -2; // One of the handles has been abandoned (freed)
    }
-   else if ((result >= WAIT_OBJECT_0) AND (result < WAIT_OBJECT_0+Total)) {
+   else if ((result >= WAIT_OBJECT_0) and (result < WAIT_OBJECT_0+Total)) {
       return result - WAIT_OBJECT_0; // Result is the index of the signalled handle
    }
    else if (result IS WAIT_OBJECT_0+Total) {
@@ -876,7 +907,7 @@ LONG winWaitForObjects(LONG Total, HANDLE *Handles, LONG Time, BYTE WinMsgs)
 
 //********************************************************************************************************************
 
-void winSleep(LONG Time)
+extern "C" void winSleep(LONG Time)
 {
    Sleep(Time);
 }
@@ -885,7 +916,7 @@ void winSleep(LONG Time)
 // Retrieve the 'counts per second' value if this hardware supports a high frequency timer.  Otherwise use
 // GetTickCount().
 
-long long winGetTickCount(void)
+extern "C" long long winGetTickCount(void)
 {
    static LARGE_INTEGER freq;
    static BYTE init = 0;
@@ -914,7 +945,7 @@ long long winGetTickCount(void)
 //********************************************************************************************************************
 // Designed for reading from pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child process is dead.
 
-LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
+extern "C" LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
 {
    // Check if there is data available on the pipe
 
@@ -945,7 +976,7 @@ LONG winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
 // has been read.  This does not match expected/documented functionality but there is no simple way to implement
 // non-blocking anonymous pipes on windows.
 
-LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
+extern "C" LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
 {
    if (WriteFile(FD, Buffer, *Size, Size, 0)) {
       return 0; // Success
@@ -959,7 +990,7 @@ LONG winWritePipe(HANDLE FD, APTR Buffer, DWORD *Size)
 //********************************************************************************************************************
 // Used by class_thread.c only.
 
-LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
+extern "C" LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
 {
    SECURITY_ATTRIBUTES sa;
 
@@ -976,7 +1007,7 @@ LONG winCreatePipe(HANDLE *Read, HANDLE *Write)
 //********************************************************************************************************************
 // Returns zero on failure.
 
-LONG winCloseHandle(HANDLE Handle)
+extern "C" LONG winCloseHandle(HANDLE Handle)
 {
    if (Handle == (HANDLE)-1) return 1;
    return CloseHandle(Handle);
@@ -985,14 +1016,14 @@ LONG winCloseHandle(HANDLE Handle)
 //********************************************************************************************************************
 // Returns zero on failure.
 
-LONG winUnmapViewOfFile(void *Address)
+extern "C" LONG winUnmapViewOfFile(void *Address)
 {
    return UnmapViewOfFile(Address);
 }
 
 //********************************************************************************************************************
 
-long long winGetFileSize(char *Path)
+extern "C" long long winGetFileSize(char *Path)
 {
    WIN32_FIND_DATA find;
    HANDLE handle;
@@ -1011,7 +1042,7 @@ long long winGetFileSize(char *Path)
 
 HANDLE glMemoryPool;
 
-LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *ControlID, void **Address)
+extern "C" LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *ControlID, void **Address)
 {
    // Create the shared memory area.  If it already exists, this call will not recreate the area, but link to it.
 
@@ -1028,35 +1059,35 @@ LONG winCreateSharedMemory(char *Name, LONG mapsize, LONG initial_size, HANDLE *
 
 //********************************************************************************************************************
 
-int winDeleteFile(const char *Path)
+extern "C" int winDeleteFile(const char *Path)
 {
    return DeleteFile(Path);
 }
 
 //********************************************************************************************************************
 
-int winGetEnv(const char *Name, char *Buffer, int Size)
+extern "C" int winGetEnv(const char *Name, char *Buffer, int Size)
 {
    return GetEnvironmentVariable(Name, Buffer, Size);
 }
 
 //********************************************************************************************************************
 
-int winSetEnv(const char *Name, const char *Value)
+extern "C" int winSetEnv(const char *Name, const char *Value)
 {
    return SetEnvironmentVariable(Name, Value);
 }
 
 //********************************************************************************************************************
 
-void winTerminateThread(HANDLE Handle)
+extern "C" void winTerminateThread(HANDLE Handle)
 {
    TerminateThread(Handle, 0);
 }
 
 //********************************************************************************************************************
 
-LONG winWaitThread(HANDLE Handle, LONG TimeOut)
+extern "C" LONG winWaitThread(HANDLE Handle, LONG TimeOut)
 {
    if (WaitForSingleObject(Handle, TimeOut) IS WAIT_TIMEOUT) return ERR_TimeOut;
    else return ERR_Okay;
@@ -1073,7 +1104,7 @@ static BOOL break_handler(DWORD CtrlType)
 
 //********************************************************************************************************************
 
-void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, APTR))
+extern "C" void winSetUnhandledExceptionFilter(LONG (*Function)(LONG, APTR, LONG, APTR))
 {
    if (Function) glCrashHandler = Function;
    else if (!glCrashHandler) return;  // If we're set with NULL and no crash handler already exists, do not set or change the exception filter.
@@ -1133,7 +1164,7 @@ LONG ExceptionFilter(LPEXCEPTION_POINTERS Args)
 
 // Sockets can use select() to differentiate between read/write states
 
-void winSelect(int FD, char *Read, char *Write)
+extern "C" void winSelect(int FD, char *Read, char *Write)
 {
    fd_set fread, fwrite;
    struct timeval tv;
@@ -1154,7 +1185,7 @@ void winSelect(int FD, char *Read, char *Write)
 
 static BOOL CALLBACK TerminateAppEnum( HWND hwnd, LPARAM lParam ) ;
 
-int winTerminateApp(int dwPID, int dwTimeout)
+extern "C" int winTerminateApp(int dwPID, int dwTimeout)
 {
    HANDLE hProc ;
    int dwRet ;
@@ -1210,36 +1241,36 @@ static LRESULT CALLBACK window_procedure(HWND window, UINT msgcode, WPARAM wPara
 
 //********************************************************************************************************************
 
-#include "processes.c"
+#include "processes.cpp"
 
 //********************************************************************************************************************
 // Called on file system initialisation to create assignments specific to windows.
 
-void winEnumSpecialFolders(void (*enumfolder)(char *, char *, char *, char *, char))
+struct spec_folder {
+   int id;
+   std::string assign;
+   std::string label;
+   std::string icon;
+   char hidden;
+};
+
+extern "C" void winEnumSpecialFolders(void (*enumfolder)(const char *, const char *, const char *, const char *, char))
 {
-   static const struct {
-      int id;
-      char *assign;
-      char *label;
-      char *icon;
-      char hidden;
-   } folders[] = {
+   static const spec_folder folders[] = {
       //CSIDL_NETWORK
       //CSIDL_PRINTHOOD
       //CSIDL_DESKTOPDIRECTORY
       //{ CSIDL_PRINTERS, "printers:",  "Printers",        "devices/printer" },
       //{ CSIDL_DRIVES,   "computer:",  "My Computer",     "programs/filemanager" }
-
       { CSIDL_NETHOOD,  "network:",   "Network Places", "devices/network", 0 },
       { CSIDL_PERSONAL, "documents:", "Documents",      "office/documents", 0 },
       { CSIDL_DESKTOPDIRECTORY, "desktop:", "Desktop",  "devices/harddisk", 0 }
    };
    char path[MAX_PATH];
-   int i;
 
-   for (i=0; i < sizeof(folders)/sizeof(folders[0]); i++) {
+   for (unsigned i=0; i < sizeof(folders) / sizeof(folders[0]); i++) {
       if (SHGetFolderPath(NULL, folders[i].id, NULL, 0, path) IS S_OK) {
-         enumfolder(folders[i].assign, folders[i].label, path, folders[i].icon, folders[i].hidden);
+         enumfolder(folders[i].assign.c_str(), folders[i].label.c_str(), path, folders[i].icon.c_str(), folders[i].hidden);
       }
    }
 
@@ -1250,38 +1281,19 @@ void winEnumSpecialFolders(void (*enumfolder)(char *, char *, char *, char *, ch
 
 //********************************************************************************************************************
 
-LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart)
+extern "C" LONG winGetFullPathName(const char *Path, LONG PathLength, char *Output, char **NamePart)
 {
    return GetFullPathName(Path, PathLength, Output, NamePart);
 }
 
 //********************************************************************************************************************
 
-char * winFormatMessage(LONG Error, char *Buffer, LONG BufferSize)
-{
-   DWORD i = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error ? Error : GetLastError(), 0, Buffer, BufferSize, NULL);
-   while ((i > 0) AND (Buffer[i-1] <= 0x20)) i--; // Windows puts whitespace at the end of error strings for some reason
-   Buffer[i] = 0;
-   return Buffer;
-}
-
-static void printerror(void)
-{
-   LPVOID lpMsgBuf;
-   FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
-      GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
-   fprintf(stderr, "WinError: %s", (LPTSTR)lpMsgBuf);
-   LocalFree(lpMsgBuf);
-}
-
-//********************************************************************************************************************
-
-BYTE winGetCommand(char *Path, char *Buffer, LONG BufferSize)
+extern "C" BYTE winGetCommand(char *Path, char *Buffer, LONG BufferSize)
 {
    if (BufferSize < MAX_PATH+3) return 1;
 
    HINSTANCE result = FindExecutable(Path, NULL, Buffer+1);
-   if ((result > (HINSTANCE)32) AND (Buffer[1])) { /* Success */
+   if ((result > (HINSTANCE)32) and (Buffer[1])) { /* Success */
       *Buffer++ = '"';
       while (*Buffer) Buffer++;
       *Buffer++ = '"';
@@ -1293,7 +1305,7 @@ BYTE winGetCommand(char *Path, char *Buffer, LONG BufferSize)
 
 //********************************************************************************************************************
 
-LONG winCurrentDirectory(char *Buffer, LONG BufferSize)
+extern "C" LONG winCurrentDirectory(char *Buffer, LONG BufferSize)
 {
    WORD i, len;
 
@@ -1335,12 +1347,12 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
 
 //********************************************************************************************************************
 
-int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
+extern "C" int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, LARGE *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
 
-   if (!GetFileAttributesEx(Path, 0, &info)) return ERR_Failed;
+   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &info)) return ERR_Failed;
 
    if (info.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) *Hidden = TRUE;
    else *Hidden = FALSE;
@@ -1369,10 +1381,9 @@ int winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE 
 
 //********************************************************************************************************************
 
-int winCreateDir(const char *Path)
+extern "C" int winCreateDir(const char *Path)
 {
-   int result = CreateDirectory(Path, NULL);
-   if (result) return ERR_Okay;
+   if (auto result = CreateDirectory(Path, NULL)) return ERR_Okay;
    else {
        result = GetLastError();
        if (result IS ERROR_ALREADY_EXISTS) return ERR_FileExists;
@@ -1384,20 +1395,16 @@ int winCreateDir(const char *Path)
 //********************************************************************************************************************
 // Returns TRUE on success.
 
-LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *BytesUsed)
+extern "C" LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *BytesUsed)
 {
    DWORD sectors, bytes_per_sector, free_clusters, total_clusters;
-   unsigned char location[4];
 
    *TotalSpace = 0;
    *BytesUsed = 0;
 
-   location[0] = Drive;
-   location[1] = ':';
-   location[2] = '\\';
-   location[3] = 0;
+   std::string location = std::to_string(Drive) + ":\\";
 
-   if (GetDiskFreeSpace(location, &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
+   if (GetDiskFreeSpace(location.c_str(), &sectors, &bytes_per_sector, &free_clusters, &total_clusters)) {
       *TotalSpace = (double)sectors * (double)bytes_per_sector * (double)free_clusters;
       *BytesUsed  = ((double)sectors * (double)bytes_per_sector * (double)total_clusters);
       return 1;
@@ -1408,7 +1415,7 @@ LONG winGetFreeDiskSpace(unsigned char Drive, long long *TotalSpace, long long *
 //********************************************************************************************************************
 // This function retrieves the original Creation date of the file and applies it to the Modification and Access date/times.
 
-LONG winResetDate(STRING Location)
+extern "C" LONG winResetDate(STRING Location)
 {
    HANDLE handle;
 
@@ -1427,37 +1434,37 @@ LONG winResetDate(STRING Location)
 
 //********************************************************************************************************************
 
-void winFindNextChangeNotification(HANDLE Handle)
+extern "C" void winFindNextChangeNotification(HANDLE Handle)
 {
    FindNextChangeNotification(Handle);
 }
 
 //********************************************************************************************************************
 
-void winFindCloseChangeNotification(HANDLE Handle)
+extern "C" void winFindCloseChangeNotification(HANDLE Handle)
 {
    FindCloseChangeNotification(Handle);
 }
 
 //********************************************************************************************************************
 
-LONG winGetWatchBufferSize(void)
+extern "C" LONG winGetWatchBufferSize(void)
 {
    return sizeof(OVERLAPPED) + sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH;
 }
 
 //********************************************************************************************************************
 
-void winSetDllDirectory(LPCSTR Path)
+extern "C" void winSetDllDirectory(LPCSTR Path)
 {
    SetDllDirectoryA(Path);
 }
 
 //********************************************************************************************************************
 
-LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LONG *WinFlags)
+extern "C" LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LONG *WinFlags)
 {
-   if ((!Path) OR (!Path[0])) return ERR_Args;
+   if ((!Path) or (!Path[0])) return ERR_Args;
 
    LONG nflags = 0;
    if (Flags & MFF_READ) nflags |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
@@ -1472,7 +1479,7 @@ LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LO
    if (nflags) {
       LONG i;
       char strip_path[MAX_PATH];
-      for (i=0; (Path[i]) AND (i < MAX_PATH); i++) strip_path[i] = Path[i];
+      for (i=0; (Path[i]) and (i < MAX_PATH); i++) strip_path[i] = Path[i];
       if (strip_path[i-1] IS '\\') strip_path[i-1] = 0;
 
       *Handle = CreateFile(strip_path, FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
@@ -1481,10 +1488,10 @@ LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LO
       if (*Handle != INVALID_HANDLE_VALUE) {
          // Use ReadDirectoryChanges() to setup an asynchronous monitor on the target folder.
 
-         OVERLAPPED *ovlap = WatchBuffer;
-         FILE_NOTIFY_INFORMATION *fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+         auto ovlap = (OVERLAPPED *)WatchBuffer;
+         auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
 
-         LONG empty;
+         DWORD empty;
          if (!ReadDirectoryChangesW(*Handle, fni,
                sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, // The -1 is to give us room to impose a null byte
                TRUE, nflags, &empty, ovlap, NULL)) {
@@ -1503,11 +1510,11 @@ LONG winWatchFile(LONG Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, LO
 
 //********************************************************************************************************************
 
-LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *PathOutput, LONG PathSize, LONG *Status)
+extern "C" LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *PathOutput, LONG PathSize, LONG *Status)
 {
    DWORD bytes_out;
-   OVERLAPPED *ovlap = WatchBuffer;
-   FILE_NOTIFY_INFORMATION *fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+   auto ovlap = (OVERLAPPED *)WatchBuffer;
+   auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
 
    if (GetOverlappedResult(Handle, ovlap, &bytes_out, FALSE)) {
       if (fni->Action) {
@@ -1525,7 +1532,7 @@ LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *Pat
 
          // Re-subscription is required to receive the next queued notification
 
-         LONG empty;
+         DWORD empty;
          ReadDirectoryChangesW(Handle, fni, sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, TRUE, NotifyFlags, &empty, ovlap, NULL);
 
          return ERR_Okay;
@@ -1537,15 +1544,14 @@ LONG winReadChanges(HANDLE Handle, APTR WatchBuffer, LONG NotifyFlags, char *Pat
 
 //********************************************************************************************************************
 
-LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
+extern "C" LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
 {
    SYSTEMTIME time;
    FILETIME filetime, localtime;
-   HANDLE handle;
    LONG err;
 
-   if ((handle = CreateFile(Location, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL,
-         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
+   if (auto handle = CreateFile(Location, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL,
+         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL); handle != INVALID_HANDLE_VALUE) {
       time.wYear         = Year;
       time.wMonth        = Month;
       time.wDayOfWeek    = 0;
@@ -1568,14 +1574,14 @@ LONG winSetFileTime(STRING Location, WORD Year, WORD Month, WORD Day, WORD Hour,
 
 //********************************************************************************************************************
 
-void winFindClose(HANDLE Handle)
+extern "C" void winFindClose(HANDLE Handle)
 {
    FindClose(Handle);
 }
 
 //********************************************************************************************************************
 
-LONG winReadKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
+extern "C" LONG winReadKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, LONG Length)
 {
    HKEY handle;
    LONG err = 0;
@@ -1591,7 +1597,7 @@ LONG winReadKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
 
 //********************************************************************************************************************
 
-LONG winReadRootKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
+extern "C" LONG winReadRootKey(LPCSTR Key, LPCSTR Value, LPBYTE Buffer, LONG Length)
 {
    HKEY handle;
    LONG err = 0;
@@ -1607,7 +1613,7 @@ LONG winReadRootKey(LPBYTE Key, LPBYTE Value, LPBYTE Buffer, LONG Length)
 
 //********************************************************************************************************************
 
-LONG winGetUserName(STRING Buffer, LONG Length)
+extern "C" LONG winGetUserName(STRING Buffer, LONG Length)
 {
    DWORD len = Length;
    return GetUserName(Buffer, &len);
@@ -1615,22 +1621,22 @@ LONG winGetUserName(STRING Buffer, LONG Length)
 
 //********************************************************************************************************************
 
-LONG winGetUserFolder(STRING Buffer, LONG Size)
+extern "C" LONG winGetUserFolder(STRING Buffer, LONG Size)
 {
    LPITEMIDLIST list;
    char path[MAX_PATH];
    LONG i = 0;
    if (SHGetSpecialFolderLocation(NULL, CSIDL_APPDATA, &list) == NOERROR) {
       if (SHGetPathFromIDList(list, path)) {
-         for (i=0; (i < Size-1) AND (path[i]); i++) Buffer[i] = path[i];
+         for (i=0; (i < Size-1) and (path[i]); i++) Buffer[i] = path[i];
          if (Buffer[i-1] != '\\') Buffer[i++] = '\\';
          Buffer[i] = 0;
       }
 
       LPMALLOC malloc;
       if (SHGetMalloc(&malloc) IS NOERROR) { // An awkward (but necessary) method for freeing folder string
-         malloc->lpVtbl->Free(malloc, list);
-         malloc->lpVtbl->Release(malloc);
+         malloc->Free(list);
+         malloc->Release();
       }
    }
    return i;
@@ -1638,14 +1644,14 @@ LONG winGetUserFolder(STRING Buffer, LONG Size)
 
 //********************************************************************************************************************
 
-LONG winMoveFile(STRING oldname, STRING newname)
+extern "C" LONG winMoveFile(STRING oldname, STRING newname)
 {
    return MoveFile(oldname, newname);
 }
 
 //********************************************************************************************************************
 
-LONG winSetEOF(CSTRING Location, __int64 Size)
+extern "C" LONG winSetEOF(CSTRING Location, __int64 Size)
 {
    HANDLE handle;
    LARGE_INTEGER li;
@@ -1671,21 +1677,21 @@ LONG winSetEOF(CSTRING Location, __int64 Size)
 
 //********************************************************************************************************************
 
-LONG winGetLogicalDrives(void)
+extern "C" LONG winGetLogicalDrives(void)
 {
    return GetLogicalDrives();
 }
 
 //********************************************************************************************************************
 
-LONG winGetLogicalDriveStrings(STRING Buffer, LONG Length)
+extern "C" LONG winGetLogicalDriveStrings(STRING Buffer, LONG Length)
 {
    return GetLogicalDriveStrings(Length, Buffer);
 }
 
 //********************************************************************************************************************
 
-LONG winGetDriveType(STRING Name)
+extern "C" LONG winGetDriveType(STRING Name)
 {
    LONG flags = GetDriveType(Name);
 
@@ -1698,7 +1704,7 @@ LONG winGetDriveType(STRING Name)
 
 //********************************************************************************************************************
 
-LONG winTestLocation(STRING Location, BYTE CaseSensitive)
+extern "C" LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 {
    LONG len, result;
    HANDLE handle;
@@ -1707,7 +1713,7 @@ LONG winTestLocation(STRING Location, BYTE CaseSensitive)
    int i, savepos;
 
    for (len=0; Location[len]; len++);
-   if ((Location[len-1] IS '/') OR (Location[len-1] IS '\\')) {
+   if ((Location[len-1] IS '/') or (Location[len-1] IS '\\')) {
 
       if (len IS 3) {
          // Checking for the existence of a drive letter - does not necessarily mean that there is media in the device.
@@ -1742,9 +1748,9 @@ LONG winTestLocation(STRING Location, BYTE CaseSensitive)
             // Check that the filename of the given location matches that of the actual name set on the file system.
 
             len--;
-            while ((len > 0) AND (Location[len-1] != '/') AND (Location[len-1] != '\\')) len--;
-            for (i=0; (Location[len+i] IS find.cFileName[i]) AND (find.cFileName[i]) AND (Location[len+i]); i++);
-            if ((!Location[len+i]) AND (!find.cFileName[i])) return result; // Match
+            while ((len > 0) and (Location[len-1] != '/') and (Location[len-1] != '\\')) len--;
+            for (i=0; (Location[len+i] IS find.cFileName[i]) and (find.cFileName[i]) and (Location[len+i]); i++);
+            if ((!Location[len+i]) and (!find.cFileName[i])) return result; // Match
             else return 0; // Not a case sensitive match
          }
 
@@ -1764,9 +1770,9 @@ LONG winTestLocation(STRING Location, BYTE CaseSensitive)
       if (CaseSensitive) {
          // Check that the filename of the given location matches that of the actual name set on the file system.
 
-         while ((len > 0) AND (Location[len-1] != '/') AND (Location[len-1] != '\\')) len--;
-         for (i=0; (Location[len+i] IS find.cFileName[i]) AND (find.cFileName[i]) AND (Location[len+i]); i++);
-         if ((!Location[len+i]) AND (!find.cFileName[i])) return result; /* Match */
+         while ((len > 0) and (Location[len-1] != '/') and (Location[len-1] != '\\')) len--;
+         for (i=0; (Location[len+i] IS find.cFileName[i]) and (find.cFileName[i]) and (Location[len+i]); i++);
+         if ((!Location[len+i]) and (!find.cFileName[i])) return result; /* Match */
          else return 0; /* Not a case sensitive match */
       }
 
@@ -1777,9 +1783,9 @@ LONG winTestLocation(STRING Location, BYTE CaseSensitive)
 
 //********************************************************************************************************************
 
-LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
+extern "C" LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
 {
-   LONG len, cont, i, attrib;
+   LONG len, cont, i;
    WIN32_FIND_DATA find;
    HANDLE handle;
 
@@ -1798,8 +1804,8 @@ LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
    if ((handle = FindFirstFile(Path, &find)) != INVALID_HANDLE_VALUE) {
       cont = 1;
       while (cont) {
-         if ((find.cFileName[0] IS '.') AND (find.cFileName[1] IS 0));
-         else if ((find.cFileName[0] IS '.') AND (find.cFileName[1] IS '.') AND (find.cFileName[2] IS 0));
+         if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS 0));
+         else if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS '.') and (find.cFileName[2] IS 0));
          else {
             for (i=0; find.cFileName[i]; i++) Path[len+1+i] = find.cFileName[i];
             Path[len+1+i] = 0;
@@ -1827,7 +1833,7 @@ LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
 
    // Remove the file/folder itself - first check if it is read-only
 
-   attrib = GetFileAttributes(Path);
+   auto attrib = GetFileAttributes(Path);
    if (attrib != INVALID_FILE_ATTRIBUTES) {
       if (attrib & FILE_ATTRIBUTE_READONLY) {
          attrib &= ~FILE_ATTRIBUTE_READONLY;
@@ -1853,7 +1859,7 @@ LONG delete_tree(STRING Path, int Size, struct FileFeedback *Feedback)
 
 //********************************************************************************************************************
 
-HANDLE winFindDirectory(STRING Location, HANDLE *Handle, STRING Result)
+extern "C" HANDLE winFindDirectory(STRING Location, HANDLE *Handle, STRING Result)
 {
    WIN32_FIND_DATA find;
    LONG i;
@@ -1887,7 +1893,7 @@ HANDLE winFindDirectory(STRING Location, HANDLE *Handle, STRING Result)
 
 //********************************************************************************************************************
 
-HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
+extern "C" HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
 {
    WIN32_FIND_DATA find;
    LONG i;
@@ -1919,24 +1925,23 @@ HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
 }
 
 /*********************************************************************************************************************
-** Function: winScan()
-** Short:    Used by fs_scandir()
+** Used by fs_scandir()
 */
 
-LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct DateTime *CreateTime, struct DateTime *WriteTime, BYTE *Dir, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive)
+extern "C" LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct DateTime *CreateTime, struct DateTime *WriteTime, BYTE *Dir, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive)
 {
    WIN32_FIND_DATA find;
    LONG i;
 
-   while (1){
+   while (true) {
       if (*Handle IS (HANDLE)-1) {
          *Handle = FindFirstFile(Path, &find);
          if (*Handle IS INVALID_HANDLE_VALUE) return 0;
       }
       else if (!FindNextFile(*Handle, &find)) return 0;
 
-      if ((find.cFileName[0] IS '.') AND (find.cFileName[1] IS 0)) continue;
-      if ((find.cFileName[0] IS '.') AND (find.cFileName[1] IS '.') AND (find.cFileName[2] IS 0)) continue;
+      if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS 0)) continue;
+      if ((find.cFileName[0] IS '.') and (find.cFileName[1] IS '.') and (find.cFileName[2] IS 0)) continue;
 
       if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
          *Dir = TRUE;
@@ -1956,7 +1961,7 @@ LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct 
       if (find.dwFileAttributes & FILE_ATTRIBUTE_ARCHIVE) *Archive = TRUE;
       else *Archive = FALSE;
 
-      for (i=0; (find.cFileName[i]) AND (i < 254); i++) Name[i] = find.cFileName[i];
+      for (i=0; (find.cFileName[i]) and (i < 254); i++) Name[i] = find.cFileName[i];
       Name[i] = 0;
 
       if (CreateTime) convert_time(&find.ftCreationTime, CreateTime);
@@ -1971,9 +1976,9 @@ LONG winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct 
 
 //********************************************************************************************************************
 
-int winSetAttrib(CSTRING Path, LONG Flags)
+extern "C" int winSetAttrib(CSTRING Path, LONG Flags)
 {
-   int attrib = GetFileAttributes(Path);
+   auto attrib = GetFileAttributes(Path);
    if (attrib == INVALID_FILE_ATTRIBUTES) return 1;
 
    if (Flags & PERMIT_HIDDEN) attrib |= FILE_ATTRIBUTE_HIDDEN;
@@ -1992,11 +1997,11 @@ int winSetAttrib(CSTRING Path, LONG Flags)
 
 //********************************************************************************************************************
 
-void winGetAttrib(CSTRING Path, LONG *Flags)
+extern "C" void winGetAttrib(CSTRING Path, LONG *Flags)
 {
    *Flags = 0;
 
-   int attrib = GetFileAttributes(Path);
+   auto attrib = GetFileAttributes(Path);
    if (attrib == INVALID_FILE_ATTRIBUTES) return;
 
    if (attrib & FILE_ATTRIBUTE_HIDDEN)   *Flags |= PERMIT_HIDDEN;
@@ -2009,7 +2014,7 @@ void winGetAttrib(CSTRING Path, LONG *Flags)
 
 //********************************************************************************************************************
 
-LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Folder)
+extern "C" LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Folder)
 {
    if (!Path) return 0;
 
@@ -2020,11 +2025,9 @@ LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Fol
    WIN32_FIND_DATA find;
    HANDLE handle;
 
-   if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) {
-      char short_path[len];
-      CopyMemory(short_path, Path, len-1);
-      short_path[len-1] = 0;
-      handle = FindFirstFile(short_path, &find);
+   if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
+      std::string short_path(Path, len-1);
+      handle = FindFirstFile(short_path.c_str(), &find);
    }
    else handle = FindFirstFile(Path, &find);
 
@@ -2052,14 +2055,14 @@ LONG winFileInfo(CSTRING Path, long long *Size, struct DateTime *Time, BYTE *Fol
 //********************************************************************************************************************
 // Returns TRUE if the folder exists.
 
-LONG winCheckDirectoryExists(CSTRING Path)
+extern "C" LONG winCheckDirectoryExists(CSTRING Path)
 {
    LONG len;
 
    for (len=0; Path[len]; len++);
    if (len <= 3) return 1; // Return TRUE if the path is a drive letter
 
-   if ((Path[0] IS '\\') AND (Path[1] IS '\\')) {
+   if ((Path[0] IS '\\') and (Path[1] IS '\\')) {
       // UNC handling.  Use the widechar version of FindFirstFile() because it is required for UNC paths.
 
       #define SIZE_WSTR 400
@@ -2095,11 +2098,9 @@ LONG winCheckDirectoryExists(CSTRING Path)
       WIN32_FIND_DATA find;
       HANDLE handle;
 
-      if ((Path[len-1] IS '/') OR (Path[len-1] IS '\\')) {
-         char short_path[len];
-         CopyMemory(short_path, Path, len-1);
-         short_path[len-1] = 0;
-         handle = FindFirstFileA(short_path, &find);
+      if ((Path[len-1] IS '/') or (Path[len-1] IS '\\')) {
+         std::string short_path(Path, len-1);
+         handle = FindFirstFileA(short_path.c_str(), &find);
       }
       else handle = FindFirstFileA(Path, &find);
 

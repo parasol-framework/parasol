@@ -19,7 +19,7 @@ end
 
    local src = arg('src')
    if (src == nil) then
-      print('Please supply a source audio file with "--src=[file]"')
+      print('Please supply a source audio file with "src=[file]"')
       return
    end
 

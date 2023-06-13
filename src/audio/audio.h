@@ -81,7 +81,7 @@ static const WORD WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
 static const WORD WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.
 static const WORD WAVE_FLOAT = 0x0003;  // Uncompressed floating point waveform
 
-static const WORD WAVE_FORMAT_EXTENSIBLE = 0xfffe;
+static const WORD WAVE_FORMAT_EXTENSIBLE = WORD(0xfffe);
 
 const LONG DEFAULT_BUFFER_SIZE = 8096; // Measured in samples, not bytes
 

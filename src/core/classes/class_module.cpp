@@ -65,7 +65,7 @@ static STRUCTS glStructures = {
    { "MemInfo",             sizeof(MemInfo) },
    { "Message",             sizeof(Message) },
    { "MethodEntry",         sizeof(MethodEntry) },
-   { "ModHeader",           sizeof(ModHeader) },
+   { "ModHeader",           sizeof(struct ModHeader) },
    { "MsgHandler",          sizeof(MsgHandler) },
    { "ObjectSignal",        sizeof(ObjectSignal) },
    { "RGB16",               sizeof(RGB16) },
@@ -85,8 +85,10 @@ static STRUCTS glStructures = {
    { "pfBase64Encode",      sizeof(pfBase64Encode) }
 };
 
+#include "../idl.h"
+
 static RootModule glCoreRoot;
-static ModHeader glCoreHeader(NULL, NULL, NULL, NULL, VER_CORE, glIDL, &glStructures, "Core");
+struct ModHeader glCoreHeader(NULL, NULL, NULL, NULL, glIDL, &glStructures, "core");
 
 static bool cmp_mod_names(CSTRING, CSTRING);
 static RootModule * check_resident(extModule *, CSTRING);
@@ -96,7 +98,7 @@ static void free_module(MODHANDLE handle);
 
 static ERROR GET_Name(extModule *, CSTRING *);
 
-static ERROR SET_Header(extModule *, ModHeader *);
+static ERROR SET_Header(extModule *, struct ModHeader *);
 static ERROR SET_Name(extModule *, CSTRING);
 
 static const FieldDef clFlags[] = {
@@ -106,7 +108,6 @@ static const FieldDef clFlags[] = {
 };
 
 static const FieldArray glModuleFields[] = {
-   { "Version",      FDF_DOUBLE|FDF_RI },
    { "FunctionList", FDF_POINTER|FDF_RW },
    { "ModBase",      FDF_POINTER|FDF_R },
    { "Root",         FDF_POINTER|FDF_R },
@@ -125,6 +126,139 @@ static const ActionArray glModuleActions[] = {
    { AC_Init, MODULE_Init },
    { 0, NULL }
 };
+
+//********************************************************************************************************************
+
+#ifndef PARASOL_STATIC
+static ERROR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
+{
+   pf::Log log(__FUNCTION__);
+   std::string path;
+   LONG i;
+
+   for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
+
+   if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
+      log.trace("Module location is absolute.");
+      path.assign(Self->Name);
+
+      STRING volume;
+      if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
+         path.assign(volume);
+         FreeResource(volume);
+      }
+      else {
+         log.warning("Failed to resolve the path of module '%s'", Self->Name);
+         return ERR_ResolvePath;
+      }
+   }
+
+   if (path.empty()) {
+      #ifdef __unix__
+         if (!glModulePath.empty()) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
+            path.assign(glModulePath);
+            if (path.back() != '/') path.push_back('/');
+         }
+         else path = glRootPath + "lib/parasol/";
+
+         if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
+
+         #ifdef __ANDROID__
+            if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
+            else path += "lib"; // Packaged Android modules have to begin with 'lib'
+         #endif
+
+         path.append(Self->Name);
+
+      #elif _WIN32
+         if (!glModulePath.empty()) {
+            path = glModulePath;
+            if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
+         }
+         else if (!glSystemPath.empty()) {
+            path = glSystemPath;
+            if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
+            path += "lib\\";
+         }
+         else {
+            path = glRootPath;
+            if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
+            path += "lib\\";
+         }
+
+         if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib\\";
+         path.append(Self->Name);
+      #endif
+   }
+
+   // Deal with the file extensions
+
+   if (path.ends_with(".dll"));
+   else if (path.ends_with(".so"));
+   else {
+      #ifdef __unix__
+         path.append(".so");
+      #elif _WIN32
+         path.append(".dll");
+      #elif __APPLE__ // OSX uses .dylib but is compatible with .so
+         path.append(".so");
+      #else
+         #error What is the module extension for this machine type (.so/.mod/...)?
+      #endif
+   }
+
+   log.trace("Loading module \"%s\".", path.c_str());
+
+   // Open the module file.  Note that we will dlclose() the module in the expunge sequence of the Core (see core.c).
+
+   #ifdef __unix__
+
+      // RTLD_LAZY needs to be used in case the module wants to have the ability to link to
+      // symbolically linked libraries (e.g. the Network module does this to dynamically load
+      // SSL support).
+      //
+      // RTLD_GLOBAL is needed only for symbolically linked libraries in case one is dependent on
+      // other libraries.  SSL is an example of this as the libssl library is dependent
+      // on symbols found in libcrypto, therefore libcrypto needs RTLD_GLOBAL.
+
+      if ((Root->LibraryBase = dlopen(path.c_str(), ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
+         if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
+            if (!(*Table = (struct ModHeader *)dlsym(Root->LibraryBase, "ModHeader"))) {
+               log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
+               return ERR_NotFound;
+            }
+         }
+      }
+      else {
+         log.warning("%s: %s", Self->Name, (CSTRING)dlerror());
+         return ERR_NoSupport;
+      }
+
+   #elif _WIN32
+
+      if ((Root->LibraryBase = winLoadLibrary(path.c_str()))) {
+         if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
+            if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "ModHeader"))) {
+               if (!(*Table = (struct ModHeader *)winGetProcAddress(Root->LibraryBase, "_ModHeader"))) {
+                  log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
+                  return ERR_NotFound;
+               }
+            }
+         }
+      }
+      else {
+         char msg[100];
+         log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path.c_str(), winFormatMessage(0, msg, sizeof(msg)));
+         return ERR_Read;
+      }
+
+   #else
+      #error This system needs support for the loading of module/exe files.
+   #endif
+
+   return ERR_Okay;
+}
+#endif
 
 //********************************************************************************************************************
 
@@ -154,7 +288,7 @@ ERROR ROOTMODULE_Free(RootModule *Self, APTR Void)
    return ERR_Okay;
 }
 
-static ERROR ROOTMODULE_GET_Header(RootModule *Self, ModHeader **Value)
+static ERROR ROOTMODULE_GET_Header(RootModule *Self, struct ModHeader **Value)
 {
    *Value = Self->Header;
    return ERR_Okay;
@@ -184,11 +318,9 @@ static ERROR MODULE_Free(extModule *Self, APTR Void)
 static ERROR MODULE_Init(extModule *Self, APTR Void)
 {
    pf::Log log;
-   #define AF_ROOTMODULE 0x0001
-   #define AF_SEGMENT    0x0002
    ERROR error = ERR_Failed;
    LONG i;
-   WORD aflags = 0;
+   bool root_mod = false;
    char name[60];
 
    if (!Self->Name[0]) return log.warning(ERR_FieldNotSet);
@@ -204,18 +336,16 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
    log.trace("Finding module %s (%s)", Self->Name, name);
 
    RootModule *master;
-   ModHeader *table;
+   struct ModHeader *table = NULL;
    if ((master = check_resident(Self, name))) {
       Self->Root = master;
    }
    else if (!NewObject(ID_ROOTMODULE, NF::UNTRACKED, (OBJECTPTR *)&master)) {
-      std::string path;
-
       master->Next = glModuleList; // Insert the RootModule at the start of the chain.
       if (glModuleList) glModuleList->Prev = master;
       glModuleList = master;
 
-      aflags |= AF_ROOTMODULE;
+      root_mod = true;
 
       context = SetContext(master);
 
@@ -227,147 +357,17 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
          table = Self->Header;
       }
       else {
-         for (i=0; (Self->Name[i]) and (Self->Name[i] != ':'); i++);
-
-         if ((Self->Name[0] IS '/') or (Self->Name[i] IS ':')) {
-            log.trace("Module location is absolute.");
-            path = Self->Name;
-
-            STRING volume;
-            if (!ResolvePath(path.c_str(), RSF::APPROXIMATE, &volume)) {
-               path = volume;
-               FreeResource(volume);
-            }
-            else {
-               log.warning("Failed to resolve the path of module '%s'", Self->Name);
-               error = ERR_ResolvePath;
-               goto exit;
-            }
-         }
-
-         if (path.empty()) {
-            #ifdef __unix__
-               if (!glModulePath.empty()) { // If no specific module path is defined, default to the system path and tack on the modules/ suffix.
-                  path = glModulePath;
-                  if (path.back() != '/') path.push_back('/');
-               }
-               else path = glRootPath + "lib/parasol/";
-
-               if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib/";
-
-               #ifdef __ANDROID__
-                  if ((Self->Name[0] IS 'l') and (Self->Name[1] IS 'i') and (Self->Name[2] IS 'b'));
-                  else path += "lib"; // Packaged Android modules have to begin with 'lib'
-               #endif
-
-               path.append(Self->Name);
-
-            #elif _WIN32
-               if (!glModulePath.empty()) {
-                  path = glModulePath;
-                  if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
-               }
-               else if (!glSystemPath.empty()) {
-                  path = glSystemPath;
-                  if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
-                  path += "lib\\";
-               }
-               else {
-                  path = glRootPath;
-                  if ((path.back() != '\\') and (path.back() != '/')) path.push_back('\\');
-                  path += "lib\\";
-               }
-
-               if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) path += "lib\\";
-               path.append(Self->Name);
-            #endif
-         }
-
-         // Deal with the file extensions
-
-         if (path.ends_with(".dll"));
-         else if (path.ends_with(".so"));
+         #ifdef PARASOL_STATIC
+         auto it = glStaticModules.find(Self->Name);
+         if (it != glStaticModules.end()) table = it->second;
          else {
-            #ifdef __unix__
-               path.append(".so");
-            #elif _WIN32
-               path.append(".dll");
-            #elif __APPLE__ // OSX uses .dylib but is compatible with .so
-               path.append(".so");
-            #else
-               #error What is the module extension for this machine type (.so/.mod/...)?
-            #endif
+            log.warning("Unable to find module '%s' from %d static modules.", Self->Name, LONG(glStaticModules.size()));
+            error = ERR_NotFound;
+            goto exit;
          }
-
-         log.trace("Loading module \"%s\".", path.c_str());
-
-         // Open the module file.  Note that we will dlclose() the module in the expunge sequence of the Core (see core.c).
-
-         table = NULL;
-
-         #ifdef __unix__
-
-            // RTLD_LAZY needs to be used in case the module wants to have the ability to link to
-            // symbolically linked libraries (e.g. the Network module does this to dynamically load
-            // SSL support).
-            //
-            // RTLD_GLOBAL is needed only for symbolically linked libraries in case one is dependent on
-            // other libraries.  SSL is an example of this as the libssl library is dependent
-            // on symbols found in libcrypto, therefore libcrypto needs RTLD_GLOBAL.
-
-            if ((master->LibraryBase = dlopen(path.c_str(), ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) ? (RTLD_LAZY|RTLD_GLOBAL) : RTLD_LAZY))) {
-               aflags |= AF_SEGMENT;
-
-               if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
-                  if (!(table = (ModHeader *)dlsym(master->LibraryBase, "ModHeader"))) {
-                     log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
-                     goto exit;
-                  }
-               }
-            }
-            else {
-               log.warning("%s: %s", name, (CSTRING)dlerror());
-               error = ERR_NoSupport;
-               goto exit;
-            }
-
-         #elif _WIN32
-
-            if ((master->LibraryBase = winLoadLibrary(path.c_str()))) {
-               aflags |= AF_SEGMENT;
-
-               if ((Self->Flags & MOF::LINK_LIBRARY) IS MOF::NIL) {
-                  if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "ModHeader"))) {
-                     if (!(table = (ModHeader *)winGetProcAddress(master->LibraryBase, "_ModHeader"))) {
-                        log.warning("The 'ModHeader' structure is missing from module %s.", path.c_str());
-                        goto exit;
-                     }
-                  }
-               }
-            }
-            else {
-               char msg[100];
-               log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path.c_str(), winFormatMessage(0, msg, sizeof(msg)));
-               error = ERR_Read;
-               goto exit;
-            }
-
          #else
-            #error This system needs support for the loading of module/exe files.
+         if ((error = load_mod(Self, master, &table))) goto exit;
          #endif
-      }
-
-      // The module version fields can give clues as to whether the table is corrupt or not.
-
-      if (table) {
-         if ((table->ModVersion > 500) or (table->ModVersion < 0)) {
-            log.warning("Corrupt module version number %d for module '%s'", (LONG)master->ModVersion, path.c_str());
-            goto exit;
-         }
-         else if ((table->HeaderVersion < MODULE_HEADER_V1) or (table->HeaderVersion > MODULE_HEADER_V1 + 256)) {
-            log.warning("Invalid module header $%.8x", table->HeaderVersion);
-            goto exit;
-         }
       }
 
       master->OpenCount  = 0;
@@ -375,67 +375,32 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
       Self->Root = master;
 
       if (table) {
-         // First, check if the module has already been loaded and is resident in a way that we haven't caught.
-         // This shouldn't happen, but can occur for reasons such as the module being loaded from a path that differs
-         // to the original. We resolve it by unloading the module and reverting to RootModule referenced in the
-         // Root field.
-
-         if (table->HeaderVersion >= MODULE_HEADER_V2) {
-            if (table->Root) {
-               log.debug("Module already loaded as #%d, reverting to original RootModule object.", table->Root->UID);
-
-               SetContext(context);
-               context = NULL;
-
-               free_module(master->LibraryBase);
-               master->LibraryBase = NULL;
-               FreeResource(master);
-
-               Self->Root = table->Root;
-               master = table->Root;
-               goto open_module;
-            }
-
-            table->Root = master;
-         }
-
          if (!table->Init) { log.warning(ERR_ModuleMissingInit); goto exit; }
          if (!table->Name) { log.warning(ERR_ModuleMissingName); goto exit; }
 
          master->Header     = table;
-         Self->Version      = table->ModVersion;
          master->Table      = table;
          master->Name       = table->Name;
-         master->ModVersion = table->ModVersion;
          master->Init       = table->Init;
          master->Open       = table->Open;
          master->Expunge    = table->Expunge;
          master->Flags      = table->Flags;
-
-#ifdef _DEBUG
-         if (master->Name) { // Give the master object a nicer name for debug output.
-            char mmname[30];
-            mmname[0] = 'm';
-            mmname[1] = 'm';
-            mmname[2] = '_';
-            for (i=0; (size_t) i < sizeof(mmname)-4; i++) mmname[i+3] = master->Name[i];
-            mmname[i+3] = 0;
-            SetName(master, mmname);
-         }
-#endif
       }
 
       // INIT
 
       if (master->Init) {
-         // Build a Core base for the module to use
-         if (auto modkb = (struct CoreBase *)build_jump_table(glFunctions)) {
-            master->CoreBase = modkb;
-
-            log.traceBranch("Initialising the module.");
-            error = master->Init(Self, modkb);
-            if (error) goto exit;
-         }
+         #ifdef PARASOL_STATIC
+            error = master->Init(Self, NULL);
+         #else
+            // Build a Core base for the module to use
+            if (auto modkb = (struct CoreBase *)build_jump_table(glFunctions)) {
+               master->CoreBase = modkb;
+               log.traceBranch("Initialising the module.");
+               error = master->Init(Self, modkb);
+            }
+         #endif
+         if (error) goto exit;
       }
       else if ((Self->Flags & MOF::LINK_LIBRARY) != MOF::NIL) {
          log.msg("Loaded link library '%s'", Self->Name);
@@ -453,7 +418,6 @@ static ERROR MODULE_Init(extModule *Self, APTR Void)
       goto exit;
    }
 
-open_module:
    // If the STATIC option is set then the loaded module must not be removed when the Module object is freed.  This is
    // typically used for symbolic linked libraries.
 
@@ -462,9 +426,7 @@ open_module:
    // At this stage the module is 100% resident and it is not possible to reverse the process.  Because of this, if an
    // error occurs we must not try to free any resident allocations from memory.
 
-   aflags = aflags & ~(AF_ROOTMODULE|AF_SEGMENT);
-
-   // OPEN
+   root_mod = false;
 
    if (master->Open) {
       log.trace("Opening %s module.", Self->Name);
@@ -479,12 +441,14 @@ open_module:
 
    // Build the jump table for the program
 
+   #ifndef PARASOL_STATIC
    if (Self->FunctionList) {
       if (!(Self->ModBase = build_jump_table(Self->FunctionList))) {
          goto exit;
       }
       Self->prvMBMemory = Self->ModBase;
    }
+   #endif
 
    // Some DLL's like wsock2 can change the exception handler - we don't want that, so reset our exception handler
    // just in case.
@@ -502,12 +466,8 @@ exit:
       if (!(error & ERF_Notified)) log.msg("\"%s\" failed: %s", Self->Name, GetErrorMsg(error));
       error &= ~(ERF_Notified|ERF_Delay);
 
-      if (aflags & AF_ROOTMODULE) {
-         if (master->Expunge) {
-            log.msg("Expunging...");
-            master->Expunge();
-         }
-
+      if (root_mod) {
+         if (master->Expunge) master->Expunge();
          FreeResource(master);
          Self->Root = NULL;
       }
@@ -546,9 +506,12 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
    if ((!Args) or (!Args->Name)) return log.warning(ERR_NullArgs);
 
 #ifdef _WIN32
+   #ifdef PARASOL_STATIC
+   if ((Args->Address = winGetProcAddress(NULL, Args->Name))) {
+   #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
-
    if ((Args->Address = winGetProcAddress(Self->Root->LibraryBase, Args->Name))) {
+   #endif
       return ERR_Okay;
    }
    else {
@@ -556,9 +519,12 @@ static ERROR MODULE_ResolveSymbol(extModule *Self, struct modResolveSymbol *Args
       return ERR_NotFound;
    }
 #elif __unix__
+   #ifdef PARASOL_STATIC
+   if ((Args->Address = dlsym(RTLD_DEFAULT, Args->Name))) {
+   #else
    if ((!Self->Root) or (!Self->Root->LibraryBase)) return ERR_FieldNotSet;
-
    if ((Args->Address = dlsym(Self->Root->LibraryBase, Args->Name))) {
+   #endif
       return ERR_Okay;
    }
    else {
@@ -600,7 +566,7 @@ than on disk.
 
 **********************************************************************************************************************/
 
-static ERROR SET_Header(extModule *Self, ModHeader *Value)
+static ERROR SET_Header(extModule *Self, struct ModHeader *Value)
 {
    if (!Value) return ERR_Failed;
    Self->Header = Value;
@@ -620,22 +586,10 @@ Root field refers to a RootModule object that reflects this single instance of t
 ModBase: The Module's function base (jump table) must be read from this field.
 
 Initialising a module will create a jump table that is referenced in the ModBase field.  The jump table contains
-vectors that point to all functions that are published by the module.
+vectors that point to all functions that are published by the module.  This is considered an internal feature that
+is hidden by system headers.
 
-The jump table is unique to the instance of the module. This allows each module to use a different function model
-between versions, without losing backwards compatibility.  When a module is opened, it can check the requested
-#Version and return a custom-built jump table to the program.  Thus if a function were changed in a
-future module version, older programs would be re-routed to a routine that provides backwards compatibility to
-the newer function model.
-
-By default, jump tables are arranged as an array of function pointers accessible through a well defined structure.
-The template for making calls is `FunctionBase-&gt;FunctionCall()`
-
-Header files will normally include macros to simplify the function call:
-
-<pre>#define FunctionCall      FunctionBase-&gt;FunctionCall</pre>
-
-The jump table is invalid once the module is destroyed.
+If the module is unloaded at any time then the jump table becomes invalid.
 
 -FIELD-
 Name: The name of the module.
@@ -669,28 +623,10 @@ static ERROR SET_Name(extModule *Self, CSTRING Name)
    return ERR_Okay;
 }
 
-/*********************************************************************************************************************
-
--FIELD-
-Version: Minimum required version number.
-
-When opening a module, the value that you insert in the Version field will reflect the minimum version and revision
-number required of the module file.  If the module's version number is less than the version that you specify, then
-the initialisation procedure will be aborted.
-
-The Version field is also useful for ensuring that the function base returned by a module matches your program's
-expectations.  For instance, if you write your program against a 1.0 version of a module but the user's machine has a
-2.0 version installed, there could be incompatibilities.  By specifying the required version number, the module can
-provide backwards-compatible functionality for your software.
-
-After initialisation, the Version field will be updated to reflect the actual version of the Module.
--END-
-
-**********************************************************************************************************************/
-
 //********************************************************************************************************************
 // Builds jump tables that link programs to modules.
 
+#ifndef PARASOL_STATIC
 APTR build_jump_table(const Function *FList)
 {
    if (!FList) return NULL;
@@ -709,9 +645,9 @@ APTR build_jump_table(const Function *FList)
       return functions;
    }
    else log.warning(ERR_AllocMemory);
-
    return NULL;
 }
+#endif
 
 //********************************************************************************************************************
 // Compare strings up to a '.' extension or null character.
@@ -781,9 +717,7 @@ static RootModule * check_resident(extModule *Self, CSTRING ModuleName)
          ClearMemory(&glCoreRoot, sizeof(glCoreRoot));
          glCoreRoot.Class       = glRootModuleClass;
          glCoreRoot.Name        = "Core";
-         glCoreRoot.Version     = 1;
          glCoreRoot.OpenCount   = 1;
-         glCoreRoot.ModVersion  = VER_CORE;
          glCoreRoot.Table       = &glCoreHeader;
          glCoreRoot.Header      = &glCoreHeader;
       }

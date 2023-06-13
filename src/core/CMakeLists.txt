@@ -46,11 +46,11 @@ if (BUILD_DEFS)
       "${DOCS}/modules/classes/thread.xml"
       "${DOCS}/modules/classes/time.xml"
       PRE_BUILD
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=defs/errors.fdl" "--output=${INCLUDE_OUTPUT}/system/errors.h" "--sdk=${PROJECT_SOURCE_DIR}"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=defs/registry.fdl" "--output=${INCLUDE_OUTPUT}/system/registry.h" "--sdk=${PROJECT_SOURCE_DIR}"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=defs/fields.fdl" "--output=${INCLUDE_OUTPUT}/system/fields.h" "--sdk=${PROJECT_SOURCE_DIR}"
-      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "--src=defs/core.fdl" "--sdk=${PROJECT_SOURCE_DIR}" "--output-proto=prototypes.h" "--output-defs=data_functions.c" "--files={" ${FUNCTIONS} "}"
-      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "--src=defs/core.fdl" "--output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "--sdk=${PROJECT_SOURCE_DIR}" "--format=c"
+      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/errors.fdl" "output=${INCLUDE_OUTPUT}/system/errors.h" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/registry.fdl" "output=${INCLUDE_OUTPUT}/system/registry.h" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/fields.fdl" "output=${INCLUDE_OUTPUT}/system/fields.h" "sdk=${PROJECT_SOURCE_DIR}"
+      COMMAND ${PARASOL_CMD} ${IDL_C_SCRIPT} "--log-warning" "src=defs/core.fdl" "sdk=${PROJECT_SOURCE_DIR}" "output-proto=prototypes.h" "output-defs=data_functions.c" "files={" ${FUNCTIONS} "}"
+      COMMAND ${PARASOL_CMD} ${IDL_DEF_SCRIPT} "--log-warning" "src=defs/core.fdl" "output=${CMAKE_CURRENT_SOURCE_DIR}/idl.h" "sdk=${PROJECT_SOURCE_DIR}" "format=c"
       DEPENDS
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/core.fdl"
          "${CMAKE_CURRENT_SOURCE_DIR}/defs/errors.fdl"
@@ -75,7 +75,33 @@ if (BUILD_DEFS)
    add_dependencies (build_headers core_defs)
 endif ()
 
-add_library (core SHARED)
+if (NOT MSVC)
+   # A bug in (MinGW?) GCC requires the following flag is applied to ensure that __packed__ works correctly.
+   set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-ms-bitfields")
+   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
+   #target_compile_options (core PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-mno-ms-bitfields>>")
+endif ()
+
+# DBG_DIAGNOSTICS: Print enhanced diagnostic messages on crash - e.g. semaphore and memory locks.
+# DBG_SLEEP: Debug any area of the system that puts the process to sleep.
+
+add_compile_definitions ("__system__" "DBG_DIAGNOSTICS")
+
+if (MSVC)
+   add_compile_definitions ("_CRT_NONSTDC_NO_DEPRECATE")
+endif ()
+
+# These definitions tell the Core where the system files are installed.
+
+if (RUN_ANYWHERE)
+   add_compile_definitions("_ROOT_PATH=" "_SYSTEM_PATH=" "_MODULE_PATH=\"parasol:lib/\"")
+else ()
+   add_compile_definitions ("_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
+      "_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
+      "_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
+endif ()
+
+add_library (core)
 
 set_module_defaults (core)
 
@@ -109,33 +135,20 @@ target_sources (core PRIVATE
 target_include_directories (core PRIVATE
    ${ZLIB_HEADERS})
 
-# A bug in (MinGW?) GCC requires the following flag is applied to ensure that __packed__ works correctly.
-
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-ms-bitfields")
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields")
-#target_compile_options (core PRIVATE "$<${GCC_COMPAT}:$<BUILD_INTERFACE:-mno-ms-bitfields>>")
-
-# DBG_DIAGNOSTICS: Print enhanced diagnostic messages on crash - e.g. semaphore and memory locks.
-# DBG_SLEEP: Debug any area of the system that puts the process to sleep.
-
-add_definitions("-D__system__" "-DDBG_DIAGNOSTICS")
-
-# These definitions tell the Core where the system files are installed.
-
-if (RUN_ANYWHERE)
-   add_definitions("-D_ROOT_PATH=" "-D_SYSTEM_PATH=" "-D_MODULE_PATH=\"parasol:lib/\"")
-else ()
-   add_definitions("-D_ROOT_PATH=\"${CMAKE_INSTALL_PREFIX}/\""
-      "-D_SYSTEM_PATH=\"${CMAKE_INSTALL_PREFIX}/share/parasol/\""
-      "-D_MODULE_PATH=\"${CMAKE_INSTALL_PREFIX}/lib/parasol/\"")
-endif ()
-
 target_link_libraries (core PRIVATE zlib)
 
+if (PARASOL_STATIC)
+   target_link_libraries (core PRIVATE audio display fluid font http json mp3 network picture jpeg scintilla svg vector xml)
+
+   if (X11_Xrandr_FOUND)
+      target_link_libraries (core PRIVATE xrandr)
+   endif ()
+endif ()
+
 if (WIN32)
-   target_sources (core PRIVATE microsoft/windows.c)
+   target_sources (core PRIVATE microsoft/windows.cpp)
    target_link_libraries (core PRIVATE wsock32 psapi)
-   if (PARASOL_VLOG)
+   if (PARASOL_VLOG OR MSVC)
       # Header generation for libdbghelp: dlltool -k -d dbghelp.def -l libdbghelp.a
       # Copy libdbghelp.a to your MinGW libs folder.
       target_link_libraries (core PRIVATE dbghelp)

@@ -581,14 +581,15 @@ int fcmd_loadfile(lua_State *Lua)
 
    if (auto path = lua_tostring(Lua, 1)) {
       pf::Log log("loadfile");
-      LONG pathlen = strlen(path);
-      char fbpath[pathlen+6];
 
       log.branch("%s", path);
 
       bool recompile = false;
       CSTRING src = path;
 
+      #if 0
+      LONG pathlen = strlen(path);
+      char fbpath[pathlen+6];
       if (!StrMatch(".fluid", path + pathlen - 6)) {
          // File is a .fluid.  Let's check if a .fb exists and is date-stamped for the same date as the .fluid version.
          // Note: The developer can also delete the .fluid file in favour of a .fb that is already present (for
@@ -619,6 +620,7 @@ int fcmd_loadfile(lua_State *Lua)
             }
          }
       }
+      #endif
 
       objFile::create file = { fl::Path(src), fl::Flags(FL::READ) };
       if (file.ok()) {
@@ -651,7 +653,7 @@ int fcmd_loadfile(lua_State *Lua)
             }
 
             if (!lua_load(Lua, &code_reader, &handle, path+i)) {
-#warning Code compilation not currently supported
+               // TODO Code compilation not currently supported
             /*
                if (recompile) {
                   objFile::create cachefile = {

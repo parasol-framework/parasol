@@ -138,13 +138,13 @@ static int processing_sleep(lua_State *Lua)
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
          // Use custom signals provided by the client (or Fluid if no objects were specified).
-         ObjectSignal signal_list_c[fp->Signals->size() + 1];
+         auto signal_list_c = std::make_unique<ObjectSignal[]>(fp->Signals->size() + 1);
          LONG i = 0;
          for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
          signal_list_c[i].Object = NULL;
 
          std::scoped_lock lock(recursion);
-         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+         error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
          ObjectSignal signal_list_c[2];
