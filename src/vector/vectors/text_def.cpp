@@ -10,6 +10,7 @@ static const struct FieldDef clVectorTextVTXF[] = {
    { "AreaSelected", 0x00000020 },
    { "NoSysKeys", 0x00000040 },
    { "Overwrite", 0x00000080 },
+   { "Raster", 0x00000100 },
    { NULL, 0 }
 };
 

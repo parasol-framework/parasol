@@ -154,7 +154,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "EDITABLE|EDIT: Allow user editing of the text if the nearest viewport has the focus.",
     "AREA_SELECTED: Automatically set if a region of text has been selected.",
     "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
-    "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).")
+    "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).",
+    "RASTER: Rasterise glyphs to a texture cache for very fast rendering.  This feature is not compatible with scalable graphics conventions.")
 
   flags("VMF", { comment="Morph flags" },
     "STRETCH: Applicable when used on VectorText, the stretch option converts glyph outlines into paths, and then all end points and control points will be adjusted to be along the perpendicular vectors from the path, thereby stretching and possibly warping the glyphs.  With this approach, connected glyphs, such as in cursive scripts, will maintain their connections.",

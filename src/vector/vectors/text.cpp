@@ -206,7 +206,7 @@ static ERROR decompose_ft_outline(const FT_Outline &, bool, agg::path_storage &)
 static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *);
-static void generate_text_bitmap(extVectorText *);
+static void raster_text_to_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
 static void reset_font(extVectorText *);
 static ERROR text_input_events(extVector *, const InputEvent *);
@@ -1135,8 +1135,8 @@ static void generate_text(extVectorText *Vector)
    auto &lines = Vector->txLines;
    if (lines.empty()) return;
 
-   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
-      generate_text_bitmap(Vector);
+   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+      raster_text_to_bitmap(Vector);
       return;
    }
 
@@ -1429,9 +1429,9 @@ static void generate_text(extVectorText *Vector)
 }
 
 //********************************************************************************************************************
-// Bitmap fonts are drawn as a rectangular block referencing a VectorImage texture that contains the rendered font.
+// Rastered fonts are drawn as a rectangular block referencing a VectorImage texture that contains the rendered font.
 
-static void generate_text_bitmap(extVectorText *Vector)
+static void raster_text_to_bitmap(extVectorText *Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1548,10 +1548,11 @@ static void generate_text_bitmap(extVectorText *Vector)
 
    Vector->txFont->Bitmap = Vector->txAlphaBitmap;
 
-   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF::FILL);
+   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
 
    if (Vector->txInlineSize) Vector->txFont->WrapEdge = Vector->txInlineSize;
 
+   Vector->txFont->Flags |= FTF::NO_BLEND;
    LONG y = Vector->txFont->Leading;
    for (auto &line : Vector->txLines) {
       auto str = line.c_str();
@@ -1749,8 +1750,8 @@ extern void get_text_xy(extVectorText *Vector)
    if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
    else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;
 
-   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
-      // Bitmap fonts need an adjustment because the Y coordinate corresponds to the base-line.
+   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+      // Rastered fonts need an adjustment because the Y coordinate corresponds to the base-line.
       y -= Vector->txFont->Height + Vector->txFont->Leading;
    }
 

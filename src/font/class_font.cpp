@@ -1379,14 +1379,32 @@ static ERROR draw_vector_font(extFont *Self)
 
             LONG xinc = src->Width - (ex - sx);
 
-            if ((Self->Flags & FTF::QUICK_ALIAS) != FTF::NIL) {
+            if ((Self->Flags & FTF::NO_BLEND) != FTF::NIL) {
+                RGB8 col = Self->Colour;
+                UBYTE * line = Bitmap->Data + (sy * Bitmap->LineWidth) + (sx * Bitmap->BytesPerPixel);
+                for (dy = sy; dy < ey; dy++) {
+                    UBYTE* bitdata = line;
+                    for (dx = sx; dx < ex; dx++) {
+                        if (data[0] > 2) {
+                           col.Alpha = data[0];
+                           Bitmap->DrawUCRIndex(Bitmap, bitdata, &col);
+                        }
+                        bitdata += Bitmap->BytesPerPixel;
+                        data++;
+                    }
+                    line += Bitmap->LineWidth;
+                    data += xinc;
+                }
+            }
+            else if ((Self->Flags & FTF::QUICK_ALIAS) != FTF::NIL) {
                for (dy=sy; dy < ey; dy++) {
                   for (dx=sx; dx < ex; dx++) {
-                     if (data[0] > 2) {
-                        RGB8 rgb;
-                        rgb.Red   = (Self->Colour.Red   * data[0])>>8;
-                        rgb.Green = (Self->Colour.Green * data[0])>>8;
-                        rgb.Blue  = (Self->Colour.Blue  * data[0])>>8;
+                     if (auto alpha = data[0]; alpha > 2) {
+                        RGB8 rgb = {
+                           .Red   = UBYTE((Self->Colour.Red * alpha) >> 8),
+                           .Green = UBYTE((Self->Colour.Green * alpha) >> 8),
+                           .Blue  = UBYTE((Self->Colour.Blue * alpha) >> 8)
+                        };
                         Bitmap->DrawUCRPixel(Bitmap, dx, dy, &rgb);
                      }
                      data++;
@@ -1400,9 +1418,9 @@ static ERROR draw_vector_font(extFont *Self)
                for (dy=sy; dy < ey; dy++) {
                   UBYTE *bitdata = line;
                   for (dx=sx; dx < ex; dx++) {
-                     if (data[0] > 2) {
+                     if (auto alpha = data[0]; alpha > 2) {
                         RGB8 d;
-                        UBYTE alpha = (data[0] * col.Alpha)>>8; // Multiply the font mask alpha level by the colour's translucency level
+                        alpha = (alpha * col.Alpha)>>8; // Multiply the font mask alpha level by the colour's translucency level
                         Bitmap->ReadUCRIndex(Bitmap, bitdata, &d); // d = Existing destination pixel
                         d.Red   = d.Red   + (((col.Red - d.Red) * alpha)>>8);
                         d.Green = d.Green + (((col.Green - d.Green) * alpha)>>8);
@@ -1723,10 +1741,10 @@ static ERROR draw_bitmap_font(extFont *Self)
    UBYTE *xdata, *data;
    LONG linewidth, offset, charclip, wrapindex, charlen;
    ULONG unicode, ocolour;
-   WORD startx, xpos, dx, dy, ex, ey, sx, sy, xinc;
+   WORD startx, xpos, ex, ey, sx, sy, xinc;
    WORD bytewidth, alpha, charwidth;
-   BYTE draw_line;
-   #define CHECK_LINE_CLIP(font,y,bmp) if (((y)-1 < (bmp)->Clip.Bottom) and ((y) + (font)->prvBitmapHeight + 1 > (bmp)->Clip.Top)) draw_line = TRUE; else draw_line = FALSE;
+   bool draw_line;
+   #define CHECK_LINE_CLIP(font,y,bmp) if (((y)-1 < (bmp)->Clip.Bottom) and ((y) + (font)->prvBitmapHeight + 1 > (bmp)->Clip.Top)) draw_line = true; else draw_line = false;
 
    // Validate settings for fixed font type
 
@@ -1776,6 +1794,7 @@ static ERROR draw_bitmap_font(extFont *Self)
 
    if (acLock(bitmap) != ERR_Okay) return log.warning(ERR_Lock);
 
+   WORD dx = 0, dy = 0;
    startx = dxcoord;
    CHECK_LINE_CLIP(Self, dycoord, bitmap);
    while (*str) {
