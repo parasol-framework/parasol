@@ -640,6 +640,10 @@ class objBitmap : public BaseClass {
    inline ULONG packPixelWB(struct RGB8 &RGB) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
    }
+   
+   inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
+      return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
+   }
 
    // Colour unpacking routines
 

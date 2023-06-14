@@ -32,6 +32,7 @@ Font: Provides font management functionality and hosts the Font class.
 #include <parasol/modules/display.h>
 
 #include <sstream>
+#include <array>
 #include <math.h>
 #include <wchar.h>
 #include <parasol/strings.hpp>

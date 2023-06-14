@@ -280,7 +280,6 @@ static ERROR FONT_Init(extFont *Self, APTR Void)
                      return error;
                   }
                }
-
             } // File is not a windows fixed font (but could be truetype)
          } // File is not a windows fixed font (but could be truetype)
       }
@@ -1169,7 +1168,7 @@ static ERROR draw_vector_font(extFont *Self)
    BYTE charclip_count = 0;
    ERROR error = ERR_Okay;
 
-   if (!Self->AlignWidth)  Self->AlignWidth  = Bitmap->Width;
+   if (!Self->AlignWidth)  Self->AlignWidth = Bitmap->Width;
 
    if (Self->Angle) {
       DOUBLE radian = (Self->Angle * PI) / 180.0;
@@ -1380,21 +1379,44 @@ static ERROR draw_vector_font(extFont *Self)
             LONG xinc = src->Width - (ex - sx);
 
             if ((Self->Flags & FTF::NO_BLEND) != FTF::NIL) {
-                RGB8 col = Self->Colour;
-                UBYTE * line = Bitmap->Data + (sy * Bitmap->LineWidth) + (sx * Bitmap->BytesPerPixel);
-                for (dy = sy; dy < ey; dy++) {
-                    UBYTE* bitdata = line;
-                    for (dx = sx; dx < ex; dx++) {
+               auto col = Self->Colour;
+               auto line = (UBYTE*)Bitmap->Data + (sy * Bitmap->LineWidth) + (sx * Bitmap->BytesPerPixel);
+
+               if (Bitmap->BitsPerPixel IS 32) {
+                  std::array<UBYTE, 4> order;
+                  if (Bitmap->ColourFormat->AlphaPos IS 24) {
+                     if (Bitmap->ColourFormat->BluePos IS 0) order = { 2, 1, 0, 3 }; // BGRA
+                     else order = { 0, 1, 2, 3 }; // RGBA
+                  }
+                  else if (Bitmap->ColourFormat->RedPos IS 24) order = { 3, 1, 2, 0 }; // AGBR
+                  else order = { 1, 2, 3, 0 }; // ARGB
+
+                  for (dy = sy; dy < ey; dy++) {
+                     UBYTE *bitdata = line;
+                     for (dx = sx; dx < ex; dx++) {
+                        if (data[0] > 2) ((ULONG*)bitdata)[0] = Bitmap->packPixelWB(col, data[0]);                        
+                        bitdata += Bitmap->BytesPerPixel;
+                        data++;
+                     }
+                     line += Bitmap->LineWidth;
+                     data += xinc;
+                  }
+               }
+               else {
+                  for (dy = sy; dy < ey; dy++) {
+                     UBYTE *bitdata = line;
+                     for (dx = sx; dx < ex; dx++) {
                         if (data[0] > 2) {
                            col.Alpha = data[0];
                            Bitmap->DrawUCRIndex(Bitmap, bitdata, &col);
                         }
                         bitdata += Bitmap->BytesPerPixel;
                         data++;
-                    }
-                    line += Bitmap->LineWidth;
-                    data += xinc;
-                }
+                     }
+                     line += Bitmap->LineWidth;
+                     data += xinc;
+                  }
+               }
             }
             else if ((Self->Flags & FTF::QUICK_ALIAS) != FTF::NIL) {
                for (dy=sy; dy < ey; dy++) {
@@ -1413,25 +1435,52 @@ static ERROR draw_vector_font(extFont *Self)
                }
             }
             else {
-               RGB8 col = Self->Colour;
-               UBYTE *line = Bitmap->Data + (sy * Bitmap->LineWidth) + (sx * Bitmap->BytesPerPixel);
-               for (dy=sy; dy < ey; dy++) {
-                  UBYTE *bitdata = line;
-                  for (dx=sx; dx < ex; dx++) {
-                     if (auto alpha = data[0]; alpha > 2) {
-                        RGB8 d;
-                        alpha = (alpha * col.Alpha)>>8; // Multiply the font mask alpha level by the colour's translucency level
-                        Bitmap->ReadUCRIndex(Bitmap, bitdata, &d); // d = Existing destination pixel
-                        d.Red   = d.Red   + (((col.Red - d.Red) * alpha)>>8);
-                        d.Green = d.Green + (((col.Green - d.Green) * alpha)>>8);
-                        d.Blue  = d.Blue  + (((col.Blue - d.Blue) * alpha)>>8);
-                        Bitmap->DrawUCRIndex(Bitmap, bitdata, &d);
-                     }
-                     bitdata += Bitmap->BytesPerPixel;
-                     data++;
+               auto col = Self->Colour;
+               auto line = (UBYTE *)Bitmap->Data + (sy * Bitmap->LineWidth) + (sx * Bitmap->BytesPerPixel);
+               if (Bitmap->BitsPerPixel IS 32) {
+                  std::array<UBYTE, 4> order;
+                  if (Bitmap->ColourFormat->AlphaPos IS 24) {
+                     if (Bitmap->ColourFormat->BluePos IS 0) order = { 2, 1, 0, 3 }; // BGRA
+                     else order = { 0, 1, 2, 3 }; // RGBA
                   }
-                  line += Bitmap->LineWidth;
-                  data += xinc;
+                  else if (Bitmap->ColourFormat->RedPos IS 24) order = { 3, 1, 2, 0 }; // AGBR
+                  else order = { 1, 2, 3, 0 }; // ARGB
+
+                  for (dy = sy; dy < ey; dy++) {
+                     auto bitdata = line;
+                     for (dx = sx; dx < ex; dx++) {
+                        if (auto alpha = data[bitdata[order[3]]]; alpha > 2) {
+                           alpha = (alpha * col.Alpha) >> 8;
+                           bitdata[order[0]] = bitdata[order[0]] + (((col.Red - bitdata[order[0]]) * alpha) >> 8);
+                           bitdata[order[1]] = bitdata[order[1]] + (((col.Green - bitdata[order[1]]) * alpha) >> 8);
+                           bitdata[order[2]] = bitdata[order[2]] + (((col.Blue - bitdata[order[2]]) * alpha) >> 8);
+                        }
+                        bitdata += 4;
+                        data++;
+                     }
+                     line += Bitmap->LineWidth;
+                     data += xinc;
+                  }
+               }
+               else {
+                  for (dy = sy; dy < ey; dy++) {
+                     auto bitdata = line;
+                     for (dx = sx; dx < ex; dx++) {
+                        if (auto alpha = data[0]; alpha > 2) {
+                           RGB8 d;
+                           alpha = (alpha * col.Alpha) >> 8; // Multiply the font mask alpha level by the colour's translucency level
+                           Bitmap->ReadUCRIndex(Bitmap, bitdata, &d); // d = Existing destination pixel
+                           d.Red   = d.Red + (((col.Red - d.Red) * alpha) >> 8);
+                           d.Green = d.Green + (((col.Green - d.Green) * alpha) >> 8);
+                           d.Blue  = d.Blue + (((col.Blue - d.Blue) * alpha) >> 8);
+                           Bitmap->DrawUCRIndex(Bitmap, bitdata, &d);
+                        }
+                        bitdata += Bitmap->BytesPerPixel;
+                        data++;
+                     }
+                     line += Bitmap->LineWidth;
+                     data += xinc;
+                  }
                }
             }
 
