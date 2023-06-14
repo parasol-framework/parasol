@@ -205,6 +205,7 @@
       <const name="HEAVY_LINE">Underline the font with a double-sized line, using the colour defined in UnderlineRGB.</const>
       <const name="ITALIC">Font is described as using italics (read only).</const>
       <const name="KERNING">The loaded font is embedded with kerning information (read only).</const>
+      <const name="NO_BLEND">Glyphs are drawn directly to the target bitmap unblended.</const>
       <const name="PREFER_FIXED">A fixed size font (monochrome, no transforms) is preferred to the equivalent scalable font.</const>
       <const name="PREFER_SCALED">A scaled font is preferred over the equivalent fixed size font.</const>
       <const name="QUICK_ALIAS">Quick anti-aliasing is useful for games and can be enabled if the background is black.</const>

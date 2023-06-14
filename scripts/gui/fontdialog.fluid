@@ -139,7 +139,8 @@ Cras metus mi, ultricies nec blandit condimentum, congue dapibus libero. Nulla e
          face       = self.face,
          fontSize   = self.size .. 'pt',
          fontStyle  = self.font.style,
-         string     = lLongText
+         string     = lLongText,
+         textFlags  = VTXF_RASTER
       })
 
       collectgarbage()

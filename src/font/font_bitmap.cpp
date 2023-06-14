@@ -20,7 +20,7 @@ struct winne_header_fields {
    UWORD rname_tab_offset;
 };
 
-struct winfnt_header_fields {
+PACK(struct winfnt_header_fields {
    UWORD version;
    ULONG file_size;
    char copyright[60];
@@ -57,7 +57,7 @@ struct winfnt_header_fields {
    UWORD C_space;
    UWORD color_table_offset;
    BYTE  reservedend[4];
-} __attribute__((packed));
+});
 
 #define ID_WINMZ  0x5A4D
 #define ID_WINNE  0x454E

@@ -807,6 +807,7 @@ Z: Close Path
       <const name="NO_SYS_KEYS">Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.</const>
       <const name="OVERLINE">Enable overlining of the text.</const>
       <const name="OVERWRITE">Turns on overwrite mode (if off, insert mode is enabled).</const>
+      <const name="RASTER">Rasterise glyphs to a texture cache for very fast rendering.  This feature is not compatible with scalable graphics conventions.</const>
       <const name="UNDERLINE">Enable underlining of the text.</const>
     </constants>
 

@@ -206,7 +206,7 @@ static ERROR decompose_ft_outline(const FT_Outline &, bool, agg::path_storage &)
 static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *);
-static void generate_text_bitmap(extVectorText *);
+static void raster_text_to_bitmap(extVectorText *);
 static void key_event(extVectorText *, evKey *, LONG);
 static void reset_font(extVectorText *);
 static ERROR text_input_events(extVector *, const InputEvent *);
@@ -1135,8 +1135,8 @@ static void generate_text(extVectorText *Vector)
    auto &lines = Vector->txLines;
    if (lines.empty()) return;
 
-   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
-      generate_text_bitmap(Vector);
+   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+      raster_text_to_bitmap(Vector);
       return;
    }
 
@@ -1429,9 +1429,9 @@ static void generate_text(extVectorText *Vector)
 }
 
 //********************************************************************************************************************
-// Bitmap fonts are drawn as a rectangular block referencing a VectorImage texture that contains the rendered font.
+// Rastered fonts are drawn as a rectangular block referencing a VectorImage texture that contains the rendered font.
 
-static void generate_text_bitmap(extVectorText *Vector)
+static void raster_text_to_bitmap(extVectorText *Vector)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1548,10 +1548,11 @@ static void generate_text_bitmap(extVectorText *Vector)
 
    Vector->txFont->Bitmap = Vector->txAlphaBitmap;
 
-   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x000000ff, BAF::FILL);
+   gfxDrawRectangle(Vector->txAlphaBitmap, 0, 0, Vector->txAlphaBitmap->Width, Vector->txAlphaBitmap->Height, 0x00000000, BAF::FILL);
 
    if (Vector->txInlineSize) Vector->txFont->WrapEdge = Vector->txInlineSize;
 
+   Vector->txFont->Flags |= FTF::NO_BLEND;
    LONG y = Vector->txFont->Leading;
    for (auto &line : Vector->txLines) {
       auto str = line.c_str();
@@ -1749,8 +1750,8 @@ extern void get_text_xy(extVectorText *Vector)
    if ((Vector->txAlignFlags & ALIGN::RIGHT) != ALIGN::NIL) x -= Vector->txWidth;
    else if ((Vector->txAlignFlags & ALIGN::HORIZONTAL) != ALIGN::NIL) x -= Vector->txWidth * 0.5;
 
-   if ((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) {
-      // Bitmap fonts need an adjustment because the Y coordinate corresponds to the base-line.
+   if (((Vector->txFont->Flags & FTF::SCALABLE) IS FTF::NIL) or ((Vector->txFlags & VTXF::RASTER) != VTXF::NIL)) {
+      // Rastered fonts need an adjustment because the Y coordinate corresponds to the base-line.
       y -= Vector->txFont->Height + Vector->txFont->Leading;
    }
 
@@ -2358,15 +2359,6 @@ static void insert_char(extVectorText *Self, LONG Unicode, LONG Column)
 
 #include "text_def.cpp"
 
-static const FieldDef clTextFlags[] = {
-   { "Underline",   VTXF::UNDERLINE },
-   { "Overline",    VTXF::OVERLINE },
-   { "LineThrough", VTXF::LINE_THROUGH },
-   { "Blink",       VTXF::BLINK },
-   { "Editable",    VTXF::EDITABLE },
-   { NULL, 0 }
-};
-
 static const FieldDef clTextAlign[] = {
    { "Left",       ALIGN::LEFT },
    { "Horizontal", ALIGN::HORIZONTAL },
@@ -2375,21 +2367,6 @@ static const FieldDef clTextAlign[] = {
    { "Start",      ALIGN::LEFT },
    { "Middle",     ALIGN::HORIZONTAL },
    { "End",        ALIGN::RIGHT },
-   { NULL, 0 }
-};
-
-static const FieldDef clTextStretch[] = {
-   { "Normal",         VTS::NORMAL },
-   { "Wider",          VTS::WIDER },
-   { "Narrower",       VTS::NARROWER },
-   { "UltraCondensed", VTS::ULTRA_CONDENSED },
-   { "ExtraCondensed", VTS::EXTRA_CONDENSED },
-   { "Condensed",      VTS::CONDENSED },
-   { "SemiCondensed",  VTS::SEMI_CONDENSED },
-   { "Expanded",       VTS::EXPANDED },
-   { "SemiExpanded",   VTS::SEMI_EXPANDED },
-   { "ExtraExpanded",  VTS::EXTRA_EXPANDED },
-   { "UltraExpanded",  VTS::ULTRA_EXPANDED },
    { NULL, 0 }
 };
 
@@ -2410,7 +2387,7 @@ static const FieldArray clTextFields[] = {
    { "ShapeInside",   FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeInside, TEXT_SET_ShapeInside, ID_VECTOR },
    { "ShapeSubtract", FDF_VIRTUAL|FDF_OBJECTID|FDF_RW, TEXT_GET_ShapeSubtract, TEXT_SET_ShapeSubtract, ID_VECTOR },
    { "TextLength",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_TextLength, TEXT_SET_TextLength },
-   { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Flags, TEXT_SET_Flags, &clTextFlags },
+   { "TextFlags",     FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Flags, TEXT_SET_Flags, &clVectorTextVTXF },
    { "TextWidth",     FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_TextWidth },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_StartOffset, TEXT_SET_StartOffset },
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },
