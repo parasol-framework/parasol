@@ -53,11 +53,12 @@ gui.tooltip = function(Options)
    })
 
    self.text = self.viewport.new('VectorText', {
-      x        = FONT_SIZE,
-      string   = Options.text,
-      fill     = 'rgb(0,0,0)',
-      face     = FONT_FACE,
-      fontSize = string.format('%.2fpt', FONT_SIZE),
+      x         = FONT_SIZE,
+      string    = Options.text,
+      fill      = 'rgb(0,0,0)',
+      face      = FONT_FACE,
+      fontSize  = string.format('%.2fpt', FONT_SIZE),
+      textFlags = VTXF_RASTER
    })
 
    self.surface.height = (FONT_SIZE*1.5) + self.text.fontSize
