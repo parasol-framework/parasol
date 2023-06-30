@@ -1532,8 +1532,8 @@ static ERROR SET_CurrentState(extHTTP *Self, HGS Value)
       }
       else if (Self->StateChanged.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
-            { "HTTP", FD_OBJECTID, { .Long = Self->UID } },
-            { "State", FD_LONG, { .Long = LONG(Self->CurrentState) } }
+            { "HTTP", Self->UID, FD_OBJECTID },
+            { "State", LONG(Self->CurrentState) }
          };
 
          auto script = Self->StateChanged.Script.Script;

@@ -358,9 +358,9 @@ timer_cycle:
             }
             else if (timer->Routine.Type IS CALL_SCRIPT) { // Script callback
                const ScriptArg scargs[] = {
-                  { "Subscriber",  FDF_OBJECTID, { .Long = timer->SubscriberID } },
-                  { "Elapsed",     FD_LARGE, { .Large = elapsed } },
-                  { "CurrentTime", FD_LARGE, { .Large = current_time } }
+                  { "Subscriber",  timer->SubscriberID, FDF_OBJECTID },
+                  { "Elapsed",     elapsed },
+                  { "CurrentTime", current_time }
                };
 
                glmTimer.unlock();
@@ -411,11 +411,11 @@ timer_cycle:
                }
                else if (hdl->Function.Type IS CALL_SCRIPT) {
                   const ScriptArg args[] = {
-                     { "Custom",   FD_PTR,             { .Address = hdl->Custom } },
-                     { "UID",      FD_LONG,            { .Long    = glQueue[i].UID } },
-                     { "Type",     FD_LONG,            { .Long    = glQueue[i].Type } },
-                     { "Data",     FD_PTR|FD_BUFFER,   { .Address = glQueue[i].getBuffer() } },
-                     { "Size",     FD_LONG|FD_BUFSIZE, { .Long    = glQueue[i].Size } }
+                     { "Custom",   hdl->Custom },
+                     { "UID",      glQueue[i].UID },
+                     { "Type",     glQueue[i].Type },
+                     { "Data",     glQueue[i].getBuffer(), FD_PTR|FD_BUFFER },
+                     { "Size",     glQueue[i].Size, FD_LONG|FD_BUFSIZE }
                   };
                   auto &script = hdl->Function.Script;
                   if (scCallback(script.Script, script.ProcedureID, args, ARRAYSIZE(args), &result)) result = ERR_Terminate;

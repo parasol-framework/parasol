@@ -94,9 +94,7 @@ restart:
       }
       else if (SVG->FrameCallback.Type IS CALL_SCRIPT) {
          auto script = SVG->FrameCallback.Script.Script;
-         const ScriptArg args[] = {
-            { "SVG", FD_OBJECTPTR, { .Address = SVG } }
-         };
+         const ScriptArg args[] = { { "SVG", SVG, FD_OBJECTPTR } };
          scCallback(script, SVG->FrameCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }

@@ -988,27 +988,26 @@ static ERROR VECTOR_TracePath(extVector *Self, struct vecTracePath *Args)
    }
    else if (Args->Callback->Type IS CALL_SCRIPT) {
       ScriptArg args[] = {
-         { "Vector",  FD_OBJECTID },
-         { "Index",   FD_LONG },
-         { "Command", FD_LONG },
-         { "X",       FD_DOUBLE },
-         { "Y",       FD_DOUBLE }
+         { "Vector",  Self->UID, FD_OBJECTID },
+         { "Index",   LONG(0) },
+         { "Command", LONG(0) },
+         { "X",       DOUBLE(0) },
+         { "Y",       DOUBLE(0) }
       };
       args[0].Long = Self->UID;
 
-      if (auto script = Args->Callback->Script.Script) {
-         LONG index = 0;
-         do {
-           cmd = Self->BasePath.vertex(&x, &y);
-           if (agg::is_vertex(cmd)) {
-              args[1].Long = index++;
-              args[2].Long = cmd;
-              args[3].Double = x;
-              args[4].Double = y;
-              scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-           }
-         } while (cmd != agg::path_cmd_stop);
-      }
+      auto script = Args->Callback->Script.Script;
+      LONG index = 0;
+      do {
+         cmd = Self->BasePath.vertex(&x, &y);
+         if (agg::is_vertex(cmd)) {
+            args[1].Long = index++;
+            args[2].Long = cmd;
+            args[3].Double = x;
+            args[4].Double = y;
+            scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         }
+      } while (cmd != agg::path_cmd_stop);
    }
 
    return ERR_Okay;
@@ -2194,8 +2193,8 @@ void send_feedback(extVector *Vector, FM Event)
          else if (sub.Callback.Type IS CALL_SCRIPT) {
             // In this implementation the script function will receive all the events chained via the Next field
             ScriptArg args[] = {
-               { "Vector", FDF_OBJECT, { .Address = Vector } },
-               { "Event",  FDF_LONG,   { .Long = LONG(Event) } }
+               { "Vector", Vector, FDF_OBJECT },
+               { "Event",  LONG(Event) }
             };
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }

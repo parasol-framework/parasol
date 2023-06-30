@@ -526,7 +526,7 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
       }
       else error = ERR_Okay;
 
-      LONG len = outputsize - Self->DeflateStream.avail_out; // Get number of compressed bytes that were output
+      auto len = outputsize - Self->DeflateStream.avail_out; // Get number of compressed bytes that were output
 
       if (len > 0) {
          Self->TotalOutput += len;
@@ -539,16 +539,13 @@ static ERROR COMPRESSION_CompressStream(extCompression *Self, struct cmpCompress
             error = routine(Self, output, len);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
-            OBJECTPTR script = Args->Callback->Script.Script;
-            if (script) {
-               const ScriptArg args[] = {
-                  { "Compression", FD_OBJECTPTR, { .Address = Self } },
-                  { "Output", FD_BUFFER, { .Address = output } },
-                  { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
-               };
-               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            }
-            else error = ERR_Terminate;
+            const ScriptArg args[] = {
+               { "Compression",  Self,   FD_OBJECTPTR },
+               { "Output",       output, FD_BUFFER },
+               { "OutputLength", LONG(len), FD_LONG|FD_BUFSIZE }
+            };
+            auto script = Args->Callback->Script.Script;
+            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else {
             log.warning("Callback function structure does not specify a recognised Type.");
@@ -633,16 +630,13 @@ static ERROR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmpCompr
          error = routine(Self, output, outputsize - Self->DeflateStream.avail_out);
       }
       else if (Args->Callback->Type IS CALL_SCRIPT) {
-         OBJECTPTR script = Args->Callback->Script.Script;
          const ScriptArg args[] = {
-            { "Compression",  FD_OBJECTPTR, { .Address = Self } },
-            { "Output",       FD_BUFFER, { .Address = output } },
-            { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = (LONG)(outputsize - Self->DeflateStream.avail_out) } }
+            { "Compression",  Self,   FD_OBJECTPTR },
+            { "Output",       output, FD_BUFFER },
+            { "OutputLength", LONG(outputsize - Self->DeflateStream.avail_out), FD_LONG|FD_BUFSIZE }
          };
-         if (script) {
-            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-         }
-         else error = ERR_Terminate;
+         auto script = Args->Callback->Script.Script;
+         if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
       }
       else error = ERR_Okay;
    }
@@ -790,16 +784,13 @@ static ERROR COMPRESSION_DecompressStream(extCompression *Self, struct cmpDecomp
             error = routine(Self, output, len);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
-            OBJECTPTR script = Args->Callback->Script.Script;
-            if (script) {
-               const ScriptArg args[] = {
-                  { "Compression",  FD_OBJECTPTR, { .Address = Self } },
-                  { "Output",       FD_BUFFER, { .Address = output } },
-                  { "OutputLength", FD_LONG|FD_BUFSIZE, { .Long = len } }
-               };
-               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            }
-            else error = ERR_Terminate;
+            const ScriptArg args[] = {
+               { "Compression",  Self,   FD_OBJECTPTR },
+               { "Output",       output, FD_BUFFER },
+               { "OutputLength", len,    FD_LONG|FD_BUFSIZE }
+            };
+            auto script = Args->Callback->Script.Script;
+            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else {
             log.warning("Callback function structure does not specify a recognised Type.");
@@ -2035,14 +2026,12 @@ static ERROR COMPRESSION_Scan(extCompression *Self, struct cmpScan *Args)
             error = routine(Self, &meta);
          }
          else if (Args->Callback->Type IS CALL_SCRIPT) {
-            if (auto script = Args->Callback->Script.Script) {
-               const ScriptArg args[] = {
-                  { "Compression", FD_OBJECTPTR, { .Address = Self } },
-                  { "CompressedItem:Item", FD_STRUCT|FD_PTR, { .Address = &meta } }
-               };
-               if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            }
-            else error = ERR_Terminate;
+            auto script = Args->Callback->Script.Script;
+            const ScriptArg args[] = {
+               { "Compression", Self, FD_OBJECTPTR },
+               { "CompressedItem:Item", &meta, FD_STRUCT|FD_PTR }
+            };
+            if (scCallback(script, Args->Callback->Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
          }
          else error = log.warning(ERR_WrongType);
 

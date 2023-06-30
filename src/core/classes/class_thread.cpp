@@ -174,18 +174,16 @@ ERROR msg_threadaction(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG
       routine(msg->ActionID, msg->Object, msg->Error, msg->Key);
    }
    else if (msg->Callback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = msg->Callback.Script.Script)) {
-         if (!LockObject(script, 5000)) {
-            const ScriptArg args[] = {
-               { "ActionID", FD_LONG,      { .Long = msg->ActionID } },
-               { "Object",   FD_OBJECTPTR, { .Address = msg->Object } },
-               { "Error",    FD_LONG,      { .Long = msg->Error } },
-               { "Key",      FD_LONG,      { .Long = msg->Key } }
-            };
-            scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-            ReleaseObject(script);
-         }
+      auto script = msg->Callback.Script.Script;
+      if (!LockObject(script, 5000)) {
+         const ScriptArg args[] = {
+            { "ActionID", msg->ActionID },
+            { "Object",   msg->Object, FD_OBJECTPTR },
+            { "Error",    msg->Error },
+            { "Key",      msg->Key }
+         };
+         scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         ReleaseObject(script);
       }
    }
 
@@ -211,7 +209,7 @@ ERROR msg_threadcallback(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LO
    else if (msg->Callback.Type IS CALL_SCRIPT) {
       if (auto script = msg->Callback.Script.Script) {
          if (!LockObject(script, 5000)) {
-            const ScriptArg args[] = { { "Thread", FD_OBJECTID, { .Long = uid } } };
+            const ScriptArg args[] = { { "Thread", uid, FD_OBJECTID } };
             scCallback(script, msg->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             ReleaseObject(script);
          }
@@ -274,7 +272,7 @@ static void * thread_entry(extThread *Self)
       else if (Self->Routine.Type IS CALL_SCRIPT) {
          ScopedObjectLock<objScript> script(Self->Routine.Script.Script, 5000);
          if (script.granted()) {
-            const ScriptArg args[] = { { "Thread", FD_OBJECTPTR, { .Address = Self } } };
+            const ScriptArg args[] = { { "Thread", Self, FD_OBJECTPTR } };
             scCallback(*script, Self->Routine.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
       }

@@ -175,16 +175,14 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
       routine(Self, buffer, bytes_read, error);
    }
    else if (Self->InputCallback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->InputCallback.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Task",       FD_OBJECTPTR,       { .Address = Self } },
-            { "Buffer",     FD_PTRBUFFER,       { .Address = buffer } },
-            { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = bytes_read } },
-            { "Status",     FD_ERROR,           { .Long = error } }
-         };
-         scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
+      auto script = Self->InputCallback.Script.Script;
+      const ScriptArg args[] = {
+         { "Task",       Self },
+         { "Buffer",     buffer, FD_PTRBUFFER },
+         { "BufferSize", bytes_read, FD_LONG|FD_BUFSIZE },
+         { "Status",     error, FD_ERROR }
+      };
+      scCallback(script, Self->InputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 }
 
@@ -296,15 +294,13 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, LONG
       routine(Task, Buffer, Size);
    }
    else if (Callback->Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Callback->Script.Script)) {
-         const ScriptArg args[] = {
-            { "Task", FD_OBJECTPTR,       { .Address = Task } },
-            { "Data", FD_PTRBUFFER,       { .Address = Buffer } },
-            { "Size", FD_LONG|FD_BUFSIZE, { .Long = Size } }
-         };
-         scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
+      auto script = Callback->Script.Script;
+      const ScriptArg args[] = {
+         { "Task", Task, FD_OBJECTPTR },
+         { "Data", Buffer, FD_PTRBUFFER },
+         { "Size", Size, FD_LONG|FD_BUFSIZE }
+      };
+      scCallback(script, Callback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 }
 
@@ -569,11 +565,9 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
       routine(Task);
    }
    else if (Task->ExitCallback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Task->ExitCallback.Script.Script)) {
-         const ScriptArg args[] = { { "Task", FD_OBJECTPTR, { .Address = Task } } };
-         scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
+      auto script = Task->ExitCallback.Script.Script;
+      const ScriptArg args[] = { { "Task", Task, FD_OBJECTPTR } };
+      scCallback(script, Task->ExitCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);      
    }
 
    // Post an event for the task's closure
