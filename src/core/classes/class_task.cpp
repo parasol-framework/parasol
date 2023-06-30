@@ -236,9 +236,9 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
          OBJECTPTR script;
          if ((script = task->OutputCallback.Script.Script)) {
             const ScriptArg args[] = {
-               { "Task",       FD_OBJECTPTR,       { .Address = Task } },
-               { "Buffer",     FD_PTRBUFFER,       { .Address = buffer } },
-               { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = len } }
+               { "Task",       Task,   FD_OBJECTPTR },
+               { "Buffer",     buffer, FD_PTRBUFFER },
+               { "BufferSize", len,    FD_LONG|FD_BUFSIZE }
             };
             scCallback(script, task->OutputCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
          }
@@ -269,9 +269,9 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
             OBJECTPTR script;
             if ((script = task->ErrorCallback.Script.Script)) {
                const ScriptArg args[] = {
-                  { "Task", FD_OBJECTPTR,       { .Address = Task } },
-                  { "Data", FD_PTRBUFFER,       { .Address = buffer } },
-                  { "Size", FD_LONG|FD_BUFSIZE, { .Long = len } }
+                  { "Task", Task, FD_OBJECTPTR },
+                  { "Data", buffer, FD_PTRBUFFER },
+                  { "Size", len, FD_LONG|FD_BUFSIZE }
                };
                scCallback(script, task->ErrorCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }
