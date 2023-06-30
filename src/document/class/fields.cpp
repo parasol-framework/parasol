@@ -59,7 +59,7 @@ static ERROR SET_Copyright(extDocument *Self, CSTRING Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 CursorColour: The colour used for the document cursor.
@@ -84,7 +84,7 @@ static ERROR SET_DefaultScript(extDocument *Self, OBJECTPTR Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Description: A description of the document, provided by its author.
@@ -150,14 +150,14 @@ Flags: Optional flags that affect object behaviour.
 
 <types lookup="DCF"/>
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Flags(extDocument *Self, LONG Value)
+static ERROR SET_Flags(extDocument *Self, DCF Value)
 {
    if (Self->initialised()) {
-      Self->Flags = Value & (~(DCF_NO_SCROLLBARS|DCF_UNRESTRICTED|DCF_DISABLED));
+      Self->Flags = Value & (~(DCF::NO_SCROLLBARS|DCF::UNRESTRICTED|DCF::DISABLED));
    }
-   else Self->Flags = Value & (~(DCF_DISABLED));
+   else Self->Flags = Value & (~(DCF::DISABLED));
    return ERR_Okay;
 }
 
@@ -294,23 +294,16 @@ The new document layout will be displayed when incoming messages are next proces
 
 *********************************************************************************************************************/
 
-static ERROR GET_Path(extDocument *Self, STRING *Value)
+static ERROR GET_Path(extDocument *Self, CSTRING *Value)
 {
-   if (Self->Path) {
-      *Value = Self->Path;
-      return ERR_Okay;
-   }
-   else {
-      *Value = NULL;
-      return ERR_FieldNotSet;
-   }
+   *Value = Self->Path.c_str();
+   return ERR_Okay;
 }
 
 static ERROR SET_Path(extDocument *Self, CSTRING Value)
 {
    pf::Log log;
    static BYTE recursion = 0;
-   LONG i, len;
 
    if (recursion) return log.warning(ERR_Recursion);
 
@@ -318,88 +311,82 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
    Self->Error = ERR_Okay;
 
-   STRING newpath = NULL;
-   UBYTE reload = TRUE;
+   std::string newpath;
+   bool reload = true;
    if ((Value[0] IS '#') or (Value[0] IS '?')) {
-      reload = FALSE;
+      reload = false;
 
-      if (Self->Path) {
-         if (Value[0] IS '?') for (i=0; (Self->Path[i]) and (Self->Path[i] != '?'); i++);
-         else for (i=0; (Self->Path[i]) and (Self->Path[i] != '#'); i++);
+      if (!Self->Path.empty()) {
+         unsigned i;
+         if (Value[0] IS '?') for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '?'); i++);
+         else for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '#'); i++);
 
-         len = StrLength(Value);
-
-         if (!AllocMemory(i + len + 1, MEM::STRING|MEM::NO_CLEAR, &newpath)) {
-            CopyMemory(Self->Path, newpath, i);
-            CopyMemory(Value, newpath+i, len+1);
-         }
-         else return ERR_AllocMemory;
+         newpath.assign(Self->Path, 0, i);
+         newpath.append(Value);
       }
-      else newpath = StrClone(Value);
+      else newpath.assign(Value);
    }
-   else if (Self->Path) {
+   else if (!Self->Path.empty()) {
       // Work out if the location has actually been changed
 
+      unsigned len;
       for (len=0; (Value[len]) and (Value[len] != '#') and (Value[len] != '?'); len++);
 
-      for (i=0; (Self->Path[i]) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
+      unsigned i;
+      for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
 
       if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len)))) {
          // The location remains unchanged.  A complete reload shouldn't be necessary.
 
-         reload = FALSE;
+         reload = false;
          //if ((Self->Path[i] IS '?') or (Value[len] IS '?')) {
-         //   reload = TRUE;
+         //   reload = true;
          //}
       }
 
-      newpath = StrClone(Value);
+      newpath = Value;
    }
-   else newpath = StrClone(Value);
+   else newpath = Value;
 
-   log.branch("%s (vs %s) Reload: %d", newpath, Self->Path, reload);
+   log.branch("%s (vs %s) Reload: %d", newpath.c_str(), Self->Path.c_str(), reload);
 
    // Signal that we are leaving the current page
 
    recursion++;
-   for (auto trigger=Self->Triggers[DRT_LEAVING_PAGE]; trigger; trigger=trigger->Next) {
-      if (trigger->Function.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = trigger->Function.Script.Script)) {
-            ScriptArg args[] = {
-               { "OldURI", FD_STR, { .Address = Self->Path } },
-               { "NewURI", FD_STR, { .Address = newpath } },
-            };
-            scCallback(script, trigger->Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+   for (auto &trigger : Self->Triggers[DRT_LEAVING_PAGE]) {
+      if (trigger.Type IS CALL_SCRIPT) {
+         auto script = trigger.Script.Script;
+         ScriptArg args[] = {
+            { "OldURI", Self->Path },
+            { "NewURI", newpath },
+         };
+         scCallback(script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);         
       }
-      else if (trigger->Function.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extDocument *, STRING, STRING))trigger->Function.StdC.Routine;
-         if (routine) {
-            pf::SwitchContext context(trigger->Function.StdC.Context);
-            routine(trigger->Function.StdC.Context, Self, Self->Path, newpath);
-         }
+      else if (trigger.Type IS CALL_STDC) {
+         auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING))trigger.StdC.Routine;
+         pf::SwitchContext context(trigger.StdC.Context);
+         routine(trigger.StdC.Context, Self, Self->Path.c_str(), newpath.c_str());         
       }
    }
    recursion--;
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
-   if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
+   Self->Path.clear();
+   Self->PageName.clear(); 
+   Self->Bookmark.clear(); 
 
-   if (newpath) {
+   if (!newpath.empty()) {
       Self->Path = newpath;
 
       recursion++;
-      unload_doc(Self, (reload IS FALSE) ? ULD_REFRESH : 0);
+      unload_doc(Self, (!reload) ? ULD_REFRESH : 0);
 
       if (Self->initialised()) {
-         if ((Self->XML) and (reload IS FALSE)) {
+         if ((Self->XML) and (!reload)) {
             process_parameters(Self, Self->Path);
             process_page(Self, Self->XML);
          }
          else {
-            load_doc(Self, Self->Path, FALSE, 0);
+            load_doc(Self, Self->Path, false, 0);
             QueueAction(MT_DrwInvalidateRegion, Self->SurfaceID);
          }
       }
@@ -408,11 +395,9 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
       // If an error occurred, remove the location & page strings to show that no document is loaded.
 
       if (Self->Error) {
-         FreeResource(Self->Path);
-         Self->Path = NULL;
-
-         if (Self->PageName) { FreeResource(Self->PageName); Self->PageName = NULL; }
-         if (Self->Bookmark) { FreeResource(Self->Bookmark); Self->Bookmark = NULL; }
+         Self->Path.clear();
+         Self->PageName.clear(); 
+         Self->Bookmark.clear(); 
          if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
 
          QueueAction(MT_DrwInvalidateRegion, Self->SurfaceID);
@@ -420,12 +405,12 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
    }
    else Self->Error = ERR_AllocMemory;
 
-   report_event(Self, DEF_PATH, NULL, NULL);
+   report_event(Self, DEF::PATH, NULL, NULL);
 
    return Self->Error;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 
 -FIELD-
 Origin: Similar to the Path field, but does not automatically load content if set.
@@ -434,22 +419,12 @@ This field is identical to the #Path field, with the exception that it does not 
 document object if it is set after initialisation.  This may be useful if the location of a loaded document needs to be
 changed without causing a load operation.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
-static ERROR SET_Origin(extDocument *Self, STRING Value)
+static ERROR SET_Origin(extDocument *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-
-   if ((Value) and (*Value)) {
-      LONG i;
-      for (i=0; Value[i]; i++);
-      if (!AllocMemory(i+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path)) {
-         for (i=0; Value[i]; i++) Self->Path[i] = Value[i];
-         Self->Path[i] = 0;
-      }
-      else return ERR_AllocMemory;
-   }
-
+   Self->Path.clear();
+   if ((Value) and (*Value)) Self->Path.assign(Value);   
    return ERR_Okay;
 }
 
@@ -511,8 +486,8 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
    }
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->RelPageWidth = TRUE;
-   else Self->RelPageWidth = FALSE;
+   if (Value->Type & FD_PERCENTAGE) Self->RelPageWidth = true;
+   else Self->RelPageWidth = false;
 
    return ERR_Okay;
 }
@@ -602,7 +577,7 @@ field to be manually set.
 
 static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
 {
-   if (Value) Self->UpdateLayout = TRUE;
+   if (Value) Self->UpdateLayout = true;
    return ERR_Okay;
 }
 
@@ -613,11 +588,6 @@ VLinkColour: Default font colour for visited hyperlinks.
 
 The default font colour for visited hyperlinks is stored in this field.  The source document can specify its own
 colour for visited links if the author desires.
--END-
-
-*********************************************************************************************************************/
-
-/*********************************************************************************************************************
 
 -FIELD-
 WorkingPath: Defines the working path (folder or URI).
@@ -638,21 +608,21 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 {
    pf::Log log;
 
-   if (!Self->Path) {
+   if (Self->Path.empty()) {
       log.warning("Document has no defined Path.");
       return ERR_FieldNotSet;
    }
 
-   if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
+   Self->WorkingPath.clear();
 
    // Determine if an absolute path has been indicated
 
-   BYTE path = FALSE;
-   if (Self->Path[0] IS '/') path = TRUE;
+   bool path = false;
+   if (Self->Path[0] IS '/') path = true;
    else {
      for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
          if (Self->Path[j] IS ':') {
-            path = TRUE;
+            path = true;
             break;
          }
       }
@@ -667,30 +637,21 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 
    STRING workingpath;
    if (path) { // Extract absolute path
-      auto save = Self->Path[j];
-      Self->Path[j] = 0;
-      Self->WorkingPath = StrClone(Self->Path);
-      Self->Path[j] = save;
+      Self->WorkingPath.assign(Self->Path, 0, j);
    }
    else if ((!CurrentTask()->get(FID_Path, &workingpath)) and (workingpath)) {
-      char buf[1024];
+      std::string buf(workingpath);
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
-      if (j > 0) {
-         auto save = Self->Path[j];
-         Self->Path[j] = 0;
-         snprintf(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
-         Self->Path[j] = save;
-      }
-      else snprintf(buf, sizeof(buf), "%s", workingpath);
+      if (j > 0) buf += Self->Path.substr(0, j);      
 
-      if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
-         Self->WorkingPath = StrClone(workingpath);
+      if (!ResolvePath(buf.c_str(), RSF::APPROXIMATE, &workingpath)) {
+         Self->WorkingPath.assign(workingpath);
       }
    }
    else log.warning("No working path.");
 
-   *Value = Self->WorkingPath;
+   *Value = Self->WorkingPath.c_str();
    return ERR_Okay;
 }

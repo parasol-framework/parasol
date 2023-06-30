@@ -108,4 +108,26 @@
 #define HASH_padding 0x9ac8cc5cUL
 #define HASH_thickness 0x369e2871UL
 #define HASH_select 0x1b80e3c5UL
+#define HASH_leading 0x6ffe3259UL
+#define HASH_anchor 0xf22203e0UL
+#define HASH_kerning 0x243d11f3UL
+#define HASH_trim 0x7c9e9e61UL
+#define HASH_maxchars 0x5db12b7cUL
+#define HASH_name 0x7c9b0c46UL
+#define HASH_linebreaks 0x811267a5UL
+#define HASH_editfonts 0xd99a20d5UL
+#define HASH_editimages 0x13b22ac1UL
+#define HASH_edittables 0x2c826546UL
+#define HASH_editall 0x536ac844UL
+#define HASH_onchange 0xee446f88UL
+#define HASH_onexit 0x12cb98bcUL
+#define HASH_onenter 0x6c3961c0UL
+#define HASH_href 0x7c98094aUL
+#define HASH_hint 0x7c97e438UL
+#define HASH_title 0x106daa27UL
+#define HASH_event 0x0f651c07UL
+#define HASH_function 0xd424384bUL
+#define HASH_pointermotion 0x1bcd437cUL
+#define HASH_x 0x0002b61dUL
+#define HASH_y 0x0002b61eUL
 

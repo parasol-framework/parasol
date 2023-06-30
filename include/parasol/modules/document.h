@@ -24,8 +24,13 @@ class objDocument;
 
 // Event flags for selectively receiving events from the Document object.
 
-#define DEF_PATH 0x00000001
-#define DEF_LINK_ACTIVATED 0x00000002
+enum class DEF : ULONG {
+   NIL = 0,
+   PATH = 0x00000001,
+   LINK_ACTIVATED = 0x00000002,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DEF)
 
 // Internal trigger codes
 
@@ -43,83 +48,52 @@ class objDocument;
 
 // Document flags
 
-#define DCF_EDIT 0x00000001
-#define DCF_OVERWRITE 0x00000002
-#define DCF_NO_SYS_KEYS 0x00000004
-#define DCF_DISABLED 0x00000008
-#define DCF_NO_SCROLLBARS 0x00000010
-#define DCF_NO_LAYOUT_MSG 0x00000020
-#define DCF_UNRESTRICTED 0x00000040
+enum class DCF : ULONG {
+   NIL = 0,
+   EDIT = 0x00000001,
+   OVERWRITE = 0x00000002,
+   NO_SYS_KEYS = 0x00000004,
+   DISABLED = 0x00000008,
+   NO_SCROLLBARS = 0x00000010,
+   NO_LAYOUT_MSG = 0x00000020,
+   UNRESTRICTED = 0x00000040,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DCF)
 
 // Border edge flags.
 
-#define DBE_TOP 0x00000001
-#define DBE_LEFT 0x00000002
-#define DBE_RIGHT 0x00000004
-#define DBE_BOTTOM 0x00000008
+enum class DBE : ULONG {
+   NIL = 0,
+   TOP = 0x00000001,
+   LEFT = 0x00000002,
+   RIGHT = 0x00000004,
+   BOTTOM = 0x00000008,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(DBE)
 
 // These are document style flags, as used in the DocStyle structure
 
-#define FSO_BOLD 0x00000001
-#define FSO_ITALIC 0x00000002
-#define FSO_UNDERLINE 0x00000004
-#define FSO_PREFORMAT 0x00000008
-#define FSO_CAPS 0x00000010
-#define FSO_STYLES 0x00000017
-#define FSO_ALIGN_RIGHT 0x00000020
-#define FSO_ALIGN_CENTER 0x00000040
-#define FSO_ANCHOR 0x00000080
-#define FSO_NO_WRAP 0x00000100
-
-#define VER_DOCSTYLE 1
-
-typedef struct DocStyleV1 {
-   LONG      Version;            // Version of this DocStyle structure
-   objDocument * Document;       // The document object that this style originates from
-   objFont * Font;               // Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour
-   struct RGB8 FontColour;       // Foreground colour (colour of the font)
-   struct RGB8 FontUnderline;    // Underline colour for the font, if active
-   LONG      StyleFlags;         // Font style flags (FSO)
-} DOCSTYLE;
-
-struct deLinkActivated {
-   struct KeyStore * Parameters;    // All key-values associated with the link.
+enum class FSO : ULONG {
+   NIL = 0,
+   BOLD = 0x00000001,
+   ITALIC = 0x00000002,
+   UNDERLINE = 0x00000004,
+   PREFORMAT = 0x00000008,
+   CAPS = 0x00000010,
+   STYLES = 0x00000017,
+   ALIGN_RIGHT = 0x00000020,
+   ALIGN_CENTER = 0x00000040,
+   ANCHOR = 0x00000080,
+   NO_WRAP = 0x00000100,
 };
 
-struct escFont {
-   WORD Index;            // Font lookup
-   WORD Options;          // FSO flags
-   struct RGB8 Colour;    // Font colour
-};
-
-typedef struct escFont escFont;
-struct SurfaceClip {
-   struct SurfaceClip * Next;
-   LONG Left;
-   LONG Top;
-   LONG Right;
-   LONG Bottom;
-};
-
-struct style_status {
-   struct escFont FontStyle;
-   struct process_table * Table;
-   struct escList * List;
-   char  Face[36];
-   WORD  Point;
-   UBYTE FontChange:1;              // A major font change has occurred (e.g. face, point size)
-   UBYTE StyleChange:1;             // A minor style change has occurred (e.g. font colour)
-};
+DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
 struct docdraw {
    APTR     Object;
    OBJECTID ID;
-};
-
-struct DocTrigger {
-   struct DocTrigger * Next;
-   struct DocTrigger * Prev;
-   FUNCTION Function;
 };
 
 // Document class definition
@@ -130,7 +104,6 @@ struct DocTrigger {
 
 #define MT_docFeedParser -1
 #define MT_docSelectLink -2
-#define MT_docApplyFontStyle -3
 #define MT_docFindIndex -4
 #define MT_docInsertXML -5
 #define MT_docRemoveContent -6
@@ -145,7 +118,6 @@ struct DocTrigger {
 
 struct docFeedParser { CSTRING String;  };
 struct docSelectLink { LONG Index; CSTRING Name;  };
-struct docApplyFontStyle { struct DocStyleV1 * Style; objFont * Font;  };
 struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
 struct docInsertXML { CSTRING XML; LONG Index;  };
 struct docRemoveContent { LONG Start; LONG End;  };
@@ -156,7 +128,7 @@ struct docRemoveListener { LONG Trigger; FUNCTION * Function;  };
 struct docShowIndex { CSTRING Name;  };
 struct docHideIndex { CSTRING Name;  };
 struct docEdit { CSTRING Name; LONG Flags;  };
-struct docReadContent { LONG Format; LONG Start; LONG End; STRING Result;  };
+struct docReadContent { DATA Format; LONG Start; LONG End; STRING Result;  };
 
 INLINE ERROR docFeedParser(APTR Ob, CSTRING String) {
    struct docFeedParser args = { String };
@@ -168,13 +140,8 @@ INLINE ERROR docSelectLink(APTR Ob, LONG Index, CSTRING Name) {
    return(Action(MT_docSelectLink, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docApplyFontStyle(APTR Ob, struct DocStyleV1 * Style, objFont * Font) {
-   struct docApplyFontStyle args = { Style, Font };
-   return(Action(MT_docApplyFontStyle, (OBJECTPTR)Ob, &args));
-}
-
 INLINE ERROR docFindIndex(APTR Ob, CSTRING Name, LONG * Start, LONG * End) {
-   struct docFindIndex args = { Name, 0, 0 };
+   struct docFindIndex args = { Name, (LONG)0, (LONG)0 };
    ERROR error = Action(MT_docFindIndex, (OBJECTPTR)Ob, &args);
    if (Start) *Start = args.Start;
    if (End) *End = args.End;
@@ -226,8 +193,8 @@ INLINE ERROR docEdit(APTR Ob, CSTRING Name, LONG Flags) {
    return(Action(MT_docEdit, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docReadContent(APTR Ob, LONG Format, LONG Start, LONG End, STRING * Result) {
-   struct docReadContent args = { Format, Start, End, 0 };
+INLINE ERROR docReadContent(APTR Ob, DATA Format, LONG Start, LONG End, STRING * Result) {
+   struct docReadContent args = { Format, Start, End, (STRING)0 };
    ERROR error = Action(MT_docReadContent, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
@@ -241,7 +208,6 @@ class objDocument : public BaseClass {
 
    using create = pf::Create<objDocument>;
 
-   LARGE    EventMask;        // Specifies events that need to be reported from the Document object.
    STRING   Description;      // A description of the document, provided by its author.
    STRING   FontFace;         // Defines the default font face.
    STRING   Title;            // The title of the document.
@@ -251,14 +217,15 @@ class objDocument : public BaseClass {
    OBJECTID TabFocusID;       // Allows the user to hit the tab key to focus on other GUI objects.
    OBJECTID SurfaceID;        // Defines the surface area for document graphics.
    OBJECTID FocusID;          // Refers to the object that will be monitored for user focusing.
-   LONG     Flags;            // Optional flags that affect object behaviour.
+   DEF      EventMask;        // Specifies events that need to be reported from the Document object.
+   DCF      Flags;            // Optional flags that affect object behaviour.
    LONG     LeftMargin;       // Defines the amount of whitespace to leave at the left of the page.
    LONG     TopMargin;        // Defines the amount of white-space to leave at the top of the document page.
    LONG     RightMargin;      // Defines the amount of white-space to leave at the right side of the document page.
    LONG     BottomMargin;     // Defines the amount of whitespace to leave at the bottom of the document page.
    LONG     FontSize;         // The point-size of the default font.
    LONG     PageHeight;       // Measures the page height of the document, in pixels.
-   LONG     BorderEdge;       // Border edge flags.
+   DBE      BorderEdge;       // Border edge flags.
    LONG     LineHeight;       // Default line height (taken as an average) for all text on the page.
    ERROR    Error;            // The most recently generated error code.
    struct RGB8 FontColour;    // Default font colour.
@@ -274,12 +241,12 @@ class objDocument : public BaseClass {
 
    inline ERROR activate() { return Action(AC_Activate, this, NULL); }
    inline ERROR clear() { return Action(AC_Clear, this, NULL); }
-   inline ERROR clipboard(LONG Mode) {
+   inline ERROR clipboard(CLIPMODE Mode) {
       struct acClipboard args = { Mode };
       return Action(AC_Clipboard, this, &args);
    }
-   inline ERROR dataFeed(OBJECTID ObjectID, LONG Datatype, const void *Buffer, LONG Size) {
-      struct acDataFeed args = { { ObjectID }, { Datatype }, Buffer, Size };
+   inline ERROR dataFeed(OBJECTPTR Object, DATA Datatype, const void *Buffer, LONG Size) {
+      struct acDataFeed args = { Object, Datatype, Buffer, Size };
       return Action(AC_DataFeed, this, &args);
    }
    inline ERROR disable() { return Action(AC_Disable, this, NULL); }
@@ -298,11 +265,11 @@ class objDocument : public BaseClass {
    }
    inline ERROR init() { return InitObject(this); }
    inline ERROR refresh() { return Action(AC_Refresh, this, NULL); }
-   inline ERROR saveToObject(OBJECTID DestID, CLASSID ClassID) {
-      struct acSaveToObject args = { { DestID }, { ClassID } };
+   inline ERROR saveToObject(OBJECTPTR Dest, CLASSID ClassID = 0) {
+      struct acSaveToObject args = { Dest, { ClassID } };
       return Action(AC_SaveToObject, this, &args);
    }
-   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, LONG Flags) {
+   inline ERROR scrollToPoint(DOUBLE X, DOUBLE Y, DOUBLE Z, STP Flags) {
       struct acScrollToPoint args = { X, Y, Z, Flags };
       return Action(AC_ScrollToPoint, this, &args);
    }
@@ -310,14 +277,31 @@ class objDocument : public BaseClass {
       struct acSetVar args = { FieldName, Value };
       return Action(AC_SetVar, this, &args);
    }
+
+   // Customised field setting
+
 };
 
-extern struct DocumentBase *DocumentBase;
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_DOCUMENT static struct DocumentBase *DocumentBase;
+#else
+#define JUMPTABLE_DOCUMENT struct DocumentBase *DocumentBase;
+#endif
+
 struct DocumentBase {
+#ifndef PARASOL_STATIC
    LONG (*_CharLength)(objDocument * Document, LONG Index);
+#endif // PARASOL_STATIC
 };
 
 #ifndef PRV_DOCUMENT_MODULE
+#ifndef PARASOL_STATIC
+extern struct DocumentBase *DocumentBase;
 inline LONG docCharLength(objDocument * Document, LONG Index) { return DocumentBase->_CharLength(Document,Index); }
+#else
+extern "C" {
+extern LONG docCharLength(objDocument * Document, LONG Index);
+}
+#endif // PARASOL_STATIC
 #endif
 

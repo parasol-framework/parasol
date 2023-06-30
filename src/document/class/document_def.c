@@ -27,7 +27,6 @@ static const struct FieldDef clDocumentBorderEdge[] = {
 
 FDEF maFeedParser[] = { { "String", FD_STR }, { 0, 0 } };
 FDEF maSelectLink[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { 0, 0 } };
-FDEF maApplyFontStyle[] = { { "DocStyle:Style", FD_PTR|FD_STRUCT }, { "Font", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maFindIndex[] = { { "Name", FD_STR }, { "Start", FD_LONG|FD_RESULT }, { "End", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maInsertXML[] = { { "XML", FD_STR }, { "Index", FD_LONG }, { 0, 0 } };
 FDEF maRemoveContent[] = { { "Start", FD_LONG }, { "End", FD_LONG }, { 0, 0 } };
@@ -43,7 +42,6 @@ FDEF maReadContent[] = { { "Format", FD_LONG }, { "Start", FD_LONG }, { "End", F
 static const struct MethodEntry clDocumentMethods[] = {
    { -1, (APTR)DOCUMENT_FeedParser, "FeedParser", maFeedParser, sizeof(struct docFeedParser) },
    { -2, (APTR)DOCUMENT_SelectLink, "SelectLink", maSelectLink, sizeof(struct docSelectLink) },
-   { -3, (APTR)DOCUMENT_ApplyFontStyle, "ApplyFontStyle", maApplyFontStyle, sizeof(struct docApplyFontStyle) },
    { -4, (APTR)DOCUMENT_FindIndex, "FindIndex", maFindIndex, sizeof(struct docFindIndex) },
    { -5, (APTR)DOCUMENT_InsertXML, "InsertXML", maInsertXML, sizeof(struct docInsertXML) },
    { -6, (APTR)DOCUMENT_RemoveContent, "RemoveContent", maRemoveContent, sizeof(struct docRemoveContent) },
@@ -59,23 +57,23 @@ static const struct MethodEntry clDocumentMethods[] = {
 };
 
 static const struct ActionArray clDocumentActions[] = {
-   { AC_Activate, (APTR)DOCUMENT_Activate },
-   { AC_Clear, (APTR)DOCUMENT_Clear },
-   { AC_Clipboard, (APTR)DOCUMENT_Clipboard },
-   { AC_DataFeed, (APTR)DOCUMENT_DataFeed },
-   { AC_Disable, (APTR)DOCUMENT_Disable },
-   { AC_Draw, (APTR)DOCUMENT_Draw },
-   { AC_Enable, (APTR)DOCUMENT_Enable },
-   { AC_Focus, (APTR)DOCUMENT_Focus },
-   { AC_Free, (APTR)DOCUMENT_Free },
-   { AC_GetVar, (APTR)DOCUMENT_GetVar },
-   { AC_Init, (APTR)DOCUMENT_Init },
-   { AC_NewObject, (APTR)DOCUMENT_NewObject },
-   { AC_NewOwner, (APTR)DOCUMENT_NewOwner },
-   { AC_Refresh, (APTR)DOCUMENT_Refresh },
-   { AC_SaveToObject, (APTR)DOCUMENT_SaveToObject },
-   { AC_ScrollToPoint, (APTR)DOCUMENT_ScrollToPoint },
-   { AC_SetVar, (APTR)DOCUMENT_SetVar },
-   { 0, 0 }
+   { AC_Activate, DOCUMENT_Activate },
+   { AC_Clear, DOCUMENT_Clear },
+   { AC_Clipboard, DOCUMENT_Clipboard },
+   { AC_DataFeed, DOCUMENT_DataFeed },
+   { AC_Disable, DOCUMENT_Disable },
+   { AC_Draw, DOCUMENT_Draw },
+   { AC_Enable, DOCUMENT_Enable },
+   { AC_Focus, DOCUMENT_Focus },
+   { AC_Free, DOCUMENT_Free },
+   { AC_GetVar, DOCUMENT_GetVar },
+   { AC_Init, DOCUMENT_Init },
+   { AC_NewObject, DOCUMENT_NewObject },
+   { AC_NewOwner, DOCUMENT_NewOwner },
+   { AC_Refresh, DOCUMENT_Refresh },
+   { AC_SaveToObject, DOCUMENT_SaveToObject },
+   { AC_ScrollToPoint, DOCUMENT_ScrollToPoint },
+   { AC_SetVar, DOCUMENT_SetVar },
+   { 0, NULL }
 };
 

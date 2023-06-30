@@ -88,52 +88,9 @@
 
   </types>
   <structs>
-    <struct name="DocStyle" comment="This structure is passed to objects that support the LayoutStyle field" typeName="DOCSTYLE">
-      <field name="Version" type="LONG">Version of this DocStyle structure</field>
-      <field name="Document" type="objDocument *">The document object that this style originates from</field>
-      <field name="Font" type="objFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
-      <field name="FontColour" type="struct RGB8">Foreground colour (colour of the font)</field>
-      <field name="FontUnderline" type="struct RGB8">Underline colour for the font, if active</field>
-      <field name="StyleFlags" type="LONG">Font style flags (FSO)</field>
-    </struct>
-
-    <struct name="DocTrigger">
-      <field name="Next" type="struct DocTrigger *"></field>
-      <field name="Prev" type="struct DocTrigger *"></field>
-      <field name="Function" type="FUNCTION"></field>
-    </struct>
-
-    <struct name="SurfaceClip">
-      <field name="Next" type="struct SurfaceClip *"></field>
-      <field name="Left" type="LONG"></field>
-      <field name="Top" type="LONG"></field>
-      <field name="Right" type="LONG"></field>
-      <field name="Bottom" type="LONG"></field>
-    </struct>
-
-    <struct name="deLinkActivated">
-      <field name="Parameters" type="struct KeyStore *">All key-values associated with the link.</field>
-    </struct>
-
     <struct name="docdraw">
       <field name="Object" type="APTR"></field>
       <field name="ID" type="OBJECTID"></field>
-    </struct>
-
-    <struct name="escFont">
-      <field name="Index" type="WORD">Font lookup</field>
-      <field name="Options" type="WORD">FSO flags</field>
-      <field name="Colour" type="struct RGB8">Font colour</field>
-    </struct>
-
-    <struct name="style_status">
-      <field name="FontStyle" type="struct escFont"></field>
-      <field name="Table" type="struct process_table *"></field>
-      <field name="List" type="struct escList *"></field>
-      <field name="Face" type="char" size="36"></field>
-      <field name="Point" type="WORD"></field>
-      <field name="FontChange" type="UBYTE">A major font change has occurred (e.g. face, point size)</field>
-      <field name="StyleChange" type="UBYTE">A minor style change has occurred (e.g. font colour)</field>
     </struct>
 
   </structs>

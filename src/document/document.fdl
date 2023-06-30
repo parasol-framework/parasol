@@ -57,62 +57,14 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     "NO_WRAP: Do not wrap the text.",
     { STYLES = "BOLD|UNDERLINE|ITALIC|CAPS" })
 
-  struct("DocStyle", { version=1, type="docstyle", comment="This structure is passed to objects that support the LayoutStyle field" }, [[
-    int Version                # Version of this DocStyle structure
-    obj(Document) Document     # The document object that this style originates from
-    obj(Font) Font             # Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour
-    struct(RGB8) FontColour    # Foreground colour (colour of the font)
-    struct(RGB8) FontUnderline # Underline colour for the font, if active
-    int StyleFlags             # Font style flags (FSO)
-  ]])
-
-  struct ("deLinkActivated", { }, [[
-    struct(*KeyStore) Parameters   # All key-values associated with the link.
-  ]])
-
-  struct("escFont", { }, [[
-    short Index          # Font lookup
-    short Options        # FSO flags
-    struct(RGB8) Colour  # Font colour
-  ]])
-
-  c_insert([[
-typedef struct escFont escFont;
-  ]])
-
-  struct("SurfaceClip", { }, [[
-    struct(*SurfaceClip) Next
-    int Left
-    int Top
-    int Right
-    int Bottom
-  ]])
-
-  struct("style_status", { }, [[
-    struct(escFont) FontStyle
-    struct(*process_table) Table
-    struct(*escList) List
-    char(36) Face
-    short Point
-    bit(uchar) FontChange   # A major font change has occurred (e.g. face, point size)
-    bit(uchar) StyleChange  # A minor style change has occurred (e.g. font colour)
-  ]])
-
   struct("docdraw", { }, [[
     ptr Object
     oid ID
   ]])
 
-  struct("DocTrigger", { }, [[
-   struct(*DocTrigger) Next
-   struct(*DocTrigger) Prev
-   func Function
-  ]])
-
   methods("Document", "doc", {
     { id=1,  name="FeedParser" },
     { id=2,  name="SelectLink" },
-    { id=3,  name="ApplyFontStyle" },
     { id=4,  name="FindIndex" },
     { id=5,  name="InsertXML" },
     { id=6,  name="RemoveContent" },
@@ -127,7 +79,6 @@ typedef struct escFont escFont;
   })
 
   class("Document", { src={ "class/document_class.cpp", "class/fields.cpp" }, output="class/document_def.c" }, [[
-    large(DEF) EventMask # Event mask for selectively receiving events from the Document object.
     str Description      # A description assigned by the author of the document
     str FontFace         # The user's default font face
     str Title            # The title of the document
@@ -137,6 +88,7 @@ typedef struct escFont escFont;
     oid TabFocus         # If the tab key is pressed, focus can be changed to this object
     oid Surface          # The surface that the document will be rendered to
     oid Focus
+    int(DEF) EventMask   # Event mask for selectively receiving events from the Document object.
     int(DCF) Flags       # Optional flags
     int LeftMargin       # Size of the left margin
     int TopMargin        # Size of the top margin

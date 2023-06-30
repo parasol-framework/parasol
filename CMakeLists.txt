@@ -484,7 +484,7 @@ if (NOT DISABLE_DISPLAY)
 endif ()
 
 if ((NOT DISABLE_DOCUMENT) AND (NOT DISABLE_DISPLAY) AND (NOT DISABLE_VECTOR) AND (NOT DISABLE_FONT))
-   #add_subdirectory (src/document)
+   add_subdirectory (src/document)
 endif ()
 
 if (NOT DISABLE_FONT AND NOT DISABLE_DISPLAY)
