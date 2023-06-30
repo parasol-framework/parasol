@@ -21,15 +21,13 @@ static void audio_stopped_event(extAudio &Audio, LONG SampleHandle)
       routine(&Audio, SampleHandle);
    }
    else if (sample.OnStop.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = sample.OnStop.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Audio", FD_OBJECTPTR, { .Address = &Audio } },
-            { "Handle", FD_LONG, { .Long = SampleHandle } }
-         };
-         ERROR error;
-         scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
-      }
+      auto script = sample.OnStop.Script.Script;
+      const ScriptArg args[] = {
+         { "Audio",  &Audio, FD_OBJECTPTR },
+         { "Handle", SampleHandle }
+      };
+      ERROR error;
+      scCallback(script, sample.OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
    }
 }
 
@@ -44,20 +42,18 @@ static BYTELEN fill_stream_buffer(LONG Handle, AudioSample &Sample, LONG Offset)
       return routine(Handle, Offset, Sample.Data, Sample.SampleLength<<sample_shift(Sample.SampleType));
    }
    else if (Sample.Callback.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Sample.Callback.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Handle", FD_LONG,    { .Long = Handle } },
-            { "Offset", FD_LONG,    { .Long = Offset } },
-            { "Buffer", FD_BUFFER,  { .Address = Sample.Data } },
-            { "Length", FD_BUFSIZE|FD_LONG, { .Long = Sample.SampleLength<<sample_shift(Sample.SampleType) } }
-         };
+      auto script = Sample.Callback.Script.Script;
+      const ScriptArg args[] = {
+         { "Handle", Handle },
+         { "Offset", Offset },
+         { "Buffer", Sample.Data, FD_BUFFER },
+         { "Length", Sample.SampleLength<<sample_shift(Sample.SampleType), FD_BUFSIZE|FD_LONG }
+      };
 
-         LONG result = 0;
-         ERROR error;
-         if (scCallback(script, Sample.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result)) error = ERR_Failed;
-         return BYTELEN(result);
-      }
+      LONG result = 0;
+      ERROR error;
+      if (scCallback(script, Sample.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result)) error = ERR_Failed;
+      return BYTELEN(result);      
    }
 
    return BYTELEN(0);

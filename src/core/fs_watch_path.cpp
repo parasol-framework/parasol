@@ -200,13 +200,12 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                if (context) SetContext(context);
             }
             else if (glFileMonitor[i].Routine.Type IS CALL_SCRIPT) {
-               OBJECTPTR script;
-               if ((script = tlFeedback.Script.Script)) {
+               if (auto script = tlFeedback.Script.Script) {
                   const ScriptArg args[] = {
-                     { "File",   FD_STRING,  { .Address = glFileMonitor[i].File } },
-                     { "Path",   FD_STRING,  { .Address = path } },
-                     { "Custom", FD_LARGE,   { .Large = glFileMonitor[i].Custom } },
-                     { "Flags",  FD_LONG,    { .Long = LONG(flags) } }
+                     { "File",   glFileMonitor[i].File },
+                     { "Path",   path },
+                     { "Custom", glFileMonitor[i].Custom },
+                     { "Flags",  LONG(flags) }
                   };
                   if (scCallback(script, tlFeedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }
@@ -275,13 +274,12 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
                error = routine(File, path, File->prvWatch->Custom, status);
             }
             else if (File->prvWatch->Routine.Type IS CALL_SCRIPT) {
-               OBJECTPTR script;
-               if ((script = File->prvWatch->Routine.Script.Script)) {
+               if (auto script = File->prvWatch->Routine.Script.Script) {
                   const ScriptArg args[] = {
-                     { "File",   FD_OBJECTPTR, { .Address = File } },
-                     { "Path",   FD_STRING,  { .Address = path } },
-                     { "Custom", FD_LARGE,   { .Large = File->prvWatch->Custom } },
-                     { "Flags",  FD_LONG,    { .Long = 0 } }
+                     { "File",   File, FD_OBJECTPTR },
+                     { "Path",   path },
+                     { "Custom", File->prvWatch->Custom },
+                     { "Flags",  0 }
                   };
                   if (scCallback(script, File->prvWatch->Routine.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
                }

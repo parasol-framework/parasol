@@ -717,8 +717,8 @@ static ERROR send_feedback(extCompression *Self, CompressionFeedback *Feedback)
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       const ScriptArg args[] = {
-         { "Compression", FD_OBJECTPTR, { .Address = Self } },
-         { "CompressionFeedback:Feedback", FD_POINTER|FD_STRUCT, { .Address = Feedback } }
+         { "Compression", Self, FD_OBJECTPTR },
+         { "CompressionFeedback:Feedback", Feedback, FD_POINTER|FD_STRUCT }
       };
       if (scCallback(Self->Feedback.Script.Script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
    }

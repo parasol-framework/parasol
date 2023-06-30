@@ -1170,9 +1170,9 @@ static ERROR SET_State(extNetSocket *Self, NTC Value)
          else if (Self->Feedback.Type IS CALL_SCRIPT) {
             if (auto script = Self->Feedback.Script.Script) {
                const ScriptArg args[] = {
-                  { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
-                  { "ClientSocket", FD_OBJECTPTR, { .Address = NULL } },
-                  { "State",        FD_LONG,      { .Long = LONG(Self->State) } }
+                  { "NetSocket",    Self, FD_OBJECTPTR },
+                  { "ClientSocket", APTR(NULL), FD_OBJECTPTR },
+                  { "State",        LONG(Self->State) }
                };
                scCallback(script, Self->Feedback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
             }

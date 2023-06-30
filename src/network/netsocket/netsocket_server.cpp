@@ -148,9 +148,9 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
    else if (Self->Feedback.Type IS CALL_SCRIPT) {
       const ScriptArg args[] = {
-         { "NetSocket",    FD_OBJECTPTR, { .Address = Self } },
-         { "ClientSocket", FD_OBJECTPTR, { .Address = client_socket } },
-         { "State",        FD_LONG,      { .Long = LONG(NTC::CONNECTED) } }
+         { "NetSocket",    Self, FD_OBJECTPTR },
+         { "ClientSocket", client_socket, FD_OBJECTPTR },
+         { "State",        LONG(NTC::CONNECTED) }
       };
 
       auto script = Self->Feedback.Script.Script;
@@ -223,9 +223,9 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
       }
       else if (Socket->Feedback.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
-            { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
-            { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } },
-            { "State",        FD_LONG,      { .Long = LONG(NTC::DISCONNECTED) } }
+            { "NetSocket",    Socket, FD_OBJECTPTR },
+            { "ClientSocket", ClientSocket, FD_OBJECTPTR },
+            { "State",        LONG(NTC::DISCONNECTED) }
          };
 
          auto script = Socket->Feedback.Script.Script;

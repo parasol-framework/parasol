@@ -164,17 +164,14 @@ void resize_feedback(FUNCTION *Feedback, OBJECTID DisplayID, LONG X, LONG Y, LON
       routine(DisplayID, X, Y, Width, Height);
    }
    else if (Feedback->Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Feedback->Script.Script)) {
-         const ScriptArg args[] = {
-            { "Display", FD_OBJECTID, { .Long = DisplayID } },
-            { "X",       FD_LONG, { .Long = X } },
-            { "Y",       FD_LONG, { .Long = Y } },
-            { "Width",   FD_LONG, { .Long = Width } },
-            { "Height",  FD_LONG, { .Long = Height } }
-         };
-         scCallback(script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-      }
+      const ScriptArg args[] = {
+         { "Display", DisplayID, FD_OBJECTID },
+         { "X",       X },
+         { "Y",       Y },
+         { "Width",   Width },
+         { "Height",  Height }
+      };
+      scCallback(Feedback->Script.Script, Feedback->Script.ProcedureID, args, ARRAYSIZE(args), NULL);
    }
 }
 

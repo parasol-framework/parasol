@@ -103,8 +103,16 @@ typedef struct XMLTag {
    XMLTag() { XMLTag(0); }
 
    inline CSTRING name() const { return Attribs[0].Name.c_str(); }
+   inline bool hasContent() const { return (!Children.empty()) and (Children[0].Attribs[0].Name.empty()); }
    inline bool isContent() const { return Attribs[0].Name.empty(); }
    inline bool isTag() const { return !Attribs[0].Name.empty(); }
+
+   inline const std::string * attrib(const std::string &Name) const {
+      for (unsigned a=1; a < Attribs.size(); a++) {
+         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Name;
+      }
+      return NULL;
+   }
 } XMLTAG;
 
 // XML class definition
@@ -351,6 +359,15 @@ inline void xmlNewAttrib(XMLTag &Tag, const std::string Name, const std::string 
 
 inline void xmlNewAttrib(XMLTag *Tag, const std::string Name, const std::string Value) {
    Tag->Attribs.emplace_back(Name, Value);
+}
+
+inline std::string xmlGetContent(const XMLTag &Tag) {
+   std::string value;
+   for (auto &scan : Tag.Children) {
+      if (scan.Attribs.empty()) continue;
+      if (scan.Attribs[0].isContent()) value.append(scan.Attribs[0].Value);
+   }
+   return value;
 }
 
 template <class T> inline ERROR xmlInsertStatement(APTR Ob, LONG Index, XMI Where, T Statement, XMLTag **Result) {

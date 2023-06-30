@@ -529,14 +529,12 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
          else routine(Self->Callback[i].Object, Self, Bitmap);
       }
       else if (Self->Callback[i].Function.Type IS CALL_SCRIPT) {
-         OBJECTPTR script;
-         if ((script = Self->Callback[i].Function.Script.Script)) {
-            const ScriptArg args[] = {
-               { "Surface", FD_OBJECTPTR, { .Address = Self } },
-               { "Bitmap",  FD_OBJECTPTR, { .Address = Bitmap } }
-            };
-            scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
+         const ScriptArg args[] = {
+            { "Surface", Self, FD_OBJECTPTR },
+            { "Bitmap",  Bitmap, FD_OBJECTPTR }
+         };
+         auto script = Self->Callback[i].Function.Script.Script;
+         scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);         
       }
    }
 

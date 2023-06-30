@@ -2388,23 +2388,12 @@ static void report_event(extScintilla *Self, SEF Event)
             routine(Self, Event);
          }
          else if (Self->EventCallback.Type IS CALL_SCRIPT) {
-            struct scCallback exec;
-            OBJECTPTR script;
-            ScriptArg args[2];
-            args[0].Name = "Scintilla";
-            args[0].Type = FD_OBJECTPTR;
-            args[0].Address = Self;
+            ScriptArg args[] = { 
+               ScriptArg("Scintilla", Self, FD_OBJECTPTR),
+               ScriptArg("EventFlags", LARGE(Event))
+            };
 
-            args[1].Name = "EventFlags";
-            args[1].Type = FD_LONG;
-            args[1].Long = LARGE(Event);
-
-            exec.ProcedureID = Self->EventCallback.Script.ProcedureID;
-            exec.Args      = args;
-            exec.TotalArgs = ARRAYSIZE(args);
-            if ((script = Self->EventCallback.Script.Script)) {
-               Action(MT_ScCallback, script, &exec);
-            }
+            scCallback(Self->EventCallback.Script.Script, Self->EventCallback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);         
          }
       }
    }

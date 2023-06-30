@@ -214,9 +214,9 @@ ERROR extXML::find_tag(CSTRING XPath)
          }
          else if (Callback.Type IS CALL_SCRIPT) {
             const ScriptArg args[] = {
-               { "XML",  FD_OBJECTPTR, { .Address = this } },
-               { "Tag",  FD_LONG,      { .Long = Cursor->ID } },
-               { "Attrib", FD_STRING,  { .Address = Attrib.empty() ? NULL : APTR(Attrib.c_str()) } }
+               { "XML",  this, FD_OBJECTPTR },
+               { "Tag",  Cursor->ID },
+               { "Attrib", Attrib.empty() ? CSTRING(NULL) : Attrib.c_str() }
             };
             auto script = Callback.Script.Script;
             if (scCallback(script, Callback.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;

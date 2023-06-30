@@ -187,11 +187,11 @@ extern "C" FFR CALL_FEEDBACK(FUNCTION *Callback, FileFeedback *Feedback)
    else if (Callback->Type IS CALL_SCRIPT) {
       if (auto script = Callback->Script.Script) {
          const ScriptArg args[] = {
-            { "Size",     FD_LARGE,   { .Large   = Feedback->Size } },
-            { "Position", FD_LARGE,   { .Large   = Feedback->Position } },
-            { "Path",     FD_STRING,  { .Address = Feedback->Path } },
-            { "Dest",     FD_STRING,  { .Address = Feedback->Dest } },
-            { "FeedbackID", FD_LONG,  { .Long    = LONG(Feedback->FeedbackID) } }
+            { "Size",       Feedback->Size },
+            { "Position",   Feedback->Position },
+            { "Path",       Feedback->Path },
+            { "Dest",       Feedback->Dest },
+            { "FeedbackID", LONG(Feedback->FeedbackID) }
          };
 
          ERROR error;

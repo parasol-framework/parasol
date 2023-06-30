@@ -2001,6 +2001,16 @@ struct ScriptArg { // For use with scExec
       LARGE  Large;
       DOUBLE Double;
    };
+   
+   ScriptArg(CSTRING pName, OBJECTPTR pValue, ULONG pType = FD_OBJECTPTR) : Name(pName), Type(pType), Address((APTR)pValue) { }
+   ScriptArg(CSTRING pName, std::string &pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
+   ScriptArg(CSTRING pName, const std::string &pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
+   ScriptArg(CSTRING pName, CSTRING pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue) { }
+   ScriptArg(CSTRING pName, APTR pValue, ULONG pType = FD_PTR) : Name(pName), Type(pType), Address(pValue) { }
+   ScriptArg(CSTRING pName, LONG pValue, ULONG pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
+   ScriptArg(CSTRING pName, ULONG pValue, ULONG pType = FD_LONG) : Name(pName), Type(pType), Long(pValue) { }
+   ScriptArg(CSTRING pName, LARGE pValue, ULONG pType = FD_LARGE) : Name(pName), Type(pType), Large(pValue) { }
+   ScriptArg(CSTRING pName, DOUBLE pValue, ULONG pType = FD_DOUBLE) : Name(pName), Type(pType), Double(pValue) { }
 };
 
 #ifdef PARASOL_STATIC
