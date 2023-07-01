@@ -21,21 +21,25 @@ void split(InType Input, OutIt Output)
    *Output++ = std::string(current, begin);
 }
 
-inline void ltrim(std::string &s, const std::string &match) {
-   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [match](unsigned char ch) {
-      return match.find(ch) == std::string::npos;
-   }));
+inline void ltrim(std::string &String, const std::string &Whitespace = " \t")
+{
+   const auto start = String.find_first_not_of(Whitespace);
+   if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
 }
 
-inline void rtrim(std::string &s, const std::string &match) {
-   s.erase(std::find_if(s.rbegin(), s.rend(), [match](unsigned char ch) {
-      return match.find(ch) == std::string::npos;
-   }).base(), s.end());
+inline void rtrim(std::string &String, const std::string &Whitespace = " \t")
+{
+   const auto end = String.find_last_not_of(Whitespace);
+   if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
 }
 
-inline void trim(std::string &s, const std::string &match) {
-   ltrim(s, match);
-   rtrim(s, match);
+inline void trim(std::string &String, const std::string &Whitespace = " \t")
+{
+   const auto start = String.find_first_not_of(Whitespace);
+   if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
+
+   const auto end = String.find_last_not_of(Whitespace);
+   if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
 }
 
 inline void camelcase(std::string &s) {
