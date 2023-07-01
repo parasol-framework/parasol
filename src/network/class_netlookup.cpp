@@ -682,8 +682,8 @@ static void resolve_callback(extNetLookup *Self, ERROR Error, const std::string 
    }
    else if (Self->Callback.Type IS CALL_SCRIPT) {
       const ScriptArg args[] = {
-         { "NetLookup", FDF_OBJECT, { .Address = Self } },
-         { "Error",     FD_LONG,    { .Long    = Error } }
+         { "NetLookup", Self, FDF_OBJECT },
+         { "Error",     Error }
       };
       auto script = Self->Callback.Script.Script;
       scCallback(script, Self->Callback.Script.ProcedureID, args, ARRAYSIZE(args), NULL);

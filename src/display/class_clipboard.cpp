@@ -377,11 +377,11 @@ static ERROR CLIPBOARD_DataFeed(objClipboard *Self, struct acDataFeed *Args)
       }
       else if (Self->RequestHandler.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
-            { "Clipboard", FD_OBJECTPTR,     { .Address = Self } },
-            { "Requester", FD_OBJECTPTR,     { .Address = Args->Object } },
-            { "Item",      FD_LONG,          { .Long = request->Item } },
-            { "Datatypes", FD_ARRAY|FD_BYTE, { .Address = request->Preference } },
-            { "Size",      FD_LONG|FD_ARRAYSIZE, { .Long = ARRAYSIZE(request->Preference) } }
+            { "Clipboard", Self, FD_OBJECTPTR },
+            { "Requester", Args->Object, FD_OBJECTPTR },
+            { "Item",      request->Item },
+            { "Datatypes", request->Preference, FD_ARRAY|FD_BYTE },
+            { "Size",      LONG(ARRAYSIZE(request->Preference)), FD_LONG|FD_ARRAYSIZE }
          };
          auto script = Self->RequestHandler.Script.Script;
          if (scCallback(script, Self->RequestHandler.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;

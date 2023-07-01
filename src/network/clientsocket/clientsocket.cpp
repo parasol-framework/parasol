@@ -38,8 +38,8 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
       }
       else if (Socket->Incoming.Type IS CALL_SCRIPT) {
          const ScriptArg args[] = {
-            { "NetSocket",    FD_OBJECTPTR, { .Address = Socket } },
-            { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } }
+            { "NetSocket",    Socket, FD_OBJECTPTR },
+            { "ClientSocket", ClientSocket, FD_OBJECTPTR }
          };
 
          auto script = Socket->Incoming.Script.Script;
@@ -150,14 +150,11 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
             }
          }
          else if (ClientSocket->Outgoing.Type IS CALL_SCRIPT) {
-            OBJECTPTR script;
             const ScriptArg args[] = {
-               { "NetSocket", FD_OBJECTPTR, { .Address = Socket } },
-               { "ClientSocket", FD_OBJECTPTR, { .Address = ClientSocket } }
+               { "NetSocket", Socket, FD_OBJECTPTR },
+               { "ClientSocket", ClientSocket, FD_OBJECTPTR }
             };
-            if ((script = ClientSocket->Outgoing.Script.Script)) {
-               if (scCallback(script, ClientSocket->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
-            }
+            if (scCallback(ClientSocket->Outgoing.Script.Script, ClientSocket->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }
 
          if (error) ClientSocket->Outgoing.Type = CALL_NONE;

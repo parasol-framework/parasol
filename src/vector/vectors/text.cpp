@@ -2426,7 +2426,7 @@ static ERROR init_text(void)
    if (modResolveSymbol(modFont, "FT_Activate_Size", (APTR *)&EFT_Activate_Size)) return ERR_ResolveSymbol;
 #endif
 
-   FID_FreetypeFace = StrHash("FreetypeFace", FALSE);
+   FID_FreetypeFace = StrHash("FreetypeFace");
 
    clVectorText = objMetaClass::create::global(
       fl::BaseClassID(ID_VECTOR),

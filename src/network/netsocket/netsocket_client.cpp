@@ -118,7 +118,7 @@ restart:
          error = routine(Self);
       }
       else if (Self->Incoming.Type IS CALL_SCRIPT) {
-         const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
+         const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
          auto script = Self->Incoming.Script.Script;
          if (scCallback(script, Self->Incoming.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
       }
@@ -236,7 +236,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
             error = routine(Self);
          }
          else if (Self->Outgoing.Type IS CALL_SCRIPT) {
-            const ScriptArg args[] = { { "NetSocket", FD_OBJECTPTR, { .Address = Self } } };
+            const ScriptArg args[] = { { "NetSocket", Self, FD_OBJECTPTR } };
             auto script = Self->Outgoing.Script.Script;
             if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Terminate;
          }

@@ -87,14 +87,10 @@ static void sound_stopped_event(extSound *Self)
       routine(Self);
    }
    else if (Self->OnStop.Type IS CALL_SCRIPT) {
-      OBJECTPTR script;
-      if ((script = Self->OnStop.Script.Script)) {
-         const ScriptArg args[] = {
-            { "Sound",  FD_OBJECTPTR, { .Address = Self } }
-         };
-         ERROR error;
-         scCallback(script, Self->OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);
-      }
+      auto script = Self->OnStop.Script.Script;
+      const ScriptArg args[] = { { "Sound",  Self, FD_OBJECTPTR } };
+      ERROR error;
+      scCallback(script, Self->OnStop.Script.ProcedureID, args, ARRAYSIZE(args), &error);      
    }
 }
 

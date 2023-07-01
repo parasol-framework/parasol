@@ -807,12 +807,12 @@ static void process_resize_msgs(extVectorScene *Self)
             }
             else if (func.Type IS CALL_SCRIPT) {
                ScriptArg args[] = {
-                  { "Viewport",       FDF_OBJECT, { .Address = view } },
-                  { "Vector",         FDF_OBJECT, { .Address = vector } },
-                  { "ViewportX",      FDF_DOUBLE, { .Double = view->FinalX } },
-                  { "ViewportY",      FDF_DOUBLE, { .Double = view->FinalY } },
-                  { "ViewportWidth",  FDF_DOUBLE, { .Double = view->vpFixedWidth } },
-                  { "ViewportHeight", FDF_DOUBLE, { .Double = view->vpFixedHeight } }
+                  { "Viewport",       view, FDF_OBJECT },
+                  { "Vector",         vector, FDF_OBJECT },
+                  { "ViewportX",      view->FinalX },
+                  { "ViewportY",      view->FinalY },
+                  { "ViewportWidth",  view->vpFixedWidth },
+                  { "ViewportHeight", view->vpFixedHeight }
                };
                scCallback(func.Script.Script, func.Script.ProcedureID, args, ARRAYSIZE(args), &result);
             }
@@ -839,10 +839,10 @@ static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
       else if (sub.Callback.Type IS CALL_SCRIPT) {
          // In this implementation the script function will receive all the events chained via the Next field
          ScriptArg args[] = {
-            { "Vector",     FDF_OBJECT, { .Address = Vector } },
-            { "Qualifiers", FDF_LONG,   { .Long = LONG(Event->Qualifiers) } },
-            { "Code",       FDF_LONG,   { .Long = LONG(Event->Code) } },
-            { "Unicode",    FDF_LONG,   { .Long = Event->Unicode } }
+            { "Vector",     Vector, FDF_OBJECT },
+            { "Qualifiers", LONG(Event->Qualifiers) },
+            { "Code",       LONG(Event->Code) },
+            { "Unicode",    Event->Unicode }
          };
          scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
       }
@@ -927,8 +927,8 @@ static void send_input_events(extVector *Vector, InputEvent *Event)
          }
          else if (sub.Callback.Type IS CALL_SCRIPT) {
             ScriptArg args[] = {
-               { "Vector",            FDF_OBJECT, { .Address = Vector } },
-               { "InputEvent:Events", FDF_STRUCT, { .Address = Event } }
+               { "Vector",            Vector, FDF_OBJECT },
+               { "InputEvent:Events", Event, FDF_STRUCT }
             };
             scCallback(sub.Callback.Script.Script, sub.Callback.Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }

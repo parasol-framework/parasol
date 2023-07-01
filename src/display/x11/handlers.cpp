@@ -108,7 +108,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
                      }
                      else if (func->Type IS CALL_SCRIPT) {
                         ScriptArg args[] = {
-                           { "SurfaceID", FDF_OBJECTID, { .Long = surface_id } }
+                           { "SurfaceID", surface_id, FDF_OBJECTID }
                         };
                         scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
                      }

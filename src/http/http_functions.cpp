@@ -197,18 +197,16 @@ redo_upload:
       }
       else if (Self->Outgoing.Type IS CALL_SCRIPT) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
-         OBJECTPTR script;
-         if ((script = Self->Outgoing.Script.Script)) {
-            const ScriptArg args[] = {
-               { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
-               { "BufferSize", FD_LONG,      { .Long = Self->WriteSize } }
-            };
-            if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
-            if (error > ERR_ExceptionThreshold) {
-               log.warning("Procedure %" PF64 " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
-            }
-            else len = Self->WriteOffset;
+         const ScriptArg args[] = {
+            { "HTTP",       Self, FD_OBJECTPTR },
+            { "BufferSize", Self->WriteSize }
+         };
+         auto script = Self->Outgoing.Script.Script;
+         if (scCallback(script, Self->Outgoing.Script.ProcedureID, args, ARRAYSIZE(args), &error)) error = ERR_Failed;
+         if (error > ERR_ExceptionThreshold) {
+            log.warning("Procedure %" PF64 " failed, aborting HTTP call.", Self->Outgoing.Script.ProcedureID);
          }
+         else len = Self->WriteOffset;
       }
       else error = ERR_InvalidValue;
 
@@ -1029,9 +1027,9 @@ static ERROR process_data(extHTTP *Self, APTR Buffer, LONG Length)
          log.trace("Calling script procedure %" PF64, Self->Incoming.Script.ProcedureID);
 
          const ScriptArg args[] = {
-            { "HTTP",       FD_OBJECTPTR, { .Address = Self } },
-            { "Buffer",     FD_PTRBUFFER, { .Address = Buffer } },
-            { "BufferSize", FD_LONG|FD_BUFSIZE, { .Long = Length } }
+            { "HTTP",       Self, FD_OBJECTPTR },
+            { "Buffer",     Buffer, FD_PTRBUFFER },
+            { "BufferSize", Length, FD_LONG|FD_BUFSIZE }
          };
 
          auto script = Self->Incoming.Script.Script;

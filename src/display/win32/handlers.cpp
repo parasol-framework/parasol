@@ -291,9 +291,7 @@ void MsgWindowClose(OBJECTID SurfaceID)
             result = callback(SurfaceID);
          }
          else if (func->Type IS CALL_SCRIPT) {
-            ScriptArg args[] = {
-               { "SurfaceID", FDF_OBJECTID, { .Long = SurfaceID } }
-            };
+            ScriptArg args[] = { { "SurfaceID", SurfaceID, FDF_OBJECTID } };
             scCallback(func->Script.Script, func->Script.ProcedureID, args, ARRAYSIZE(args), &result);
          }
          else result = ERR_Okay;

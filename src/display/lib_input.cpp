@@ -202,8 +202,8 @@ void input_event_loop(HOSTHANDLE FD, APTR Data) // Data is not defined
          }
          else if (cb.Type IS CALL_SCRIPT) {
             const ScriptArg args[] = {
-               { "Events:InputEvent", FD_PTR|FDF_STRUCT, { .Address  = first } },
-               { "Handle", FD_LONG, { .Long = handle } },
+               { "Events:InputEvent", first, FD_PTR|FDF_STRUCT },
+               { "Handle", handle },
             };
             ERROR result;
             scCallback(cb.Script.Script, cb.Script.ProcedureID, args, ARRAYSIZE(args), &result);
