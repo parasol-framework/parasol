@@ -900,15 +900,15 @@ next:
       else return ERR_Syntax;
    }
    else if ((!StrMatch("currentColor", IRI)) or (!StrMatch("currentColour", IRI))) {
-      // This SVG feature derivess the colour from first parent that defines a fill value.  Since this
+      // This SVG feature derives the colour from first parent that defines a fill value.  Since this
       // function doesn't support a vector reference, we have to throw an error.
 
       log.warning("Parser needs to add support for %s.", IRI);
       return ERR_Failed;
    }
    else {
-      auto hash = StrHash(IRI, FALSE);
-      for (WORD i=0; i < ARRAYSIZE(glNamedColours); i++) {
+      auto hash = StrHash(IRI);
+      for (unsigned i=0; i < ARRAYSIZE(glNamedColours); i++) {
          if (glNamedColours[i].Hash IS hash) {
             RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
             RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
@@ -918,7 +918,7 @@ next:
          }
       }
 
-      log.warning("Failed to interpret colour: %s", IRI);
+      log.warning("Failed to interpret colour \"%s\"", IRI);
       return ERR_Failed;
    }
 }

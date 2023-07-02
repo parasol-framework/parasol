@@ -67,6 +67,7 @@ Example usage:
 --]]
 
    require 'common'
+   require 'gui/window'
 
    if (gui == nil) then gui = { } end
    if (gui.dialog == nil) then gui.dialog = { } end
@@ -126,6 +127,9 @@ gui.dialog.message = function(Options)
       local page_width  = Document.pageWidth
       local page_height = Document.pageHeight
 
+      if (page_width < 100) then page_width = 100 end
+      if (page_height < 100) then page_height = 100 end
+
       Window.surface.maxHeight    = page_height
       Window.surface.minHeight    = page_height
       Window.surface.insideHeight = page_height
@@ -169,8 +173,8 @@ gui.dialog.message = function(Options)
    local function buildDocument()
       local doc = [[
 <?xml version="1.0"?>
-<body leftmargin="10" topmargin="10" bottommargin="18" rightmargin="10" face="Open Sans" fontsize="10" link="70,70,120"
-  colour="240,240,250" fontcolour="0,0,0" selectcolour="80,160,80"/>
+<body leftmargin="10" topmargin="10" bottommargin="18" rightmargin="10" face="Open Sans" fontsize="10" link="rgb(.27,.27,.48)"
+  colour="rgb(.94,.94,.98)" fontcolour="rgb(0,0,0)" selectcolour="rgb(.31,.62,.31)"/>
 ]]
 
       if Options.envTemplate then
@@ -234,7 +238,7 @@ gui.dialog.message = function(Options)
          self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
       end
 
-      doc = doc .. '<p><box height="1" colour="0,0,0,50"/></p>\n<p nowrap>'
+      doc = doc .. '<p><box height="1" colour="rgb(0,0,0,0.2)"/></p>\n<p nowrap>'
 
       for i, option in ipairs(self.options) do
          if option['icon'] then
@@ -324,11 +328,8 @@ gui.dialog.message = function(Options)
 
    matchWindowToDocSize(self.window, lDoc)
 
-   self.window.userFocus = lDocSurface.id
-
    self.window:moveToFront()
    self.window:show()
-   lDocSurface.acFocus()
 
    self.document = lDoc
 

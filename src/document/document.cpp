@@ -606,8 +606,8 @@ class extDocument : public objDocument {
    objXML::TAGS *InjectTag;
    objXML::TAGS *HeaderTag;
    objXML::TAGS *FooterTag;
+   objXML::TAGS *BodyTag; // Reference to the children of the body tag, if any
    XMLTag *PageTag;
-   objXML::TAGS *BodyTag;
    std::vector<DocClip> Clips;
    std::vector<DocLink> Links;
    std::unordered_map<std::string, struct DocEdit> EditDefs;
@@ -938,13 +938,18 @@ template <class T> inline void NEXT_CHAR(const std::string &Stream, T &Index) {
 
 #define PREV_CHAR(s,i) { if ((s)[(i)-1] IS CTRL_CODE) (i) -= ESCAPE_LEN; else i--; }
 
-class startTemplate {
-   extDocument *Self;
+//********************************************************************************************************************
+// Convenience class for entering a template region.  This is achieved by setting InjectXML and InjectTag with
+// references to the content that will be injected to the template.  Injection typically occurs when the client uses
+// the <inject/> tag.
+
+class initTemplate {
+   extDocument  *Self;
    objXML::TAGS *Tags; 
-   objXML *XML; 
+   objXML       *XML; 
 
    public:
-   startTemplate(extDocument *pSelf, objXML::TAGS &pTag, objXML *pXML) {
+   initTemplate(extDocument *pSelf, objXML::TAGS &pTag, objXML *pXML) {
       Self = pSelf;
       Tags = Self->InjectTag; 
       XML  = Self->InjectXML; 
@@ -953,7 +958,7 @@ class startTemplate {
       Self->InTemplate++;
    }
 
-   ~startTemplate() {
+   ~initTemplate() {
       Self->InTemplate--;
       Self->InjectTag = Tags;
       Self->InjectXML = XML;

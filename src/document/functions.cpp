@@ -1248,8 +1248,11 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
             insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
          }
       }
+      Tag.Attribs = saved_attribs;
+      return result;
    }
-   else if (Self->Templates) { // Check for templates first, as they can be used to override the default RPL tag names.          
+   
+   if (Self->Templates) { // Check for templates first, as they can be used to override the default RPL tag names.          
       bool template_match = false;
       for (auto &scan : Self->Templates->Tags) {
          for (unsigned i=0; i < scan.Attribs.size(); i++) {
@@ -1270,20 +1273,22 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
 
                pf::Log log(__FUNCTION__);
 
-               startTemplate(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
+               initTemplate block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
 
                log.traceBranch("Executing template '%s'.", tagname.c_str());
 
                Self->TemplateArgs.push_back(&Tag);
                parse_tags(Self, Self->Templates, scan.Children, Index, Flags);
                Self->TemplateArgs.pop_back();
-
-               break;
+               
+               Tag.Attribs = saved_attribs;
+               return result;
             }
          }
       }
    }
-   else if (auto tag = glTags.find(tagname); tag != glTags.end()) {
+
+   if (auto tag = glTags.find(tagname); tag != glTags.end()) {
       auto &tr = tag->second;
       if (((tr.Flags & TAG::FILTER_ALL) != TAG::NIL) and ((tr.Flags & TAG(filter)) IS TAG::NIL)) {
          // A filter applies to this tag and the filter flags do not match
@@ -4802,8 +4807,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
                // If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so
                // that the XML insertion point is known.
 
-               Self->BodyTag = &tag.Children;
-               insert_xml(Self, xml, tag);
+               insert_xml(Self, xml, tag); // Process the body attributes in tag_body() and set BodyTag
                break;              
             case HASH_page:       break;
             case HASH_background: insert_xml(Self, xml, tag); break;
@@ -4820,7 +4824,6 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          }
       }
       
-
       if ((Self->HeaderTag) and (!noheader)) {
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing header.");
@@ -4831,7 +4834,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing this page through the body tag.");
 
-         startTemplate(Self, page->Children, xml);
+         initTemplate block(Self, page->Children, xml);
          insert_xml(Self, xml, Self->BodyTag[0][0], Self->Stream.size(), IXF_SIBLINGS|IXF_RESETSTYLE);
       }
       else {
@@ -5075,6 +5078,8 @@ static LONG get_line_from_index(extDocument *Self, LONG Index)
 
 //********************************************************************************************************************
 
+static bool detect_recursive_dialog = false;
+
 static void error_dialog(const std::string Title, const std::string Message)
 {
    pf::Log log(__FUNCTION__);
@@ -5082,9 +5087,9 @@ static void error_dialog(const std::string Title, const std::string Message)
 
    log.warning("%s", Message.c_str());
 
-   if (dialog_id) {
-      if (CheckObjectExists(dialog_id) IS ERR_True) return;
-   }
+   if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
+   if (detect_recursive_dialog) return;
+   detect_recursive_dialog = true;
 
    OBJECTPTR dialog;
    if (!NewObject(ID_SCRIPT, &dialog)) {
@@ -5104,6 +5109,8 @@ static void error_dialog(const std::string Title, const std::string Message)
          }
       }
    }
+
+   detect_recursive_dialog = false;
 }
 
 static void error_dialog(const std::string Title, ERROR Error)
@@ -5112,10 +5119,10 @@ static void error_dialog(const std::string Title, ERROR Error)
    static OBJECTID dialog_id = 0;
 
    log.warning("%s", GetErrorMsg(Error));
-
-   if (dialog_id) {
-      if (CheckObjectExists(dialog_id) IS ERR_True) return;
-   }
+   
+   if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
+   if (detect_recursive_dialog) return;
+   detect_recursive_dialog = true;
 
    OBJECTPTR dialog;
    if (!NewObject(ID_SCRIPT, &dialog)) {
@@ -5140,7 +5147,10 @@ static void error_dialog(const std::string Title, ERROR Error)
          }
       }
    }
+
+   detect_recursive_dialog = false;
 }
+
 //********************************************************************************************************************
 
 static void add_template(extDocument *Self, objXML *XML, XMLTag &Tag)
@@ -5465,6 +5475,8 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
 {
    pf::Log log(__FUNCTION__);
 
+   Output = Input;
+
    // Do nothing if there are no special references being used
 
    {
@@ -5476,7 +5488,6 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
       if (i >= Input.size()) return;   
    }
 
-   Output = Input;
    for (auto pos = signed(Output.size()); pos >= 0; pos--) {
       if (Output[pos] IS '&') {
          if (!StrCompare("&lsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "[");         

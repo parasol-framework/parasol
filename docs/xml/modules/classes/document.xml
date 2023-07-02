@@ -48,7 +48,7 @@
       <name>DataFeed</name>
       <comment>Document data can be sent and consumed via feeds.</comment>
       <description>
-<p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the DATA_DOCUMENT and DATA_XML types for this purpose.</p>
+<p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the DATA::DOCUMENT and DATA::XML types for this purpose.</p>
 <p>The surface that is associated with the Document object will be redrawn as a result of calling this action.</p>
       </description>
       <result>
@@ -131,23 +131,6 @@
 </types>
 <p>A listener can be manually removed by calling <method>RemoveListener</method>, however this is normally unnecessary. Your listener will be removed automatically if a new document source is loaded or the document object is terminated.</p>
 <p>Please note that a trigger can have multiple listeners attached to it, so a new subscription will not replace any prior subscriptions, nor is their any detection for multiple copies of a subscription against a trigger.</p>
-      </description>
-      <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
-      </result>
-    </method>
-
-    <method>
-      <name>ApplyFontStyle</name>
-      <comment>Applies DocStyle information to a font.</comment>
-      <prototype>ERROR docApplyFontStyle(OBJECTPTR Object, struct DocStyleV1 * Style, objFont * Font)</prototype>
-      <input>
-        <param type="struct DocStyleV1 *" name="Style">Pointer to a DocStyle structure.</param>
-        <param type="objFont *" name="Font">Pointer to a Font object that the style information will be applied to.</param>
-      </input>
-      <description>
-<p>This method applies font information from DocStyle structures to new <class name="Font">Font</class> objects.  The Font object should be uninitialised as it is not possible to apply changes to the font face, style or size after initialisation.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -275,7 +258,7 @@
       <comment>Returns selected content from the document, either as plain text or original byte code.</comment>
       <prototype>ERROR docReadContent(OBJECTPTR Object, LONG Format, LONG Start, LONG End, STRING * Result)</prototype>
       <input>
-        <param type="LONG" name="Format">Set to DATA_TEXT to receive plain-text, or DATA_RAW to receive the original byte-code.</param>
+        <param type="LONG" name="Format">Set to TEXT to receive plain-text, or RAW to receive the original byte-code.</param>
         <param type="LONG" name="Start">An index in the document stream from which data will be extracted.</param>
         <param type="LONG" name="End">An index in the document stream at which extraction will stop.</param>
         <param type="STRING *" name="Result">The data is returned in this parameter as an allocated string.</param>
@@ -404,7 +387,7 @@
       <name>BorderEdge</name>
       <comment>Border edge flags.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type lookup="DBE">INT</type>
+      <type lookup="DBE">DBE</type>
       <description>
 <p>This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined in the <field>Border</field> field.</p>
 <types lookup="DBE"/>
@@ -490,7 +473,7 @@
       <name>EventMask</name>
       <comment>Specifies events that need to be reported from the Document object.</comment>
       <access read="R" write="W">Read/Write</access>
-      <type lookup="DEF">BIGINT</type>
+      <type lookup="DEF">DEF</type>
       <description>
 <p>To receive event notifications, set <field>EventCallback</field> with a function reference and the EventMask field with a mask that indicates the events that need to be received.</p>
 <types lookup="DEF"/>
@@ -501,7 +484,7 @@
       <name>Flags</name>
       <comment>Optional flags that affect object behaviour.</comment>
       <access read="R" write="S">Read/Set</access>
-      <type lookup="DCF">INT</type>
+      <type lookup="DCF">DCF</type>
       <description>
 <types lookup="DCF"/>
       </description>
@@ -777,14 +760,5 @@
 
   </types>
   <structs>
-    <struct name="DocStyle" comment="This structure is passed to objects that support the LayoutStyle field" typeName="DOCSTYLE">
-      <field name="Version" type="LONG">Version of this DocStyle structure</field>
-      <field name="Document" type="objDocument *">The document object that this style originates from</field>
-      <field name="Font" type="objFont *">Pointer to the current font object.  Indicates face, style etc, but not simple attributes like colour</field>
-      <field name="FontColour" type="struct RGB8">Foreground colour (colour of the font)</field>
-      <field name="FontUnderline" type="struct RGB8">Underline colour for the font, if active</field>
-      <field name="StyleFlags" type="LONG">Font style flags (FSO)</field>
-    </struct>
-
   </structs>
 </book>

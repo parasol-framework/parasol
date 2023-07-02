@@ -50,9 +50,12 @@ static void notify_focus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
    if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
 }
 
+// Used by EventCallback for subscribers that disappear without notice.
+
 static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   ((extDocument *)CurrentContext())->EventCallback.Type = CALL_NONE;
+   auto Self = (extDocument *)CurrentContext();
+   Self->EventCallback.Type = CALL_NONE;
 }
 
 static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
@@ -1144,8 +1147,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
       if (trigger.Type IS CALL_SCRIPT) {
          // The refresh trigger can return ERR_Skip to prevent a complete reload of the document.
 
-         OBJECTPTR script;
-         if ((script = trigger.Script.Script)) {
+         if (auto script = trigger.Script.Script) {
             ERROR error;
             if (!scCallback(script, trigger.Script.ProcedureID, NULL, 0, &error)) {
                if (error IS ERR_Skip) {
@@ -1156,15 +1158,14 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
          }
       }
       else if (trigger.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extDocument *))trigger.StdC.Routine;
-         if (routine) {
+         if (auto routine = (void (*)(APTR, extDocument *))trigger.StdC.Routine) {
             pf::SwitchContext context(trigger.StdC.Context);
             routine(trigger.StdC.Context, Self);
          }
       }
    }
 
-   ERROR error;
+   ERROR error = ERR_Okay;
    if ((!Self->Path.empty()) and (Self->Path[0] != '#') and (Self->Path[0] != '?')) {
       log.branch("Refreshing from path '%s'", Self->Path.c_str());
       error = load_doc(Self, Self->Path, true, ULD_REFRESH);
@@ -1178,13 +1179,8 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
       AdjustLogLevel(-2);
 
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");
-
-      error = ERR_Okay;
    }
-   else {
-      log.msg("No location or XML data is present in the document.");
-      error = ERR_Okay;
-   }
+   else log.msg("No location or XML data is present in the document.");   
 
    Self->Processing--;
 

@@ -280,6 +280,177 @@ class objDocument : public BaseClass {
 
    // Customised field setting
 
+   template <class T> inline ERROR setFontFace(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setTitle(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setAuthor(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[37];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setCopyright(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[14];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setKeywords(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[30];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setTabFocus(const OBJECTID Value) {
+      this->TabFocusID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSurface(const OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setFocus(const OBJECTID Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->FocusID = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setEventMask(const DEF Value) {
+      this->EventMask = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFlags(const DCF Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setLeftMargin(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->LeftMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTopMargin(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->TopMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setRightMargin(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->RightMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBottomMargin(const LONG Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BottomMargin = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFontSize(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
+   inline ERROR setBorderEdge(const DBE Value) {
+      if (this->initialised()) return ERR_NoFieldAccess;
+      this->BorderEdge = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setFontColour(const struct RGB8 Value) {
+      this->FontColour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setHighlight(const struct RGB8 Value) {
+      this->Highlight = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBackground(const struct RGB8 Value) {
+      this->Background = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setCursorColour(const struct RGB8 Value) {
+      this->CursorColour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setLinkColour(const struct RGB8 Value) {
+      this->LinkColour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setVLinkColour(const struct RGB8 Value) {
+      this->VLinkColour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setSelectColour(const struct RGB8 Value) {
+      this->SelectColour = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setBorder(const struct RGB8 Value) {
+      this->Border = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setDefaultScript(OBJECTPTR Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[15];
+      return field->WriteValue(target, field, 0x08000401, Value, 1);
+   }
+
+   inline ERROR setEventCallback(FUNCTION Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[39];
+      return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
+   }
+
+   template <class T> inline ERROR setPath(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[20];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setOrigin(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setPageWidth(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      Variable var(Value);
+      return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
+   }
+
+   inline ERROR setUpdateLayout(const LONG Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   }
+
 };
 
 #ifdef PARASOL_STATIC

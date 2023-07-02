@@ -231,7 +231,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    Self->Style.FontChange  = true;
    Self->Style.StyleChange = true;
 
-   Self->BodyTag = &Children;
+   if (!Children.empty()) Self->BodyTag = &Children;
 }
 
 //********************************************************************************************************************
