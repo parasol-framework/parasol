@@ -78,7 +78,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Name;
+         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Value;
       }
       return NULL;
    }
