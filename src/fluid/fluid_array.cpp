@@ -225,7 +225,7 @@ static int array_new(lua_State *Lua)
       if (!StrMatch("bytestring", type)) { // Represent a string as an array of bytes
          size_t len;
          if (auto str = lua_tolstring(Lua, 1, &len)) {
-            MSG("Generating byte array from string of length %d: %.30s", (int)len, str);
+            log.trace("Generating byte array from string of length %d: %.30s", (int)len, str);
 
             if (auto a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1)) {
                a->Total   = len;

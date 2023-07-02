@@ -106,9 +106,10 @@ void Scintilla::Window::SetPositionRelative(Scintilla::PRectangle rc, Scintilla:
 
 Scintilla::PRectangle Scintilla::Window::GetClientPosition()
 {
+   pf::Log log(__FUNCTION__);
    extScintilla *scintilla = (extScintilla *)this->GetID();
 
-   //FMSG("Window::GetClientPosition()","%dx%d", scintilla->Surface.Width, scintilla->Surface.Height);
+   //log.trace("%dx%d", scintilla->Surface.Width, scintilla->Surface.Height);
    return Scintilla::PRectangle(0, 0, scintilla->Surface.Width, scintilla->Surface.Height);
 }
 

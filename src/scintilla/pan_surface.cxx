@@ -534,21 +534,24 @@ void SurfacePan::SetClip(Scintilla::PRectangle rc)
 
 void SurfacePan::FlushCachedState()
 {
-   FMSG("panFlushCachedState()","UNSUPPORTED");
+   pf::Log log(__FUNCTION__);
+   log.trace("UNSUPPORTED");
 }
 
 /****************************************************************************/
 
 void SurfacePan::SetUnicodeMode(bool unicodeMode_)
 {
-//   FMSG("panSetUnicodeMode()","%d [UNSUPPORTED]", unicodeMode_);
+   pf::Log log(__FUNCTION__);
+//   log.trace("%d [UNSUPPORTED]", unicodeMode_);
 }
 
 /****************************************************************************/
 
 void SurfacePan::SetDBCSMode(int codePage)
 {
-//   FMSG("panSetDBCSMode()","CodePage: %d [UNSUPPORTED]", codePage);
+   pf::Log log(__FUNCTION__);
+//   log.trace("CodePage: %d [UNSUPPORTED]", codePage);
 }
 
 /****************************************************************************/

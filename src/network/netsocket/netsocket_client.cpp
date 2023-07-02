@@ -44,7 +44,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       return;
    }
    else {
-      FMSG("client_connect","getsockopt() result %d", result);
+      log.trace("getsockopt() result %d", result);
 
       if (result IS ECONNREFUSED)      Self->Error = ERR_ConnectionRefused;
       else if (result IS ENETUNREACH)  Self->Error = ERR_NetworkUnreachable;
