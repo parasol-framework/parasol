@@ -352,7 +352,7 @@ static ERROR CLIENTSOCKET_ReadClientMsg(extClientSocket *Self, struct csReadClie
             // Check if the queue buffer needs to be extended
 
             if (total_length > queue->Length) {
-               MSG("Extending queue length from %d to %d", queue->Length, total_length);
+               log.trace("Extending queue length from %d to %d", queue->Length, total_length);
                APTR buffer;
                if (!AllocMemory(total_length, MEM::NO_CLEAR, &buffer)) {
                   if (queue->Buffer) {

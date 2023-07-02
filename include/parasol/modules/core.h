@@ -1517,27 +1517,6 @@ __export struct ModHeader ModHeader;
 #define MOD_NAME NULL
 #endif
 
-inline void FMSG(CSTRING, CSTRING, ...) __attribute__((format(printf, 2, 3)));
-inline void MSG(CSTRING, ...) __attribute__((format(printf, 1, 2)));
-
-inline void FMSG(CSTRING Function, CSTRING Message, ...) {
-#ifdef DEBUG
-   va_list arg;
-   va_start(arg, Message);
-   VLogF(VLF::API, header, Message, arg);
-   va_end(arg);
-#endif
-}
-
-inline void MSG(CSTRING Message, ...) {
-#ifdef DEBUG
-   va_list arg;
-   va_start(arg, Message);
-   VLogF(VLF::API, header, Message, arg);
-   va_end(arg);
-#endif
-}
-
 #define ARRAYSIZE(a) (LONG(sizeof(a)/sizeof(a[0])))
 
 namespace pf {
@@ -2001,7 +1980,7 @@ struct ScriptArg { // For use with scExec
       LARGE  Large;
       DOUBLE Double;
    };
-   
+
    ScriptArg(CSTRING pName, OBJECTPTR pValue, ULONG pType = FD_OBJECTPTR) : Name(pName), Type(pType), Address((APTR)pValue) { }
    ScriptArg(CSTRING pName, std::string &pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
    ScriptArg(CSTRING pName, const std::string &pValue, ULONG pType = FD_STRING) : Name(pName), Type(pType), Address((APTR)pValue.data()) { }
