@@ -343,6 +343,18 @@ struct DocClip {
       Clip(pClip), Index(pIndex), Transparent(pTransparent), Name(pName) { }
 };
 
+struct DocEdit {
+   LONG MaxChars;
+   std::string Name;
+   std::string OnEnter;      
+   std::string OnExit;       
+   std::string OnChange;     
+   std::vector<std::pair<std::string, std::string>> Args;
+   bool LineBreaks;
+
+   DocEdit() : MaxChars(-1), OnEnter(0), OnExit(0), OnChange(0), Args(0), LineBreaks(false) { }
+};
+
 struct DocLink {
    union {
       struct escLink *Link;
@@ -724,26 +736,6 @@ class tagroutine {
 public:
    void (*Routine)(extDocument *, objXML *, XMLTag &, objXML::TAGS &, LONG &, IPF);
    TAG Flags;
-};
-
-struct DocEdit {
-   LONG MaxChars;
-   std::string Name;
-   std::string OnEnter;      
-   std::string OnExit;       
-   std::string OnChange;     
-   std::vector<std::pair<std::string, std::string>> Args;
-   bool LineBreaks;
-
-   DocEdit() : MaxChars(-1), OnEnter(0), OnExit(0), OnChange(0), Args(0), LineBreaks(false) { }
-
-   template <class Archive> void serialize(Archive &Arc) {   
-      Arc(MaxChars, OnEnter, OnExit, OnChange, LineBreaks, Args);
-
-      //for (auto& arg : de.Args) {
-      //   os << arg.first << "\0" << arg.second << "\0";
-      //}
-   }
 };
 
 struct process_table {
