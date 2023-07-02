@@ -242,12 +242,19 @@ static ERROR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
    if ((Args->Datatype IS DATA::XML) or (Args->Datatype IS DATA::TEXT)) {
       if (Self->ReadOnly) return log.warning(ERR_ReadOnly);
 
-      TAGS tags;
-      if (auto error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer)) {
-         return log.warning(error);
+      if (Self->Tags.empty()) {
+         if (auto error = txt_to_xml(Self, Self->Tags, (CSTRING)Args->Buffer)) {
+            return log.warning(error);
+         }
       }
+      else {
+         TAGS tags;
+         if (auto error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer)) {
+            return log.warning(error);
+         }
 
-      Self->Tags.insert(Self->Tags.end(), tags.begin(), tags.end());
+         Self->Tags.insert(Self->Tags.end(), tags.begin(), tags.end());
+      }
 
       Self->modified();
    }

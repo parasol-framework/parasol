@@ -109,7 +109,7 @@ typedef struct XMLTag {
 
    inline const std::string * attrib(const std::string &Name) const {
       for (unsigned a=1; a < Attribs.size(); a++) {
-         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Name;
+         if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Value;
       }
       return NULL;
    }
