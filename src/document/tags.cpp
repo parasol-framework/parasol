@@ -1036,7 +1036,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag &Tag, WORD Fl
       }
    }
 
-   DLAYOUT("XML: %d, Tag: %d/%d, Target: %d", XML->UID, Tag.ID, XML->TagCount, target->UID);
+   DLAYOUT("XML: %d, Tag: %d, Target: %d", XML->UID, Tag.ID, target->UID);
 
    if (!target) {
       log.warning("<xml> used without a valid object reference to receive the XML.");      

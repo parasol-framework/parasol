@@ -372,7 +372,7 @@ struct DocLink {
    DocLink() : Escape(NULL), X(0), Y(0), Width(0), Height(0), Segment(0), EscapeCode(0) { }
 };
 
-struct MouseOver {
+struct DocMouseOver {
    std::string Function; // Name of function to call.
    LONG Top, Left, Bottom, Right;
    LONG ElementID;
@@ -626,7 +626,7 @@ class extDocument : public objDocument {
    std::unordered_map<ULONG, std::variant<escAdvance, escTable, escTableEnd, escRow, escRowEnd, escParagraph, 
       escParagraphEnd, escCell, escCellEnd, escLink, escLinkEnd, escList, escListEnd, escIndex, escIndexEnd, 
       escFont, escObject, escSetMargins>> Codes;
-   std::vector<MouseOver> MouseOverChain;
+   std::vector<DocMouseOver> MouseOverChain;
    std::vector<struct docresource> Resources;
    std::vector<std::pair<std::vector<std::string>, std::string>> RestoreAttrib; // If an XML attribute is modified via translation, the original value is stored here for post-restoration.   
    std::vector<Tab> Tabs;
@@ -853,7 +853,7 @@ static void notify_redimension_surface(OBJECTPTR, ACTIONID, ERROR, struct acRedi
 static LONG parse_tag(extDocument *, objXML *, XMLTag &, LONG &, IPF &);
 static LONG parse_tags(extDocument *, objXML *, objXML::TAGS &, LONG &, IPF = IPF::NIL);
 #ifdef _DEBUG
-static void   print_xmltree(XMLTag *, LONG *) __attribute__ ((unused));
+static void print_xmltree(objXML::TAGS &, LONG &) __attribute__ ((unused));
 #endif
 #ifdef DBG_LINES
 static void print_sorted_lines(extDocument *) __attribute__ ((unused));

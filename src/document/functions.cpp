@@ -35,24 +35,24 @@ static const char glDefaultStyles[] =
 <template name=\"h5\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"12\" colour=\"0,0,0\"><inject/></font></p></template>\n\
 <template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\" colour=\"0,0,0\"><inject/></font></p></template>\n";
 
-#if defined(DEBUG) || defined(DBG_LAYOUT)
+#if defined(_DEBUG) || defined(DBG_LAYOUT)
 static char glPrintable[80];
 
-static STRING printable(CSTRING String, LONG Length) __attribute__ ((unused));
+static STRING printable(extDocument *Self, LONG Offset, LONG Length) __attribute__ ((unused));
 
-static STRING printable(CSTRING String, LONG Length)
+static STRING printable(extDocument *Self, LONG Offset, LONG Length)
 {
    LONG i = 0, j = 0;
-   while ((String[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable)-1)) {
-      if (String[i] IS CTRL_CODE) {
+   while ((Self->Stream[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable)-1)) {
+      if (Self->Stream[i] IS CTRL_CODE) {
          glPrintable[j++] = '%';
          i += ESCAPE_LEN;
       }
-      else if (String[i] < 0x20) {
+      else if (Self->Stream[i] < 0x20) {
          glPrintable[j++] = '?';
          i++;
       }
-      else glPrintable[j++] = String[i++];
+      else glPrintable[j++] = Self->Stream[i++];
    }
    glPrintable[j] = 0;
    return glPrintable;
@@ -60,67 +60,43 @@ static STRING printable(CSTRING String, LONG Length)
 
 static char glPrintable2[80];
 
-static STRING printable2(CSTRING String, LONG Length) __attribute__ ((unused));
+static STRING printable2(extDocument *Self, LONG Length) __attribute__ ((unused));
 
-static STRING printable2(CSTRING String, LONG Length)
+static STRING printable2(extDocument *Self, LONG Length)
 {
    LONG i = 0, j = 0;
-   while ((String[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable2)-1)) {
-      if (String[i] IS CTRL_CODE) {
+   while ((Self->Stream[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable2)-1)) {
+      if (Self->Stream[i] IS CTRL_CODE) {
          glPrintable2[j++] = '%';
          i += ESCAPE_LEN;
       }
-      else if (String[i] < 0x20) {
+      else if (Self->Stream[i] < 0x20) {
          glPrintable[j++] = '?';
          i++;
       }
-      else glPrintable2[j++] = String[i++];
+      else glPrintable2[j++] = Self->Stream[i++];
    }
    glPrintable2[j] = 0;
    return glPrintable2;
 }
 
-static void print_xmltree(XMLTag *Tag, LONG *Indent)
+static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
 {
    pf::Log log(__FUNCTION__);
-   XMLTag *child;
-   LONG i, j;
-   char buffer[1000];
+   std::ostringstream buffer;
 
-   if (!Indent) {
-      i = 0;
-      while (Tag) {
-         print_xmltree(Tag, &i);
-         Tag=Tag->Next;
-      }
-      return;
+   for (auto &tag : Tags) {
+      for (LONG i=0; i < Indent; i++) buffer << ' ';
+
+      if (!tag.isContent()) buffer << tag.Attribs[0].Name;      
+      else buffer << '[' << tag.Attribs[0].Value << ']';      
+
+      log.msg("%s", buffer.str().c_str());
+
+      Indent++;
+      print_xmltree(tag.Children, Indent);
+      Indent--;
    }
-
-   if (!Tag->Attrib) {
-      log.warning("Error - no Attrib in tag %d", Tag->Index);
-      return;
-   }
-
-   for (i=0; i < *Indent; i++) buffer[i] = ' ';
-
-   if (Tag->Attrib->Name) {
-      for (j=0; Tag->Attrib->Name[j]; j++) buffer[i++] = Tag->Attrib->Name[j];
-   }
-   else {
-      // Extract up to 20 characters of content
-      buffer[i++] = '[';
-      for (j=0; (Tag->Attrib->Value[j]) and (j < 20); j++) buffer[i++] = Tag->Attrib->Value[j];
-      buffer[i++] = ']';
-   }
-   buffer[i] = 0;
-
-   log.msg("%s", buffer);
-
-   Indent[0]++;
-   for (child=Tag->Child; child; child=child->Next) {
-      print_xmltree(child, Indent);
-   }
-   Indent[0]--;
 }
 #endif
 
@@ -1752,7 +1728,7 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
       if (Self->Clips[clip].Clip.Left < l->alignwidth) l->alignwidth = Self->Clips[clip].Clip.Left;
 
       WRAP("check_clips:","Word: \"%.20s\" (%dx%d,%dx%d) advances over clip %d-%d",
-         printable(Self->Stream+ObjectIndex, 60), *GraphicX, *GraphicY, GraphicWidth, GraphicHeight,
+         printable(Self, ObjectIndex, 60), *GraphicX, *GraphicY, GraphicWidth, GraphicHeight,
          Self->Clips[clip].Clip.Left, Self->Clips[clip].Clip.Right);
 
       // Set the line segment up to the encountered boundary and continue checking the object position against the
@@ -1837,7 +1813,7 @@ struct LAYOUT_STATE {
 
    void restore(extDocument *pSelf) {
       pf::Log log(__FUNCTION__);
-      DLAYOUT("Restoring earlier layout state to index %d", State->Index);
+      DLAYOUT("Restoring earlier layout state to index %d", Index);
       pSelf->Clips.resize(TotalClips);
       pSelf->Links.resize(TotalLinks);
       pSelf->Segments.resize(SegCount);
@@ -2005,7 +1981,7 @@ extend_page:
             }
 
             if (breaksegment) {
-               DLAYOUT("Setting line at escape '%s', index %d, line_x: %d, wordwidth: %d", strCodes[(UBYTE)ESCAPE_CODE(Self->Stream,i)], l.line_index, l.line_x, l.wordwidth);
+               DLAYOUT("Setting line at escape '%s', index %d, line_x: %d, wordwidth: %d", strCodes[(UBYTE)ESCAPE_CODE(Self->Stream,i)].c_str(), l.line_index, l.line_x, l.wordwidth);
                   l.cursorx += l.wordwidth;
                   add_drawsegment(Self, l.line_index, i, &l, l.cursory, l.cursorx - l.line_x, l.alignwidth - l.line_x, "Esc:Object");
                   RESET_SEGMENT_WORD(i, l.cursorx, &l);
@@ -3003,7 +2979,7 @@ wrap_table_cell:
                esctable->TotalClips = Self->Clips.size();
                esctable->Height     = esctable->Thickness;
 
-               DLAYOUT("(i%d) Laying out table of %dx%d, coords %dx%d,%dx%d%s, page width %d.", i, esctable->Columns.size(), esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", *Width);
+               DLAYOUT("(i%d) Laying out table of %dx%d, coords %dx%d,%dx%d%s, page width %d.", i, LONG(esctable->Columns.size()), esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", *Width);
                // NB: LOGRETURN() is matched in ESC_TABLE_END
 
                if (esctable->ComputeColumns) {
@@ -5287,7 +5263,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
    }
 
    if (Offset >= Stop) {
-      DLAYOUT("Cancelling addition, no content in line to add (bytes %d-%d) \"%.20s\" (%s)", Offset, Stop, printable(Self->Stream+Offset, 60), Debug);
+      DLAYOUT("Cancelling addition, no content in line to add (bytes %d-%d) \"%.20s\" (%s)", Offset, Stop, printable(Self, Offset, 60), Debug.c_str());
       return;
    }
 
@@ -5334,7 +5310,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 #ifdef DBG_STREAM
    DLAYOUT("#%d, Bytes: %d-%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %d, [%.20s]...[%.20s] (%s)",
       Self->SegCount, Offset, Stop, Layout->line_x, Y, Width, AlignWidth, Height, Layout->wordwidth,
-      Layout->cursory, printable(Self->Stream + Offset, Stop-Offset), printable2(Self->Stream+Stop, 60), Debug);
+      Layout->cursory, printable(Self, Offset, Stop-Offset), printable2(Self, Stop, 60), Debug);
 #endif
 
    DocSegment segment;
@@ -5354,7 +5330,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
          return;
       }
       else {
-         DLAYOUT("New segment #%d start index is less than (%d < %d) the end of previous segment - will patch up.", Self->Segments.back().Index, Offset, Self->Segments[segment-1].Stop);
+         DLAYOUT("New segment #%d start index is less than (%d < %d) the end of previous segment - will patch up.", Self->Segments.back().Index, Offset, Self->Segments.back().Stop);
          Self->Segments.back().Stop = Offset;
       }
    }
@@ -5415,7 +5391,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 
    if ((Layout->split_start != NOTSPLIT) and (Height)) {
       if (LONG(Self->Segments.size()) != Layout->split_start) {
-         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.  Array: %p", Height, BaseLine, segment, Layout->split_start, Self->Segments);
+         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", Height, BaseLine, segment.Index, Layout->split_start);
          for (unsigned i=Layout->split_start; i < Self->Segments.size(); i++) {
             if (Self->Segments[i].Depth != Self->Depth) continue;
             Self->Segments[i].Height = Height;
