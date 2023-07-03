@@ -35,50 +35,31 @@ static const char glDefaultStyles[] =
 <template name=\"h5\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"12\" colour=\"0,0,0\"><inject/></font></p></template>\n\
 <template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\" colour=\"0,0,0\"><inject/></font></p></template>\n";
 
-#if defined(_DEBUG) || defined(DBG_LAYOUT)
-static char glPrintable[80];
+//********************************************************************************************************************
 
-static STRING printable(extDocument *Self, LONG Offset, LONG Length) __attribute__ ((unused));
+static std::string printable(extDocument *, LONG, LONG = 60) __attribute__ ((unused));
 
-static STRING printable(extDocument *Self, LONG Offset, LONG Length)
+static std::string printable(extDocument *Self, LONG Offset, LONG Length)
 {
-   LONG i = 0, j = 0;
-   while ((Self->Stream[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable)-1)) {
+   std::string result;
+   result.reserve(80);
+   unsigned i = Offset, j = 0;
+   while ((i < Self->Stream.size()) and (i < Offset+Length) and (j < result.capacity())) {
       if (Self->Stream[i] IS CTRL_CODE) {
-         glPrintable[j++] = '%';
+         result[j++] = '%';
          i += ESCAPE_LEN;
       }
       else if (Self->Stream[i] < 0x20) {
-         glPrintable[j++] = '?';
+         result[j++] = '?';
          i++;
       }
-      else glPrintable[j++] = Self->Stream[i++];
+      else result[j++] = Self->Stream[i++];
    }
-   glPrintable[j] = 0;
-   return glPrintable;
+   result.resize(j);
+   return result;
 }
 
-static char glPrintable2[80];
-
-static STRING printable2(extDocument *Self, LONG Length) __attribute__ ((unused));
-
-static STRING printable2(extDocument *Self, LONG Length)
-{
-   LONG i = 0, j = 0;
-   while ((Self->Stream[i]) and (i < Length) and (j < ARRAYSIZE(glPrintable2)-1)) {
-      if (Self->Stream[i] IS CTRL_CODE) {
-         glPrintable2[j++] = '%';
-         i += ESCAPE_LEN;
-      }
-      else if (Self->Stream[i] < 0x20) {
-         glPrintable[j++] = '?';
-         i++;
-      }
-      else glPrintable2[j++] = Self->Stream[i++];
-   }
-   glPrintable2[j] = 0;
-   return glPrintable2;
-}
+//********************************************************************************************************************
 
 static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
 {
@@ -98,7 +79,8 @@ static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
       Indent--;
    }
 }
-#endif
+
+//********************************************************************************************************************
 
 #ifdef DBG_STREAM
 
@@ -1728,7 +1710,7 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
       if (Self->Clips[clip].Clip.Left < l->alignwidth) l->alignwidth = Self->Clips[clip].Clip.Left;
 
       WRAP("check_clips:","Word: \"%.20s\" (%dx%d,%dx%d) advances over clip %d-%d",
-         printable(Self, ObjectIndex, 60), *GraphicX, *GraphicY, GraphicWidth, GraphicHeight,
+         printable(Self, ObjectIndex).c_str(), *GraphicX, *GraphicY, GraphicWidth, GraphicHeight,
          Self->Clips[clip].Clip.Left, Self->Clips[clip].Clip.Right);
 
       // Set the line segment up to the encountered boundary and continue checking the object position against the
@@ -3766,16 +3748,17 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
 
       return;
    }
-
+   
    auto font = lookup_font(0, "draw_document");
+
    if (!font) {
       log.traceWarning("No default font defined.");
       return;
    }
 
    #ifdef _DEBUG
-   if ((!Self->Stream[0]) or (!Self->SegCount)) {
-      //log.traceWarning("No content in stream or no segments.");
+   if (Self->Stream.empty()) {
+      log.traceWarning("No content in stream or no segments.");
       return;
    }
    #endif
@@ -5263,7 +5246,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
    }
 
    if (Offset >= Stop) {
-      DLAYOUT("Cancelling addition, no content in line to add (bytes %d-%d) \"%.20s\" (%s)", Offset, Stop, printable(Self, Offset, 60), Debug.c_str());
+      DLAYOUT("Cancelling addition, no content in line to add (bytes %d-%d) \"%.20s\" (%s)", Offset, Stop, printable(Self, Offset).c_str(), Debug.c_str());
       return;
    }
 
@@ -5310,7 +5293,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
 #ifdef DBG_STREAM
    DLAYOUT("#%d, Bytes: %d-%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %d, [%.20s]...[%.20s] (%s)",
       Self->SegCount, Offset, Stop, Layout->line_x, Y, Width, AlignWidth, Height, Layout->wordwidth,
-      Layout->cursory, printable(Self, Offset, Stop-Offset), printable2(Self, Stop, 60), Debug);
+      Layout->cursory, printable(Self, Offset, Stop-Offset).c_str(), printable(Self, Stop).c_str(), Debug);
 #endif
 
    DocSegment segment;
@@ -5359,7 +5342,7 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
    // heights.  If so, this is considered an internal programming error.
 
    if ((Layout->split_start != NOTSPLIT) and (Height > 0)) {
-      for (i=Layout->split_start; i < segment; i++) {
+      for (i=Layout->split_start; i < Offset; i++) {
          if (Self->Segments[i].Depth != Self->Depth) continue;
          if (Self->Segments[i].Height > Height) {
             log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, Self->Segments[i].Height, Height);

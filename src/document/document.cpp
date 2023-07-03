@@ -110,7 +110,7 @@ thickness, or text inside the cell will mix with the border.
 
 *********************************************************************************************************************/
 
-//#define DEBUG
+//#define _DEBUG
 //#define DBG_LAYOUT
 //#define DBG_LAYOUT_ESCAPE // Do not use unless you want a lot of detail
 //#define DBG_WORDWRAP
