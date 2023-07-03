@@ -234,12 +234,13 @@ public:
 //********************************************************************************************************************
 
 struct ActionSubscription {
-   OBJECTPTR Context;
+   OBJECTPTR Subscriber; // The object that initiated the subscription
+   OBJECTID SubscriberID; // Required for sanity checks on subscriber still existing.
    void (*Callback)(OBJECTPTR, ACTIONID, ERROR, APTR);
 
-   ActionSubscription() : Context(NULL), Callback(NULL) { }
-   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR)) : Context(pContext), Callback(pCallback) { }
-   ActionSubscription(OBJECTPTR pContext, APTR pCallback) : Context(pContext), Callback((void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))pCallback) { }
+   ActionSubscription() : Subscriber(NULL), SubscriberID(0), Callback(NULL) { }
+   ActionSubscription(OBJECTPTR pContext, void (*pCallback)(OBJECTPTR, ACTIONID, ERROR, APTR)) : Subscriber(pContext), SubscriberID(pContext->UID), Callback(pCallback) { }
+   ActionSubscription(OBJECTPTR pContext, APTR pCallback) : Subscriber(pContext), SubscriberID(pContext->UID), Callback((void (*)(OBJECTPTR, ACTIONID, ERROR, APTR))pCallback) { }
 };
 
 struct virtual_drive {
