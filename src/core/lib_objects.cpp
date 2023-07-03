@@ -436,10 +436,12 @@ ERROR Action(LONG ActionID, OBJECTPTR Object, APTR Parameters)
 
       glSubReadOnly++;
 
-      if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(ActionID))) {
-         for (auto &list : glSubscriptions[Object->UID][ActionID]) {
-            pf::SwitchContext ctx(list.Context);
-            list.Callback(Object, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
+      if (auto it = glSubscriptions.find(Object->UID); it != glSubscriptions.end()) {
+         if (it->second.contains(ActionID)) {
+            for (auto &list : it->second[ActionID]) {
+               pf::SwitchContext ctx(list.Subscriber);
+               list.Callback(Object, ActionID, (error IS ERR_NoAction) ? ERR_Okay : error, Parameters);
+            }
          }
       }
 
@@ -1413,8 +1415,8 @@ void NotifySubscribers(OBJECTPTR Object, LONG ActionID, APTR Parameters, ERROR E
    if ((!glSubscriptions[Object->UID].empty()) and (!glSubscriptions[Object->UID][ActionID].empty())) {
       glSubReadOnly++; // Prevents changes to glSubscriptions while we're processing it.
       for (auto &sub : glSubscriptions[Object->UID][ActionID]) {
-         if (sub.Context) {
-            pf::SwitchContext ctx(sub.Context);
+         if (sub.Subscriber) {
+            pf::SwitchContext ctx(sub.Subscriber);
             sub.Callback(Object, ActionID, ErrorCode, Parameters);
          }
       }
@@ -1918,7 +1920,7 @@ ERROR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 restart:
          for (auto & [action, list] : glSubscriptions[Object->UID]) {
             for (auto it = list.begin(); it != list.end(); ) {
-               if (it->Context->UID IS subscriber) it = list.erase(it);
+               if (it->SubscriberID IS subscriber) it = list.erase(it);
                else it++;
             }
 
@@ -1942,7 +1944,7 @@ restart:
 
       auto &list = glSubscriptions[Object->UID][ActionID];
       for (auto it = list.begin(); it != list.end(); ) {
-         if (it->Context->UID IS subscriber) it = list.erase(it);
+         if (it->SubscriberID IS subscriber) it = list.erase(it);
          else it++;
       }
 
