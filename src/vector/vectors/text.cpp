@@ -428,7 +428,7 @@ static ERROR TEXT_SET_CharLimit(extVectorText *Self, LONG Value)
 -FIELD-
 CursorColumn: The current column position of the cursor.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_CursorColumn(extVectorText *Self, LONG *Value)
 {
@@ -445,11 +445,11 @@ static ERROR TEXT_SET_CursorColumn(extVectorText *Self, LONG Value)
    else return ERR_InvalidValue;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 CursorRow: The current line position of the cursor.
 
-****************************************************************************/
+*********************************************************************************************************************/
 
 static ERROR TEXT_GET_CursorRow(extVectorText *Self, LONG *Value)
 {
@@ -776,7 +776,7 @@ static ERROR TEXT_GET_SelectColumn(extVectorText *Self, LONG *Value)
    return ERR_Okay;
 }
 
-/****************************************************************************
+/*********************************************************************************************************************
 -FIELD-
 SelectRow: Indicates the line position of a selection's beginning.
 
@@ -1377,7 +1377,7 @@ static void generate_text(extVectorText *Vector)
 
             str += char_len;
 
-            LONG glyph = EFT_Get_Char_Index(ftface, unicode);
+            auto glyph = EFT_Get_Char_Index(ftface, unicode);
 
             if (!EFT_Load_Glyph(ftface, glyph, FT_LOAD_LINEAR_DESIGN)) {
                char_path.free_all();
@@ -1387,7 +1387,6 @@ static void generate_text(extVectorText *Vector)
                   if (kx) dx += kx * downscale;
 
                   DOUBLE char_width = int26p6_to_dbl(ftface->glyph->advance.x);
-
                   char_width = char_width * std::abs(transform.sx);
                   //char_width = char_width * transform.scale();
 

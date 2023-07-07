@@ -23,11 +23,33 @@ Background: Optional background colour for the document.
 
 Set the Background field to clear the document background to the colour specified.
 
--FIELD-
-Border: Border colour around the document's surface.
+*********************************************************************************************************************/
 
-This field enables the drawing of a 1-pixel border around the document's surface.  The edges that are drawn are
-controlled by the #BorderEdge field.
+static ERROR SET_Background(extDocument *Self, CSTRING Value)
+{
+   if (Self->Background) { FreeResource(Self->Background); Self->Background = NULL; }
+   if ((Value) and (*Value)) Self->Background = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+ 
+-FIELD-
+BorderStroke: The stroke to use for drawing a border around the document window.
+
+This field enables the drawing of a stroke along the border of the document window.
+The edges are controlled by the #BorderEdge field.
+
+*********************************************************************************************************************/
+
+static ERROR SET_BorderStroke(extDocument *Self, CSTRING Value)
+{
+   if (Self->BorderStroke) { FreeResource(Self->BorderStroke); Self->BorderStroke = NULL; }
+   if ((Value) and (*Value)) Self->BorderStroke = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 BorderEdge: Border edge flags.
@@ -62,10 +84,21 @@ static ERROR SET_Copyright(extDocument *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-CursorColour: The colour used for the document cursor.
+CursorStroke: The colour used for the document cursor.
 
 The colour used for the document cursor may be changed by setting this field.  This is relevant only when a document is
 in edit mode.
+
+*********************************************************************************************************************/
+
+static ERROR SET_CursorStroke(extDocument *Self, CSTRING Value)
+{
+   if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke = NULL; }
+   if ((Value) and (*Value)) Self->CursorStroke = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 DefaultScript: Allows an external script object to be used by a document file.
@@ -171,9 +204,20 @@ receives the focus.  If you would like to change this so that a document becomes
 the focus, refer to that object by writing its ID to this field.
 
 -FIELD-
-FontColour: Default font colour.
+FontFill: Default font colour.
 
 This field defines the default font colour if the source document does not specify one.
+
+*********************************************************************************************************************/
+
+static ERROR SET_FontFill(extDocument *Self, CSTRING Value)
+{
+   if (Self->FontFill) { FreeResource(Self->FontFill); Self->FontFill = NULL; }
+   if ((Value) and (*Value)) Self->FontFill = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 FontFace: Defines the default font face.
@@ -227,9 +271,20 @@ static ERROR SET_FontSize(extDocument *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Highlight: Defines the colour used to highlight document.
+Highlight: Defines the fill used to highlight the document.
 
 The Highlight field determines the colour that is used when highlighting selected document areas.
+
+*********************************************************************************************************************/
+
+static ERROR SET_Highlight(extDocument *Self, CSTRING Value)
+{
+   if (Self->Highlight) { FreeResource(Self->Highlight); Self->Highlight = NULL; }
+   if ((Value) and (*Value)) Self->Highlight = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Keywords: Includes keywords declared by the source document.
@@ -264,9 +319,20 @@ This value can be set as a fixed pixel coordinate only.
 LineHeight: Default line height (taken as an average) for all text on the page.
 
 -FIELD-
-LinkColour: Default font colour for hyperlinks.
+LinkFill: Default font colour for hyperlinks.
 
 The default font colour for hyperlinks is defined here.  If the alpha component is zero, this feature is disabled.
+
+*********************************************************************************************************************/
+
+static ERROR SET_LinkFill(extDocument *Self, CSTRING Value)
+{
+   if (Self->LinkFill) { FreeResource(Self->LinkFill); Self->LinkFill = NULL; }
+   if ((Value) and (*Value)) Self->LinkFill = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Path: Identifies the location of a document file to load.
@@ -387,7 +453,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          }
          else {
             load_doc(Self, Self->Path, false, 0);
-            QueueAction(MT_DrwInvalidateRegion, Self->SurfaceID);
+            Self->Viewport->draw();
          }
       }
       recursion--;
@@ -400,7 +466,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          Self->Bookmark.clear(); 
          if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
 
-         QueueAction(MT_DrwInvalidateRegion, Self->SurfaceID);
+         Self->Viewport->draw();
       }
    }
    else Self->Error = ERR_AllocMemory;
@@ -504,27 +570,39 @@ value during processing.
 This value can be set as a fixed pixel coordinate only.
 
 -FIELD-
-SelectColour: Default font colour to use when hyperlinks are selected.
+LinkSelectFill: Default font fill to use when hyperlinks are selected.
 
-This field defines the font colour for hyperlinks that are selected - for instance, when the user tabs to a link or
+This field defines the font fill for hyperlinks that are selected - for instance, when the user tabs to a link or
 hovers over it.  If the alpha component is zero, this field has no effect.
-
--FIELD-
-Surface: Defines the surface area for document graphics.
-
-The Surface field refers to the object ID of the surface that will contain the document graphics.  This field must be
-set prior to initialisation to target the graphics correctly - if left unset then the document object will attempt to
-determine the correct surface object based on object ownership.
 
 *********************************************************************************************************************/
 
-static ERROR SET_Surface(extDocument *Self, OBJECTID Value)
+static ERROR SET_LinkSelectFill(extDocument *Self, CSTRING Value)
 {
+   if (Self->LinkSelectFill) { FreeResource(Self->LinkSelectFill); Self->LinkSelectFill = NULL; }
+   if ((Value) and (*Value)) Self->LinkSelectFill = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Viewport: A target viewport that will host the document graphics.
+
+The Viewport field must refer to a @VectorViewport that will host the document graphics.  If not initialised,
+the nearest viewport container will be determined based on object ownership.
+
+*********************************************************************************************************************/
+
+static ERROR SET_Viewport(extDocument *Self, objVectorViewport *Value)
+{
+   if (Value->CLASS_ID != ID_VECTORVIEWPORT) return ERR_InvalidObject;
+
    if (Self->initialised()) {
-      if (Self->SurfaceID IS Value) return ERR_Okay;
+      if (Self->Viewport IS Value) return ERR_Okay;
       return ERR_NoSupport;
    }
-   else Self->SurfaceID = Value;
+   else Self->Viewport = Value;
 
    return ERR_Okay;
 }
@@ -584,10 +662,21 @@ static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-VLinkColour: Default font colour for visited hyperlinks.
+VLinkFill: Default font fill for visited hyperlinks.
 
-The default font colour for visited hyperlinks is stored in this field.  The source document can specify its own
+The default font fill for visited hyperlinks is stored in this field.  The source document can specify its own
 colour for visited links if the author desires.
+
+*********************************************************************************************************************/
+
+static ERROR SET_VLinkFill(extDocument *Self, CSTRING Value)
+{
+   if (Self->VLinkFill) { FreeResource(Self->VLinkFill); Self->VLinkFill = NULL; }
+   if ((Value) and (*Value)) Self->VLinkFill = StrClone(Value);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 WorkingPath: Defines the working path (folder or URI).

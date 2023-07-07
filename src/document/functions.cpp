@@ -18,7 +18,7 @@ struct DocClass {
       ClassName(pName), ClassID(pClassID), PageTarget(pTarget), Fields(pFields) { }
 };
 
-static const DocClass glDocClasses[] = {
+static std::vector <DocClass> glDocClasses = {
    { "vector",     ID_VECTOR,    "surface", "" },
    { "document",   ID_DOCUMENT,  "surface", "" },
    { "scintilla",  ID_SCINTILLA, "", "" },
@@ -37,9 +37,9 @@ static const char glDefaultStyles[] =
 
 //********************************************************************************************************************
 
-static std::string printable(extDocument *, LONG, LONG = 60) __attribute__ ((unused));
+static std::string printable(extDocument *, ULONG, ULONG = 60) __attribute__ ((unused));
 
-static std::string printable(extDocument *Self, LONG Offset, LONG Length)
+static std::string printable(extDocument *Self, ULONG Offset, ULONG Length)
 {
    std::string result;
    result.reserve(80);
@@ -105,7 +105,7 @@ static void print_stream(extDocument *Self, STRING Stream)
       if (str[i] IS CTRL_CODE) {
          code = ESCAPE_CODE(str, i);
          fprintf(stderr, "(%d)", i);
-         if (code IS ESC_FONT) {
+         if (code IS ESC::FONT) {
             style = escape_data<escFont>(str, i);
             fprintf(stderr, "[E:Font:%d", style->Index);
             if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) fprintf(stderr, ":A/R");
@@ -114,16 +114,16 @@ static void print_stream(extDocument *Self, STRING Stream)
             fprintf(stderr, ":#%.2x%.2x%.2x%.2x", style->Colour.Red, style->Colour.Green, style->Colour.Blue, style->Colour.Alpha);
             fprintf(stderr, "]");
          }
-         else if (code IS ESC_PARAGRAPH_START) {
+         else if (code IS ESC::PARAGRAPH_START) {
             auto para = escape_data<escParagraph>(str, i);
             if (para->ListItem) fprintf(stderr, "[E:LI]");
             else fprintf(stderr, "[E:PS]");
          }
-         else if (code IS ESC_PARAGRAPH_END) {
+         else if (code IS ESC::PARAGRAPH_END) {
             fprintf(stderr, "[E:PE]\n");
          }
 /*
-         else if (ESCAPE_CODE(str, i) IS ESC_LIST_ITEM) {
+         else if (ESCAPE_CODE(str, i) IS ESC::LIST_ITEM) {
             auto item = escape_data<escItem>(str, i);
             fprintf(stderr, "[I:X(%d):Width(%d):Custom(%d)]", item->X, item->Width, item->CustomWidth);
          }
@@ -172,20 +172,20 @@ static void print_lines(extDocument *Self)
       fprintf(stderr, "\"");
       while (i < line->Stop) {
          if (str[i] IS CTRL_CODE) {
-            if (ESCAPE_CODE(str, i) IS ESC_FONT) {
+            if (ESCAPE_CODE(str, i) IS ESC::FONT) {
                auto style = escape_data<escFont>(str, i);
                fprintf(stderr, "[E:Font:%d:$%.2x%.2x%.2x", style->Index, style->Colour.Red, style->Colour.Green, style->Colour.Blue);
                fprintf(stderr, "]");
             }
-            else if (ESCAPE_CODE(str, i) IS ESC_PARAGRAPH_START) {
+            else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_START) {
                para = escape_data<escParagraph>(str, i);
                if (para->ListItem) fprintf(stderr, "[E:LI]");
                else fprintf(stderr, "[E:PS]");
             }
-            else if (ESCAPE_CODE(str, i) IS ESC_PARAGRAPH_END) {
+            else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_END) {
                fprintf(stderr, "[E:PE]\n");
             }
-            else if (ESCAPE_CODE(str, i) IS ESC_OBJECT) {
+            else if (ESCAPE_CODE(str, i) IS ESC::OBJECT) {
                auto obj = escape_data<escObject>(str, i);
                fprintf(stderr, "[E:OBJ:%d]", obj->ObjectID);
             }
@@ -220,20 +220,20 @@ static void print_sorted_lines(extDocument *Self)
       LONG i = line->Index;
       while (i < line->Stop) {
          if (str[i] IS CTRL_CODE) {
-            if (ESCAPE_CODE(str, i) IS ESC_FONT) {
+            if (ESCAPE_CODE(str, i) IS ESC::FONT) {
                auto style = escape_data<escFont>(str, i);
                fprintf(stderr, "[E:Font:%d:$%.2x%.2x%.2x", style->Index, style->Colour.Red, style->Colour.Green, style->Colour.Blue);
                fprintf(stderr, "]");
             }
-            else if (ESCAPE_CODE(str, i) IS ESC_PARAGRAPH_START) {
+            else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_START) {
                para = escape_data<escParagraph>(str, i);
                if (para->ListItem) fprintf(stderr, "[E:LI]");
                else fprintf(stderr, "[E:PS]");
             }
-            else if (ESCAPE_CODE(str, i) IS ESC_PARAGRAPH_END) {
+            else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_END) {
                fprintf(stderr, "[E:PE]\n");
             }
-            else if (ESCAPE_CODE(str, i) IS ESC_OBJECT) {
+            else if (ESCAPE_CODE(str, i) IS ESC::OBJECT) {
                obj = escape_data<escObject>(str, i);
                fprintf(stderr, "[E:OBJ:%d]", obj->ObjectID);
             }
@@ -852,7 +852,7 @@ static ERROR consume_input_events(const InputEvent *Events, LONG Handle)
             input = scan;
          }
 
-         if (input->OverID IS Self->PageID) Self->MouseOver = true;
+         if (input->OverID IS Self->Page->UID) Self->MouseOver = true;
          else Self->MouseOver = false;
 
          check_mouse_pos(Self, input->X, input->Y);
@@ -969,7 +969,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, LONG 
          auto i   = TargetIndex;
          PREV_CHAR(str, i);
          while (i > 0) {
-            if ((str[i] IS CTRL_CODE) and (ESCAPE_CODE(str, i) IS ESC_FONT)) {
+            if ((str[i] IS CTRL_CODE) and (ESCAPE_CODE(str, i) IS ESC::FONT)) {
                Self->Style.FontStyle = escape_data<escFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
                break;
@@ -987,7 +987,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, LONG 
             }
          }
 
-         Self->Style.FontStyle.Colour = Self->FontColour;
+         Self->Style.FontStyle.Fill = Self->FontFill;
          Self->Style.FontChange = true;
       }
 
@@ -1057,7 +1057,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
          auto i   = TargetIndex;
          PREV_CHAR(str, i);
          while (i > 0) {
-            if ((str[i] IS CTRL_CODE) and (ESCAPE_CODE(str, i) IS ESC_FONT)) {
+            if ((str[i] IS CTRL_CODE) and (ESCAPE_CODE(str, i) IS ESC::FONT)) {
                Self->Style.FontStyle = escape_data<escFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
                break;
@@ -1075,7 +1075,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
             }
          }
 
-         Self->Style.FontStyle.Colour = Self->FontColour;
+         Self->Style.FontStyle.Fill = Self->FontFill;
          Self->Style.FontChange = true;
       }
 
@@ -1145,16 +1145,15 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
 
          std::string pagetarget;
          CLASSID class_id = 0;
-         unsigned i;
-         for (i=0; i < ARRAYSIZE(glDocClasses); i++) {
-            if (!StrMatch(tagname, glDocClasses[i].ClassName)) {
-               pagetarget = glDocClasses[i].PageTarget;
-               class_id = glDocClasses[i].ClassID;
+         for (auto &record : glDocClasses) {
+            if (!StrMatch(tagname, record.ClassName)) {
+               pagetarget = record.PageTarget;
+               class_id = record.ClassID;
                break;
             }
          }
 
-         if ((i >= ARRAYSIZE(glDocClasses)) and ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL)) {
+         if ((class_id) and ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL)) {
             class_id = ResolveClassName(tagname.c_str());
          }
 
@@ -1412,7 +1411,7 @@ static ERROR insert_text(extDocument *Self, LONG &Index, const std::string &Text
       std::string new_text;
       new_text.reserve(Text.size());
       for (unsigned i=0; i < Text.size(); ) {
-         if (Text[i] <= 0x20) { // Whitespace eliminator, also handles any unwanted presence of ESC_CODE which is < 0x20
+         if (Text[i] <= 0x20) { // Whitespace eliminator, also handles any unwanted presence of ESC::CODE which is < 0x20
             while ((Text[i] <= 0x20) and (i < Text.size())) i++;
             if (!Self->NoWhitespace) new_text += ' ';
             Self->NoWhitespace = true;
@@ -1430,68 +1429,31 @@ static ERROR insert_text(extDocument *Self, LONG &Index, const std::string &Text
 }
 
 //********************************************************************************************************************
-// Inserts an escape sequence into the text stream.
-//
-//
-// [0x1b][Code][0xNNNNNNNN][0x1b]
+// Inserts an escape sequence into the text stream.  [0x1b][Code][0xNNNNNNNN][0x1b]
 
-template <class T> ERROR extDocument::insertEscape(LONG &Index, T &Code)
+template <class T> void extDocument::insertEscape(LONG &Index, T &Code)
 {
    // All escape codes are saved to a global container.
-   //auto record = std::make_pair(ULONG(Code.ID), dynamic_cast<EscapeCode &>(Code));
-   //Codes.insert(ULONG(Code.ID), Code);
    Codes[Code.ID] = Code;
 
+   if (Index IS LONG(Stream.size())) {
+      Stream.resize(Stream.size() + ESCAPE_LEN);
 
-   return ERR_Okay;
-}
-/*
-static ERROR insert_escape(extDocument *Self, LONG &Index, WORD EscapeCode, APTR Data, LONG Length)
-{
-   pf::Log log(__FUNCTION__);
-
-#ifdef DBG_STREAM
-   log.trace("Index: %d, Code: %s (%d), Length: %d", Index, strCodes[EscapeCode], EscapeCode, Length);
-#else
-   //log.trace("Index: %d, Code: %d, Length: %d", Index, EscapeCode, Length);
-#endif
-
-   if (Length > 0xffff - ESC_LEN) {
-      log.warning("Escape code length of %d exceeds %d bytes.", Length, 0xffff - ESC_LEN);
-      return ERR_BufferOverflow;
+      Stream[Index++] = CTRL_CODE;
+      Stream[Index++] = char(Code.Code);
+      Stream[Index++] = Code.IDArray[0];
+      Stream[Index++] = Code.IDArray[1];
+      Stream[Index++] = Code.IDArray[2];
+      Stream[Index++] = Code.IDArray[3];
+      Stream[Index++] = CTRL_CODE;
    }
-
-   auto &stream = Self->Stream;
-   LONG element_id = ++Self->ElementCounter;
-   LONG size = Self->Stream.size() + Length + ESC_LEN + 1;
-   LONG total_length = Length + ESC_LEN;
-
-      if (Self->Stream[Index]) {
-         CopyMemory(Self->Stream + Index,
-            Self->Stream + Index + Length + ESC_LEN,
-            Self->Stream.size() - Index);
-      }
-
-      stream = Self->Stream;
-      LONG pos = Index;
-      stream[pos++] = CTRL_CODE;
-      stream[pos++] = EscapeCode;
-      stream[pos++] = total_length>>8;
-      stream[pos++] = total_length & 0xff;
-      ((LONG *)(stream + pos))[0] = element_id;
-      pos += sizeof(LONG);
-      if ((Data) and (Length > 0)) {
-         CopyMemory(Data, stream + pos, Length);
-         pos += Length;
-      }
-      stream[pos++] = total_length>>8;
-      stream[pos++] = total_length & 0xff;
-      stream[pos++] = CTRL_CODE;
-
-   Index += Length + ESC_LEN;
-   return ERR_Okay;
+   else {
+      const char insert[ESCAPE_LEN] = { char(CTRL_CODE), char(Code.Code), Code.IDArray[0], Code.IDArray[1], Code.IDArray[2], Code.IDArray[3], char(CTRL_CODE) };
+      Stream.insert(Index, insert, ESCAPE_LEN);
+      Index += ESCAPE_LEN;
+   }
 }
-*/
+
 //********************************************************************************************************************
 // This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
@@ -1536,10 +1498,10 @@ static void end_line(extDocument *Self, layout *l, LONG NewLine, LONG Index, DOU
          PREV_CHAR(Self->Stream, i);
          while (i > 0) {
             if (Self->Stream[i] IS CTRL_CODE) {
-               if ((ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_END) or
-                   (ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_START)) {
+               if ((ESCAPE_CODE(Self->Stream, i) IS ESC::PARAGRAPH_END) or
+                   (ESCAPE_CODE(Self->Stream, i) IS ESC::PARAGRAPH_START)) {
 
-                  if (ESCAPE_CODE(Self->Stream, i) IS ESC_PARAGRAPH_START) {
+                  if (ESCAPE_CODE(Self->Stream, i) IS ESC::PARAGRAPH_START) {
                      // Check if a custom string is specified in the paragraph, in which case the paragraph counts
                      // as content.
 
@@ -1550,7 +1512,7 @@ static void end_line(extDocument *Self, layout *l, LONG NewLine, LONG Index, DOU
                   bottomline = l->paragraph_y;
                   break;
                }
-               else if ((ESCAPE_CODE(Self->Stream, i) IS ESC_OBJECT) or (ESCAPE_CODE(Self->Stream, i) IS ESC_TABLE_END)) break; // Content encountered
+               else if ((ESCAPE_CODE(Self->Stream, i) IS ESC::OBJECT) or (ESCAPE_CODE(Self->Stream, i) IS ESC::TABLE_END)) break; // Content encountered
 
                PREV_CHAR(Self->Stream, i);
             }
@@ -1643,7 +1605,7 @@ restart:
                // If the link starts with the object, the link itself is going to be wrapped with it
             }
             else {
-               add_link(Self, ESC_LINK, l->link, l->link_x, *GraphicY, *GraphicX - l->link_x, l->line_height, "check_wrap");
+               add_link(Self, ESC::LINK, l->link, l->link_x, *GraphicY, *GraphicX - l->link_x, l->line_height, "check_wrap");
             }
          }
 
@@ -1681,7 +1643,7 @@ restart:
 
    if ((l->link) and (l->link_open IS false)) {
       // A link is due to be closed
-      add_link(Self, ESC_LINK, l->link, l->link_x, *GraphicY, *GraphicX + GraphicWidth - l->link_x, l->line_height ? l->line_height : l->font->LineSpacing, "check_wrap");
+      add_link(Self, ESC::LINK, l->link, l->link_x, *GraphicY, *GraphicX + GraphicWidth - l->link_x, l->line_height ? l->line_height : l->font->LineSpacing, "check_wrap");
       l->link = NULL;
    }
 
@@ -1725,7 +1687,7 @@ static void check_clips(extDocument *Self, LONG Index, layout *l,
 
          if (!l->line_height) height = l->font->LineSpacing;
          else height = l->line_height;
-         add_link(Self, ESC_LINK, l->link, l->link_x, *GraphicY, *GraphicX + GraphicWidth - l->link_x, height, "clip_intersect");
+         add_link(Self, ESC::LINK, l->link, l->link_x, *GraphicY, *GraphicX + GraphicWidth - l->link_x, height, "clip_intersect");
 
          reset_link = true;
       }
@@ -1937,29 +1899,31 @@ extend_page:
             BYTE breaksegment;
             breaksegment = 0;
             switch (ESCAPE_CODE(Self->Stream, i)) {
-               case ESC_ADVANCE:
-               case ESC_TABLE_START:
+               case ESC::ADVANCE:
+               case ESC::TABLE_START:
                   breaksegment = 1;
                   break;
 
-               case ESC_FONT:
+               case ESC::FONT:
                   if (l.textcontent) {
                      style = &escape_data<escFont>(Self, i);
-                     objFont *font = lookup_font(style->Index, "ESC_FONT");
+                     objFont *font = lookup_font(style->Index, "ESC::FONT");
                      if (l.font != font) breaksegment = 1;
                   }
                   break;
 
-               case ESC_OBJECT:
+               case ESC::OBJECT:
                   escobj = &escape_data<escObject>(Self, i);
                   if (escobj->Graphical) breaksegment = 1;
                   break;
 
-               case ESC_INDEX_START: {
+               case ESC::INDEX_START: {
                   auto index = &escape_data<escIndex>(Self, i);
                   if (!index->Visible) breaksegment = 1;
                   break;
                }
+
+               default: break;
             }
 
             if (breaksegment) {
@@ -1983,12 +1947,12 @@ extend_page:
             switch (ESCAPE_CODE(Self->Stream, i)) {
                // These escape codes cause wrapping because they can break up words
 
-               case ESC_PARAGRAPH_START:
-               case ESC_PARAGRAPH_END:
-               case ESC_TABLE_END:
-               case ESC_OBJECT:
-               case ESC_ADVANCE:
-               case ESC_LINK_END:
+               case ESC::PARAGRAPH_START:
+               case ESC::PARAGRAPH_END:
+               case ESC::TABLE_END:
+               case ESC::OBJECT:
+               case ESC::ADVANCE:
+               case ESC::LINK_END:
                   checkwrap = true;
                   break;
 
@@ -2037,7 +2001,7 @@ extend_page:
          l.setsegment = false; // Escape codes that draw something in draw_document() (e.g. object, table) should set this flag to true in their case statement
          l.len = ESCAPE_LEN;
          switch (ESCAPE_CODE(Self->Stream, i)) {
-            case ESC_ADVANCE:
+            case ESC::ADVANCE:
                advance = &escape_data<escAdvance>(Self, i);
                l.cursorx += advance->X;
                l.cursory += advance->Y;
@@ -2046,9 +2010,9 @@ extend_page:
                }
                break;
 
-            case ESC_FONT:
+            case ESC::FONT:
                style = &escape_data<escFont>(Self, i);
-               l.font = lookup_font(style->Index, "ESC_FONT");
+               l.font = lookup_font(style->Index, "ESC::FONT");
 
                if (l.font) {
                   if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) l.font->Align = ALIGN::RIGHT;
@@ -2075,7 +2039,7 @@ extend_page:
 
                break;
 
-            case ESC_INDEX_START: {
+            case ESC::INDEX_START: {
                // Indexes don't do anything, but recording the cursor's Y value when they are encountered
                // makes it really easy to scroll to a bookmark when requested (show_bookmark()).
 
@@ -2089,7 +2053,7 @@ extend_page:
                   end = i;
                   while (Self->Stream[end]) {
                      if (Self->Stream[end] IS CTRL_CODE) {
-                        if (ESCAPE_CODE(Self->Stream, end) IS ESC_INDEX_END) {
+                        if (ESCAPE_CODE(Self->Stream, end) IS ESC::INDEX_END) {
                            escIndexEnd &iend = escape_data<escIndexEnd>(Self, end);
                            if (iend.ID IS escindex->ID) break;
                         }
@@ -2116,7 +2080,7 @@ extend_page:
                break;
             }
 
-            case ESC_SET_MARGINS: {
+            case ESC::SET_MARGINS: {
                auto &escmargins = escape_data<escSetMargins>(Self, i);
 
                if (escmargins.Left != 0x7fff) {
@@ -2144,12 +2108,12 @@ extend_page:
 
             // LINK MANAGEMENT
 
-            case ESC_LINK: {
+            case ESC::LINK: {
                if (l.link) {
                   // Close the currently open link because it's illegal to have a link embedded within a link.
 
                   if (l.font) {
-                     add_link(Self, ESC_LINK, l.link, l.link_x, l.cursory, l.cursorx + l.wordwidth - l.link_x, l.line_height ? l.line_height : l.font->LineSpacing, "esc_link");
+                     add_link(Self, ESC::LINK, l.link, l.link_x, l.cursory, l.cursorx + l.wordwidth - l.link_x, l.line_height ? l.line_height : l.font->LineSpacing, "esc_link");
                   }
                }
 
@@ -2161,7 +2125,7 @@ extend_page:
                break;
             }
 
-            case ESC_LINK_END: {
+            case ESC::LINK_END: {
                // We don't call add_link() unless the entire word that contains the link has
                // been processed.  This is necessary due to the potential for a word-wrap.
 
@@ -2169,7 +2133,7 @@ extend_page:
                   l.link_open = false;
 
                   if (l.wordwidth < 1) {
-                     add_link(Self, ESC_LINK, l.link, l.link_x, l.cursory, l.cursorx - l.link_x, l.line_height ? l.line_height : l.font->LineSpacing, "esc_link_end");
+                     add_link(Self, ESC::LINK, l.link, l.link_x, l.cursory, l.cursorx - l.link_x, l.line_height ? l.line_height : l.font->LineSpacing, "esc_link_end");
                      l.link = NULL;
                   }
                }
@@ -2179,8 +2143,8 @@ extend_page:
 
             // LIST MANAGEMENT
 
-            case ESC_LIST_START:
-               // This is the start of a list.  Each item in the list will be identified by ESC_PARAGRAPH codes.  The
+            case ESC::LIST_START:
+               // This is the start of a list.  Each item in the list will be identified by ESC::PARAGRAPH codes.  The
                // cursor position is advanced by the size of the item graphics element.
 
                liststate = LAYOUT_STATE(Self, i, l);
@@ -2198,7 +2162,7 @@ list_repass:
                esclist->Repass = false;
                break;
 
-            case ESC_LIST_END:
+            case ESC::LIST_END:
                // If it is a custom list, a repass is required
 
                if ((esclist) and (esclist->Type IS LT_CUSTOM) and (esclist->Repass)) {
@@ -2222,7 +2186,7 @@ list_repass:
 
             // EMBEDDED OBJECT MANAGEMENT
 
-            case ESC_OBJECT: {
+            case ESC::OBJECT: {
                ClipRectangle cell;
                OBJECTID object_id;
 
@@ -2889,7 +2853,7 @@ list_repass:
                break;
             }
 
-            case ESC_TABLE_START: {
+            case ESC::TABLE_START: {
                // Table layout steps are as follows:
                //
                // 1. Copy prefixed/default widths and heights to all cells in the table.
@@ -2962,7 +2926,7 @@ wrap_table_cell:
                esctable->Height     = esctable->Thickness;
 
                DLAYOUT("(i%d) Laying out table of %dx%d, coords %dx%d,%dx%d%s, page width %d.", i, LONG(esctable->Columns.size()), esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", *Width);
-               // NB: LOGRETURN() is matched in ESC_TABLE_END
+               // NB: LOGRETURN() is matched in ESC::TABLE_END
 
                if (esctable->ComputeColumns) {
                   // Compute the default column widths
@@ -3020,7 +2984,7 @@ wrap_table_cell:
                break;
             }
 
-            case ESC_TABLE_END: {
+            case ESC::TABLE_END: {
                ClipRectangle clip;
                LONG minheight;
 
@@ -3162,7 +3126,7 @@ wrap_table_cell:
                }
 
                // Check if the table collides with clipping boundaries and adjust its position accordingly.
-               // Such a check is performed in ESC_TABLE_START - this second check is required only if the width
+               // Such a check is performed in ESC::TABLE_START - this second check is required only if the width
                // of the table has been extended.
                //
                // Note that the total number of clips is adjusted so that only clips up to the TABLE_START are 
@@ -3210,7 +3174,7 @@ wrap_table_cell:
                break;
             }
 
-            case ESC_ROW:
+            case ESC::ROW:
                if (escrow) {
                   auto ptr = escrow;
                   escrow = &escape_data<escRow>(Self, i);
@@ -3233,7 +3197,7 @@ repass_row_height_ext:
                l.setsegment = true;
                break;
 
-            case ESC_ROW_END:
+            case ESC::ROW_END:
                esctable->RowIndex++;
 
                   // Increase the table height if the row extends beyond it
@@ -3257,9 +3221,9 @@ repass_row_height_ext:
                l.setsegment = true;
                break;
 
-            case ESC_CELL: {
+            case ESC::CELL: {
                // In the first pass, the size of each cell is calculated with
-               // respect to its content.  When ESC_TABLE_END is reached, the
+               // respect to its content.  When ESC::TABLE_END is reached, the
                // max height and width for each row/column will be calculated
                // and a subsequent pass will be made to fill out the cells.
                //
@@ -3312,7 +3276,7 @@ repass_row_height_ext:
                LONG cell_end = i;
                while (Self->Stream[cell_end]) {
                   if (Self->Stream[cell_end] IS CTRL_CODE) {
-                     if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC_CELL_END) {
+                     if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC::CELL_END) {
                         auto &end = escape_data<escCellEnd>(Self, cell_end);
                         if (end.CellID IS esccell->CellID) break;
                      }
@@ -3354,9 +3318,9 @@ repass_row_height_ext:
                         // itself too.
 
                         //do we really want to do something here?
-                        //I'd suggest that we instead break up the segments a bit more???  ANother possibility - create an ESC_NULL
-                        //type that gets placed at the start of the edit cell.  If there's no genuine content, then we at least have the ESC_NULL
-                        //type for the cursor to be attached to?  ESC_NULL does absolutely nothing except act as faux content.
+                        //I'd suggest that we instead break up the segments a bit more???  ANother possibility - create an ESC::NULL
+                        //type that gets placed at the start of the edit cell.  If there's no genuine content, then we at least have the ESC::NULL
+                        //type for the cursor to be attached to?  ESC::NULL does absolutely nothing except act as faux content.
 
 
 // TODO Work on this next
@@ -3430,15 +3394,15 @@ repass_row_height_ext:
                break;
             }
 
-            case ESC_CELL_END: {
+            case ESC::CELL_END: {
                // CELL_END helps draw_document(), so set the segment to ensure that it is
-               // included in the draw stream.  Please refer to ESC_CELL to see how content is
+               // included in the draw stream.  Please refer to ESC::CELL to see how content is
                // processed and how the cell dimensions are formed.
 
                l.setsegment = true;
 
                if ((esccell) and (!esccell->OnClick.empty())) {
-                  add_link(Self, ESC_CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
+                  add_link(Self, ESC::CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
                }
 
                if ((esccell) and (!esccell->EditDef.empty())) {
@@ -3451,7 +3415,7 @@ repass_row_height_ext:
                break;
             }
 
-            case ESC_PARAGRAPH_START: {
+            case ESC::PARAGRAPH_START: {
                escParagraph *parent;
 
                if ((parent = escpara)) {
@@ -3531,7 +3495,7 @@ repass_row_height_ext:
                break;
             }
 
-            case ESC_PARAGRAPH_END: {
+            case ESC::PARAGRAPH_END: {
                if (escpara) {
                   // The paragraph height reflects the true size of the paragraph after we take into account
                   // any objects and tables within the paragraph.
@@ -3550,6 +3514,8 @@ repass_row_height_ext:
 
                break;
             }
+
+            default: break;
          }
 
          if (l.setsegment) {
@@ -3583,7 +3549,7 @@ repass_row_height_ext:
 
             if ((l.link) and (l.link_open IS false)) {
                // A link is due to be closed
-               add_link(Self, ESC_LINK, l.link, l.link_x, l.cursory, l.cursorx + l.wordwidth - l.link_x, l.line_height, "<br/>");
+               add_link(Self, ESC::LINK, l.link, l.link_x, l.cursory, l.cursorx + l.wordwidth - l.link_x, l.line_height, "<br/>");
                l.link = NULL;
             }
 #endif
@@ -3633,7 +3599,7 @@ exit:
    // on the page (the objects may need to know the page height - e.g. if there
    // is a gradient filling the background).
    //
-   // This feature is also handled in ESC_CELL, so we only perform it here
+   // This feature is also handled in ESC::CELL, so we only perform it here
    // if processing is occurring within the root page area (Offset of 0).
 
    if ((!Offset) and (object_vertical_repass) and (lastheight < page_height)) {
@@ -3652,9 +3618,8 @@ exit:
 }
 
 //********************************************************************************************************************
-// Calculate the page height, which is either going to be the coordinate of
-// the bottom-most line, or one of the clipping regions if one of them
-// extends further than the bottom-most line.
+// Calculate the page height, which is either going to be the coordinate of the bottom-most line, or one of the
+// clipping regions if one of them extends further than the bottom-most line.
 
 static LONG calc_page_height(extDocument *Self, LONG FirstClip, LONG Y, LONG BottomMargin)
 {
@@ -3702,7 +3667,7 @@ static void free_links(extDocument *Self)
 //********************************************************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
-static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
+static void add_link(extDocument *Self, ESC EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3720,457 +3685,18 @@ static void add_link(extDocument *Self, UBYTE EscapeCode, APTR Escape, LONG X, L
 
 //********************************************************************************************************************
 
-static void draw_background(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Background), BAF::FILL);
-}
-
-//********************************************************************************************************************
-// Note that this function also controls the drawing of objects that have loaded into the document (see the
-// subscription hook in the layout process).
-
-static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   pf::Log log(__FUNCTION__);
-   escList *esclist;
-   escLink *esclink;
-   escParagraph *escpara;
-   escTable *esctable;
-   escCell *esccell;
-   escRow *escrow;
-   escObject *escobject;
-   RGB8 link_save_rgb;
-   UBYTE tabfocus, oob, cursor_drawn;
-
-   if (Self->UpdateLayout) {
-      // Drawing is disabled if the layout needs to be updated (this likely indicates that the document stream has been
-      // modified and has yet to be recalculated - drawing while in this state is liable to lead to a crash)
-
-      return;
-   }
-   
-   auto font = lookup_font(0, "draw_document");
-
-   if (!font) {
-      log.traceWarning("No default font defined.");
-      return;
-   }
-
-   #ifdef _DEBUG
-   if (Self->Stream.empty()) {
-      log.traceWarning("No content in stream or no segments.");
-      return;
-   }
-   #endif
-
-   Self->CurrentCell = NULL;
-   font->Bitmap = Bitmap;
-   esclist  = NULL;
-   escpara  = NULL;
-   esctable = NULL;
-   escrow   = NULL;
-   esccell  = NULL;
-   tabfocus = false;
-   cursor_drawn = false;
-
-   #ifdef GUIDELINES
-
-      // Page boundary is marked in blue
-      gfxDrawRectangle(Bitmap, Self->LeftMargin-1, Self->TopMargin-1,
-         Self->CalcWidth - Self->RightMargin - Self->LeftMargin + 2, Self->PageHeight - Self->TopMargin - Self->BottomMargin + 2,
-         Bitmap->packPixel(0, 0, 255), 0);
-
-      // Special clip regions are marked in grey
-      for (unsigned i=0; i < Self->Clips.size(); i++) {
-         gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
-            Self->Clips[i].Clip.Right - Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Bottom - Self->Clips[i].Clip.Top,
-            Bitmap->packPixel(255, 200, 200), 0);
-      }
-   #endif
-
-   LONG select_start  = -1;
-   LONG select_end    = -1;
-   LONG select_startx = 0;
-   LONG select_endx   = 0;
-
-   if ((Self->ActiveEditDef) and (Self->SelectIndex IS -1)) {
-      select_start  = Self->CursorIndex;
-      select_end    = Self->CursorIndex;
-      select_startx = Self->CursorCharX;
-      select_endx   = Self->CursorCharX;
-   }
-   else if ((Self->CursorIndex != -1) and (Self->SelectIndex != -1)) {
-      if (Self->SelectIndex < Self->CursorIndex) {
-         select_start  = Self->SelectIndex;
-         select_end    = Self->CursorIndex;
-         select_startx = Self->SelectCharX;
-         select_endx   = Self->CursorCharX;
-      }
-      else {
-         select_start  = Self->CursorIndex;
-         select_end    = Self->SelectIndex;
-         select_startx = Self->CursorCharX;
-         select_endx   = Self->SelectCharX;
-      }
-   }
-
-   auto alpha = Bitmap->Opacity;
-   for (unsigned seg=0; seg < Self->Segments.size(); seg++) {
-      auto &segment = Self->Segments[seg];
-
-      // Don't process segments that are out of bounds.  This can't be applied to objects, as they can draw anywhere.
-
-      oob = false;
-      if (!segment.ObjectContent) {
-         if (segment.Y >= Bitmap->Clip.Bottom) oob = true;
-         if (segment.Y + segment.Height < Bitmap->Clip.Top) oob = true;
-         if (segment.X + segment.Width < Bitmap->Clip.Left) oob = true;
-         if (segment.X >= Bitmap->Clip.Right) oob = true;
-      }
-
-      // Highlighting of selected text
-
-      if ((select_start <= segment.Stop) and (select_end > segment.Index)) {
-         if (select_start != select_end) {
-            Bitmap->Opacity = 80;
-            if ((select_start > segment.Index) and (select_start < segment.Stop)) {
-               if (select_end < segment.Stop) {
-                  gfxDrawRectangle(Bitmap, segment.X + select_startx, segment.Y,
-                     select_endx - select_startx, segment.Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
-               }
-               else {
-                  gfxDrawRectangle(Bitmap, segment.X + select_startx, segment.Y,
-                     segment.Width - select_startx, segment.Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
-               }
-            }
-            else if (select_end < segment.Stop) {
-               gfxDrawRectangle(Bitmap, segment.X, segment.Y, select_endx, segment.Height,
-                  Bitmap->packPixel(0, 128, 0), BAF::FILL);
-            }
-            else {
-               gfxDrawRectangle(Bitmap, segment.X, segment.Y, segment.Width, segment.Height,
-                  Bitmap->packPixel(0, 128, 0), BAF::FILL);
-            }
-            Bitmap->Opacity = 255;
-         }
-      }
-
-      if ((Self->ActiveEditDef) and (Self->CursorState) and (!cursor_drawn)) {
-         if ((Self->CursorIndex >= segment.Index) and (Self->CursorIndex <= segment.Stop)) {
-            if ((Self->CursorIndex IS segment.Stop) and (Self->Stream[Self->CursorIndex-1] IS '\n')); // The -1 looks naughty, but it works as CTRL_CODE != \n, so use of PREV_CHAR() is unnecessary
-            else {
-               if (gfxGetUserFocus() IS Self->PageID) { // Standard text cursor
-                  gfxDrawRectangle(Bitmap, segment.X + Self->CursorCharX, segment.Y, 2, segment.BaseLine,
-                     Bitmap->packPixel(255, 0, 0), BAF::FILL);
-                  cursor_drawn = true;
-               }
-            }
-         }
-      }
-
-      #ifdef GUIDELINES_CONTENT
-         if (segment.TextContent) {
-            gfxDrawRectangle(Bitmap,
-               segment.X, segment.Y,
-               (segment.Width > 0) ? segment.Width : 5, segment.Height,
-               Bitmap->packPixel(0, 255, 0), 0);
-         }
-      #endif
-
-      std::string strbuffer;
-      strbuffer.reserve(segment.Stop - segment.Index + 1);
-
-      auto fx = segment.X;
-      auto i  = segment.Index;
-      auto si = 0;
-
-      while (i < segment.TrimStop) {
-         if (Self->Stream[i] IS CTRL_CODE) {
-            switch (ESCAPE_CODE(Self->Stream, i)) {
-               case ESC_OBJECT: {
-                  OBJECTPTR object;
-
-                  escobject = &escape_data<escObject>(Self, i);
-
-                  if ((escobject->Graphical) and (!escobject->Owned)) {
-                     if (escobject->ObjectID < 0) {
-                        object = NULL;
-                        AccessObject(escobject->ObjectID, 3000, &object);
-                     }
-                     else object = GetObjectPtr(escobject->ObjectID);
-/*
-                     if (object) {
-                        objLayout *layout;
-
-                        if ((FindField(object, FID_Layout, NULL)) and (!object->getPtr(FID_Layout, &layout))) {
-                           if (layout->DrawCallback.Type) {
-                              // If the graphic is within a cell, ensure that the graphic does not exceed
-                              // the dimensions of the cell.
-
-                              if (Self->CurrentCell) {
-                                 if (layout->BoundX + layout->BoundWidth > Self->CurrentCell->AbsX + Self->CurrentCell->Width) {
-                                    layout->BoundWidth  = Self->CurrentCell->AbsX + Self->CurrentCell->Width - layout->BoundX;
-                                 }
-
-                                 if (layout->BoundY + layout->BoundHeight > Self->CurrentCell->AbsY + Self->CurrentCell->Height) {
-                                    layout->BoundHeight = Self->CurrentCell->AbsY + Self->CurrentCell->Height - layout->BoundY;
-                                 }
-                              }
-
-                              auto opacity = Bitmap->Opacity;
-                              Bitmap->Opacity = 255;
-                              auto routine = (void (*)(OBJECTPTR, rkSurface *, objBitmap *))layout->DrawCallback.StdC.Routine;
-                              routine(object, Surface, Bitmap);
-                              Bitmap->Opacity = opacity;
-                           }
-                        }
-
-                        if (escobject->ObjectID < 0) ReleaseObject(object);
-                     }
-*/
-                  }
-
-                  break;
-               }
-
-               case ESC_FONT: {
-                  auto &style = escape_data<escFont>(Self, i);
-                  if (auto font = lookup_font(style.Index, "draw_document")) {
-                     font->Bitmap = Bitmap;
-                     if (tabfocus IS false) font->Colour = style.Colour;
-                     else font->Colour = Self->SelectColour;
-
-                     if ((style.Options & FSO::ALIGN_RIGHT) != FSO::NIL) font->Align = ALIGN::RIGHT;
-                     else if ((style.Options & FSO::ALIGN_CENTER) != FSO::NIL) font->Align = ALIGN::HORIZONTAL;
-                     else font->Align = ALIGN::NIL;
-
-                     if ((style.Options & FSO::UNDERLINE) != FSO::NIL) font->Underline = font->Colour;
-                     else font->Underline.Alpha = 0;
-                  }
-                  break;
-               }
-
-               case ESC_LIST_START:
-                  if (esclist) {
-                     auto ptr = esclist;
-                     esclist = &escape_data<escList>(Self, i);
-                     esclist->Stack = ptr;
-                  }
-                  else esclist = &escape_data<escList>(Self, i);
-                  break;
-
-               case ESC_LIST_END:
-                  if (esclist) esclist = esclist->Stack;
-                  break;
-
-               case ESC_PARAGRAPH_START:
-                  if (escpara) {
-                     auto ptr = escpara;
-                     escpara = &escape_data<escParagraph>(Self, i);
-                     escpara->Stack = ptr;
-                  }
-                  else escpara = &escape_data<escParagraph>(Self, i);
-
-                  if ((esclist) and (escpara->ListItem)) {
-                     // Handling for paragraphs that form part of a list
-
-                     if ((esclist->Type IS LT_CUSTOM) or (esclist->Type IS LT_ORDERED)) {
-                        if (!escpara->Value.empty()) {
-                           font->X = fx - escpara->ItemIndent;
-                           font->Y = segment.Y + font->Leading + (segment.BaseLine - font->Ascent);
-                           font->AlignWidth = segment.AlignWidth;
-                           font->setString(escpara->Value);
-                           font->draw();
-                        }
-                     }
-                     else if (esclist->Type IS LT_BULLET) {
-                        #define SIZE_BULLET 5
-                        // TODO: Requires conversion to vector
-                        //gfxDrawEllipse(Bitmap,
-                        //   fx - escpara->ItemIndent, segment.Y + ((segment.BaseLine - SIZE_BULLET)/2),
-                        //   SIZE_BULLET, SIZE_BULLET, Bitmap->packPixel(esclist->Colour), true);
-                     }
-                  }
-                  break;
-
-               case ESC_PARAGRAPH_END:
-                  if (escpara) escpara = escpara->Stack;
-                  break;
-
-               case ESC_TABLE_START: {
-                  if (esctable) {
-                     auto ptr = esctable;
-                     esctable = &escape_data<escTable>(Self, i);
-                     esctable->Stack = ptr;
-                  }
-                  else esctable = &escape_data<escTable>(Self, i);
-
-                  //log.trace("Draw Table: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
-
-                  if (esctable->Colour.Alpha > 0) {
-                     gfxDrawRectangle(Bitmap,
-                        esctable->X+esctable->Thickness, esctable->Y+esctable->Thickness,
-                        esctable->Width-(esctable->Thickness<<1), esctable->Height-(esctable->Thickness<<1),
-                        Bitmap->packPixel(esctable->Colour), BAF::FILL|BAF::BLEND);
-                  }
-
-                  if (esctable->Shadow.Alpha > 0) {
-                     Bitmap->Opacity = esctable->Shadow.Alpha;
-                     for (LONG j=0; j < esctable->Thickness; j++) {
-                        gfxDrawRectangle(Bitmap,
-                           esctable->X+j, esctable->Y+j,
-                           esctable->Width-(j<<1), esctable->Height-(j<<1),
-                           Bitmap->packPixel(esctable->Shadow), BAF::NIL);
-                     }
-                     Bitmap->Opacity = alpha;
-                  }
-                  break;
-               }
-
-               case ESC_TABLE_END:
-                  if (esctable) esctable = esctable->Stack;
-                  break;
-
-               case ESC_ROW: {
-                  if (escrow) {
-                     auto ptr = escrow;
-                     escrow = &escape_data<escRow>(Self, i);
-                     escrow->Stack = ptr;
-                  }
-                  else escrow = &escape_data<escRow>(Self, i);
-
-                  if (escrow->Colour.Alpha) {
-                     gfxDrawRectangle(Bitmap, esctable->X, escrow->Y, esctable->Width, escrow->RowHeight,
-                        Bitmap->packPixel(escrow->Colour), BAF::FILL|BAF::BLEND);
-                  }
-                  break;
-               }
-
-               case ESC_ROW_END:
-                  if (escrow) escrow = escrow->Stack;
-                  break;
-
-               case ESC_CELL: {
-                  if (esccell) {
-                     auto ptr = esccell;
-                     esccell = &escape_data<escCell>(Self, i);
-                     esccell->Stack = ptr;
-                  }
-                  else esccell = &escape_data<escCell>(Self, i);
-
-                  Self->CurrentCell = esccell;
-
-                  if (esccell->Colour.Alpha > 0) { // Fill colour
-                     WORD border;
-                     if (esccell->Shadow.Alpha > 0) border = 1;
-                     else border = 0;
-
-                     gfxDrawRectangle(Bitmap, esccell->AbsX+border, esccell->AbsY+border,
-                        esctable->Columns[esccell->Column].Width-border, escrow->RowHeight-border,
-                        Bitmap->packPixel(esccell->Colour), BAF::FILL|BAF::BLEND);
-                  }
-
-                  if (esccell->Shadow.Alpha > 0) { // Border colour
-                     gfxDrawRectangle(Bitmap, esccell->AbsX, esccell->AbsY, esctable->Columns[esccell->Column].Width,
-                        escrow->RowHeight, Bitmap->packPixel(esccell->Shadow), BAF::NIL);
-                  }
-                  break;
-               }
-
-               case ESC_CELL_END:
-                  if (esccell) esccell = esccell->Stack;
-                  Self->CurrentCell = esccell;
-                  break;
-
-               case ESC_LINK: {
-                  esclink = &escape_data<escLink>(Self, i);
-                  if (Self->HasFocus) {
-                     if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) and (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) and (Self->Tabs[Self->FocusIndex].Active)) {
-                        link_save_rgb = font->Colour;
-                        font->Colour = Self->SelectColour;
-                        tabfocus = true;
-                     }
-                  }
-
-                  break;
-               }
-
-               case ESC_LINK_END:
-                  if (tabfocus) {
-                     font->Colour = link_save_rgb;
-                     tabfocus = false;
-                  }
-                  break;
-            }
-
-            i += ESCAPE_LEN;
-         }
-         else if (!oob) {
-            if (Self->Stream[i] <= 0x20) { strbuffer[si++] = ' '; i++; }
-            else strbuffer[si++] = Self->Stream[i++];
-
-            // Print the string buffer content if the next string character is an escape code.
-
-            if (Self->Stream[i] IS CTRL_CODE) {
-               strbuffer[si] = 0;
-               font->X = fx;
-               font->Y = segment.Y + font->Leading + (segment.BaseLine - font->Ascent);
-               font->AlignWidth = segment.AlignWidth;
-               font->setString(strbuffer);
-               font->draw();
-               fx = font->EndX;
-               si = 0;
-            }
-         }
-         else i++;
-      }
-
-      strbuffer[si] = 0;
-
-      if ((si > 0) and (!oob)) {
-         font->X = fx;
-         font->Y = segment.Y + font->Leading + (segment.BaseLine - font->Ascent);
-         font->AlignWidth = segment.AlignWidth;
-         font->setString(strbuffer);
-         font->draw();
-         fx = font->EndX;
-      }
-   } // for loop
-}
-
-//********************************************************************************************************************
-
-static void draw_border(extDocument *Self, objSurface *Surface, objBitmap *Bitmap)
-{
-   if ((Self->BorderEdge IS DBE::NIL) or (Self->BorderEdge IS (DBE::TOP|DBE::BOTTOM|DBE::LEFT|DBE::RIGHT))) {
-      gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
-   }
-   else {
-      if ((Self->BorderEdge & DBE::TOP) != DBE::NIL) {
-         gfxDrawRectangle(Bitmap, 0, 0, Surface->Width, 1, Bitmap->packPixel(Self->Border), BAF::NIL);
-      }
-      if ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) {
-         gfxDrawRectangle(Bitmap, 0, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
-      }
-      if ((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) {
-         gfxDrawRectangle(Bitmap, Surface->Width-1, 0, 1, Surface->Height, Bitmap->packPixel(Self->Border), BAF::NIL);
-      }
-      if ((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) {
-         gfxDrawRectangle(Bitmap, 0, Surface->Height-1, Surface->Width, 1, Bitmap->packPixel(Self->Border), BAF::NIL);
-      }
-   }
-}
-
-//********************************************************************************************************************
-
-static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
+static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unicode)
 {
    pf::Log log(__FUNCTION__);
    struct acScroll scroll;
+   
+   if ((Flags & KQ::PRESSED) IS KQ::NIL) return ERR_Okay;
+
+   auto Self = (extDocument *)CurrentContext();
 
    log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", LONG(Value), LONG(Flags), Self->ActiveEditDef);
 
-   if ((Self->ActiveEditDef) and (gfxGetUserFocus() != Self->PageID)) {
+   if ((Self->ActiveEditDef) and ((Self->Page->Flags & VF::HAS_FOCUS) IS VF::NIL)) {
       deactivate_edit(Self, true);
    }
 
@@ -4200,7 +3726,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
 
          resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
 
-         DRAW_PAGE(Self);
+         Self->Viewport->draw();
          return ERR_Okay;
       }
 
@@ -4233,7 +3759,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
 
             layout_doc_fast(Self);
             resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-            DRAW_PAGE(Self);
+            Self->Viewport->draw();
             break;
          }
 
@@ -4241,7 +3767,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
             Self->SelectIndex = -1;
 
             LONG index = Self->CursorIndex;
-            if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC_CELL)) {
+            if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL)) {
                // Cursor cannot be moved any further left.  The cursor index should never end up here, but
                // better to be safe than sorry.
 
@@ -4250,17 +3776,17 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
                while (index > 0) {
                   PREV_CHAR(Self->Stream, index);
                   if (Self->Stream[index] IS CTRL_CODE) {
-                     if (ESCAPE_CODE(Self->Stream, index) IS ESC_CELL) {
+                     if (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL) {
                         auto &cell = escape_data<escCell>(Self, index);
                         if (cell.CellID IS Self->ActiveEditCellID) break;
                      }
-                     else if (ESCAPE_CODE(Self->Stream, index) IS ESC_OBJECT);
+                     else if (ESCAPE_CODE(Self->Stream, index) IS ESC::OBJECT);
                      else continue;
                   }
 
                   if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
                      Self->CursorIndex = index;
-                     DRAW_PAGE(Self);
+                     Self->Viewport->draw();
                      log.warning("LeftCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
                   }
                   break;
@@ -4270,22 +3796,20 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
          }
 
          case KEY::RIGHT: {
-            LONG code;
-
             Self->SelectIndex = -1;
 
             LONG index = Self->CursorIndex;
             while (Self->Stream[index]) {
                if (Self->Stream[index] IS CTRL_CODE) {
-                  code = ESCAPE_CODE(Self->Stream, index);
-                  if (code IS ESC_CELL_END) {
+                  auto code = ESCAPE_CODE(Self->Stream, index);
+                  if (code IS ESC::CELL_END) {
                      auto &cell_end = escape_data<escCellEnd>(Self, index);
                      if (cell_end.CellID IS Self->ActiveEditCellID) {
                         // End of editing zone - cursor cannot be moved any further right
                         break;
                      }
                   }
-                  else if (code IS ESC_OBJECT); // Objects are treated as content, so do nothing special for these and drop through to next section
+                  else if (code IS ESC::OBJECT); // Objects are treated as content, so do nothing special for these and drop through to next section
                   else {
                      NEXT_CHAR(Self->Stream, index);
                      continue;
@@ -4297,7 +3821,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
                NEXT_CHAR(Self->Stream, index);
                if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
                   Self->CursorIndex = index;
-                  DRAW_PAGE(Self);
+                  Self->Viewport->draw();
                   log.warning("RightCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
                }
                break;
@@ -4321,13 +3845,13 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
 
          case KEY::BACKSPACE: {
             LONG index = Self->CursorIndex;
-            if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC_CELL)) {
+            if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL)) {
                // Cursor cannot be moved any further left
             }
             else {
                PREV_CHAR(Self->Stream, index);
 
-               if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC_CELL));
+               if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL));
                else { // Delete the character/escape code
                   if ((Self->SelectIndex != -1) and (Self->SelectIndex != Self->CursorIndex)) {
                      if (Self->SelectIndex < Self->CursorIndex) { 
@@ -4348,7 +3872,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
                   Self->UpdateLayout = true;
                   layout_doc_fast(Self);
                   resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-                  DRAW_PAGE(Self);
+                  Self->Viewport->draw();
 
                   #ifdef DBG_STREAM
                      print_stream(Self, stream);
@@ -4360,7 +3884,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
 
          case KEY::DELETE: {
             LONG index = Self->CursorIndex;
-            if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC_CELL_END)) {
+            if ((Self->Stream[index] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL_END)) {
                // Not allowed to delete the end point
             }
             else {
@@ -4381,7 +3905,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
                Self->UpdateLayout = true;
                layout_doc_fast(Self);
                resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-               DRAW_PAGE(Self);
+               Self->Viewport->draw();
 
                #ifdef DBG_STREAM
                   print_stream(Self, stream);
@@ -4410,7 +3934,7 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
 
             if ((Self->Tabs[tab].Type IS TT_LINK) and (Self->Tabs[tab].Active)) {
                for (auto &link : Self->Links) {
-                  if ((link.EscapeCode IS ESC_LINK) and (link.Link->ID IS Self->Tabs[tab].Ref)) {
+                  if ((link.EscapeCode IS ESC::LINK) and (link.Link->ID IS Self->Tabs[tab].Ref)) {
                      exec_link(Self, link);
                      break;
                   }
@@ -4424,42 +3948,42 @@ static ERROR keypress(extDocument *Self, KQ Flags, KEY Value, LONG Unicode)
          scroll.DeltaX = 0;
          scroll.DeltaY = Self->AreaHeight;
          scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::PAGE_UP:
          scroll.DeltaX = 0;
          scroll.DeltaY = -Self->AreaHeight;
          scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::LEFT:
          scroll.DeltaX = -10;
          scroll.DeltaY = 0;
          scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::RIGHT:
          scroll.DeltaX = 10;
          scroll.DeltaY = 0;
          scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::DOWN:
          scroll.DeltaX = 0;
          scroll.DeltaY = 10;
          scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::UP:
          scroll.DeltaX = 0;
          scroll.DeltaY = -10;
          scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->SurfaceID, &scroll);
+         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       default: break; // Ignore unhandled codes
@@ -4511,193 +4035,6 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, BYTE Unl
 }
 
 //********************************************************************************************************************
-// This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
-// height of each line and rearranges any objects that are present in the document.
-
-static void layout_doc(extDocument *Self)
-{
-   pf::Log log(__FUNCTION__);
-   objFont *font;
-   LONG pagewidth, hscroll_offset;
-   bool vertical_repass;
-
-   if (Self->UpdateLayout IS false) return;
-   if (Self->Stream.empty()) return;
-
-   // Initial height is 1, not the surface height because we want to accurately report the final height of the page.
-
-   LONG pageheight = 1;
-
-   DLAYOUT("Area: %dx%d,%dx%d Visible: %d ----------", Self->AreaX, Self->AreaY, Self->AreaWidth, Self->AreaHeight, Self->VScrollVisible);
-
-   Self->BreakLoop = MAXLOOP;
-
-restart:
-   Self->BreakLoop--;
-
-   hscroll_offset = 0;
-
-   if (Self->PageWidth <= 0) {
-      // If no preferred page width is set, maximise the page width to the available viewing area
-      pagewidth = Self->AreaWidth - hscroll_offset;
-   }
-   else {
-      if (!Self->RelPageWidth) { // Page width is fixed
-         pagewidth = Self->PageWidth;
-      }
-      else { // Page width is relative
-         pagewidth = (Self->PageWidth * (Self->AreaWidth - hscroll_offset)) / 100;
-      }
-   }
-
-   if (pagewidth < Self->MinPageWidth) pagewidth = Self->MinPageWidth;
-
-   Self->Segments.clear();
-   Self->SortSegments.clear();
-   Self->Clips.clear();
-   Self->Links.clear();
-   Self->EditCells.clear();
-   Self->PageProcessed = false;
-   Self->Error = ERR_Okay;
-   Self->Depth = 0;
-
-   if (!(font = lookup_font(0, "layout_doc"))) { // There is no content loaded for display      
-      return;
-   }
-
-   layout_section(Self, 0, &font, 0, 0, &pagewidth, &pageheight, Self->LeftMargin, Self->TopMargin, Self->RightMargin,
-      Self->BottomMargin, &vertical_repass);
-
-   DLAYOUT("Section layout complete.");
-
-   // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
-   // the number of passes required for the next time we do a layout.
-
-
-   if ((pagewidth > Self->AreaWidth) and (Self->MinPageWidth < pagewidth)) Self->MinPageWidth = pagewidth;
-
-   Self->PageHeight = pageheight;
-//   if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
-   Self->CalcWidth = pagewidth;
-
-   // Recalculation may be required if visibility of the scrollbar needs to change.
-
-   if ((Self->BreakLoop > 0) and (!Self->Error)) {
-      if (Self->PageHeight > Self->AreaHeight) {
-         // Page height is bigger than the surface, so the scrollbar needs to be visible.
-
-         if (!Self->VScrollVisible) {
-            DLAYOUT("Vertical scrollbar visibility needs to be enabled, restarting...");
-            Self->VScrollVisible = true;
-            Self->BreakLoop = MAXLOOP;
-            goto restart;
-         }
-      }
-      else {
-         // Page height is smaller than the surface, so the scrollbar needs to be invisible.
-
-         if (Self->VScrollVisible) {
-            DLAYOUT("Vertical scrollbar needs to be invisible, restarting...");
-            Self->VScrollVisible = false;
-            Self->BreakLoop = MAXLOOP;
-            goto restart;
-         }
-      }
-   }
-
-   // Look for clickable links that need to be aligned and adjust them (links cannot be aligned until the entire
-   // width of their line is known, hence it's easier to make a final adjustment for all links post-layout).
-
-   if (!Self->Error) {
-      for (unsigned i=0; i < Self->Links.size(); i++) {
-         if (Self->Links[i].EscapeCode != ESC_LINK) continue;
-
-         auto link = &Self->Links[i];
-         auto esclink = link->Link;
-         if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
-            auto &segment = Self->Segments[link->Segment];
-            if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
-               link->X = segment.X + segment.AlignWidth - link->Width;
-            }
-            else if ((esclink->Align & FSO::ALIGN_CENTER) != FSO::NIL) {
-               link->X = link->X + ((segment.AlignWidth - link->Width) / 2);
-            }
-         }
-      }
-   }
-
-   // Build the sorted segment array
-
-   if ((!Self->Error) and (!Self->Segments.empty())) {
-      Self->SortSegments.resize(Self->Segments.size());
-      unsigned seg, i, j;
-
-      for (i=0, seg=0; seg < Self->Segments.size(); seg++) {
-         if ((Self->Segments[seg].Height > 0) and (Self->Segments[seg].Width > 0)) {
-            Self->SortSegments[i].Segment = seg;
-            Self->SortSegments[i].Y       = Self->Segments[seg].Y;
-            i++;
-         }
-      }
-
-      // Shell sort
-
-      unsigned h = 1;
-      while (h < Self->SortSegments.size() / 9) h = 3 * h + 1;
-
-      for (; h > 0; h /= 3) {
-         for (i=h; i < Self->SortSegments.size(); i++) {
-            SortSegment temp = Self->SortSegments[i];
-            for (j=i; (j >= h) and (sortseg_compare(Self, Self->SortSegments[j - h], temp) < 0); j -= h) {
-               Self->SortSegments[j] = Self->SortSegments[j - h];
-            }
-            Self->SortSegments[j] = temp;
-         }
-      }
-   }
-
-   Self->UpdateLayout = false;
-
-#ifdef DBG_LINES
-   print_lines(Self);
-   //print_sorted_lines(Self);
-   print_tabfocus(Self);
-#endif
-
-   // If an error occurred during layout processing, unload the document and display an error dialog.  (NB: While it is
-   // possible to display a document up to the point at which the error occurred, we want to maintain a strict approach
-   // so that human error is considered excusable in document formatting).
-
-   if (Self->Error) {
-      unload_doc(Self, ULD_REDRAW);
-
-      std::string msg = "A failure occurred during the layout of this document - it cannot be displayed.\n\nDetails: ";
-      if (Self->Error IS ERR_Loop) msg.append("This page cannot be rendered correctly due to its design.");
-      else msg.append(GetErrorMsg(Self->Error));
-
-      error_dialog("Document Layout Error", msg);
-   }
-   else {
-      for (auto &trigger : Self->Triggers[DRT_AFTER_LAYOUT]) {
-         if (trigger.Type IS CALL_SCRIPT) {
-            const ScriptArg args[] = {
-               { "ViewWidth",  Self->AreaWidth },
-               { "ViewHeight", Self->AreaHeight },
-               { "PageWidth",  Self->CalcWidth },
-               { "PageHeight", Self->PageHeight }
-            };
-            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
-         else if (trigger.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger.StdC.Routine;
-            pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);            
-         }
-      }
-   }   
-}
-
-//********************************************************************************************************************
 // Converts XML into RIPPLE bytecode, then displays the page that is referenced by the PageName field by calling
 // layout_doc().  If the PageName is unspecified, we use the first <page> that has no name, otherwise the first page
 // irrespective of the name.
@@ -4738,7 +4075,6 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
       Self->Segments.clear();
       Self->SortSegments.clear();
-      Self->RestoreAttrib.clear();
       Self->TemplateArgs.clear();
 
       Self->XPosition    = 0;
@@ -4814,14 +4150,12 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       #endif
 
       // If an error occurred then we have to kill the document as the stream may contain disconnected escape
-      // sequences (e.g. an unterminated ESC_TABLE sequence).
+      // sequences (e.g. an unterminated ESC::TABLE sequence).
 
       if (Self->Error) unload_doc(Self, 0);
 
       Self->UpdateLayout = true;
       if (Self->initialised()) redraw(Self, true);
-
-      Self->RestoreAttrib.clear();
 
       #ifdef RAW_OUTPUT
          objFile::create file = { fl::Path("drive1:doc-stream.bin"), fl::Flags(FL::NEW|FL::WRITE) };
@@ -4842,7 +4176,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
    if ((!Self->Error) and (Self->MouseOver)) {
       DOUBLE x, y;
-      if (!gfxGetRelativeCursorPos(Self->PageID, &x, &y)) {
+      if (!gfxGetRelativeCursorPos(Self->Page->UID, &x, &y)) {
          check_mouse_pos(Self, x, y);
       }
    }
@@ -4885,12 +4219,23 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    log.trace("Resetting variables.");
 
-   Self->FontColour   = { 0, 0, 0, 255 };
-   Self->Highlight    = glHighlight;
-   Self->CursorColour = { UBYTE(0.4  * 255), UBYTE(0.4 * 255), UBYTE (0.8 * 255), 255 };
-   Self->LinkColour   = { 0, 0, 255, 255 };
-   Self->Background   = { 255, 255, 255, 255 };
-   Self->SelectColour = { 255, 0, 0, 255 };
+   if (Self->FontFill) FreeResource(Self->FontFill);
+   Self->FontFill     = StrClone("rgb(0,0,0)");
+
+   if (Self->Highlight) FreeResource(Self->Highlight);
+   Self->Highlight    = StrClone(glHighlight.c_str());
+
+   if (Self->CursorStroke) FreeResource(Self->CursorStroke);
+   Self->CursorStroke = StrClone("rgb(0.4,0.4,0.8,1)");
+
+   if (Self->LinkFill) FreeResource(Self->LinkFill);
+   Self->LinkFill     = StrClone("rgb(0,0,1,1)");
+
+   if (Self->Background) FreeResource(Self->Background);
+   Self->Background   = StrClone("rgb(1,1,1,1)");
+
+   if (Self->LinkSelectFill) FreeResource(Self->LinkSelectFill);
+   Self->LinkSelectFill = StrClone("rgb(1,0,0,1)");
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -4908,7 +4253,6 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
    Self->DefaultScript = NULL;
    Self->BkgdGfx       = 0;
-   Self->DrawIntercept = 0;
    Self->FontSize      = DEFAULT_FONTSIZE;
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
@@ -4986,13 +4330,13 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    Self->NoWhitespace = true; // Reset whitespace flag
 
-   if (Self->PageID) acMoveToPoint(Self->PageID, 0, 0, 0, MTF::X|MTF::Y);
+   if (Self->Page) acMoveToPoint(Self->Page, 0, 0, 0, MTF::X|MTF::Y);
 
    Self->UpdateLayout = true;
    Self->GeneratedID = AllocateID(IDTYPE::GLOBAL);
 
    if (Flags & ULD_REDRAW) {
-      DRAW_PAGE(Self);
+      Self->Viewport->draw();
    }
 
    return ERR_Okay;
@@ -5015,7 +4359,7 @@ static void redraw(extDocument *Self, BYTE Focus)
 
    //drwPermitDrawing();
 
-   DRAW_PAGE(Self);
+   Self->Viewport->draw();
 
    if ((Focus) and (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
 }
@@ -5260,8 +4604,8 @@ static void add_drawsegment(extDocument *Self, LONG Offset, LONG Stop, layout *L
       if (Self->Stream[i] IS CTRL_CODE) {
          auto code = ESCAPE_CODE(Self->Stream, i);
          control_content = true;
-         if (code IS ESC_OBJECT) object_content = true;
-         if ((code IS ESC_OBJECT) or (code IS ESC_TABLE_START) or (code IS ESC_TABLE_END) or (code IS ESC_FONT)) {
+         if (code IS ESC::OBJECT) object_content = true;
+         if ((code IS ESC::OBJECT) or (code IS ESC::TABLE_START) or (code IS ESC::TABLE_END) or (code IS ESC::FONT)) {
             allow_merge = false;
          }
       }
@@ -5858,7 +5202,7 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
 
    // Check the validity of the index
 
-   if ((stream[CellIndex] != CTRL_CODE) or (ESCAPE_CODE(stream, CellIndex) != ESC_CELL)) {
+   if ((stream[CellIndex] != CTRL_CODE) or (ESCAPE_CODE(stream, CellIndex) != ESC::CELL)) {
       return log.warning(ERR_Failed);
    }
 
@@ -5873,11 +5217,11 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
 
    while (CursorIndex < LONG(Self->Stream.size())) {
       if (stream[CursorIndex] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, CursorIndex) IS ESC_CELL_END) break;
-         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC_TABLE_START) break;
-         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC_OBJECT) break;
-         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC_LINK_END) break;
-         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC_PARAGRAPH_END) break;
+         if (ESCAPE_CODE(stream, CursorIndex) IS ESC::CELL_END) break;
+         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::TABLE_START) break;
+         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::OBJECT) break;
+         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::LINK_END) break;
+         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::PARAGRAPH_END) break;
       }
       else break;
 
@@ -5893,7 +5237,7 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
    if (!edit.OnChange.empty()) { // Calculate a CRC for the cell content
       unsigned i = CellIndex;
       while (i < Self->Stream.size()) {
-         if ((stream[i] IS CTRL_CODE) and (ESCAPE_CODE(stream, i) IS ESC_CELL_END)) {
+         if ((stream[i] IS CTRL_CODE) and (ESCAPE_CODE(stream, i) IS ESC::CELL_END)) {
             auto &end = escape_data<escCellEnd>(Self, i);
             if (end.CellID IS cell.CellID) {
                Self->ActiveEditCRC = GenCRC32(0, stream.data() + CellIndex, i - CellIndex);
@@ -5938,7 +5282,7 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
       }
    }
 
-   DRAW_PAGE(Self);
+   Self->Viewport->draw();
    return ERR_Okay;
 }
 
@@ -5967,7 +5311,7 @@ static void deactivate_edit(extDocument *Self, BYTE Redraw)
    Self->CursorIndex = -1;
    Self->SelectIndex = -1;
 
-   if (Redraw) DRAW_PAGE(Self);
+   if (Redraw) Self->Viewport->draw();
 
    if (cell_index >= 0) {
       if (!edit->OnChange.empty()) {
@@ -5977,7 +5321,7 @@ static void deactivate_edit(extDocument *Self, BYTE Redraw)
 
          auto i = unsigned(cell_index);
          while (i < Self->Stream.size()) {
-            if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC_CELL_END)) {
+            if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL_END)) {
                auto &end = escape_data<escCellEnd>(Self, i);
                if (end.CellID IS cell.CellID) {
                   auto crc = GenCRC32(0, Self->Stream.data() + cell_index, i - cell_index);
@@ -6080,7 +5424,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          cell_end = cell_start;
          while (Self->Stream[cell_end]) {
             if (Self->Stream[cell_end] IS CTRL_CODE) {
-               if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC_CELL_END) {
+               if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC::CELL_END) {
                   auto end = escape_data<escCellEnd>(Self, cell_end);
                   if (end.CellID IS Self->EditCells[i].CellID) break;
                }
@@ -6146,7 +5490,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 
             auto cellindex = Self->Segments[segment].Index;
             while (cellindex > 0) {
-               if ((Self->Stream[cellindex] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, cellindex) IS ESC_CELL)) {
+               if ((Self->Stream[cellindex] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, cellindex) IS ESC::CELL)) {
                   auto &cell = escape_data<escCell>(Self, cellindex);
                   if (!cell.EditDef.empty()) {
                      activate_edit(Self, cellindex, Self->CursorIndex);
@@ -6231,7 +5575,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                      // If the cursor index exceeds the end of the editing area, reset it
 
                      while (i < LONG(Self->Stream.size())) {
-                        if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC_CELL_END)) {
+                        if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL_END)) {
                            auto &cell_end = escape_data<escCellEnd>(Self, i);
                            if (cell_end.CellID IS Self->ActiveEditCellID) {                             
                               if (auto seg = find_segment(Self, i, false); seg > 0) {
@@ -6260,7 +5604,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                Self->CursorCharX = cursor_x;
             }
 
-            DRAW_PAGE(Self);
+            Self->Viewport->draw();
          }
       }
    }
@@ -6279,7 +5623,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                Self->CursorSet = true;
             }
 
-            if ((Self->Links[i].EscapeCode IS ESC_LINK) and (!Self->Links[i].Link->PointerMotion.empty())) {                          
+            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (!Self->Links[i].Link->PointerMotion.empty())) {                          
                auto mo = Self->MouseOverChain.emplace(Self->MouseOverChain.begin(), 
                   Self->Links[i].Link->PointerMotion, 
                   Self->Links[i].Y, 
@@ -6350,7 +5694,7 @@ static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *Cha
 
       auto fi = Self->Segments[Segment].Index;
       while (fi < Self->Segments[Segment].Stop) {
-         if ((str[fi] IS CTRL_CODE) and (ESCAPE_CODE(str, fi) IS ESC_FONT)) {
+         if ((str[fi] IS CTRL_CODE) and (ESCAPE_CODE(str, fi) IS ESC::FONT)) {
             style = &escape_data<escFont>(Self, fi);
          }
          else if (str[fi] != CTRL_CODE) break;
@@ -6362,7 +5706,7 @@ static ERROR resolve_font_pos(extDocument *Self, LONG Segment, LONG X, LONG *Cha
       if (!style) {
          fi = Self->Segments[Segment].Index;
          while (fi >= 0) {
-            if ((str[fi] IS CTRL_CODE) and (ESCAPE_CODE(str, fi) IS ESC_FONT)) {
+            if ((str[fi] IS CTRL_CODE) and (ESCAPE_CODE(str, fi) IS ESC::FONT)) {
                style = &escape_data<escFont>(Self, fi);
                break;
             }
@@ -6433,7 +5777,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, LONG Index, LONG *CharX)
 
    LONG fi = Index;
    while ((Self->Stream[fi] != CTRL_CODE) and (fi < LONG(Self->Stream.size()))) {
-      if ((Self->Stream[fi] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, fi) IS ESC_FONT)) {
+      if ((Self->Stream[fi] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, fi) IS ESC::FONT)) {
          style = &escape_data<escFont>(Self, fi);
       }
       else if (Self->Stream[fi] != CTRL_CODE) break;
@@ -6445,7 +5789,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, LONG Index, LONG *CharX)
    if (!style) {
       fi = Index;
       while (fi >= 0) {
-         if ((Self->Stream[fi] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, fi) IS ESC_FONT)) {
+         if ((Self->Stream[fi] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, fi) IS ESC::FONT)) {
             style = &escape_data<escFont>(Self, fi);
             break;
          }
@@ -6564,7 +5908,7 @@ static void deselect_text(extDocument *Self)
 
    Self->SelectIndex = -1;
 
-   DRAW_PAGE(Self);  // TODO: Draw only the area that we've identified as relevant.
+   Self->Viewport->draw();  // TODO: Draw only the area that we've identified as relevant.
 }
 
 //********************************************************************************************************************
@@ -6665,7 +6009,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
    Self->FocusIndex = Index;
 
    if (Self->Tabs[Index].Type IS TT_EDIT) {
-      acFocus(Self->PageID);
+      acFocus(Self->Page);
 
       LONG cell_index;
       if ((cell_index = find_cell(Self, Self->Tabs[Self->FocusIndex].Ref)) >= 0) {
@@ -6695,7 +6039,7 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          unsigned i;
          for (i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].EscapeCode IS ESC_LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) break;
+            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) break;
          }
 
          if (i < Self->Links.size()) {
@@ -6712,12 +6056,12 @@ static void set_focus(extDocument *Self, LONG Index, CSTRING Caller)
             }
 
             if (!view_area(Self, link_x, link_y, link_right, link_bottom)) {
-               DRAW_PAGE(Self);
+               Self->Viewport->draw();
             }
          }
-         else DRAW_PAGE(Self);
+         else Self->Viewport->draw();
 
-         acFocus(Self->PageID);
+         acFocus(Self->Page);
       }
    }
 }
@@ -6795,7 +6139,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
       }
    }
 
-   log.function("Direction: %d, Current Surface: %d, Current Index: %d", Direction, currentfocus, Self->FocusIndex);
+   log.function("Direction: %d, Current Index: %d", Direction, Self->FocusIndex);
 
    if (Self->FocusIndex < 0) {
       // FocusIndex may be -1 to indicate nothing is selected, so we'll have to start from the first focusable index in that case.
@@ -7006,17 +6350,17 @@ static void exec_link(extDocument *Self, DocLink &Link)
 
    Self->Processing++;
 
-   if ((Link.EscapeCode IS ESC_LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
+   if ((Link.EscapeCode IS ESC::LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
       deLinkActivated params;
       auto link = Link.Link;
 
-      if (link->Type IS LINK_FUNCTION) {
+      if (link->Type IS LINK::FUNCTION) {
          std::string function_name, args;
          if (!extract_script(Self, link->Ref, NULL, function_name, args)) {
             params.Values["onclick"] = function_name;
          }
       }
-      else if (link->Type IS LINK_HREF) {
+      else if (link->Type IS LINK::HREF) {
          params.Values["href"] = link->Ref;
       }
 
@@ -7030,13 +6374,13 @@ static void exec_link(extDocument *Self, DocLink &Link)
       if (result IS ERR_Skip) goto end;
    }
 
-   if (Link.EscapeCode IS ESC_LINK) {
+   if (Link.EscapeCode IS ESC::LINK) {
       OBJECTPTR script;
       std::string function_name, fargs;
       CLASSID class_id, subclass_id;
 
       auto link = Link.Link;
-      if (link->Type IS LINK_FUNCTION) { // Function is in the format 'function()' or 'script.function()'
+      if (link->Type IS LINK::FUNCTION) { // Function is in the format 'function()' or 'script.function()'
          if (!extract_script(Self, link->Ref, &script, function_name, fargs)) {
             std::vector<ScriptArg> args;
 
@@ -7052,7 +6396,7 @@ static void exec_link(extDocument *Self, DocLink &Link)
             scExec(script, function_name.c_str(), args.data(), args.size());
          }
       }
-      else if (link->Type IS LINK_HREF) {
+      else if (link->Type IS LINK::HREF) {
          if (link->Ref[0] IS ':') {
             Self->Bookmark = link->Ref.substr(1);
             show_bookmark(Self, Self->Bookmark);
@@ -7118,7 +6462,7 @@ static void exec_link(extDocument *Self, DocLink &Link)
          }
       }
    }
-   else if (Link.EscapeCode IS ESC_CELL) {
+   else if (Link.EscapeCode IS ESC::CELL) {
       OBJECTPTR script;
       std::string function_name, script_args;
 
@@ -7173,20 +6517,11 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 
 //********************************************************************************************************************
 
-static void key_event(extDocument *Self, evKey *Event, LONG Size)
-{
-   if ((Event->Qualifiers & KQ::PRESSED) != KQ::NIL) {
-      keypress(Self, Event->Qualifiers, Event->Code, Event->Unicode);
-   }
-}
-
-//********************************************************************************************************************
-
 static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
 {
    Self->CursorState ^= 1;
 
-   DRAW_PAGE(Self);
+   Self->Viewport->draw();
    return ERR_Okay;
 }
 

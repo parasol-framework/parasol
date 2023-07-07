@@ -1661,7 +1661,7 @@ class Create {
    public:
       ERROR error;
 
-      // Return an unscoped direct object pointer.  NB: Globals are still tracked
+      // Return an unscoped direct object pointer.  NB: Globals are still tracked to their owner
 
       template <typename... Args> static T * global(Args&&... Fields) {
          pf::Create<T> object = { std::forward<Args>(Fields)... };

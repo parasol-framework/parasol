@@ -11,6 +11,7 @@
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
 #include <parasol/modules/font.h>
+#include <parasol/modules/vector.h>
 
 class objDocument;
 
@@ -208,34 +209,34 @@ class objDocument : public BaseClass {
 
    using create = pf::Create<objDocument>;
 
-   STRING   Description;      // A description of the document, provided by its author.
-   STRING   FontFace;         // Defines the default font face.
-   STRING   Title;            // The title of the document.
-   STRING   Author;           // The author(s) of the document.
-   STRING   Copyright;        // Copyright information for the document.
-   STRING   Keywords;         // Includes keywords declared by the source document.
-   OBJECTID TabFocusID;       // Allows the user to hit the tab key to focus on other GUI objects.
-   OBJECTID SurfaceID;        // Defines the surface area for document graphics.
-   OBJECTID FocusID;          // Refers to the object that will be monitored for user focusing.
-   DEF      EventMask;        // Specifies events that need to be reported from the Document object.
-   DCF      Flags;            // Optional flags that affect object behaviour.
-   LONG     LeftMargin;       // Defines the amount of whitespace to leave at the left of the page.
-   LONG     TopMargin;        // Defines the amount of white-space to leave at the top of the document page.
-   LONG     RightMargin;      // Defines the amount of white-space to leave at the right side of the document page.
-   LONG     BottomMargin;     // Defines the amount of whitespace to leave at the bottom of the document page.
-   LONG     FontSize;         // The point-size of the default font.
-   LONG     PageHeight;       // Measures the page height of the document, in pixels.
-   DBE      BorderEdge;       // Border edge flags.
-   LONG     LineHeight;       // Default line height (taken as an average) for all text on the page.
-   ERROR    Error;            // The most recently generated error code.
-   struct RGB8 FontColour;    // Default font colour.
-   struct RGB8 Highlight;     // Defines the colour used to highlight document.
-   struct RGB8 Background;    // Optional background colour for the document.
-   struct RGB8 CursorColour;  // The colour used for the document cursor.
-   struct RGB8 LinkColour;    // Default font colour for hyperlinks.
-   struct RGB8 VLinkColour;   // Default font colour for visited hyperlinks.
-   struct RGB8 SelectColour;  // Default font colour to use when hyperlinks are selected.
-   struct RGB8 Border;        // Border colour around the document's surface.
+   STRING   Description;            // A description of the document, provided by its author.
+   STRING   FontFace;               // Defines the default font face.
+   STRING   Title;                  // The title of the document.
+   STRING   Author;                 // The author(s) of the document.
+   STRING   Copyright;              // Copyright information for the document.
+   STRING   Keywords;               // Includes keywords declared by the source document.
+   STRING   FontFill;               // Default font colour.
+   STRING   Highlight;              // Defines the fill used to highlight the document.
+   STRING   Background;             // Optional background colour for the document.
+   STRING   CursorStroke;           // The colour used for the document cursor.
+   STRING   LinkFill;               // Default font colour for hyperlinks.
+   STRING   VLinkFill;              // Default font fill for visited hyperlinks.
+   STRING   LinkSelectFill;         // Default font fill to use when hyperlinks are selected.
+   STRING   BorderStroke;           // The stroke to use for drawing a border around the document window.
+   objVectorViewport * Viewport;    // A target viewport that will host the document graphics.
+   objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
+   OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
+   DEF      EventMask;              // Specifies events that need to be reported from the Document object.
+   DCF      Flags;                  // Optional flags that affect object behaviour.
+   LONG     LeftMargin;             // Defines the amount of whitespace to leave at the left of the page.
+   LONG     TopMargin;              // Defines the amount of white-space to leave at the top of the document page.
+   LONG     RightMargin;            // Defines the amount of white-space to leave at the right side of the document page.
+   LONG     BottomMargin;           // Defines the amount of whitespace to leave at the bottom of the document page.
+   LONG     FontSize;               // The point-size of the default font.
+   LONG     PageHeight;             // Measures the page height of the document, in pixels.
+   DBE      BorderEdge;             // Border edge flags.
+   LONG     LineHeight;             // Default line height (taken as an average) for all text on the page.
+   ERROR    Error;                  // The most recently generated error code.
 
    // Action stubs
 
@@ -310,20 +311,24 @@ class objDocument : public BaseClass {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setTabFocus(const OBJECTID Value) {
-      this->TabFocusID = Value;
+   inline ERROR setHighlight(const STRING Value) {
+      this->Highlight = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSurface(const OBJECTID Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[28];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
+   inline ERROR setBackground(const STRING Value) {
+      this->Background = Value;
+      return ERR_Okay;
    }
 
-   inline ERROR setFocus(const OBJECTID Value) {
+   inline ERROR setFocus(objVectorViewport * Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
-      this->FocusID = Value;
+      this->Focus = Value;
+      return ERR_Okay;
+   }
+
+   inline ERROR setTabFocus(OBJECTID Value) {
+      this->TabFocusID = Value;
       return ERR_Okay;
    }
 
@@ -374,44 +379,46 @@ class objDocument : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFontColour(const struct RGB8 Value) {
-      this->FontColour = Value;
-      return ERR_Okay;
+   inline ERROR setSurface(OBJECTID Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[28];
+      return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setHighlight(const struct RGB8 Value) {
-      this->Highlight = Value;
-      return ERR_Okay;
+   inline ERROR setFontColour(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[27];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setBackground(const struct RGB8 Value) {
-      this->Background = Value;
-      return ERR_Okay;
+   inline ERROR setCursorColour(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[0];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setCursorColour(const struct RGB8 Value) {
-      this->CursorColour = Value;
-      return ERR_Okay;
+   inline ERROR setLinkColour(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setLinkColour(const struct RGB8 Value) {
-      this->LinkColour = Value;
-      return ERR_Okay;
+   inline ERROR setVLinkColour(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setVLinkColour(const struct RGB8 Value) {
-      this->VLinkColour = Value;
-      return ERR_Okay;
+   inline ERROR setSelectColour(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[32];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
-   inline ERROR setSelectColour(const struct RGB8 Value) {
-      this->SelectColour = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setBorder(const struct RGB8 Value) {
-      this->Border = Value;
-      return ERR_Okay;
+   inline ERROR setBorder(const BYTE * Value, LONG Elements) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[38];
+      return field->WriteValue(target, field, 0x01081300, Value, Elements);
    }
 
    inline ERROR setDefaultScript(OBJECTPTR Value) {

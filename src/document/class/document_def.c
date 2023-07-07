@@ -69,7 +69,6 @@ static const struct ActionArray clDocumentActions[] = {
    { AC_GetVar, DOCUMENT_GetVar },
    { AC_Init, DOCUMENT_Init },
    { AC_NewObject, DOCUMENT_NewObject },
-   { AC_NewOwner, DOCUMENT_NewOwner },
    { AC_Refresh, DOCUMENT_Refresh },
    { AC_SaveToObject, DOCUMENT_SaveToObject },
    { AC_ScrollToPoint, DOCUMENT_ScrollToPoint },

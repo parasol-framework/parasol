@@ -5,7 +5,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     loadFile(glPath .. 'common-graphics.fdl')
   end)
 
-  c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>")
+  c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>", "<parasol/modules/vector.h>")
 
   const("RIPPLE", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
     VERSION = "\"20160601\""
@@ -77,7 +77,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     { id=13, name="Edit" },
     { id=14, name="ReadContent" }
   })
-
+  
   class("Document", { src={ "class/document_class.cpp", "class/fields.cpp" }, output="class/document_def.c" }, [[
     str Description      # A description assigned by the author of the document
     str FontFace         # The user's default font face
@@ -85,9 +85,17 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     str Author           # The author of the document
     str Copyright        # Copyright information for the document
     str Keywords         # Keywords for the document
+    str FontFill         # Default font fill
+    str Highlight        # The fill for highlighting document selections
+    str Background       # Fill for document background
+    str CursorStroke     # The stroke style of the cursor
+    str LinkFill         # The fill to use for hyperlinks
+    str VLinkFill        # The fill to use for visited hyperlinks
+    str LinkSelectFill   # The fill to use when links are selected (e.g. when the user tabs to a link)
+    str BorderStroke     # The stroke to apply to the border of the document window
+    obj(VectorViewport) Viewport  # The viewport that will host the document graphics    
+    obj(VectorViewport) Focus
     oid TabFocus         # If the tab key is pressed, focus can be changed to this object
-    oid Surface          # The surface that the document will be rendered to
-    oid Focus
     int(DEF) EventMask   # Event mask for selectively receiving events from the Document object.
     int(DCF) Flags       # Optional flags
     int LeftMargin       # Size of the left margin
@@ -99,14 +107,6 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     int(DBE) BorderEdge
     int LineHeight       # Default line height (assumed to be an average) for all text the loaded page
     error Error          # Processing error code
-    struct(RGB8) FontColour   # Default font colour
-    struct(RGB8) Highlight    # Default colour for document highlighting
-    struct(RGB8) Background   # Colour for document background
-    struct(RGB8) CursorColour # The colour of the cursor
-    struct(RGB8) LinkColour   # Colour to use for hyperlinks
-    struct(RGB8) VLinkColour  # Colour to use for visited hyperlinks
-    struct(RGB8) SelectColour # Default colour to use when links are selected (e.g. when the user tabs to a link)
-    struct(RGB8) Border
   ]])
 
   functionNames("doc",

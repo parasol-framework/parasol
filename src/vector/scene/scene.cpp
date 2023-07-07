@@ -829,7 +829,7 @@ static void process_resize_msgs(extVectorScene *Self)
 static ERROR vector_keyboard_events(extVector *Vector, const evKey *Event)
 {
    for (auto it=Vector->KeyboardSubscriptions->begin(); it != Vector->KeyboardSubscriptions->end(); ) {
-      ERROR result;
+      ERROR result = ERR_Terminate;
       auto &sub = *it;
       if (sub.Callback.Type IS CALL_STDC) {
          pf::SwitchContext ctx(sub.Callback.StdC.Context);

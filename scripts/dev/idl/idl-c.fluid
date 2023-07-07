@@ -1559,7 +1559,7 @@ function outputClassHeader(class, Private, Custom)
                      else
                         field_type = 'const ' .. field_type
                      end
-                  elseif bit.band(f.flags, FD_POINTER) != 0 then
+                  elseif bit.band(f.flags, bit.bor(FD_POINTER, FD_OBJECT)) != 0 then
                      -- Applying const to pointers can cause type conversion issues.
                   else
                      field_type = 'const ' .. field_type

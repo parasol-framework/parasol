@@ -91,7 +91,7 @@ static void saved_style_check(extDocument *Self, style_status &SaveStatus)
    if (SaveStatus.FontStyle.Index != Self->Style.FontStyle.Index) font = true;
 
    if ((SaveStatus.FontStyle.Options != Self->Style.FontStyle.Options) or
-       (((ULONG *)&SaveStatus.FontStyle.Colour)[0] != ((ULONG *)&Self->Style.FontStyle.Colour)[0])) {
+       (SaveStatus.FontStyle.Fill != Self->Style.FontStyle.Fill)) {
       style = true;
    }
 
@@ -142,12 +142,19 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
-         case HASH_link: read_rgb8(Tag.Attribs[i].Value, &Self->LinkColour); break;
+         case HASH_link: 
+            if (Self->LinkFill) FreeResource(Self->LinkFill);
+            Self->LinkFill = StrClone(Tag.Attribs[i].Value.c_str()); 
+            break;
       
-         case HASH_vlink: read_rgb8(Tag.Attribs[i].Value, &Self->VLinkColour); break;
+         case HASH_vlink: 
+            if (Self->VLinkFill) FreeResource(Self->VLinkFill);
+            Self->VLinkFill = StrClone(Tag.Attribs[i].Value.c_str()); 
+            break;
       
          case HASH_selectcolour: // Colour to use when a link is selected (using the tab key to get to a link will select it)
-            read_rgb8(Tag.Attribs[i].Value, &Self->SelectColour);
+            if (Self->LinkSelectFill) FreeResource(Self->LinkSelectFill);
+            Self->LinkSelectFill = StrClone(Tag.Attribs[i].Value.c_str());
             break;
       
          case HASH_leftmargin:
@@ -201,7 +208,8 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             break;
 
          case HASH_colour: // Background colour
-            read_rgb8(Tag.Attribs[i].Value, &Self->Background);
+            if (Self->Background) FreeResource(Self->Background);
+            Self->Background = StrClone(Tag.Attribs[i].Value.c_str());
             break;
 
          case HASH_face:
@@ -214,7 +222,8 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             break;
 
          case HASH_fontcolour: // Default font colour
-            read_rgb8(Tag.Attribs[i].Value, &Self->FontColour);
+            if (Self->FontFill) FreeResource(Self->FontFill);
+            Self->FontFill = StrClone(Tag.Attribs[i].Value.c_str());
             break;
 
          default:
@@ -226,7 +235,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    Self->Style.Face = Self->FontFace;
    Self->Style.FontStyle.Index   = create_font(Self->FontFace, "Regular", Self->FontSize);
    Self->Style.FontStyle.Options = FSO::NIL;
-   Self->Style.FontStyle.Colour  = Self->FontColour;
+   Self->Style.FontStyle.Fill    = Self->FontFill;
    Self->Style.Point       = Self->FontSize;
    Self->Style.FontChange  = true;
    Self->Style.StyleChange = true;
@@ -235,7 +244,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 }
 
 //********************************************************************************************************************
-// In background mode, all objects are targetted to the view surface rather than the page surface.
+// In background mode, all objects are targeted to the View viewport rather than the Page viewport.
 
 static void tag_background(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, LONG &Index, IPF Flags)
 {
@@ -609,11 +618,9 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
    if (Tag.Attribs.size() > 1) {
       if ((!StrMatch("value", Tag.Attribs[1].Name)) or (!StrMatch("$value", Tag.Attribs[1].Name))) {
-         //StrCopy(Tag.Attribs[1].Value, Self->Temp, Self->TempSize);
-
          log.traceBranch("Parsing string value as XML...");
 
-         if (auto xmlinc = objXML::create::integral(fl::Statement(Self->Temp), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
+         if (auto xmlinc = objXML::create::integral(fl::Statement(Tag.Attribs[1].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             parse_tags(Self, xmlinc, xmlinc->Tags, Index, Flags);
 
             // Add the created XML object to the document rather than destroying it
@@ -707,16 +714,16 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_href:
-            if (!link.Type) {
+            if (link.Type IS LINK::NIL) {
                href = Tag.Attribs[i].Value;
-               link.Type = LINK_HREF;
+               link.Type = LINK::HREF;
             }
             break;
 
          case HASH_onclick:
-            if (!link.Type) { // Function to execute on click
+            if (link.Type IS LINK::NIL) { // Function to execute on click
                function = Tag.Attribs[i].Value;
-               link.Type = LINK_FUNCTION;         
+               link.Type = LINK::FUNCTION;         
             }
             break;
 
@@ -745,12 +752,12 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    std::ostringstream buffer;
 
-   if ((link.Type) or (!Tag.Children.empty())) {
+   if ((link.Type != LINK::NIL) or (!Tag.Children.empty())) {
       link.ID    = ++Self->LinkID;
       link.Align = Self->Style.FontStyle.Options;
 
       auto pos = sizeof(link);
-      if (link.Type IS LINK_FUNCTION) buffer << function << '\0';      
+      if (link.Type IS LINK::FUNCTION) buffer << function << '\0';      
       else buffer << href << '\0';
       
       if (!pointermotion.empty()) {
@@ -763,10 +770,10 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       auto savestatus = Self->Style;
 
       Self->Style.StyleChange        = true;
-      Self->Style.FontStyle.Options |= FSO::UNDERLINE;
-      Self->Style.FontStyle.Colour   = Self->LinkColour;
+      Self->Style.FontStyle.Options |= FSO::UNDERLINE;      
 
-      if (!colour.empty()) read_rgb8(colour, &Self->Style.FontStyle.Colour);
+      if (!colour.empty()) Self->Style.FontStyle.Fill = colour;
+      else Self->Style.FontStyle.Fill = Self->LinkFill;
 
       parse_tags(Self, XML, Tag.Children, Index);
 
@@ -796,10 +803,11 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, LONG &Index, IPF Flags)
 {
+   pf::Log log(__FUNCTION__);
    escList esc, *savelist;
    char buffer[LIST_BUFFER_SIZE];
 
-   esc.Colour      = Self->Style.FontStyle.Colour; // Default colour matches the current font colour
+   esc.Fill        = Self->Style.FontStyle.Fill; // Default fill matches the current font colour
    esc.Start       = 1;
    esc.VSpacing    = 0.5;
    esc.Type        = LT_BULLET;
@@ -811,8 +819,8 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    buffer[0] = 0;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("colour", Tag.Attribs[i].Name)) {
-         read_rgb8(Tag.Attribs[i].Value, &esc.Colour);
+      if (!StrMatch("fill", Tag.Attribs[i].Name)) {
+         esc.Fill = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("indent", Tag.Attribs[i].Name)) {
          // Affects the indenting to apply to child items.
@@ -835,6 +843,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             esc.ItemIndent = 0;
          }
       }
+      else log.msg("Unknown list attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
    style_check(Self, Index); // Font changes must take place prior to the list for correct bullet point alignment
@@ -1072,7 +1081,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("colour", Tag.Attribs[i].Name)) {
          Self->Style.StyleChange = true;
-         read_rgb8(Tag.Attribs[i].Value, &Self->Style.FontStyle.Colour);
+         Self->Style.FontStyle.Fill = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("face", Tag.Attribs[i].Name)) {
          Self->Style.FontChange = true;
@@ -1152,8 +1161,6 @@ static void tag_object(extDocument *Self, const std::string &pagetarget, CLASSID
 
    log.branch("Processing %s object from document tag, owner #%d.", object->Class->ClassName, Self->CurrentObject ? Self->CurrentObject->UID : -1);
 
-   Self->DrawIntercept++;
-
    // Setup the callback interception so that we can control the order in which objects draw their graphics to the surface.
 
    if (Self->CurrentObject) {
@@ -1161,8 +1168,8 @@ static void tag_object(extDocument *Self, const std::string &pagetarget, CLASSID
    }
    else if (!pagetarget.empty()) {
       auto field_id = StrHash(pagetarget);
-      if (Self->BkgdGfx) object->set(field_id, Self->ViewID);
-      else object->set(field_id, Self->PageID);
+      if (Self->BkgdGfx) object->set(field_id, Self->View);
+      else object->set(field_id, Self->Page);
    }
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -1365,8 +1372,6 @@ static void tag_object(extDocument *Self, const std::string &pagetarget, CLASSID
       FreeResource(object);
       log.warning("Failed to initialise object of class $%.8x", class_id);
    }
-
-   Self->DrawIntercept--;
 }
 
 //********************************************************************************************************************
@@ -1516,7 +1521,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
       if (!src.empty()) script->setPath(src);
       else {
          std::string content = xmlGetContent(Tag);
-         if (!content.empty()) script->setStatement(Self->Temp);
+         if (!content.empty()) script->setStatement(content);
       }
 
       if (!cachefile.empty()) script->setCacheFile(cachefile);
@@ -1580,7 +1585,7 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_colour:
             Self->Style.StyleChange = true;
-            read_rgb8(Tag.Attribs[i].Value, &Self->Style.FontStyle.Colour);
+            Self->Style.FontStyle.Fill = Tag.Attribs[i].Value;
             break;
 
          case HASH_face:
@@ -1879,8 +1884,8 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 // Thickness:    Thickness of the border colour.
 //
 // The only acceptable child tags inside a <table> section are row, brk and cell tags.  Command tags are acceptable
-// (repeat, if statements, etc).  The table byte code is typically generated as ESC_TABLE_START, ESC_ROW, ESC_CELL...,
-// ESC_ROW_END, ESC_TABLE_END.
+// (repeat, if statements, etc).  The table byte code is typically generated as ESC::TABLE_START, ESC::ROW, ESC::CELL...,
+// ESC::ROW_END, ESC::TABLE_END.
 
 static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, LONG &Index, IPF Flags)
 {

@@ -15,7 +15,7 @@ features for creating complex documents and manuals.
 
       struct drwInheritedFocus *inherit = (struct drwInheritedFocus *)(Args->Args);
       for (LONG i=0; i < Self->Tabs.size(); i++) {
-         if (Self->Tabs[i].XRef IS inherit->FocusID) {
+         if (Self->Tabs[i].XRef IS inherit->Focus) {
             Self->FocusIndex = i;
             acDrawID(Self->PageID);
             break;
@@ -34,18 +34,13 @@ static void notify_enable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Res
    if (!Result) acEnable(CurrentContext());
 }
 
-static void notify_focus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
 
    if (Result) return;
 
    Self->HasFocus = true;
-
-   if (!Self->prvKeyEvent) {
-      auto callback = make_function_stdc(key_event);
-      SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &callback, Self, &Self->prvKeyEvent);
-   }
 
    if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
 }
@@ -58,14 +53,12 @@ static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
    Self->EventCallback.Type = CALL_NONE;
 }
 
-static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
    if (Result) return;
-
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
 
    Self->HasFocus = false;
 
@@ -73,22 +66,22 @@ static void notify_lostfocus_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR 
 
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
+         bool draw = false;
          for (auto &link : Self->Links) {
-            if ((link.EscapeCode IS ESC_LINK) and (link.Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
-               acDrawArea(Self->PageID, link.X, link.Y, link.Width, link.Height);
+            if ((link.EscapeCode IS ESC::LINK) and (link.Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
+               draw = true;
                break;
             }
          }
+         if (draw) Self->Page->draw();
       }
    }
 }
 
-static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, struct acRedimension *Args)
+static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
-
-   gfxGetSurfaceCoords(Self->SurfaceID, NULL, NULL, NULL, NULL, &Self->SurfaceWidth, &Self->SurfaceHeight);
 
    log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
 
@@ -97,7 +90,7 @@ static void notify_redimension_surface(OBJECTPTR Object, ACTIONID ActionID, ERRO
    Self->AreaWidth  = Self->SurfaceWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
    Self->AreaHeight = Self->SurfaceHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
-   acRedimension(Self->ViewID, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
+   acRedimension(Self->View, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
 
    for (auto &trigger : Self->Triggers[DRT_BEFORE_LAYOUT]) {
       if (trigger.Type IS CALL_SCRIPT) {
@@ -418,8 +411,8 @@ static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
 
 static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
-   if (Self->SurfaceID) {
-      if (Self->Processing) QueueAction(AC_Draw, Self->UID);
+   if (Self->Viewport) {
+      if (Self->Processing) Self->Viewport->draw();
       else redraw(Self, false);
       return ERR_Okay;
    }
@@ -518,8 +511,8 @@ a section of content that may change during run-time viewing, or as place-marker
 document position.
 
 If the named index exists, then the start and end points (as determined by the opening and closing of the index tag)
-will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC_INDEX_START code and
-the end byte will refer to an ESC_INDEX_END code.
+will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC::INDEX_START code and
+the end byte will refer to an ESC::INDEX_END code.
 
 -INPUT-
 cstr Name:  The name of the index to search for.
@@ -545,7 +538,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    LONG i = 0;
    while (Self->Stream[i]) {
       if (Self->Stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(Self->Stream, i) IS ESC_INDEX_START) {
+         if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_START) {
             auto &index = escape_data<escIndex>(Self, i);
             if (name_hash IS index.NameHash) {
                LONG end_id = index.ID;
@@ -557,7 +550,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
                while (Self->Stream[i]) {
                   if (Self->Stream[i] IS CTRL_CODE) {
-                     if (ESCAPE_CODE(Self->Stream, i) IS ESC_INDEX_END) {
+                     if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_END) {
                         auto &end = escape_data<escIndexEnd>(Self, i);
                         if (end_id IS end.ID) {
                            Args->End = i;
@@ -586,7 +579,7 @@ Focus: Sets the user focus on the document page.
 
 static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 {
-   acFocus(Self->PageID);
+   acFocus(Self->Page);
    return ERR_Okay;
 }
 
@@ -594,28 +587,26 @@ static ERROR DOCUMENT_Focus(extDocument *Self, APTR Args)
 
 static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if (Self->PageID)    { FreeResource(Self->PageID); Self->PageID = 0; }
-   if (Self->ViewID)    { FreeResource(Self->ViewID); Self->ViewID = 0; }
-   if (Self->InsertXML) { FreeResource(Self->InsertXML); Self->InsertXML = NULL; }
+   if (Self->Page)           { FreeResource(Self->Page);           Self->Page           = 0; }
+   if (Self->View)           { FreeResource(Self->View);           Self->View           = 0; }
+   if (Self->InsertXML)      { FreeResource(Self->InsertXML);      Self->InsertXML      = NULL; }
+   if (Self->FontFill)       { FreeResource(Self->FontFill);       Self->FontFill       = NULL; }     
+   if (Self->Highlight)      { FreeResource(Self->Highlight);      Self->Highlight      = NULL; }
+   if (Self->Background)     { FreeResource(Self->Background);     Self->Background     = NULL; }
+   if (Self->CursorStroke)   { FreeResource(Self->CursorStroke);   Self->CursorStroke   = NULL; }
+   if (Self->LinkFill)       { FreeResource(Self->LinkFill);       Self->LinkFill       = NULL; }
+   if (Self->VLinkFill)      { FreeResource(Self->VLinkFill);      Self->VLinkFill      = NULL; }
+   if (Self->LinkSelectFill) { FreeResource(Self->LinkSelectFill); Self->LinkSelectFill = NULL; }
+   if (Self->BorderStroke)   { FreeResource(Self->BorderStroke);   Self->BorderStroke   = NULL; }
 
-   if ((Self->FocusID) and (Self->FocusID != Self->SurfaceID)) {
-      OBJECTPTR object;
-      if (!AccessObject(Self->FocusID, 5000, &object)) {
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
-      }
+   if ((Self->Focus) and (Self->Focus != Self->Viewport)) {
+      UnsubscribeAction(Self->Focus, 0);
    }
 
-   if (Self->SurfaceID) {
-      OBJECTPTR object;
-      if (!AccessObject(Self->SurfaceID, 5000, &object)) {
-         drwRemoveCallback(object, NULL);
-         UnsubscribeAction(object, 0);
-         ReleaseObject(object);
-      }
+   if (Self->Viewport) {
+      UnsubscribeAction(Self->Viewport, 0);
    }
 
    if (Self->PointerLocked) {
@@ -663,94 +654,80 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->SurfaceID) return log.warning(ERR_UnsupportedOwner);
+   if (!Self->Viewport) return log.warning(ERR_UnsupportedOwner);
 
-   if (!Self->FocusID) Self->FocusID = Self->SurfaceID;
+   if (!Self->Focus) Self->Focus = Self->Viewport;
 
-   objSurface *surface;
-   if (!AccessObject(Self->FocusID, 5000, &surface)) {
-      if (surface->Class->ClassID != ID_SURFACE) {
-         ReleaseObject(surface);
-         return log.warning(ERR_WrongObjectType);
-      }
+   if (Self->Focus->Class->ClassID != ID_VECTORVIEWPORT) {
+      return log.warning(ERR_WrongObjectType);
+   }
+   
+   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;   
 
-      if ((surface->Flags & RNF::HAS_FOCUS) != RNF::NIL) {
-         Self->HasFocus = true;
+   auto call = make_function_stdc(key_event);
+   vecSubscribeKeyboard(Self->Viewport, &call);
 
-         auto call = make_function_stdc(key_event);
-         SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, &call, Self, &Self->prvKeyEvent);
-      }
+   call = make_function_stdc(notify_focus_viewport);
+   SubscribeAction(Self->Focus, AC_Focus, &call);
 
-      auto callback = make_function_stdc(notify_focus_surface);
-      SubscribeAction(surface, AC_Focus, &callback);
+   call = make_function_stdc(notify_lostfocus_viewport);
+   SubscribeAction(Self->Focus, AC_LostFocus, &call);
 
-      callback = make_function_stdc(notify_lostfocus_surface);
-      SubscribeAction(surface, AC_LostFocus, &callback);
+   // Setup the target viewport
 
-      ReleaseObject(surface);
+   Self->Viewport->get(FID_Width, &Self->SurfaceWidth);
+   Self->Viewport->get(FID_Height, &Self->SurfaceHeight);
+
+   FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
+   Self->Viewport->setFillColour(bkgd, 4);
+
+   call = make_function_stdc(notify_disable_surface);
+   SubscribeAction(Self->Viewport, AC_Disable, &call);
+
+   call = make_function_stdc(notify_enable_surface);
+   SubscribeAction(Self->Viewport, AC_Enable, &call);
+      
+   call = make_function_stdc(notify_redimension_viewport);
+   Self->Viewport->setResizeEvent(call);
+
+   if (Self->BorderStroke) {
+      // TODO: Use a VectorPolygon with a custom path based on the BorderEdge values.
+      if (Self->BorderEdge IS DBE::NIL) Self->BorderEdge = DBE::TOP|DBE::BOTTOM|DBE::RIGHT|DBE::LEFT;
+
+      objVectorRectangle::create::global(fl::Owner(Self->Page->UID), fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"), 
+         fl::StrokeWidth(1), fl::Stroke(Self->BorderStroke));
    }
 
-   // Setup the target surface
-
-   if (!AccessObject(Self->SurfaceID, 5000, &surface)) {
-      Self->SurfaceWidth = surface->Width;
-      Self->SurfaceHeight = surface->Height;
-
-      surface->setColour(RGB8{ 255, 255, 255, 255 });
-
-      auto callA = make_function_stdc(notify_disable_surface);
-      SubscribeAction(surface, AC_Disable, &callA);
-
-      auto callB = make_function_stdc(notify_enable_surface);
-      SubscribeAction(surface, AC_Enable, &callB);
-
-      auto callC = make_function_stdc(notify_redimension_surface);
-      SubscribeAction(surface, AC_Redimension, &callC);
-
-      if (Self->Border.Alpha > 0) {
-         if (Self->BorderEdge IS DBE::NIL) Self->BorderEdge = DBE::TOP|DBE::BOTTOM|DBE::RIGHT|DBE::LEFT;
-         drwAddCallback(surface, (APTR)&draw_border);
-      }
-
-      Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
-      Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-      Self->AreaWidth  = Self->SurfaceWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-      Self->AreaHeight = Self->SurfaceHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-
-      ReleaseObject(surface);
-   }
-   else return ERR_AccessObject;
+   Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
+   Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
+   Self->AreaWidth  = Self->SurfaceWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->AreaHeight = Self->SurfaceHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
    // Allocate the view and page areas
 
-   if (auto surface = objSurface::create::integral(
+   if ((Self->View = objVectorViewport::create::integral(
          fl::Name("rgnDocView"),   // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Parent(Self->SurfaceID),
+         fl::Parent(Self->Viewport->UID),
          fl::X(Self->AreaX), fl::Y(Self->AreaY),
-         fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight))) {
-
-      Self->ViewID = surface->UID;
-      drwAddCallback(surface, (APTR)&draw_background);
+         fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight)))) {
    }
    else return ERR_CreateObject;
 
-   if (auto surface = objSurface::create::integral(
+   if ((Self->Page = objVectorViewport::create::integral(
          fl::Name("rgnDocPage"),  // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Parent(Self->ViewID),
+         fl::Parent(Self->Viewport->UID),
          fl::X(0), fl::Y(0),
          fl::MaxWidth(0x7fffffff), fl::MaxHeight(0x7fffffff),
          fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT),
-         fl::Flags(RNF::TRANSPARENT|RNF::GRAB_FOCUS))) {
+         fl::Flags(RNF::TRANSPARENT|RNF::GRAB_FOCUS)))) {
 
-      drwAddCallback(surface, (APTR)&draw_document);
       auto callback = make_function_stdc(consume_input_events);
-      gfxSubscribeInput(&callback, Self->PageID, JTYPE::MOVEMENT|JTYPE::BUTTON, 0, &Self->InputHandle);
-      Self->PageID = surface->UID;
+      vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
    }
    else return ERR_CreateObject;
 
-   acShow(Self->ViewID);
-   acShow(Self->PageID);
+   acShow(Self->View);
+   acShow(Self->Page);
 
    // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
 
@@ -829,7 +806,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    LONG i = 0;
    while (stream[i]) {
       if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC_INDEX_START) {
+         if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
             auto &index = escape_data<escIndex>(Self, i);
             if (name_hash IS index.NameHash) {
                if (!index.Visible) return ERR_Okay; // It's already invisible!
@@ -847,11 +824,11 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                   while (stream[i]) {
                      if (stream[i] IS CTRL_CODE) {
                         auto code = ESCAPE_CODE(stream, i);
-                        if (code IS ESC_INDEX_END) {
+                        if (code IS ESC::INDEX_END) {
                            auto &end = escape_data<escIndexEnd>(Self, i);
                            if (index.ID IS end.ID) break;
                         }
-                        else if (code IS ESC_OBJECT) {
+                        else if (code IS ESC::OBJECT) {
                            auto &escobj = escape_data<escObject>(Self, i);
                            if (escobj.ObjectID) acHide(escobj.ObjectID);
 
@@ -859,13 +836,13 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                               Self->Tabs[tab].Active = false;
                            }
                         }
-                        else if (code IS ESC_LINK) {
+                        else if (code IS ESC::LINK) {
                            auto &esclink = escape_data<escLink>(Self, i);
                            if ((tab = find_tabfocus(Self, TT_LINK, esclink.ID)) >= 0) {
                               Self->Tabs[tab].Active = false;
                            }
                         }
-                        else if (code IS ESC_INDEX_START) {
+                        else if (code IS ESC::INDEX_START) {
                            auto &index = escape_data<escIndex>(Self, i);
                            index.ParentVisible = false;
                         }
@@ -873,7 +850,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                      NEXT_CHAR(stream, i);
                   }
 
-               DRAW_PAGE(Self);
+               Self->Viewport->draw();
                return ERR_Okay;
             }
          }
@@ -989,7 +966,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    LONG i = Args->Index;
    PREV_CHAR(Self->Stream, i);
    while (i > 0) {
-      if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC_FONT)) {
+      if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC::FONT)) {
          Self->Style.FontStyle = escape_data<escFont>(Self, i);
          log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
          break;
@@ -1006,7 +983,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
          }
       }
 
-      Self->Style.FontStyle.Colour = Self->FontColour;
+      Self->Style.FontStyle.Fill = Self->FontFill;
       Self->Style.FontChange = true;
    }
 
@@ -1031,21 +1008,6 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
    new (Self) extDocument;
    Self->UniqueID = 1000;
    unload_doc(Self, 0);
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR DOCUMENT_NewOwner(extDocument *Self, struct acNewOwner *Args)
-{
-   if (!Self->initialised()) {
-      OBJECTID owner_id = Args->NewOwner->UID;
-      while ((owner_id) and (GetClassID(owner_id) != ID_SURFACE)) {
-         owner_id = GetOwnerID(owner_id);
-      }
-      if (owner_id) Self->SurfaceID = owner_id;
-   }
-
    return ERR_Okay;
 }
 
@@ -1309,7 +1271,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    //log.msg("%d, %d / %d, %d", (LONG)Args->X, (LONG)Args->Y, Self->XPosition, Self->YPosition);
 
-   acMoveToPoint(Self->PageID, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
+   acMoveToPoint(Self->Page, Self->XPosition, Self->YPosition, 0, MTF::X|MTF::Y);
    return ERR_Okay;
 }
 
@@ -1426,7 +1388,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    LONG i = 0;
    while (stream[i]) {
       if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC_INDEX_START) {
+         if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
             auto &index = escape_data<escIndex>(Self, i);
             if (name_hash IS index.NameHash) {
 
@@ -1444,12 +1406,12 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                      NEXT_CHAR(stream, i);
                      while (stream[i]) {
                         if (stream[i] IS CTRL_CODE) {
-                           UBYTE code = ESCAPE_CODE(stream, i);
-                           if (code IS ESC_INDEX_END) {
+                           auto code = ESCAPE_CODE(stream, i);
+                           if (code IS ESC::INDEX_END) {
                               auto &end = escape_data<escIndexEnd>(Self, i);
                               if (index.ID IS end.ID) break;
                            }
-                           else if (code IS ESC_OBJECT) {
+                           else if (code IS ESC::OBJECT) {
                               auto &escobj = escape_data<escObject>(Self, i);
                               if (escobj.ObjectID) acShow(escobj.ObjectID);
 
@@ -1457,14 +1419,14 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                                  Self->Tabs[tab].Active = true;
                               }
                            }
-                           else if (code IS ESC_LINK) {
+                           else if (code IS ESC::LINK) {
                               auto &esclink = escape_data<escLink>(Self, i);
                              
                               if (auto tab = find_tabfocus(Self, TT_LINK, esclink.ID); tab >= 0) {
                                  Self->Tabs[tab].Active = true;
                               }
                            }
-                           else if (code IS ESC_INDEX_START) {
+                           else if (code IS ESC::INDEX_START) {
                               auto &index = escape_data<escIndex>(Self, i);
                               index.ParentVisible = true;
 
@@ -1475,7 +1437,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                                  NEXT_CHAR(stream, i);
                                  while (stream[i]) {
                                     if (stream[i] IS CTRL_CODE) {
-                                       if (ESCAPE_CODE(stream, i) IS ESC_INDEX_END) {
+                                       if (ESCAPE_CODE(stream, i) IS ESC::INDEX_END) {
                                           auto &end = escape_data<escIndexEnd>(Self, i);
                                           if (index.ID IS end.ID) {
                                              NEXT_CHAR(stream, i);
@@ -1495,7 +1457,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                         NEXT_CHAR(stream, i);
                      } // while
 
-                  DRAW_PAGE(Self);
+                  Self->Viewport->draw();
                }
 
                return ERR_Okay;
@@ -1514,42 +1476,42 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 #include "document_def.c"
 
 static const FieldArray clFields[] = {
-   { "Description",  FDF_STRING|FDF_R },
-   { "FontFace",     FDF_STRING|FDF_RW, NULL, SET_FontFace },
-   { "Title",        FDF_STRING|FDF_RW, NULL, SET_Title },
-   { "Author",       FDF_STRING|FDF_RW, NULL, SET_Author },
-   { "Copyright",    FDF_STRING|FDF_RW, NULL, SET_Copyright },
-   { "Keywords",     FDF_STRING|FDF_RW, NULL, SET_Keywords },
-   { "TabFocus",     FDF_OBJECTID|FDF_RW },
-   { "Surface",      FDF_OBJECTID|FDF_RW, NULL, SET_Surface, ID_SURFACE },
-   { "Focus",        FDF_OBJECTID|FDF_RI },
-   { "EventMask",    FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
-   { "Flags",        FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
-   { "LeftMargin",   FDF_LONG|FDF_RI },
-   { "TopMargin",    FDF_LONG|FDF_RI },
-   { "RightMargin",  FDF_LONG|FDF_RI },
-   { "BottomMargin", FDF_LONG|FDF_RI },
-   { "FontSize",     FDF_LONG|FDF_RW, NULL, SET_FontSize },
-   { "PageHeight",   FDF_LONG|FDF_R, NULL, NULL },
-   { "BorderEdge",   FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDocumentBorderEdge },
-   { "LineHeight",   FDF_LONG|FDF_R },
-   { "Error",        FDF_LONG|FDF_R },
-   { "FontColour",   FDF_RGB|FDF_RW },
-   { "Highlight",    FDF_RGB|FDF_RW },
-   { "Background",   FDF_RGB|FDF_RW },
-   { "CursorColour", FDF_RGB|FDF_RW },
-   { "LinkColour",   FDF_RGB|FDF_RW },
-   { "VLinkColour",  FDF_RGB|FDF_RW },
-   { "SelectColour", FDF_RGB|FDF_RW },
-   { "Border",       FDF_RGB|FDF_RW },
+   { "Description",    FDF_STRING|FDF_R },
+   { "FontFace",       FDF_STRING|FDF_RW, NULL, SET_FontFace },
+   { "Title",          FDF_STRING|FDF_RW, NULL, SET_Title },
+   { "Author",         FDF_STRING|FDF_RW, NULL, SET_Author },
+   { "Copyright",      FDF_STRING|FDF_RW, NULL, SET_Copyright },
+   { "Keywords",       FDF_STRING|FDF_RW, NULL, SET_Keywords },
+   { "FontFill",       FDF_STRING|FDF_RW, NULL, SET_FontFill },
+   { "Highlight",      FDF_STRING|FDF_RW, NULL, SET_Highlight },
+   { "Background",     FDF_STRING|FDF_RW, NULL, SET_Background },
+   { "CursorStroke",   FDF_STRING|FDF_RW, NULL, SET_CursorStroke },
+   { "LinkFill",       FDF_STRING|FDF_RW, NULL, SET_LinkFill },
+   { "VLinkFill",      FDF_STRING|FDF_RW, NULL, SET_VLinkFill },
+   { "LinkSelectFill", FDF_STRING|FDF_RW, NULL, SET_LinkSelectFill },
+   { "BorderStroke",   FDF_STRING|FDF_RW, NULL, SET_BorderStroke },
+   { "Viewport",       FDF_OBJECT|FDF_RW, NULL, SET_Viewport, ID_VECTORVIEWPORT },
+   { "Focus",          FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORVIEWPORT },
+   { "TabFocus",       FDF_OBJECTID|FDF_RW },
+   { "EventMask",      FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
+   { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
+   { "LeftMargin",     FDF_LONG|FDF_RI },
+   { "TopMargin",      FDF_LONG|FDF_RI },
+   { "RightMargin",    FDF_LONG|FDF_RI },
+   { "BottomMargin",   FDF_LONG|FDF_RI },
+   { "FontSize",       FDF_LONG|FDF_RW, NULL, SET_FontSize },
+   { "PageHeight",     FDF_LONG|FDF_R, NULL, NULL },
+   { "BorderEdge",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDocumentBorderEdge },
+   { "LineHeight",     FDF_LONG|FDF_R },
+   { "Error",          FDF_LONG|FDF_R },
    // Virtual fields
    { "DefaultScript", FDF_OBJECT|FDF_I,       NULL, SET_DefaultScript },
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW, GET_EventCallback, SET_EventCallback },
-   { "Path",         FDF_STRING|FDF_RW,       GET_Path, SET_Path },
-   { "Origin",       FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
-   { "PageWidth",    FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_PageWidth, SET_PageWidth },
-   { "Src",          FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "UpdateLayout", FDF_LONG|FDF_W,     NULL, SET_UpdateLayout },
-   { "WorkingPath",  FDF_STRING|FDF_R,     GET_WorkingPath, NULL },
+   { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
+   { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
+   { "PageWidth",     FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_PageWidth, SET_PageWidth },
+   { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "UpdateLayout",  FDF_LONG|FDF_W,     NULL, SET_UpdateLayout },
+   { "WorkingPath",   FDF_STRING|FDF_R,     GET_WorkingPath, NULL },
    END_FIELD
 };
