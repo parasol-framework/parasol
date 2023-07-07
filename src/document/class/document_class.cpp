@@ -614,6 +614,11 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
       Self->PointerLocked = false;
    }
 
+   if (Self->EventCallback.Type IS CALL_SCRIPT) {
+      UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);
+      Self->EventCallback.Type = CALL_NONE;
+   }
+
    unload_doc(Self, ULD_TERMINATE);
 
    if (Self->XML)         { FreeResource(Self->XML); Self->XML = NULL; }
