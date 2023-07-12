@@ -1065,7 +1065,7 @@ class objDisplay : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setPopOver(const OBJECTID Value) {
+   inline ERROR setPopOver(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1277,12 +1277,12 @@ class objPointer : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setInput(const OBJECTID Value) {
+   inline ERROR setInput(OBJECTID Value) {
       this->InputID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setSurface(const OBJECTID Value) {
+   inline ERROR setSurface(OBJECTID Value) {
       this->SurfaceID = Value;
       return ERR_Okay;
    }
@@ -1293,7 +1293,7 @@ class objPointer : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setCursorOwner(const OBJECTID Value) {
+   inline ERROR setCursorOwner(OBJECTID Value) {
       this->CursorOwnerID = Value;
       return ERR_Okay;
    }
@@ -1484,19 +1484,19 @@ class objSurface : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setDrag(const OBJECTID Value) {
+   inline ERROR setDrag(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[29];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setParent(const OBJECTID Value) {
+   inline ERROR setParent(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setPopOver(const OBJECTID Value) {
+   inline ERROR setPopOver(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[40];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1640,7 +1640,7 @@ class objSurface : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setRootLayer(const OBJECTID Value) {
+   inline ERROR setRootLayer(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -1688,7 +1688,7 @@ class objSurface : public BaseClass {
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
    }
 
-   inline ERROR setRevertFocus(const OBJECTID Value) {
+   inline ERROR setRevertFocus(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

@@ -213,7 +213,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
       // If no header is provided, make one to match the current context
 
       auto ctx = tlContext;
-      auto obj = tlContext->object();
+      auto obj = ctx->object();
       if (ctx->Action > 0) action = ActionTable[ctx->Action].Name;
       else if (ctx->Action < 0) {
          if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-ctx->Action].Name;

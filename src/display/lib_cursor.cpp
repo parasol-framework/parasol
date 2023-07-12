@@ -331,9 +331,8 @@ Args
 ERROR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
 {
    pf::Log log(__FUNCTION__);
-   extPointer *pointer;
 
-   if ((pointer = (extPointer *)gfxAccessPointer())) {
+   if (auto pointer = (extPointer *)gfxAccessPointer()) {
 /*
       OBJECTPTR caller;
       caller = CurrentContext();
@@ -361,10 +360,7 @@ ERROR gfxRestoreCursor(PTC Cursor, OBJECTID OwnerID)
       ReleaseObject(pointer);
       return ERR_Okay;
    }
-   else {
-      log.warning("Failed to access the mouse pointer.");
-      return ERR_AccessObject;
-   }
+   else return ERR_Okay; // The cursor not existing is not necessarily a problem.   
 }
 
 /*********************************************************************************************************************

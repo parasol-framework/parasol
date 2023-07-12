@@ -283,7 +283,7 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setFontFace(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -295,30 +295,74 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setAuthor(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[37];
+      auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setCopyright(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setKeywords(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setHighlight(const STRING Value) {
-      this->Highlight = Value;
-      return ERR_Okay;
+   template <class T> inline ERROR setFontFill(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[1];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERROR setBackground(const STRING Value) {
-      this->Background = Value;
-      return ERR_Okay;
+   template <class T> inline ERROR setHighlight(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[11];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setBackground(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[19];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setCursorStroke(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[13];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setLinkFill(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[29];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setVLinkFill(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[37];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setLinkSelectFill(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERROR setBorderStroke(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[31];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   inline ERROR setViewport(objVectorViewport * Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[36];
+      return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
    inline ERROR setFocus(objVectorViewport * Value) {
@@ -379,51 +423,9 @@ class objDocument : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setSurface(OBJECTID Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[28];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERROR setFontColour(const BYTE * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[27];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
-   }
-
-   inline ERROR setCursorColour(const BYTE * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
-   }
-
-   inline ERROR setLinkColour(const BYTE * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[16];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
-   }
-
-   inline ERROR setVLinkColour(const BYTE * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[22];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
-   }
-
-   inline ERROR setSelectColour(const BYTE * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[32];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
-   }
-
-   inline ERROR setBorder(const BYTE * Value, LONG Elements) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[38];
-      return field->WriteValue(target, field, 0x01081300, Value, Elements);
-   }
-
    inline ERROR setDefaultScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
@@ -435,7 +437,7 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -447,14 +449,14 @@ class objDocument : public BaseClass {
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[18];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
    inline ERROR setUpdateLayout(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 

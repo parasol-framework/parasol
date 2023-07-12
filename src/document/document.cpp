@@ -13,16 +13,16 @@ The Document module exports a small number of functions in support of the @Docum
 
 THE BYTE CODE
 -------------
-The text stream is a sequence of UTF-8 text with escape codes inserted at points where we want to perform actions 
-such as changing the font style, indicating hyperlinks etc.  The escape code value is defined by CTRL_CODE.  
-A single byte indicates the instruction, e.g. ESC::FONT, ESC::OBJECT, ESC::LINK.  Following this is a lookup 
-identifier for a record in the Codes table.  Another CTRL_CODE is placed at the end to terminate the sequence 
+The text stream is a sequence of UTF-8 text with escape codes inserted at points where we want to perform actions
+such as changing the font style, indicating hyperlinks etc.  The escape code value is defined by CTRL_CODE.
+A single byte indicates the instruction, e.g. ESC::FONT, ESC::OBJECT, ESC::LINK.  Following this is a lookup
+identifier for a record in the Codes table.  Another CTRL_CODE is placed at the end to terminate the sequence
 (useful when a routine needs to iterate through the text stream in reverse).
 
 PARAGRAPH MANAGEMENT
 --------------------
-When document text is drawn, we maintain a 'line list' where the index of each line is recorded (see font_wrap()).  
-This allows us to do things like Ctrl-K to delete a 'line'. It also allows us to remember the pixel width and height 
+When document text is drawn, we maintain a 'line list' where the index of each line is recorded (see font_wrap()).
+This allows us to do things like Ctrl-K to delete a 'line'. It also allows us to remember the pixel width and height
 of each line, which is important for highlighting selected text.
 
 GRAPHICAL OBJECT LAYOUT RULES
@@ -143,6 +143,8 @@ thickness, or text inside the cell will mix with the border.
 #include "hashes.h"
 #include <variant>
 
+typedef int INDEX;
+
 static const LONG MAX_PAGEWIDTH    = 200000;
 static const LONG MAX_PAGEHEIGHT   = 200000;
 static const LONG MIN_PAGE_WIDTH   = 20;
@@ -197,7 +199,7 @@ enum class ESC : char {
    LINK_END,
    ADVANCE,
    LIST_START,
-   LIST_END,        
+   LIST_END,
    TABLE_START,     // 15
    TABLE_END,
    ROW,
@@ -271,17 +273,17 @@ static ULONG glEscapeCodeID = 1;
 class EscapeCode {
 public:
    union {
-      ULONG ID;   // Unique identifier for lookup
+      ULONG UID;   // Unique identifier for lookup
       char IDArray[4];
    };
    ESC Code = ESC::NIL; // Escape code
-   EscapeCode() { ID = glEscapeCodeID++; }
-   EscapeCode(ESC pCode) : Code(pCode) { ID = glEscapeCodeID++; }
+   EscapeCode() { UID = glEscapeCodeID++; }
+   EscapeCode(ESC pCode) : Code(pCode) { UID = glEscapeCodeID++; }
 };
 
 struct escFont : public EscapeCode {
    WORD Index;          // Font lookup
-   FSO  Options;       
+   FSO  Options;
    std::string Fill;    // Font fill
 
    escFont(): Index(0), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
@@ -310,9 +312,9 @@ struct style_status {
 };
 
 struct DocSegment {
-   LONG  Index;          // Line's byte index within the document text stream
-   LONG  Stop;           // The stopping index for the line
-   LONG  TrimStop;       // The stopping index for the line, with any whitespace removed
+   INDEX Index;          // Line's byte index within the document text stream
+   INDEX Stop;           // The stopping index for the line
+   INDEX TrimStop;       // The stopping index for the line, with any whitespace removed
    LONG  X;              // Horizontal coordinate of this line on the display
    LONG  Y;              // Vertical coordinate of this line on the display
    UWORD Height;         // Pixel height of the line, including all anchored objects.  When drawing, this is used for vertical alignment of graphics within the line
@@ -329,7 +331,7 @@ struct DocSegment {
 
 struct DocClip {
    ClipRectangle Clip;
-   LONG Index; // The stream index of the object/table/item that is creating the clip.
+   INDEX Index; // The stream index of the object/table/item that is creating the clip.
    bool Transparent; // If true, wrapping will not be performed around the clip region.
    std::string Name;
 
@@ -342,9 +344,9 @@ struct DocClip {
 struct DocEdit {
    LONG MaxChars;
    std::string Name;
-   std::string OnEnter;      
-   std::string OnExit;       
-   std::string OnChange;     
+   std::string OnEnter;
+   std::string OnExit;
+   std::string OnChange;
    std::vector<std::pair<std::string, std::string>> Args;
    bool LineBreaks;
 
@@ -362,7 +364,7 @@ struct DocLink {
    LONG Segment;
    ESC  EscapeCode;
 
-   DocLink(ESC pCode, APTR pEscape, LONG pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) : 
+   DocLink(ESC pCode, APTR pEscape, LONG pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
        Escape(pEscape), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), EscapeCode(pCode) { }
 
    DocLink() : Escape(NULL), X(0), Y(0), Width(0), Height(0), Segment(0), EscapeCode(ESC::NIL) { }
@@ -404,8 +406,8 @@ struct tablecol {
    UWORD Width;
 };
 
-struct escAdvance : public EscapeCode { 
-   LONG X, Y; 
+struct escAdvance : public EscapeCode {
+   LONG X, Y;
 
    escAdvance() : X(0), Y(0) { Code = ESC::ADVANCE; }
 };
@@ -418,7 +420,7 @@ struct escIndex : public EscapeCode {
    bool ParentVisible; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
 
    escIndex(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
-      NameHash(pName), ID(pID), Y(pY), Visible(pVisible), ParentVisible(pParentVisible) { 
+      NameHash(pName), ID(pID), Y(pY), Visible(pVisible), ParentVisible(pParentVisible) {
       Code = ESC::INDEX_START;
    }
 };
@@ -436,8 +438,8 @@ struct escLink : public EscapeCode {
    std::string Ref;
    std::vector<std::pair<std::string,std::string>> Args;
 
-   escLink() : Type(LINK::NIL), ID(0), Align(FSO::NIL) { 
-      Code = ESC::LINK; 
+   escLink() : Type(LINK::NIL), ID(0), Align(FSO::NIL) {
+      Code = ESC::LINK;
    }
 };
 
@@ -446,17 +448,23 @@ struct escLinkEnd : public EscapeCode {
 };
 
 struct escList : public EscapeCode {
-   struct escList *Stack; // Stack management pointer during layout
-   std::string Fill;      // Fill to use for bullet points (valid for LT_BULLET only).
-   STRING Buffer;         // Temp buffer, used for ordered lists
-   LONG  Start;           // Starting value for ordered lists (default: 1)
-   LONG  ItemIndent;      // Minimum indentation for text printed for each item
-   LONG  BlockIndent;     // Indentation for each set of items
-   LONG  ItemNum;
-   LONG  OrderInsert;
-   FLOAT VSpacing;        // Spacing between list items, expressed as a ratio
-   UBYTE Type;
-   bool  Repass;
+   enum {
+      ORDERED=0,
+      BULLET,
+      CUSTOM
+   };
+
+   struct escList *Stack = NULL; // Stack management pointer during layout
+   std::string Fill;          // Fill to use for bullet points (valid for BULLET only).
+   std::vector<std::string> Buffer; // Temp buffer, used for ordered lists
+   LONG  Start = 1;           // Starting value for ordered lists (default: 1)
+   LONG  ItemIndent = BULLET_WIDTH;      // Minimum indentation for text printed for each item
+   LONG  BlockIndent = BULLET_WIDTH;     // Indentation for each set of items
+   LONG  ItemNum = 0;
+   LONG  OrderInsert = 0;
+   FLOAT VSpacing = 0.5;        // Spacing between list items, expressed as a ratio
+   UBYTE Type = BULLET;
+   bool  Repass = false;
 
    escList() { Code = ESC::LIST_START; }
 };
@@ -465,8 +473,8 @@ struct escListEnd : public EscapeCode {
    escListEnd() { Code = ESC::LIST_END; }
 };
 
-struct escSetMargins : public EscapeCode { 
-   WORD Left = 0x7fff; WORD Top = 0x7fff; WORD Bottom = 0x7fff; WORD Right = 0x7fff; 
+struct escSetMargins : public EscapeCode {
+   WORD Left = 0x7fff; WORD Top = 0x7fff; WORD Bottom = 0x7fff; WORD Right = 0x7fff;
    escSetMargins() { Code = ESC::SET_MARGINS; }
 };
 
@@ -525,13 +533,13 @@ class escParagraph : public EscapeCode {
    bool ListItem;
    bool Trim;
 
-   escParagraph() : Stack(NULL), X(0), Y(0), Height(0), 
-      BlockIndent(0), ItemIndent(0), Indent(DEFAULT_INDENT), VSpacing(1.0), LeadingRatio(1.0), 
-      Relative(false), ListItem(false), Trim(false) { 
+   escParagraph() : Stack(NULL), X(0), Y(0), Height(0),
+      BlockIndent(0), ItemIndent(0), Indent(DEFAULT_INDENT), VSpacing(1.0), LeadingRatio(1.0),
+      Relative(false), ListItem(false), Trim(false) {
       Code = ESC::PARAGRAPH_START;
    }
 
-   void applyStyle(const style_status &Style) {      
+   void applyStyle(const style_status &Style) {
       VSpacing     = Style.List->VSpacing;
       BlockIndent  = Style.List->BlockIndent;
       ItemIndent   = Style.List->ItemIndent;
@@ -574,10 +582,10 @@ struct escCell : public EscapeCode {
    RGB8 Shadow = { 0, 0, 0, 0 };
    RGB8 Colour = { 0, 0, 0, 0 };
 
-   escCell(LONG pCellID, LONG pColumn) : 
+   escCell(LONG pCellID, LONG pColumn) :
       Stack(NULL),
-      CellID(pCellID), Column(pColumn), 
-      ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0) { 
+      CellID(pCellID), Column(pColumn),
+      ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0) {
       Code = ESC::CELL;
    }
 };
@@ -619,8 +627,8 @@ class extDocument : public objDocument {
    std::vector<DocClip> Clips;
    std::vector<DocLink> Links;
    std::unordered_map<std::string, struct DocEdit> EditDefs;
-   std::unordered_map<ULONG, std::variant<escAdvance, escTable, escTableEnd, escRow, escRowEnd, escParagraph, 
-      escParagraphEnd, escCell, escCellEnd, escLink, escLinkEnd, escList, escListEnd, escIndex, escIndexEnd, 
+   std::unordered_map<ULONG, std::variant<escAdvance, escTable, escTableEnd, escRow, escRowEnd, escParagraph,
+      escParagraphEnd, escCell, escCellEnd, escLink, escLinkEnd, escList, escListEnd, escIndex, escIndexEnd,
       escFont, escObject, escSetMargins>> Codes;
    std::vector<DocMouseOver> MouseOverChain;
    std::vector<struct docresource> Resources;
@@ -630,7 +638,7 @@ class extDocument : public objDocument {
    struct DocEdit *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
    std::vector<struct EditCell> EditCells;
    std::vector<OBJECTPTR> LayoutResources;
-   LONG   SurfaceWidth, SurfaceHeight;  
+   LONG   VPWidth, VPHeight;
    LONG   UniqueID;          // Use for generating unique/incrementing ID's, e.g. cell ID
    OBJECTID UserFocusID;
    objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
@@ -656,8 +664,8 @@ class extDocument : public objDocument {
    LONG   GeneratedID;       // Unique ID that is regenerated on each load/refresh
    LONG   ClickSegment;      // The index of the segment that the user clicked on
    LONG   MouseOverSegment;  // The index of the segment that the mouse is currently positioned over
-   LONG   CursorIndex;       // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.  -1 if not in use
-   LONG   SelectIndex;       // The end of the selected text area, if text is selected.  Otherwise -1
+   INDEX  CursorIndex;       // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.  -1 if not in use
+   INDEX  SelectIndex;       // The end of the selected text area, if text is selected.  Otherwise -1
    LONG   SelectCharX;       // The X coordinate of the SelectIndex character
    LONG   CursorCharX;       // The X coordinate of the CursorIndex character
    LONG   PointerX;          // Current pointer X coordinate on the document surface
@@ -688,7 +696,8 @@ class extDocument : public objDocument {
    bool   EditMode;
    bool   CursorState;     // true if the edit cursor is on, false if off.  Used for flashing of the cursor
 
-   template <class T = EscapeCode> void insertEscape(LONG &, T &);
+   template <class T = EscapeCode> T & insertEscape(LONG &, T &);
+   template <class T = EscapeCode> T & reserveEscape(LONG &);
 };
 
 enum {
@@ -723,7 +732,7 @@ struct docresource {
          if (Terminate) FreeResource(ObjectID);
          else SendMessage(MSGID_FREE, MSF::NIL, &ObjectID, sizeof(OBJECTID));
       }
-      else FreeResource(ObjectID);     
+      else FreeResource(ObjectID);
    }
 };
 
@@ -744,42 +753,20 @@ struct EditCell {
 };
 
 enum {
-   LT_ORDERED=0,
-   LT_BULLET,
-   LT_CUSTOM
-};
-
-enum {
    NL_NONE=0,
    NL_PARAGRAPH
 };
 
-static const std::string strCodes[] = {
-   "-",
-   "Font",
-   "FontCol",
-   "Uline",
-   "Bkgd",
-   "Inv",
-   "Obj",
-   "Link",
-   "TabDef",
-   "PE",
-   "P",
-   "EndLnk",
-   "Advance",
-   "List",
-   "ListEnd",
-   "Table",
-   "TableEnd",
-   "Row",
-   "Cell",
-   "CellEnd",
-   "RowEnd",
-   "SetMargins",
-   "Index",
-   "IndexEnd"
-};
+static const std::string & escCode(ESC Code) {
+   static const std::string strCodes[] = {
+      "?", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Obj", "Link", "TabDef", "PE",
+      "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
+      "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd"
+   };
+
+   if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];
+   return strCodes[0];
+}
 
 //********************************************************************************************************************
 
@@ -799,7 +786,6 @@ struct layout; // Pre-def
 
 static ERROR activate_edit(extDocument *, LONG, LONG);
 static ERROR add_document_class(void);
-static void  add_drawsegment(extDocument *, LONG, LONG Stop, layout *, LONG, LONG, LONG, const std::string &);
 static void  add_link(extDocument *, ESC, APTR, LONG, LONG, LONG, LONG, CSTRING);
 static LONG  add_tabfocus(extDocument *, UBYTE, LONG);
 static void  add_template(extDocument *, objXML *, XMLTag &);
@@ -808,7 +794,7 @@ static LONG  calc_page_height(extDocument *, LONG, LONG, LONG);
 static void  check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
 static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
 static void  check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
-static ERROR consume_input_events(const InputEvent *, LONG);
+static ERROR consume_input_events(objVector *, const InputEvent *);
 static void translate_args(extDocument *, const std::string &, std::string &);
 static void translate_attrib_args(extDocument *, pf::vector<XMLAttrib> &);
 static LONG  create_font(const std::string &, const std::string &, LONG);
@@ -825,27 +811,25 @@ static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 static void  free_links(extDocument *);
 static std::string get_font_style(FSO);
-//static LONG   get_line_from_index(extDocument *, LONG Index);
+//static LONG   get_line_from_index(extDocument *, INDEX Index);
 static LONG  getutf8(CSTRING, LONG *);
 static ERROR insert_text(extDocument *, LONG &, const std::string &, bool);
 static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, UBYTE);
 static ERROR insert_xml(extDocument *, objXML *, XMLTag &, LONG TargetIndex = -1, UBYTE Flags = 0);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
-static LONG  layout_section(extDocument *, LONG, objFont **, LONG, LONG, LONG *, LONG *, LONG, LONG, LONG, LONG, bool *);
+static LONG  layout_section(extDocument *, INDEX, objFont **, LONG, LONG, LONG *, LONG *, ClipRectangle, bool *);
 static ERROR load_doc(extDocument *, std::string, bool, BYTE);
 static objFont * lookup_font(LONG, const std::string &);
-static void notify_disable_surface(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void notify_enable_surface(OBJECTPTR, ACTIONID, ERROR, APTR);
+static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
+static void notify_enable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height);
 static LONG parse_tag(extDocument *, objXML *, XMLTag &, LONG &, IPF &);
 static LONG parse_tags(extDocument *, objXML *, objXML::TAGS &, LONG &, IPF = IPF::NIL);
-#ifdef _DEBUG
-static void print_xmltree(objXML::TAGS &, LONG &) __attribute__ ((unused));
-#endif
+static void print_xmltree(objXML::TAGS &, LONG &);
 #ifdef DBG_LINES
 static void print_sorted_lines(extDocument *) __attribute__ ((unused));
 #endif
@@ -869,12 +853,18 @@ static bool  valid_object(extDocument *, OBJECTPTR);
 static bool  valid_objectid(extDocument *, OBJECTID);
 static BYTE  view_area(extDocument *, LONG Left, LONG Top, LONG Right, LONG Bottom);
 
+inline void print_xmltree(objXML::TAGS &Tags) {
+   LONG indent = 0;
+   print_xmltree(Tags, indent);
+}
+
 inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
    return read_rgb8(Value.c_str(), RGB);
 }
 
 #ifdef DBG_STREAM
-static void print_stream(extDocument *Self, STRING Stream) __attribute__ ((unused));
+static void print_stream(extDocument *, const std::string &);
+static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); }
 #endif
 
 struct FontEntry {
@@ -898,46 +888,52 @@ static const LONG ESCAPE_LEN = 7;
 
 // For a given index in the stream, return the element code.  Index MUST be a valid reference to an escape sequence.
 
-template <class T = ULONG> ULONG get_element_id(extDocument *Self, T Index) {
-   return ((ULONG *)(Self->Stream.c_str() + Index + 2))[0];
+template <class T = ULONG> ULONG get_element_id(extDocument *Self, const std::string &Stream, T Index) {
+   return ((ULONG *)(Stream.c_str() + Index + 2))[0];
 }
 
 template <class T, class U = ULONG> T & escape_data(extDocument *Self, U Index) {
-   return (std::get<T>(Self->Codes[get_element_id(Self, Index)]));
+   auto id = get_element_id(Self, Self->Stream, Index);
+   auto &sv = Self->Codes[id];
+   return std::get<T>(sv);
 }
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
-template <class T> inline ESC ESCAPE_CODE(std::string &Stream, T Index) {
+template <class T> inline ESC ESCAPE_CODE(const std::string &Stream, T Index) {
    return ESC(Stream[Index+1]); // Escape codes are [0x1b][Code][0xNNNNNNNN][0x1b]
+}
+
+template <class T> inline const std::string & ESCAPE_NAME(std::string &Stream, T Index) {
+   return escCode(ESC(Stream[Index+1]));
 }
 
 // Move to the next character - handles UTF8 only, no escape sequence handling
 
-template <class T> inline void NEXT_CHAR(const std::string &Stream, T &Index) { 
-   if (Stream[Index] IS CTRL_CODE) Index += ESCAPE_LEN; 
-   else { Index++; while ((Stream[Index] & 0xc0) IS 0x80) Index++; } 
+template <class T> inline void NEXT_CHAR(const std::string &Stream, T &Index) {
+   if (Stream[Index] IS CTRL_CODE) Index += ESCAPE_LEN;
+   else { Index++; while ((Stream[Index] & 0xc0) IS 0x80) Index++; }
 }
 
 #define PREV_CHAR(s,i) { if ((s)[(i)-1] IS CTRL_CODE) (i) -= ESCAPE_LEN; else i--; }
 
 //********************************************************************************************************************
-// Convenience class for entering and leaving a template region.  This is achieved by setting InjectXML and InjectTag 
-// with references to the content that will be injected to the template.  Injection typically occurs when the client 
+// Convenience class for entering and leaving a template region.  This is achieved by setting InjectXML and InjectTag
+// with references to the content that will be injected to the template.  Injection typically occurs when the client
 // uses the <inject/> tag.
 
 class initTemplate {
    extDocument  *Self;
-   objXML::TAGS *Tags; 
-   objXML       *XML; 
+   objXML::TAGS *Tags;
+   objXML       *XML;
 
    public:
    initTemplate(extDocument *pSelf, objXML::TAGS &pTag, objXML *pXML) {
       Self = pSelf;
-      Tags = Self->InjectTag; 
-      XML  = Self->InjectXML; 
-      Self->InjectTag = &pTag; 
-      Self->InjectXML = pXML; 
+      Tags = Self->InjectTag;
+      XML  = Self->InjectXML;
+      Self->InjectTag = &pTag;
+      Self->InjectXML = pXML;
       Self->InTemplate++;
    }
 
@@ -975,11 +971,11 @@ ERROR CMDExpunge(void)
 {
    glFonts.clear();
 
-   if (modVector)  { FreeResource(modVector);   modVector  = NULL; }
-   if (modDisplay) { FreeResource(modDisplay);  modDisplay = NULL; }
-   if (modFont)    { FreeResource(modFont);     modFont    = NULL; }
+   if (modVector)  { FreeResource(modVector);  modVector  = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (modFont)    { FreeResource(modFont);    modFont    = NULL; }
 
-   if (clDocument) { FreeResource(clDocument);  clDocument = NULL; }
+   if (clDocument) { FreeResource(clDocument); clDocument = NULL; }
    return ERR_Okay;
 }
 
@@ -1024,12 +1020,12 @@ static LONG docCharLength(extDocument *Self, LONG Index)
 //********************************************************************************************************************
 
 inline LONG find_cell(extDocument *Self, LONG ID)
-{   
+{
    unsigned i = 0;
    while (i < Self->Stream.size()) {
       if (Self->Stream[i] IS CTRL_CODE) {
          if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL) {
-            auto &cell = std::get<escCell>(Self->Codes[get_element_id(Self, i)]);
+            auto &cell = std::get<escCell>(Self->Codes[get_element_id(Self, Self->Stream, i)]);
             if ((ID) and (ID IS cell.CellID)) return i;
          }
       }
@@ -1060,7 +1056,7 @@ inline LONG find_editable_cell(extDocument *Self, const std::string &EditDef)
 inline DocEdit * find_editdef(extDocument *Self, const std::string Name)
 {
    auto it = Self->EditDefs.find(Name);
-   if (it != Self->EditDefs.end()) return &it->second;   
+   if (it != Self->EditDefs.end()) return &it->second;
    else return NULL;
 }
 

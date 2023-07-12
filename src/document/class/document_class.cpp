@@ -24,12 +24,12 @@ features for creating complex documents and manuals.
    }
 */
 
-static void notify_disable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_disable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    if (!Result) acDisable(CurrentContext());
 }
 
-static void notify_enable_surface(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    if (!Result) acEnable(CurrentContext());
 }
@@ -83,12 +83,12 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
-   log.traceBranch("Redimension: %dx%d", Self->SurfaceWidth, Self->SurfaceHeight);
+   log.traceBranch("Redimension: %dx%d", Self->VPWidth, Self->VPHeight);
 
    Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
    Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->AreaWidth  = Self->SurfaceWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-   Self->AreaHeight = Self->SurfaceHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->AreaWidth  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->AreaHeight = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
    acRedimension(Self->View, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
 
@@ -96,7 +96,7 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
       if (trigger.Type IS CALL_SCRIPT) {
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
-      
+
          const ScriptArg args[] = {
             { "ViewWidth",  Self->AreaWidth },
             { "ViewHeight", Self->AreaHeight }
@@ -375,7 +375,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 
       log.trace("Appending data to XML #%d", Self->XML->UID);
 
-      if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) return log.warning(ERR_SetField);      
+      if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) return log.warning(ERR_SetField);
 
       if (Self->initialised()) {
          // Document is initialised.  Refresh the document from the XML source.
@@ -454,7 +454,7 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
    else if (auto cellindex = find_editable_cell(Self, Args->Name); cellindex >= 0) {
       return activate_edit(Self, cellindex, 0);
    }
-   else return ERR_Search;   
+   else return ERR_Search;
 }
 
 /*********************************************************************************************************************
@@ -592,7 +592,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->Page)           { FreeResource(Self->Page);           Self->Page           = 0; }
    if (Self->View)           { FreeResource(Self->View);           Self->View           = 0; }
    if (Self->InsertXML)      { FreeResource(Self->InsertXML);      Self->InsertXML      = NULL; }
-   if (Self->FontFill)       { FreeResource(Self->FontFill);       Self->FontFill       = NULL; }     
+   if (Self->FontFill)       { FreeResource(Self->FontFill);       Self->FontFill       = NULL; }
    if (Self->Highlight)      { FreeResource(Self->Highlight);      Self->Highlight      = NULL; }
    if (Self->Background)     { FreeResource(Self->Background);     Self->Background     = NULL; }
    if (Self->CursorStroke)   { FreeResource(Self->CursorStroke);   Self->CursorStroke   = NULL; }
@@ -659,15 +659,21 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 {
    pf::Log log;
 
-   if (!Self->Viewport) return log.warning(ERR_UnsupportedOwner);
+   if (!Self->Viewport) {
+      auto owner = GetObjectPtr(Self->ownerID());
+      if (owner->Class->ClassID IS ID_VECTORVIEWPORT) {
+         Self->Viewport = (objVectorViewport *)owner;
+      }
+      else return log.warning(ERR_UnsupportedOwner);
+   }
 
    if (!Self->Focus) Self->Focus = Self->Viewport;
 
    if (Self->Focus->Class->ClassID != ID_VECTORVIEWPORT) {
       return log.warning(ERR_WrongObjectType);
    }
-   
-   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;   
+
+   if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
    auto call = make_function_stdc(key_event);
    vecSubscribeKeyboard(Self->Viewport, &call);
@@ -678,41 +684,39 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    call = make_function_stdc(notify_lostfocus_viewport);
    SubscribeAction(Self->Focus, AC_LostFocus, &call);
 
-   // Setup the target viewport
+   call = make_function_stdc(notify_disable_viewport);
+   SubscribeAction(Self->Viewport, AC_Disable, &call);
 
-   Self->Viewport->get(FID_Width, &Self->SurfaceWidth);
-   Self->Viewport->get(FID_Height, &Self->SurfaceHeight);
+   call = make_function_stdc(notify_enable_viewport);
+   SubscribeAction(Self->Viewport, AC_Enable, &call);
+
+   call = make_function_stdc(notify_redimension_viewport);
+   Self->Viewport->setResizeEvent(call);
+
+   Self->Viewport->get(FID_Width, &Self->VPWidth);
+   Self->Viewport->get(FID_Height, &Self->VPHeight);
 
    FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
    Self->Viewport->setFillColour(bkgd, 4);
-
-   call = make_function_stdc(notify_disable_surface);
-   SubscribeAction(Self->Viewport, AC_Disable, &call);
-
-   call = make_function_stdc(notify_enable_surface);
-   SubscribeAction(Self->Viewport, AC_Enable, &call);
-      
-   call = make_function_stdc(notify_redimension_viewport);
-   Self->Viewport->setResizeEvent(call);
 
    if (Self->BorderStroke) {
       // TODO: Use a VectorPolygon with a custom path based on the BorderEdge values.
       if (Self->BorderEdge IS DBE::NIL) Self->BorderEdge = DBE::TOP|DBE::BOTTOM|DBE::RIGHT|DBE::LEFT;
 
-      objVectorRectangle::create::global(fl::Owner(Self->Page->UID), fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"), 
+      objVectorRectangle::create::global(fl::Owner(Self->Page->UID), fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"),
          fl::StrokeWidth(1), fl::Stroke(Self->BorderStroke));
    }
 
    Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
    Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->AreaWidth  = Self->SurfaceWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-   Self->AreaHeight = Self->SurfaceHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->AreaWidth  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->AreaHeight = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
    // Allocate the view and page areas
 
    if ((Self->View = objVectorViewport::create::integral(
          fl::Name("rgnDocView"),   // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Parent(Self->Viewport->UID),
+         fl::Owner(Self->Viewport->UID),
          fl::X(Self->AreaX), fl::Y(Self->AreaY),
          fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight)))) {
    }
@@ -720,11 +724,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    if ((Self->Page = objVectorViewport::create::integral(
          fl::Name("rgnDocPage"),  // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Parent(Self->Viewport->UID),
+         fl::Owner(Self->Viewport->UID),
          fl::X(0), fl::Y(0),
-         fl::MaxWidth(0x7fffffff), fl::MaxHeight(0x7fffffff),
-         fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT),
-         fl::Flags(RNF::TRANSPARENT|RNF::GRAB_FOCUS)))) {
+         fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT)))) {
 
       auto callback = make_function_stdc(consume_input_events);
       vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
@@ -734,7 +736,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    acShow(Self->View);
    acShow(Self->Page);
 
-   // TODO: Launch the scrollbar script with references to our Target, Page and View viewports
+   // TODO: Create a scrollbar with references to our Target, Page and View viewports
 
    if ((Self->Flags & DCF::NO_SCROLLBARS) IS DCF::NIL) {
 
@@ -1000,7 +1002,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    ERROR error = insert_text(Self, index, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
-      print_stream(Self, Self->Stream);
+      print_stream(Self);
    #endif
 
    return error;
@@ -1147,7 +1149,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");
    }
-   else log.msg("No location or XML data is present in the document.");   
+   else log.msg("No location or XML data is present in the document.");
 
    Self->Processing--;
 
@@ -1212,10 +1214,10 @@ NullArgs
 static ERROR DOCUMENT_RemoveListener(extDocument *Self, struct docRemoveListener *Args)
 {
    if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
- 
+
    if (Args->Function->Type IS CALL_STDC) {
       for (auto it = Self->Triggers[Args->Trigger].begin(); it != Self->Triggers[Args->Trigger].end(); it++) {
-         if ((it->Type IS CALL_STDC) and (it->StdC.Routine IS Args->Function->StdC.Routine)) {           
+         if ((it->Type IS CALL_STDC) and (it->StdC.Routine IS Args->Function->StdC.Routine)) {
             Self->Triggers[Args->Trigger].erase(it);
             return ERR_Okay;
          }
@@ -1426,7 +1428,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                            }
                            else if (code IS ESC::LINK) {
                               auto &esclink = escape_data<escLink>(Self, i);
-                             
+
                               if (auto tab = find_tabfocus(Self, TT_LINK, esclink.ID); tab >= 0) {
                                  Self->Tabs[tab].Active = true;
                               }

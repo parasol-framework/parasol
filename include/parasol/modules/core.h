@@ -1417,6 +1417,7 @@ struct ClipRectangle {
    LONG Right;   // Right-most coordinate
    LONG Bottom;  // Bottom coordinate
   ClipRectangle() { }
+  ClipRectangle(LONG Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
   ClipRectangle(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
   int width() const { return Right - Left; }
   int height() const { return Bottom - Top; }
@@ -3472,7 +3473,7 @@ class objFile : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setTarget(const OBJECTID Value) {
+   inline ERROR setTarget(OBJECTID Value) {
       this->TargetID = Value;
       return ERR_Okay;
    }
@@ -3841,7 +3842,7 @@ class objScript : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setTarget(const OBJECTID Value) {
+   inline ERROR setTarget(OBJECTID Value) {
       this->TargetID = Value;
       return ERR_Okay;
    }
@@ -3887,7 +3888,7 @@ class objScript : public BaseClass {
       return field->WriteValue(target, field, 0x08810300, to_cstring(Value), 1);
    }
 
-   inline ERROR setOwner(const OBJECTID Value) {
+   inline ERROR setOwner(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
@@ -4459,7 +4460,7 @@ class objCompression : public BaseClass {
 
    // Customised field setting
 
-   inline ERROR setOutput(const OBJECTID Value) {
+   inline ERROR setOutput(OBJECTID Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->OutputID = Value;
       return ERR_Okay;

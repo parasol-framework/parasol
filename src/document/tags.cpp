@@ -110,7 +110,7 @@ static void saved_style_check(extDocument *Self, style_status &SaveStatus)
 
 static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, LONG &Index, IPF Flags)
 {
-   escAdvance advance;
+   auto &advance = Self->reserveEscape<escAdvance>(Index);
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -123,9 +123,7 @@ static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
    else if (advance.X > 4000) advance.X = 4000;
 
    if (advance.Y < 0) advance.Y = 0;
-   else if (advance.Y > 4000) advance.Y = 4000;
-
-   Self->insertEscape(Index, advance);
+   else if (advance.Y > 4000) advance.Y = 4000; 
 }
 
 //********************************************************************************************************************
@@ -539,8 +537,7 @@ static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
       parse_tags(Self, XML, Children, Index);
 
-   escParagraphEnd end;
-   Self->insertEscape(Index, end);
+   Self->reserveEscape<escParagraphEnd>(Index);
    Self->NoWhitespace = true;
 }
 
@@ -779,8 +776,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       saved_style_check(Self, savestatus);
 
-      escLinkEnd end;
-      Self->insertEscape(Index, end);
+      Self->reserveEscape<escLinkEnd>(Index);
 
       // This style check will forcibly revert the font back to whatever it was rather than waiting for new content to result in
       // a change.  The reason why we want to do this is to make it easier to manage run-time insertion of new content.  For
@@ -799,24 +795,13 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-#define LIST_BUFFER_SIZE 80
-
 static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, LONG &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    escList esc, *savelist;
-   char buffer[LIST_BUFFER_SIZE];
 
-   esc.Fill        = Self->Style.FontStyle.Fill; // Default fill matches the current font colour
-   esc.Start       = 1;
-   esc.VSpacing    = 0.5;
-   esc.Type        = LT_BULLET;
-   esc.BlockIndent = BULLET_WIDTH; // Indenting for child items
-   esc.ItemIndent  = BULLET_WIDTH; // Indenting from the item graphic - applies to bullet style only
-   esc.OrderInsert = 0;
-   esc.ItemNum     = esc.Start;
-   esc.Buffer      = buffer;
-   buffer[0] = 0;
+   esc.Fill    = Self->Style.FontStyle.Fill; // Default fill matches the current font colour
+   esc.ItemNum = esc.Start;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("fill", Tag.Attribs[i].Name)) {
@@ -832,14 +817,14 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       }
       else if (!StrMatch("type", Tag.Attribs[i].Name)) {
          if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
-            esc.Type = LT_BULLET;
+            esc.Type = escList::BULLET;
          }
          else if (!StrMatch("ordered", Tag.Attribs[i].Value)) {
-            esc.Type = LT_ORDERED;
+            esc.Type = escList::ORDERED;
             esc.ItemIndent = 0;
          }
          else if (!StrMatch("custom", Tag.Attribs[i].Value)) {
-            esc.Type = LT_CUSTOM;
+            esc.Type = escList::CUSTOM;
             esc.ItemIndent = 0;
          }
       }
@@ -859,8 +844,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    Self->Style.List = savelist;
 
-   escListEnd end;
-   Self->insertEscape(Index, end);
+   Self->reserveEscape<escListEnd>(Index);
 
    Self->NoWhitespace = true;
 }
@@ -1147,7 +1131,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 //********************************************************************************************************************
 
 static void tag_object(extDocument *Self, const std::string &pagetarget, CLASSID class_id, XMLTag *Template,
-   objXML *XML, XMLTag &Tag, objXML::TAGS &Children, LONG Index, IPF Flags)
+   objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    
@@ -1392,8 +1376,7 @@ static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
    trim_preformat(Self, Index);
 
-//   escParagraphEnd end;
-//   Self->insertEscape(Index, end);
+//   Self->reserveEscape<escParagraphEnd>(Index);
 //   Self->NoWhitespace = true;
 }
 
@@ -1729,28 +1712,20 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       }
    }
 
-   if ((Self->Style.List->Type IS LT_CUSTOM) and (!para.Value.empty())) {
+   if ((Self->Style.List->Type IS escList::CUSTOM) and (!para.Value.empty())) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
       Self->insertEscape(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      escParagraphEnd end;
-      Self->insertEscape(Index, end);
+      Self->reserveEscape<escParagraphEnd>(Index);
    }
-   else if (Self->Style.List->Type IS LT_ORDERED) {
+   else if (Self->Style.List->Type IS escList::ORDERED) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
-      LONG i = IntToStr(Self->Style.List->ItemNum, Self->Style.List->Buffer + Self->Style.List->OrderInsert, LIST_BUFFER_SIZE - Self->Style.List->OrderInsert - 1);
-      i += Self->Style.List->OrderInsert;
-      if (i < LIST_BUFFER_SIZE - 2) {
-         Self->Style.List->Buffer[i++] = '.';
-         Self->Style.List->Buffer[i] = 0;
-      }
-
-      auto save_insert = Self->Style.List->OrderInsert;
-      Self->Style.List->OrderInsert = i;
+      auto list_size = Self->Style.List->Buffer.size();
+      Self->Style.List->Buffer.push_back(std::to_string(Self->Style.List->ItemNum) + ".");
 
       auto save_item = Self->Style.List->ItemNum;
       Self->Style.List->ItemNum = 1;
@@ -1759,19 +1734,17 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
          
          parse_tags(Self, XML, Children, Index);
 
-      escParagraphEnd end;
-      Self->insertEscape(Index, end);
+      Self->reserveEscape<escParagraphEnd>(Index);
 
-      Self->Style.List->OrderInsert = save_insert;
-      Self->Style.List->ItemNum = save_item + 1;
+      Self->Style.List->ItemNum = save_item;
+      Self->Style.List->Buffer.resize(list_size);
    }
    else {
       Self->insertEscape(Index, para);
          
          parse_tags(Self, XML, Children, Index);
 
-      escParagraph end;
-      Self->insertEscape(Index, end);
+      Self->reserveEscape<escParagraphEnd>(Index);
       Self->NoWhitespace = true;
    }
 }
@@ -1891,7 +1864,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 {
    pf::Log log(__FUNCTION__);
 
-   escTable start;
+   auto &start = Self->reserveEscape<escTable>(Index);
    start.MinWidth  = 1;
    start.MinHeight = 1;
 
@@ -1999,8 +1972,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          auto val = columns.substr(i, end-i);
          trim(val);
          list.push_back(val);      
-         i = columns.find(',', end); // Next filter
-         if (i != std::string::npos) i++; // Skip comma
+         i = end + 1;
       }
        
       unsigned i;
@@ -2012,7 +1984,6 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       if (i < start.Columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(start.Columns.size()));
    }
 
-   Self->insertEscape(Index, start);
    escTableEnd end;
    Self->insertEscape(Index, end);
 

@@ -187,7 +187,7 @@
       </input>
       <description>
 <p>Use the FindIndex method to search for indexes that have been declared in a loaded document.  Indexes are declared using the &lt;index/&gt; tag and must be given a unique name.  They are useful for marking areas of interest - such as a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact document position.</p>
-<p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC_INDEX_START code and the end byte will refer to an ESC_INDEX_END code.</p>
+<p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC::INDEX_START code and the end byte will refer to an ESC::INDEX_END code.</p>
       </description>
       <result>
         <error code="Okay">The index was found and the Start and End parameters reflect its position.</error>
@@ -366,20 +366,10 @@
     <field>
       <name>Background</name>
       <comment>Optional background colour for the document.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
       <description>
 <p>Set the Background field to clear the document background to the colour specified.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Border</name>
-      <comment>Border colour around the document's surface.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
-      <description>
-<p>This field enables the drawing of a 1-pixel border around the document's surface.  The edges that are drawn are controlled by the <field>BorderEdge</field> field.</p>
       </description>
     </field>
 
@@ -389,8 +379,18 @@
       <access read="R" write="I">Read/Init</access>
       <type lookup="DBE">DBE</type>
       <description>
-<p>This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined in the <field>Border</field> field.</p>
+<p>This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined in the #Border field.</p>
 <types lookup="DBE"/>
+      </description>
+    </field>
+
+    <field>
+      <name>BorderStroke</name>
+      <comment>The stroke to use for drawing a border around the document window.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field enables the drawing of a stroke along the border of the document window. The edges are controlled by the <field>BorderEdge</field> field.</p>
       </description>
     </field>
 
@@ -416,10 +416,10 @@
     </field>
 
     <field>
-      <name>CursorColour</name>
+      <name>CursorStroke</name>
       <comment>The colour used for the document cursor.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
       <description>
 <p>The colour used for the document cursor may be changed by setting this field.  This is relevant only when a document is in edit mode.</p>
       </description>
@@ -494,19 +494,9 @@
       <name>Focus</name>
       <comment>Refers to the object that will be monitored for user focusing.</comment>
       <access read="R" write="I">Read/Init</access>
-      <type>OBJECTID</type>
+      <type class="VectorViewport">*VectorViewport</type>
       <description>
 <p>By default, a document object will become active (i.e. capable of receiving keyboard input) when its surface container receives the focus.  If you would like to change this so that a document becomes active when some other object receives the focus, refer to that object by writing its ID to this field.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>FontColour</name>
-      <comment>Default font colour.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
-      <description>
-<p>This field defines the default font colour if the source document does not specify one.</p>
       </description>
     </field>
 
@@ -517,6 +507,16 @@
       <type>STRING</type>
       <description>
 <p>The default font face to use when processing a document is defined in this field.  A document may override the default font face by declaring a body tag containing a face attribute.  If this occurs, the FontFace field will reflect the default font face chosen by that document.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>FontFill</name>
+      <comment>Default font colour.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field defines the default font colour if the source document does not specify one.</p>
       </description>
     </field>
 
@@ -532,9 +532,9 @@
 
     <field>
       <name>Highlight</name>
-      <comment>Defines the colour used to highlight document.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <comment>Defines the fill used to highlight the document.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
       <description>
 <p>The Highlight field determines the colour that is used when highlighting selected document areas.</p>
       </description>
@@ -569,12 +569,22 @@
     </field>
 
     <field>
-      <name>LinkColour</name>
+      <name>LinkFill</name>
       <comment>Default font colour for hyperlinks.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
       <description>
 <p>The default font colour for hyperlinks is defined here.  If the alpha component is zero, this feature is disabled.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>LinkSelectFill</name>
+      <comment>Default font fill to use when hyperlinks are selected.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>This field defines the font fill for hyperlinks that are selected - for instance, when the user tabs to a link or hovers over it.  If the alpha component is zero, this field has no effect.</p>
       </description>
     </field>
 
@@ -637,26 +647,6 @@
     </field>
 
     <field>
-      <name>SelectColour</name>
-      <comment>Default font colour to use when hyperlinks are selected.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
-      <description>
-<p>This field defines the font colour for hyperlinks that are selected - for instance, when the user tabs to a link or hovers over it.  If the alpha component is zero, this field has no effect.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Surface</name>
-      <comment>Defines the surface area for document graphics.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>OBJECTID</type>
-      <description>
-<p>The Surface field refers to the object ID of the surface that will contain the document graphics.  This field must be set prior to initialisation to target the graphics correctly - if left unset then the document object will attempt to determine the correct surface object based on object ownership.</p>
-      </description>
-    </field>
-
-    <field>
       <name>TabFocus</name>
       <comment>Allows the user to hit the tab key to focus on other GUI objects.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -699,12 +689,22 @@
     </field>
 
     <field>
-      <name>VLinkColour</name>
-      <comment>Default font colour for visited hyperlinks.</comment>
-      <access read="R" write="W">Read/Write</access>
-      <type>RGB8</type>
+      <name>VLinkFill</name>
+      <comment>Default font fill for visited hyperlinks.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
       <description>
-<p>The default font colour for visited hyperlinks is stored in this field.  The source document can specify its own colour for visited links if the author desires.</p>
+<p>The default font fill for visited hyperlinks is stored in this field.  The source document can specify its own colour for visited links if the author desires.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Viewport</name>
+      <comment>A target viewport that will host the document graphics.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type class="VectorViewport">*VectorViewport</type>
+      <description>
+<p>The Viewport field must refer to a <class name="VectorViewport">VectorViewport</class> that will host the document graphics.  If not initialised, the nearest viewport container will be determined based on object ownership.</p>
       </description>
     </field>
 

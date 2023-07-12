@@ -520,8 +520,8 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
       value = Self->CalcWidth;
 
       if (Value->Type & FD_PERCENTAGE) {
-         if (Self->SurfaceWidth <= 0) return ERR_GetField;
-         value = (DOUBLE)(value * Self->SurfaceWidth);
+         if (Self->VPWidth <= 0) return ERR_GetField;
+         value = (DOUBLE)(value * Self->VPWidth);
       }
    }
    else value = Self->PageWidth;
