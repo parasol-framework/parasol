@@ -57,14 +57,14 @@ struct layout {
 
    layout(extDocument *pSelf) : Self(pSelf) { }
 
-   void setMargins(LONG, LONG, LONG &);
-   void escLink(LONG);
-   void escLinkEnd(LONG);
-   void escIndexStart(LONG &);
-   void escObject(LONG, LONG, LONG, LONG, LONG, LONG);
-   escParagraph * escParagraphStart(LONG, escParagraph *, escList *, LONG);
-   escParagraph * escParagraphEnd(LONG, escParagraph *);
-   LONG escTableEnd(LONG, escTable *, escRow *, escParagraph *, LONG, LONG, LONG, LONG, LONG *, LONG *);
+   void injectSetMargins(LONG, LONG, LONG &);
+   void injectLink(LONG);
+   void injectLinkEnd(LONG);
+   void injectIndexStart(LONG &);
+   void injectObject(LONG, LONG, LONG, LONG, LONG, LONG);
+   escParagraph * injectParagraphStart(LONG, escParagraph *, escList *, LONG);
+   escParagraph * injectParagraphEnd(LONG, escParagraph *);
+   LONG injectTableEnd(LONG, escTable *, escRow *, escParagraph *, LONG, LONG, LONG, LONG, LONG *, LONG *);
    void add_drawsegment(LONG, LONG, LONG, LONG, LONG, const std::string &);
 
    void end_line(LONG NewLine, INDEX Index, DOUBLE Spacing, LONG RestartIndex, const std::string &);
@@ -75,7 +75,7 @@ struct layout {
 
 //********************************************************************************************************************
 
-void layout::escLink(INDEX Index)
+void layout::injectLink(INDEX Index)
 {
    if (current_link) {
       // Close the currently open link because it's illegal to have a link embedded within a link.
@@ -92,7 +92,7 @@ void layout::escLink(INDEX Index)
    link.align = font->Align;
 }
 
-void layout::escLinkEnd(INDEX Index)
+void layout::injectLinkEnd(INDEX Index)
 {
    // We don't call add_link() unless the entire word that contains the link has
    // been processed.  This is necessary due to the potential for a word-wrap.
@@ -109,7 +109,7 @@ void layout::escLinkEnd(INDEX Index)
 
 //********************************************************************************************************************
 
-void layout::escIndexStart(INDEX &Index)
+void layout::injectIndexStart(INDEX &Index)
 {
    pf::Log log(__FUNCTION__);
 
@@ -150,7 +150,7 @@ void layout::escIndexStart(INDEX &Index)
 
 //********************************************************************************************************************
 
-escParagraph * layout::escParagraphStart(INDEX Index, escParagraph *Parent, escList *List, LONG Width)
+escParagraph * layout::injectParagraphStart(INDEX Index, escParagraph *Parent, escList *List, LONG Width)
 {
    escParagraph *escpara;
 
@@ -228,7 +228,7 @@ escParagraph * layout::escParagraphStart(INDEX Index, escParagraph *Parent, escL
    return escpara;
 }
 
-escParagraph * layout::escParagraphEnd(INDEX Index, escParagraph *Current)
+escParagraph * layout::injectParagraphEnd(INDEX Index, escParagraph *Current)
 {
    if (Current) {
       // The paragraph height reflects the true size of the paragraph after we take into account
@@ -252,7 +252,7 @@ escParagraph * layout::escParagraphEnd(INDEX Index, escParagraph *Current)
 
 //********************************************************************************************************************
 
-LONG layout::escTableEnd(INDEX Index, escTable *esctable, escRow *LastRow, escParagraph *escpara, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG *Height, LONG *Width)
+LONG layout::injectTableEnd(INDEX Index, escTable *esctable, escRow *LastRow, escParagraph *escpara, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG *Height, LONG *Width)
 {
    pf::Log log(__FUNCTION__);
 
@@ -440,7 +440,7 @@ LONG layout::escTableEnd(INDEX Index, escTable *esctable, escRow *LastRow, escPa
 
 //********************************************************************************************************************
 
-void layout::escObject(INDEX Index, LONG Offset, LONG AbsX, LONG AbsY, LONG Width, LONG PageHeight)
+void layout::injectObject(INDEX Index, LONG Offset, LONG AbsX, LONG AbsY, LONG Width, LONG PageHeight)
 {
    ClipRectangle cell;
    OBJECTID object_id;
@@ -1111,7 +1111,7 @@ void layout::escObject(INDEX Index, LONG Offset, LONG AbsX, LONG AbsY, LONG Widt
 
 //********************************************************************************************************************
 
-void layout::setMargins(INDEX Index, LONG AbsY, LONG &BottomMargin)
+void layout::injectSetMargins(INDEX Index, LONG AbsY, LONG &BottomMargin)
 {
    auto &escmargins = escape_data<::escSetMargins>(Self, Index);
 
@@ -1803,20 +1803,20 @@ extend_page:
                break;
 
             case ESC::INDEX_START: 
-               l.escIndexStart(i);
+               l.injectIndexStart(i);
                break;
 
             case ESC::SET_MARGINS: 
-               l.setMargins(i, AbsY, Margins.Bottom); 
+               l.injectSetMargins(i, AbsY, Margins.Bottom); 
                break;            
 
             // LINK MANAGEMENT
              case ESC::LINK: 
-               l.escLink(i); 
+               l.injectLink(i); 
                break;
 
             case ESC::LINK_END: 
-               l.escLinkEnd(i); 
+               l.injectLinkEnd(i); 
                break;
 
             // LIST MANAGEMENT
@@ -1863,7 +1863,7 @@ list_repass:
             // EMBEDDED OBJECT MANAGEMENT
 
             case ESC::OBJECT: 
-               l.escObject(i, Offset, AbsX, AbsY, *Width, page_height); 
+               l.injectObject(i, Offset, AbsX, AbsY, *Width, page_height); 
                break;
 
             case ESC::TABLE_START: {
@@ -1998,7 +1998,7 @@ wrap_table_cell:
             }
 
             case ESC::TABLE_END: {
-               auto action = l.escTableEnd(i, esctable, lastrow, escpara, Offset, AbsX, Margins.Top, Margins.Bottom, Height, Width);
+               auto action = l.injectTableEnd(i, esctable, lastrow, escpara, Offset, AbsX, Margins.Top, Margins.Bottom, Height, Width);
                if (action) {
                   RESTORE_STATE(tablestate);
                   if (action IS TE_WRAP_TABLE) goto wrap_table_end;
@@ -2252,11 +2252,11 @@ repass_row_height_ext:
             }
 
             case ESC::PARAGRAPH_START: 
-               escpara = l.escParagraphStart(i, escpara, esclist, *Width); 
+               escpara = l.injectParagraphStart(i, escpara, esclist, *Width); 
                break;
 
             case ESC::PARAGRAPH_END: 
-               escpara = l.escParagraphEnd(i, escpara); 
+               escpara = l.injectParagraphEnd(i, escpara); 
                break;
 
             default: break;
