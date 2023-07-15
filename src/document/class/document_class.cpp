@@ -55,25 +55,21 @@ static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result,
 
 static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
-   pf::Log log(__FUNCTION__);
-   auto Self = (extDocument *)CurrentContext();
-
    if (Result) return;
 
+   auto Self = (extDocument *)CurrentContext();
    Self->HasFocus = false;
 
    // Redraw any selected link so that it is unhighlighted
 
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
-         bool draw = false;
          for (auto &link : Self->Links) {
             if ((link.EscapeCode IS ESC::LINK) and (link.Link->ID IS Self->Tabs[Self->FocusIndex].Ref)) {
-               draw = true;
+               Self->Page->draw();
                break;
             }
          }
-         if (draw) Self->Page->draw();
       }
    }
 }
@@ -835,11 +831,11 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                            auto &end = escape_data<escIndexEnd>(Self, i);
                            if (index.ID IS end.ID) break;
                         }
-                        else if (code IS ESC::OBJECT) {
-                           auto &escobj = escape_data<escObject>(Self, i);
-                           if (escobj.ObjectID) acHide(escobj.ObjectID);
+                        else if (code IS ESC::VECTOR) {
+                           auto &vec = escape_data<escVector>(Self, i);
+                           if (vec.ObjectID) acHide(vec.ObjectID);
 
-                           if (auto tab = find_tabfocus(Self, TT_OBJECT, escobj.ObjectID); tab >= 0) {
+                           if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
                               Self->Tabs[tab].Active = false;
                            }
                         }
@@ -1418,11 +1414,11 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                               auto &end = escape_data<escIndexEnd>(Self, i);
                               if (index.ID IS end.ID) break;
                            }
-                           else if (code IS ESC::OBJECT) {
-                              auto &escobj = escape_data<escObject>(Self, i);
-                              if (escobj.ObjectID) acShow(escobj.ObjectID);
+                           else if (code IS ESC::VECTOR) {
+                              auto &vec = escape_data<escVector>(Self, i);
+                              if (vec.ObjectID) acShow(vec.ObjectID);
 
-                              if (auto tab = find_tabfocus(Self, TT_OBJECT, escobj.ObjectID); tab >= 0) {
+                              if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
                                  Self->Tabs[tab].Active = true;
                               }
                            }

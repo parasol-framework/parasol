@@ -123,9 +123,9 @@ thickness, or text inside the cell will mix with the border.
 #endif
 
 #ifdef DBG_WORDWRAP
- #define WRAP(...)   log.msg(__VA_ARGS__)
+ #define DWRAP(...)   log.msg(__VA_ARGS__)
 #else
- #define WRAP(...)
+ #define DWRAP(...)
 #endif
 
 #define PRV_DOCUMENT_MODULE
@@ -191,7 +191,7 @@ enum class ESC : char {
    UNDERLINE,
    BACKGROUND,
    INVERSE,
-   OBJECT,
+   VECTOR,
    LINK,
    TABDEF,
    PARAGRAPH_END,
@@ -209,11 +209,20 @@ enum class ESC : char {
    SET_MARGINS,
    INDEX_START,
    INDEX_END,
-   // End of list - NB: PLEASE UPDATE strCodes[] IF YOU ADD NEW CODES
+   XML,
+   // End of list - NB: PLEASE UPDATE escCode() IF YOU ADD NEW CODES
    END
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(ESC)
+
+enum class WRAP : char {
+   DO_NOTHING = 0,
+   EXTEND_PAGE,
+   WRAPPED
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(WRAP)
 
 enum {
    STATE_OUTSIDE=0,
@@ -315,8 +324,7 @@ struct DocSegment {
    INDEX Index;          // Line's byte index within the document text stream
    INDEX Stop;           // The stopping index for the line
    INDEX TrimStop;       // The stopping index for the line, with any whitespace removed
-   LONG  X;              // Horizontal coordinate of this line on the display
-   LONG  Y;              // Vertical coordinate of this line on the display
+   LONG  X, Y;           // Coordinates of this line on the display
    UWORD Height;         // Pixel height of the line, including all anchored objects.  When drawing, this is used for vertical alignment of graphics within the line
    UWORD BaseLine;       // Base-line - this is the height of the largest font down to the base line
    UWORD Width;          // Width of the characters in this line segment
@@ -325,7 +333,7 @@ struct DocSegment {
    bool  Edit;           // true if this segment represents content that can be edited
    bool  TextContent;    // true if there are text characters in this segment
    bool  ControlContent; // true if there are control codes in this segment
-   bool  ObjectContent;  // true if there are objects in this segment
+   bool  VectorContent;  // true if there are vectors in this segment
    bool  AllowMerge;     // true if this segment can be merged with sibling segments that have AllowMerge set to true
 };
 
@@ -344,9 +352,7 @@ struct DocClip {
 struct DocEdit {
    LONG MaxChars;
    std::string Name;
-   std::string OnEnter;
-   std::string OnExit;
-   std::string OnChange;
+   std::string OnEnter, OnExit, OnChange;
    std::vector<std::pair<std::string, std::string>> Args;
    bool LineBreaks;
 
@@ -478,13 +484,22 @@ struct escSetMargins : public EscapeCode {
    escSetMargins() { Code = ESC::SET_MARGINS; }
 };
 
-struct escObject : public EscapeCode {
+struct escVector : public EscapeCode {
    OBJECTID ObjectID = 0;   // Reference to the object
    LONG  ClassID = 0;       // Class that the object belongs to, mostly for informative/debugging purposes
+   ClipRectangle Margins;
    bool Embedded = false;   // true if object is embedded as part of the text stream (treated as if it were a character)
    bool Owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
-   bool Graphical = false;  // true if the object has graphical representation or contains graphical objects
-   escObject() { Code = ESC::OBJECT; }
+   bool IgnoreCursor = false; // true if the client has set fixed values for both X and Y
+   bool BlockRight = false; // true if no text may be printed to the right of the object
+   bool BlockLeft = false; // true if no text may be printed to the left of the object
+   escVector() { Code = ESC::VECTOR; }
+};
+
+struct escXML : public EscapeCode {
+   OBJECTID ObjectID = 0;   // Reference to the object
+   bool Owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
+   escXML() { Code = ESC::XML; }
 };
 
 struct escTable : public EscapeCode {
@@ -629,7 +644,7 @@ class extDocument : public objDocument {
    std::unordered_map<std::string, struct DocEdit> EditDefs;
    std::unordered_map<ULONG, std::variant<escAdvance, escTable, escTableEnd, escRow, escRowEnd, escParagraph,
       escParagraphEnd, escCell, escCellEnd, escLink, escLinkEnd, escList, escListEnd, escIndex, escIndexEnd,
-      escFont, escObject, escSetMargins>> Codes;
+      escFont, escVector, escSetMargins, escXML>> Codes;
    std::vector<DocMouseOver> MouseOverChain;
    std::vector<struct docresource> Resources;
    std::vector<Tab> Tabs;
@@ -759,9 +774,9 @@ enum {
 
 static const std::string & escCode(ESC Code) {
    static const std::string strCodes[] = {
-      "?", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Obj", "Link", "TabDef", "PE",
+      "?", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Vector", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
-      "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd"
+      "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd", "XML"
    };
 
    if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];
@@ -800,7 +815,7 @@ static void translate_attrib_args(extDocument *, pf::vector<XMLAttrib> &);
 static LONG  create_font(const std::string &, const std::string &, LONG);
 static void  deactivate_edit(extDocument *, BYTE);
 static void  deselect_text(extDocument *);
-static void exec_link(extDocument *, DocLink &);
+static void  exec_link(extDocument *, DocLink &);
 static void  exec_link(extDocument *, LONG);
 static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
@@ -809,7 +824,6 @@ static ERROR tag_xml_content_eval(extDocument *, std::string &);
 static LONG  find_segment(extDocument *, LONG, LONG);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
-static void  free_links(extDocument *);
 static std::string get_font_style(FSO);
 //static LONG   get_line_from_index(extDocument *, INDEX Index);
 static LONG  getutf8(CSTRING, LONG *);
@@ -818,7 +832,7 @@ static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, UBYTE);
 static ERROR insert_xml(extDocument *, objXML *, XMLTag &, LONG TargetIndex = -1, UBYTE Flags = 0);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
-static LONG  layout_section(extDocument *, INDEX, objFont **, LONG, LONG, LONG *, LONG *, ClipRectangle, bool *);
+static LONG  layout_section(extDocument *, INDEX, INDEX, objFont **, LONG, LONG, LONG *, LONG *, ClipRectangle, bool *);
 static ERROR load_doc(extDocument *, std::string, bool, BYTE);
 static objFont * lookup_font(LONG, const std::string &);
 static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
@@ -836,7 +850,7 @@ static void print_sorted_lines(extDocument *) __attribute__ ((unused));
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
-static void  redraw(extDocument *, BYTE);
+static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
 static void  reset_cursor(extDocument *);
 static ERROR resolve_fontx_by_index(extDocument *, LONG, LONG *);

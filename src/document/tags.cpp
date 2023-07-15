@@ -1130,7 +1130,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-static void tag_object(extDocument *Self, const std::string &pagetarget, CLASSID class_id, XMLTag *Template,
+static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID class_id, XMLTag *Template,
    objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
@@ -1256,11 +1256,9 @@ static void tag_object(extDocument *Self, const std::string &pagetarget, CLASSID
    }
 
    if (!InitObject(object)) {
-      escObject escobj;
+      escVector escobj;
 
       if (Self->Invisible) acHide(object); // Hide the object if it's in an invisible section
-
-      escobj.Graphical = (object->Class->BaseClassID IS ID_VECTOR);
 
       // Child tags are processed as normal, but are applied with respect to the object.  Any tags that reflect
       // document content are passed to the object as XML.

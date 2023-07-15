@@ -1,32 +1,6 @@
 
 #define MAXLOOP 100000
 
-// This is a list of the default class types that may be used in document pages.  Its purpose is to restrict the types
-// of objects that can be used so that we don't run into major security problems.  Basically, if an instantiated
-// object could have the potential to run any program that the user has access to, or if it could gain access to local
-// information and use it for nefarious purposes, then it's not secure enough for document usage.
-//
-// TODO: NEEDS TO BE REPLACED WITH AN XML DEFINITION and PARSED INTO A KEY VALUE STORE.
-
-struct DocClass {
-   std::string ClassName;
-   CLASSID ClassID;
-   std::string PageTarget;
-   std::string Fields;
-
-   DocClass(const std::string pName, CLASSID pClassID, const std::string pTarget, const std::string pFields) :
-      ClassName(pName), ClassID(pClassID), PageTarget(pTarget), Fields(pFields) { }
-};
-
-static std::vector <DocClass> glDocClasses = {
-   { "vector",     ID_VECTOR,    "surface", "" },
-   { "document",   ID_DOCUMENT,  "surface", "" },
-   { "scintilla",  ID_SCINTILLA, "", "" },
-   { "http",       ID_HTTP,      "", "" },
-   { "config",     ID_CONFIG,    "", "" },
-   { "xml",        ID_XML,       "", "" }
-};
-
 static const char glDefaultStyles[] =
 "<template name=\"h1\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"18\" colour=\"0,0,0\" style=\"bold\"><inject/></font></p></template>\n\
 <template name=\"h2\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"16\" colour=\"0,0,0\" style=\"bold\"><inject/></font></p></template>\n\
@@ -115,7 +89,7 @@ static void print_stream(extDocument *Self, const std::string &Stream)
          out << "(" << i << ")";
          if (code IS ESC::FONT) {
             auto style = &escape_data<escFont>(Self, i);
-            out << "[E:Font:%d";
+            out << "[E:Font";
             if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
             if ((style->Options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
             if ((style->Options & FSO::BOLD) != FSO::NIL) out << ":Bold";
@@ -275,12 +249,6 @@ static void print_tabfocus(extDocument *Self)
 #endif
 
 //static BYTE glWhitespace = true;  // Setting this to true tells the parser to ignore whitespace (prevents whitespace being used as content)
-
-enum {
-   WRAP_DONOTHING=0,
-   WRAP_EXTENDPAGE,
-   WRAP_WRAPPED
-};
 
 static Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -1090,36 +1058,6 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
    IPF filter = Flags & IPF::FILTER_ALL;
    XMLTag *object_template = NULL;
    
-   auto process_object = [&](XMLTag &Tag, std::string &tagname) {
-      if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
-         // Check if the tagname refers to a class.  For security reasons, we limit the classes that can be embedded
-         // in functional pages.
-
-         if (tagname.starts_with("obj:")) tagname.erase(0, 4);
-
-         std::string pagetarget;
-         CLASSID class_id = 0;
-         for (auto &record : glDocClasses) {
-            if (!StrMatch(tagname, record.ClassName)) {
-               pagetarget = record.PageTarget;
-               class_id = record.ClassID;
-               break;
-            }
-         }
-
-         if ((class_id) and ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL)) {
-            class_id = ResolveClassName(tagname.c_str());
-         }
-
-         if (class_id) {
-            auto parse_flags = IPF::NIL;
-            tag_object(Self, pagetarget, class_id, object_template, XML, Tag, Tag.Children, Index, parse_flags);
-         }
-         else log.warning("Tag '%s' unsupported as an instruction, template or class.", tagname.c_str());
-      }
-      else log.warning("Unrecognised tag '%s' used in a content-restricted area.", tagname.c_str());
-   };
-
    auto saved_attribs = Tag.Attribs;
    translate_attrib_args(Self, Tag.Attribs);
 
@@ -1167,34 +1105,27 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
       bool template_match = false;
       for (auto &scan : Self->Templates->Tags) {
          for (unsigned i=0; i < scan.Attribs.size(); i++) {
-            if ((!StrMatch("class", scan.Attribs[i].Name)) and (!StrMatch(tagname, scan.Attribs[i].Value))) {
-               object_template = &scan;
-               template_match = true;
-            }
-            else if ((!StrMatch("name", scan.Attribs[i].Name)) and (!StrMatch(tagname, scan.Attribs[i].Value))) {
+            if ((!StrMatch("name", scan.Attribs[i].Name)) and (!StrMatch(tagname, scan.Attribs[i].Value))) {
                template_match = true;
             }
          }
 
          if (template_match) {
-            if (object_template) process_object(Tag, tagname);               
-            else {
-               // Process the template by jumping into it.  Arguments in the tag are added to a sequential
-               // list that will be processed in reverse by translate_attrib_args().
+            // Process the template by jumping into it.  Arguments in the tag are added to a sequential
+            // list that will be processed in reverse by translate_attrib_args().
 
-               pf::Log log(__FUNCTION__);
+            pf::Log log(__FUNCTION__);
 
-               initTemplate block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
+            initTemplate block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
 
-               log.traceBranch("Executing template '%s'.", tagname.c_str());
+            log.traceBranch("Executing template '%s'.", tagname.c_str());
 
-               Self->TemplateArgs.push_back(&Tag);
-               parse_tags(Self, Self->Templates, scan.Children, Index, Flags);
-               Self->TemplateArgs.pop_back();
+            Self->TemplateArgs.push_back(&Tag);
+            parse_tags(Self, Self->Templates, scan.Children, Index, Flags);
+            Self->TemplateArgs.pop_back();
                
-               Tag.Attribs = saved_attribs;
-               return result;
-            }
+            Tag.Attribs = saved_attribs;
+            return result;
          }
       }
    }
@@ -1285,7 +1216,10 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
          Self->LoopIndex = saveindex;
       }
    }
-   else process_object(Tag, tagname);      
+   else if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {     
+      log.warning("Tag '%s' unsupported as an instruction or template.", tagname.c_str());
+   }
+   else log.warning("Unrecognised tag '%s' used in a content-restricted area.", tagname.c_str());
 
    Tag.Attribs = saved_attribs;
    return result;
@@ -1478,32 +1412,6 @@ static LONG calc_page_height(extDocument *Self, LONG FirstClip, LONG Y, LONG Bot
 
 //********************************************************************************************************************
 
-static void free_links(extDocument *Self)
-{
-   Self->Links.clear();
-}
-
-//********************************************************************************************************************
-// Record a clickable link, cell, or other form of clickable area.
-
-static void add_link(extDocument *Self, ESC EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((!Self) or (!Escape)) return;
-
-   if ((Width < 1) or (Height < 1)) {
-      log.traceWarning("Illegal width/height for link @ %dx%d, W/H %dx%d [%s]", X, Y, Width, Height, Caller);
-      return;
-   }
-
-   DLAYOUT("%dx%d,%dx%d, %s", X, Y, Width, Height, Caller);
-
-   Self->Links.emplace_back(EscapeCode, Escape, Self->Segments.size(), X, Y, Width, Height);
-}
-
-//********************************************************************************************************************
-
 static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unicode)
 {
    pf::Log log(__FUNCTION__);
@@ -1599,7 +1507,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                         auto &cell = escape_data<escCell>(Self, index);
                         if (cell.CellID IS Self->ActiveEditCellID) break;
                      }
-                     else if (ESCAPE_CODE(Self->Stream, index) IS ESC::OBJECT);
+                     else if (ESCAPE_CODE(Self->Stream, index) IS ESC::VECTOR);
                      else continue;
                   }
 
@@ -1628,7 +1536,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                         break;
                      }
                   }
-                  else if (code IS ESC::OBJECT); // Objects are treated as content, so do nothing special for these and drop through to next section
+                  else if (code IS ESC::VECTOR); // Objects are treated as content, so do nothing special for these and drop through to next section
                   else {
                      NEXT_CHAR(Self->Stream, index);
                      continue;
@@ -2083,7 +1991,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    if (Self->ActiveEditDef) deactivate_edit(Self, false);   
 
-   free_links(Self);
+   Self->Links.clear();
 
    if (Self->LinkIndex != -1) {
       Self->LinkIndex = -1;
@@ -2164,19 +2072,15 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 //********************************************************************************************************************
 // If the layout needs to be recalculated, set the UpdateLayout field before calling this function.
 
-static void redraw(extDocument *Self, BYTE Focus)
+static void redraw(extDocument *Self, bool Focus)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("");
 
-   //drwForbidDrawing();
-
-      AdjustLogLevel(3);
-      layout_doc(Self);
-      AdjustLogLevel(-3);
-
-   //drwPermitDrawing();
+   AdjustLogLevel(3);
+   layout_doc(Self);
+   AdjustLogLevel(-3);
 
    Self->Viewport->draw();
 
@@ -2873,7 +2777,7 @@ static ERROR activate_edit(extDocument *Self, LONG CellIndex, LONG CursorIndex)
       if (stream[CursorIndex] IS CTRL_CODE) {
          if (ESCAPE_CODE(stream, CursorIndex) IS ESC::CELL_END) break;
          else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::TABLE_START) break;
-         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::OBJECT) break;
+         else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::VECTOR) break;
          else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::LINK_END) break;
          else if (ESCAPE_CODE(stream, CursorIndex) IS ESC::PARAGRAPH_END) break;
       }
@@ -3691,30 +3595,26 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    }
    else if (Self->Tabs[Index].Type IS TT_LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
-         unsigned i;
-         for (i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) break;
-         }
+         for (unsigned i=0; i < Self->Links.size(); i++) {
+            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) {               
+               auto link_x = Self->Links[i].X;
+               auto link_y = Self->Links[i].Y;
+               auto link_bottom = link_y + Self->Links[i].Height;
+               auto link_right  = link_x + Self->Links[i].Width;
 
-         if (i < Self->Links.size()) {
-            LONG link_x = Self->Links[i].X;
-            LONG link_y = Self->Links[i].Y;
-            LONG link_bottom = link_y + Self->Links[i].Height;
-            LONG link_right = link_x + Self->Links[i].Width;
-
-            for (++i; i < Self->Links.size(); i++) {
-               if (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref) {
-                  if (Self->Links[i].Y + Self->Links[i].Height > link_bottom) link_bottom = Self->Links[i].Y + Self->Links[i].Height;
-                  if (Self->Links[i].X + Self->Links[i].Width > link_right) link_right = Self->Links[i].X + Self->Links[i].Width;
+               for (++i; i < Self->Links.size(); i++) {
+                  if (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref) {
+                     if (Self->Links[i].Y + Self->Links[i].Height > link_bottom) link_bottom = Self->Links[i].Y + Self->Links[i].Height;
+                     if (Self->Links[i].X + Self->Links[i].Width > link_right) link_right = Self->Links[i].X + Self->Links[i].Width;
+                  }
                }
-            }
 
-            if (!view_area(Self, link_x, link_y, link_right, link_bottom)) {
-               Self->Viewport->draw();
+               view_area(Self, link_x, link_y, link_right, link_bottom);
+               break;
             }
          }
-         else Self->Viewport->draw();
 
+         Self->Viewport->draw();
          acFocus(Self->Page);
       }
    }
@@ -4141,6 +4041,8 @@ static void exec_link(extDocument *Self, DocLink &Link)
 end:
    Self->Processing--;
 }
+
+//********************************************************************************************************************
 
 static void exec_link(extDocument *Self, INDEX Index)
 {   

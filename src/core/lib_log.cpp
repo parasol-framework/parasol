@@ -265,8 +265,7 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
          }
 
          if (obj->Class) {
-            if (obj->Name[0]) name = obj->Name;
-            else name = obj->Class->ClassName;
+            name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
             if (glLogLevel > 5) {
                if (ctx->Field) {
