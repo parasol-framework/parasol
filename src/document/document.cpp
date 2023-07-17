@@ -460,12 +460,11 @@ struct escList : public EscapeCode {
       CUSTOM
    };
 
-   struct escList *Stack = NULL; // Stack management pointer during layout
-   std::string Fill;          // Fill to use for bullet points (valid for BULLET only).
-   std::vector<std::string> Buffer; // Temp buffer, used for ordered lists
-   LONG  Start = 1;           // Starting value for ordered lists (default: 1)
-   LONG  ItemIndent = BULLET_WIDTH;      // Minimum indentation for text printed for each item
-   LONG  BlockIndent = BULLET_WIDTH;     // Indentation for each set of items
+   std::string Fill;                 // Fill to use for bullet points (valid for BULLET only).
+   std::vector<std::string> Buffer;  // Temp buffer, used for ordered lists
+   LONG  Start = 1;                  // Starting value for ordered lists (default: 1)
+   LONG  ItemIndent = BULLET_WIDTH;  // Minimum indentation for text printed for each item
+   LONG  BlockIndent = BULLET_WIDTH; // Indentation for each set of items
    LONG  ItemNum = 0;
    LONG  OrderInsert = 0;
    FLOAT VSpacing = 0.5;        // Spacing between list items, expressed as a ratio
@@ -526,6 +525,33 @@ struct escTable : public EscapeCode {
    bool  Thin = false;
    // Entry followed by the minimum width of each column
    escTable() { Code = ESC::TABLE_START; }
+
+   void computeColumns() { // Compute the default column widths      
+      if (!ComputeColumns) return;
+     
+      ComputeColumns = 0;
+      CellsExpanded = false;
+
+      if (!Columns.empty()) {
+         for (unsigned j=0; j < Columns.size(); j++) {
+            //if (ComputeColumns IS 1) {
+            //   Columns[j].Width = 0;
+            //   Columns[j].MinWidth = 0;
+            //}
+
+            if (Columns[j].PresetWidth & 0x8000) { // Percentage width value
+               Columns[j].Width = (DOUBLE)((Columns[j].PresetWidth & 0x7fff) * Width) * 0.01;
+            }
+            else if (Columns[j].PresetWidth) { // Fixed width value
+               Columns[j].Width = Columns[j].PresetWidth;
+            }
+            else Columns[j].Width = 0;                        
+
+            if (Columns[j].MinWidth > Columns[j].Width) Columns[j].Width = Columns[j].MinWidth;
+         }
+      }
+      else Columns.clear();      
+   }   
 };
 
 struct escTableEnd : public EscapeCode {
@@ -688,7 +714,7 @@ class extDocument : public objDocument {
    TIMER  FlashTimer;        // For flashing the cursor
    LONG   ActiveEditCellID;  // If editing is active, this refers to the ID of the cell being edited
    ULONG  ActiveEditCRC;     // CRC for cell editing area, used for managing onchange notifications
-   UWORD  Depth;             // Section depth - increases when layout_section() recurses, e.g. into tables
+   UWORD  Depth;             // Section depth - increases when do_layout() recurses, e.g. into tables
    UWORD  ParagraphDepth;
    UWORD  LinkID;            // Unique counter for links
    WORD   FocusIndex;        // Tab focus index
@@ -832,7 +858,6 @@ static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, UBYTE);
 static ERROR insert_xml(extDocument *, objXML *, XMLTag &, LONG TargetIndex = -1, UBYTE Flags = 0);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
-static LONG  layout_section(extDocument *, INDEX, INDEX, objFont **, LONG, LONG, LONG *, LONG *, ClipRectangle, bool *);
 static ERROR load_doc(extDocument *, std::string, bool, BYTE);
 static objFont * lookup_font(LONG, const std::string &);
 static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
