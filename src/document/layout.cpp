@@ -11,6 +11,7 @@ enum class TE : char {
 struct layout {
    std::vector<escList *> stack_list;
    std::vector<escRow *> stack_row;
+   std::vector<DocLink> m_links;
    extDocument *Self;
    objFont *m_font;
    escLink *m_current_link;
@@ -76,13 +77,12 @@ struct layout {
    void procCellEnd(escCell *);
    void procRowEnd(escTable *);
 
+   void add_link(ESC, std::variant<escLink *, escCell *>, LONG, LONG, LONG, LONG, const std::string &);
    void add_drawsegment(LONG, LONG, LONG, LONG, LONG, const std::string &);
-   void end_line(LONG NewLine, INDEX Index, DOUBLE Spacing, INDEX RestartIndex, const std::string &);
-   WRAP check_wordwrap(const std::string &, INDEX, LONG X, LONG *Width,
-      INDEX, LONG &GraphicX, LONG &GraphicY, LONG GraphicWidth, LONG GraphicHeight);
-   void check_clips(INDEX Index, INDEX VectorIndex, LONG &GraphicX, LONG &GraphicY, LONG GraphicWidth, LONG GraphicHeight);
+   void end_line(LONG, INDEX, DOUBLE, INDEX, const std::string &);
+   WRAP check_wordwrap(const std::string &, INDEX, LONG, LONG *, INDEX, LONG &, LONG &, LONG, LONG);
+   void check_clips(INDEX, INDEX, LONG &, LONG &, LONG, LONG);
 };
-
 
 //********************************************************************************************************************
 
@@ -118,31 +118,28 @@ void layout::procLink(INDEX Index)
    if (m_current_link) {
       // Close the currently open link because it's illegal to have a link embedded within a link.
 
-      if (m_font) {
-         add_link(Self, ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "esc_link");
-      }
+      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "esc_link");
    }
 
    m_current_link = &escape_data<::escLink>(Self, Index);
-   m_link.x     = m_cursor_x + m_word_width;
-   m_link.index = Index;
-   m_link.open  = true;
-   m_link.align = m_font->Align;
+   m_link.x       = m_cursor_x + m_word_width;
+   m_link.index   = Index;
+   m_link.open    = true;
+   m_link.align   = m_font->Align;
 }
 
 void layout::procLinkEnd(INDEX Index)
 {
-   // We don't call add_link() unless the entire word that contains the link has
-   // been processed.  This is necessary due to the potential for a word-wrap.
+   if (!m_current_link) return;
 
-   if (m_current_link) {
-      m_link.open = false;
+   m_link.open = false;
 
-      if (m_word_width < 1) {
-         add_link(Self, ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "esc_link_end");
-         m_current_link = NULL;
-      }
-   }   
+   // add_link() is not called unless the entire word containing the link has been processed, due to possible word-wrap
+
+   if (m_word_width < 1) {
+      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "esc_link_end");
+      m_current_link = NULL;
+   }  
 }
 
 //********************************************************************************************************************
@@ -197,7 +194,7 @@ void layout::procCellEnd(escCell *esccell)
    m_set_segment = true;
 
    if ((esccell) and (!esccell->OnClick.empty())) {
-      add_link(Self, ESC::CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
+      add_link(ESC::CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
    }
 
    if ((esccell) and (!esccell->EditDef.empty())) {
@@ -1307,7 +1304,6 @@ restart:
    Self->Segments.clear();
    Self->SortSegments.clear();
    Self->Clips.clear();
-   Self->Links.clear();
    Self->EditCells.clear();
 
    Self->PageProcessed = false;
@@ -1363,10 +1359,11 @@ restart:
    // width of their line is known, hence it's easier to make a final adjustment for all links post-layout).
 
    if (!Self->Error) {
+      Self->Links = l.m_links;
       for (auto &link : Self->Links) {
          if (link.EscapeCode != ESC::LINK) continue;
 
-         auto esclink = link.Link;
+         auto esclink = std::get<escLink *>(link.Escape);
          if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
             auto &segment = Self->Segments[link.Segment];
             if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
@@ -1378,6 +1375,7 @@ restart:
          }
       }
    }
+   else Self->Links.clear();
 
    // Build the sorted segment array
 
@@ -1630,7 +1628,6 @@ struct LAYOUT_STATE {
    layout Layout;
    INDEX Index     = 0;
    LONG TotalClips = 0;
-   LONG TotalLinks = 0;
    LONG SegCount   = 0;
    LONG ECIndex    = 0;
 
@@ -1639,7 +1636,6 @@ struct LAYOUT_STATE {
    LAYOUT_STATE(extDocument *pSelf, LONG pIndex, layout &pLayout) : Layout(pLayout) {
       Index      = pIndex; 
       TotalClips = pSelf->Clips.size(); 
-      TotalLinks = pSelf->Links.size(); 
       ECIndex    = pSelf->EditCells.size(); 
       SegCount   = pSelf->Segments.size();
    }
@@ -1648,7 +1644,6 @@ struct LAYOUT_STATE {
       pf::Log log(__FUNCTION__);
       DLAYOUT("Restoring earlier layout state to index %d", Index);
       pSelf->Clips.resize(TotalClips);
-      pSelf->Links.resize(TotalLinks);
       pSelf->Segments.resize(SegCount);
       pSelf->EditCells.resize(ECIndex);
    }
@@ -1686,7 +1681,6 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
       return s.Index;
    };
 
-   auto start_links    = Self->Links.size();
    auto start_segments = Self->Segments.size();
    m_start_clips       = Self->Clips.size();
    start_ecindex       = Self->EditCells.size();
@@ -1721,7 +1715,6 @@ extend_page:
    }
    Self->BreakLoop--;
 
-   Self->Links.resize(start_links);     // Also refer to SAVE_STATE() and restore_state()
    Self->Segments.resize(start_segments);
    Self->Clips.resize(m_start_clips);
 
@@ -1733,6 +1726,7 @@ extend_page:
    edit_segment    = 0;
    checkwrap       = false;  // true if a wordwrap or collision check is required
 
+   m_current_link     = NULL;
    m_anchor           = false;  // true if in an anchored section (vectors are anchored to the line)
    m_align_flags      = 0;      // Current alignment settings according to the font style
    m_paragraph_y      = 0;
@@ -2276,7 +2270,7 @@ repass_row_height_ext:
 
             if ((link) and (link_open IS false)) {
                // A link is due to be closed
-               add_link(Self, ESC::LINK, link, link_x, m_cursor_y, m_cursor_x + m_word_width - link_x, m_line.height, "<br/>");
+               add_link(ESC::LINK, link, link_x, m_cursor_y, m_cursor_x + m_word_width - link_x, m_line.height, "<br/>");
                link = NULL;
             }
 #endif
@@ -2908,9 +2902,7 @@ restart:
             if (m_link.x IS GraphicX) {
                // If the link starts with the vector, the link itself is going to be wrapped with it
             }
-            else {
-               add_link(Self, ESC::LINK, m_current_link, m_link.x, GraphicY, GraphicX - m_link.x, m_line.height, "check_wrap");
-            }
+            else add_link(ESC::LINK, m_current_link, m_link.x, GraphicY, GraphicX - m_link.x, m_line.height, "check_wrap");            
          }
 
          // Set the line segment up to the vector index.  The line.index is
@@ -2929,7 +2921,7 @@ restart:
          m_cursor_y     = GraphicY;
          m_split_start  = Self->Segments.size();
          m_line.x       = m_left_margin;
-         m_link.x         = m_left_margin; // Only matters if a link is defined
+         m_link.x       = m_left_margin; // Only matters if a link is defined
          m_kernchar     = 0;
          m_line.full_height = 0;
          m_line.height      = 0;
@@ -2946,7 +2938,7 @@ restart:
    // No wrap has occurred
 
    if ((m_current_link) and (!m_link.open)) { // A link is due to be closed
-      add_link(Self, ESC::LINK, m_current_link, m_link.x, GraphicY, GraphicX + GraphicWidth - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "check_wrap");
+      add_link(ESC::LINK, m_current_link, m_link.x, GraphicY, GraphicX + GraphicWidth - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "check_wrap");
       m_current_link = NULL;
    }
 
@@ -2991,7 +2983,7 @@ void layout::check_clips(INDEX Index, INDEX VectorIndex, LONG &GraphicX, LONG &G
          DWRAP("Setting hyperlink now to cross a clipping boundary.");
 
          auto height = m_line.height ? m_line.height : m_font->LineSpacing;
-         add_link(Self, ESC::LINK, m_current_link, m_link.x, GraphicY, GraphicX + GraphicWidth - m_link.x, height, "clip_intersect");
+         add_link(ESC::LINK, m_current_link, m_link.x, GraphicY, GraphicX + GraphicWidth - m_link.x, height, "clip_intersect");
 
          reset_link = true;
       }
@@ -3031,18 +3023,16 @@ void layout::check_clips(INDEX Index, INDEX VectorIndex, LONG &GraphicX, LONG &G
 //********************************************************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
-static void add_link(extDocument *Self, ESC EscapeCode, APTR Escape, LONG X, LONG Y, LONG Width, LONG Height, CSTRING Caller)
+void layout::add_link(ESC EscapeCode, std::variant<escLink *, escCell *> Escape, LONG X, LONG Y, LONG Width, LONG Height, const std::string &Caller)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Self) or (!Escape)) return;
-
    if ((Width < 1) or (Height < 1)) {
-      log.traceWarning("Illegal width/height for link @ %dx%d, W/H %dx%d [%s]", X, Y, Width, Height, Caller);
+      log.traceWarning("Illegal width/height for link @ %dx%d, W/H %dx%d [%s]", X, Y, Width, Height, Caller.c_str());
       return;
    }
 
-   DLAYOUT("%dx%d,%dx%d, %s", X, Y, Width, Height, Caller);
+   DLAYOUT("%dx%d,%dx%d, %s", X, Y, Width, Height, Caller.c_str());
 
-   Self->Links.emplace_back(EscapeCode, Escape, Self->Segments.size(), X, Y, Width, Height);
+   m_links.emplace_back(EscapeCode, Escape, Self->Segments.size(), X, Y, Width, Height);
 }

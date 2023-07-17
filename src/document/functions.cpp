@@ -1661,8 +1661,8 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
             if ((Self->Tabs[tab].Type IS TT_LINK) and (Self->Tabs[tab].Active)) {
                for (auto &link : Self->Links) {
-                  if ((link.EscapeCode IS ESC::LINK) and (link.Link->ID IS Self->Tabs[tab].Ref)) {
-                     exec_link(Self, link);
+                  if ((link.EscapeCode IS ESC::LINK) and (link.asLink()->ID IS Self->Tabs[tab].Ref)) {
+                     link.exec(Self);
                      break;
                   }
                }
@@ -3181,18 +3181,18 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                Self->CursorSet = true;
             }
 
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (!Self->Links[i].Link->PointerMotion.empty())) {                          
+            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (!Self->Links[i].asLink()->PointerMotion.empty())) {
                auto mo = Self->MouseOverChain.emplace(Self->MouseOverChain.begin(), 
-                  Self->Links[i].Link->PointerMotion, 
+                  Self->Links[i].asLink()->PointerMotion, 
                   Self->Links[i].Y, 
                   Self->Links[i].X, 
                   Self->Links[i].Y + Self->Links[i].Height, 
                   Self->Links[i].X + Self->Links[i].Width, 
-                  Self->Links[i].Link->ID);
+                  Self->Links[i].asLink()->ID);
 
                OBJECTPTR script;
                std::string argstring, func_name;
-               if (!extract_script(Self, Self->Links[i].Link->PointerMotion, &script, func_name, argstring)) {
+               if (!extract_script(Self, Self->Links[i].asLink()->PointerMotion, &script, func_name, argstring)) {
                   const ScriptArg args[] = { { "Element", mo->ElementID }, { "Status", 1 }, { "Args", argstring } };
                   scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
                }
@@ -3596,14 +3596,14 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    else if (Self->Tabs[Index].Type IS TT_LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          for (unsigned i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref)) {               
+            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].asLink()->ID IS Self->Tabs[Index].Ref)) {               
                auto link_x = Self->Links[i].X;
                auto link_y = Self->Links[i].Y;
                auto link_bottom = link_y + Self->Links[i].Height;
                auto link_right  = link_x + Self->Links[i].Width;
 
                for (++i; i < Self->Links.size(); i++) {
-                  if (Self->Links[i].Link->ID IS Self->Tabs[Index].Ref) {
+                  if (Self->Links[i].asLink()->ID IS Self->Tabs[Index].Ref) {
                      if (Self->Links[i].Y + Self->Links[i].Height > link_bottom) link_bottom = Self->Links[i].Y + Self->Links[i].Height;
                      if (Self->Links[i].X + Self->Links[i].Width > link_right) link_right = Self->Links[i].X + Self->Links[i].Width;
                   }
@@ -3896,7 +3896,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
 
 //********************************************************************************************************************
 
-static void exec_link(extDocument *Self, DocLink &Link)
+void DocLink::exec(extDocument *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -3904,9 +3904,9 @@ static void exec_link(extDocument *Self, DocLink &Link)
 
    Self->Processing++;
 
-   if ((Link.EscapeCode IS ESC::LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
+   if ((EscapeCode IS ESC::LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
       deLinkActivated params;
-      auto link = Link.Link;
+      auto link = asLink();
 
       if (link->Type IS LINK::FUNCTION) {
          std::string function_name, args;
@@ -3928,12 +3928,12 @@ static void exec_link(extDocument *Self, DocLink &Link)
       if (result IS ERR_Skip) goto end;
    }
 
-   if (Link.EscapeCode IS ESC::LINK) {
+   if (EscapeCode IS ESC::LINK) {
       OBJECTPTR script;
       std::string function_name, fargs;
       CLASSID class_id, subclass_id;
 
-      auto link = Link.Link;
+      auto link = asLink();
       if (link->Type IS LINK::FUNCTION) { // Function is in the format 'function()' or 'script.function()'
          if (!extract_script(Self, link->Ref, &script, function_name, fargs)) {
             std::vector<ScriptArg> args;
@@ -3977,29 +3977,16 @@ static void exec_link(extDocument *Self, DocLink &Link)
                std::string lk;
 
                if (!Self->Path.empty()) {
-                  bool abspath = false; // Is the link an absolute path indicated by a volume name?
-                  for (LONG j=0; link->Ref[j]; j++) {
-                     if ((link->Ref[j] IS '/') or (link->Ref[j] IS '\\')) break;
-                     if (link->Ref[j] IS ':') { abspath = true; break; }
-                  }
-
-                  if (!abspath) {
-                     LONG end;
-                     for (end=0; Self->Path[end]; end++) {
-                        if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
-                     }
-                     while ((end > 0) and (Self->Path[end-1] != '/') and (Self->Path[end-1] != '\\') and (Self->Path[end-1] != ':')) end--;
-                     lk.assign(Self->Path, end);
+                  auto j = link->Ref.find_first_of("/\\:");                 
+                  if ((j IS std::string::npos) or (link->Ref[j] != ':')) {
+                     auto end = Self->Path.find_first_of("&#?");
+                     if (end IS std::string::npos) lk.assign(Self->Path);
+                     else lk.assign(Self->Path, Self->Path.find_last_of("/\\", end));                     
                   }
                }
 
                lk += link->Ref;
-
-               LONG end;
-               for (end=0; lk[end]; end++) {
-                  if ((lk[end] IS '?') or (lk[end] IS '#') or (lk[end] IS '&')) break;
-               }
-
+               auto end = lk.find_first_of("?#&");
                if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
                   if (class_id IS ID_DOCUMENT) {
                      Self->set(FID_Path, lk);
@@ -4016,12 +4003,11 @@ static void exec_link(extDocument *Self, DocLink &Link)
          }
       }
    }
-   else if (Link.EscapeCode IS ESC::CELL) {
+   else if (EscapeCode IS ESC::CELL) {
       OBJECTPTR script;
       std::string function_name, script_args;
 
-      escCell *cell = Link.Cell;
-
+      auto cell = asCell();
       if (!extract_script(Self, cell->OnClick, &script, function_name, script_args)) {
          std::vector<ScriptArg> args;
          if (!cell->Args.empty()) {
@@ -4048,7 +4034,7 @@ static void exec_link(extDocument *Self, INDEX Index)
 {   
    if ((Index IS -1) or (unsigned(Index) >= Self->Links.size())) return;
 
-   exec_link(Self, Self->Links[Index]);
+   Self->Links[Index].exec(Self);
 }
 
 //********************************************************************************************************************

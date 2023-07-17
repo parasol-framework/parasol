@@ -265,6 +265,8 @@ static std::string glHighlight = "rgb(0.86,0.86,1,1)";
 static OBJECTPTR clDocument = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;
 
+class extDocument;
+
 struct deLinkActivated {
    std::map<std::string, std::string> Values;  // All key-values associated with the link.
 };
@@ -359,21 +361,23 @@ struct DocEdit {
    DocEdit() : MaxChars(-1), Args(0), LineBreaks(false) { }
 };
 
+struct escLink;
+struct escCell;
+
 struct DocLink {
-   union {
-      struct escLink *Link;
-      struct escCell *Cell;
-      APTR Escape;
-   };
-   LONG X, Y;
-   LONG Width, Height;
+   std::variant<escLink *, escCell *> Escape;
+   DOUBLE X, Y, Width, Height;
    LONG Segment;
    ESC  EscapeCode;
 
-   DocLink(ESC pCode, APTR pEscape, LONG pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
+   DocLink(ESC pCode, std::variant<escLink *, escCell *> pEscape, LONG pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
        Escape(pEscape), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), EscapeCode(pCode) { }
 
-   DocLink() : Escape(NULL), X(0), Y(0), Width(0), Height(0), Segment(0), EscapeCode(ESC::NIL) { }
+   DocLink() : X(0), Y(0), Width(0), Height(0), Segment(0), EscapeCode(ESC::NIL) { }
+
+   escLink * asLink() { return std::get<escLink *>(Escape); }
+   escCell * asCell() { return std::get<escCell *>(Escape); }
+   void exec(extDocument *);
 };
 
 struct DocMouseOver {
@@ -592,7 +596,6 @@ struct escParagraphEnd : public EscapeCode {
 };
 
 struct escRow : public EscapeCode {
-   struct escRow *Stack = NULL;
    LONG  Y = 0;
    LONG  RowHeight = 0; // Height of all cells on this row, used when drawing the cells
    LONG  MinHeight = 0;
@@ -827,7 +830,6 @@ struct layout; // Pre-def
 
 static ERROR activate_edit(extDocument *, LONG, LONG);
 static ERROR add_document_class(void);
-static void  add_link(extDocument *, ESC, APTR, LONG, LONG, LONG, LONG, CSTRING);
 static LONG  add_tabfocus(extDocument *, UBYTE, LONG);
 static void  add_template(extDocument *, objXML *, XMLTag &);
 static void  advance_tabfocus(extDocument *, BYTE);
@@ -841,7 +843,6 @@ static void translate_attrib_args(extDocument *, pf::vector<XMLAttrib> &);
 static LONG  create_font(const std::string &, const std::string &, LONG);
 static void  deactivate_edit(extDocument *, BYTE);
 static void  deselect_text(extDocument *);
-static void  exec_link(extDocument *, DocLink &);
 static void  exec_link(extDocument *, LONG);
 static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
