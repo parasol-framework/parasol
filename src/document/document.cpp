@@ -565,7 +565,6 @@ struct escTableEnd : public EscapeCode {
 
 class escParagraph : public EscapeCode {
    public:
-   struct escParagraph *Stack;
    std::string Value = "";
    LONG   X, Y;
    LONG   Height;
@@ -579,7 +578,7 @@ class escParagraph : public EscapeCode {
    bool ListItem;
    bool Trim;
 
-   escParagraph() : Stack(NULL), X(0), Y(0), Height(0),
+   escParagraph() : X(0), Y(0), Height(0),
       BlockIndent(0), ItemIndent(0), Indent(DEFAULT_INDENT), VSpacing(1.0), LeadingRatio(1.0),
       Relative(false), ListItem(false), Trim(false) {
       Code = ESC::PARAGRAPH_START;

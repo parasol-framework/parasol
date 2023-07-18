@@ -11,6 +11,7 @@ enum class TE : char {
 struct layout {
    std::stack<escList *> stack_list;
    std::stack<escRow *> stack_row;
+   std::stack<escParagraph *> stack_para;
    
    std::vector<DocLink> m_links;
    std::vector<DocClip> m_clips;
@@ -79,14 +80,14 @@ struct layout {
    void procLinkEnd();
    void procIndexStart();
    void procFont();
-   WRAP procVector(LONG, DOUBLE, DOUBLE, LONG &, LONG, bool &, bool &, escParagraph *);
-   escParagraph * procParagraphStart(escParagraph *, LONG);
-   escParagraph * procParagraphEnd(escParagraph *);
-   TE procTableEnd(escTable *, escParagraph *, LONG, LONG, LONG, LONG, LONG &, LONG &);
+   WRAP procVector(LONG, DOUBLE, DOUBLE, LONG &, LONG, bool &, bool &);
+   void procParagraphStart(LONG);
+   void procParagraphEnd();
+   TE procTableEnd(escTable *, LONG, LONG, LONG, LONG, LONG &, LONG &);
    void procCellEnd(escCell *);
    void procRowEnd(escTable *);
    void procAdvance();
-   bool procListEnd(escParagraph *);
+   bool procListEnd();
 
    void add_link(ESC, std::variant<escLink *, escCell *>, LONG, LONG, LONG, LONG, const std::string &);
    void add_drawsegment(INDEX, INDEX, LONG, LONG, LONG, const std::string &);
@@ -165,7 +166,7 @@ void layout::procLinkEnd()
 
 //********************************************************************************************************************
 
-bool layout::procListEnd(escParagraph *Paragraph)
+bool layout::procListEnd()
 {
    if (stack_list.empty()) return false;
 
@@ -179,7 +180,7 @@ bool layout::procListEnd(escParagraph *Paragraph)
 
    if (stack_list.empty()) {
       // At the end of a list, increase the whitespace to that of a standard paragraph.
-      if (Paragraph) end_line(NL_PARAGRAPH, Paragraph->VSpacing, idx, "Esc:ListEnd");
+      if (!stack_para.empty()) end_line(NL_PARAGRAPH, stack_para.top()->VSpacing, idx, "Esc:ListEnd");
       else end_line(NL_PARAGRAPH, 1.0, idx, "Esc:ListEnd");
    }
 
@@ -278,49 +279,46 @@ void layout::procRowEnd(escTable *Table)
 
 //********************************************************************************************************************
 
-escParagraph * layout::procParagraphStart(escParagraph *Parent, LONG Width)
+void layout::procParagraphStart(LONG Width)
 {
-   escParagraph *escpara;
-
-   if (Parent) {
+   if (!stack_para.empty()) {
       DOUBLE ratio;
    
       // If a paragraph is embedded within a paragraph, insert a newline before the new paragraph starts.
    
-      m_left_margin = Parent->X; // Reset the margin so that the next line will be flush with the parent
+      m_left_margin = stack_para.top()->X; // Reset the margin so that the next line will be flush with the parent
    
       if (m_paragraph_y > 0) {
-         if (Parent->LeadingRatio > Parent->VSpacing) ratio = Parent->LeadingRatio;
-         else ratio = Parent->VSpacing;
+         if (stack_para.top()->LeadingRatio > stack_para.top()->VSpacing) ratio = stack_para.top()->LeadingRatio;
+         else ratio = stack_para.top()->VSpacing;
       }
-      else ratio = Parent->VSpacing;
+      else ratio = stack_para.top()->VSpacing;
    
       end_line(NL_PARAGRAPH, ratio, idx, "Esc:PStart");
    
-      escpara = &escape_data<escParagraph>(Self, idx);
-      escpara->Stack = Parent;
+      stack_para.push(&escape_data<escParagraph>(Self, idx));
    }
    else {
-      escpara = &escape_data<escParagraph>(Self, idx);
-      escpara->Stack = NULL;
+      stack_para.push(&escape_data<escParagraph>(Self, idx));
    
       // Leading ratio is only used if the paragraph is preceeded by content.
       // This check ensures that the first paragraph is always flush against
       // the top of the page.
    
-      if ((escpara->LeadingRatio > 0) and (m_paragraph_y > 0)) {
-         end_line(NL_PARAGRAPH, escpara->LeadingRatio, idx, "Esc:PStart");
+      if ((stack_para.top()->LeadingRatio > 0) and (m_paragraph_y > 0)) {
+         end_line(NL_PARAGRAPH, stack_para.top()->LeadingRatio, idx, "Esc:PStart");
       }
    }
    
    // Indentation support
    
+   auto escpara = stack_para.top();
    if (!stack_list.empty()) {
       // For list items, indentation is managed by the list that this paragraph is contained within.
    
       auto list = stack_list.top();
       if (escpara->ListItem) {
-         if (Parent) escpara->Indent = list->BlockIndent;
+         if (stack_para.size() > 1) escpara->Indent = list->BlockIndent;
          escpara->ItemIndent = list->ItemIndent;
          escpara->Relative = false;
    
@@ -353,35 +351,30 @@ escParagraph * layout::procParagraphStart(escParagraph *Parent, LONG Width)
    
    escpara->Y = m_cursor_y;
    escpara->Height = 0;
-
-   return escpara;
 }
 
-escParagraph * layout::procParagraphEnd(escParagraph *Current)
+void layout::procParagraphEnd()
 {
-   if (Current) {
+   if (!stack_para.empty()) {
       // The paragraph height reflects the true size of the paragraph after we take into account
       // any vectors and tables within the paragraph.
 
-      m_paragraph_bottom = Current->Y + Current->Height;
+      auto para = stack_para.top();
+      m_paragraph_bottom = para->Y + para->Height;
 
-      end_line(NL_PARAGRAPH, Current->VSpacing, idx + ESCAPE_LEN, "Esc:PEnd");
+      end_line(NL_PARAGRAPH, para->VSpacing, idx + ESCAPE_LEN, "Esc:PEnd");
 
-      m_left_margin = Current->X - Current->BlockIndent;
-      m_cursor_x    = Current->X - Current->BlockIndent;
-      m_line.x      = Current->X - Current->BlockIndent;
-
-      return Current->Stack;
+      m_left_margin = para->X - para->BlockIndent;
+      m_cursor_x    = para->X - para->BlockIndent;
+      m_line.x      = para->X - para->BlockIndent;
+      stack_para.pop();
    }
-   else {
-      end_line(NL_PARAGRAPH, 0, idx + ESCAPE_LEN, "Esc:PEnd-NP");
-      return NULL;
-   }
+   else end_line(NL_PARAGRAPH, 0, idx + ESCAPE_LEN, "Esc:PEnd-NP");
 }
 
 //********************************************************************************************************************
 
-TE layout::procTableEnd(escTable *esctable, escParagraph *escpara, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG &Height, LONG &Width)
+TE layout::procTableEnd(escTable *esctable, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG &Height, LONG &Width)
 {
    pf::Log log(__FUNCTION__);
 
@@ -515,9 +508,9 @@ TE layout::procTableEnd(escTable *esctable, escParagraph *escpara, LONG Offset, 
       }
    }
 
-   if (escpara) {
-      j = (esctable->Y + esctable->Height) - escpara->Y;
-      if (j > escpara->Height) escpara->Height = j;
+   if (!stack_para.empty()) {
+      j = (esctable->Y + esctable->Height) - stack_para.top()->Y;
+      if (j > stack_para.top()->Height) stack_para.top()->Height = j;
    }
 
    // Check if the table collides with clipping boundaries and adjust its position accordingly.
@@ -571,7 +564,7 @@ TE layout::procTableEnd(escTable *esctable, escParagraph *escpara, LONG Offset, 
 // Embedded vectors are always contained by a VectorViewport irrespective of whether or not the client asked for one.
 
 WRAP layout::procVector(LONG Offset, DOUBLE AbsX, DOUBLE AbsY, LONG &Width, LONG PageHeight, 
-   bool &VerticalRepass, bool &CheckWrap, escParagraph *Paragraph)
+   bool &VerticalRepass, bool &CheckWrap)
 {
    pf::Log log;
    ClipRectangle cell;
@@ -1245,9 +1238,9 @@ wrap_vector:
    
          //if (cell.Right > m_cursor_x) m_word_width += cell.Right - m_cursor_x;
    
-         if (Paragraph) {
-            auto j = cell.Bottom - Paragraph->Y;
-            if (j > Paragraph->Height) Paragraph->Height = j;
+         if (!stack_para.empty()) {
+            auto j = cell.Bottom - stack_para.top()->Y;
+            if (j > stack_para.top()->Height) stack_para.top()->Height = j;
          }
       }
    }
@@ -1674,7 +1667,6 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
 
    escCell *esccell;
    escTable *esctable;
-   escParagraph *escpara;
 
    layout tablestate(Self), rowstate(Self), liststate(Self);
    LONG unicode, j, last_height, edit_segment;
@@ -1726,9 +1718,12 @@ extend_page:
    m_segments.clear();
    m_links.clear();
 
+   stack_list = {};
+   stack_para = {};
+   stack_row  = {};
+
    last_height     = page_height;
    esctable        = NULL;
-   escpara         = NULL;
    esccell         = NULL;
    edit_segment    = 0;
    check_wrap      = false;  // true if a wordwrap or collision check is required
@@ -1889,14 +1884,14 @@ list_repass:
                break;
 
             case ESC::LIST_END:
-               if (procListEnd(escpara)) {
+               if (procListEnd()) {
                   *this = liststate;
                   goto list_repass;
                }
                break;
 
             case ESC::VECTOR: {
-               auto ww = procVector(Offset, AbsX, AbsY, Width, page_height, vector_vertical_repass, check_wrap, escpara); 
+               auto ww = procVector(Offset, AbsX, AbsY, Width, page_height, vector_vertical_repass, check_wrap); 
                if (ww IS WRAP::EXTEND_PAGE) goto extend_page;               
                break;
             }
@@ -1998,7 +1993,7 @@ wrap_table_cell:
             }
 
             case ESC::TABLE_END: {
-               auto action = procTableEnd(esctable, escpara, Offset, AbsX, Margins.Top, Margins.Bottom, Height, Width);
+               auto action = procTableEnd(esctable, Offset, AbsX, Margins.Top, Margins.Bottom, Height, Width);
                if (action != TE::NIL) {
                   *this = tablestate;
                   if (action IS TE::WRAP_TABLE) goto wrap_table_end;
@@ -2184,8 +2179,8 @@ repass_row_height_ext:
             }
 
             case ESC::CELL_END: procCellEnd(esccell); break;
-            case ESC::PARAGRAPH_START: escpara = procParagraphStart(escpara, Width); break;
-            case ESC::PARAGRAPH_END: escpara = procParagraphEnd(escpara); break;
+            case ESC::PARAGRAPH_START: procParagraphStart(Width); break;
+            case ESC::PARAGRAPH_END: procParagraphEnd(); break;
             default: break;
          }
 
