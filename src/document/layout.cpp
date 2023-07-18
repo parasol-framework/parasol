@@ -170,7 +170,7 @@ bool layout::procListEnd()
 {
    if (stack_list.empty()) return false;
 
-   // If it is a custom list, a repass is required
+   // If it is a custom list, a repass may be required
 
    if ((stack_list.top()->Type IS escList::CUSTOM) and (stack_list.top()->Repass)) {
       return true;
@@ -1865,6 +1865,7 @@ extend_page:
             ESCAPE_NAME(Self->Stream, idx).c_str(), m_line.index, idx, m_word_index, m_word_width);
 #endif
          m_set_segment = false; // Escape codes that draw something in draw_document() (e.g. vector, table) should set this flag to true in their case statement
+         bool layout_reset = false;
          switch (ESCAPE_CODE(Self->Stream, idx)) {
             case ESC::ADVANCE:     procAdvance(); break;
             case ESC::FONT:        procFont(); break;
@@ -1877,16 +1878,15 @@ extend_page:
                // This is the start of a list.  Each item in the list will be identified by ESC::PARAGRAPH codes.  The
                // cursor position is advanced by the size of the item graphics element.
                
-               stack_list.push(&escape_data<escList>(Self, idx));
                liststate = *this;
-list_repass:
+               stack_list.push(&escape_data<escList>(Self, idx));
                stack_list.top()->Repass = false;
                break;
 
             case ESC::LIST_END:
                if (procListEnd()) {
                   *this = liststate;
-                  goto list_repass;
+                  stack_list.top()->Repass = false;
                }
                break;
 
@@ -2089,13 +2089,11 @@ repass_row_height_ext:
                if (idx < cell_end) {
                   auto segcount = m_segments.size();
 
-                  if (!esccell->EditDef.empty()) Self->EditMode = true;
-                  else Self->EditMode = false;
+                  Self->EditMode = (!esccell->EditDef.empty()) ? true : false;          
 
-                     layout sl(Self);
-                     idx = sl.do_layout(idx, cell_end, &m_font, esccell->AbsX, esccell->AbsY,
-                              esccell->Width, esccell->Height,
-                              ClipRectangle(esctable->CellPadding), &vertical_repass);
+                  layout sl(Self);
+                  idx = sl.do_layout(idx, cell_end, &m_font, esccell->AbsX, esccell->AbsY,
+                     esccell->Width, esccell->Height, ClipRectangle(esctable->CellPadding), &vertical_repass);
 
                   if (!esccell->EditDef.empty()) Self->EditMode = false;
 
@@ -2184,17 +2182,19 @@ repass_row_height_ext:
             default: break;
          }
 
-         if (m_set_segment) {
-            // Notice that this version of our call to add_drawsegment() does not define content position information (i.e. X/Y coordinates)
-            // because we only expect to add an escape code to the drawing sequence, with the intention that the escape code carries
-            // information relevant to the drawing process.  It is vital therefore that all content has been set with an earlier call
-            // to add_drawsegment() before processing of the escape code.  See earlier in this routine.
+         if (!layout_reset) {
+            if (m_set_segment) {
+               // Notice that this version of our call to add_drawsegment() does not define content position information (i.e. X/Y coordinates)
+               // because we only expect to add an escape code to the drawing sequence, with the intention that the escape code carries
+               // information relevant to the drawing process.  It is vital therefore that all content has been set with an earlier call
+               // to add_drawsegment() before processing of the escape code.  See earlier in this routine.
 
-            add_drawsegment(idx, idx+ESCAPE_LEN, m_cursor_y, 0, 0, ESCAPE_NAME(Self->Stream, idx)); //"Esc:SetSegment");
-            reset_segment(idx+ESCAPE_LEN, m_cursor_x);
+               add_drawsegment(idx, idx+ESCAPE_LEN, m_cursor_y, 0, 0, ESCAPE_NAME(Self->Stream, idx)); //"Esc:SetSegment");
+               reset_segment(idx+ESCAPE_LEN, m_cursor_x);
+            }
+
+            idx += ESCAPE_LEN;
          }
-
-         idx += ESCAPE_LEN;
       }
       else {
          // If the font character is larger or equal to the current line height, extend
