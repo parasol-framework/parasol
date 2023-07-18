@@ -140,8 +140,9 @@ thickness, or text inside the cell will mix with the border.
 #include <parasol/strings.hpp>
 
 #include <array>
-#include "hashes.h"
 #include <variant>
+#include <stack>
+#include "hashes.h"
 
 typedef int INDEX;
 
