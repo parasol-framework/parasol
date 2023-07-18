@@ -9,20 +9,6 @@ features for creating complex documents and manuals.
 -END-
 
 *********************************************************************************************************************/
-/*
-   else if (Args->ActionID IS MT_DrwInheritedFocus) {
-      // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
-
-      struct drwInheritedFocus *inherit = (struct drwInheritedFocus *)(Args->Args);
-      for (LONG i=0; i < Self->Tabs.size(); i++) {
-         if (Self->Tabs[i].XRef IS inherit->Focus) {
-            Self->FocusIndex = i;
-            acDrawID(Self->PageID);
-            break;
-         }
-      }
-   }
-*/
 
 static void notify_disable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {

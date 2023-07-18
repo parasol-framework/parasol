@@ -9,9 +9,12 @@ enum class TE : char {
 // State machine for the layout proces
 
 struct layout {
-   std::vector<escList *> stack_list;
-   std::vector<escRow *> stack_row;
+   std::stack<escList *> stack_list;
+   std::stack<escRow *> stack_row;
    std::vector<DocLink> m_links;
+   std::vector<DocClip> m_clips;
+   std::vector<DocSegment> m_segments;
+   std::vector<EditCell> m_ecells;
    extDocument *Self;
    objFont *m_font;
    escLink *m_current_link;
@@ -63,7 +66,7 @@ struct layout {
 
    layout(extDocument *pSelf) : Self(pSelf) { }
 
-   LONG do_layout(INDEX, INDEX, objFont **, LONG, LONG, LONG *, LONG *, ClipRectangle, bool *);
+   LONG do_layout(INDEX, INDEX, objFont **, LONG, LONG, LONG &, LONG &, ClipRectangle, bool *);
 
    void procSetMargins(LONG, LONG, LONG &);
    void procLink(LONG);
@@ -73,16 +76,28 @@ struct layout {
    WRAP procVector(LONG, LONG, DOUBLE, DOUBLE, LONG &, LONG, bool &, bool &, escParagraph *);
    escParagraph * procParagraphStart(LONG, escParagraph *, LONG);
    escParagraph * procParagraphEnd(LONG, escParagraph *);
-   TE procTableEnd(LONG, escTable *, escParagraph *, LONG, LONG, LONG, LONG, LONG *, LONG *);
+   TE procTableEnd(LONG, escTable *, escParagraph *, LONG, LONG, LONG, LONG, LONG &, LONG &);
    void procCellEnd(escCell *);
    void procRowEnd(escTable *);
+   void procAdvance(INDEX);
+   bool procListEnd(INDEX, escParagraph *);
 
    void add_link(ESC, std::variant<escLink *, escCell *>, LONG, LONG, LONG, LONG, const std::string &);
    void add_drawsegment(LONG, LONG, LONG, LONG, LONG, const std::string &);
    void end_line(LONG, INDEX, DOUBLE, INDEX, const std::string &);
-   WRAP check_wordwrap(const std::string &, INDEX, LONG, LONG *, INDEX, LONG &, LONG &, LONG, LONG);
+   WRAP check_wordwrap(const std::string &, INDEX, LONG, LONG &, INDEX, LONG &, LONG &, LONG, LONG);
    void check_clips(INDEX, INDEX, LONG &, LONG &, LONG, LONG);
 };
+
+//********************************************************************************************************************
+
+void layout::procAdvance(INDEX Index)
+{
+   auto advance = &escape_data<escAdvance>(Self, Index);
+   m_cursor_x += advance->X;
+   m_cursor_y += advance->Y;
+   if (advance->X) reset_segment(Index, m_cursor_x);               
+}
 
 //********************************************************************************************************************
 
@@ -144,10 +159,31 @@ void layout::procLinkEnd(INDEX Index)
 
 //********************************************************************************************************************
 
+bool layout::procListEnd(INDEX Index, escParagraph *Paragraph)
+{
+   if (stack_list.empty()) return false;
+
+   // If it is a custom list, a repass is required
+
+   if ((stack_list.top()->Type IS escList::CUSTOM) and (stack_list.top()->Repass)) {
+      return true;
+   }
+
+   stack_list.pop();               
+
+   if (stack_list.empty()) {
+      // At the end of a list, increase the whitespace to that of a standard paragraph.
+      if (Paragraph) end_line(NL_PARAGRAPH, Index, Paragraph->VSpacing, Index, "Esc:ListEnd");
+      else end_line(NL_PARAGRAPH, Index, 1.0, Index, "Esc:ListEnd");
+   }
+
+   return false;
+}
+
+//********************************************************************************************************************
+
 void layout::procIndexStart(INDEX &Index)
 {
-   pf::Log log(__FUNCTION__);
-
    // Indexes don't do anything, but recording the cursor's Y value when they are encountered
    // makes it really easy to scroll to a bookmark when requested (show_bookmark()).
 
@@ -170,6 +206,7 @@ void layout::procIndexStart(INDEX &Index)
       }
 
       if (end >= INDEX(Self->Stream.size())) {
+         pf::Log log(__FUNCTION__);
          log.warning("Failed to find matching index-end.  Document stream is corrupt.");
       }
 
@@ -200,7 +237,7 @@ void layout::procCellEnd(escCell *esccell)
    if ((esccell) and (!esccell->EditDef.empty())) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
 
-      Self->EditCells.emplace_back(esccell->CellID, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height);
+      m_ecells.emplace_back(esccell->CellID, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height);
    }
 }
 
@@ -210,7 +247,7 @@ void layout::procRowEnd(escTable *Table)
 {
    pf::Log log;
 
-   auto Row = stack_row.back();
+   auto Row = stack_row.top();
    Table->RowIndex++;
 
    // Increase the table height if the row extends beyond it
@@ -229,7 +266,7 @@ void layout::procRowEnd(escTable *Table)
 
    if (Table->RowWidth > Table->Width) Table->Width = Table->RowWidth;
 
-   stack_row.pop_back();
+   stack_row.pop();
    m_set_segment = true;
 }
 
@@ -275,7 +312,7 @@ escParagraph * layout::procParagraphStart(INDEX Index, escParagraph *Parent, LON
    if (!stack_list.empty()) {
       // For list items, indentation is managed by the list that this paragraph is contained within.
    
-      auto list = stack_list.back();
+      auto list = stack_list.top();
       if (escpara->ListItem) {
          if (Parent) escpara->Indent = list->BlockIndent;
          escpara->ItemIndent = list->ItemIndent;
@@ -306,7 +343,7 @@ escParagraph * layout::procParagraphStart(INDEX Index, escParagraph *Parent, LON
    
    // Paragraph management variables
    
-   if (!stack_list.empty()) escpara->VSpacing = stack_list.back()->VSpacing;   
+   if (!stack_list.empty()) escpara->VSpacing = stack_list.top()->VSpacing;   
    
    escpara->Y = m_cursor_y;
    escpara->Height = 0;
@@ -338,7 +375,7 @@ escParagraph * layout::procParagraphEnd(INDEX Index, escParagraph *Current)
 
 //********************************************************************************************************************
 
-TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG *Height, LONG *Width)
+TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG &Height, LONG &Width)
 {
    pf::Log log(__FUNCTION__);
 
@@ -431,7 +468,7 @@ TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, 
       if (!Offset) {
          minheight = ((Self->AreaHeight - BottomMargin - esctable->Y) * esctable->MinHeight) / 100;
       }
-      else minheight = ((*Height - BottomMargin - TopMargin) * esctable->MinHeight) / 100;
+      else minheight = ((Height - BottomMargin - TopMargin) * esctable->MinHeight) / 100;
 
       if (minheight < 0) minheight = 0;
    }
@@ -441,8 +478,8 @@ TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, 
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
          auto j = minheight - (esctable->Height + esctable->CellVSpacing + esctable->Thickness);
-         DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %d", minheight, stack_row.back()->RowHeight, j, esctable->MinHeight, esctable->Y);
-         stack_row.back()->RowHeight += j;
+         DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %d", minheight, stack_row.top()->RowHeight, j, esctable->MinHeight, esctable->Y);
+         stack_row.top()->RowHeight += j;
          return TE::REPASS_ROW_HEIGHT;
       }
       else log.warning("No last row defined for table height extension.");
@@ -455,9 +492,9 @@ TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, 
    // Restart if the width of the table will force an extension of the page.
 
    LONG j = esctable->X + esctable->Width - AbsX + m_right_margin;
-   if ((j > *Width) and (*Width < WIDTH_LIMIT)) {
+   if ((j > Width) and (Width < WIDTH_LIMIT)) {
       DLAYOUT("Table width (%d+%d) increases page width to %d, layout restart forced.", esctable->X, esctable->Width, j);
-      *Width = j;                  
+      Width = j;                  
       return TE::EXTEND_PAGE;
    }
 
@@ -487,10 +524,10 @@ TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, 
 
    DLAYOUT("Checking table collisions (%dx%d).", esctable->X, esctable->Y);
 
-   std::vector<DocClip> saved_clips(Self->Clips.begin() + esctable->TotalClips, Self->Clips.end() + Self->Clips.size());
-   Self->Clips.resize(esctable->TotalClips);
+   std::vector<DocClip> saved_clips(m_clips.begin() + esctable->TotalClips, m_clips.end() + m_clips.size());
+   m_clips.resize(esctable->TotalClips);
    auto ww = check_wordwrap("Table", Index, AbsX, Width, Index, esctable->X, esctable->Y, esctable->Width, esctable->Height);
-   Self->Clips.insert(Self->Clips.end(), saved_clips.begin(), saved_clips.end());
+   m_clips.insert(m_clips.end(), saved_clips.begin(), saved_clips.end());
 
    if (ww IS WRAP::EXTEND_PAGE) {
       DLAYOUT("Table wrapped - expanding page width due to table size/position.");                  
@@ -509,7 +546,7 @@ TE layout::procTableEnd(INDEX Index, escTable *esctable, escParagraph *escpara, 
 
    //if (clip.Left IS m_left_margin) clip.Left = 0; // Extending the clipping to the left doesn't hurt
                              
-   Self->Clips.emplace_back(
+   m_clips.emplace_back(
       ClipRectangle(esctable->X, esctable->Y, clip.Left + esctable->Width, clip.Top + esctable->Height),
       Index, false, "Table");   
 
@@ -548,7 +585,7 @@ wrap_vector:
    cell.Top    = AbsY;
    cell.Right  = cell.Left + Width;
    if ((!Offset) and (PageHeight < Self->AreaHeight)) {
-      cell.Bottom = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's surface area
+      cell.Bottom = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's viewport area
    }
    else cell.Bottom = AbsY + PageHeight;
    
@@ -560,7 +597,6 @@ wrap_vector:
    LONG dimensions = 0;
    ALIGN align;
    DOUBLE cell_width, cell_height, left_margin, line_height, zone_height;
-   OBJECTID layout_surface_id;  
    ERROR error;
 
    pf::ScopedObjectLock<objVectorViewport> vector(vector_id, 5000);
@@ -1158,7 +1194,7 @@ wrap_vector:
    
          DLAYOUT("Wrapping %s vector #%d as it extends past the page width (%d > %d).  Pos: %dx%d", vector->Class->ClassName, vector->UID, width_check, Width, cell.Left, cell.Top);
    
-         auto ww = check_wordwrap("Vector", Index, AbsX, &Width, Index, cell.Left, cell.Top, cell.Right - cell.Left, cell.Bottom - cell.Top);
+         auto ww = check_wordwrap("Vector", Index, AbsX, Width, Index, cell.Left, cell.Top, cell.Right - cell.Left, cell.Bottom - cell.Top);
    
          if (ww IS WRAP::EXTEND_PAGE) {
             DLAYOUT("Expanding page width due to vector size.");
@@ -1175,7 +1211,7 @@ wrap_vector:
    
       DLAYOUT("Adding %s clip to the list: %dx%d,%dx%d", vector->Class->ClassName, cell.Left, cell.Top, cell.Right-cell.Left, cell.Bottom-cell.Top);
    
-      Self->Clips.emplace_back(cell, Index, !vec.Embedded, "Vector");
+      m_clips.emplace_back(cell, Index, !vec.Embedded, "Vector");
    
       if (vec.Embedded) {
          if (cell.Bottom > m_cursor_y) {
@@ -1231,15 +1267,15 @@ void layout::procSetMargins(INDEX Index, LONG AbsY, LONG &BottomMargin)
    auto &escmargins = escape_data<::escSetMargins>(Self, Index);
 
    if (escmargins.Left != 0x7fff) {
-      m_cursor_x     += escmargins.Left;
+      m_cursor_x    += escmargins.Left;
       m_line.x      += escmargins.Left;
       m_left_margin += escmargins.Left;
    }
 
    if (escmargins.Right != 0x7fff) {
       m_right_margin += escmargins.Right;
-      m_align_width -= escmargins.Right;
-      m_wrap_edge      -= escmargins.Right;
+      m_align_width  -= escmargins.Right;
+      m_wrap_edge    -= escmargins.Right;
    }
 
    if (escmargins.Top != 0x7fff) {
@@ -1250,202 +1286,6 @@ void layout::procSetMargins(INDEX Index, LONG AbsY, LONG &BottomMargin)
       BottomMargin += escmargins.Bottom;
       if (BottomMargin < 0) BottomMargin = 0;
    }
-}
-
-//********************************************************************************************************************
-// This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
-// height of each line and rearranges any vectors that are present in the document.
-
-static void layout_doc(extDocument *Self)
-{
-   pf::Log log(__FUNCTION__);
-   objFont *m_font;
-   LONG page_width, hscroll_offset;
-   bool vertical_repass;
-
-   if (Self->UpdateLayout IS false) return;
-
-   // Remove any resources from the previous layout process.
-
-   for (auto &obj : Self->LayoutResources) FreeResource(obj);
-   Self->LayoutResources.clear();
-
-   if (Self->Stream.empty()) return;
-
-   // Initial height is 1 and not set to the surface height because we want to accurately report the final height 
-   // of the page.
-
-   LONG page_height = 1;
-
-   DLAYOUT("Area: %dx%d,%dx%d Visible: %d ----------", Self->AreaX, Self->AreaY, Self->AreaWidth, Self->AreaHeight, Self->VScrollVisible);
-
-   Self->BreakLoop = MAXLOOP;
-
-restart:
-   Self->BreakLoop--;
-
-   hscroll_offset = 0;
-
-   if (Self->PageWidth <= 0) {
-      // If no preferred page width is set, maximise the page width to the available viewing area
-      page_width = Self->AreaWidth - hscroll_offset;
-   }
-   else {
-      if (!Self->RelPageWidth) { // Page width is fixed
-         page_width = Self->PageWidth;
-      }
-      else { // Page width is relative
-         page_width = (Self->PageWidth * (Self->AreaWidth - hscroll_offset)) / 100;
-      }
-   }
-
-   if (page_width < Self->MinPageWidth) page_width = Self->MinPageWidth;
-
-   Self->Segments.clear();
-   Self->SortSegments.clear();
-   Self->Clips.clear();
-   Self->EditCells.clear();
-
-   Self->PageProcessed = false;
-   Self->Error = ERR_Okay;
-   Self->Depth = 0;
-
-   if (!(m_font = lookup_font(0, "layout_doc"))) { // There is no content loaded for display      
-      return;
-   }
-
-   layout l(Self);
-   l.do_layout(0, Self->Stream.size(), &m_font, 0, 0, &page_width, &page_height, 
-      ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin), 
-      &vertical_repass);
-
-   DLAYOUT("Section layout complete.");
-
-   // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
-   // the number of passes required for the next time we do a layout.
-
-   if ((page_width > Self->AreaWidth) and (Self->MinPageWidth < page_width)) Self->MinPageWidth = page_width;
-
-   Self->PageHeight = page_height;
-//   if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
-   Self->CalcWidth = page_width;
-
-   // Recalculation may be required if visibility of the scrollbar needs to change.
-
-   if ((Self->BreakLoop > 0) and (!Self->Error)) {
-      if (Self->PageHeight > Self->AreaHeight) {
-         // Page height is bigger than the surface, so the scrollbar needs to be visible.
-
-         if (!Self->VScrollVisible) {
-            DLAYOUT("Vertical scrollbar visibility needs to be enabled, restarting...");
-            Self->VScrollVisible = true;
-            Self->BreakLoop = MAXLOOP;
-            goto restart;
-         }
-      }
-      else {
-         // Page height is smaller than the surface, so the scrollbar needs to be invisible.
-
-         if (Self->VScrollVisible) {
-            DLAYOUT("Vertical scrollbar needs to be invisible, restarting...");
-            Self->VScrollVisible = false;
-            Self->BreakLoop = MAXLOOP;
-            goto restart;
-         }
-      }
-   }
-
-   // Look for clickable links that need to be aligned and adjust them (links cannot be aligned until the entire
-   // width of their line is known, hence it's easier to make a final adjustment for all links post-layout).
-
-   if (!Self->Error) {
-      Self->Links = l.m_links;
-      for (auto &link : Self->Links) {
-         if (link.EscapeCode != ESC::LINK) continue;
-
-         auto esclink = std::get<escLink *>(link.Escape);
-         if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
-            auto &segment = Self->Segments[link.Segment];
-            if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
-               link.X = segment.X + segment.AlignWidth - link.Width;
-            }
-            else if ((esclink->Align & FSO::ALIGN_CENTER) != FSO::NIL) {
-               link.X = link.X + ((segment.AlignWidth - link.Width) / 2);
-            }
-         }
-      }
-   }
-   else Self->Links.clear();
-
-   // Build the sorted segment array
-
-   if ((!Self->Error) and (!Self->Segments.empty())) {
-      Self->SortSegments.resize(Self->Segments.size());
-      unsigned seg, i, j;
-
-      for (i=0, seg=0; seg < Self->Segments.size(); seg++) {
-         if ((Self->Segments[seg].Height > 0) and (Self->Segments[seg].Width > 0)) {
-            Self->SortSegments[i].Segment = seg;
-            Self->SortSegments[i].Y       = Self->Segments[seg].Y;
-            i++;
-         }
-      }
-
-      // Shell sort
-
-      unsigned h = 1;
-      while (h < Self->SortSegments.size() / 9) h = 3 * h + 1;
-
-      for (; h > 0; h /= 3) {
-         for (auto i=h; i < Self->SortSegments.size(); i++) {
-            SortSegment temp = Self->SortSegments[i];
-            for (j=i; (j >= h) and (sortseg_compare(Self, Self->SortSegments[j - h], temp) < 0); j -= h) {
-               Self->SortSegments[j] = Self->SortSegments[j - h];
-            }
-            Self->SortSegments[j] = temp;
-         }
-      }
-   }
-
-   Self->UpdateLayout = false;
-
-#ifdef DBG_LINES
-   print_lines(Self);
-   //print_sorted_lines(Self);
-   print_tabfocus(Self);
-#endif
-
-   // If an error occurred during layout processing, unload the document and display an error dialog.  (NB: While it is
-   // possible to display a document up to the point at which the error occurred, we want to maintain a strict approach
-   // so that human error is considered excusable in document formatting).
-
-   if (Self->Error) {
-      unload_doc(Self, ULD_REDRAW);
-
-      std::string msg = "A failure occurred during the layout of this document - it cannot be displayed.\n\nDetails: ";
-      if (Self->Error IS ERR_Loop) msg.append("This page cannot be rendered correctly due to its design.");
-      else msg.append(GetErrorMsg(Self->Error));
-
-      error_dialog("Document Layout Error", msg);
-   }
-   else {
-      for (auto &trigger : Self->Triggers[DRT_AFTER_LAYOUT]) {
-         if (trigger.Type IS CALL_SCRIPT) {
-            const ScriptArg args[] = {
-               { "ViewWidth",  Self->AreaWidth },
-               { "ViewHeight", Self->AreaHeight },
-               { "PageWidth",  Self->CalcWidth },
-               { "PageHeight", Self->PageHeight }
-            };
-            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
-         }
-         else if (trigger.Type IS CALL_STDC) {
-            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger.StdC.Routine;
-            pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);            
-         }
-      }
-   }   
 }
 
 //********************************************************************************************************************
@@ -1518,40 +1358,40 @@ void layout::add_drawsegment(INDEX Offset, INDEX Stop, LONG Y, LONG Width, LONG 
 
 #ifdef DBG_STREAM
    DLAYOUT("#%d, Bytes: %d-%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %d, [%.20s]...[%.20s] (%s)",
-      LONG(Self->Segments.size()), Offset, Stop, m_line.x, Y, Width, AlignWidth, Height, m_word_width,
+      LONG(m_segments.size()), Offset, Stop, m_line.x, Y, Width, AlignWidth, Height, m_word_width,
       m_cursor_y, printable(Self, Offset, Stop-Offset).c_str(), printable(Self, Stop).c_str(), Debug.c_str());
 #endif
 
    DocSegment segment;
    auto x = m_line.x;
 
-   if ((!Self->Segments.empty()) and (Offset < Self->Segments.back().Stop)) {
+   if ((!m_segments.empty()) and (Offset < m_segments.back().Stop)) {
       // Patching: If the start of the new segment is < the end of the previous segment,
       // adjust the previous segment so that it stops at the beginning of our new segment.
       // This prevents overlapping between segments and the two segments will be patched
       // together in the next section of this routine.
 
-      if (Offset <= Self->Segments.back().Index) {
+      if (Offset <= m_segments.back().Index) {
          // If the start of the new segment retraces to an index that has already been configured,
          // then we have actually encountered a coding flaw and the caller should be investigated.
 
-         log.warning("(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug.c_str(), Self->Segments.back().Index, Offset);
+         log.warning("(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug.c_str(), m_segments.back().Index, Offset);
          return;
       }
       else {
-         DLAYOUT("New segment #%d start index is less than (%d < %d) the end of previous segment - will patch up.", Self->Segments.back().Index, Offset, Self->Segments.back().Stop);
-         Self->Segments.back().Stop = Offset;
+         DLAYOUT("New segment #%d start index is less than (%d < %d) the end of previous segment - will patch up.", m_segments.back().Index, Offset, m_segments.back().Stop);
+         m_segments.back().Stop = Offset;
       }
    }
 
    // Is the new segment a continuation of the previous one, and does the previous segment contain content?
-   if ((allow_merge) and (!Self->Segments.empty()) and (Self->Segments.back().Stop IS Offset) and
-       (Self->Segments.back().AllowMerge)) {
+   if ((allow_merge) and (!m_segments.empty()) and (m_segments.back().Stop IS Offset) and
+       (m_segments.back().AllowMerge)) {
       // We are going to extend the previous line rather than add a new one, as the two
       // segments only contain control codes.
 
-      segment = Self->Segments.back();
-      Self->Segments.pop_back();
+      segment = m_segments.back();
+      m_segments.pop_back();
 
       Offset = segment.Index;
       x      = segment.X;
@@ -1569,11 +1409,11 @@ void layout::add_drawsegment(INDEX Offset, INDEX Stop, LONG Y, LONG Width, LONG 
 
    if ((m_split_start != NOTSPLIT) and (Height > 0)) {
       for (i=m_split_start; i < Offset; i++) {
-         if (Self->Segments[i].Depth != Self->Depth) continue;
-         if (Self->Segments[i].Height > Height) {
-            log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, Self->Segments[i].Height, Height);
-            BaseLine = Self->Segments[i].BaseLine;
-            Height = Self->Segments[i].Height;
+         if (m_segments[i].Depth != Self->Depth) continue;
+         if (m_segments[i].Height > Height) {
+            log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, m_segments[i].Height, Height);
+            BaseLine = m_segments[i].BaseLine;
+            Height = m_segments[i].Height;
          }
       }
    }
@@ -1599,24 +1439,222 @@ void layout::add_drawsegment(INDEX Offset, INDEX Stop, LONG Y, LONG Width, LONG 
    // is matched to that of the last line (which always contains the maximum height and full_height values).
 
    if ((m_split_start != NOTSPLIT) and (Height)) {
-      if (LONG(Self->Segments.size()) != m_split_start) {
+      if (LONG(m_segments.size()) != m_split_start) {
          DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", Height, BaseLine, segment.Index, m_split_start);
-         for (unsigned i=m_split_start; i < Self->Segments.size(); i++) {
-            if (Self->Segments[i].Depth != Self->Depth) continue;
-            Self->Segments[i].Height = Height;
-            Self->Segments[i].BaseLine = BaseLine;
+         for (unsigned i=m_split_start; i < m_segments.size(); i++) {
+            if (m_segments[i].Depth != Self->Depth) continue;
+            m_segments[i].Height = Height;
+            m_segments[i].BaseLine = BaseLine;
          }
       }
    }
 
-   Self->Segments.emplace_back(segment);
+   m_segments.emplace_back(segment);
 }
 
 //********************************************************************************************************************
-// Calculate the position, pixel length and height of each line for the entire page.  This function does not recurse,
-// but does iterate if the size of the page section is expanded.  It is also called for individual table cells
-// which are treated as miniature pages.
+// This function lays out the document so that it is ready to be drawn.  It calculates the position, pixel length and
+// height of each line and rearranges any vectors that are present in the document.
+
+static void layout_doc(extDocument *Self)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (!Self->UpdateLayout) return;
+
+   // Remove any resources from the previous layout process.
+
+   for (auto &obj : Self->LayoutResources) FreeResource(obj);
+   Self->LayoutResources.clear();
+
+   if (Self->Stream.empty()) return;
+
+   // Initial height is 1 and not set to the viewport height because we want to accurately report the final height 
+   // of the page.
+
+   DLAYOUT("Area: %dx%d,%dx%d Visible: %d ----------", Self->AreaX, Self->AreaY, Self->AreaWidth, Self->AreaHeight, Self->VScrollVisible);
+
+   Self->BreakLoop = MAXLOOP;
+   
+   layout l(Self);
+   bool restart;
+   do {
+      restart = false;
+      Self->BreakLoop--;
+
+      LONG page_width;
+
+      if (Self->PageWidth <= 0) {
+         // No preferred page width; maximise the page width to the available viewing area
+         page_width = Self->AreaWidth;
+      }
+      else if (!Self->RelPageWidth) page_width = Self->PageWidth;         
+      else page_width = (Self->PageWidth * (Self->AreaWidth)) / 100;               
+
+      if (page_width < Self->MinPageWidth) page_width = Self->MinPageWidth;
+
+      Self->SortSegments.clear();
+
+      Self->PageProcessed = false;
+      Self->Error = ERR_Okay;
+      Self->Depth = 0;
+      
+      objFont *m_font = lookup_font(0, "layout_doc");
+      if (!m_font) return;      
+
+      LONG page_height = 1;
+      l = layout(Self);
+      bool vertical_repass;
+      l.do_layout(0, Self->Stream.size(), &m_font, 0, 0, page_width, page_height, 
+         ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin), 
+         &vertical_repass);
+
+      DLAYOUT("Section layout complete.");
+
+      // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
+      // the number of passes required for the next time we do a layout.
+
+      if ((page_width > Self->AreaWidth) and (Self->MinPageWidth < page_width)) Self->MinPageWidth = page_width;
+
+      Self->PageHeight = page_height;
+   //   if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
+      Self->CalcWidth = page_width;
+
+      // Recalculation may be required if visibility of the scrollbar needs to change.
+
+      if ((Self->BreakLoop > 0) and (!Self->Error)) {
+         if (Self->PageHeight > Self->AreaHeight) {
+            // Page height is bigger than the viewport, so the scrollbar needs to be visible.
+
+            if (!Self->VScrollVisible) {
+               DLAYOUT("Vertical scrollbar visibility needs to be enabled, restarting...");
+               Self->VScrollVisible = true;
+               Self->BreakLoop = MAXLOOP;
+               restart = true;
+            }
+         }
+         else { // Page height is smaller than the viewport, so the scrollbar needs to be invisible.
+            if (Self->VScrollVisible) {
+               DLAYOUT("Vertical scrollbar needs to be invisible, restarting...");
+               Self->VScrollVisible = false;
+               Self->BreakLoop = MAXLOOP;
+               restart = true;
+            }
+         }
+      }
+   } while (restart);
+
+   // Look for clickable links that need to be aligned and adjust them (links cannot be aligned until the entire
+   // width of their line is known, hence it's easier to make a final adjustment for all links post-layout).
+
+   if (!Self->Error) {
+      Self->Links = l.m_links;
+      for (auto &link : Self->Links) {
+         if (link.EscapeCode != ESC::LINK) continue;
+
+         auto esclink = std::get<escLink *>(link.Escape);
+         if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
+            auto &segment = l.m_segments[link.Segment];
+            if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
+               link.X = segment.X + segment.AlignWidth - link.Width;
+            }
+            else if ((esclink->Align & FSO::ALIGN_CENTER) != FSO::NIL) {
+               link.X = link.X + ((segment.AlignWidth - link.Width) / 2);
+            }
+         }
+      }
+   }
+   else Self->Links.clear();
+
+   if (!Self->Error) {
+      Self->Clips = l.m_clips;
+      Self->EditCells = l.m_ecells;
+   }
+   else {
+      Self->Clips.clear();
+      Self->EditCells.clear();
+   }
+
+   // Build the sorted segment array
+
+   if ((!Self->Error) and (!l.m_segments.empty())) {
+      Self->Segments = l.m_segments;
+      Self->SortSegments.resize(l.m_segments.size());
+      unsigned seg, i, j;
+
+      for (i=0, seg=0; seg < l.m_segments.size(); seg++) {
+         if ((l.m_segments[seg].Height > 0) and (l.m_segments[seg].Width > 0)) {
+            Self->SortSegments[i].Segment = seg;
+            Self->SortSegments[i].Y       = l.m_segments[seg].Y;
+            i++;
+         }
+      }
+
+      // Shell sort
+
+      unsigned h = 1;
+      while (h < Self->SortSegments.size() / 9) h = 3 * h + 1;
+
+      for (; h > 0; h /= 3) {
+         for (auto i=h; i < Self->SortSegments.size(); i++) {
+            SortSegment temp = Self->SortSegments[i];
+            for (j=i; (j >= h) and (sortseg_compare(Self, Self->SortSegments[j - h], temp) < 0); j -= h) {
+               Self->SortSegments[j] = Self->SortSegments[j - h];
+            }
+            Self->SortSegments[j] = temp;
+         }
+      }
+   }
+   else Self->Segments.clear();
+
+   Self->UpdateLayout = false;
+
+#ifdef DBG_LINES
+   print_lines(Self);
+   //print_sorted_lines(Self);
+   print_tabfocus(Self);
+#endif
+
+   // If an error occurred during layout processing, unload the document and display an error dialog.  (NB: While it is
+   // possible to display a document up to the point at which the error occurred, we want to maintain a strict approach
+   // so that human error is considered excusable in document formatting).
+
+   if (Self->Error) {
+      unload_doc(Self, ULD_REDRAW);
+
+      std::string msg = "A failure occurred during the layout of this document - it cannot be displayed.\n\nDetails: ";
+      if (Self->Error IS ERR_Loop) msg.append("This page cannot be rendered correctly due to its design.");
+      else msg.append(GetErrorMsg(Self->Error));
+
+      error_dialog("Document Layout Error", msg);
+   }
+   else {
+      for (auto &trigger : Self->Triggers[DRT_AFTER_LAYOUT]) {
+         if (trigger.Type IS CALL_SCRIPT) {
+            const ScriptArg args[] = {
+               { "ViewWidth",  Self->AreaWidth },
+               { "ViewHeight", Self->AreaHeight },
+               { "PageWidth",  Self->CalcWidth },
+               { "PageHeight", Self->PageHeight }
+            };
+            scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
+         }
+         else if (trigger.Type IS CALL_STDC) {
+            auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger.StdC.Routine;
+            pf::SwitchContext context(trigger.StdC.Context);
+            routine(trigger.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);            
+         }
+      }
+   }   
+}
+
+//********************************************************************************************************************
+// Calculate the position, pixel length and height of each element on the page.  Repetition occurs if the size of the 
+// page is too small and requires expansion.  Individual table cells are treated as miniature pages, resulting in a 
+// recursive call.
 //
+// TODO: Consider prioritising the layout of table cells first, possibly using concurrent threads.
+// 
 // Offset:   The byte offset within the document stream to start layout processing.
 // X/Y:      Section coordinates, starts at 0,0 for the main page, subsequent sections (table cells) can be at any location, measured as absolute to the top left corner of the page.
 // Width:    Minimum width of the page/section.  Can be increased if insufficient space is available.  Includes the left and right margins in the resulting calculation.
@@ -1624,44 +1662,25 @@ void layout::add_drawsegment(INDEX Offset, INDEX Stop, LONG Y, LONG Width, LONG 
 // Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
      
 struct LAYOUT_STATE {
-   // Records the current layout, index and state information.
    layout Layout;
-   INDEX Index     = 0;
-   LONG TotalClips = 0;
-   LONG SegCount   = 0;
-   LONG ECIndex    = 0;
-
-   LAYOUT_STATE(extDocument *pSelf) : Layout(pSelf) { }
-
-   LAYOUT_STATE(extDocument *pSelf, LONG pIndex, layout &pLayout) : Layout(pLayout) {
-      Index      = pIndex; 
-      TotalClips = pSelf->Clips.size(); 
-      ECIndex    = pSelf->EditCells.size(); 
-      SegCount   = pSelf->Segments.size();
-   }
-
-   void restore(extDocument *pSelf) {
-      pf::Log log(__FUNCTION__);
-      DLAYOUT("Restoring earlier layout state to index %d", Index);
-      pSelf->Clips.resize(TotalClips);
-      pSelf->Segments.resize(SegCount);
-      pSelf->EditCells.resize(ECIndex);
-   }
+   INDEX Index;
+   LAYOUT_STATE(extDocument *pSelf) : Layout(pSelf), Index(0) { }
+   LAYOUT_STATE(extDocument *pSelf, LONG pIndex, layout &pLayout) : Layout(pLayout), Index(pIndex) { }
 };
 
 INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG AbsY, 
-   LONG *Width, LONG *Height, ClipRectangle Margins, bool *VerticalRepass)
+   LONG &Width, LONG &Height, ClipRectangle Margins, bool *VerticalRepass)
 {
    pf::Log log(__FUNCTION__);
 
-   escCell    *esccell;
-   escTable   *esctable;
+   escCell *esccell;
+   escTable *esctable;
    escParagraph *escpara;
 
    LAYOUT_STATE tablestate(Self), rowstate(Self), liststate(Self);
-   LONG start_ecindex, unicode, j, lastheight, lastwidth, edit_segment;
+   LONG unicode, j, last_height, edit_segment;
    INDEX i;
-   bool checkwrap;
+   bool check_wrap;
 
    if ((Self->Stream.empty()) or (Offset >= End) or (!Font) or (!Font[0])) {
       log.trace("No document stream to be processed.");
@@ -1673,34 +1692,28 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
       return 0;
    }
    
-   // You must execute a goto to the point at which SAVE_STATE() was used after calling this macro
-   
    auto RESTORE_STATE = [&](LAYOUT_STATE &s) {
-      s.restore(Self); 
       *this = s.Layout; 
       return s.Index;
    };
 
-   auto start_segments = Self->Segments.size();
-   m_start_clips       = Self->Clips.size();
-   start_ecindex       = Self->EditCells.size();
-   LONG page_height    = *Height;
+   auto page_height = Height;
    bool vector_vertical_repass = false;
 
    *VerticalRepass = false;
 
    #ifdef DBG_LAYOUT
    log.branch("Dimensions: %dx%d,%dx%d (edge %d), LM %d RM %d TM %d BM %d",
-      AbsX, AbsY, *Width, *Height, AbsX + *Width - Margins.Right,
+      AbsX, AbsY, Width, Height, AbsX + Width - Margins.Right,
       Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
 
    Self->Depth++;
 
 extend_page:
-   if (*Width > WIDTH_LIMIT) {
-      DLAYOUT("Restricting page width from %d to %d", *Width, WIDTH_LIMIT);
-      *Width = WIDTH_LIMIT;
+   if (Width > WIDTH_LIMIT) {
+      DLAYOUT("Restricting page width from %d to %d", Width, WIDTH_LIMIT);
+      Width = WIDTH_LIMIT;
       if (Self->BreakLoop > 4) Self->BreakLoop = 4; // Very large page widths normally means that there's a parsing problem
    }
 
@@ -1715,16 +1728,17 @@ extend_page:
    }
    Self->BreakLoop--;
 
-   Self->Segments.resize(start_segments);
-   Self->Clips.resize(m_start_clips);
+   m_clips.clear();
+   m_ecells.clear();
+   m_segments.clear();
+   m_links.clear();
 
-   lastwidth       = *Width;
-   lastheight      = page_height;
+   last_height     = page_height;
    esctable        = NULL;
    escpara         = NULL;
    esccell         = NULL;
    edit_segment    = 0;
-   checkwrap       = false;  // true if a wordwrap or collision check is required
+   check_wrap      = false;  // true if a wordwrap or collision check is required
 
    m_current_link     = NULL;
    m_anchor           = false;  // true if in an anchored section (vectors are anchored to the line)
@@ -1734,7 +1748,7 @@ extend_page:
    m_line.increase    = 0;
    m_left_margin      = AbsX + Margins.Left;
    m_right_margin     = Margins.Right;   // Retain the right margin in an adjustable variable, in case we adjust the margin
-   m_wrap_edge        = AbsX + *Width - Margins.Right;
+   m_wrap_edge        = AbsX + Width - Margins.Right;
    m_align_width      = m_wrap_edge;
    m_cursor_x         = AbsX + Margins.Left;  // The absolute position of the cursor
    m_cursor_y         = AbsY + Margins.Top;
@@ -1747,7 +1761,7 @@ extend_page:
    m_kernchar         = 0;      // Previous character of the word being operated on
    m_link.x           = 0;
    m_link.index       = 0;
-   m_split_start      = Self->Segments.size();  // Set to the previous line index if line is segmented.  Used for ensuring that all distinct entries on the line use the same line height
+   m_split_start      = m_segments.size();  // Set to the previous line index if line is segmented.  Used for ensuring that all distinct entries on the line use the same line height
    m_font             = *Font;
    m_no_wrap          = false; // true if word wrapping is to be turned off
    m_link.open        = false;
@@ -1825,7 +1839,7 @@ extend_page:
                case ESC::VECTOR:
                case ESC::ADVANCE:
                case ESC::LINK_END:
-                  checkwrap = true;
+                  check_wrap = true;
                   break;
 
                default:
@@ -1836,10 +1850,10 @@ extend_page:
          else if (Self->Stream[i] > 0x20) { // Non-whitespace characters do not result in a wordwrap check
             m_align_width = m_wrap_edge;
          }
-         else checkwrap = true;
+         else check_wrap = true;
 
-         if (checkwrap) {
-            checkwrap = false;
+         if (check_wrap) {
+            check_wrap = false;
             auto wrap_result = check_wordwrap("Text", i, AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, (m_word_width < 1) ? 1 : m_word_width, (m_line.height < 1) ? 1 : m_line.height);
 
             if (wrap_result IS WRAP::EXTEND_PAGE) {
@@ -1864,72 +1878,33 @@ extend_page:
 #endif
          m_set_segment = false; // Escape codes that draw something in draw_document() (e.g. vector, table) should set this flag to true in their case statement
          switch (ESCAPE_CODE(Self->Stream, i)) {
-            case ESC::ADVANCE: {
-               auto advance = &escape_data<escAdvance>(Self, i);
-               m_cursor_x += advance->X;
-               m_cursor_y += advance->Y;
-               if (advance->X) reset_segment(i, m_cursor_x);               
-               break;
-            }
-
-            case ESC::FONT:
-               procFont(i);
-               break;
-
-            case ESC::INDEX_START: 
-               procIndexStart(i);
-               break;
-
-            case ESC::SET_MARGINS: 
-               procSetMargins(i, AbsY, Margins.Bottom); 
-               break;            
-
-            // LINK MANAGEMENT
-             case ESC::LINK: 
-               procLink(i); 
-               break;
-
-            case ESC::LINK_END: 
-               procLinkEnd(i); 
-               break;
-
-            // LIST MANAGEMENT
+            case ESC::ADVANCE:     procAdvance(i); break;
+            case ESC::FONT:        procFont(i); break;
+            case ESC::INDEX_START: procIndexStart(i); break;
+            case ESC::SET_MARGINS: procSetMargins(i, AbsY, Margins.Bottom); break;            
+            case ESC::LINK:        procLink(i); break;
+            case ESC::LINK_END:    procLinkEnd(i); break;
 
             case ESC::LIST_START:
                // This is the start of a list.  Each item in the list will be identified by ESC::PARAGRAPH codes.  The
                // cursor position is advanced by the size of the item graphics element.
-
+               
+               stack_list.push(&escape_data<escList>(Self, i));
                liststate = LAYOUT_STATE(Self, i, *this);
-
-               stack_list.push_back(&escape_data<escList>(Self, i));
 list_repass:
-               stack_list.back()->Repass = false;
+               stack_list.top()->Repass = false;
                break;
 
             case ESC::LIST_END:
-               // If it is a custom list, a repass is required
-
-               if ((!stack_list.empty()) and (stack_list.back()->Type IS escList::CUSTOM) and (stack_list.back()->Repass)) {
-                  DLAYOUT("Repass for list required, commencing...");
+               if (procListEnd(i, escpara)) {
                   i = RESTORE_STATE(liststate);
                   goto list_repass;
                }
-
-               stack_list.pop_back();               
-
-               if (stack_list.empty()) {
-                  // At the end of a list, increase the whitespace to that of a standard paragraph.
-                  if (escpara) end_line(NL_PARAGRAPH, i, escpara->VSpacing, i, "Esc:ListEnd");
-                  else end_line(NL_PARAGRAPH, i, 1.0, i, "Esc:ListEnd");
-               }
-
                break;
 
             case ESC::VECTOR: {
-               auto ww = procVector(i, Offset, AbsX, AbsY, *Width, page_height, vector_vertical_repass, checkwrap, escpara); 
-               if (ww IS WRAP::EXTEND_PAGE) {
-                  goto extend_page;
-               }
+               auto ww = procVector(i, Offset, AbsX, AbsY, Width, page_height, vector_vertical_repass, check_wrap, escpara); 
+               if (ww IS WRAP::EXTEND_PAGE) goto extend_page;               
                break;
             }
 
@@ -1970,7 +1945,7 @@ wrap_table_start:
                // spacing and padding values.
 
                if (esctable->WidthPercent) {
-                  width = ((*Width - (m_cursor_x - AbsX) - m_right_margin) * esctable->MinWidth) / 100;
+                  width = ((Width - (m_cursor_x - AbsX) - m_right_margin) * esctable->MinWidth) / 100;
                }
                else width = esctable->MinWidth;
 
@@ -2001,11 +1976,11 @@ wrap_table_cell:
                esctable->X          = m_cursor_x;
                esctable->Y          = m_cursor_y;
                esctable->RowIndex   = 0;
-               esctable->TotalClips = Self->Clips.size();
+               esctable->TotalClips = m_clips.size();
                esctable->Height     = esctable->Thickness;
 
                DLAYOUT("(i%d) Laying out table of %dx%d, coords %dx%d,%dx%d%s, page width %d.", 
-                  i, LONG(esctable->Columns.size()), esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", *Width);
+                  i, LONG(esctable->Columns.size()), esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", Width);
 
                esctable->computeColumns();
 
@@ -2045,33 +2020,29 @@ wrap_table_cell:
             }
 
             case ESC::ROW:
-               stack_row.push_back(&escape_data<escRow>(Self, i));
+               stack_row.push(&escape_data<escRow>(Self, i));
                rowstate = LAYOUT_STATE(Self, i, *this);
 
-               if (esctable->ResetRowHeight) stack_row.back()->RowHeight = stack_row.back()->MinHeight;
+               if (esctable->ResetRowHeight) stack_row.top()->RowHeight = stack_row.top()->MinHeight;
 
 repass_row_height_ext:
-               stack_row.back()->VerticalRepass = false;
-               stack_row.back()->Y = m_cursor_y;
+               stack_row.top()->VerticalRepass = false;
+               stack_row.top()->Y = m_cursor_y;
                esctable->RowWidth = (esctable->Thickness<<1) + esctable->CellHSpacing;
 
                m_set_segment = true;
                break;
 
-            case ESC::ROW_END:
-               procRowEnd(esctable);
-               break;
+            case ESC::ROW_END: procRowEnd(esctable); break;
 
             case ESC::CELL: {
-               // In the first pass, the size of each cell is calculated with
-               // respect to its content.  When ESC::TABLE_END is reached, the
-               // max height and width for each row/column will be calculated
+               // In the first pass, the size of each cell is calculated with respect to its content.  When 
+               // ESC::TABLE_END is reached, the max height and width for each row/column will be calculated
                // and a subsequent pass will be made to fill out the cells.
                //
-               // If the width of a cell increases, there is a chance that the height of all
-               // cells in that column will decrease, subsequently lowering the row height
-               // of all rows in the table, not just the current row.  Therefore on the second
-               // pass the row heights need to be recalculated from scratch.
+               // If the width of a cell increases, there is a chance that the height of all cells in that 
+               // column will decrease, subsequently lowering the row height of all rows in the table, not just the 
+               // current row.  Therefore on the second pass the row heights need to be recalculated from scratch.
 
                bool vertical_repass;
 
@@ -2105,7 +2076,7 @@ repass_row_height_ext:
                if (esccell->Column IS 0) esccell->AbsX += esctable->Thickness;
 
                esccell->Width  = esctable->Columns[esccell->Column].Width; // Minimum width for the cell's column
-               esccell->Height = stack_row.back()->RowHeight;
+               esccell->Height = stack_row.top()->RowHeight;
                //DLAYOUT("%d / %d", escrow->MinHeight, escrow->RowHeight);
 
                DLAYOUT("Index %d, Processing cell at %dx %dy, size %dx%d, column %d", i, m_cursor_x, m_cursor_y, esccell->Width, esccell->Height, esccell->Column);
@@ -2132,14 +2103,14 @@ repass_row_height_ext:
                i += ESCAPE_LEN; // Go to start of cell content
 
                if (i < cell_end) {
-                  auto segcount = Self->Segments.size();
+                  auto segcount = m_segments.size();
 
                   if (!esccell->EditDef.empty()) Self->EditMode = true;
                   else Self->EditMode = false;
 
                      layout sl(Self);
                      i = sl.do_layout(i, cell_end, &m_font, esccell->AbsX, esccell->AbsY,
-                            &esccell->Width, &esccell->Height,
+                            esccell->Width, esccell->Height,
                             ClipRectangle(esctable->CellPadding), &vertical_repass);
 
                   if (!esccell->EditDef.empty()) Self->EditMode = false;
@@ -2147,7 +2118,7 @@ repass_row_height_ext:
                   if (!esccell->EditDef.empty()) {
                      // Edit cells have a minimum width/height so that the user can still interact with them when empty.
 
-                     if (Self->Segments.size() IS segcount) {
+                     if (m_segments.size() IS segcount) {
                         // No content segments were created, which means that there's nothing for the cursor to attach
                         // itself too.
 
@@ -2198,21 +2169,21 @@ repass_row_height_ext:
                if (!esctable->Thin) esctable->RowWidth += esctable->CellHSpacing;
                else if ((esccell->Column + esccell->ColSpan) < LONG(esctable->Columns.size())-1) esctable->RowWidth += esctable->CellHSpacing;
 
-               if ((esccell->Height > stack_row.back()->RowHeight) or (stack_row.back()->VerticalRepass)) {
+               if ((esccell->Height > stack_row.top()->RowHeight) or (stack_row.top()->VerticalRepass)) {
                   // A repass will be required if the row height has increased
                   // and vectors or tables have been used in earlier cells, because
                   // vectors need to know the final dimensions of their table cell.
 
                   if (esccell->Column IS LONG(esctable->Columns.size())-1) {
-                     DLAYOUT("Extending row height from %d to %d (row repass required)", stack_row.back()->RowHeight, esccell->Height);
+                     DLAYOUT("Extending row height from %d to %d (row repass required)", stack_row.top()->RowHeight, esccell->Height);
                   }
 
-                  stack_row.back()->RowHeight = esccell->Height;
+                  stack_row.top()->RowHeight = esccell->Height;
                   if ((esccell->Column + esccell->ColSpan) >= LONG(esctable->Columns.size())) {
                      i = RESTORE_STATE(rowstate);
                      goto repass_row_height_ext;
                   }
-                  else stack_row.back()->VerticalRepass = true; // Make a note to do a vertical repass once all columns on this row have been processed
+                  else stack_row.top()->VerticalRepass = true; // Make a note to do a vertical repass once all columns on this row have been processed
                }
 
                m_cursor_x += esctable->Columns[esccell->Column].Width;
@@ -2224,18 +2195,9 @@ repass_row_height_ext:
                break;
             }
 
-            case ESC::CELL_END:
-               procCellEnd(esccell);
-               break;
-
-            case ESC::PARAGRAPH_START: 
-               escpara = procParagraphStart(i, escpara, *Width); 
-               break;
-
-            case ESC::PARAGRAPH_END: 
-               escpara = procParagraphEnd(i, escpara); 
-               break;
-
+            case ESC::CELL_END: procCellEnd(esccell); break;
+            case ESC::PARAGRAPH_START: escpara = procParagraphStart(i, escpara, Width); break;
+            case ESC::PARAGRAPH_END: escpara = procParagraphEnd(i, escpara); break;
             default: break;
          }
 
@@ -2316,21 +2278,20 @@ exit:
 
    page_height = calc_page_height(Self, m_start_clips, AbsY, Margins.Bottom);
 
-   // Force a second pass if the page height has increased and there are vectors
-   // on the page (the vectors may need to know the page height - e.g. if there
-   // is a gradient filling the background).
+   // Force a second pass if the page height has increased and there are vectors in the page (the vectors may need 
+   // to know the page height - e.g. if there is a gradient filling the background).
    //
-   // This feature is also handled in ESC::CELL, so we only perform it here
-   // if processing is occurring within the root page area (Offset of 0).
+   // This feature is also handled in ESC::CELL, so we only perform it here if processing is occurring within the 
+   // root page area (Offset of 0).
 
-   if ((!Offset) and (vector_vertical_repass) and (lastheight < page_height)) {
+   if ((!Offset) and (vector_vertical_repass) and (last_height < page_height)) {
       DLAYOUT("============================================================");
-      DLAYOUT("SECOND PASS [%d]: Root page height increased from %d to %d", Offset, lastheight, page_height);
+      DLAYOUT("SECOND PASS [%d]: Root page height increased from %d to %d", Offset, last_height, page_height);
       goto extend_page;
    }
 
    *Font = m_font;
-   if (page_height > *Height) *Height = page_height;
+   if (page_height > Height) Height = page_height;
 
    *VerticalRepass = vector_vertical_repass;
 
@@ -2394,7 +2355,7 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
          Bitmap->packPixel(0, 0, 255), 0);
 
       // Special clip regions are marked in grey
-      for (unsigned i=0; i < Self->Clips.size(); i++) {
+      for (unsigned i=0; i < m_clips.size(); i++) {
          gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
             Self->Clips[i].Clip.Right - Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Bottom - Self->Clips[i].Clip.Top,
             Bitmap->packPixel(255, 200, 200), 0);
@@ -2428,8 +2389,8 @@ static void draw_document(extDocument *Self, objSurface *Surface, objBitmap *Bit
    }
 
    auto alpha = Bitmap->Opacity;
-   for (unsigned seg=0; seg < Self->Segments.size(); seg++) {
-      auto &segment = Self->Segments[seg];
+   for (unsigned seg=0; seg < m_segments.size(); seg++) {
+      auto &segment = m_segments[seg];
 
       // Don't process segments that are out of bounds.  This can't be applied to vectors, as they can draw anywhere.
 
@@ -2769,11 +2730,11 @@ void layout::end_line(LONG NewLine, INDEX Index, DOUBLE Spacing, LONG RestartInd
    DLAYOUT("%s: CursorY: %d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Index: %d/%d, Restart: %d", 
       Caller.c_str(), m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing, m_line.index, Index, RestartIndex);
 
-   for (unsigned i=m_start_clips; i < Self->Clips.size(); i++) {
-      if (Self->Clips[i].Transparent) continue;
-      if ((m_cursor_y + m_line.height >= Self->Clips[i].Clip.Top) and (m_cursor_y < Self->Clips[i].Clip.Bottom)) {
-         if (m_cursor_x + m_word_width < Self->Clips[i].Clip.Left) {
-            if (Self->Clips[i].Clip.Left < m_align_width) m_align_width = Self->Clips[i].Clip.Left;
+   for (unsigned i=m_start_clips; i < m_clips.size(); i++) {
+      if (m_clips[i].Transparent) continue;
+      if ((m_cursor_y + m_line.height >= m_clips[i].Clip.Top) and (m_cursor_y < m_clips[i].Clip.Bottom)) {
+         if (m_cursor_x + m_word_width < m_clips[i].Clip.Left) {
+            if (m_clips[i].Clip.Left < m_align_width) m_align_width = m_clips[i].Clip.Left;
          }
       }
    }
@@ -2832,7 +2793,7 @@ void layout::end_line(LONG NewLine, INDEX Index, DOUBLE Spacing, LONG RestartInd
    m_line.x           = m_left_margin;
    m_line.height      = 0;
    m_line.full_height = 0;
-   m_split_start      = Self->Segments.size();
+   m_split_start      = m_segments.size();
    m_line.index       = RestartIndex;
    m_word_index       = m_line.index;
    m_kernchar         = 0;
@@ -2850,7 +2811,7 @@ void layout::end_line(LONG NewLine, INDEX Index, DOUBLE Spacing, LONG RestartInd
 // Index - The current index value.
 // VectorIndex - The index that indicates the start of the word.
 
-WRAP layout::check_wordwrap(const std::string &Type, INDEX Index, LONG X, LONG *Width,
+WRAP layout::check_wordwrap(const std::string &Type, INDEX Index, LONG X, LONG &Width,
    INDEX VectorIndex, LONG &GraphicX, LONG &GraphicY, LONG GraphicWidth, LONG GraphicHeight)
 {
    pf::Log log(__FUNCTION__);
@@ -2870,7 +2831,7 @@ WRAP layout::check_wordwrap(const std::string &Type, INDEX Index, LONG X, LONG *
 
 #ifdef DBG_WORDWRAP
    log.branch("Index: %d/%d, %s: %dx%d,%dx%d, LineHeight: %d, Cursor: %dx%d, PageWidth: %d, Edge: %d", 
-      Index, VectorIndex, Type.c_str(), GraphicX, GraphicY, GraphicWidth, GraphicHeight, m_line.height, m_cursor_x, m_cursor_y, *Width, m_wrap_edge);
+      Index, VectorIndex, Type.c_str(), GraphicX, GraphicY, GraphicWidth, GraphicHeight, m_line.height, m_cursor_x, m_cursor_y, Width, m_wrap_edge);
 #endif
 
    auto result = WRAP::DO_NOTHING;
@@ -2879,17 +2840,17 @@ WRAP layout::check_wordwrap(const std::string &Type, INDEX Index, LONG X, LONG *
 restart:
    m_align_width = m_wrap_edge;
 
-   if (!Self->Clips.empty()) check_clips(Index, VectorIndex, GraphicX, GraphicY, GraphicWidth, GraphicHeight);
+   if (!m_clips.empty()) check_clips(Index, VectorIndex, GraphicX, GraphicY, GraphicWidth, GraphicHeight);
 
    if (GraphicX + GraphicWidth > m_wrap_edge) {
-      if ((*Width < WIDTH_LIMIT) and ((GraphicX IS m_left_margin) or (m_no_wrap))) {
+      if ((Width < WIDTH_LIMIT) and ((GraphicX IS m_left_margin) or (m_no_wrap))) {
          // Force an extension of the page width and recalculate from scratch
          auto minwidth = GraphicX + GraphicWidth + m_right_margin - X;
-         if (minwidth > *Width) {
-            *Width = minwidth;
+         if (minwidth > Width) {
+            Width = minwidth;
             DWRAP("Forcing an extension of the page width to %d", minwidth);
          }
-         else *Width += 1;
+         else Width += 1;
          return WRAP::EXTEND_PAGE;
       }
       else {
@@ -2919,7 +2880,7 @@ restart:
          GraphicY      += m_line.height;
          m_cursor_x     = GraphicX;
          m_cursor_y     = GraphicY;
-         m_split_start  = Self->Segments.size();
+         m_split_start  = m_segments.size();
          m_line.x       = m_left_margin;
          m_link.x       = m_left_margin; // Only matters if a link is defined
          m_kernchar     = 0;
@@ -2955,27 +2916,27 @@ void layout::check_clips(INDEX Index, INDEX VectorIndex, LONG &GraphicX, LONG &G
 
 #ifdef DBG_WORDWRAP
    log.branch("Index: %d-%d, VectorIndex: %d, Graphic: %dx%d,%dx%d, TotalClips: %d", 
-      m_line.index, Index, VectorIndex, GraphicX, GraphicY, GraphicWidth, GraphicHeight, LONG(Self->Clips.size()));
+      m_line.index, Index, VectorIndex, GraphicX, GraphicY, GraphicWidth, GraphicHeight, LONG(m_clips.size()));
 #endif
 
-   for (auto clip=m_start_clips; clip < LONG(Self->Clips.size()); clip++) {
-      if (Self->Clips[clip].Transparent) continue;
-      if (GraphicY + GraphicHeight < Self->Clips[clip].Clip.Top) continue;
-      if (GraphicY >= Self->Clips[clip].Clip.Bottom) continue;
-      if (GraphicX >= Self->Clips[clip].Clip.Right) continue;
-      if (GraphicX + GraphicWidth < Self->Clips[clip].Clip.Left) continue;
+   for (auto clip=m_start_clips; clip < LONG(m_clips.size()); clip++) {
+      if (m_clips[clip].Transparent) continue;
+      if (GraphicY + GraphicHeight < m_clips[clip].Clip.Top) continue;
+      if (GraphicY >= m_clips[clip].Clip.Bottom) continue;
+      if (GraphicX >= m_clips[clip].Clip.Right) continue;
+      if (GraphicX + GraphicWidth < m_clips[clip].Clip.Left) continue;
 
-      if (Self->Clips[clip].Clip.Left < m_align_width) m_align_width = Self->Clips[clip].Clip.Left;
+      if (m_clips[clip].Clip.Left < m_align_width) m_align_width = m_clips[clip].Clip.Left;
 
       DWRAP("Word: \"%.20s\" (%dx%d,%dx%d) advances over clip %d-%d",
          printable(Self, VectorIndex).c_str(), GraphicX, GraphicY, GraphicWidth, GraphicHeight,
-         Self->Clips[clip].Clip.Left, Self->Clips[clip].Clip.Right);
+         m_clips[clip].Clip.Left, m_clips[clip].Clip.Right);
 
       // Set the line segment up to the encountered boundary and continue checking the vector position against the
       // clipping boundaries.
 
       bool reset_link;
-      if ((m_current_link) and (Self->Clips[clip].Index < m_link.index)) {
+      if ((m_current_link) and (m_clips[clip].Index < m_link.index)) {
          // An open link intersects with a clipping region that was created prior to the opening of the link.  We do
          // not want to include this vector as a clickable part of the link - we will wrap over or around it, so
          // set a partial link now and ensure the link is reopened after the clipping region.
@@ -2992,12 +2953,12 @@ void layout::check_clips(INDEX Index, INDEX VectorIndex, LONG &GraphicX, LONG &G
       // Advance the vector position.  We break if a wordwrap is required - the code outside of this loop will detect
       // the need for a wordwrap and then restart the wordwrapping process.
 
-      if (GraphicX IS m_line.x) m_line.x = Self->Clips[clip].Clip.Right;
-      GraphicX = Self->Clips[clip].Clip.Right; // Push the vector over the clip boundary
+      if (GraphicX IS m_line.x) m_line.x = m_clips[clip].Clip.Right;
+      GraphicX = m_clips[clip].Clip.Right; // Push the vector over the clip boundary
 
       if (GraphicX + GraphicWidth > m_wrap_edge) {
          DWRAP("Wrapping-Break: X(%d)+Width(%d) > Edge(%d) at clip '%s' %dx%d,%dx%d", 
-            GraphicX, GraphicWidth, m_wrap_edge, Self->Clips[clip].Name.c_str(), Self->Clips[clip].Clip.Left, Self->Clips[clip].Clip.Top, Self->Clips[clip].Clip.Right, Self->Clips[clip].Clip.Bottom);
+            GraphicX, GraphicWidth, m_wrap_edge, m_clips[clip].Name.c_str(), m_clips[clip].Clip.Left, m_clips[clip].Clip.Top, m_clips[clip].Clip.Right, m_clips[clip].Clip.Bottom);
          break;
       }
 
@@ -3034,5 +2995,5 @@ void layout::add_link(ESC EscapeCode, std::variant<escLink *, escCell *> Escape,
 
    DLAYOUT("%dx%d,%dx%d, %s", X, Y, Width, Height, Caller.c_str());
 
-   m_links.emplace_back(EscapeCode, Escape, Self->Segments.size(), X, Y, Width, Height);
+   m_links.emplace_back(EscapeCode, Escape, m_segments.size(), X, Y, Width, Height);
 }
