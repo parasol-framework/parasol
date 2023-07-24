@@ -122,7 +122,7 @@ struct docSelectLink { LONG Index; CSTRING Name;  };
 struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
 struct docInsertXML { CSTRING XML; LONG Index;  };
 struct docRemoveContent { LONG Start; LONG End;  };
-struct docInsertText { CSTRING Text; LONG Index; LONG Preformat;  };
+struct docInsertText { CSTRING Text; LONG Index; LONG Offset; LONG Preformat;  };
 struct docCallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs;  };
 struct docAddListener { LONG Trigger; FUNCTION * Function;  };
 struct docRemoveListener { LONG Trigger; FUNCTION * Function;  };
@@ -159,8 +159,8 @@ INLINE ERROR docRemoveContent(APTR Ob, LONG Start, LONG End) {
    return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Preformat) {
-   struct docInsertText args = { Text, Index, Preformat };
+INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Offset, LONG Preformat) {
+   struct docInsertText args = { Text, Index, Offset, Preformat };
    return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
 }
 

@@ -246,7 +246,6 @@ Clipboard: Full support for clipboard activity is provided through this action.
 static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 {
    pf::Log log;
-   LONG size;
 
    if ((!Args) or (Args->Mode IS CLIPMODE::NIL)) return log.warning(ERR_NullArgs);
 
@@ -292,6 +291,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
          if (!Action(MT_ClipGetFiles, *clipboard, &get)) {
             objFile::create file = { fl::Path(get.Files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
+               LONG size;
                if ((!file->get(FID_Size, &size)) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
                      LONG result;
@@ -431,12 +431,12 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
    if (!Args) return ERR_NullArgs;
 
    if (!Args->Name) {
-      if ((Self->CursorIndex IS -1) or (!Self->ActiveEditDef)) return ERR_Okay;
+      if ((!Self->CursorIndex.valid()) or (!Self->ActiveEditDef)) return ERR_Okay;
       deactivate_edit(Self, true);
       return ERR_Okay;
    }
    else if (auto cellindex = find_editable_cell(Self, Args->Name); cellindex >= 0) {
-      return activate_edit(Self, cellindex, 0);
+      return activate_cell_edit(Self, cellindex, StreamChar(0,0));
    }
    else return ERR_Search;
 }
@@ -519,36 +519,26 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    log.trace("Name: %s", Args->Name);
 
    auto name_hash = StrHash(Args->Name);
-   LONG i = 0;
-   while (Self->Stream[i]) {
-      if (Self->Stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_START) {
-            auto &index = escape_data<escIndex>(Self, i);
-            if (name_hash IS index.NameHash) {
-               LONG end_id = index.ID;
-               Args->Start = i;
+   for (INDEX i=0; i < Self->Stream.size(); i += ESCAPE_LEN) {
+      if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_START) {
+         auto &index = escape_data<escIndex>(Self, i);
+         if (name_hash IS index.NameHash) {
+            auto end_id = index.ID;
+            Args->Start = i;
 
-               NEXT_CHAR(Self->Stream, i);
+            // Search for the end (ID match)
 
-               // Search for the end (ID match)
-
-               while (Self->Stream[i]) {
-                  if (Self->Stream[i] IS CTRL_CODE) {
-                     if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_END) {
-                        auto &end = escape_data<escIndexEnd>(Self, i);
-                        if (end_id IS end.ID) {
-                           Args->End = i;
-                           log.trace("Found index at range %d - %d", Args->Start, Args->End);
-                           return ERR_Okay;
-                        }
-                     }
+            for (i += ESCAPE_LEN; i < Self->Stream.size(); i += ESCAPE_LEN) {
+               if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_END) {
+                  if (end_id IS escape_data<escIndexEnd>(Self, i).ID) {
+                     Args->End = i;
+                     log.trace("Found index at range %d - %d", Args->Start, Args->End);
+                     return ERR_Okay;
                   }
-                  NEXT_CHAR(Self->Stream, i);
                }
             }
          }
       }
-      NEXT_CHAR(Self->Stream, i);
    }
 
    log.extmsg("Failed to find index '%s'", Args->Name);
@@ -794,59 +784,53 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 
    auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
-   LONG i = 0;
-   while (stream[i]) {
-      if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
-            auto &index = escape_data<escIndex>(Self, i);
-            if (name_hash IS index.NameHash) {
-               if (!index.Visible) return ERR_Okay; // It's already invisible!
+   for (INDEX i=0; i < stream.size(); i += ESCAPE_LEN) {
+      if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
+         auto &index = escape_data<escIndex>(Self, i);
+         if (name_hash IS index.NameHash) {
+            if (!index.Visible) return ERR_Okay; // It's already invisible!
 
-               index.Visible = false;
+            index.Visible = false;
 
-                  AdjustLogLevel(2);
-                  Self->UpdateLayout = true;
-                  layout_doc(Self);
-                  AdjustLogLevel(-2);
+            AdjustLogLevel(2);
+            Self->UpdateLayout = true;
+            layout_doc(Self);
+            AdjustLogLevel(-2);
 
-                  // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to false.
+            // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to false.
 
-                  NEXT_CHAR(stream, i);
-                  while (stream[i]) {
-                     if (stream[i] IS CTRL_CODE) {
-                        auto code = ESCAPE_CODE(stream, i);
-                        if (code IS ESC::INDEX_END) {
-                           auto &end = escape_data<escIndexEnd>(Self, i);
-                           if (index.ID IS end.ID) break;
-                        }
-                        else if (code IS ESC::VECTOR) {
-                           auto &vec = escape_data<escVector>(Self, i);
-                           if (vec.ObjectID) acHide(vec.ObjectID);
+            i += ESCAPE_LEN;
+            while (stream[i]) {
+               auto code = ESCAPE_CODE(stream, i);
+               if (code IS ESC::INDEX_END) {
+                  auto &end = escape_data<escIndexEnd>(Self, i);
+                  if (index.ID IS end.ID) break;
+               }
+               else if (code IS ESC::VECTOR) {
+                  auto &vec = escape_data<escVector>(Self, i);
+                  if (vec.ObjectID) acHide(vec.ObjectID);
 
-                           if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
-                              Self->Tabs[tab].Active = false;
-                           }
-                        }
-                        else if (code IS ESC::LINK) {
-                           auto &esclink = escape_data<escLink>(Self, i);
-                           if ((tab = find_tabfocus(Self, TT_LINK, esclink.ID)) >= 0) {
-                              Self->Tabs[tab].Active = false;
-                           }
-                        }
-                        else if (code IS ESC::INDEX_START) {
-                           auto &index = escape_data<escIndex>(Self, i);
-                           index.ParentVisible = false;
-                        }
-                     }
-                     NEXT_CHAR(stream, i);
+                  if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
+                     Self->Tabs[tab].Active = false;
                   }
-
-               Self->Viewport->draw();
-               return ERR_Okay;
+               }
+               else if (code IS ESC::LINK) {
+                  auto &esclink = escape_data<escLink>(Self, i);
+                  if ((tab = find_tabfocus(Self, TT_LINK, esclink.ID)) >= 0) {
+                     Self->Tabs[tab].Active = false;
+                  }
+               }
+               else if (code IS ESC::INDEX_START) {
+                  auto &index = escape_data<escIndex>(Self, i);
+                  index.ParentVisible = false;
+               }
+               i += ESCAPE_LEN;
             }
+
+            Self->Viewport->draw();
+            return ERR_Okay;
          }
       }
-      NEXT_CHAR(stream, i);
    }
 
    return ERR_Okay;
@@ -926,7 +910,8 @@ to the document are complete.
 
 -INPUT-
 cstr Text: A UTF-8 text string.
-int Index: The byte position at which to insert the new content.  If -1, the text will be inserted at the end of the document stream.
+int Index: Reference to a TEXT control code that will receive the content.  If -1, the text will be inserted at the end of the document stream.
+int Char: A character offset within the TEXT control code that will be injected with content.  If -1, the text will be injected at the end of the target string.
 int Preformat: If TRUE, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).
 
 -ERRORS-
@@ -947,22 +932,19 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
    Self->UpdateLayout = true;
 
-   LONG index = Args->Index;
+   INDEX index = Args->Index;
    if (index < 0) index = Self->Stream.size();
 
    Self->Style.clear();
 
    // Find the most recent style at the insertion point
 
-   LONG i = Args->Index;
-   PREV_CHAR(Self->Stream, i);
-   while (i > 0) {
-      if ((Self->Stream[i] IS CTRL_CODE) and (ESCAPE_CODE(Self->Stream, i) IS ESC::FONT)) {
+   for (INDEX i = Args->Index - ESCAPE_LEN; i > 0; i -= ESCAPE_LEN) {
+      if (ESCAPE_CODE(Self->Stream, i) IS ESC::FONT) {
          Self->Style.FontStyle = escape_data<escFont>(Self, i);
          log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
          break;
       }
-      PREV_CHAR(Self->Stream, i);
    }
 
    // If no style is available, we need to create a default font style and insert it at the start of the stream.
@@ -983,7 +965,8 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
       Self->Style.Point = font->Point;
    }
 
-   ERROR error = insert_text(Self, index, std::string(Args->Text), Args->Preformat);
+   StreamChar sc(index, 0);
+   ERROR error = insert_text(Self, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
       print_stream(Self);
@@ -1007,8 +990,8 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 -METHOD-
 ReadContent: Returns selected content from the document, either as plain text or original byte code.
 
-The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data in
-its original RIPPLE based format or translate the content into plain-text (control codes are removed).
+The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as
+a RIPPLE binary stream, or translate the content into plain-text (control codes are removed).
 
 If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from
 an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point,
@@ -1042,27 +1025,17 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    if (Args->End <= Args->Start) return log.warning(ERR_Args);
 
    if (Args->Format IS DATA::TEXT) {
-      STRING output;
-      if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
-         LONG j = 0;
-         LONG i = Args->Start;
-         while (i < Args->End) {
-            if (Self->Stream[i] IS CTRL_CODE) {
-               // Ignore escape codes
-            }
-            else output[j++] = Self->Stream[i];
-            NEXT_CHAR(Self->Stream, i);
-         }
-         output[j] = 0;
+      std::ostringstream buffer;
 
-         if (!j) {
-            FreeResource(output);
-            return ERR_NoData;
-         }
-
-         Args->Result = output;
-         return ERR_Okay;
+      for (INDEX i=Args->Start; i < Args->End; i += ESCAPE_LEN) {
+         if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
+            buffer << escape_data<escText>(Self, i).Text;
+         }            
       }
+
+      auto str = buffer.str();
+      if (str.empty()) return ERR_NoData;
+      if ((Args->Result = StrClone(str.c_str()))) return ERR_Okay;      
       else return log.warning(ERR_AllocMemory);
    }
    else if (Args->Format IS DATA::RAW) {
@@ -1376,87 +1349,58 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    auto stream = Self->Stream;
 
    auto name_hash = StrHash(Args->Name);
-   LONG i = 0;
-   while (stream[i]) {
-      if (stream[i] IS CTRL_CODE) {
-         if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
-            auto &index = escape_data<escIndex>(Self, i);
-            if (name_hash IS index.NameHash) {
+   for (INDEX i=0; i < stream.size(); i += ESCAPE_LEN) {
+      if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
+         auto &index = escape_data<escIndex>(Self, i);
+         if (name_hash != index.NameHash) continue;
+         if (index.Visible) return ERR_Okay; // It's already visible!
 
-               if (index.Visible) return ERR_Okay; // It's already visible!
+         index.Visible = true;
+         if (index.ParentVisible) { // We are visible, but parents must also be visible to show content
+            // Show all objects and manage the ParentVisible status of any child indexes
 
-               index.Visible = true;
-               if (index.ParentVisible) { // We are visible, but parents must also be visible to show content
-                  // Show all objects and manage the ParentVisible status of any child indexes
+            AdjustLogLevel(2);
+            Self->UpdateLayout = true;
+            layout_doc(Self);
+            AdjustLogLevel(-2);
 
-                     AdjustLogLevel(2);
-                     Self->UpdateLayout = true;
-                     layout_doc(Self);
-                     AdjustLogLevel(-2);
-
-                     NEXT_CHAR(stream, i);
-                     while (stream[i]) {
-                        if (stream[i] IS CTRL_CODE) {
-                           auto code = ESCAPE_CODE(stream, i);
-                           if (code IS ESC::INDEX_END) {
-                              auto &end = escape_data<escIndexEnd>(Self, i);
-                              if (index.ID IS end.ID) break;
-                           }
-                           else if (code IS ESC::VECTOR) {
-                              auto &vec = escape_data<escVector>(Self, i);
-                              if (vec.ObjectID) acShow(vec.ObjectID);
-
-                              if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
-                                 Self->Tabs[tab].Active = true;
-                              }
-                           }
-                           else if (code IS ESC::LINK) {
-                              auto &esclink = escape_data<escLink>(Self, i);
-
-                              if (auto tab = find_tabfocus(Self, TT_LINK, esclink.ID); tab >= 0) {
-                                 Self->Tabs[tab].Active = true;
-                              }
-                           }
-                           else if (code IS ESC::INDEX_START) {
-                              auto &index = escape_data<escIndex>(Self, i);
-                              index.ParentVisible = true;
-
-                              if (!index.Visible) {
-                                 // The child index is not visible, so skip to the end of it before continuing this
-                                 // process.
-
-                                 NEXT_CHAR(stream, i);
-                                 while (stream[i]) {
-                                    if (stream[i] IS CTRL_CODE) {
-                                       if (ESCAPE_CODE(stream, i) IS ESC::INDEX_END) {
-                                          auto &end = escape_data<escIndexEnd>(Self, i);
-                                          if (index.ID IS end.ID) {
-                                             NEXT_CHAR(stream, i);
-                                             break;
-                                          }
-                                       }
-                                    }
-
-                                    NEXT_CHAR(stream, i);
-                                 }
-
-                                 continue; // Needed to avoid the NEXT_CHAR at the end of the while
-                              }
-                           }
-                        }
-
-                        NEXT_CHAR(stream, i);
-                     } // while
-
-                  Self->Viewport->draw();
+            for (i += ESCAPE_LEN; i < stream.size(); i += ESCAPE_LEN) {
+               auto code = ESCAPE_CODE(stream, i);
+               if (code IS ESC::INDEX_END) {
+                  if (index.ID IS escape_data<escIndexEnd>(Self, i).ID) break;
                }
+               else if (code IS ESC::VECTOR) {
+                  auto &vec = escape_data<escVector>(Self, i);
+                  if (vec.ObjectID) acShow(vec.ObjectID);
 
-               return ERR_Okay;
+                  if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
+                     Self->Tabs[tab].Active = true;
+                  }
+               }
+               else if (code IS ESC::LINK) {
+                  if (auto tab = find_tabfocus(Self, TT_LINK, escape_data<escLink>(Self, i).ID); tab >= 0) {
+                     Self->Tabs[tab].Active = true;
+                  }
+               }
+               else if (code IS ESC::INDEX_START) {
+                  auto &index = escape_data<escIndex>(Self, i);
+                  index.ParentVisible = true;
+
+                  if (!index.Visible) {
+                     for (i += ESCAPE_LEN; i < stream.size(); i += ESCAPE_LEN) {
+                        if (ESCAPE_CODE(stream, i) IS ESC::INDEX_END) {
+                           if (index.ID IS escape_data<escIndexEnd>(Self, i).ID) break;
+                        }
+                     }
+                  }
+               }
             }
+
+            Self->Viewport->draw();
          }
-         if (stream[i]) NEXT_CHAR(stream, i);
+
+         return ERR_Okay;
       }
-      else NEXT_CHAR(stream, i);
    }
 
    return ERR_Search;
