@@ -156,9 +156,10 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
 static void notify_free_resize_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-   auto scene = (extVectorScene *)Self->Scene;
-   auto it = scene->ResizeSubscriptions.find(Self->ParentView);
-   if (it != scene->ResizeSubscriptions.end()) it->second.erase(Self);
+   if (auto scene = (extVectorScene *)Self->Scene) {
+      auto it = scene->ResizeSubscriptions.find(Self->ParentView);
+      if (it != scene->ResizeSubscriptions.end()) it->second.erase(Self);
+   }
 }
 
 /*********************************************************************************************************************

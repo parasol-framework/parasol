@@ -20,6 +20,13 @@ static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Re
    if (!Result) acEnable(CurrentContext());
 }
 
+static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+   Self->Scene = NULL;
+   Self->Viewport = NULL;
+}
+
 static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
@@ -662,6 +669,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    call = make_function_stdc(notify_enable_viewport);
    SubscribeAction(Self->Viewport, AC_Enable, &call);
+   
+   call = make_function_stdc(notify_free_viewport);
+   SubscribeAction(Self->Viewport, AC_Free, &call);
 
    call = make_function_stdc(notify_redimension_viewport);
    Self->Viewport->setResizeEvent(call);
