@@ -52,8 +52,8 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
 
 static void trim_preformat(extDocument *Self, INDEX &Index)
 {
-   auto i = Index - ESCAPE_LEN;
-   for (; i > 0; i -= ESCAPE_LEN) {
+   auto i = Index - 1;
+   for (; i > 0; i--) {
       if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, i);
 
@@ -624,6 +624,142 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             Self->Resources.emplace_back(xmlinc->UID, RT_OBJECT_TEMP);
          }
       }
+   }
+}
+
+//********************************************************************************************************************
+// Bitmap images are supported as vector rectangles with a texture map.  If the image is SVG then it is loaded into a 
+// viewport, so effectively the same, but scalable.
+//
+// TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless 
+// changed to a higher resolution or otherwise modified.
+
+static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+{
+   pf::Log log(__FUNCTION__);
+   
+   std::string src, icon, align, westgap, eastgap, northgap, southgap, width, height;
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      if (!StrMatch("src", Tag.Attribs[i].Name)) {
+         src = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("icon", Tag.Attribs[i].Name)) {
+         icon = Tag.Attribs[i].Value; // e.g. "items/checkmark"
+         // The default size of the icon will be equivalent to the line height.
+      }
+      else if (!StrMatch("align", Tag.Attribs[i].Name)) {
+         align = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("westgap", Tag.Attribs[i].Name)) {
+         westgap = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("eastgap", Tag.Attribs[i].Name)) {
+         eastgap = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("northgap", Tag.Attribs[i].Name)) {
+         northgap = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("southgap", Tag.Attribs[i].Name)) {
+         southgap = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("width", Tag.Attribs[i].Name)) {
+         width = Tag.Attribs[i].Value;
+      }
+      else if (!StrMatch("height", Tag.Attribs[i].Name)) {
+         height = Tag.Attribs[i].Value;
+      }
+      else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
+   }
+
+   if (!icon.empty()) { // Load a vector image via a named SVG icon.
+      if (width.empty()) width = "16";
+      if (height.empty()) height = "16";
+      if (auto pattern = objVectorPattern::create::global({
+            fl::Owner(Self->Scene->UID),
+            fl::PageHeight(StrToFloat(width)),
+            fl::PageHeight(StrToFloat(height)),
+            fl::SpreadMethod(VSPREAD::PAD)
+         })) {
+
+         objVectorViewport *pat_viewport;
+         pattern->getPtr(FID_Viewport, &pat_viewport);
+
+         std::string icon_path = "icons:" + icon + ".svg";
+         if (auto svg = objSVG::create::integral({
+               fl::Path(icon_path),
+               fl::Target(pat_viewport)
+            })) {
+
+            std::string name = "icon" + std::to_string(Self->UniqueID++);
+            scAddDef(Self->Scene, name.c_str(), pattern);
+            
+            if (auto rect = objVectorRectangle::create::global({ 
+                  fl::Owner(Self->Page->UID), 
+                  fl::X(0), fl::Y(0), 
+                  fl::Width(16), fl::Height(16),
+                  fl::Fill("url(#" + name + ")") 
+               })) {
+               
+               Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(svg->UID, RT_OBJECT_UNLOAD_DELAY);
+
+               escImage esc;
+               esc.Rect = rect;
+               Self->insertEscape(Index, esc);
+               return;
+            }
+
+            FreeResource(svg);
+         }
+         else log.warning("Failed to load '%s'", icon_path.c_str());
+
+         FreeResource(pattern);
+      }
+   }
+   else if (!src.empty()) { // Load a static bitmap image.
+      objPicture *pic = NULL;
+      if (auto pic = objPicture::create::integral({
+            fl::Path(src), 
+            fl::BitsPerPixel(32), 
+            fl::Flags(PCF::FORCE_ALPHA_32)
+         })) {
+
+         std::string name = "img" + std::to_string(Self->UniqueID++);
+         if (auto img_cache = objVectorImage::create::global({
+               fl::Name(name),
+               fl::Owner(Self->Scene->UID),
+               fl::Picture(pic),
+               fl::Units(VUNIT::BOUNDING_BOX),
+               fl::SpreadMethod(VSPREAD::PAD)
+            })) {
+            scAddDef(Self->Scene, name.c_str(), img_cache);
+            
+            if (auto rect = objVectorRectangle::create::global({ 
+                  fl::Owner(Self->Page->UID), 
+                  fl::X(0), fl::Y(0), 
+                  fl::Width(1), fl::Height(1),
+                  fl::Fill("url(#" + name + ")") 
+               })) {
+               Self->Resources.emplace_back(img_cache->UID, RT_OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(pic->UID, RT_OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
+
+               escImage esc;
+               esc.Rect = rect;
+               Self->insertEscape(Index, esc);
+               return;
+            }
+
+            FreeResource(img_cache);
+         }
+         FreeResource(pic);
+      }
+      else log.warning("Failed to load '%s'", src.c_str());
+   }
+   else { 
+      log.warning("No src or icon defined for <image> tag.");
+      return;
    }
 }
 
@@ -1897,23 +2033,12 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             else if (start.MinHeight > 10000) start.MinHeight = 10000;
             break;
 
-         case HASH_colour:
-            read_rgb8(Tag.Attribs[i].Value, &start.Colour);
+         case HASH_fill:
+            start.Fill = Tag.Attribs[i].Value;
             break;
 
-         case HASH_border:
-            read_rgb8(Tag.Attribs[i].Value, &start.Highlight);
-            read_rgb8(Tag.Attribs[i].Value, &start.Shadow);
-            if (start.Thickness < 1) start.Thickness = 1;
-            break;
-
-         case HASH_highlight:
-            read_rgb8(Tag.Attribs[i].Value, &start.Highlight);
-            if (start.Thickness < 1) start.Thickness = 1;
-            break;
-
-         case HASH_shadow:
-            read_rgb8(Tag.Attribs[i].Value, &start.Shadow);
+         case HASH_stroke:
+            start.Stroke = Tag.Attribs[i].Value;
             if (start.Thickness < 1) start.Thickness = 1;
             break;
 
@@ -2015,13 +2140,8 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
          if (escrow.MinHeight < 0) escrow.MinHeight = 0;
          else if (escrow.MinHeight > 4000) escrow.MinHeight = 4000;
       }
-      else if (!StrMatch("colour", Tag.Attribs[i].Name))    read_rgb8(Tag.Attribs[i].Value, &escrow.Colour);
-      else if (!StrMatch("highlight", Tag.Attribs[i].Name)) read_rgb8(Tag.Attribs[i].Value, &escrow.Highlight);
-      else if (!StrMatch("shadow", Tag.Attribs[i].Name))    read_rgb8(Tag.Attribs[i].Value, &escrow.Shadow);
-      else if (!StrMatch("border", Tag.Attribs[i].Name)) {
-         read_rgb8(Tag.Attribs[i].Value, &escrow.Highlight);
-         escrow.Shadow = escrow.Highlight;
-      }
+      else if (!StrMatch("fill", Tag.Attribs[i].Name))   escrow.Fill   = Tag.Attribs[i].Value;
+      else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.Stroke = Tag.Attribs[i].Value;
    }
 
    Self->insertEscape(Index, escrow);
@@ -2089,16 +2209,9 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          case HASH_select: select = true; break;
 
-         case HASH_colour: read_rgb8(Tag.Attribs[i].Value, &cell.Colour); break;
+         case HASH_fill: cell.Fill = Tag.Attribs[i].Value; break;
 
-         case HASH_highlight: read_rgb8(Tag.Attribs[i].Value, &cell.Highlight); break;
-
-         case HASH_shadow: read_rgb8(Tag.Attribs[i].Value, &cell.Shadow); break;
-
-         case HASH_border:
-            read_rgb8(Tag.Attribs[i].Value, &cell.Highlight);
-            read_rgb8(Tag.Attribs[i].Value, &cell.Shadow);
-            break;
+         case HASH_stroke: cell.Stroke = Tag.Attribs[i].Value; break;
 
          case HASH_nowrap:
             Self->Style.StyleChange = true;
@@ -2269,6 +2382,7 @@ static std::map<std::string, tagroutine, CaseInsensitiveMap> glTags = {
    { "list",          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
    { "advance",       { tag_advance,      TAG::CONTENT } },
    { "br",            { tag_br,           TAG::CONTENT } },
+   { "image",         { tag_image,        TAG::CONTENT } },
    // Conditional command tags
    { "else",          { NULL,             TAG::CONDITIONAL } },
    { "elseif",        { NULL,             TAG::CONDITIONAL } },

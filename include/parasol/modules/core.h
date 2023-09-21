@@ -2676,6 +2676,19 @@ class Log { // C++ wrapper for Parasol's log functionality
       }
 };
 
+class LogLevel {
+   private:
+      LONG level;
+   public:
+      LogLevel(LONG Level) : level(Level) {
+         AdjustLogLevel(Level);
+      }
+
+      ~LogLevel() {
+         AdjustLogLevel(-level);
+      }
+};
+
 } // namespace
 
 //********************************************************************************************************************
@@ -2842,10 +2855,26 @@ class Create {
          else return NULL;
       }
 
+      inline static T * global(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields);
+         if (object.ok()) {
+            auto result = *object;
+            object.obj = NULL;
+            return result;
+         }
+         else return NULL;
+      }
+
       // Return an unscoped integral object (suitable for class allocations only).
 
       template <typename... Args> static T * integral(Args&&... Fields) {
          pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::INTEGRAL);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+      
+      inline static T * integral(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields, NF::INTEGRAL);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -2854,6 +2883,12 @@ class Create {
 
       template <typename... Args> static T * untracked(Args&&... Fields) {
          pf::Create<T> object({ std::forward<Args>(Fields)... }, NF::UNTRACKED);
+         if (object.ok()) return *object;
+         else return NULL;
+      }
+      
+      inline static T * untracked(const std::initializer_list<FieldValue> Fields) {
+         pf::Create<T> object(Fields, NF::UNTRACKED);
          if (object.ok()) return *object;
          else return NULL;
       }
@@ -2868,7 +2903,7 @@ class Create {
 
       // Create a scoped object that is fully initialised.
 
-      Create(std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
+      Create(const std::initializer_list<FieldValue> Fields, NF Flags = NF::NIL) : obj(NULL), error(ERR_Failed) {
          pf::Log log("CreateObject");
          log.branch(T::CLASS_NAME);
 

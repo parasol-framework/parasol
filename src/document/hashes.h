@@ -1,6 +1,6 @@
 #pragma once
 
-// Copyright: Paul Manias © 1996-2023
+// Copyright: Paul Manias © 2023
 // Generator: idl-c
 
 #define HASH_AfterLayout 0x58983635UL
@@ -91,8 +91,8 @@
 #define HASH_height 0x01d688deUL
 #define HASH_colour 0xf6e37b99UL
 #define HASH_border 0xf4916c63UL
-#define HASH_highlight 0x1ecf649dUL
-#define HASH_shadow 0x1bb1226bUL
+#define HASH_fill 0x7c96cb2cUL
+#define HASH_stroke 0x1c93c91dUL
 #define HASH_spacing 0xa47e0e2aUL
 #define HASH_thin 0x7c9e73d8UL
 #define HASH_vspacing 0x02c9da80UL

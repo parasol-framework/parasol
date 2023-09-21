@@ -736,7 +736,7 @@ processed for rendering a stroke or fill operation in the chosen style.
 
 Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
-component values range between 0.0 and 1.0.
+component values range between 0.0 and 255.0.
 
 A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has
 been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.

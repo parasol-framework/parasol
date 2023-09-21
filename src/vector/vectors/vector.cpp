@@ -153,6 +153,14 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
    }
 }
 
+static void notify_free_resize_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extVector *)CurrentContext();
+   auto scene = (extVectorScene *)Self->Scene;
+   auto it = scene->ResizeSubscriptions.find(Self->ParentView);
+   if (it != scene->ResizeSubscriptions.end()) it->second.erase(Self);
+}
+
 /*********************************************************************************************************************
 
 -METHOD-
@@ -268,12 +276,14 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    if (Self->Child) Self->Child->Parent = NULL;
 
    if ((Self->Scene) and (!Self->Scene->collecting())) {
-      if ((Self->ParentView) and (Self->ResizeSubscription) and (((extVectorScene *)Self->Scene)->ResizeSubscriptions.contains(Self->ParentView))) {
-         auto sub = ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView];
-         sub.erase(Self);
+      auto scene = (extVectorScene *)Self->Scene;
+      if ((Self->ParentView) and (Self->ResizeSubscription)) {
+         if (scene->ResizeSubscriptions.contains(Self->ParentView)) {
+            scene->ResizeSubscriptions[Self->ParentView].erase(Self);
+         }
       }
-      ((extVectorScene *)Self->Scene)->InputSubscriptions.erase(Self);
-      ((extVectorScene *)Self->Scene)->KeyboardSubscriptions.erase(Self);
+      scene->InputSubscriptions.erase(Self);
+      scene->KeyboardSubscriptions.erase(Self);
    }
 
    {
@@ -1832,7 +1842,7 @@ void callback(*VectorViewport, *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE
 
 The dimension values refer to the current location and size of the viewport.
 
-Note that this callback feature is provided for convenience, and only one subscription to the viewport is possible at
+Note that this callback feature is provided for convenience.  Only one subscription to the viewport is possible at
 any time.  The conventional means for monitoring the size and position of any vector is to subscribe to the
 `PATH_CHANGED` event.
 
@@ -1840,13 +1850,28 @@ any time.  The conventional means for monitoring the size and position of any ve
 
 static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
 {
-   Self->ResizeSubscription = true;
-   if ((Self->Scene) and (Self->ParentView)) {
-      ((extVectorScene *)Self->Scene)->ResizeSubscriptions[Self->ParentView][Self] = *Value;
+   if (Value) {
+      Self->ResizeSubscription = true;
+      if ((Self->Scene) and (Self->ParentView)) {
+         auto scene = (extVectorScene *)Self->Scene; 
+         scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
+         auto callback = make_function_stdc(notify_free_resize_event);
+         SubscribeAction(Value->StdC.Context, AC_Free, &callback);
+      }
+      else {
+         const std::lock_guard<std::mutex> lock(glResizeLock);
+         glResizeSubscriptions[Self] = *Value; // Save the subscription for initialisation.
+      }
    }
-   else {
-      const std::lock_guard<std::mutex> lock(glResizeLock);
-      glResizeSubscriptions[Self] = *Value; // Save the subscription for initialisation.
+   else if (Self->ResizeSubscription) {
+      Self->ResizeSubscription = false;
+      if ((Self->Scene) and (Self->ParentView)) {
+         auto scene = (extVectorScene *)Self->Scene; 
+         auto it = scene->ResizeSubscriptions.find(Self->ParentView);
+         if (it != scene->ResizeSubscriptions.end()) {
+            it->second.erase(Self);
+         }
+      }
    }
 
    return ERR_Okay;

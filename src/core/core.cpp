@@ -1112,7 +1112,6 @@ static ERROR init_volumes(const std::forward_list<std::string> &Volumes)
    SetVolume("fonts", "system:config/fonts/", "items/font", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    SetVolume("scripts", "system:scripts/", "filetypes/source", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM);
    SetVolume("styles", "system:config/styles/", "tools/image_gallery", NULL, NULL, VOLUME::HIDDEN);
-   SetVolume("icons", "EXT:widget", "misc/picture", NULL, NULL, VOLUME::HIDDEN|VOLUME::SYSTEM); // Refer to widget module for actual configuration
 
    // Some platforms need to have special volumes added - these are provided in the OpenInfo structure passed to
    // the Core.

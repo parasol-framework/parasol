@@ -8,7 +8,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
   c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>", "<parasol/modules/vector.h>")
 
   const("RIPPLE", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
-    VERSION = "\"20160601\""
+    VERSION = "\"20230701\""
   })
 
   enum("TT", { start=1 }, "OBJECT", "LINK", "EDIT")
@@ -108,7 +108,4 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     int LineHeight       # Default line height (assumed to be an average) for all text the loaded page
     error Error          # Processing error code
   ]])
-
-  functionNames("doc",
-    "CharLength")
 end)

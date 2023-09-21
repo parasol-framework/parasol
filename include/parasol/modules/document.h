@@ -17,7 +17,7 @@ class objDocument;
 
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
-#define RIPPLE_VERSION "20160601"
+#define RIPPLE_VERSION "20230701"
 
 #define TT_OBJECT 1
 #define TT_LINK 2
@@ -122,7 +122,7 @@ struct docSelectLink { LONG Index; CSTRING Name;  };
 struct docFindIndex { CSTRING Name; LONG Start; LONG End;  };
 struct docInsertXML { CSTRING XML; LONG Index;  };
 struct docRemoveContent { LONG Start; LONG End;  };
-struct docInsertText { CSTRING Text; LONG Index; LONG Offset; LONG Preformat;  };
+struct docInsertText { CSTRING Text; LONG Index; LONG Char; LONG Preformat;  };
 struct docCallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs;  };
 struct docAddListener { LONG Trigger; FUNCTION * Function;  };
 struct docRemoveListener { LONG Trigger; FUNCTION * Function;  };
@@ -159,8 +159,8 @@ INLINE ERROR docRemoveContent(APTR Ob, LONG Start, LONG End) {
    return(Action(MT_docRemoveContent, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Offset, LONG Preformat) {
-   struct docInsertText args = { Text, Index, Offset, Preformat };
+INLINE ERROR docInsertText(APTR Ob, CSTRING Text, LONG Index, LONG Char, LONG Preformat) {
+   struct docInsertText args = { Text, Index, Char, Preformat };
    return(Action(MT_docInsertText, (OBJECTPTR)Ob, &args));
 }
 
@@ -295,19 +295,19 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setAuthor(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[38];
+      auto field = &this->Class->Dictionary[37];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setCopyright(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setKeywords(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -325,7 +325,7 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setBackground(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[19];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -337,13 +337,13 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setLinkFill(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[29];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setVLinkFill(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[37];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -355,13 +355,13 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setBorderStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[31];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[36];
+      auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -425,19 +425,19 @@ class objDocument : public BaseClass {
 
    inline ERROR setDefaultScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[39];
+      auto field = &this->Class->Dictionary[38];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -449,39 +449,10 @@ class objDocument : public BaseClass {
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[17];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
-   inline ERROR setUpdateLayout(const LONG Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
 };
-
-#ifdef PARASOL_STATIC
-#define JUMPTABLE_DOCUMENT static struct DocumentBase *DocumentBase;
-#else
-#define JUMPTABLE_DOCUMENT struct DocumentBase *DocumentBase;
-#endif
-
-struct DocumentBase {
-#ifndef PARASOL_STATIC
-   LONG (*_CharLength)(objDocument * Document, LONG Index);
-#endif // PARASOL_STATIC
-};
-
-#ifndef PRV_DOCUMENT_MODULE
-#ifndef PARASOL_STATIC
-extern struct DocumentBase *DocumentBase;
-inline LONG docCharLength(objDocument * Document, LONG Index) { return DocumentBase->_CharLength(Document,Index); }
-#else
-extern "C" {
-extern LONG docCharLength(objDocument * Document, LONG Index);
-}
-#endif // PARASOL_STATIC
-#endif
 

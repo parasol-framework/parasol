@@ -67,7 +67,7 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
-   log.traceBranch("Redimension: %dx%d", Self->VPWidth, Self->VPHeight);
+   log.traceBranch("Redimension: %.2fx%.2f", Self->VPWidth, Self->VPHeight);
 
    Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
    Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
@@ -94,11 +94,10 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
       }
    }
 
-   Self->UpdateLayout = true;
+   Self->UpdatingLayout = true;
 
-   AdjustLogLevel(2);
+   pf::LogLevel level(2);
    layout_doc(Self);
-   AdjustLogLevel(-2);
 }
 
 /*********************************************************************************************************************
@@ -229,7 +228,7 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
    pf::Log log;
 
    log.branch();
-   unload_doc(Self, 0);
+   unload_doc(Self, ULD::NIL);
    if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
    redraw(Self, false);
    return ERR_Okay;
@@ -519,7 +518,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    log.trace("Name: %s", Args->Name);
 
    auto name_hash = StrHash(Args->Name);
-   for (INDEX i=0; i < Self->Stream.size(); i += ESCAPE_LEN) {
+   for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_START) {
          auto &index = escape_data<escIndex>(Self, i);
          if (name_hash IS index.NameHash) {
@@ -528,7 +527,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
             // Search for the end (ID match)
 
-            for (i += ESCAPE_LEN; i < Self->Stream.size(); i += ESCAPE_LEN) {
+            for (++i; i < INDEX(Self->Stream.size()); i++) {
                if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_END) {
                   if (end_id IS escape_data<escIndexEnd>(Self, i).ID) {
                      Args->End = i;
@@ -563,8 +562,9 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 {
    if (Self->FlashTimer)  { UpdateTimer(Self->FlashTimer, 0); Self->FlashTimer = 0; }
 
-   if (Self->Page)           { FreeResource(Self->Page);           Self->Page           = 0; }
-   if (Self->View)           { FreeResource(Self->View);           Self->View           = 0; }
+   Self->Page = NULL; // Page and View are freed by their parent Viewport.
+   Self->View = NULL;
+
    if (Self->InsertXML)      { FreeResource(Self->InsertXML);      Self->InsertXML      = NULL; }
    if (Self->FontFill)       { FreeResource(Self->FontFill);       Self->FontFill       = NULL; }
    if (Self->Highlight)      { FreeResource(Self->Highlight);      Self->Highlight      = NULL; }
@@ -593,12 +593,11 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
       Self->EventCallback.Type = CALL_NONE;
    }
 
-   unload_doc(Self, ULD_TERMINATE);
+   unload_doc(Self, ULD::TERMINATE);
 
    if (Self->XML)         { FreeResource(Self->XML); Self->XML = NULL; }
    if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }
    if (Self->Templates)   { FreeResource(Self->Templates); Self->Templates = NULL; }
-   if (Self->InputHandle) { gfxUnsubscribeInput(Self->InputHandle); Self->InputHandle = 0; };
 
    Self->~extDocument();
    return ERR_Okay;
@@ -688,8 +687,16 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Allocate the view and page areas
 
+   //if ((Self->Scene = objVectorScene::create::integral(
+   //      fl::Name("docScene"),
+   //      fl::Owner(Self->Viewport->UID)))) {
+   //}
+   //else return ERR_CreateObject;
+
+   Self->Scene = Self->Viewport->Scene;
+
    if ((Self->View = objVectorViewport::create::integral(
-         fl::Name("rgnDocView"),   // Do not change this name - it can be used by objects to detect if they are placed in a document
+         fl::Name("docView"),
          fl::Owner(Self->Viewport->UID),
          fl::X(Self->AreaX), fl::Y(Self->AreaY),
          fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight)))) {
@@ -697,8 +704,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    else return ERR_CreateObject;
 
    if ((Self->Page = objVectorViewport::create::integral(
-         fl::Name("rgnDocPage"),  // Do not change this name - it can be used by objects to detect if they are placed in a document
-         fl::Owner(Self->Viewport->UID),
+         fl::Name("docPage"),
+         fl::Owner(Self->View->UID),
          fl::X(0), fl::Y(0),
          fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT)))) {
 
@@ -706,9 +713,6 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
    }
    else return ERR_CreateObject;
-
-   acShow(Self->View);
-   acShow(Self->Page);
 
    // TODO: Create a scrollbar with references to our Target, Page and View viewports
 
@@ -726,17 +730,16 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    // Load a document file into the line array if required
 
-   Self->UpdateLayout = true;
+   Self->UpdatingLayout = true;
    if (Self->XML) { // If XML data is already present, it's probably come in through the data channels.
       log.trace("XML data already loaded.");
       if (!Self->Path.empty()) process_parameters(Self, Self->Path);
-      AdjustLogLevel(2);
+      pf::LogLevel level(2);
       process_page(Self, Self->XML);
-      AdjustLogLevel(-2);
    }
    else if (!Self->Path.empty()) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if (auto error = load_doc(Self, Self->Path, false, 0)) {
+         if (auto error = load_doc(Self, Self->Path, false, ULD::NIL)) {
             return error;
          }
       }
@@ -748,6 +751,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    }
 
    redraw(Self, true);
+
    return ERR_Okay;
 }
 
@@ -784,7 +788,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 
    auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
-   for (INDEX i=0; i < stream.size(); i += ESCAPE_LEN) {
+   for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
          auto &index = escape_data<escIndex>(Self, i);
          if (name_hash IS index.NameHash) {
@@ -792,15 +796,15 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
 
             index.Visible = false;
 
-            AdjustLogLevel(2);
-            Self->UpdateLayout = true;
-            layout_doc(Self);
-            AdjustLogLevel(-2);
+            {
+               pf::LogLevel level(2);
+               Self->UpdatingLayout = true;
+               layout_doc(Self);
+            }
 
             // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to false.
 
-            i += ESCAPE_LEN;
-            while (stream[i]) {
+            for (++i; i < INDEX(stream.size()); i++) {
                auto code = ESCAPE_CODE(stream, i);
                if (code IS ESC::INDEX_END) {
                   auto &end = escape_data<escIndexEnd>(Self, i);
@@ -824,7 +828,6 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                   auto &index = escape_data<escIndex>(Self, i);
                   index.ParentVisible = false;
                }
-               i += ESCAPE_LEN;
             }
 
             Self->Viewport->draw();
@@ -877,7 +880,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    else error = Self->InsertXML->setStatement(Args->XML);
 
    if (!error) {
-      Self->UpdateLayout = true;
+      Self->UpdatingLayout = true;
 
       Self->ParagraphDepth++; // We have to override the paragraph-content sanity check since we're inserting content on post-processing of the original XML
 
@@ -930,7 +933,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
    log.traceBranch("Index: %d, Preformat: %d", Args->Index, Args->Preformat);
 
-   Self->UpdateLayout = true;
+   Self->UpdatingLayout = true;
 
    INDEX index = Args->Index;
    if (index < 0) index = Self->Stream.size();
@@ -939,7 +942,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
    // Find the most recent style at the insertion point
 
-   for (INDEX i = Args->Index - ESCAPE_LEN; i > 0; i -= ESCAPE_LEN) {
+   for (INDEX i = Args->Index - 1; i > 0; i--) {
       if (ESCAPE_CODE(Self->Stream, i) IS ESC::FONT) {
          Self->Style.FontStyle = escape_data<escFont>(Self, i);
          log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
@@ -981,7 +984,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
    new (Self) extDocument;
    Self->UniqueID = 1000;
-   unload_doc(Self, 0);
+   unload_doc(Self, ULD::NIL);
    return ERR_Okay;
 }
 
@@ -1027,15 +1030,15 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    if (Args->Format IS DATA::TEXT) {
       std::ostringstream buffer;
 
-      for (INDEX i=Args->Start; i < Args->End; i += ESCAPE_LEN) {
+      for (INDEX i=Args->Start; i < Args->End; i++) {
          if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
             buffer << escape_data<escText>(Self, i).Text;
-         }            
+         }
       }
 
       auto str = buffer.str();
       if (str.empty()) return ERR_NoData;
-      if ((Args->Result = StrClone(str.c_str()))) return ERR_Okay;      
+      if ((Args->Result = StrClone(str.c_str()))) return ERR_Okay;
       else return log.warning(ERR_AllocMemory);
    }
    else if (Args->Format IS DATA::RAW) {
@@ -1094,15 +1097,16 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
    ERROR error = ERR_Okay;
    if ((!Self->Path.empty()) and (Self->Path[0] != '#') and (Self->Path[0] != '?')) {
       log.branch("Refreshing from path '%s'", Self->Path.c_str());
-      error = load_doc(Self, Self->Path, true, ULD_REFRESH);
+      error = load_doc(Self, Self->Path, true, ULD::REFRESH);
    }
    else if (Self->XML) {
       log.branch("Refreshing from preloaded XML data.");
 
-      AdjustLogLevel(2);
-      unload_doc(Self, ULD_REFRESH);
-      process_page(Self, Self->XML);
-      AdjustLogLevel(-2);
+      {
+         pf::LogLevel level(2);
+         unload_doc(Self, ULD::REFRESH);
+         process_page(Self, Self->XML);
+      }
 
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");
    }
@@ -1146,7 +1150,7 @@ static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *
    CopyMemory(Self->Stream.data() + Args->End, Self->Stream.data() + Args->Start, Self->Stream.size() - Args->End);
    Self->Stream.resize(Self->Stream.size() - Args->End - Args->Start);
 
-   Self->UpdateLayout = true;
+   Self->UpdatingLayout = true;
    return ERR_Okay;
 }
 
@@ -1226,7 +1230,7 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    // Validation: coordinates must be negative offsets
 
-   if (-Self->YPosition  > Self->PageHeight - Self->AreaHeight) {
+   if (-Self->YPosition > Self->PageHeight - Self->AreaHeight) {
       Self->YPosition = -(Self->PageHeight - Self->AreaHeight);
    }
 
@@ -1346,10 +1350,9 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 
    log.branch("Index: %s", Args->Name);
 
-   auto stream = Self->Stream;
-
+   auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
-   for (INDEX i=0; i < stream.size(); i += ESCAPE_LEN) {
+   for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
          auto &index = escape_data<escIndex>(Self, i);
          if (name_hash != index.NameHash) continue;
@@ -1359,12 +1362,13 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
          if (index.ParentVisible) { // We are visible, but parents must also be visible to show content
             // Show all objects and manage the ParentVisible status of any child indexes
 
-            AdjustLogLevel(2);
-            Self->UpdateLayout = true;
-            layout_doc(Self);
-            AdjustLogLevel(-2);
+            {
+               pf::LogLevel level(2);
+               Self->UpdatingLayout = true;
+               layout_doc(Self);
+            }
 
-            for (i += ESCAPE_LEN; i < stream.size(); i += ESCAPE_LEN) {
+            for (++i; i < INDEX(stream.size()); i++) {
                auto code = ESCAPE_CODE(stream, i);
                if (code IS ESC::INDEX_END) {
                   if (index.ID IS escape_data<escIndexEnd>(Self, i).ID) break;
@@ -1387,7 +1391,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                   index.ParentVisible = true;
 
                   if (!index.Visible) {
-                     for (i += ESCAPE_LEN; i < stream.size(); i += ESCAPE_LEN) {
+                     for (++i; i < INDEX(stream.size()); i++) {
                         if (ESCAPE_CODE(stream, i) IS ESC::INDEX_END) {
                            if (index.ID IS escape_data<escIndexEnd>(Self, i).ID) break;
                         }
@@ -1440,13 +1444,12 @@ static const FieldArray clFields[] = {
    { "LineHeight",     FDF_LONG|FDF_R },
    { "Error",          FDF_LONG|FDF_R },
    // Virtual fields
-   { "DefaultScript", FDF_OBJECT|FDF_I,       NULL, SET_DefaultScript },
-   { "EventCallback", FDF_FUNCTIONPTR|FDF_RW, GET_EventCallback, SET_EventCallback },
+   { "DefaultScript", FDF_OBJECT|FDF_I,        NULL, SET_DefaultScript },
+   { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
    { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
    { "PageWidth",     FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_PageWidth, SET_PageWidth },
    { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "UpdateLayout",  FDF_LONG|FDF_W,     NULL, SET_UpdateLayout },
-   { "WorkingPath",   FDF_STRING|FDF_R,     GET_WorkingPath, NULL },
+   { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },
    END_FIELD
 };

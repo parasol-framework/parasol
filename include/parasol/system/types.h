@@ -45,7 +45,7 @@ typedef struct rkFunction {
       } StdC;
 
       struct {
-         OBJECTPTR Script;
+         OBJECTPTR Script;  // Equivalent to the StdC Context
          LARGE ProcedureID; // Function identifier, usually a hash
       } Script;
    };

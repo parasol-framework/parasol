@@ -239,7 +239,7 @@ class objScintilla : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setSurface(const OBJECTID Value) {
+   inline ERROR setSurface(OBJECTID Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->SurfaceID = Value;
       return ERR_Okay;
@@ -251,7 +251,7 @@ class objScintilla : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setFocus(const OBJECTID Value) {
+   inline ERROR setFocus(OBJECTID Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->FocusID = Value;
       return ERR_Okay;

@@ -351,7 +351,7 @@ Z: Close Path
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
-<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 1.0.</p>
+<p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 255.0.</p>
 <p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
     </description>
     <result type="ERROR">

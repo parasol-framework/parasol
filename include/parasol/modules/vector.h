@@ -669,7 +669,7 @@ class objVectorScene : public BaseClass {
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
-   inline ERROR setSurface(const OBJECTID Value) {
+   inline ERROR setSurface(OBJECTID Value) {
       auto target = this;
       auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);

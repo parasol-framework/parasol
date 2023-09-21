@@ -467,7 +467,7 @@ class objSound : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setAudio(const OBJECTID Value) {
+   inline ERROR setAudio(OBJECTID Value) {
       if (this->initialised()) return ERR_NoFieldAccess;
       this->AudioID = Value;
       return ERR_Okay;

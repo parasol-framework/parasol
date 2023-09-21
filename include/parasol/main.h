@@ -152,6 +152,9 @@ inline FieldValue Location(const std::string &Value) { return FieldValue(FID_Loc
 constexpr FieldValue Args(CSTRING Value) { return FieldValue(FID_Args, Value); }
 inline FieldValue Args(const std::string &Value) { return FieldValue(FID_Args, Value.c_str()); }
 
+constexpr FieldValue Fill(CSTRING Value) { return FieldValue(FID_Fill, Value); }
+inline FieldValue Fill(const std::string &Value) { return FieldValue(FID_Fill, Value.c_str()); }
+
 constexpr FieldValue Statement(CSTRING Value) { return FieldValue(FID_Statement, Value); }
 inline FieldValue Statement(const std::string &Value) { return FieldValue(FID_Statement, Value.c_str()); }
 
@@ -243,6 +246,7 @@ constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
+constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
 constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
 constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }

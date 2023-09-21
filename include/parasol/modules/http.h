@@ -276,12 +276,12 @@ class objHTTP : public BaseClass {
       return ERR_Okay;
    }
 
-   inline ERROR setInputObject(const OBJECTID Value) {
+   inline ERROR setInputObject(OBJECTID Value) {
       this->InputObjectID = Value;
       return ERR_Okay;
    }
 
-   inline ERROR setOutputObject(const OBJECTID Value) {
+   inline ERROR setOutputObject(OBJECTID Value) {
       this->OutputObjectID = Value;
       return ERR_Okay;
    }

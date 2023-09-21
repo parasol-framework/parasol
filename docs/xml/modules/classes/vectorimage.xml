@@ -16,7 +16,8 @@
     <description>
 <p>The VectorImage class is used by Vector painting algorithms to fill and stroke vectors with bitmap images.  This is achieved by initialising a VectorImage object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
 <p>Any vector within the target scene will be able to utilise the image for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#logo)'.</p>
-<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p></description>
+<p>It is strongly recommended that the VectorImage is owned by the <class name="VectorScene">VectorScene</class> that is handling the definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.</p>
+<p>NOTE: For the rendering of vectors as flattened images, use <class name="VectorPattern">VectorPattern</class>.</p></description>
     <source>
       <file path="defs/">image.cpp</file>
     </source>

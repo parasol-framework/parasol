@@ -52,7 +52,7 @@ Example usage:
 
    gui.dialog.message({
       modal     = true,
-      image     = 'icons:items/warning',
+      image     = 'items/warning',
       title     = 'Hamlet has a question',
       message   = 'To be or not to be?',
       userInput = 'That is the question',
@@ -188,19 +188,15 @@ gui.dialog.message = function(Options)
          doc = doc .. '<include src="' .. options.template .. '"/>\n'
       end
 
-      image = nz(Options.image, defaultIcon(self))
-      if image:startsWith('icons:') then
-         image = image:gsub('^icons:(%w+)/(%w+)', 'icons:%1/%2(48)')
-      else
-         image = image:gsub('^(%w+)/(%w+)', 'icons:%1/%2(48)')
-      end
+      icon = nz(Options.image, defaultIcon(self))
+      icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
 
       doc = doc .. [[
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
       <cell>
-        <image src="]] .. image .. [[" align="left" eastgap="18"/>
+        <image icon="]] .. icon .. [[" align="left" width="48" height="48" eastgap="18"/>
       </cell>
       <cell>
         <p>]] .. nz(self.fmtMessage, string.escXML(nz(self.message,''))) .. [[</p>
@@ -242,7 +238,7 @@ gui.dialog.message = function(Options)
 
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc = doc .. '<image src="icons:' .. option.icon .. '(16)" eastgap="4"/>\n'
+            doc = doc .. '<image icon="' .. option.icon .. '" width="16" height="16" eastgap="4"/>\n'
          end
 
          doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'

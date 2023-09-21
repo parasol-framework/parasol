@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-header({ copyright="Paul Manias © 1996-2023" }, function()
+header({ copyright="Paul Manias © 2023" }, function()
   hash("HASH", "0x%sUL",
     "AfterLayout",
     "BeforeLayout",
@@ -90,8 +90,8 @@ header({ copyright="Paul Manias © 1996-2023" }, function()
     "height",
     "colour",
     "border",
-    "highlight",
-    "shadow",
+    "fill",
+    "stroke",
     "spacing",
     "thin",
     "vspacing",

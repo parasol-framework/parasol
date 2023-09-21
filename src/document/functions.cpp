@@ -18,14 +18,13 @@ static std::string printable(extDocument *Self, StreamChar Start, ULONG Length)
    std::string result;
    result.reserve(Length);
    StreamChar i = Start;
-   while ((i.Index < Self->Stream.size()) and (result.size() < Length)) {
+   while ((i.Index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
       if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, i);
          result += text.Text.substr(i.Offset, result.capacity() - result.size());
       }
       else result += '%';
-      i.Index += ESCAPE_LEN;
-      i.Offset = 0;
+      i.nextCode();
    }
    return result;
 }
@@ -70,17 +69,17 @@ static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
 
 #ifdef DBG_STREAM
 
-static void print_stream(extDocument *Self, const std::string &Stream)
+static void print_stream(extDocument *Self, const RSTREAM &Stream)
 {
+   if (Stream.empty()) return;
+   
    pf::Log log;
-
-   BYTE printpos;
    std::ostringstream out;
+   out << "\nSTREAM: " << Stream.size() << " bytes\n";
+   out << "-------------------------------------------------------------------------------\n";
 
-   out << "\nSTREAM: " << Stream.size() << " bytes\n------\n";
-   size_t i = 0;
-   printpos = false;
-   while (i < Stream.size()) {
+   bool printpos = false;
+   for (INDEX i=0; i < INDEX(Stream.size()); i++) {
       auto code = ESCAPE_CODE(Stream, i);
       out << "(" << i << ")";
       if (code IS ESC::FONT) {
@@ -107,7 +106,6 @@ static void print_stream(extDocument *Self, const std::string &Stream)
 */
       else out << "[E:" << escCode(code) << "]";
 
-      i += ESCAPE_LEN;
       printpos = true;
    }
 
@@ -159,7 +157,7 @@ static void print_lines(extDocument *Self)
             out << "[E:%s]", strCodes[(UBYTE)ESCAPE_CODE(str, i)]);
          }
          else out << "[E:%d]", ESCAPE_CODE(str, i));
-         i += ESCAPE_LEN;
+         i++;
       }
 
       out << "\"");
@@ -200,7 +198,7 @@ static void print_sorted_lines(extDocument *Self)
             out << "[E:%s]", strCodes[(UBYTE)ESCAPE_CODE(str, i)]);
          }
          else out << "[E:%d]", ESCAPE_CODE(str, i));
-         i += ESCAPE_LEN;
+         i++;
       }
 
       out << "\"\n");
@@ -261,14 +259,12 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
 
    auto cs = Start;
    size_t size = 0;
-   for (; (cs.Index <= End.Index) and (cs.Index < Self->Stream.size()); cs.Index += ESCAPE_LEN) {
+   for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
       if (ESCAPE_CODE(Self->Stream, cs.Index) IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, cs);
          if (cs.Index < End.Index) size = text.Text.size() - cs.Offset;         
          else size = (End.Offset < text.Text.size() ? End.Offset : text.Text.size()) - cs.Offset;
-         cs.Index += ESCAPE_LEN;
       }
-      cs.Offset = 0;
    }
 
    // Generate the result string
@@ -277,7 +273,7 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
    if (!AllocMemory(size + 1, MEM::STRING|MEM::NO_CLEAR, &str)) {
       cs = Start;
       LONG pos = 0;
-      for (; (cs.Index <= End.Index) and (cs.Index < Self->Stream.size()); cs.Index += ESCAPE_LEN) {
+      for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
          if (ESCAPE_CODE(Self->Stream, cs.Index) IS ESC::TEXT) {
             auto &text = escape_data<escText>(Self, cs);
             if (cs.Index < End.Index) {
@@ -289,49 +285,12 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
                pos += End.Offset - cs.Offset;
             }
          }
-         cs.Offset = 0;
       }
       str[pos] = 0;
       return str;
    }
 
    return NULL;
-}
-
-//********************************************************************************************************************
- 
-static bool delete_selected(extDocument *Self)
-{
-   if ((Self->SelectIndex.valid()) and (Self->SelectIndex != Self->CursorIndex)) {
-      auto start = Self->SelectIndex;
-      auto end = Self->CursorIndex;
-      if (start > end) std::swap(start, end);
-
-      if (start.Offset > 0) {
-         if (ESCAPE_CODE(Self->Stream, start) IS ESC::TEXT) {
-            auto &text = escape_data<escText>(Self, start);
-            if (start.Index IS end.Index) text.Text.erase(start.Offset, end.Offset - start.Offset);
-            else text.Text.erase(start.Offset, text.Text.size() - start.Offset);
-         }
-         start.Index += ESCAPE_LEN;
-         start.Offset = 0;
-      }
-
-      if (start.Index < end.Index) {
-         Self->Stream.erase(start.Index, (end.Index - start.Index) * ESCAPE_LEN);
-         end.Index -= (end.Index - start.Index) * ESCAPE_LEN;
-
-         if ((end.Offset > 0) and (ESCAPE_CODE(Self->Stream, end.Index) IS ESC::TEXT)) {
-            auto &text = escape_data<escText>(Self, end);            
-            text.Text.erase(0, end.Offset);
-         }
-      }
-
-      Self->CursorIndex = Self->SelectIndex;
-      Self->SelectIndex.reset();
-      return true;
-   }
-   return false;
 }
 
 /*********************************************************************************************************************
@@ -923,7 +882,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       }
       else {
          auto str = Self->Stream;
-         for (auto i = TargetIndex - ESCAPE_LEN; i > 0; i -= ESCAPE_LEN) {
+         for (auto i = TargetIndex - 1; i > 0; i--) {
             if (ESCAPE_CODE(str, i) IS ESC::FONT) {
                Self->Style.FontStyle = escape_data<escFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
@@ -975,7 +934,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
    if (TargetIndex < inserted_at) {
       auto length = Self->Stream.size() - inserted_at;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", TargetIndex, length);
-      Self->Stream.insert(TargetIndex, Self->Stream.substr(inserted_at, length));
+      Self->Stream.insert(Self->Stream.begin() + TargetIndex, Self->Stream.begin() + inserted_at, Self->Stream.begin() + length);
       Self->Stream.resize(inserted_at + length);
    }
 
@@ -1008,7 +967,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
       }
       else {
          auto &str = Self->Stream;
-         for (auto i = TargetIndex - ESCAPE_LEN; i > 0; i -= ESCAPE_LEN) {
+         for (auto i = TargetIndex - 1; i > 0; i--) {
             if (ESCAPE_CODE(str, i) IS ESC::FONT) {
                Self->Style.FontStyle = escape_data<escFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
@@ -1038,14 +997,14 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
 
    // Parse content and insert it at the end of the stream (we will move it to the insertion point afterwards).
 
-   LONG inserted_at = Self->Stream.size();
-   LONG insert_index = Self->Stream.size();
+   INDEX inserted_at = Self->Stream.size();
+   INDEX insert_index = Self->Stream.size();
    auto flags = IPF::NIL;
    parse_tag(Self, XML, Tag, insert_index, flags);
 
    if (Flags & IXF_CLOSESTYLE) style_check(Self, insert_index);
 
-   if (LONG(Self->Stream.size()) <= inserted_at) {
+   if (INDEX(Self->Stream.size()) <= inserted_at) {
       log.trace("parse_tag() did not insert any content into the stream.");
       return ERR_NothingDone;
    }
@@ -1053,9 +1012,9 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
    // Move the content from the end of the stream to the requested insertion point
 
    if (TargetIndex < inserted_at) {
-      auto length = LONG(Self->Stream.size()) - inserted_at;
+      auto length = INDEX(Self->Stream.size()) - inserted_at;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", TargetIndex, length);
-      Self->Stream.insert(TargetIndex, Self->Stream.substr(inserted_at, length));
+      Self->Stream.insert(Self->Stream.begin() + TargetIndex, Self->Stream.begin() + inserted_at, Self->Stream.begin() + length);
       Self->Stream.resize(inserted_at + length);
    }
 
@@ -1312,17 +1271,19 @@ static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string
    else {
       escText et;
       et.Text.reserve(Text.size());
+      auto ws = Self->NoWhitespace;
       for (unsigned i=0; i < Text.size(); ) {
          if (Text[i] <= 0x20) { // Whitespace eliminator
-            while ((Text[i] <= 0x20) and (i < Text.size())) i++;
-            if (!Self->NoWhitespace) et.Text += ' ';
-            Self->NoWhitespace = true;
+            for (++i; (Text[i] <= 0x20) and (i < Text.size()); i++);
+            if (!ws) et.Text += ' ';
+            ws = true;
          }
          else {
             et.Text += Text[i++];
-            Self->NoWhitespace = false;
+            ws = false;
          }
       }
+      Self->NoWhitespace = ws;
       Self->insertEscape(Index.Index, et);
    }
 
@@ -1330,356 +1291,44 @@ static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string
 }
 
 //********************************************************************************************************************
-// Inserts an escape sequence into the text stream.  [0x1b][Code][0xNNNNNNNN][0x1b]
+// Inserts an escape sequence into the text stream.
 
-template <class T> T & extDocument::insertEscape(LONG &Index, T &Code)
+template <class T> T & extDocument::insertEscape(INDEX &Index, T &Code)
 {
    // All escape codes are saved to a global container.
    Codes[Code.UID] = Code;
 
-   if (Index IS LONG(Stream.size())) {
-      Stream.resize(Stream.size() + ESCAPE_LEN);
-
-      Stream[Index++] = CTRL_CODE;
-      Stream[Index++] = char(Code.Code);
-      Stream[Index++] = Code.IDArray[0];
-      Stream[Index++] = Code.IDArray[1];
-      Stream[Index++] = Code.IDArray[2];
-      Stream[Index++] = Code.IDArray[3];
-      Stream[Index++] = CTRL_CODE;
+   if (Index IS INDEX(Stream.size())) {
+      Stream.emplace_back(Code.Code, Code.UID);
    }
    else {
-      const char insert[ESCAPE_LEN] = { char(CTRL_CODE), char(Code.Code), Code.IDArray[0], Code.IDArray[1], Code.IDArray[2], Code.IDArray[3], char(CTRL_CODE) };
-      Stream.insert(Index, insert, ESCAPE_LEN);
-      Index += ESCAPE_LEN;
+      const EscCode insert(Code.Code, Code.UID);
+      Stream.insert(Stream.begin() + Index, insert);
    }
-
+   Index++;
    return std::get<T>(Codes[Code.UID]);
 }
 
-template <class T> T & extDocument::reserveEscape(LONG &Index)
+template <class T> T & extDocument::reserveEscape(INDEX &Index)
 {
    auto key = glEscapeCodeID;
    Codes.emplace(key, T());
    auto &result = std::get<T>(Codes[key]);
 
-   if (Index IS LONG(Stream.size())) {
-      Stream.resize(Stream.size() + ESCAPE_LEN);
-
-      Stream[Index++] = CTRL_CODE;
-      Stream[Index++] = char(result.Code);
-      Stream[Index++] = result.IDArray[0];
-      Stream[Index++] = result.IDArray[1];
-      Stream[Index++] = result.IDArray[2];
-      Stream[Index++] = result.IDArray[3];
-      Stream[Index++] = CTRL_CODE;
+   if (Index IS INDEX(Stream.size())) {
+      Stream.emplace_back(result.Code, result.UID);
    }
    else {
-      const char insert[ESCAPE_LEN] = { char(CTRL_CODE), char(result.Code), result.IDArray[0], result.IDArray[1], result.IDArray[2], result.IDArray[3], char(CTRL_CODE) };
-      Stream.insert(Index, insert, ESCAPE_LEN);
-      Index += ESCAPE_LEN;
+      const EscCode insert(result.Code, result.UID);
+      Stream.insert(Stream.begin() + Index, insert);
    }
-
+   Index++;
    return result;
 }
 
 //********************************************************************************************************************
-// Calculate the page height, which is either going to be the coordinate of the bottom-most line, or one of the
-// clipping regions if one of them extends further than the bottom-most line.
 
-static LONG calc_page_height(extDocument *Self, LONG FirstClip, LONG Y, LONG BottomMargin)
-{
-   // Find the last segment that had text and use that to determine the bottom of the page
-
-   LONG height = 0;
-   LONG y = 0;
-   LONG last = Self->Segments.size()-1;
-   while ((last > 0) and (!height) and (!y)) {
-      if (Self->Segments[last].TextContent) {
-         height = Self->Segments[last].Height;
-         y = Self->Segments[last].Y;
-         break;
-      }
-      last--;
-   }
-
-   LONG page_height = (y + height);
-
-   // Check clipping regions to see if they extend past the last line of text - if so, we extend the height.
-
-   for (unsigned j=FirstClip; j < Self->Clips.size(); j++) {
-      if (Self->Clips[j].Transparent) continue;
-      if (Self->Clips[j].Clip.Bottom > page_height) page_height = Self->Clips[j].Clip.Bottom;
-   }
-
-   // Add the bottom margin and subtract the Y offset so that we have the true height of the page/cell.
-
-   page_height = page_height + BottomMargin - Y;
-
-/*
-   log.trace("Page Height: %d + %d -> %d, Bottom: %d, Y: %d",
-      Self->Segments[last].Y, Self->Segments[last].Height, page_height, BottomMargin, Y);
-*/
-   return page_height;
-}
-
-//********************************************************************************************************************
-
-static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Unicode)
-{
-   pf::Log log(__FUNCTION__);
-   struct acScroll scroll;
-
-   if ((Flags & KQ::PRESSED) IS KQ::NIL) return ERR_Okay;
-
-   auto Self = (extDocument *)CurrentContext();
-
-   log.function("Value: %d, Flags: $%.8x, ActiveEdit: %p", LONG(Value), LONG(Flags), Self->ActiveEditDef);
-
-   if ((Self->ActiveEditDef) and ((Self->Page->Flags & VF::HAS_FOCUS) IS VF::NIL)) {
-      deactivate_edit(Self, true);
-   }
-
-   if (Self->ActiveEditDef) {
-      reset_cursor(Self);
-
-      if (Unicode) {
-         delete_selected(Self);
-
-         // Output the character
-
-         char string[12];
-         UTF8WriteValue(Unicode, string, sizeof(string));
-         docInsertText(Self, string, Self->CursorIndex.Index, Self->CursorIndex.Offset, true); // Will set UpdateLayout to true
-         Self->CursorIndex += StrLength(string); // Reposition the cursor
-
-         layout_doc_fast(Self);
-
-         resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-
-         Self->Viewport->draw();
-         return ERR_Okay;
-      }
-
-      switch(Value) {
-         case KEY::TAB: {
-            log.branch("Key: Tab");
-            if (Self->TabFocusID) acFocus(Self->TabFocusID);
-            else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
-            else advance_tabfocus(Self, 1);            
-            break;
-         }
-
-         case KEY::ENTER: {
-            delete_selected(Self);
-
-            insert_text(Self, Self->CursorIndex, "\n", true);
-            Self->CursorIndex.nextChar(Self, Self->Stream);
-
-            layout_doc_fast(Self);
-            resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-            Self->Viewport->draw();
-            break;
-         }
-
-         case KEY::LEFT: {
-            Self->SelectIndex.reset();
-            if (ESCAPE_CODE(Self->Stream, Self->CursorIndex.Index) IS ESC::CELL) {
-               // Cursor cannot be moved any further left.  The cursor index should never end up here, but
-               // better to be safe than sorry.
-
-            }
-            else {
-               for (auto index = Self->CursorIndex; index.Index > 0; ) {
-                  index.prevChar(Self, Self->Stream);
-
-                  auto code = ESCAPE_CODE(Self->Stream, index);
-                  if (code IS ESC::CELL) {
-                     auto &cell = escape_data<escCell>(Self, index);
-                     if (cell.CellID IS Self->ActiveEditCellID) break;
-                  }
-                  else if (code IS ESC::VECTOR); // Vectors count as a character
-                  else if (code != ESC::TEXT) continue;
-
-                  if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
-                     Self->CursorIndex = index;
-                     Self->Viewport->draw();
-                     log.warning("LeftCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
-                  }
-                  break;
-               }
-            }
-            break;
-         }
-
-         case KEY::RIGHT: {
-            Self->SelectIndex.reset();
-
-            auto index = Self->CursorIndex;
-            while (index.valid(Self->Stream)) {
-               auto code = ESCAPE_CODE(Self->Stream, index);
-               if (code IS ESC::CELL_END) {
-                  auto &cell_end = escape_data<escCellEnd>(Self, index);
-                  if (cell_end.CellID IS Self->ActiveEditCellID) {
-                     // End of editing zone - cursor cannot be moved any further right
-                     break;
-                  }
-               }
-               else if (code IS ESC::VECTOR); // Objects are treated as content, so do nothing special for these and drop through to next section
-               else {
-                  index.nextChar(Self, Self->Stream);
-                  continue;
-               }
-
-               // The current index references a content character or object.  Advance the cursor to the next index.
-
-               index.nextChar(Self, Self->Stream);
-               if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
-                  Self->CursorIndex = index;
-                  Self->Viewport->draw();
-                  log.warning("RightCursor: %d, X: %d", Self->CursorIndex, Self->CursorCharX);
-               }
-               break;
-            }
-            break;
-         }
-
-         case KEY::HOME: {
-            break;
-         }
-
-         case KEY::END: {
-            break;
-         }
-
-         case KEY::UP:
-            break;
-
-         case KEY::DOWN:
-            break;
-
-         case KEY::BACKSPACE: {
-            if (ESCAPE_CODE(Self->Stream, Self->CursorIndex) IS ESC::CELL) {
-               // Cursor cannot be moved any further left
-            }
-            else {
-               auto index = Self->CursorIndex;
-               index.prevChar(Self, Self->Stream);
-
-               if (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL);
-               else {
-                  if (!delete_selected(Self)) {
-                     // Delete the character/escape code
-                     Self->CursorIndex = index;
-                     Self->CursorIndex.eraseChar(Self, Self->Stream);
-                  }
-
-                  Self->UpdateLayout = true;
-                  layout_doc_fast(Self);
-                  resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-                  Self->Viewport->draw();
-               }
-            }
-            break;
-         }
-
-         case KEY::DELETE: {
-            if (ESCAPE_CODE(Self->Stream, Self->CursorIndex) IS ESC::CELL_END) {
-               // Not allowed to delete the end point
-            }
-            else {
-               if (!delete_selected(Self)) {
-                  Self->CursorIndex.eraseChar(Self, Self->Stream);
-               }
-               Self->UpdateLayout = true;
-               layout_doc_fast(Self);
-               resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-               Self->Viewport->draw();
-            }
-
-            break;
-         }
-
-         default: break; // Ignore unhandled codes
-      }
-   }
-   else switch (Value) {
-      // NB: When not in edit mode, only the navigation keys are enabled
-      case KEY::TAB:
-         log.branch("Key: Tab");
-         if (Self->TabFocusID) acFocus(Self->TabFocusID);
-         else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
-         else advance_tabfocus(Self, 1);
-         break;
-
-      case KEY::ENTER: {
-         auto tab = Self->FocusIndex;
-         if ((tab >= 0) and (unsigned(tab) < Self->Tabs.size())) {
-            log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, LONG(Self->Tabs.size()), Self->Tabs[tab].Type);
-
-            if ((Self->Tabs[tab].Type IS TT_LINK) and (Self->Tabs[tab].Active)) {
-               for (auto &link : Self->Links) {
-                  if ((link.EscapeCode IS ESC::LINK) and (link.asLink()->ID IS Self->Tabs[tab].Ref)) {
-                     link.exec(Self);
-                     break;
-                  }
-               }
-            }
-         }
-         break;
-      }
-
-      case KEY::PAGE_DOWN:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = Self->AreaHeight;
-         scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
-         break;
-
-      case KEY::PAGE_UP:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = -Self->AreaHeight;
-         scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
-         break;
-
-      case KEY::LEFT:
-         scroll.DeltaX = -10;
-         scroll.DeltaY = 0;
-         scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
-         break;
-
-      case KEY::RIGHT:
-         scroll.DeltaX = 10;
-         scroll.DeltaY = 0;
-         scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
-         break;
-
-      case KEY::DOWN:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = 10;
-         scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
-         break;
-
-      case KEY::UP:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = -10;
-         scroll.DeltaZ = 0;
-         QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
-         break;
-
-      default: break; // Ignore unhandled codes
-   }
-
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, BYTE UnloadFlags)
+static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD UnloadFlags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1705,9 +1354,8 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, BYTE Unl
          if (Self->XML) FreeResource(Self->XML);
          Self->XML = xml;
 
-         AdjustLogLevel(3);
+         pf::LogLevel level(3);
          Self->Error = process_page(Self, xml);
-         AdjustLogLevel(-3);
 
          return Self->Error;
       }
@@ -1767,7 +1415,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       Self->XPosition    = 0;
       Self->YPosition    = 0;
       Self->ClickHeld    = false;
-      Self->UpdateLayout = true;
+      Self->UpdatingLayout = true;
       Self->Error        = ERR_Okay;
 
       // Process tags at the root level, but only those that we allow up to the first <page> entry.
@@ -1837,9 +1485,9 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       // If an error occurred then we have to kill the document as the stream may contain disconnected escape
       // sequences (e.g. an unterminated ESC::TABLE sequence).
 
-      if (Self->Error) unload_doc(Self, 0);
+      if (Self->Error) unload_doc(Self, ULD::NIL);
 
-      Self->UpdateLayout = true;
+      Self->UpdatingLayout = true;
       if (Self->initialised()) redraw(Self, true);
 
       #ifdef RAW_OUTPUT
@@ -1892,7 +1540,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 // The PageName is not freed because the desired page must not be dropped during refresh of manually loaded XML for
 // example.
 
-static ERROR unload_doc(extDocument *Self, BYTE Flags)
+static ERROR unload_doc(extDocument *Self, ULD Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1911,16 +1559,16 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->Highlight    = StrClone(glHighlight.c_str());
 
    if (Self->CursorStroke) FreeResource(Self->CursorStroke);
-   Self->CursorStroke = StrClone("rgb(0.4,0.4,0.8,1)");
+   Self->CursorStroke = StrClone("rgb(102,102,204,255)");
 
    if (Self->LinkFill) FreeResource(Self->LinkFill);
-   Self->LinkFill     = StrClone("rgb(0,0,1,1)");
+   Self->LinkFill     = StrClone("rgb(0,0,255,255)");
 
    if (Self->Background) FreeResource(Self->Background);
-   Self->Background   = StrClone("rgb(1,1,1,1)");
+   Self->Background   = StrClone("rgb(255,255,255,255)");
 
    if (Self->LinkSelectFill) FreeResource(Self->LinkSelectFill);
-   Self->LinkSelectFill = StrClone("rgb(1,0,0,1)");
+   Self->LinkSelectFill = StrClone("rgb(255,0,0,255)");
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;
@@ -1942,10 +1590,10 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
    Self->MouseOverSegment = -1;
-   Self->SelectIndex.reset();
-   Self->CursorIndex.reset();
    Self->ActiveEditCellID = 0;
    Self->ActiveEditDef    = NULL;
+   Self->SelectIndex.reset();
+   Self->CursorIndex.reset();
 
    if (Self->ActiveEditDef) deactivate_edit(Self, false);
 
@@ -1957,7 +1605,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
    }
 
    if (Self->FontFace) FreeResource(Self->FontFace);
-   if (Flags & ULD_TERMINATE) Self->FontFace = NULL;
+   if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->FontFace = NULL;
    else Self->FontFace = StrClone("Open Sans");
 
    Self->PageTag = NULL;
@@ -1972,7 +1620,7 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    for (auto &t : Self->Triggers) t.clear();
 
-   if (Flags & ULD_TERMINATE) Self->Vars.clear();
+   if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->Vars.clear();
 
    if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = NULL; }
    if (Self->Author)      { FreeResource(Self->Author); Self->Author = NULL; }
@@ -1995,14 +1643,17 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
       pf::Log log(__FUNCTION__);
       log.traceBranch("Freeing page-allocated resources.");
 
-      for (auto it = Self->Resources.begin(); it != Self->Resources.end(); it++) {
-         if (ULD_TERMINATE) it->Terminate = true;
+      for (auto it = Self->Resources.begin(); it != Self->Resources.end(); ) {
+         if ((ULD::TERMINATE) != ULD::NIL) it->Terminate = true;
+
          if ((it->Type IS RT_PERSISTENT_SCRIPT) or (it->Type IS RT_PERSISTENT_OBJECT)) {
             // Persistent objects and scripts will survive refreshes
-            if (Flags & ULD_REFRESH) { it++; continue; }
-            else it = Self->Resources.erase(it);
+            if ((Flags & ULD::REFRESH) != ULD::NIL);
+            else { it = Self->Resources.erase(it); continue; }
          }
-         else it = Self->Resources.erase(it);
+         else { it = Self->Resources.erase(it); continue; }
+
+         it++;
       }
    }
 
@@ -2017,32 +1668,14 @@ static ERROR unload_doc(extDocument *Self, BYTE Flags)
 
    if (Self->Page) acMoveToPoint(Self->Page, 0, 0, 0, MTF::X|MTF::Y);
 
-   Self->UpdateLayout = true;
+   Self->UpdatingLayout = true;
    Self->GeneratedID = AllocateID(IDTYPE::GLOBAL);
 
-   if (Flags & ULD_REDRAW) {
+   if ((Flags & ULD::REDRAW) != ULD::NIL) {
       Self->Viewport->draw();
    }
 
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// If the layout needs to be recalculated, set the UpdateLayout field before calling this function.
-
-static void redraw(extDocument *Self, bool Focus)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.traceBranch("");
-
-   AdjustLogLevel(3);
-   layout_doc(Self);
-   AdjustLogLevel(-3);
-
-   Self->Viewport->draw();
-
-   if ((Focus) and (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
 }
 
 //********************************************************************************************************************
@@ -2059,81 +1692,6 @@ static LONG get_line_from_index(extDocument *Self, INDEX Index)
    return 0;
 }
 #endif
-
-//********************************************************************************************************************
-
-static bool detect_recursive_dialog = false;
-
-static void error_dialog(const std::string Title, const std::string Message)
-{
-   pf::Log log(__FUNCTION__);
-   static OBJECTID dialog_id = 0;
-
-   log.warning("%s", Message.c_str());
-
-   if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
-   if (detect_recursive_dialog) return;
-   detect_recursive_dialog = true;
-
-   OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, &dialog)) {
-      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
-
-      acSetVar(dialog, "modal", "1");
-      acSetVar(dialog, "title", Title.c_str());
-      acSetVar(dialog, "options", "okay");
-      acSetVar(dialog, "type", "error");
-      acSetVar(dialog, "message", Message.c_str());
-
-      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
-         CSTRING *results;
-         LONG size;
-         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
-            dialog_id = StrToInt(results[0]);
-         }
-      }
-   }
-
-   detect_recursive_dialog = false;
-}
-
-static void error_dialog(const std::string Title, ERROR Error)
-{
-   pf::Log log(__FUNCTION__);
-   static OBJECTID dialog_id = 0;
-
-   log.warning("%s", GetErrorMsg(Error));
-
-   if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
-   if (detect_recursive_dialog) return;
-   detect_recursive_dialog = true;
-
-   OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, &dialog)) {
-      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
-
-      acSetVar(dialog, "modal", "1");
-      acSetVar(dialog, "title", Title.c_str());
-      acSetVar(dialog, "options", "okay");
-      acSetVar(dialog, "type", "error");
-
-      if (auto errstr = GetErrorMsg(Error)) {
-         std::string buffer("Error: ");
-         buffer.append(errstr);
-         acSetVar(dialog, "message", buffer.c_str());
-      }
-
-      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
-         CSTRING *results;
-         LONG size;
-         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
-            dialog_id = StrToInt(results[0]);
-         }
-      }
-   }
-
-   detect_recursive_dialog = false;
-}
 
 //********************************************************************************************************************
 
@@ -2181,7 +1739,7 @@ static std::string get_font_style(FSO Options)
 
 static objFont * lookup_font(INDEX Index, const std::string &Caller)
 {
-   if ((unsigned(Index) < glFonts.size()) and (Index >= 0)) return glFonts[Index].Font;
+   if ((Index < INDEX(glFonts.size())) and (Index >= 0)) return glFonts[Index].Font;
    else {
       pf::Log log(__FUNCTION__);
       log.warning("Bad font index %d.  Max: %d.  Caller: %s", Index, LONG(glFonts.size()), Caller.c_str());
@@ -2215,7 +1773,7 @@ static LONG create_font(const std::string &Face, const std::string &Style, LONG 
 
    log.branch("Index: %d, %s, %s, %d", LONG(glFonts.size()), Face.c_str(), Style.c_str(), Point);
 
-   AdjustLogLevel(2);
+   pf::LogLevel level(2);
 
    objFont *font = objFont::create::integral(
       fl::Owner(modDocument->UID), fl::Face(Face), fl::Style(Style), fl::Point(Point), fl::Flags(FTF::ALLOW_SCALE));
@@ -2230,18 +1788,15 @@ static LONG create_font(const std::string &Face, const std::string &Style, LONG 
             (font->Point IS glFonts[i].Point)) {
             log.trace("Match %d = %s(%s,%d)", i, Face.c_str(), Style.c_str(), Point);
             FreeResource(font);
-            AdjustLogLevel(-2);
             return i;
          }
       }
 
       auto index = glFonts.size();
       glFonts.emplace_back(font, Point);
-      AdjustLogLevel(-2);
       return index;
    }
    else {
-      AdjustLogLevel(-2);
       return -1;
    }
 }
@@ -2706,484 +2261,13 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
 }
 
 //********************************************************************************************************************
-
-static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar CursorIndex)
-{
-   pf::Log log(__FUNCTION__);
-   auto &stream = Self->Stream;
-
-   if ((CellIndex < 0) or (CellIndex >= INDEX(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
-
-   log.branch("Cell Index: %d, Cursor Index: %d", CellIndex, CursorIndex.Index);
-
-   if (ESCAPE_CODE(stream, CellIndex) != ESC::CELL) { // Sanity check
-      return log.warning(ERR_Failed);
-   }
-
-   auto &cell = escape_data<escCell>(Self, CellIndex);
-   if (CursorIndex.Index <= CellIndex) { // Go to the start of the cell content
-      CursorIndex.set(CellIndex + 1, 0);
-   }
-
-   if (ESCAPE_CODE(stream, CursorIndex.Index) != ESC::TEXT) {
-      // Skip ahead to the first relevant control code - it's always best to place the cursor ahead of things like
-      // font styles, paragraph formatting etc.
-
-      CursorIndex.Offset = 0;
-      while (CursorIndex.Index < INDEX(Self->Stream.size())) {
-         std::array<ESC, 6> content = {
-            ESC::CELL_END, ESC::TABLE_START, ESC::VECTOR, ESC::LINK_END, ESC::PARAGRAPH_END, ESC::TEXT
-         };
-         if (std::find(std::begin(content), std::end(content), ESCAPE_CODE(stream, CursorIndex)) != std::end(content)) break;
-         CursorIndex.Index += ESCAPE_LEN;
-      }
-   }
-
-   auto it = Self->EditDefs.find(cell.EditDef);
-   if (it IS Self->EditDefs.end()) return log.warning(ERR_Search);
-
-   deactivate_edit(Self, false);
-
-   auto &edit = it->second;
-   if (!edit.OnChange.empty()) { // Calculate a CRC for the cell content
-      unsigned i = CellIndex;
-      while (i < Self->Stream.size()) {
-         if (ESCAPE_CODE(stream, i) IS ESC::CELL_END) {
-            auto &end = escape_data<escCellEnd>(Self, i);
-            if (end.CellID IS cell.CellID) {
-               Self->ActiveEditCRC = GenCRC32(0, stream.data() + CellIndex, i - CellIndex);
-               break;
-            }
-         }
-         i += ESCAPE_LEN;
-      }
-   }
-
-   Self->ActiveEditCellID = cell.CellID;
-   Self->ActiveEditDef = &edit;
-   Self->CursorIndex   = CursorIndex;
-   Self->SelectIndex.reset();
-
-   log.msg("Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x", Self->ActiveEditCellID, Self->CursorIndex, Self->ActiveEditDef, Self->ActiveEditCRC);
-
-   // Set the focus index to the relevant TT_EDIT entry
-
-   for (unsigned tab=0; tab < Self->Tabs.size(); tab++) {
-      if ((Self->Tabs[tab].Type IS TT_EDIT) and (Self->Tabs[tab].Ref IS cell.CellID)) {
-         Self->FocusIndex = tab;
-         break;
-      }
-   }
-
-   resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
-
-   reset_cursor(Self); // Reset cursor flashing
-
-   // User callbacks
-
-   if (!edit.OnEnter.empty()) {
-      OBJECTPTR script;
-      std::string function_name, argstring;
-
-      log.msg("Calling onenter callback function.");
-
-      if (!extract_script(Self, edit.OnEnter, &script, function_name, argstring)) {
-         ScriptArg args[] = { { "ID", edit.Name } };
-         scExec(script, function_name.c_str(), args, ARRAYSIZE(args));
-      }
-   }
-
-   Self->Viewport->draw();
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static void deactivate_edit(extDocument *Self, bool Redraw)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!Self->ActiveEditDef) return;
-
-   log.branch("Redraw: %d, CellID: %d", Redraw, Self->ActiveEditCellID);
-
-   if (Self->FlashTimer) {
-      UpdateTimer(Self->FlashTimer, 0); // Turn off the timer
-      Self->FlashTimer = 0;
-   }
-
-   // The edit tag needs to be found so that we can determine if OnExit needs to be called or not.
-
-   auto edit = Self->ActiveEditDef;
-   LONG cell_index = find_cell(Self, Self->ActiveEditCellID);
-
-   Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef = NULL;
-   Self->CursorIndex.reset();
-   Self->SelectIndex.reset();
-
-   if (Redraw) Self->Viewport->draw();
-
-   if (cell_index >= 0) {
-      if (!edit->OnChange.empty()) {
-         escCell &cell = escape_data<escCell>(Self, cell_index);
-
-         // CRC comparison - has the cell content changed?
-
-         for (INDEX i = cell_index; i < INDEX(Self->Stream.size()); i += ESCAPE_LEN) {
-            if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL_END) {
-               auto &end = escape_data<escCellEnd>(Self, i);
-               if (end.CellID IS cell.CellID) {
-                  auto crc = GenCRC32(0, Self->Stream.data() + cell_index, i - cell_index);
-                  if (crc != Self->ActiveEditCRC) {
-                     log.trace("Change detected in editable cell %d", cell.CellID);
-
-                     OBJECTPTR script;
-                     std::string function_name, argstring;
-                     if (!extract_script(Self, edit->OnChange, &script, function_name, argstring)) {
-                        auto cell_content = cell_index;
-                        cell_content += ESCAPE_LEN;
-
-                        std::vector<ScriptArg> args = {
-                           ScriptArg("CellID", edit->Name),
-                           ScriptArg("Start", cell_content),
-                           ScriptArg("End", i)
-                        };
-
-                        for (auto &cell_arg : cell.Args) args.emplace_back("", cell_arg.second);
-
-                        scExec(script, function_name.c_str(), args.data(), args.size());
-                     }
-                  }
-
-                  break;
-               }
-            }
-         }
-      }
-
-      if (!edit->OnExit.empty()) {
-
-
-
-      }
-   }
-   else log.warning("Failed to find cell ID %d", Self->ActiveEditCellID);
-}
-
-//********************************************************************************************************************
-// Sends motion events for zones that the mouse pointer has departed.
-
-static void check_pointer_exit(extDocument *Self, LONG X, LONG Y)
-{
-   for (auto it = Self->MouseOverChain.begin(); it != Self->MouseOverChain.end(); ) {
-      if ((X < it->Left) or (Y < it->Top) or (X >= it->Right) or (Y >= it->Bottom)) {
-         // Pointer has left this zone
-
-         std::string function_name, argstring;
-         OBJECTPTR script;
-         if (!extract_script(Self, it->Function, &script, function_name, argstring)) {
-            const ScriptArg args[] = {
-               { "Element", it->ElementID },
-               { "Status",  0 },
-               { "Args",    argstring }
-            };
-
-            scExec(script, function_name.c_str(), args, ARRAYSIZE(args));
-         }
-
-         it = Self->MouseOverChain.erase(it);
-      }
-      else it++;
-   }
-}
-
-//********************************************************************************************************************
-
-static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
-{
-   pf::Log log(__FUNCTION__);
-
-   Self->ClickX = X;
-   Self->ClickY = Y;
-   Self->ClickSegment = Self->MouseOverSegment;
-
-   auto segment = Self->MouseOverSegment;
-
-   if (segment IS -1) {
-      // The mouse is not positioned over a segment.  Check if the mosue is positioned within
-      // an editing cell.  If it is, we need to find the segment nearest to the mouse pointer
-      // and position the cursor at the end of that segment.
-
-      unsigned i;
-      for (i=0; i < Self->EditCells.size(); i++) {
-         if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
-             (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-            break;
-         }
-      }
-
-      if (i < Self->EditCells.size()) {
-         // Mouse is within an editable segment.  Find the start and ending indexes of the editable area
-
-         INDEX cell_start = find_cell(Self, Self->EditCells[i].CellID);
-         INDEX cell_end  = cell_start;
-         while (cell_end < Self->Stream.size()) {
-            if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC::CELL_END) {
-               auto &end = escape_data<escCellEnd>(Self, cell_end);
-               if (end.CellID IS Self->EditCells[i].CellID) break;
-            }
-
-            cell_end += ESCAPE_LEN;
-         }
-
-         if (cell_end >= Self->Stream.size()) return; // No matching cell end - document stream is corrupt
-
-         log.warning("Analysing cell area %d - %d", cell_start, cell_end);
-
-         SEGINDEX last_segment = -1;
-         for (unsigned sortseg=0; sortseg < Self->SortSegments.size(); sortseg++) {
-            SEGINDEX seg = Self->SortSegments[sortseg].Segment;
-            if ((Self->Segments[seg].Start.Index >= cell_start) and (Self->Segments[seg].Stop.Index <= cell_end)) {
-               last_segment = seg;
-               // Segment found.  Break if the segment's vertical position is past the mouse pointer
-               if (Y < Self->Segments[seg].Y) break;
-               if ((Y >= Self->Segments[seg].Y) and (X < Self->Segments[seg].X)) break;
-            }
-         }
-
-         if (last_segment != -1) {
-            // Set the cursor to the end of the nearest segment
-            log.warning("Last seg: %d", last_segment);
-            Self->CursorCharX = Self->Segments[last_segment].X + Self->Segments[last_segment].Width;
-            Self->SelectCharX = Self->CursorCharX;
-
-            // A click results in the deselection of existing text
-
-            if (Self->CursorIndex.valid()) deselect_text(Self);
-
-            Self->CursorIndex = Self->Segments[last_segment].Stop;
-            Self->SelectIndex.reset(); //Self->Segments[last_segment].Stop;
-
-            activate_cell_edit(Self, cell_start, Self->CursorIndex);
-         }
-
-         return;
-      }
-      else log.warning("Mouse not within an editable cell.");
-   }
-
-   if (segment != -1) {
-      StreamChar sc;
-      if (!resolve_font_pos(Self, Self->Segments[segment], X, &Self->CursorCharX, sc)) {
-         if (Self->CursorIndex.valid()) deselect_text(Self); // A click results in the deselection of existing text
-
-         if (!Self->Segments[segment].Edit) deactivate_edit(Self, true);
-
-         // Set the new cursor information
-
-         Self->CursorIndex = sc;
-         Self->SelectIndex.reset(); //sc; // SelectIndex is for text selections where the user holds the LMB and drags the mouse
-         Self->SelectCharX = Self->CursorCharX;
-
-         log.msg("User clicked on point %.2fx%.2f in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex, Self->CursorCharX);
-
-         if (Self->Segments[segment].Edit) {
-            // If the segment is editable, we'll have to turn on edit mode so
-            // that the cursor flashes.  Work backwards to find the edit cell.
-
-            for (auto cellindex = Self->Segments[segment].Start; cellindex.valid(); cellindex.prevCode()) {
-               if (ESCAPE_CODE(Self->Stream, cellindex) IS ESC::CELL) {
-                  auto &cell = escape_data<escCell>(Self, cellindex);
-                  if (!cell.EditDef.empty()) {
-                     activate_cell_edit(Self, cellindex.Index, Self->CursorIndex);
-                     break;
-                  }
-               }
-            }
-         }
-      }
-   }
-   else if (Self->CursorIndex.valid()) {
-      deselect_text(Self);
-      deactivate_edit(Self, true);
-   }
-}
-
-//********************************************************************************************************************
-
-static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
-{
-   if ((std::abs(X - Self->ClickX) > 3) or (std::abs(Y - Self->ClickY) > 3)) {
-      pf::Log log(__FUNCTION__);
-      log.trace("User click cancelled due to mouse shift.");
-      return;
-   }
-
-   if (Self->LinkIndex != -1) exec_link(Self, Self->LinkIndex);
-}
-
-//********************************************************************************************************************
-
-static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
-{
-   Self->MouseOverSegment = -1;
-   Self->PointerX = X;
-   Self->PointerY = Y;
-
-   check_pointer_exit(Self, X, Y); // For function callbacks
-
-   if (Self->MouseOver) {
-      unsigned row;
-      for (row=0; (row < Self->SortSegments.size()) and (Y < Self->SortSegments[row].Y); row++);
-
-      for (; row < Self->SortSegments.size(); row++) {
-         if ((Y >= Self->SortSegments[row].Y) and (Y < Self->SortSegments[row].Y + Self->Segments[Self->SortSegments[row].Segment].Height)) {
-            if ((X >= Self->Segments[Self->SortSegments[row].Segment].X) and (X < Self->Segments[Self->SortSegments[row].Segment].X + Self->Segments[Self->SortSegments[row].Segment].Width)) {
-               Self->MouseOverSegment = Self->SortSegments[row].Segment;
-               break;
-            }
-         }
-      }
-   }
-
-   // If the user is holding the mouse button and moving it around, we need to highlight the selected text.
-
-   if ((Self->LMB) and (Self->CursorIndex.valid())) {
-      if (!Self->SelectIndex.valid()) Self->SelectIndex = Self->CursorIndex;
-
-      if (Self->MouseOverSegment != -1) {
-         LONG cursor_x;
-         StreamChar cursor_index;
-         if (!resolve_font_pos(Self, Self->Segments[Self->MouseOverSegment], X, &cursor_x, cursor_index)) {
-            if (auto edit = Self->ActiveEditDef) {
-               // For select-dragging, we must check that the selection is within the bounds of the editing area.
-
-               if (INDEX cell_index = find_cell(Self, Self->ActiveEditCellID); cell_index >= 0) {
-                  INDEX i = cell_index + ESCAPE_LEN;
-                  if (cursor_index.Index < i) {
-                     // If the cursor index precedes the start of the editing area, reset it
-
-                     cursor_index.set(i, 0);
-                     if (!resolve_fontx_by_index(Self, cursor_index, &cursor_x)) {
-                      
-                     }
-                  }
-                  else {
-                     // If the cursor index is past the end of the editing area, reset it
-
-                     while (i < INDEX(Self->Stream.size())) {
-                        if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL_END) {
-                           auto &cell_end = escape_data<escCellEnd>(Self, i);
-                           if (cell_end.CellID IS Self->ActiveEditCellID) {
-                              StreamChar sc(i, 0);
-                              if (auto seg = find_segment(Self, sc, false); seg > 0) {
-                                 seg--;
-                                 sc = Self->Segments[seg].Stop;
-                                 if (cursor_index > sc) {
-                                    if (!resolve_fontx_by_index(Self, sc, &cursor_x)) {
-                                       cursor_index = sc;
-                                    }
-                                 }
-                              }
-                              break;
-                           }
-                        }
-                        i += ESCAPE_LEN;
-                     }
-                  }
-
-                  Self->CursorIndex = cursor_index;
-                  Self->CursorCharX = cursor_x;
-               }
-               else deactivate_edit(Self, false);
-            }
-            else {
-               Self->CursorIndex = cursor_index;
-               Self->CursorCharX = cursor_x;
-            }
-
-            Self->Viewport->draw();
-         }
-      }
-   }
-
-   // Check if the user moved onto a link
-
-   if ((Self->MouseOver) and (!Self->LMB)) {
-      for (auto i = LONG(Self->Links.size())-1; i >= 0; i--) { // Search from front to back
-         if ((X >= Self->Links[i].X) and (Y >= Self->Links[i].Y) and
-             (X < Self->Links[i].X + Self->Links[i].Width) and
-             (Y < Self->Links[i].Y + Self->Links[i].Height)) {
-            // The mouse pointer is inside a link
-
-            if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF::BUFFER, PTC::HAND, 0, Self->UID);
-               Self->CursorSet = true;
-            }
-
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (!Self->Links[i].asLink()->PointerMotion.empty())) {
-               auto mo = Self->MouseOverChain.emplace(Self->MouseOverChain.begin(),
-                  Self->Links[i].asLink()->PointerMotion,
-                  Self->Links[i].Y,
-                  Self->Links[i].X,
-                  Self->Links[i].Y + Self->Links[i].Height,
-                  Self->Links[i].X + Self->Links[i].Width,
-                  Self->Links[i].asLink()->ID);
-
-               OBJECTPTR script;
-               std::string argstring, func_name;
-               if (!extract_script(Self, Self->Links[i].asLink()->PointerMotion, &script, func_name, argstring)) {
-                  const ScriptArg args[] = { { "Element", mo->ElementID }, { "Status", 1 }, { "Args", argstring } };
-                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
-               }
-            }
-
-            Self->LinkIndex = i;
-            return;
-         }
-      }
-   }
-
-   // The mouse pointer is not inside a link
-
-   if (Self->LinkIndex != -1) Self->LinkIndex = -1;
-
-   // Check if the user moved onto text content
-
-   if (Self->MouseOverSegment != -1) {
-      if ((Self->Segments[Self->MouseOverSegment].TextContent) or (Self->Segments[Self->MouseOverSegment].Edit)) {
-         gfxSetCursor(0, CRF::BUFFER, PTC::TEXT, 0, Self->UID);
-         Self->CursorSet = true;
-      }
-      return;
-   }
-
-   for (unsigned i=0; i < Self->EditCells.size(); i++) {
-      if ((X >= Self->EditCells[i].X) and (X < Self->EditCells[i].X + Self->EditCells[i].Width) and
-          (Y >= Self->EditCells[i].Y) and (Y < Self->EditCells[i].Y + Self->EditCells[i].Height)) {
-         gfxSetCursor(0, CRF::BUFFER, PTC::TEXT, 0, Self->UID);
-         Self->CursorSet = true;
-         return;
-      }
-   }
-
-   // Reset the cursor to the default
-
-   if (Self->CursorSet) {
-      Self->CursorSet = false;
-      gfxRestoreCursor(PTC::DEFAULT, Self->UID);
-   }
-}
-
-//********************************************************************************************************************
 // Find the nearest font style that will represent Char
 
-static escFont * find_style(extDocument *Self, const std::string &Stream, StreamChar &Char)
+static escFont * find_style(extDocument *Self, const RSTREAM &Stream, StreamChar &Char)
 {
    escFont *style = NULL;
 
-   for (INDEX fi = Char.Index; fi < Char.Index; fi += ESCAPE_LEN) {
+   for (INDEX fi = Char.Index; fi < Char.Index; fi++) {
       if (ESCAPE_CODE(Stream, fi) IS ESC::FONT) style = &escape_data<escFont>(Self, fi);
       else if (ESCAPE_CODE(Stream, fi) IS ESC::TEXT) break;
    }
@@ -3191,7 +2275,7 @@ static escFont * find_style(extDocument *Self, const std::string &Stream, Stream
    // Didn't work?  Try going backwards
 
    if (!style) {
-      for (INDEX fi = Char.Index; fi >= 0; fi -= ESCAPE_LEN) {
+      for (INDEX fi = Char.Index; fi >= 0; fi--) {
          if (ESCAPE_CODE(Stream, fi) IS ESC::FONT) {
             style = &escape_data<escFont>(Self, fi);
             break;
@@ -3213,7 +2297,7 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
    auto font = lookup_font(style ? style->Index : 0, "check_mouse_click");
    if (!font) return ERR_Search;
 
-   for (INDEX i = Segment.Start.Index; i < Segment.Stop.Index; i += ESCAPE_LEN) {
+   for (INDEX i = Segment.Start.Index; i < Segment.Stop.Index; i++) {
       if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
          auto &str = escape_data<escText>(Self, i).Text;
          LONG offset;
@@ -3233,32 +2317,31 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
 // Using only a stream index, this function will determine the X coordinate of the character at that index.  This is
 // slower than resolve_font_pos(), because the segment has to be resolved by this function.
 
-static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Index, LONG *CharX)
+static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *CharX)
 {
    pf::Log log("resolve_fontx");
 
-   log.branch("Index: %d", Index);
+   log.branch("Index: %d", Char.Index);
 
-   escFont *style = find_style(Self, Self->Stream, Index);   
+   escFont *style = find_style(Self, Self->Stream, Char);   
    auto font = lookup_font(style ? style->Index : 0, "check_mouse_click");
    if (!font) return log.warning(ERR_Search);
 
    // Find the segment linked to this character.  This is so that we can derive an X coordinate for the character
    // string.
 
-   if (SEGINDEX segment = find_segment(Self, Index, true); segment >= 0) {
+   if (SEGINDEX segment = find_segment(Self, Char, true); segment >= 0) {
       auto i = Self->Segments[segment].Start;
-      while ((i <= Self->Segments[segment].Stop) and (i < Index)) {
+      while ((i <= Self->Segments[segment].Stop) and (i < Char)) {
          if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
             *CharX = fntStringWidth(font, escape_data<escText>(Self, i).Text.c_str(), -1);
             return ERR_Okay;
          }
-         i.Index += ESCAPE_LEN;
-         i.Offset = 0;
+         i.nextCode();
       }
    }
 
-   log.warning("Failed to find a segment for index %d.", Index);
+   log.warning("Failed to find a segment for index %d.", Char.Index);
    return ERR_Search;
 }
 
@@ -3270,7 +2353,7 @@ static SEGINDEX find_segment(extDocument *Self, StreamChar Char, bool InclusiveS
    if (InclusiveStop) {
       for (SEGINDEX segment=0; segment < SEGINDEX(Self->Segments.size()); segment++) {
          if ((Char >= Self->Segments[segment].Start) and (Char <= Self->Segments[segment].Stop)) {
-            if ((Char IS Self->Segments[segment].Stop) and (Char.getChar(Self, Self->Stream, -1) IS '\n'));
+            if ((Char IS Self->Segments[segment].Stop) and (Char.getPrevChar(Self, Self->Stream) IS '\n'));
             else return segment;
          }
       }
@@ -3284,277 +2367,6 @@ static SEGINDEX find_segment(extDocument *Self, StreamChar Char, bool InclusiveS
    }
 
    return -1;
-}
-
-//********************************************************************************************************************
-// The text will be deselected, but the cursor and editing area will remain active.
-
-static void deselect_text(extDocument *Self)
-{
-   if (Self->CursorIndex IS Self->SelectIndex) return; // Nothing to deselect
-   Self->SelectIndex.reset();
-   Self->Viewport->draw();
-}
-
-//********************************************************************************************************************
-
-static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
-{
-   for (unsigned i=0; i < Self->Tabs.size(); i++) {
-      if ((Self->Tabs[i].Type IS Type) and (Reference IS Self->Tabs[i].Ref)) return i;
-   }
-   return -1;
-}
-
-//********************************************************************************************************************
-// This function is used in tags.c by the link and object insertion code.
-
-static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
-{
-   pf::Log log(__FUNCTION__);
-
-   //log.function("Type: %d, Ref: %d", Type, Reference);
-
-   if (Type IS TT_LINK) { // For TT_LINK types, check that the link isn't already registered
-      for (unsigned i=0; i < Self->Tabs.size(); i++) {
-         if ((Self->Tabs[i].Type IS TT_LINK) and (Self->Tabs[i].Ref IS Reference)) {
-            return i;
-         }
-      }
-   }
-
-   auto index = Self->Tabs.size();
-   Self->Tabs.emplace_back(Type, Reference, Type, Self->Invisible ^ 1);
-
-   if (Type IS TT_OBJECT) {
-      // Find out if the object has a surface and if so, place it in the XRef field.
-
-      if (GetClassID(Reference) != ID_SURFACE) {
-         OBJECTPTR object;
-         if (!AccessObject(Reference, 3000, &object)) {
-            OBJECTID regionid = 0;
-            if (FindField(object, FID_Region, NULL)) {
-               if (!object->get(FID_Region, &regionid)) {
-                  if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
-               }
-            }
-
-            if (!regionid) {
-               if (FindField(object, FID_Surface, NULL)) {
-                  if (!object->get(FID_Surface, &regionid)) {
-                     if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
-                  }
-               }
-            }
-
-            Self->Tabs.back().XRef = regionid;
-
-            ReleaseObject(object);
-         }
-      }
-      else Self->Tabs.back().XRef = Reference;
-   }
-
-   return index;
-}
-
-//********************************************************************************************************************
-// Changes the focus to an object or link in the document.  The new index is stored in the FocusIndex field.  If the
-// Index is set to -1, set_focus() will focus on the first element, but only if it is an object.
-
-static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Self->Tabs.empty()) return;
-
-   if ((Index < -1) or (unsigned(Index) >= Self->Tabs.size())) {
-      log.traceWarning("Index %d out of bounds.", Index);
-      return;
-   }
-
-   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, LONG(Self->Tabs.size()), Index != -1 ? Self->Tabs[Index].Type : -1, Index != -1 ? Self->Tabs[Index].Ref : -1, Self->HasFocus, Caller);
-
-   if (Self->ActiveEditDef) deactivate_edit(Self, true);
-
-   if (Index IS -1) {
-      Index = 0;
-      Self->FocusIndex = 0;
-      if (Self->Tabs[0].Type IS TT_LINK) {
-         log.msg("First focusable element is a link - focus unchanged.");
-         return;
-      }
-   }
-
-   if (!Self->Tabs[Index].Active) {
-      log.warning("Tab marker %d is not active.", Index);
-      return;
-   }
-
-   Self->FocusIndex = Index;
-
-   if (Self->Tabs[Index].Type IS TT_EDIT) {
-      acFocus(Self->Page);
-
-      if (auto cell_index = find_cell(Self, Self->Tabs[Self->FocusIndex].Ref); cell_index >= 0) {
-         activate_cell_edit(Self, cell_index, StreamChar());
-      }
-   }
-   else if (Self->Tabs[Index].Type IS TT_OBJECT) {
-      if (Self->HasFocus) {
-         CLASSID class_id = GetClassID(Self->Tabs[Index].Ref);
-         OBJECTPTR input;
-         if (class_id IS ID_VECTORTEXT) {
-            if (!AccessObject(Self->Tabs[Index].Ref, 1000, &input)) {
-               acFocus(input);
-               //if ((input->getPtr(FID_UserInput, &text) IS ERR_Okay) and (text)) {
-               //   txtSelectArea(text, 0,0, 200000, 200000);
-               //}
-               ReleaseObject(input);
-            }
-         }
-         else if (acFocus(Self->Tabs[Index].Ref) != ERR_Okay) {
-            acFocus(Self->Tabs[Index].XRef);
-            // Causes an InheritedFocus callback in ActionNotify
-         }
-      }
-   }
-   else if (Self->Tabs[Index].Type IS TT_LINK) {
-      if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
-         for (unsigned i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].asLink()->ID IS Self->Tabs[Index].Ref)) {
-               auto link_x = Self->Links[i].X;
-               auto link_y = Self->Links[i].Y;
-               auto link_bottom = link_y + Self->Links[i].Height;
-               auto link_right  = link_x + Self->Links[i].Width;
-
-               for (++i; i < Self->Links.size(); i++) {
-                  if (Self->Links[i].asLink()->ID IS Self->Tabs[Index].Ref) {
-                     if (Self->Links[i].Y + Self->Links[i].Height > link_bottom) link_bottom = Self->Links[i].Y + Self->Links[i].Height;
-                     if (Self->Links[i].X + Self->Links[i].Width > link_right) link_right = Self->Links[i].X + Self->Links[i].Width;
-                  }
-               }
-
-               view_area(Self, link_x, link_y, link_right, link_bottom);
-               break;
-            }
-         }
-
-         Self->Viewport->draw();
-         acFocus(Self->Page);
-      }
-   }
-}
-
-//********************************************************************************************************************
-// Scrolls any given area of the document into view.
-
-static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG Bottom)
-{
-   pf::Log log(__FUNCTION__);
-
-   LONG hgap = Self->AreaWidth * 0.1;
-   LONG vgap = Self->AreaHeight * 0.1;
-   LONG view_x = -Self->XPosition;
-   LONG view_y = -Self->YPosition;
-   LONG view_height = Self->AreaHeight;
-   LONG view_width  = Self->AreaWidth;
-
-   log.trace("View: %dx%d,%dx%d Link: %dx%d,%dx%d", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
-
-   // Vertical
-
-   if (Self->PageHeight > Self->AreaHeight) {
-      if (Top < view_y + vgap) {
-         view_y = Top - vgap;
-         if (view_y < view_height>>2) view_y = 0;
-
-         if ((Bottom < view_height - vgap) and (-Self->YPosition > view_height)) {
-            view_y = 0;
-         }
-      }
-      else if (Bottom > view_y + view_height - vgap) {
-         view_y = Bottom + vgap - view_height;
-         if (view_y > Self->PageHeight - view_height - (view_height>>2)) view_y = Self->PageHeight - view_height;
-      }
-   }
-   else view_y = 0;
-
-   // Horizontal
-
-   if (Self->CalcWidth > Self->AreaWidth) {
-      if (Left < view_x + hgap) {
-         view_x = Left - hgap;
-         if (view_x < 0) view_x = 0;
-      }
-      else if (Right > view_x + view_width - hgap) {
-         view_x = Right + hgap - view_width;
-         if (view_x > Self->CalcWidth - view_width) view_x = Self->CalcWidth - view_width;
-      }
-   }
-   else view_x = 0;
-
-   if ((-view_x != Self->XPosition) or (-view_y != Self->YPosition)) {
-      acScrollToPoint(Self, view_x, view_y, 0, STP::X|STP::Y);
-      return true;
-   }
-   else return false;
-}
-
-//********************************************************************************************************************
-
-static void advance_tabfocus(extDocument *Self, BYTE Direction)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Self->Tabs.empty()) return;
-
-   // Check that the FocusIndex is accurate (it may have changed if the user clicked on a gadget).
-
-   OBJECTID currentfocus = gfxGetUserFocus();
-   for (unsigned i=0; i < Self->Tabs.size(); i++) {
-      if (Self->Tabs[i].XRef IS currentfocus) {
-         Self->FocusIndex = i;
-         break;
-      }
-   }
-
-   log.function("Direction: %d, Current Index: %d", Direction, Self->FocusIndex);
-
-   if (Self->FocusIndex < 0) {
-      // FocusIndex may be -1 to indicate nothing is selected, so we'll have to start from the first focusable index in that case.
-
-      if (Direction IS -1) Self->FocusIndex = 1; // Future --
-      else Self->FocusIndex = -1; // Future ++
-   }
-
-   // Advance the focus index.  Operates as a loop so that disabled surfaces can be skipped.
-
-   auto i = signed(Self->Tabs.size()); // This while loop is designed to stop if no tab indexes are found to be active
-   while (i > 0) {
-      i--;
-
-      if (Direction IS -1) {
-         Self->FocusIndex--;
-         if (Self->FocusIndex < 0) Self->FocusIndex = Self->Tabs.size() - 1;
-      }
-      else {
-         Self->FocusIndex++;
-         if (Self->FocusIndex >= LONG(Self->Tabs.size())) Self->FocusIndex = 0;
-      }
-
-      if (!Self->Tabs[Self->FocusIndex].Active) continue;
-
-      if ((Self->Tabs[Self->FocusIndex].Type IS TT_OBJECT) and (Self->Tabs[Self->FocusIndex].XRef)) {
-         SURFACEINFO *info;
-         if (!gfxGetSurfaceInfo(Self->Tabs[Self->FocusIndex].XRef, &info)) {
-            if ((info->Flags & RNF::DISABLED) != RNF::NIL) continue;
-         }
-      }
-      break;
-   }
-
-   if (i >= 0) set_focus(Self, Self->FocusIndex, "adv_tabfocus");
 }
 
 //********************************************************************************************************************
@@ -3646,18 +2458,6 @@ static void process_parameters(extDocument *Self, const std::string &String)
    }
 
    log.msg("Reset page name to '%s', bookmark '%s'", Self->PageName.c_str(), Self->Bookmark.c_str());
-}
-
-//********************************************************************************************************************
-// Obsoletion of the old scrollbar code means that we should be adjusting page size only and let the scrollbars
-// automatically adjust in the background.
-
-static void calc_scroll(extDocument *Self) __attribute__((unused));
-static void calc_scroll(extDocument *Self)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
 }
 
 //********************************************************************************************************************
@@ -3881,32 +2681,6 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
       Self->scrollToPoint(0, esc_index.Y - 4, 0, STP::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());
-}
-
-//********************************************************************************************************************
-
-static ERROR flash_cursor(extDocument *Self, LARGE TimeElapsed, LARGE CurrentTime)
-{
-   Self->CursorState ^= 1;
-
-   Self->Viewport->draw();
-   return ERR_Okay;
-}
-
-//********************************************************************************************************************
-
-static void reset_cursor(extDocument *Self)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.function("");
-
-   Self->CursorState = 1;
-   if (Self->FlashTimer) UpdateTimer(Self->FlashTimer, 0.5);
-   else {
-      auto call = make_function_stdc(flash_cursor);
-      SubscribeTimer(0.5, &call, &Self->FlashTimer);
-   }
 }
 
 //********************************************************************************************************************

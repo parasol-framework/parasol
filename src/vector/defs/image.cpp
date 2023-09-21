@@ -12,6 +12,8 @@ name through the @Vector.Fill and @Vector.Stroke fields.  For instance 'url(#log
 
 It is strongly recommended that the VectorImage is owned by the @VectorScene that is handling the
 definition.  This will ensure that the VectorImage is de-allocated when the scene is destroyed.
+
+NOTE: For the rendering of vectors as flattened images, use @VectorPattern.
 -END-
 
 *********************************************************************************************************************/

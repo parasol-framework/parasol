@@ -444,7 +444,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
       Self->Path = newpath;
 
       recursion++;
-      unload_doc(Self, (!reload) ? ULD_REFRESH : 0);
+      unload_doc(Self, (!reload) ? ULD::REFRESH : ULD::NIL);
 
       if (Self->initialised()) {
          if ((Self->XML) and (!reload)) {
@@ -452,7 +452,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
             process_page(Self, Self->XML);
          }
          else {
-            load_doc(Self, Self->Path, false, 0);
+            load_doc(Self, Self->Path, false, ULD::NIL);
             Self->Viewport->draw();
          }
       }
@@ -640,26 +640,6 @@ prior to initialisation of a document object, however the loaded content may dec
 value during processing.
 
 This value can be set as a fixed pixel coordinate only.
-
--FIELD-
-UpdateLayout: When TRUE, forces the layout to update on the next redraw.
-
-To force the document layout to be updated on the next redraw, set this field to TRUE. Redrawing can then be achieved
-by calling the #Draw() action on the document.
-
-Forcing the document to recompute its layout is rarely necessary as this is automatically managed when inserting and
-removing content.  However, an action such as adjusting the size of graphical objects from a script would require this
-field to be manually set.
-
-*********************************************************************************************************************/
-
-static ERROR SET_UpdateLayout(extDocument *Self, LONG Value)
-{
-   if (Value) Self->UpdateLayout = true;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 VLinkFill: Default font fill for visited hyperlinks.

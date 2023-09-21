@@ -7,7 +7,7 @@
     <type>class</type>
     <module>Document</module>
     <comment>Provides document display and editing facilities.</comment>
-    <fileExtension>*.rpl|*.ripple|*.rple</fileExtension>
+    <fileExtension>*.rpl|*.ripple|*.ripl</fileExtension>
     <version>1</version>
     <id>155c3464</id>
     <idstring>ID_DOCUMENT</idstring>
@@ -217,10 +217,11 @@
     <method>
       <name>InsertText</name>
       <comment>Inserts new content into a loaded document (raw text format).</comment>
-      <prototype>ERROR docInsertText(OBJECTPTR Object, CSTRING Text, LONG Index, LONG Preformat)</prototype>
+      <prototype>ERROR docInsertText(OBJECTPTR Object, CSTRING Text, LONG Index, LONG Char, LONG Preformat)</prototype>
       <input>
         <param type="CSTRING" name="Text">A UTF-8 text string.</param>
-        <param type="LONG" name="Index">The byte position at which to insert the new content.  If -1, the text will be inserted at the end of the document stream.</param>
+        <param type="LONG" name="Index">Reference to a TEXT control code that will receive the content.  If -1, the text will be inserted at the end of the document stream.</param>
+        <param type="LONG" name="Char">A character offset within the TEXT control code that will be injected with content.  If -1, the text will be injected at the end of the target string.</param>
         <param type="LONG" name="Preformat">If TRUE, the text will be treated as pre-formatted (all whitespace, including consecutive whitespace will be recognised).</param>
       </input>
       <description>
@@ -264,7 +265,7 @@
         <param type="STRING *" name="Result">The data is returned in this parameter as an allocated string.</param>
       </input>
       <description>
-<p>The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data in its original RIPPLE based format or translate the content into plain-text (control codes are removed).</p>
+<p>The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as a RIPPLE binary stream, or translate the content into plain-text (control codes are removed).</p>
 <p>If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point, this will remain the case in the resulting data.</p>
       </description>
       <result>
@@ -674,17 +675,6 @@
       <description>
 <p>The TopMargin value determines the amount of white-space at the top of the page.  The default margin can be altered prior to initialisation of a document object, however the loaded content may declare its own margins and overwrite this value during processing.</p>
 <p>This value can be set as a fixed pixel coordinate only.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>UpdateLayout</name>
-      <comment>When TRUE, forces the layout to update on the next redraw.</comment>
-      <access write="S">Set</access>
-      <type>INT</type>
-      <description>
-<p>To force the document layout to be updated on the next redraw, set this field to TRUE. Redrawing can then be achieved by calling the <action>Draw</action> action on the document.</p>
-<p>Forcing the document to recompute its layout is rarely necessary as this is automatically managed when inserting and removing content.  However, an action such as adjusting the size of graphical objects from a script would require this field to be manually set.</p>
       </description>
     </field>
 
