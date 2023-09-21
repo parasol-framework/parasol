@@ -153,12 +153,16 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
    }
 }
 
+//********************************************************************************************************************
+
 static void notify_free_resize_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
    if (auto scene = (extVectorScene *)Self->Scene) {
-      auto it = scene->ResizeSubscriptions.find(Self->ParentView);
-      if (it != scene->ResizeSubscriptions.end()) it->second.erase(Self);
+      if (!scene->collecting()) {
+         auto it = scene->ResizeSubscriptions.find(Self->ParentView);
+         if (it != scene->ResizeSubscriptions.end()) it->second.erase(Self);
+      }
    }
 }
 
@@ -890,7 +894,7 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
       }
 
       if (Self->InputSubscriptions->empty()) {
-         if ((Self->Scene) and (!(Self->Scene->collecting()))) {
+         if ((Self->Scene) and (!Self->Scene->collecting())) {
             ((extVectorScene *)Self->Scene)->InputSubscriptions.erase(Self);
          }
       }
@@ -1856,6 +1860,7 @@ static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
       if ((Self->Scene) and (Self->ParentView)) {
          auto scene = (extVectorScene *)Self->Scene; 
          scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
+
          auto callback = make_function_stdc(notify_free_resize_event);
          SubscribeAction(Value->StdC.Context, AC_Free, &callback);
       }
