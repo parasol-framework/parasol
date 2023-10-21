@@ -221,12 +221,12 @@ SET_FUNCTION_SCRIPT(callback, script, procedure_id);
 
     <field>
       <name>Path</name>
-      <comment>The location of the file that is to be processed as a script.</comment>
+      <comment>The location of a script file to be loaded.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>Script files can be loaded by a script object by setting the Path field to the path of the source file.  The source must be provided prior to the initialisation process or the script object will fail (as an alternative, the <field>Statement</field> field can also be set).</p>
-<p>Special parameters can also be passed to the script when setting the location.  The name of an executable procedure may be passed by following the location with a semicolon, then the name of the procedure to execute.  Arguments can also be passed to the script by following this with a second semicolon, then a sequence of arguments, each separated with a comma.  The following string illustrates the format used:</p>
+<p>A script file can be loaded by setting the Path to its location.  The path must be defined prior to the initialisation process, or alternatively the client can define the <field>Statement</field> field.</p>
+<p>Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first, surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following string illustrates the format used:</p>
 <pre>dir:location;procedure;arg1=val1,arg2,arg3=val2</pre>
 <p>A target for the script may be specified by using the 'target' argument in the parameter list (value must refer to a valid existing object).</p>
       </description>

@@ -9,7 +9,7 @@ static bool delete_selected(extDocument *Self)
       if (start > end) std::swap(start, end);
 
       if (start.Offset > 0) {
-         if (ESCAPE_CODE(Self->Stream, start) IS ESC::TEXT) {
+         if (Self->Stream[start.Index].Code IS ESC::TEXT) {
             auto &text = escape_data<escText>(Self, start);
             if (start.Index IS end.Index) text.Text.erase(start.Offset, end.Offset - start.Offset);
             else text.Text.erase(start.Offset, text.Text.size() - start.Offset);
@@ -22,7 +22,7 @@ static bool delete_selected(extDocument *Self)
          Self->Stream.erase(Self->Stream.begin() + start.Index, Self->Stream.begin() + (end.Index - start.Index));
          end.Index -= (end.Index - start.Index);
 
-         if ((end.Offset > 0) and (ESCAPE_CODE(Self->Stream, end.Index) IS ESC::TEXT)) {
+         if ((end.Offset > 0) and (Self->Stream[end.Index].Code IS ESC::TEXT)) {
             auto &text = escape_data<escText>(Self, end);            
             text.Text.erase(0, end.Offset);
          }
@@ -96,7 +96,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
          case KEY::LEFT: {
             Self->SelectIndex.reset();
-            if (ESCAPE_CODE(Self->Stream, Self->CursorIndex.Index) IS ESC::CELL) {
+            if (Self->Stream[Self->CursorIndex.Index].Code IS ESC::CELL) {
                // Cursor cannot be moved any further left.  The cursor index should never end up here, but
                // better to be safe than sorry.
 
@@ -105,7 +105,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                for (auto index = Self->CursorIndex; index.Index > 0; ) {
                   index.prevChar(Self, Self->Stream);
 
-                  auto code = ESCAPE_CODE(Self->Stream, index);
+                  auto code = Self->Stream[index.Index].Code;
                   if (code IS ESC::CELL) {
                      auto &cell = escape_data<escCell>(Self, index);
                      if (cell.CellID IS Self->ActiveEditCellID) break;
@@ -129,7 +129,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
             auto index = Self->CursorIndex;
             while (index.valid(Self->Stream)) {
-               auto code = ESCAPE_CODE(Self->Stream, index);
+               auto code = Self->Stream[index.Index].Code;
                if (code IS ESC::CELL_END) {
                   auto &cell_end = escape_data<escCellEnd>(Self, index);
                   if (cell_end.CellID IS Self->ActiveEditCellID) {
@@ -171,14 +171,14 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
             break;
 
          case KEY::BACKSPACE: {
-            if (ESCAPE_CODE(Self->Stream, Self->CursorIndex) IS ESC::CELL) {
+            if (Self->Stream[Self->CursorIndex.Index].Code IS ESC::CELL) {
                // Cursor cannot be moved any further left
             }
             else {
                auto index = Self->CursorIndex;
                index.prevChar(Self, Self->Stream);
 
-               if (ESCAPE_CODE(Self->Stream, index) IS ESC::CELL);
+               if (Self->Stream[index.Index].Code IS ESC::CELL);
                else {
                   if (!delete_selected(Self)) {
                      // Delete the character/escape code
@@ -196,7 +196,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
          }
 
          case KEY::DELETE: {
-            if (ESCAPE_CODE(Self->Stream, Self->CursorIndex) IS ESC::CELL_END) {
+            if (Self->Stream[Self->CursorIndex.Index].Code IS ESC::CELL_END) {
                // Not allowed to delete the end point
             }
             else {
@@ -231,7 +231,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
             if ((Self->Tabs[tab].Type IS TT_LINK) and (Self->Tabs[tab].Active)) {
                for (auto &link : Self->Links) {
-                  if ((link.EscapeCode IS ESC::LINK) and (link.asLink()->ID IS Self->Tabs[tab].Ref)) {
+                  if ((link.BaseCode IS ESC::LINK) and (link.asLink()->ID IS Self->Tabs[tab].Ref)) {
                      link.exec(Self);
                      break;
                   }
@@ -375,7 +375,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
 
    log.branch("Cell Index: %d, Cursor Index: %d", CellIndex, CursorIndex.Index);
 
-   if (ESCAPE_CODE(stream, CellIndex) != ESC::CELL) { // Sanity check
+   if (stream[CellIndex].Code != ESC::CELL) { // Sanity check
       return log.warning(ERR_Failed);
    }
 
@@ -384,7 +384,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
       CursorIndex.set(CellIndex + 1, 0);
    }
 
-   if (ESCAPE_CODE(stream, CursorIndex.Index) != ESC::TEXT) {
+   if (stream[CursorIndex.Index].Code != ESC::TEXT) {
       // Skip ahead to the first relevant control code - it's always best to place the cursor ahead of things like
       // font styles, paragraph formatting etc.
 
@@ -393,7 +393,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
          std::array<ESC, 6> content = {
             ESC::CELL_END, ESC::TABLE_START, ESC::VECTOR, ESC::LINK_END, ESC::PARAGRAPH_END, ESC::TEXT
          };
-         if (std::find(std::begin(content), std::end(content), ESCAPE_CODE(stream, CursorIndex)) != std::end(content)) break;
+         if (std::find(std::begin(content), std::end(content), stream[CursorIndex.Index].Code) != std::end(content)) break;
          CursorIndex.nextCode();
       }
    }
@@ -406,7 +406,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
    auto &edit = it->second;
    if (!edit.OnChange.empty()) { // Calculate a CRC for the cell content
       for (INDEX i = CellIndex; i < INDEX(Self->Stream.size()); i++) {
-         if (ESCAPE_CODE(stream, i) IS ESC::CELL_END) {
+         if (stream[i].Code IS ESC::CELL_END) {
             auto &end = escape_data<escCellEnd>(Self, i);
             if (end.CellID IS cell.CellID) {
                Self->ActiveEditCRC = GenCRC32(0, stream.data() + CellIndex, i - CellIndex);
@@ -489,7 +489,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
          // CRC comparison - has the cell content changed?
 
          for (INDEX i = cell_index; i < INDEX(Self->Stream.size()); i++) {
-            if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL_END) {
+            if (Self->Stream[i].Code IS ESC::CELL_END) {
                auto &end = escape_data<escCellEnd>(Self, i);
                if (end.CellID IS cell.CellID) {
                   auto crc = GenCRC32(0, Self->Stream.data() + cell_index, i - cell_index);
@@ -587,7 +587,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          INDEX cell_start = find_cell(Self, Self->EditCells[i].CellID);
          INDEX cell_end  = cell_start;
          while (cell_end < INDEX(Self->Stream.size())) {
-            if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC::CELL_END) {
+            if (Self->Stream[cell_end].Code IS ESC::CELL_END) {
                auto &end = escape_data<escCellEnd>(Self, cell_end);
                if (end.CellID IS Self->EditCells[i].CellID) break;
             }
@@ -605,15 +605,15 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
             if ((Self->Segments[seg].Start.Index >= cell_start) and (Self->Segments[seg].Stop.Index <= cell_end)) {
                last_segment = seg;
                // Segment found.  Break if the segment's vertical position is past the mouse pointer
-               if (Y < Self->Segments[seg].Y) break;
-               if ((Y >= Self->Segments[seg].Y) and (X < Self->Segments[seg].X)) break;
+               if (Y < Self->Segments[seg].Area.Y) break;
+               if ((Y >= Self->Segments[seg].Area.Y) and (X < Self->Segments[seg].Area.X)) break;
             }
          }
 
          if (last_segment != -1) {
             // Set the cursor to the end of the nearest segment
             log.warning("Last seg: %d", last_segment);
-            Self->CursorCharX = Self->Segments[last_segment].X + Self->Segments[last_segment].Width;
+            Self->CursorCharX = Self->Segments[last_segment].Area.X + Self->Segments[last_segment].Area.Width;
             Self->SelectCharX = Self->CursorCharX;
 
             // A click results in the deselection of existing text
@@ -651,7 +651,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
             // that the cursor flashes.  Work backwards to find the edit cell.
 
             for (auto cellindex = Self->Segments[segment].Start; cellindex.valid(); cellindex.prevCode()) {
-               if (ESCAPE_CODE(Self->Stream, cellindex) IS ESC::CELL) {
+               if (Self->Stream[cellindex.Index].Code IS ESC::CELL) {
                   auto &cell = escape_data<escCell>(Self, cellindex);
                   if (!cell.EditDef.empty()) {
                      activate_cell_edit(Self, cellindex.Index, Self->CursorIndex);
@@ -696,8 +696,8 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
       for (row=0; (row < Self->SortSegments.size()) and (Y < Self->SortSegments[row].Y); row++);
 
       for (; row < Self->SortSegments.size(); row++) {
-         if ((Y >= Self->SortSegments[row].Y) and (Y < Self->SortSegments[row].Y + Self->Segments[Self->SortSegments[row].Segment].Height)) {
-            if ((X >= Self->Segments[Self->SortSegments[row].Segment].X) and (X < Self->Segments[Self->SortSegments[row].Segment].X + Self->Segments[Self->SortSegments[row].Segment].Width)) {
+         if ((Y >= Self->SortSegments[row].Y) and (Y < Self->SortSegments[row].Y + Self->Segments[Self->SortSegments[row].Segment].Area.Height)) {
+            if ((X >= Self->Segments[Self->SortSegments[row].Segment].Area.X) and (X < Self->Segments[Self->SortSegments[row].Segment].Area.X + Self->Segments[Self->SortSegments[row].Segment].Area.Width)) {
                Self->MouseOverSegment = Self->SortSegments[row].Segment;
                break;
             }
@@ -731,7 +731,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                      // If the cursor index is past the end of the editing area, reset it
 
                      while (i < INDEX(Self->Stream.size())) {
-                        if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL_END) {
+                        if (Self->Stream[i].Code IS ESC::CELL_END) {
                            auto &cell_end = escape_data<escCellEnd>(Self, i);
                            if (cell_end.CellID IS Self->ActiveEditCellID) {
                               StreamChar sc(i, 0);
@@ -780,7 +780,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                Self->CursorSet = true;
             }
 
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (!Self->Links[i].asLink()->PointerMotion.empty())) {
+            if ((Self->Links[i].BaseCode IS ESC::LINK) and (!Self->Links[i].asLink()->PointerMotion.empty())) {
                auto mo = Self->MouseOverChain.emplace(Self->MouseOverChain.begin(),
                   Self->Links[i].asLink()->PointerMotion,
                   Self->Links[i].Y,
@@ -968,7 +968,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    else if (Self->Tabs[Index].Type IS TT_LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          for (unsigned i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].EscapeCode IS ESC::LINK) and (Self->Links[i].asLink()->ID IS Self->Tabs[Index].Ref)) {
+            if ((Self->Links[i].BaseCode IS ESC::LINK) and (Self->Links[i].asLink()->ID IS Self->Tabs[Index].Ref)) {
                auto link_x = Self->Links[i].X;
                auto link_y = Self->Links[i].Y;
                auto link_bottom = link_y + Self->Links[i].Height;

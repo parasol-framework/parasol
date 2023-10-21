@@ -9,14 +9,14 @@ enum class TE : char {
 // State machine for the layout proces
 
 struct layout {
-   std::stack<escList *> stack_list;
-   std::stack<escRow *> stack_row;
+   std::stack<escList *>      stack_list;
+   std::stack<escRow *>       stack_row;
    std::stack<escParagraph *> stack_para;
 
-   std::vector<DocLink> m_links;
-   std::vector<DocClip> m_clips;
+   std::vector<DocLink>    m_links;
+   std::vector<DocClip>    m_clips;
    std::vector<DocSegment> m_segments;
-   std::vector<EditCell> m_ecells;
+   std::vector<EditCell>   m_ecells;
 
    extDocument *Self;
    objFont *m_font;
@@ -49,10 +49,10 @@ struct layout {
    } m_line;
 
    struct {
-      LONG x;
+      LONG  x;
       INDEX index;
       ALIGN align;
-      bool open;
+      bool  open;
    } m_link;
 
    // Resets the string management variables, usually done when a string
@@ -69,7 +69,7 @@ struct layout {
 
    void reset_segment() { reset_segment(idx, m_cursor_x); }
    
-   // Add a single escape code as a draw segment.  This will not include support for text glyphs, so no supplementary
+   // Add a single stream code as a draw segment.  This will not include support for text glyphs, so no supplementary
    // information such as X/Y coordinates is defined.
    
    void add_esc_segment() {
@@ -83,7 +83,7 @@ struct layout {
    // calls add_esc_segment().
 
    bool breakable_word() {
-      switch (ESCAPE_CODE(Self->Stream, idx)) {
+      switch (Self->Stream[idx].Code) {
          case ESC::ADVANCE:
          case ESC::TABLE_START:
          case ESC::IMAGE:
@@ -107,10 +107,21 @@ struct layout {
       }
       return false;
    }
+   
+   // If the current font is larger or equal to the current line height, extend the line height.
+   // Note that we use >= because we want to correct the base line in case there is a vector already set on the
+   // line that matches the font's line spacing.
+
+   void check_line_height() {
+      if (m_font->LineSpacing >= m_line.height) {
+         m_line.height      = m_font->LineSpacing;
+         m_line.full_height = m_font->Ascent;
+      }
+   }
 
    layout(extDocument *pSelf) : Self(pSelf) { }
 
-   LONG do_layout(INDEX, INDEX, objFont **, LONG, LONG, LONG &, LONG &, ClipRectangle, bool *);
+   INDEX do_layout(INDEX, INDEX, objFont **, LONG, LONG, LONG &, LONG &, ClipRectangle, bool &);
 
    void draw();
 
@@ -127,14 +138,15 @@ struct layout {
    void procRowEnd(escTable *);
    void procAdvance();
    bool procListEnd();
-   void procText();
+   WRAP procText(LONG, LONG);
    void procImage();
 
    void add_link(ESC, std::variant<escLink *, escCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void add_drawsegment(StreamChar, StreamChar, LONG, LONG, LONG, const std::string &);
    void end_line(NL, DOUBLE, StreamChar, const std::string &);
-   WRAP check_wordwrap(const std::string &, LONG, LONG &, INDEX, LONG &, LONG &, LONG, LONG);
-   void wrap_through_clips(INDEX, LONG &, LONG &, LONG, LONG);
+   WRAP check_wordwrap(const std::string &, LONG, LONG &, StreamChar, LONG &, LONG &, LONG, LONG);
+   void wrap_through_clips(StreamChar, LONG &, LONG &, LONG, LONG);
+   DOUBLE calc_page_height(DOUBLE, DOUBLE);
 };
 
 //********************************************************************************************************************
@@ -151,7 +163,7 @@ void layout::procAdvance()
 
 void layout::procImage()
 {
-   auto image = &escape_data<escImage>(Self, idx);
+   //auto image = &escape_data<escImage>(Self, idx);
    add_esc_segment();
 }
 
@@ -184,24 +196,19 @@ void layout::procFont()
 }
 
 //********************************************************************************************************************
-// NOTE: Bear in mind that the first word in a ESC::TEXT string might be a continuation of a previous
-// ESC::TEXT word.  This might be the case if the font colour is changed mid-word for example.
+// NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.  
+// This can occur if the font colour is changed mid-word for example.
 
-void layout::procText()
+WRAP layout::procText(LONG AbsX, LONG Width)
 {
-   // If the font character is larger or equal to the current line height, extend the height for the current line.
-   // Note that we go for >= because we want to correct the base line in case there is a vector already set on the
-   // line that matches the font's line spacing.
+   WRAP wrap_result = WRAP::DO_NOTHING; // Needs to to change to WRAP::EXTEND_PAGE if a word is > Width
 
-   if (m_font->LineSpacing >= m_line.height) {
-      m_line.height      = m_font->LineSpacing;
-      m_line.full_height = m_font->Ascent;
-   }
+   m_align_width = m_wrap_edge; // TODO: Not sure about this following the switch to embedded TEXT structures
 
    auto &text = escape_data<escText>(Self, idx);
    auto &str = text.Text;
-   for (unsigned i=0; i < str.size(); i++) {
-      if (str[i] IS '\n') {
+   for (unsigned i=0; i < str.size(); ) {
+      if (str[i] IS '\n') { // The use of '\n' in a string forces a line break
 #if 0
       // This link code is likely going to be needed for a case such as :
       //   <a href="">blah blah <br/> blah </a>
@@ -213,27 +220,39 @@ void layout::procText()
          link = NULL;
       }
 #endif
+         check_line_height();
+         wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+         if (wrap_result IS WRAP::EXTEND_PAGE) break;
+
+         StreamChar end(idx, i);
+         end_line(NL::PARAGRAPH, 0, end, "CR");
          i++;
-         StreamChar sc(idx, i);
-         end_line(NL::PARAGRAPH, 0, sc, "CarriageReturn");
       }
-      else if (str[i] <= 0x20) {
+      else if (str[i] <= 0x20) { // Whitespace encountered
+         check_line_height();
+
+         if (m_word_width) {
+            wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+            if (wrap_result IS WRAP::EXTEND_PAGE) break;
+         }
+
          if (str[i] IS '\t') {
             LONG tabwidth = (m_space_width + m_font->GlyphSpacing) * m_font->TabSize;
             if (tabwidth) m_cursor_x += pf::roundup(m_cursor_x, tabwidth);
-            i++;
          }
-         else {
-            m_cursor_x += m_word_width + m_space_width;
-            i++;
-         }
+         else m_cursor_x += m_word_width + m_space_width;
 
+         // Current word state must be reset.
          m_kernchar     = 0;
          m_word_width   = 0;
          m_text_content = true;
+         i++;
       }
       else {
-         if (!m_word_width) m_word_index.set(idx, i);   // Record the index of the new word (if this is one)
+         if (!m_word_width) {
+            m_word_index.set(idx, i);   // Save the index of the new word
+            check_line_height();
+         }
 
          LONG unicode;
          LONG kerning;
@@ -244,6 +263,12 @@ void layout::procText()
          m_text_content = true;
       }
    }
+
+   if (m_word_width) {
+      wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+   }
+   
+   return wrap_result;
 }
 
 //********************************************************************************************************************
@@ -294,8 +319,8 @@ bool layout::procListEnd()
    if (stack_list.empty()) {
       // At the end of a list, increase the whitespace to that of a standard paragraph.
       StreamChar sc(idx, 0);
-      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->VSpacing, sc, "Esc:ListEnd");
-      else end_line(NL::PARAGRAPH, 1.0, sc, "Esc:ListEnd");
+      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->VSpacing, sc, "ListEnd");
+      else end_line(NL::PARAGRAPH, 1.0, sc, "ListEnd");
    }
 
    return false;
@@ -317,7 +342,7 @@ void layout::procIndexStart()
 
       auto end = idx;
       while (end < INDEX(Self->Stream.size())) {
-         if (ESCAPE_CODE(Self->Stream, end) IS ESC::INDEX_END) {
+         if (Self->Stream[end].Code IS ESC::INDEX_END) {
             escIndexEnd &iend = escape_data<escIndexEnd>(Self, end);
             if (iend.ID IS escindex->ID) break;
             end++;
@@ -403,7 +428,7 @@ void layout::procParagraphStart(LONG Width)
       else ratio = stack_para.top()->VSpacing;
 
       StreamChar sc(idx, 0);
-      end_line(NL::PARAGRAPH, ratio, sc, "Esc:PStart");
+      end_line(NL::PARAGRAPH, ratio, sc, "PS");
 
       stack_para.push(&escape_data<escParagraph>(Self, idx));
    }
@@ -416,15 +441,15 @@ void layout::procParagraphStart(LONG Width)
 
       if ((stack_para.top()->LeadingRatio > 0) and (m_paragraph_y > 0)) {
          StreamChar sc(idx, 0);
-         end_line(NL::PARAGRAPH, stack_para.top()->LeadingRatio, sc, "Esc:PStart");
+         end_line(NL::PARAGRAPH, stack_para.top()->LeadingRatio, sc, "PS");
       }
    }
 
-   // Indentation support
-
    auto escpara = stack_para.top();
+      
    if (!stack_list.empty()) {
-      // For list items, indentation is managed by the list that this paragraph is contained within.
+      // If a paragraph is inside a list then it's treated as a list item.
+      // Indentation values are inherited from the list.
 
       auto list = stack_list.top();
       if (escpara->ListItem) {
@@ -463,6 +488,8 @@ void layout::procParagraphStart(LONG Width)
    escpara->Height = 0;
 }
 
+//********************************************************************************************************************
+
 void layout::procParagraphEnd()
 {
    StreamChar sc(idx + 1, 0);
@@ -473,14 +500,14 @@ void layout::procParagraphEnd()
       auto para = stack_para.top();
       m_paragraph_bottom = para->Y + para->Height;
 
-      end_line(NL::PARAGRAPH, para->VSpacing, sc, "Esc:PEnd");
+      end_line(NL::PARAGRAPH, para->VSpacing, sc, "PE");
 
       m_left_margin = para->X - para->BlockIndent;
       m_cursor_x    = para->X - para->BlockIndent;
       m_line.x      = para->X - para->BlockIndent;
       stack_para.pop();
    }
-   else end_line(NL::PARAGRAPH, 0, sc, "Esc:PEnd-NP");
+   else end_line(NL::PARAGRAPH, 0, sc, "PE-NP"); // Technically an error without a matching PS code.
 }
 
 //********************************************************************************************************************
@@ -1409,7 +1436,7 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
 {
    pf::Log log(__FUNCTION__);
 
-   // Determine trailing whitespace at the end of the line.  This helps to prevent situations such as underlining
+   // Process trailing whitespace at the end of the line.  This helps to prevent situations such as underlining
    // occurring in whitespace at the end of the line during word-wrapping.
 
    auto trim_stop = Stop;
@@ -1424,51 +1451,57 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
       return;
    }
 
-   // Check the new segment to see if there are any text characters or escape codes relevant to drawing
+   // The content of the segment affects some factors such as line height.
 
    bool text_content     = false;
-   bool control_content  = false;
    bool floating_vectors = false;
-   bool allow_merge      = true;
+   bool allow_merge      = true; // If true, this segment can be merged with prior segment(s) on the line
 
    for (auto i=Start; i < Stop; i.nextCode()) {
-      auto code = ESCAPE_CODE(Self->Stream, i);
-      control_content = true;
-      if (code IS ESC::VECTOR) floating_vectors = true;
-      if ((code IS ESC::VECTOR) or (code IS ESC::IMAGE) or (code IS ESC::TABLE_START) or
-          (code IS ESC::TABLE_END) or (code IS ESC::FONT)) {
-         allow_merge = false;
-      }
-      else if (code IS ESC::TEXT) {
-         text_content = true;
-         allow_merge = false;
+      switch (Self->Stream[i.Index].Code) {
+         case ESC::VECTOR:
+            floating_vectors = true;
+            // Fall through
+         case ESC::IMAGE:
+         case ESC::TABLE_START:
+         case ESC::TABLE_END:
+         case ESC::FONT:
+            allow_merge = false;
+            break;
+
+         case ESC::TEXT:
+            text_content = true;
+            allow_merge = false;
+            break;
+
+         default:
+            break;
       }
    }
 
-   auto Height   = m_line.height;
-   auto BaseLine = m_line.full_height;
+   auto line_height = m_line.height;
+   auto line_height_full = m_line.full_height;
    if (text_content) {
-      if (Height <= 0) {
+      if (line_height <= 0) {
          // No line-height given and there is text content - use the most recent font to determine the line height
-         Height   = m_font->LineSpacing;
-         BaseLine = m_font->Ascent;
+         line_height      = m_font->LineSpacing;
+         line_height_full = m_font->Ascent;
       }
-      else if (!BaseLine) { // If base-line is missing for some reason, define it
-         BaseLine = m_font->Ascent;
+      else if (!line_height_full) { // If base-line is missing for some reason, define it
+         line_height_full = m_font->Ascent;
       }
    }
    else {
-      if (Height <= 0) Height = 0;
-      if (BaseLine <= 0) BaseLine = 0;
+      if (line_height <= 0) line_height = 0;
+      if (line_height_full <= 0) line_height_full = 0;
    }
 
 #ifdef DBG_STREAM
-   DLAYOUT("#%d, Bytes: %d-%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %d, [%.20s]...[%.20s] (%s)",
-      LONG(m_segments.size()), Start.Index, Stop.Index, m_line.x, Y, Width, AlignWidth, Height, m_word_width,
+   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %d, [%.20s]...[%.20s] (%s)",
+      LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width, AlignWidth, line_height, m_word_width,
       m_cursor_y, printable(Self, Start).c_str(), printable(Self, Stop).c_str(), Debug.c_str());
 #endif
 
-   DocSegment segment;
    auto x = m_line.x;
 
    if ((!m_segments.empty()) and (Start < m_segments.back().Stop)) {
@@ -1491,6 +1524,8 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
       }
    }
 
+   DocSegment segment;
+
    // Is the new segment a continuation of the previous one, and does the previous segment contain content?
    if ((allow_merge) and (!m_segments.empty()) and (m_segments.back().Stop IS Start) and
        (m_segments.back().AllowMerge)) {
@@ -1501,12 +1536,12 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
       m_segments.pop_back();
 
       Start  = segment.Start;
-      x      = segment.X;
-      Width += segment.Width;
+      x      = segment.Area.X;
+      Width += segment.Area.Width;
       AlignWidth += segment.AlignWidth;
-      if (segment.Height > Height) {
-         Height   = segment.Height;
-         BaseLine = segment.BaseLine;
+      if (segment.Area.Height > line_height) {
+         line_height      = segment.Area.Height;
+         line_height_full = segment.BaseLine;
       }
    }
 
@@ -1529,29 +1564,28 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
    segment.Start          = Start;
    segment.Stop           = Stop;
    segment.TrimStop       = trim_stop;
-   segment.X              = x;
-   segment.Y              = Y;
-   segment.Height         = Height;
-   segment.BaseLine       = BaseLine;
-   segment.Width          = Width;
+   segment.Area.X         = x;
+   segment.Area.Y         = Y;
+   segment.Area.Width     = Width;
+   segment.Area.Height    = line_height;
+   segment.BaseLine       = line_height_full;
    segment.Depth          = Self->Depth;
    segment.AlignWidth     = AlignWidth;
    segment.TextContent    = text_content;
-   segment.ControlContent = control_content;
    segment.FloatingVectors = floating_vectors;
    segment.AllowMerge     = allow_merge;
    segment.Edit           = Self->EditMode;
 
-   // If a line is segmented, we need to backtrack for earlier line segments and ensure that their height and full_height
+   // If a line is segmented, we need to check for earlier line segments and ensure that their height and full_height
    // is matched to that of the last line (which always contains the maximum height and full_height values).
 
-   if ((m_split_start != NOTSPLIT) and (Height)) {
+   if ((m_split_start != NOTSPLIT) and (line_height)) {
       if (LONG(m_segments.size()) != m_split_start) {
-         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", Height, BaseLine, segment.Start.Index, m_split_start);
+         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", line_height, line_height_full, segment.Start.Index, m_split_start);
          for (unsigned i=m_split_start; i < m_segments.size(); i++) {
             if (m_segments[i].Depth != Self->Depth) continue;
-            m_segments[i].Height = Height;
-            m_segments[i].BaseLine = BaseLine;
+            m_segments[i].Area.Height = line_height;
+            m_segments[i].BaseLine = line_height_full;
          }
       }
    }
@@ -1611,10 +1645,10 @@ static void layout_doc(extDocument *Self)
 
       LONG page_height = 1;
       l = layout(Self);
-      bool vertical_repass;
+      bool vertical_repass = false;
       l.do_layout(0, Self->Stream.size(), &m_font, 0, 0, page_width, page_height,
          ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin),
-         &vertical_repass);
+         vertical_repass);
 
       DLAYOUT("Section layout complete.");
 
@@ -1657,13 +1691,13 @@ static void layout_doc(extDocument *Self)
    if (!Self->Error) {
       Self->Links = l.m_links;
       for (auto &link : Self->Links) {
-         if (link.EscapeCode != ESC::LINK) continue;
+         if (link.BaseCode != ESC::LINK) continue;
 
          auto esclink = std::get<escLink *>(link.Escape);
          if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
             auto &segment = l.m_segments[link.Segment];
             if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
-               link.X = segment.X + segment.AlignWidth - link.Width;
+               link.X = segment.Area.X + segment.AlignWidth - link.Width;
             }
             else if ((esclink->Align & FSO::ALIGN_CENTER) != FSO::NIL) {
                link.X = link.X + ((segment.AlignWidth - link.Width) / 2);
@@ -1690,9 +1724,9 @@ static void layout_doc(extDocument *Self)
       unsigned i, j;
       SEGINDEX seg;
       for (i=0, seg=0; seg < SEGINDEX(l.m_segments.size()); seg++) {
-         if ((l.m_segments[seg].Height > 0) and (l.m_segments[seg].Width > 0)) {
+         if ((l.m_segments[seg].Area.Height > 0) and (l.m_segments[seg].Area.Width > 0)) {
             Self->SortSegments[i].Segment = seg;
-            Self->SortSegments[i].Y       = l.m_segments[seg].Y;
+            Self->SortSegments[i].Y       = l.m_segments[seg].Area.Y;
             i++;
          }
       }
@@ -1717,7 +1751,7 @@ static void layout_doc(extDocument *Self)
    Self->UpdatingLayout = false;
 
 #ifdef DBG_LINES
-   print_lines(Self);
+   print_lines(Self, Self->Stream);
    //print_sorted_lines(Self);
    print_tabfocus(Self);
 #endif
@@ -1740,7 +1774,7 @@ static void layout_doc(extDocument *Self)
 
       l.draw();
 
-      for (auto &trigger : Self->Triggers[DRT_AFTER_LAYOUT]) {
+      for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.Type IS CALL_SCRIPT) {
             const ScriptArg args[] = {
                { "ViewWidth",  Self->AreaWidth },
@@ -1766,14 +1800,14 @@ static void layout_doc(extDocument *Self)
 //
 // TODO: Consider prioritising the layout of table cells first, possibly using concurrent threads.
 //
-// Offset:   The byte offset within the document stream to start layout processing.
+// Offset/End: Start and end points within the stream for layout processing.
 // X/Y:      Section coordinates, starts at 0,0 for the main page, subsequent sections (table cells) can be at any location, measured as absolute to the top left corner of the page.
 // Width:    Minimum width of the page/section.  Can be increased if insufficient space is available.  Includes the left and right margins in the resulting calculation.
 // Height:   Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
 // Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
 
 INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG AbsY, LONG &Width, LONG &Height,
-   ClipRectangle Margins, bool *VerticalRepass)
+   ClipRectangle Margins, bool &VerticalRepass)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1795,9 +1829,6 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
    }
 
    auto page_height = Height;
-   bool vector_vertical_repass = false;
-
-   *VerticalRepass = false;
 
    #ifdef DBG_LAYOUT
    log.branch("Dimensions: %dx%d,%dx%d (edge %d), LM %d RM %d TM %d BM %d",
@@ -1874,7 +1905,7 @@ extend_page:
             DLAYOUT("Setting line at code '%s', index %d, line.x: %d, m_word_width: %d", ESCAPE_NAME(Self->Stream,idx).c_str(), m_line.index.Index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             StreamChar sc(idx,0);
-            add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "Esc:WordBreak");
+            add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
             reset_segment();
             m_align_width = m_wrap_edge;
          }
@@ -1886,9 +1917,7 @@ extend_page:
       if (esctable) {
          m_align_width = m_wrap_edge;
       }
-      else switch (ESCAPE_CODE(Self->Stream, idx)) {
-         case ESC::PARAGRAPH_START:
-         case ESC::PARAGRAPH_END:
+      else switch (Self->Stream[idx].Code) {
          case ESC::TABLE_END:
          case ESC::VECTOR:
          case ESC::ADVANCE:
@@ -1898,23 +1927,6 @@ extend_page:
             if (wrap_result IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width on wordwrap request.");
                goto extend_page;
-            }
-            break;
-         }
-
-         case ESC::TEXT: {
-            m_align_width = m_wrap_edge; // TODO: Not sure about this following the ESC::TEXT introduction.
-            auto wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index.Index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
-            if (wrap_result IS WRAP::EXTEND_PAGE) {
-               DLAYOUT("Expanding page width on wordwrap request.");
-               goto extend_page;
-            }
-            else if (wrap_result IS WRAP::WRAPPED) {
-               auto &text = escape_data<escText>(Self, idx);
-               if (text.Text[0] IS '\n') {
-                  // The presence of the line-break must be ignored, due to word-wrap having already made the new line for us
-                  if (text.Text.size() > 0) m_line.index.Offset = 1;
-               }
             }
             break;
          }
@@ -1931,8 +1943,22 @@ extend_page:
          ESCAPE_NAME(Self->Stream, idx).c_str(), m_line.index.Index, idx, m_word_index.Index, m_word_width);
 #endif
 
-      switch (ESCAPE_CODE(Self->Stream, idx)) {
-         case ESC::TEXT:            procText(); break;
+      switch (Self->Stream[idx].Code) {
+         case ESC::TEXT: {            
+            auto wrap_result = procText(AbsX, Width); 
+            if (wrap_result IS WRAP::EXTEND_PAGE) { // A word in the text string is too big for the available space.
+               DLAYOUT("Expanding page width on wordwrap request.");
+               goto extend_page;
+            }
+            else if (wrap_result IS WRAP::WRAPPED) { // A wrap occurred during text processing.
+               // The presence of the line-break must be ignored, due to word-wrap having already made the new line for us
+               auto &text = escape_data<escText>(Self, idx);
+               if (text.Text[0] IS '\n') {
+                  if (text.Text.size() > 0) m_line.index.Offset = 1;
+               }
+            }
+            break;
+         }
          case ESC::ADVANCE:         procAdvance(); break;
          case ESC::FONT:            procFont(); break;
          case ESC::INDEX_START:     procIndexStart(); break;
@@ -1961,7 +1987,7 @@ extend_page:
             break;
 
          case ESC::VECTOR: {
-            auto ww = procVector(Offset, AbsX, AbsY, Width, page_height, vector_vertical_repass, check_wrap);
+            auto ww = procVector(Offset, AbsX, AbsY, Width, page_height, VerticalRepass, check_wrap);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
@@ -2098,7 +2124,7 @@ repass_row_height_ext:
             // column will decrease, subsequently lowering the row height of all rows in the table, not just the
             // current row.  Therefore on the second pass the row heights need to be recalculated from scratch.
 
-            bool vertical_repass;
+            bool vertical_repass = false;
 
             esccell = &escape_data<escCell>(Self, idx);
 
@@ -2116,7 +2142,7 @@ repass_row_height_ext:
 
             StreamChar start(idx, 0);
             StreamChar stop(idx + 1, 0);
-            add_drawsegment(start, stop, m_cursor_y, 0, 0, "Esc:Cell");
+            add_drawsegment(start, stop, m_cursor_y, 0, 0, "Cell");
 
             // Set the AbsX location of the cel  AbsX determines the true location of the cell for do_layout()
 
@@ -2141,7 +2167,7 @@ repass_row_height_ext:
 
             auto cell_end = idx;
             while (cell_end < INDEX(Self->Stream.size())) {
-               if (ESCAPE_CODE(Self->Stream, cell_end) IS ESC::CELL_END) {
+               if (Self->Stream[cell_end].Code IS ESC::CELL_END) {
                   auto &end = escape_data<escCellEnd>(Self, cell_end);
                   if (end.CellID IS esccell->CellID) break;
                }
@@ -2163,7 +2189,7 @@ repass_row_height_ext:
 
                layout sl(Self);
                idx = sl.do_layout(idx, cell_end, &m_font, esccell->AbsX, esccell->AbsY,
-                  esccell->Width, esccell->Height, ClipRectangle(esctable->CellPadding), &vertical_repass);
+                  esccell->Width, esccell->Height, ClipRectangle(esctable->CellPadding), vertical_repass);
 
                if (!esccell->EditDef.empty()) Self->EditMode = false;
 
@@ -2259,7 +2285,7 @@ repass_row_height_ext:
 
 exit:
 
-   page_height = calc_page_height(Self, AbsY, Margins.Bottom);
+   page_height = calc_page_height(AbsY, Margins.Bottom);
 
    // Force a second pass if the page height has increased and there are vectors in the page (the vectors may need
    // to know the page height - e.g. if there is a gradient filling the background).
@@ -2267,7 +2293,7 @@ exit:
    // This feature is also handled in ESC::CELL, so we only perform it here if processing is occurring within the
    // root page area (Offset of 0).
 
-   if ((!Offset) and (vector_vertical_repass) and (last_height < page_height)) {
+   if ((!Offset) and (VerticalRepass) and (last_height < page_height)) {
       DLAYOUT("============================================================");
       DLAYOUT("SECOND PASS [%d]: Root page height increased from %d to %d", Offset, last_height, page_height);
       goto extend_page;
@@ -2276,8 +2302,6 @@ exit:
    *Font = m_font;
    if (page_height > Height) Height = page_height;
 
-   *VerticalRepass = vector_vertical_repass;
-
    Self->Depth--;
    return idx;
 }
@@ -2285,7 +2309,7 @@ exit:
 //********************************************************************************************************************
 // This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
-void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar RestartIndex, const std::string &Caller)
+void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::string &Caller)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2296,8 +2320,9 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar RestartIndex, const
       m_line.full_height = m_font->Ascent;
    }
 
-   DLAYOUT("%s: CursorY: %d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Index: %d/%d, Restart: %d",
-      Caller.c_str(), m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing, m_line.index.Index, idx, RestartIndex.Index);
+   DLAYOUT("%s: CursorX/Y: %d/%d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
+      Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing, 
+      m_line.index.Index, LONG(m_line.index.Offset), Next.Index, LONG(Next.Offset));
 
    for (auto &clip : m_clips) {
       if (clip.Transparent) continue;
@@ -2313,17 +2338,18 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar RestartIndex, const
       add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "Esc:EndLine");
    }
 
-   // Determine the new vertical position of the cursor.  This routine takes into account multiple line-breaks, so that
-   // the overall amount of whitespace is no more than the biggest line-break specified in a line-break sequence.
-
    if (NewLine != NL::NONE) {
+      // Determine the new vertical position of the cursor.  This subroutine takes into account multiple line-breaks, so that
+      // the overall amount of whitespace is no more than the biggest line-break specified in a line-break sequence.
+
       auto bottom_line = m_cursor_y + m_line.height;
       if (m_paragraph_bottom > bottom_line) bottom_line = m_paragraph_bottom;
 
-      // Check for a previous paragraph escape sequence.  This resolves cases such as "<p>...<p>...</p></p>"
-
+      // Check for an embedded paragraph sequence by back-tracking (this will abort once content is encountered).
+      // The intention is to resolve cases such as "<p>...<p>...</p></p>" that would otherwise cause us to add
+      // too much whitespace.
       for (auto i = idx - 1; i > 0; i--) {
-         auto code = ESCAPE_CODE(Self->Stream, idx);
+         auto code = Self->Stream[idx].Code;
          if (code IS ESC::PARAGRAPH_START) {
             // If a custom string is specified in the paragraph, it counts as content.
 
@@ -2353,7 +2379,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar RestartIndex, const
    m_line.height      = 0;
    m_line.full_height = 0;
    m_split_start      = m_segments.size();
-   m_line.index       = RestartIndex;
+   m_line.index       = Next;
    m_word_index       = m_line.index;
    m_kernchar         = 0;
    m_word_width       = 0;
@@ -2361,46 +2387,35 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar RestartIndex, const
 }
 
 //********************************************************************************************************************
-// Word-wrapping is checked whenever whitespace is encountered or certain escape codes are found in the text stream,
-// e.g. paragraphs and vectors will mark an end to the current word.
-//
+// This function will check the need for word wrapping of an element marked by the area (X, Y, Width, Height).  The 
+// (X, Y) position will be updated if the element is wrapped.  If clipping boundaries are present on the page,
+// horizontal advancement across the line may occur.
+// 
 // Wrapping is always checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
 // solo <br/> tags).
-//
-// WordIndex - Index indicating the start of the current word.
 
-WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth, INDEX WordIndex, LONG &X,
-   LONG &Y, LONG Width, LONG Height)
+WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth, StreamChar Cursor, 
+   LONG &X, LONG &Y, LONG Width, LONG Height)
 {
    pf::Log log(__FUNCTION__);
 
    if (!Self->BreakLoop) return WRAP::DO_NOTHING;
    if (Width < 1) Width = 1;
 
-   // If the width of the vector is larger than the available page width, extend the size of the page.
-
-/*
-   if (Width > *PageWidth - m_left_margin - m_right_margin) {
-      *PageWidth = Width + m_left_margin + m_right_margin;
-      return WRAP_EXTENDPAGE;
-   }
-*/
-
-   // This code pushes the vector along to the next available space when a boundary is encountered on the current line.
-
 #ifdef DBG_WORDWRAP
    log.branch("Index: %d/%d, %s: %dx%d,%dx%d, LineHeight: %d, Cursor: %dx%d, PageWidth: %d, Edge: %d",
-      idx, WordIndex, Type.c_str(), X, Y, Width, Height, m_line.height, m_cursor_x, m_cursor_y, Width, m_wrap_edge);
+      idx, Cursor.Index, Type.c_str(), X, Y, Width, Height, m_line.height, m_cursor_x, m_cursor_y, Width, m_wrap_edge);
 #endif
 
    auto result = WRAP::DO_NOTHING;
-   LONG breakloop = MAXLOOP;
-   StreamChar vs(WordIndex, 0);
+   LONG breakloop = MAXLOOP; // Employ safety measures to prevent a loop trap.
 
 restart:
    m_align_width = m_wrap_edge;
 
-   if (!m_clips.empty()) wrap_through_clips(WordIndex, X, Y, Width, Height);
+   if (!m_clips.empty()) { // If clips are registered then we need to check them for collisions.
+      wrap_through_clips(Cursor, X, Y, Width, Height);
+   }
 
    if (X + Width > m_wrap_edge) {
       if ((PageWidth < WIDTH_LIMIT) and ((X IS m_left_margin) or (m_no_wrap))) {
@@ -2413,46 +2428,42 @@ restart:
          else PageWidth += 1;
          return WRAP::EXTEND_PAGE;
       }
+
+      if (!m_line.height) {
+         m_line.height = 1;
+         m_line.full_height = 1;
+      }
+
+      if ((m_current_link) and (m_link.x != X)) {
+         add_link(ESC::LINK, m_current_link, m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");            
+      }
+
+      // Set the line segment up to the cursor.  The line.index is updated so that this process only occurs
+      // in the first iteration.
+
+      if (m_line.index < Cursor) {
+         add_drawsegment(m_line.index, Cursor, Y, X - m_line.x, m_align_width - m_line.x, "DoWrap");
+         m_line.index = Cursor;
+      }
+
+      // Reset the line management variables so that the next line starts at the left margin.
+
+      X  = m_left_margin;
+      Y += m_line.height;
+      m_cursor_x     = X;
+      m_cursor_y     = Y;
+      m_split_start  = m_segments.size();
+      m_line.x       = m_left_margin;
+      m_link.x       = m_left_margin; // Only matters if a link is defined
+      m_kernchar     = 0;
+      m_line.full_height = 0;
+      m_line.height      = 0;
+
+      result = WRAP::WRAPPED;
+      if (--breakloop > 0) goto restart; // Go back and check the clip boundaries again
       else {
-         if (!m_line.height) {
-            m_line.height = 1; //font->LineSpacing;
-            m_line.full_height = 1; //font->Ascent;
-         }
-
-         if (m_current_link) {
-            if (m_link.x IS X) {
-               // If the link starts with the vector, the link itself is going to be wrapped with it
-            }
-            else add_link(ESC::LINK, m_current_link, m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");
-         }
-
-         // Set the line segment up to the vector index.  The line.index is updated so that this process only occurs
-         // in the first iteration.
-
-         if (m_line.index < vs) {
-            add_drawsegment(m_line.index, vs, Y, X - m_line.x, m_align_width - m_line.x, "DoWrap");
-            m_line.index = vs;
-         }
-
-         // Reset the line management variables so that the next line starts at the left margin.
-
-         X  = m_left_margin;
-         Y += m_line.height;
-         m_cursor_x     = X;
-         m_cursor_y     = Y;
-         m_split_start  = m_segments.size();
-         m_line.x       = m_left_margin;
-         m_link.x       = m_left_margin; // Only matters if a link is defined
-         m_kernchar     = 0;
-         m_line.full_height = 0;
-         m_line.height      = 0;
-
-         result = WRAP::WRAPPED;
-         if (--breakloop > 0) goto restart; // Go back and check the clip boundaries again
-         else {
-            log.traceWarning("Breaking out of continuous loop.");
-            Self->Error = ERR_Loop;
-         }
+         log.traceWarning("Breaking out of continuous loop.");
+         Self->Error = ERR_Loop;
       }
    }
 
@@ -2464,7 +2475,7 @@ restart:
    }
 
    #ifdef DBG_WORDWRAP
-      if (result IS WRAP::WRAPPED) DWRAP("A wrap to Y coordinate %d has occurred.", m_cursor_y);
+      if (result IS WRAP::WRAPPED) log.msg("A wrap to Y coordinate %d has occurred.", m_cursor_y);
    #endif
 
    return result;
@@ -2473,7 +2484,7 @@ restart:
 //********************************************************************************************************************
 // Compare a given area against clip regions and move the X,Y position when there's an intersection.
 
-void layout::wrap_through_clips(INDEX WordIndex, LONG &X, LONG &Y, LONG Width, LONG Height)
+void layout::wrap_through_clips(StreamChar WordIndex, LONG &X, LONG &Y, LONG Width, LONG Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2523,16 +2534,14 @@ restart:
          break;
       }
 
-      StreamChar sc(WordIndex, 0);
-
-      if (m_line.index < sc) {
-         if (!m_line.height) add_drawsegment(m_line.index, sc, Y, X - m_line.x, X - m_line.x, "Wrap:EmptyLine");         
-         else add_drawsegment(m_line.index, sc, Y, X + Width - m_line.x, m_align_width - m_line.x, "Wrap");
+      if (m_line.index < WordIndex) {
+         if (!m_line.height) add_drawsegment(m_line.index, WordIndex, Y, X - m_line.x, X - m_line.x, "Wrap:EmptyLine");         
+         else add_drawsegment(m_line.index, WordIndex, Y, X + Width - m_line.x, m_align_width - m_line.x, "Wrap");
       }
 
-      DWRAP("Line index reset to %d, previously %d", sc.Index, m_line.index.Index);
+      DWRAP("Line index reset to %d, previously %d", WordIndex.Index, m_line.index.Index);
 
-      m_line.index = sc;
+      m_line.index = WordIndex;
       m_line.x = X;
       if ((reset_link) and (m_current_link)) m_link.x = X;
 
@@ -2543,7 +2552,7 @@ restart:
 //********************************************************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
-void layout::add_link(ESC EscapeCode, std::variant<escLink *, escCell *> Escape, 
+void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape, 
    DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, const std::string &Caller)
 {
    pf::Log log(__FUNCTION__);
@@ -2555,14 +2564,14 @@ void layout::add_link(ESC EscapeCode, std::variant<escLink *, escCell *> Escape,
 
    DLAYOUT("%.2fx%.2f,%.2fx%.2f, %s", X, Y, Width, Height, Caller.c_str());
 
-   m_links.emplace_back(EscapeCode, Escape, m_segments.size(), X, Y, Width, Height);
+   m_links.emplace_back(BaseCode, Escape, m_segments.size(), X, Y, Width, Height);
 }
 
 //********************************************************************************************************************
 // Calculate the page height, which is either going to be the coordinate of the bottom-most line, or one of the
 // clipping regions if one of them extends further than the bottom-most line.
 
-static DOUBLE calc_page_height(extDocument *Self, DOUBLE Y, DOUBLE BottomMargin)
+DOUBLE layout::calc_page_height(DOUBLE Y, DOUBLE BottomMargin)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2575,8 +2584,8 @@ static DOUBLE calc_page_height(extDocument *Self, DOUBLE Y, DOUBLE BottomMargin)
    SEGINDEX last = Self->Segments.size() - 1;
    while ((last > 0) and (!height) and (!y)) {
       if (Self->Segments[last].TextContent) {
-         height = Self->Segments[last].Height;
-         y = Self->Segments[last].Y;
+         height = Self->Segments[last].Area.Height;
+         y = Self->Segments[last].Area.Y;
          break;
       }
       last--;
@@ -2595,8 +2604,8 @@ static DOUBLE calc_page_height(extDocument *Self, DOUBLE Y, DOUBLE BottomMargin)
 
    page_height = page_height + BottomMargin - Y;
 
-   log.trace("Page Height: %d + %d -> %d, Bottom: %d, Y: %d",
-      Self->Segments.back().Y, Self->Segments.back().Height, page_height, BottomMargin, Y);
+   log.trace("Page Height: %.2f + %.2f -> %.2f, Bottom: %.2f, Y: %.2f",
+      Self->Segments.back().Area.Y, Self->Segments.back().Area.Height, page_height, BottomMargin, Y);
 
    return page_height;
 }

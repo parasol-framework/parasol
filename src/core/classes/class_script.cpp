@@ -481,16 +481,14 @@ The LineOffset is a value that is added to all line numbers that are referenced 
 primarily intended for internal usage only.
 
 -FIELD-
-Path: The location of the file that is to be processed as a script.
+Path: The location of a script file to be loaded.
 
-Script files can be loaded by a script object by setting the Path field to the path of the source file.  The
-source must be provided prior to the initialisation process or the script object will fail (as an alternative, the
-#Statement field can also be set).
+A script file can be loaded by setting the Path to its location.  The path must be defined prior to the initialisation
+process, or alternatively the client can define the #Statement field.
 
-Special parameters can also be passed to the script when setting the location.  The name of an executable procedure
-may be passed by following the location with a semicolon, then the name of the procedure to execute.  Arguments
-can also be passed to the script by following this with a second semicolon, then a sequence of arguments, each
-separated with a comma.  The following string illustrates the format used:
+Optional parameters can also be passed to the script via the Path string.  The name of a function is passed first,
+surrounded by semicolons.  Arguments can be passed to the function by appending them as a CSV list.  The following
+string illustrates the format used:
 
 <pre>dir:location;procedure;arg1=val1,arg2,arg3=val2</>
 
@@ -520,7 +518,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
       if (Self->String)      { FreeResource(Self->String); Self->String = NULL; }
       if (Self->WorkingPath) { FreeResource(Self->WorkingPath); Self->WorkingPath = NULL; }
 
-      LONG i, j, len;
+      LONG i, len;
       if ((Value) and (*Value)) {
          if (!StrCompare("STRING:", Value, 7)) {
             return SET_String(Self, Value + 7);
@@ -535,18 +533,22 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
             // If a semi-colon has been used, this indicates that a procedure follows the filename.
 
             if (Value[i] IS ';') {
-               char buffer[800], arg[100], argval[400];
-
                i++;
                while ((Value[i]) and (Value[i] <= 0x20)) i++;
-               for (j=0; (Value[i]) and (Value[i] > 0x20) and (Value[i] != ';'); j++) buffer[j] = Value[i++];
-               buffer[j] = 0;
-               if (buffer[0]) SET_Procedure(Self, buffer);
+               auto start = i, end = i;
+               while ((Value[end]) and (Value[end] > 0x20) and (Value[end] != ';')) end++;
+               if (end > start) {
+                  std::string buffer;
+                  buffer.append(Value, start, end - start);
+                  SET_Procedure(Self, buffer.c_str());
+               }
 
-               // The presence of an opening bracket precedes a series of arguments
+               // Process optional parameters
 
-               if (Value[i] IS ';') {
-                  i++;
+               if (Value[end] IS ';') {
+                  char arg[100], argval[400];
+
+                  i = end + 1;
 
                   while (Value[i]) {
                      while ((Value[i]) and (Value[i] <= 0x20)) i++;
@@ -557,6 +559,7 @@ static ERROR SET_Path(objScript *Self, CSTRING Value)
 
                      // Extract arg name
 
+                     LONG j;
                      for (j=0; (Value[i] != ',') and (Value[i] != '=') and (Value[i] > 0x20); j++) arg[j] = Value[i++];
                      arg[j] = 0;
 
@@ -805,8 +808,6 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 {
    pf::Log log;
 
-   // The working path is determined when the first attempt to read it is made.
-
    if (!Self->WorkingPath) {
       if (!Self->Path) {
          log.warning("Script has no defined Path.");
@@ -815,12 +816,12 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
 
       // Determine if an absolute path has been indicated
 
-      UBYTE path = FALSE;
-      if (Self->Path[0] IS '/') path = TRUE;
+      bool path = false;
+      if (Self->Path[0] IS '/') path = true;
       else {
         for (LONG j=0; (Self->Path[j]) and (Self->Path[j] != '/') and (Self->Path[j] != '\\'); j++) {
             if (Self->Path[j] IS ':') {
-               path = TRUE;
+               path = true;
                break;
             }
          }
@@ -832,7 +833,6 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          if ((Self->Path[k] IS ':') or (Self->Path[k] IS '/') or (Self->Path[k] IS '\\')) j = k+1;
       }
 
-      STRING workingpath;
       if (path) { // Extract absolute path
          pf::SwitchContext ctx(Self);
          char save = Self->Path[j];
@@ -840,25 +840,21 @@ static ERROR GET_WorkingPath(objScript *Self, STRING *Value)
          Self->WorkingPath = StrClone(Self->Path);
          Self->Path[j] = save;
       }
-      else if ((!CurrentTask()->get(FID_Path, &workingpath)) and (workingpath)) {
-         char buf[1024];
+      else {
+         STRING workingpath;
+         if ((!CurrentTask()->get(FID_Path, &workingpath)) and (workingpath)) {
+            // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
-         // Using ResolvePath() can help to determine relative paths such as "../path/file"
+            std::string buf = workingpath;
+            if (j > 0) buf.append(Self->Path, 0, j);         
 
-         if (j > 0) {
-            char save = Self->Path[j];
-            Self->Path[j] = 0;
-            snprintf(buf, sizeof(buf), "%s%s", workingpath, Self->Path);
-            Self->Path[j] = save;
+            pf::SwitchContext ctx(Self);
+            if (ResolvePath(buf.c_str(), RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
+               Self->WorkingPath = StrClone(workingpath);
+            }
          }
-         else snprintf(buf, sizeof(buf), "%s", workingpath);
-
-         pf::SwitchContext ctx(Self);
-         if (ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath) != ERR_Okay) {
-            Self->WorkingPath = StrClone(workingpath);
-         }
+         else log.warning("No working path.");
       }
-      else log.warning("No working path.");
    }
 
    *Value = Self->WorkingPath;

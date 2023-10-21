@@ -74,6 +74,7 @@ function flags(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
+   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
    if (glFeedback == 'verbose') then print('Processing flags ' .. Prefix) end
 
    local list = { }
@@ -127,6 +128,7 @@ function enum(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
+   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
    if (glFeedback == 'verbose') then print('Processing enum ' .. Prefix) end
 
    local list = { }
@@ -154,6 +156,7 @@ function const(Prefix, Options, ...)
    Options = checkOptions(Options)
 
    if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
+   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
    if (glFeedback == 'verbose') then print('Processing constants ' .. Prefix) end
 
    local list = { }
@@ -447,7 +450,8 @@ end
 
 function struct(Name, Options, Def, Append)
    Options = checkOptions(Options)
-   if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted structures are never exported
+   if nz(Options.restrict) or (glRestrict) then return end -- Restricted structures are never exported
+   if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
    if (glFeedback == 'verbose') then print('Processing structure ' .. Name) end
    local struct = {
       name    = Name,
@@ -551,7 +555,7 @@ function saveOutput()
    end
 
    if (glFormat == 'c') then
-      if (s:len() + c:len() >= 16 * 1024) then -- MSVC doesn't like strings > 16Kb, so we need this alternative
+      if (s:len() + c:len() >= 16 * 1024) then -- MSVC doesn't like defined strings > 16Kb, so we need this alternative
          file.acWrite('char glIDL[] = { ')
          file.acWrite(str_to_bytes(nz(s,'') .. nz(c,'')))
          file.acWrite(',0 };\n')

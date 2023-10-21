@@ -419,7 +419,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
    // Signal that we are leaving the current page
 
    recursion++;
-   for (auto &trigger : Self->Triggers[DRT_LEAVING_PAGE]) {
+   for (auto &trigger : Self->Triggers[LONG(DRT::LEAVING_PAGE)]) {
       if (trigger.Type IS CALL_SCRIPT) {
          auto script = trigger.Script.Script;
          ScriptArg args[] = {

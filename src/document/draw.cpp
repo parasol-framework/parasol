@@ -24,7 +24,7 @@ static void redraw(extDocument *Self, bool Focus)
 void layout::draw()
 {
    pf::Log log(__FUNCTION__);
-   escVector *escvector;
+   //escVector *escvector;
 
    if (Self->UpdatingLayout) return; // Drawing is disabled if the layout is being updated
 
@@ -96,9 +96,9 @@ void layout::draw()
       }
    }
 
-   ClipRectangle clip(0, 0, Self->VPWidth, Self->VPHeight);
+   FloatRect clip(0, 0, Self->VPWidth, Self->VPHeight);
 
-   DOUBLE alpha = 1.0;
+   //DOUBLE alpha = 1.0;
    for (SEGINDEX seg=0; seg < SEGINDEX(m_segments.size()); seg++) {
       auto &segment = m_segments[seg];
 
@@ -106,10 +106,10 @@ void layout::draw()
 
       bool oob = false;
       if (!segment.FloatingVectors) {
-         if (segment.Y >= clip.Bottom) oob = true;
-         if (segment.Y + segment.Height < clip.Top) oob = true;
-         if (segment.X + segment.Width < clip.Left) oob = true;
-         if (segment.X >= clip.Right) oob = true;
+         if (segment.Area.Y >= clip.Height) oob = true;
+         else if (segment.Area.Y + segment.Area.Height < clip.Y) oob = true;
+         else if (segment.Area.X + segment.Area.Width < clip.X) oob = true;
+         else if (segment.Area.X >= clip.Width) oob = true;
       }
 
       // Highlighting of selected text
@@ -146,7 +146,7 @@ void layout::draw()
             else if ((Self->Page->Flags & VF::HAS_FOCUS) != VF::NIL) { // Standard text cursor
                auto rect = objVectorRectangle::create::global({
                   fl::Owner(Self->Page->UID),
-                  fl::X(segment.X + Self->CursorCharX), fl::Y(segment.Y),
+                  fl::X(segment.Area.X + Self->CursorCharX), fl::Y(segment.Area.Y),
                   fl::Width(2), fl::Height(segment.BaseLine),
                   fl::Fill("rgb(255,0,0,255)") });
                Self->LayoutResources.push_back(rect);
@@ -163,13 +163,13 @@ void layout::draw()
          }
       #endif
 
-      auto fx = segment.X;
+      auto fx = segment.Area.X;
       std::string font_fill = "rgb(0,0,0,255)";
       ALIGN font_align = ALIGN::NIL;
-      for (auto i = segment.Start; i < segment.TrimStop; i.nextCode()) {
-         switch (ESCAPE_CODE(Self->Stream, i)) {
+      for (auto cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()) {
+         switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
-               auto &style = escape_data<escFont>(Self, i);
+               auto &style = escape_data<escFont>(Self, cursor);
                if (auto font = lookup_font(style.Index, "draw_document")) {
                   if (tabfocus IS false) font_fill = style.Fill;
                   else font_fill = Self->LinkSelectFill;
@@ -185,7 +185,7 @@ void layout::draw()
             }
 
             case ESC::LIST_START:
-               stack_list.push(&escape_data<escList>(Self, i));
+               stack_list.push(&escape_data<escList>(Self, cursor));
                break;
 
             case ESC::LIST_END:
@@ -193,7 +193,7 @@ void layout::draw()
                break;
 
             case ESC::PARAGRAPH_START:
-               stack_para.push(&escape_data<escParagraph>(Self, i));
+               stack_para.push(&escape_data<escParagraph>(Self, cursor));
 
                if ((!stack_list.empty()) and (stack_para.top()->ListItem)) {
                   // Handling for paragraphs that form part of a list
@@ -202,14 +202,14 @@ void layout::draw()
                       (stack_list.top()->Type IS escList::ORDERED)) {
                      if (!stack_para.top()->Value.empty()) {
                         font->X = fx - stack_para.top()->ItemIndent;
-                        font->Y = segment.Y + font->Leading + (segment.BaseLine - font->Ascent);
+                        font->Y = segment.Area.Y + font->Leading + (segment.BaseLine - font->Ascent);
                         font->AlignWidth = segment.AlignWidth;
                         font->setString(stack_para.top()->Value);
                         font->draw();
                      }
                   }
                   else if (stack_list.top()->Type IS escList::BULLET) {
-                     static const LONG SIZE_BULLET = 5;
+                     //static const LONG SIZE_BULLET = 5;
                      // TODO: Requires conversion to vector
                      //gfxDrawEllipse(Bitmap,
                      //   fx - stack_para.top()->ItemIndent, segment.Y + ((segment.BaseLine - SIZE_BULLET)/2),
@@ -223,7 +223,7 @@ void layout::draw()
                break;
 
             case ESC::TABLE_START: {
-               stack_table.push(&escape_data<escTable>(Self, i));
+               stack_table.push(&escape_data<escTable>(Self, cursor));
                auto table = stack_table.top();
 
                //log.trace("Draw Table: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
@@ -254,7 +254,7 @@ void layout::draw()
                break;
 
             case ESC::ROW: {
-               stack_row.push(&escape_data<escRow>(Self, i));
+               stack_row.push(&escape_data<escRow>(Self, cursor));
                auto row = stack_row.top();
                if (!row->Fill.empty()) {
                   auto rect = objVectorRectangle::create::global({
@@ -274,7 +274,11 @@ void layout::draw()
                break;
 
             case ESC::CELL: {
-               auto &cell = escape_data<escCell>(Self, i);
+               auto &cell = escape_data<escCell>(Self, cursor);
+
+               #ifdef DBG_LAYOUT
+                  cell.Stroke = "rgb(255,0,0)";
+               #endif
 
                if ((!cell.Fill.empty()) or (!cell.Stroke.empty())) {
                   auto rect = objVectorRectangle::create::global({
@@ -299,7 +303,7 @@ void layout::draw()
             }
 
             case ESC::LINK: {
-               auto esclink = &escape_data<escLink>(Self, i);
+               auto esclink = &escape_data<escLink>(Self, cursor);
                if (Self->HasFocus) {
                   if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) and (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) and (Self->Tabs[Self->FocusIndex].Active)) {
                      link_save_rgb = font_fill;
@@ -318,18 +322,25 @@ void layout::draw()
                }
                break;
 
-            case ESC::TEXT: {
-               auto &et = escape_data<escText>(Self, i);
+            case ESC::TEXT: { // cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()
                if (!oob) {
-                  auto text = objVectorText::create::global({
-                     fl::Owner(Self->Page->UID),
-                     fl::X(fx), fl::Y(segment.Y + font->Leading + (segment.BaseLine - font->Ascent)),
-                     //fl::AlignWidth(segment.AlignWidth),
-                     fl::String(et.Text),
-                     fl::Fill("rgb(255,0,0)")
-                  });
-                  Self->LayoutResources.push_back(text);
-                  fx = font->EndX;
+                  auto &txt = escape_data<escText>(Self, cursor);
+
+                  std::string str;
+                  if (cursor.Index < segment.TrimStop.Index) str.append(txt.Text, cursor.Offset, std::string::npos);
+                  else str.append(txt.Text, cursor.Offset, segment.TrimStop.Offset - cursor.Offset);
+
+                  if (!str.empty()) {
+                     auto text = objVectorText::create::global({
+                        fl::Owner(Self->Page->UID),
+                        fl::X(fx), fl::Y(segment.Area.Y + segment.BaseLine),
+                        fl::String(str),
+                        fl::Fill(font_fill)
+                        //fl::AlignWidth(segment.AlignWidth),
+                     });
+                     Self->LayoutResources.push_back(text);
+                     fx = font->EndX;
+                  }
                }
                break;
             }

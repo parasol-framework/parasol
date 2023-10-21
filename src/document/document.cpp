@@ -134,6 +134,7 @@ thickness, or text inside the cell will mix with the border.
 #include <parasol/modules/vector.h>
 #include <parasol/strings.hpp>
 
+#include <iomanip>
 #include <algorithm>
 #include <array>
 #include <variant>
@@ -271,6 +272,14 @@ enum class TAG : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(TAG)
 
+enum class TRF : ULONG {
+   NIL      = 0,
+   BREAK    = 0x00000001,
+   CONTINUE = 0x00000002
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(TRF)
+
 //********************************************************************************************************************
 
 static std::string glHighlight = "rgb(219,219,255,255)";
@@ -280,28 +289,39 @@ static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVecto
 
 class extDocument;
 
+//********************************************************************************************************************
+
 struct deLinkActivated {
    std::map<std::string, std::string> Values;  // All key-values associated with the link.
 };
 
 //********************************************************************************************************************
+// Every instruction in the document stream is represented by a StreamCode entity.  The Code refers to what the thing
+// is, while the UID hash refers to further information in the Codes table.
 
-struct EscCode {
-   ESC Code;  // Escape code type
+struct StreamCode {
+   ESC Code;  // Type
    ULONG UID; // Lookup for the Codes table
 
-   EscCode() : Code(ESC::NIL), UID(0) { }
-   EscCode(ESC pCode, ULONG pID) : Code(pCode), UID(pID) { }
+   StreamCode() : Code(ESC::NIL), UID(0) { }
+   StreamCode(ESC pCode, ULONG pID) : Code(pCode), UID(pID) { }
 };
 
-using RSTREAM = std::vector<EscCode>;
+using RSTREAM = std::vector<StreamCode>;
+
+//********************************************************************************************************************
+// StreamChar is an index that refers to a specific character in the stream.  It is designed to handle positional
+// changes so that text string boundaries can be crossed without incident.
+//
+// The Index and Offset are set to -1 if the StreamChar is invalidated.
 
 struct StreamChar {
-   INDEX Index;   // Reference to escText position
-   size_t Offset;   // Character offset within escText.Text string
+   INDEX Index;     // A TEXT code position within the stream
+   size_t Offset;   // Specific character offset within the escText.Text string
 
    StreamChar() : Index(-1), Offset(-1) { }
    StreamChar(INDEX pIndex, ULONG pOffset) : Index(pIndex), Offset(pOffset) { }
+   StreamChar(INDEX pIndex) : Index(pIndex), Offset(0) { }
 
    bool operator==(const StreamChar &Other) const {
       return (this->Index == Other.Index) and (this->Offset == Other.Offset);
@@ -365,41 +385,39 @@ struct StreamChar {
    void prevChar(extDocument *, const RSTREAM &);
 };
 
-template <class T> inline ESC ESCAPE_CODE(const RSTREAM &Stream, T Index) {
-   return ESC(Stream[Index].Code);
-}
 
-inline ESC ESCAPE_CODE(const RSTREAM &Stream, const StreamChar &Index) {
-   return ESC(Stream[Index.Index].Code);
-}
+//********************************************************************************************************************
+// Tab is used to represent interactive entities within the document that can be tabbed to.
+
+struct Tab {
+   // The Ref is a UID for the Type, so you can use it to find the tab in the document stream
+   LONG  Ref;        // For TT_OBJECT: ObjectID; TT_LINK: LinkID
+   LONG  XRef;       // For TT_OBJECT: SurfaceID (if found)
+   UBYTE Type;       // TT_LINK, TT_OBJECT
+   bool  Active;     // true if the tabbable entity is active/visible
+};
 
 //********************************************************************************************************************
 
-struct Tab {
-   // The Ref is a unique ID for the Type, so you can use it to find the tab in the document stream
-   LONG  Ref;             // For TT_OBJECT: ObjectID; TT_LINK: LinkID
-   LONG  XRef;            // For TT_OBJECT: SurfaceID (if found)
-   UBYTE Type;            // TT_LINK, TT_OBJECT
-   bool  Active;          // true if the tabbable link is active/visible
-};
-
 static ULONG glEscapeCodeID = 1;
 
-class EscapeCode {
+class BaseCode {
 public:
    ULONG UID;   // Unique identifier for lookup
    ESC Code = ESC::NIL; // Escape code
    
-   EscapeCode() { UID = glEscapeCodeID++; }
-   EscapeCode(ESC pCode) : Code(pCode) { UID = glEscapeCodeID++; }
+   BaseCode() { UID = glEscapeCodeID++; }
+   BaseCode(ESC pCode) : Code(pCode) { UID = glEscapeCodeID++; }
 };
 
-struct escFont : public EscapeCode {
+//********************************************************************************************************************
+
+struct escFont : public BaseCode {
    WORD Index;          // Font lookup
    FSO  Options;
    std::string Fill;    // Font fill
 
-   escFont(): Index(0), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
+   escFont(): Index(-1), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
 };
 
 struct style_status {
@@ -411,32 +429,24 @@ struct style_status {
    bool FontChange;      // A major font change has occurred (e.g. face, point size)
    bool StyleChange;     // A minor style change has occurred (e.g. font colour)
 
-   style_status() {
-       clear();
-   }
-
-   void clear(void) {
-      Table = NULL;
-      List  = NULL;
-      FontStyle.Index = -1;
-      FontChange  = false;
-      StyleChange = false;
-   }
+   style_status() : Table(NULL), List(NULL), Face(""), Point(0), FontChange(false), StyleChange(false) { }
 };
 
+//********************************************************************************************************************
+// Refer to layout::add_drawsegment().  A segment represents graphical content, which can be in the form of text,
+// graphics or both.  A segment can consist of one line only - so if the layout process encounters a boundary causing 
+// wordwrap then a new segment must be created.
+
 struct DocSegment {
-   StreamChar Start;      // Starting index within the byte stream
-   StreamChar Stop;       // The stopping index for the line
-   StreamChar TrimStop;   // The stopping index for the line, with any whitespace removed
-   DOUBLE X, Y;           // Coordinates of this line on the display
-   UWORD Height;          // Pixel height of the line, including all anchored objects.  When drawing, this is used for vertical alignment of graphics within the line
+   StreamChar Start;      // Starting index (including character if text)
+   StreamChar Stop;       // Stop at this index/character
+   StreamChar TrimStop;   // The stopping point when whitespace is removed
+   FloatRect Area;        // Dimensions of the segment.
    UWORD BaseLine;        // Base-line - this is the height of the largest font down to the base line
-   UWORD Width;           // Width of the characters in this line segment
-   UWORD AlignWidth;      // Full-width of this line-segment if it were non-breaking
-   UWORD Depth;           // Section depth that this segment belongs to - helps to differentiate between inner and outer tables
+   UWORD AlignWidth;      // Full width of this segment if it were non-breaking
+   UWORD Depth;           // Branch depth associated with the segment - helps to differentiate between inner and outer tables
    bool  Edit;            // true if this segment represents content that can be edited
    bool  TextContent;     // true if there are text characters in this segment
-   bool  ControlContent;  // true if there are control codes in this segment
    bool  FloatingVectors; // true if there are user defined vectors in this segment with independent X,Y coordinates
    bool  AllowMerge;      // true if this segment can be merged with sibling segments that have AllowMerge set to true
 };
@@ -470,12 +480,12 @@ struct DocLink {
    std::variant<escLink *, escCell *> Escape;
    DOUBLE X, Y, Width, Height;
    SEGINDEX Segment;
-   ESC  EscapeCode;
+   ESC  BaseCode;
 
    DocLink(ESC pCode, std::variant<escLink *, escCell *> pEscape, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
-       Escape(pEscape), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), EscapeCode(pCode) { }
+       Escape(pEscape), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), BaseCode(pCode) { }
 
-   DocLink() : X(0), Y(0), Width(0), Height(0), Segment(0), EscapeCode(ESC::NIL) { }
+   DocLink() : X(0), Y(0), Width(0), Height(0), Segment(0), BaseCode(ESC::NIL) { }
 
    escLink * asLink() { return std::get<escLink *>(Escape); }
    escCell * asCell() { return std::get<escCell *>(Escape); }
@@ -498,9 +508,6 @@ static const char IXF_HOLDSTYLE  = 0x02;
 static const char IXF_RESETSTYLE = 0x04;
 static const char IXF_CLOSESTYLE = 0x08;
 
-static const LONG TRF_BREAK    = 0x00000001;
-static const LONG TRF_CONTINUE = 0x00000002;
-
 static const WORD PXF_ARGS      = 0x0001;
 static const WORD PXF_TRANSLATE = 0x0002;
 
@@ -520,7 +527,7 @@ struct tablecol {
 
 //********************************************************************************************************************
 
-struct escText : public EscapeCode {
+struct escText : public BaseCode {
    std::string Text;
    bool Formatted = false;
    SEGINDEX Segment = -1; // Reference to the first segment that manages this text string.
@@ -530,15 +537,15 @@ struct escText : public EscapeCode {
    escText(std::string pText, bool pFormatted) : Text(pText), Formatted(pFormatted) { Code = ESC::TEXT; }
 };
 
-struct escAdvance : public EscapeCode {
+struct escAdvance : public BaseCode {
    LONG X, Y;
 
    escAdvance() : X(0), Y(0) { Code = ESC::ADVANCE; }
 };
 
-struct escIndex : public EscapeCode {
+struct escIndex : public BaseCode {
    ULONG NameHash;     // The name of the index is held here as a hash
-   LONG  ID;           // Unique ID for matching to the correct escIndexEnd
+   LONG  ID;           // UID for matching to the correct escIndexEnd
    LONG  Y;            // The cursor's vertical position of when the index was encountered during layout
    bool Visible;       // true if the content inside the index is visible (this is the default)
    bool ParentVisible; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
@@ -549,12 +556,12 @@ struct escIndex : public EscapeCode {
    }
 };
 
-struct escIndexEnd : public EscapeCode {
-   LONG ID; // Unique ID matching to the correct escIndex
+struct escIndexEnd : public BaseCode {
+   LONG ID; // UID matching to the correct escIndex
    escIndexEnd(LONG pID) : ID(pID) { Code = ESC::INDEX_END; }
 };
 
-struct escLink : public EscapeCode {
+struct escLink : public BaseCode {
    LINK Type;    // Link type (either a function or hyperlink)
    UWORD ID;
    FSO   Align;
@@ -567,17 +574,17 @@ struct escLink : public EscapeCode {
    }
 };
 
-struct escLinkEnd : public EscapeCode {
+struct escLinkEnd : public BaseCode {
    escLinkEnd() { Code = ESC::LINK_END; }
 };
 
-struct escImage : public EscapeCode {
+struct escImage : public BaseCode {
    LONG Width = 0, Height = 0; // Client can define fixed a width/height 
    objVectorRectangle *Rect = NULL;
    escImage() { Code = ESC::IMAGE; }
 };
 
-struct escList : public EscapeCode {
+struct escList : public BaseCode {
    enum {
       ORDERED=0,
       BULLET,
@@ -598,16 +605,16 @@ struct escList : public EscapeCode {
    escList() { Code = ESC::LIST_START; }
 };
 
-struct escListEnd : public EscapeCode {
+struct escListEnd : public BaseCode {
    escListEnd() { Code = ESC::LIST_END; }
 };
 
-struct escSetMargins : public EscapeCode {
+struct escSetMargins : public BaseCode {
    WORD Left = 0x7fff; WORD Top = 0x7fff; WORD Bottom = 0x7fff; WORD Right = 0x7fff;
    escSetMargins() { Code = ESC::SET_MARGINS; }
 };
 
-struct escVector : public EscapeCode {
+struct escVector : public BaseCode {
    OBJECTID ObjectID = 0;     // Reference to the vector
    CLASSID ClassID = 0;       // Precise class that the object belongs to, mostly for informative/debugging purposes
    ClipRectangle Margins;
@@ -619,13 +626,13 @@ struct escVector : public EscapeCode {
    escVector() { Code = ESC::VECTOR; }
 };
 
-struct escXML : public EscapeCode {
+struct escXML : public BaseCode {
    OBJECTID ObjectID = 0;   // Reference to the object
    bool Owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
    escXML() { Code = ESC::XML; }
 };
 
-struct escTable : public EscapeCode {
+struct escTable : public BaseCode {
    struct escTable *Stack = NULL;
    std::vector<tablecol> Columns; // Table column management
    std::string Fill, Stroke;
@@ -639,7 +646,7 @@ struct escTable : public EscapeCode {
    LONG  RowIndex = 0;                // Current row being processed, generally for debugging
    LONG  CursorX = 0, CursorY = 0;    // Cursor coordinates
    LONG  TotalClips = 0;              // Temporary record of Document->Clips.size()
-   UWORD Thickness  = 0;               // Border thickness
+   UWORD Thickness  = 0;              // Border thickness
    UBYTE ComputeColumns = 0;
    bool  WidthPercent   = false;   // true if width is a percentage
    bool  HeightPercent  = false;   // true if height is a percentage
@@ -678,15 +685,14 @@ struct escTable : public EscapeCode {
    }
 };
 
-struct escTableEnd : public EscapeCode {
+struct escTableEnd : public BaseCode {
    escTableEnd() { Code = ESC::TABLE_END; }
 };
 
-class escParagraph : public EscapeCode {
+class escParagraph : public BaseCode {
    public:
    std::string Value = "";
-   LONG   X, Y;
-   LONG   Height;
+   LONG   X, Y, Height;
    LONG   BlockIndent;
    LONG   ItemIndent;
    DOUBLE Indent;
@@ -697,11 +703,9 @@ class escParagraph : public EscapeCode {
    bool ListItem;
    bool Trim;
 
-   escParagraph() : X(0), Y(0), Height(0),
-      BlockIndent(0), ItemIndent(0), Indent(DEFAULT_INDENT), VSpacing(1.0), LeadingRatio(1.0),
-      Relative(false), ListItem(false), Trim(false) {
-      Code = ESC::PARAGRAPH_START;
-   }
+   escParagraph() : BaseCode(ESC::PARAGRAPH_START), X(0), Y(0), Height(0),
+      BlockIndent(0), ItemIndent(0), Indent(0), VSpacing(1.0), LeadingRatio(1.0),
+      Relative(false), ListItem(false), Trim(false) { }
 
    void applyStyle(const style_status &Style) {
       VSpacing     = Style.List->VSpacing;
@@ -710,26 +714,25 @@ class escParagraph : public EscapeCode {
    }
 };
 
-struct escParagraphEnd : public EscapeCode {
-   escParagraphEnd() { Code = ESC::PARAGRAPH_END; }
+struct escParagraphEnd : public BaseCode {
+   escParagraphEnd() : BaseCode(ESC::PARAGRAPH_END) { }
 };
 
-struct escRow : public EscapeCode {
+struct escRow : public BaseCode {
    LONG  Y = 0;
    LONG  RowHeight = 0; // Height of all cells on this row, used when drawing the cells
    LONG  MinHeight = 0;
    std::string Stroke, Fill;
    bool  VerticalRepass = false;
 
-   escRow() { Code = ESC::ROW; }
+   escRow() : BaseCode(ESC::ROW) { }
 };
 
-struct escRowEnd : public EscapeCode {
-   escRowEnd() { Code = ESC::ROW_END; }
+struct escRowEnd : public BaseCode {
+   escRowEnd() : BaseCode(ESC::ROW_END) { }
 };
 
-struct escCell : public EscapeCode {
-   struct escCell *Stack;
+struct escCell : public BaseCode {
    LONG CellID;         // Identifier for the matching escCellEnd
    LONG Column;         // Column number that the cell starts in
    LONG ColSpan;        // Number of columns spanned by this cell (normally set to 1)
@@ -743,16 +746,14 @@ struct escCell : public EscapeCode {
    std::string Fill;
 
    escCell(LONG pCellID, LONG pColumn) :
-      Stack(NULL),
-      CellID(pCellID), Column(pColumn),
-      ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0) {
-      Code = ESC::CELL;
-   }
+      BaseCode(ESC::CELL), CellID(pCellID), Column(pColumn),
+      ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0)
+      { }
 };
 
-struct escCellEnd : public EscapeCode {
+struct escCellEnd : public BaseCode {
    LONG CellID = 0;    // Matching identifier from escCell
-   escCellEnd() { Code = ESC::CELL_END; }
+   escCellEnd() : BaseCode(ESC::CELL_END) { }
 };
 
 //********************************************************************************************************************
@@ -794,11 +795,11 @@ class extDocument : public objDocument {
    std::unordered_map<ULONG, std::variant<escText, escAdvance, escTable, escTableEnd, escRow, escRowEnd, escParagraph,
       escParagraphEnd, escCell, escCellEnd, escLink, escLinkEnd, escList, escListEnd, escIndex, escIndexEnd,
       escFont, escVector, escSetMargins, escXML, escImage>> Codes;
-   std::array<std::vector<FUNCTION>, DRT_MAX> Triggers;
+   std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    struct DocEdit *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
-   StreamChar SelectStart;   // Selection start (stream index)
-   StreamChar SelectEnd;     // Selection end (stream index)
+   StreamChar SelectStart;    // Selection start (stream index)
+   StreamChar SelectEnd;      // Selection end (stream index)
    StreamChar CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    StreamChar SelectIndex;    // The end of the selected text area, if text is selected.
    DOUBLE VPWidth, VPHeight;
@@ -809,9 +810,9 @@ class extDocument : public objDocument {
    LONG   MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    FLOAT  PageWidth;         // Width of the widest section of the document page.  Can be pre-defined for a fixed width.
    LONG   LinkIndex;         // Currently selected link (mouse over)
-   LONG   CalcWidth;          // Final page width calculated from the layout process
+   LONG   CalcWidth;         // Final page width calculated from the layout process
    LONG   LoopIndex;
-   LONG   ElementCounter;     // Counter for element ID's
+   LONG   ElementCounter;       // Counter for element ID's
    LONG   XPosition, YPosition; // Scrolling offset
    LONG   AreaX, AreaY, AreaWidth, AreaHeight;
    LONG   ClickX, ClickY;
@@ -828,10 +829,10 @@ class extDocument : public objDocument {
    LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
    ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
    UWORD  Depth;              // Section depth - increases when do_layout() recurses, e.g. into tables
-   UWORD  ParagraphDepth;
-   UWORD  LinkID;            // Unique counter for links
-   WORD   FocusIndex;        // Tab focus index
-   WORD   Invisible;         // Incremented for sections within a hidden index
+   UWORD  ParagraphDepth;     // Incremented when inside <p> tags
+   UWORD  LinkID;             // Unique counter for links
+   WORD   FocusIndex;         // Tab focus index
+   WORD   Invisible;          // Incremented for sections within a hidden index
    UBYTE  Processing;
    UBYTE  InTemplate;
    UBYTE  BkgdGfx;
@@ -850,8 +851,8 @@ class extDocument : public objDocument {
    bool   EditMode;
    bool   CursorState;     // true if the edit cursor is on, false if off.  Used for flashing of the cursor
 
-   template <class T = EscapeCode> T & insertEscape(LONG &, T &);
-   template <class T = EscapeCode> T & reserveEscape(LONG &);
+   template <class T = BaseCode> T & insertCode(StreamChar &, T &);
+   template <class T = BaseCode> T & reserveCode(StreamChar &);
 };
 
 enum {
@@ -892,7 +893,7 @@ struct docresource {
 
 class tagroutine {
 public:
-   void (*Routine)(extDocument *, objXML *, XMLTag &, objXML::TAGS &, LONG &, IPF);
+   void (*Routine)(extDocument *, objXML *, XMLTag &, objXML::TAGS &, StreamChar &, IPF);
    TAG Flags;
 };
 
@@ -938,7 +939,6 @@ static ERROR add_document_class(void);
 static LONG  add_tabfocus(extDocument *, UBYTE, LONG);
 static void  add_template(extDocument *, objXML *, XMLTag &);
 static void  advance_tabfocus(extDocument *, BYTE);
-static DOUBLE calc_page_height(extDocument *, DOUBLE, DOUBLE);
 static void  check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
 static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
 static void  check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
@@ -961,7 +961,7 @@ static std::string get_font_style(FSO);
 static LONG  getutf8(CSTRING, LONG *);
 static ERROR insert_text(extDocument *, StreamChar &, const std::string &, bool);
 static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, UBYTE);
-static ERROR insert_xml(extDocument *, objXML *, XMLTag &, LONG TargetIndex = -1, UBYTE Flags = 0);
+static ERROR insert_xml(extDocument *, objXML *, XMLTag &, StreamChar TargetIndex = StreamChar(), UBYTE Flags = 0);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD);
@@ -972,11 +972,11 @@ static void notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height);
-static LONG parse_tag(extDocument *, objXML *, XMLTag &, LONG &, IPF &);
-static LONG parse_tags(extDocument *, objXML *, objXML::TAGS &, LONG &, IPF = IPF::NIL);
+static TRF parse_tag(extDocument *, objXML *, XMLTag &, StreamChar &, IPF &);
+static TRF parse_tags(extDocument *, objXML *, objXML::TAGS &, StreamChar &, IPF = IPF::NIL);
 static void print_xmltree(objXML::TAGS &, LONG &);
 #ifdef DBG_LINES
-static void print_sorted_lines(extDocument *) __attribute__ ((unused));
+static void print_sorted_lines(extDocument *, const RSTREAM &Stream) __attribute__ ((unused));
 #endif
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
@@ -990,7 +990,7 @@ static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
 static STRING stream_to_string(extDocument *, StreamChar, StreamChar);
-static void  style_check(extDocument *, INDEX &);
+static void  style_check(extDocument *, StreamChar &);
 static void  tag_xml_content(extDocument *, objXML *, XMLTag &, WORD);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
@@ -1116,7 +1116,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
 inline INDEX find_cell(extDocument *Self, LONG ID)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL) {
+      if (Self->Stream[i].Code IS ESC::CELL) {
          auto &cell = std::get<escCell>(Self->Codes[Self->Stream[i].UID]);
          if ((ID) and (ID IS cell.CellID)) return i;
       }
@@ -1128,7 +1128,7 @@ inline INDEX find_cell(extDocument *Self, LONG ID)
 inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::CELL) {
+      if (Self->Stream[i].Code IS ESC::CELL) {
          auto &cell = escape_data<escCell>(Self, i);
          if (EditDef == cell.EditDef) return i;
       }
@@ -1158,7 +1158,7 @@ inline void layout_doc_fast(extDocument *Self)
 
 void StreamChar::eraseChar(extDocument *Self, RSTREAM &Stream) // Erase a character OR an escape code.
 {
-   if (ESCAPE_CODE(Stream, Index) IS ESC::TEXT) {
+   if (Stream[Index].Code IS ESC::TEXT) {
       auto &text = escape_data<escText>(Self, Index);
       if (Offset < text.Text.size()) text.Text.erase(Offset, 1);
       if (Offset > text.Text.size()) Offset = text.Text.size();
@@ -1173,8 +1173,8 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream)
 {
    auto idx = Index;
    auto seek = Offset;
-   while (idx < Stream.size()) {
-      if (ESCAPE_CODE(Stream, idx) IS ESC::TEXT) {
+   while (size_t(idx) < Stream.size()) {
+      if (Stream[idx].Code IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, idx);
          if (seek < text.Text.size()) return text.Text[seek];
          else seek = 0; // The current character offset isn't valid, reset it.
@@ -1192,8 +1192,8 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
    auto idx = Index;
    auto off = Offset;
    
-   while (idx < Stream.size()) {
-      if (ESCAPE_CODE(Stream, idx) IS ESC::TEXT) {
+   while (unsigned(idx) < Stream.size()) {
+      if (Stream[idx].Code IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, idx);
          if (off + Seek < text.Text.size()) return text.Text[off + Seek];   
          Seek -= text.Text.size() - off;
@@ -1207,7 +1207,7 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
 
 void StreamChar::nextChar(extDocument *Self, const RSTREAM &Stream)
 {
-   if (ESCAPE_CODE(Stream, Index) IS ESC::TEXT) {
+   if (Stream[Index].Code IS ESC::TEXT) {
       auto &text = escape_data<escText>(Self, Index);
       if (++Offset >= text.Text.size()) {
          Index++;
@@ -1222,13 +1222,13 @@ void StreamChar::nextChar(extDocument *Self, const RSTREAM &Stream)
 
 void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
 {
-   if (ESCAPE_CODE(Stream, Index) IS ESC::TEXT) {
+   if (Stream[Index].Code IS ESC::TEXT) {
       if (Offset > 0) { Offset--; return; }
    }
    
    if (Index > 0) {
       Index--;
-      if (ESCAPE_CODE(Stream, Index) IS ESC::TEXT) {
+      if (Stream[Index].Code IS ESC::TEXT) {
          Offset = escape_data<escText>(Self, Index).Text.size()-1;
       }
       else Offset =0;
@@ -1241,12 +1241,12 @@ void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
 
 char StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
 {
-   if ((Offset > 0) and (ESCAPE_CODE(Stream, Index) IS ESC::TEXT)) {
+   if ((Offset > 0) and (Stream[Index].Code IS ESC::TEXT)) {
       return escape_data<escText>(Self, Index).Text[Offset-1];
    }
    
    for (auto i=Index; i > 0; i--) {
-      if (ESCAPE_CODE(Stream, i) IS ESC::TEXT) {
+      if (Stream[i].Code IS ESC::TEXT) {
          return escape_data<escText>(Self, i).Text.back();
       }   
    }
@@ -1255,7 +1255,7 @@ char StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
 }
 //********************************************************************************************************************
 
-#include "tags.cpp"
+#include "parsing.cpp"
 #include "class/fields.cpp"
 #include "class/document_class.cpp"
 #include "functions.cpp"

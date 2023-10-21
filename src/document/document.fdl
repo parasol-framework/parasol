@@ -7,6 +7,8 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
 
   c_include("<parasol/modules/display.h>", "<parasol/modules/xml.h>", "<parasol/modules/font.h>", "<parasol/modules/vector.h>")
 
+  loadFile(glPath .. 'common.fdl')
+
   const("RIPPLE", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
     VERSION = "\"20230701\""
   })
@@ -17,7 +19,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     "PATH: The source file path has changed.  Useful for detecting when the user has left the page.",
     "LINK_ACTIVATED: The user has interacted with a hyperlink.  This event can be cancelled by returning ERR_Skip.")
 
-  enum("DRT", { start=0, comment="Internal trigger codes" },
+  enum("DRT", { type="int", start=0, comment="Internal trigger codes" },
     "BEFORE_LAYOUT",
     "AFTER_LAYOUT",
     "USER_CLICK",
@@ -57,11 +59,6 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     "NO_WRAP: Do not wrap the text.",
     { STYLES = "BOLD|UNDERLINE|ITALIC|CAPS" })
 
-  struct("docdraw", { }, [[
-    ptr Object
-    oid ID
-  ]])
-
   methods("Document", "doc", {
     { id=1,  name="FeedParser" },
     { id=2,  name="SelectLink" },
@@ -77,7 +74,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     { id=13, name="Edit" },
     { id=14, name="ReadContent" }
   })
-  
+
   class("Document", { src={ "class/document_class.cpp", "class/fields.cpp" }, output="class/document_def.c" }, [[
     str Description      # A description assigned by the author of the document
     str FontFace         # The user's default font face
@@ -93,7 +90,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     str VLinkFill        # The fill to use for visited hyperlinks
     str LinkSelectFill   # The fill to use when links are selected (e.g. when the user tabs to a link)
     str BorderStroke     # The stroke to apply to the border of the document window
-    obj(VectorViewport) Viewport  # The viewport that will host the document graphics    
+    obj(VectorViewport) Viewport  # The viewport that will host the document graphics
     obj(VectorViewport) Focus
     oid TabFocus         # If the tab key is pressed, focus can be changed to this object
     int(DEF) EventMask   # Event mask for selectively receiving events from the Document object.

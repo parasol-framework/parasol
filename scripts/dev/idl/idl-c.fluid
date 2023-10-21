@@ -223,6 +223,7 @@ glActionStubs = {
 glHeader = { }
 glOutput = { }
 glConstants = { }
+glConstantOptions = { }
 glActiveRefs = { } -- For cType()
 
 function output(String)
@@ -496,7 +497,9 @@ function flags(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then
+   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+     -- Do nothing, module restriction imposed.
+   elseif (glRestrict == nil) then
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
@@ -602,7 +605,9 @@ function const(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then //.
+   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+     -- Do nothing, module restriction imposed.
+   elseif (glRestrict == nil) then //.
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
@@ -664,7 +669,9 @@ function enum(Prefix, Options, ...)
 
    table.insert(out, '')
 
-   if (glRestrict == nil) then
+   if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+     -- Do nothing, module restriction imposed.
+   elseif (glRestrict == nil) then
       for k,v in pairs(out) do table.insert(glConstants, v) end
    end
 
@@ -802,8 +809,10 @@ function struct(Name, Options, Def, Append)
          table.insert(out, '} ' .. Options.type .. ';')
          table.insert(out, '')
       end
-
-      if (glRestrict == nil) then
+      
+      if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
+        -- Do nothing, module restriction imposed.
+      elseif (glRestrict == nil) then
          for k,v in pairs(out) do table.insert(glOutput, v) end
       end
 

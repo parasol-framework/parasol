@@ -37,7 +37,7 @@ static const char glHelp[] = {
 "This command-line program can execute scripts and PARC files developed for the Parasol framework.  The\n\
 Fluid scripting language (.fluid files) are supported in the default distribution.  Quick start:\n\
 \n\
-   parasol [args] [script.ext] arg1 arg2 ...\n\
+   parasol [args] [script.ext] arg1 arg2=value ...\n\
 \n\
 The following parameters can be used when executing script files:\n\
 \n\

@@ -1723,6 +1723,18 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
 };
 
+
+class FloatRect {
+   public:
+   DOUBLE X;    // Left-most coordinate
+   DOUBLE Y;     // Top coordinate
+   DOUBLE Width;   // Right-most coordinate
+   DOUBLE Height;  // Bottom coordinate
+   FloatRect() { }
+   FloatRect(DOUBLE Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
+   FloatRect(DOUBLE pX, DOUBLE pY, DOUBLE pWidth, DOUBLE pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
+};
+
 }
 
 #include <string.h> // memset()
@@ -2872,7 +2884,7 @@ class Create {
          if (object.ok()) return *object;
          else return NULL;
       }
-      
+
       inline static T * integral(const std::initializer_list<FieldValue> Fields) {
          pf::Create<T> object(Fields, NF::INTEGRAL);
          if (object.ok()) return *object;
@@ -2886,7 +2898,7 @@ class Create {
          if (object.ok()) return *object;
          else return NULL;
       }
-      
+
       inline static T * untracked(const std::initializer_list<FieldValue> Fields) {
          pf::Create<T> object(Fields, NF::UNTRACKED);
          if (object.ok()) return *object;

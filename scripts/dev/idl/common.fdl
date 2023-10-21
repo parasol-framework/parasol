@@ -1,17 +1,17 @@
 -- These common constants are re-usable across all modules.
 
-flags("CLIPMODE", { comment="Clipboard modes" },
+flags("CLIPMODE", { comment="Clipboard modes", module="Core" },
     "CUT: Cut from the clipboard.",
     "COPY: Copy from the clipboard.",
     "PASTE: Paste from the clipboard.")
 
-enum("SEEK", { type="int", start=0, comment="Seek positions" },
+enum("SEEK", { type="int", start=0, comment="Seek positions", module="Core" },
     "START: Use an index at position zero.",
     "CURRENT: Use an index at the end of the last read/write operation.",
     "END: Use an index at the end of the data buffer.",
     "RELATIVE: The index is between 0 and 1.0 and relative to the data size.")
 
-flags("DEVICE", { bits=64 },
+flags("DEVICE", { bits=64, module="Core" },
     "COMPACT_DISC: Compact disc style device",
     "HARD_DISK: Hard disk style device",
     "FLOPPY_DISK: Floppy disk style device",
@@ -30,7 +30,7 @@ flags("DEVICE", { bits=64 },
     "PRINTER_3D: Device is a three dimensional printer.",
     "SCANNER_3D: Device is a three dimensional scanner.")
 
-flags("CCF", { comment="Class categories" },
+flags("CCF", { comment="Class categories", module="Core" },
     "COMMAND: Command classes perform specific procedures, like copying or moving a file, managing volumes or executing a program.",
     "DRAWABLE: Drawable classes provide graphical areas that are designed to be drawn to.",
     "EFFECT: Effect classes draw graphics and/or play audio for non-productive demonstration purposes.",
@@ -46,7 +46,7 @@ flags("CCF", { comment="Class categories" },
     "NETWORK: Network classes interface with network drivers to simplify network communications for the developer.",
     "MULTIMEDIA")
 
-enum("AC", { weak=true, start=1, comment="Action identifiers." },
+enum("AC", { weak=true, start=1, comment="Action identifiers.", module="Core" },
     "Signal",       "Activate",       "SelectArea",   "Clear",    "FreeWarning",  "Sort",         "CopyData",
     "DataFeed",     "Deactivate",     "Draw",         "Flush",    "Focus",        "Free",         "SaveSettings",
     "GetVar",       "DragDrop",       "Hide",         "Init",     "Lock",         "LostFocus",    "Move",
@@ -57,7 +57,7 @@ enum("AC", { weak=true, start=1, comment="Action identifiers." },
     "MoveToPoint",  "ScrollToPoint",  "Custom",
     "END")
 
-flags("PERMIT", { comment="Permission flags" },
+flags("PERMIT", { comment="Permission flags", module="Core" },
     "READ: User/Owner has read access.  This will not allow compiled code to be executed.",
     "WRITE: User/Owner can write.",
     "EXEC: User/Owner can execute.",
@@ -96,7 +96,7 @@ flags("PERMIT", { comment="Permission flags" },
     { OTHERS             = "OTHERS_READ|OTHERS_WRITE|OTHERS_EXEC|OTHERS_DELETE" }
 )
 
-flags("KQ", { comment="Special qualifier flags" },
+flags("KQ", { comment="Special qualifier flags", module="Core" },
     "L_SHIFT: Left Shift is held",
     "R_SHIFT: Right Shift is held",
     "CAPS_LOCK: Caps-Lock is on",
@@ -126,7 +126,7 @@ flags("KQ", { comment="Special qualifier flags" },
     { INFO            = "REPEAT|RELEASED|PRESSED|NOT_PRINTABLE|CAPS_LOCK" }
 )
 
-flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only." },
+flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits are stored with allocated blocks, the upper 16 bits are function-relative only.", module="Core" },
     "MANAGED: Enables custom resource management for the memory block.  The start of the block will need to be reserved with a pointer to a ResourceManager structure, which is included as part of the block's declared Size.  The Free() callback will be called when the block is removed.",
     "VIDEO: The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.",
     "TEXTURE: The memory space is reserved by a video driver for hosting texture graphics.",
@@ -149,7 +149,7 @@ flags("MEM", { comment="Memory types used by AllocMemory().  The lower 16 bits a
     { CALLER        = "0x00800000: This flag is usable only in routines that are supporting a class method.  It forces the memory allocation to be tracked to the object that made the method call.  This is particularly important in methods that return memory blocks that do not form a part of the object itself." },
     { READ_WRITE    = "READ|WRITE" })
 
-enum("EVG", { type="int", start=1, comment="Event categories." }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.fluid and fluid_functions.c, line 493
+enum("EVG", { type="int", start=1, comment="Event categories.", module="Core" }, -- 5 bit limit (max 32 entries).  These constants are also managed in core.fluid and fluid_functions.c, line 493
     "FILESYSTEM: File system events.",
     "NETWORK: Network events.",
     "SYSTEM: System-wide events",
@@ -165,7 +165,7 @@ enum("EVG", { type="int", start=1, comment="Event categories." }, -- 5 bit limit
     "ANDROID: Android specific events that do not already fit existing categories.",
     "END: Private")
 
-enum("DATA", { type="int", start=1, comment="Data codes" }, -- NB: Duplicated in display/win32/windows.c
+enum("DATA", { type="int", start=1, comment="Data codes", module="Core" }, -- NB: Duplicated in display/win32/windows.c
     "TEXT: Standard ASCII text",
     "RAW: Raw unprocessed data",
     "DEVICE_INPUT: Device activity",
@@ -179,7 +179,7 @@ enum("DATA", { type="int", start=1, comment="Data codes" }, -- NB: Duplicated in
     "CONTENT: Document content (between XML tags) - sent by document objects only",
     "INPUT_READY: Device input that has been transformed into user input")
 
-flags("JTYPE", { comment="JTYPE flags are used to categorise input types." },
+flags("JTYPE", { comment="JTYPE flags are used to categorise input types.", module="Core" },
     "SECONDARY: Indicates to the receiver of this message that it is not the primary/original recipient",
     "ANCHORED: Cursor has been anchored with LockCursor()",
     "DRAGGED: Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).",
@@ -193,7 +193,7 @@ flags("JTYPE", { comment="JTYPE flags are used to categorise input types." },
     "REPEATED: Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)",
     "DRAG_ITEM: This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.")
 
-enum("JET", { type="int", start=1, comment="JET constants are documented in GetInputEvent()" },
+enum("JET", { type="int", start=1, comment="JET constants are documented in GetInputEvent()", module="Core" },
     "DIGITAL_X: Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.",
     "DIGITAL_Y: Vertical digital movement from a relative location.",
     "BUTTON_1|LMB: Left mouse button, XBox A button, PS square button.  Value is pressure sensitive, ranging between 0 - 1.0 (0 is released, 1.0 is fully depressed).",
@@ -238,7 +238,7 @@ enum("JET", { type="int", start=1, comment="JET constants are documented in GetI
 -- Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
 -- classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
 
-flags("FD", { weak=true, comment="Field descriptors." },
+flags("FD", { weak=true, comment="Field descriptors.", module="Core" },
   { DOUBLE     = "0x80000000: 64 bit float." },
   { LONG       = "0x40000000: 32 bit integer." },
   { VARIABLE   = "0x20000000: Supports multiple primitive types (long, double, large or pointer)." },
@@ -301,7 +301,7 @@ flags("FD", { weak=true, comment="Field descriptors." },
   { PTR_DOUBLERESULT = "DOUBLE|PTR|RESULT: Use for pointer-based value results only." }
 )
 
-  struct("InputEvent", { }, [[
+  struct("InputEvent", { module="Core" }, [[
     cstruct(*InputEvent) Next # Next event in the chain
     double Value      # The value associated with the Type
     large Timestamp   # PreciseTime() of the recorded input
@@ -317,24 +317,24 @@ flags("FD", { weak=true, comment="Field descriptors." },
     int(JTYPE) Mask   # Mask to use for checking against subscribers
   ]])
 
-  struct("dcRequest", { comment="Data feed item request" }, [[
+  struct("dcRequest", { comment="Data feed item request", module="Core" }, [[
     int     Item        # Identifier for retrieval from the source
     char(4) Preference  # Data preferences for the returned item(s)
   ]])
 
-  struct("dcAudio", { comment="Data feed structure for Audio" }, [[
+  struct("dcAudio", { comment="Data feed structure for Audio", module="Core" }, [[
     int Size     # Byte size of this structure
     int Format   # Format of the audio data
   ]])
 
-  struct("dcKeyEntry", { comment="Data feed structure for Keypress" }, [[
+  struct("dcKeyEntry", { comment="Data feed structure for Keypress", module="Core" }, [[
     int   Flags      # Shift/Control/CapsLock...
     int   Value      # ASCII value of the key A/B/C/D...
     large Timestamp  # PreciseTime() at which the keypress was recorded
     int   Unicode    # Unicode value for pre-calculated key translations
   ]])
 
-  struct("dcDeviceInput", { }, [[
+  struct("dcDeviceInput", { module="Core" }, [[
     double Value      # The value associated with the Type
     large  Timestamp  # PreciseTime() of the recorded input
     oid    DeviceID   # The hardware device that this event originated from (note: This ID can be to a private/inaccessible object, the point is that the ID is unique)
@@ -342,7 +342,7 @@ flags("FD", { weak=true, comment="Field descriptors." },
     int(JET) Type     # JET constant
   ]])
 
-  struct("DateTime", { comment="Generic structure for date-time management." }, [[
+  struct("DateTime", { comment="Generic structure for date-time management.", module="Core" }, [[
     int Year      # Year
     int Month     # Month 1 to 12
     int Day       # Day 1 to 31

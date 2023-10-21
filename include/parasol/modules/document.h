@@ -35,17 +35,20 @@ DEFINE_ENUM_FLAG_OPERATORS(DEF)
 
 // Internal trigger codes
 
-#define DRT_BEFORE_LAYOUT 0
-#define DRT_AFTER_LAYOUT 1
-#define DRT_USER_CLICK 2
-#define DRT_USER_CLICK_RELEASE 3
-#define DRT_USER_MOVEMENT 4
-#define DRT_REFRESH 5
-#define DRT_GOT_FOCUS 6
-#define DRT_LOST_FOCUS 7
-#define DRT_LEAVING_PAGE 8
-#define DRT_PAGE_PROCESSED 9
-#define DRT_MAX 10
+enum class DRT : LONG {
+   NIL = 0,
+   BEFORE_LAYOUT = 0,
+   AFTER_LAYOUT = 1,
+   USER_CLICK = 2,
+   USER_CLICK_RELEASE = 3,
+   USER_MOVEMENT = 4,
+   REFRESH = 5,
+   GOT_FOCUS = 6,
+   LOST_FOCUS = 7,
+   LEAVING_PAGE = 8,
+   PAGE_PROCESSED = 9,
+   MAX = 10,
+};
 
 // Document flags
 
@@ -92,11 +95,6 @@ enum class FSO : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(FSO)
 
-struct docdraw {
-   APTR     Object;
-   OBJECTID ID;
-};
-
 // Document class definition
 
 #define VER_DOCUMENT (1.000000)
@@ -124,7 +122,7 @@ struct docInsertXML { CSTRING XML; LONG Index;  };
 struct docRemoveContent { LONG Start; LONG End;  };
 struct docInsertText { CSTRING Text; LONG Index; LONG Char; LONG Preformat;  };
 struct docCallFunction { CSTRING Function; struct ScriptArg * Args; LONG TotalArgs;  };
-struct docAddListener { LONG Trigger; FUNCTION * Function;  };
+struct docAddListener { DRT Trigger; FUNCTION * Function;  };
 struct docRemoveListener { LONG Trigger; FUNCTION * Function;  };
 struct docShowIndex { CSTRING Name;  };
 struct docHideIndex { CSTRING Name;  };
@@ -169,7 +167,7 @@ INLINE ERROR docCallFunction(APTR Ob, CSTRING Function, struct ScriptArg * Args,
    return(Action(MT_docCallFunction, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR docAddListener(APTR Ob, LONG Trigger, FUNCTION * Function) {
+INLINE ERROR docAddListener(APTR Ob, DRT Trigger, FUNCTION * Function) {
    struct docAddListener args = { Trigger, Function };
    return(Action(MT_docAddListener, (OBJECTPTR)Ob, &args));
 }

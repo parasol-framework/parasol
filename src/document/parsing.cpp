@@ -50,11 +50,11 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
 
 //********************************************************************************************************************
 
-static void trim_preformat(extDocument *Self, INDEX &Index)
+static void trim_preformat(extDocument *Self, StreamChar &Index)
 {
-   auto i = Index - 1;
+   auto i = Index.Index - 1;
    for (; i > 0; i--) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
+      if (Self->Stream[i].Code IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, i);
 
          static const std::string ws(" \t\f\v\n\r");
@@ -105,9 +105,9 @@ static void saved_style_check(extDocument *Self, style_status &SaveStatus)
 //********************************************************************************************************************
 // Advances the cursor.  It is only possible to advance positively on either axis.
 
-static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   auto &advance = Self->reserveEscape<escAdvance>(Index);
+   auto &advance = Self->reserveCode<escAdvance>(Index);
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -127,7 +127,7 @@ static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
 // NB: If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so that
 // the XML insertion point is known.
 
-static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -241,7 +241,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 //********************************************************************************************************************
 // In background mode, all objects are targeted to the View viewport rather than the Page viewport.
 
-static void tag_background(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_background(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->BkgdGfx++;
    parse_tags(Self, XML, Children, Index);
@@ -250,7 +250,7 @@ static void tag_background(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::
 
 //********************************************************************************************************************
 
-static void tag_bold(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_bold(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    if ((Self->Style.FontStyle.Options & FSO::BOLD) IS FSO::NIL) {
       auto savestatus = Self->Style; // Save the current style
@@ -264,12 +264,10 @@ static void tag_bold(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-static void tag_br(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_br(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   StreamChar sc(Index, 0);
-   insert_text(Self, sc, "\n", true);
+   insert_text(Self, Index, "\n", true);
    Self->NoWhitespace = true;
-   Index = sc.Index;
 }
 
 //********************************************************************************************************************
@@ -286,7 +284,7 @@ static void tag_br(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 //
 // NOTE: Another valid method of caching an object is to use a persistent script.
 
-static void tag_cache(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_cache(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->ObjectCache++;
    parse_tags(Self, XML, Children, Index);
@@ -306,7 +304,7 @@ static void tag_cache(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 //
 // <call function="[script].function" arg1="" arg2="" _global=""/>
 
-static void tag_call(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_call(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    OBJECTPTR script = Self->DefaultScript;
@@ -380,7 +378,7 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-static void tag_caps(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_caps(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    if ((Self->Style.FontStyle.Options & FSO::CAPS) IS FSO::NIL) {
       auto savestatus = Self->Style;
@@ -394,7 +392,7 @@ static void tag_caps(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log("DocMsg");
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -406,7 +404,7 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // Use div to structure the document in a similar way to paragraphs.  Its main
 // difference is that it avoids the declaration of paragraph start and end points.
 
-static void tag_div(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_div(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -434,7 +432,7 @@ static void tag_div(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 // Creates a new edit definition.  These are stored in a linked list.  Edit definitions are used by referring to them
 // by name in table cells.
 
-static void tag_editdef(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_editdef(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -494,21 +492,21 @@ static void tag_editdef(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
 //
 // Note that for hyperlinks, the 'select' attribute can also be used as a convenient means to assign focus.
 
-static void tag_focus(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_focus(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->FocusIndex = Self->Tabs.size();
 }
 
 //********************************************************************************************************************
 
-static void tag_footer(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_footer(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->FooterTag = &Children;
 }
 
 //********************************************************************************************************************
 
-static void tag_header(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_header(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->HeaderTag = &Children;
 }
@@ -517,7 +515,7 @@ static void tag_header(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 ** Indent document block.  The extent of the indentation can be customised in the Units value.
 */
 
-static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    escParagraph esc;
 
@@ -532,18 +530,18 @@ static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
       else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &esc);
    }
 
-   Self->insertEscape(Index, esc);
+   Self->insertCode(Index, esc);
 
       parse_tags(Self, XML, Children, Index);
 
-   Self->reserveEscape<escParagraphEnd>(Index);
+   Self->reserveCode<escParagraphEnd>(Index);
    Self->NoWhitespace = true;
 }
 
 //********************************************************************************************************************
 // Use of <meta> for custom information is allowed and is ignored by the parser.
 
-static void tag_head(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_head(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    // The head contains information about the document
 
@@ -585,7 +583,7 @@ static void tag_head(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 //********************************************************************************************************************
 // Include XML from another RIPPLE file.
 
-static void tag_include(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_include(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -605,7 +603,7 @@ static void tag_include(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
 
 //********************************************************************************************************************
 
-static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -634,7 +632,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless 
 // changed to a higher resolution or otherwise modified.
 
-static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    
@@ -706,7 +704,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
                escImage esc;
                esc.Rect = rect;
-               Self->insertEscape(Index, esc);
+               Self->insertCode(Index, esc);
                return;
             }
 
@@ -718,7 +716,6 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       }
    }
    else if (!src.empty()) { // Load a static bitmap image.
-      objPicture *pic = NULL;
       if (auto pic = objPicture::create::integral({
             fl::Path(src), 
             fl::BitsPerPixel(32), 
@@ -747,7 +744,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
                escImage esc;
                esc.Rect = rect;
-               Self->insertEscape(Index, esc);
+               Self->insertCode(Index, esc);
                return;
             }
 
@@ -779,7 +776,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // The developer can use indexes to bookmark areas of code that are of interest.  The FindIndex() method is used for
 // this purpose.
 
-static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -808,7 +805,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    if (name) {
       escIndex esc(name, Self->UniqueID++, 0, visible, Self->Invisible ? false : true);
 
-      Self->insertEscape(Index, esc);
+      Self->insertCode(Index, esc);
 
       if (!Children.empty()) {
          if (!visible) Self->Invisible++;
@@ -817,7 +814,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       }
 
       escIndexEnd end(esc.ID);
-      Self->insertEscape(Index, end);
+      Self->insertCode(Index, end);
    }
    else if (!Children.empty()) parse_tags(Self, XML, Children, Index);
 }
@@ -835,7 +832,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // Dummy links that specify neither an href or onclick value can be useful in embedded documents if the
 // EventCallback feature is used.
 
-static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -897,7 +894,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          buffer << pointermotion << '\0';
       }
 
-      Self->insertEscape(Index, link);
+      Self->insertCode(Index, link);
 
       auto savestatus = Self->Style;
 
@@ -911,7 +908,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       saved_style_check(Self, savestatus);
 
-      Self->reserveEscape<escLinkEnd>(Index);
+      Self->reserveCode<escLinkEnd>(Index);
 
       // This style check will forcibly revert the font back to whatever it was rather than waiting for new content to result in
       // a change.  The reason why we want to do this is to make it easier to manage run-time insertion of new content.  For
@@ -930,7 +927,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    escList esc, *savelist;
@@ -970,7 +967,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    // Note: Paragraphs are not inserted because <li> does this
 
-   Self->insertEscape(Index, esc);
+   Self->insertCode(Index, esc);
 
    savelist = Self->Style.List;
    Self->Style.List = &esc;
@@ -979,7 +976,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    Self->Style.List = savelist;
 
-   Self->reserveEscape<escListEnd>(Index);
+   Self->reserveCode<escListEnd>(Index);
 
    Self->NoWhitespace = true;
 }
@@ -987,9 +984,11 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 //********************************************************************************************************************
 // Also see check_para_attrib() for paragraph attributes.
 
-static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
+
+   Self->ParagraphDepth++;
 
    escParagraph esc;
    esc.LeadingRatio = 0;
@@ -1010,15 +1009,15 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
       else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &esc);
    }
 
-   Self->insertEscape(Index, esc);
-   if (esc.Trim) Self->NoWhitespace = true; // No whitespace
-   else Self->NoWhitespace = false; // Allow whitespace
+   Self->insertCode(Index, esc);
+
+   Self->NoWhitespace = esc.Trim;
 
    parse_tags(Self, XML, Children, Index);
    saved_style_check(Self, savestatus);
 
-   escParagraph end;
-   Self->insertEscape(Index, end);
+   escParagraphEnd end;
+   Self->insertCode(Index, end);
    Self->NoWhitespace = true;
 
    // This style check will forcibly revert the font back to whatever it was rather than waiting for new content to
@@ -1027,11 +1026,13 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
    // expectation would be for the new text to be in the format of the body's font and not the <h1> font.
 
    style_check(Self, Index);
+
+   Self->ParagraphDepth--;
 }
 
 //********************************************************************************************************************
 
-static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1047,9 +1048,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             acDataText(Self->CurrentObject, Tag.Attribs[1].Value.c_str());
          }
          else {
-            StreamChar sc(Index, 0);
-            insert_text(Self, sc, Tag.Attribs[1].Value, (Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL);
-            Index = sc.Index;
+            insert_text(Self, Index, Tag.Attribs[1].Value, (Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL);
          }
       }
       else if (!StrMatch("src", Tag.Attribs[1].Name)) {
@@ -1057,9 +1056,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             CacheFile *cache;
             if (!LoadFile(Tag.Attribs[1].Value.c_str(), LDF::NIL, &cache)) {
-               StreamChar sc(Index, 0);
-               insert_text(Self, sc, std::string((CSTRING)cache->Data), (Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL);
-               Index = sc.Index;
+               insert_text(Self, Index, std::string((CSTRING)cache->Data), (Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL);
                UnloadFile(cache);
             }
          }
@@ -1080,7 +1077,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // value="value"/>, however apart from being more convoluted, this would also result in more syntactic cruft as each
 // arg setting would require its own set element.
 
-static void tag_set(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_set(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1115,7 +1112,7 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
 //********************************************************************************************************************
 
-static void tag_template(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_template(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    // Templates can be used to create custom tags.
    //
@@ -1132,17 +1129,17 @@ static void tag_template(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TA
 // NOTE: If no child tags or content is inside the XML string, or if attributes are attached to the XML tag, then the
 // user is trying to create a new XML object (under the Data category), not the XML reserved word.
 
-static void tag_xml(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_xml(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    tag_xml_content(Self, XML, Tag, PXF_ARGS);
 }
 
-static void tag_xmlraw(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_xmlraw(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    tag_xml_content(Self, XML, Tag, 0);
 }
 
-static void tag_xmltranslate(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_xmltranslate(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    tag_xml_content(Self, XML, Tag, PXF_TRANSLATE|PXF_ARGS);
 }
@@ -1194,7 +1191,7 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag &Tag, WORD Fl
 
 //********************************************************************************************************************
 
-static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1271,7 +1268,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 //********************************************************************************************************************
 
 static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID class_id, XMLTag *Template,
-   objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX Index, IPF Flags)
+   objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1444,7 +1441,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
             else escobj.Embedded = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
             style_check(Self, Index);
-            Self->insertEscape(Index, escobj);
+            Self->insertCode(Index, escobj);
 
             if (Self->ObjectCache) {
                switch (object->Class->ClassID) {
@@ -1498,10 +1495,10 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 
 //********************************************************************************************************************
 
-static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
 //   escParagraph para;
-//   Self->insertEscape(Index, para);
+//   Self->insertCode(Index, para);
 
    if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
       auto savestatus = Self->Style;
@@ -1514,7 +1511,7 @@ static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
    trim_preformat(Self, Index);
 
-//   Self->reserveEscape<escParagraphEnd>(Index);
+//   Self->reserveCode<escParagraphEnd>(Index);
 //   Self->NoWhitespace = true;
 }
 
@@ -1530,7 +1527,7 @@ static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 //
 // Only the first section of content enclosed within the <script> tag (CDATA) is accepted by the script parser.
 
-static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    objScript *script;
@@ -1700,7 +1697,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 //********************************************************************************************************************
 // Similar to <font/>, but the original font state is never saved and restored.
 
-static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -1746,7 +1743,7 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
 
 //********************************************************************************************************************
 
-static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    escSetMargins margins;
 
@@ -1780,12 +1777,12 @@ static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::
       }
    }
 
-   Self->insertEscape(Index, margins);
+   Self->insertCode(Index, margins);
 }
 
 //********************************************************************************************************************
 
-static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    //style_check(Self, Index);
    Self->RestoreStyle = Self->Style; // Save the current style
@@ -1793,7 +1790,7 @@ static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
 
 //********************************************************************************************************************
 
-static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->Style = Self->RestoreStyle; // Restore the saved style
    Self->Style.FontChange = true;
@@ -1802,7 +1799,7 @@ static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML
 
 //********************************************************************************************************************
 
-static void tag_italic(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_italic(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    if ((Self->Style.FontStyle.Options & FSO::ITALIC) IS FSO::NIL) {
       auto savestatus = Self->Style;
@@ -1816,7 +1813,7 @@ static void tag_italic(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
 //********************************************************************************************************************
 
-static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1853,11 +1850,11 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
    if ((Self->Style.List->Type IS escList::CUSTOM) and (!para.Value.empty())) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
-      Self->insertEscape(Index, para);
+      Self->insertCode(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveEscape<escParagraphEnd>(Index);
+      Self->reserveCode<escParagraphEnd>(Index);
    }
    else if (Self->Style.List->Type IS escList::ORDERED) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
@@ -1868,28 +1865,28 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       auto save_item = Self->Style.List->ItemNum;
       Self->Style.List->ItemNum = 1;
 
-      Self->insertEscape(Index, para);
+      Self->insertCode(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveEscape<escParagraphEnd>(Index);
+      Self->reserveCode<escParagraphEnd>(Index);
 
       Self->Style.List->ItemNum = save_item;
       Self->Style.List->Buffer.resize(list_size);
    }
    else {
-      Self->insertEscape(Index, para);
+      Self->insertCode(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveEscape<escParagraphEnd>(Index);
+      Self->reserveCode<escParagraphEnd>(Index);
       Self->NoWhitespace = true;
    }
 }
 
 //********************************************************************************************************************
 
-static void tag_underline(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_underline(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    if ((Self->Style.FontStyle.Options & FSO::UNDERLINE) IS FSO::NIL) {
       auto savestatus = Self->Style;
@@ -1906,7 +1903,7 @@ static void tag_underline(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
 
 //********************************************************************************************************************
 
-static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    LONG loopstart = 0;
@@ -1998,11 +1995,11 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 // (repeat, if statements, etc).  The table byte code is typically generated as ESC::TABLE_START, ESC::ROW, ESC::CELL...,
 // ESC::ROW_END, ESC::TABLE_END.
 
-static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   auto &start = Self->reserveEscape<escTable>(Index);
+   auto &start = Self->reserveCode<escTable>(Index);
    start.MinWidth  = 1;
    start.MinHeight = 1;
 
@@ -2112,7 +2109,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    }
 
    escTableEnd end;
-   Self->insertEscape(Index, end);
+   Self->insertCode(Index, end);
 
    //style_check(Self, Index);
    //Self->Style.StyleChange = false;
@@ -2122,7 +2119,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
 //********************************************************************************************************************
 
-static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2144,7 +2141,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
       else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.Stroke = Tag.Attribs[i].Value;
    }
 
-   Self->insertEscape(Index, escrow);
+   Self->insertCode(Index, escrow);
    Self->Style.Table->escTable->Rows++;
    Self->Style.Table->RowCol = 0;
 
@@ -2153,7 +2150,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
    }
 
    escRowEnd end;
-   Self->insertEscape(Index, end);
+   Self->insertCode(Index, end);
 
    if (Self->Style.Table->RowCol > LONG(Self->Style.Table->escTable->Columns.size())) {
       Self->Style.Table->escTable->Columns.resize(Self->Style.Table->RowCol);
@@ -2162,11 +2159,10 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
 //********************************************************************************************************************
 
-static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    style_status savestatus;
-   LONG cell_index;
    static UBYTE edit_recurse = 0;
 
    if (!Self->Style.Table) {
@@ -2237,9 +2233,9 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    // Edit sections enforce preformatting, which means that all whitespace entered by the user
    // will be taken into account.  The following check sets FSO::PREFORMAT if it hasn't been set already.
 
-   cell_index = Index;
+   auto cell_index = Index;
 
-   Self->insertEscape(Index, cell);
+   Self->insertCode(Index, cell);
 
    auto parse_flags = Flags & (~(IPF::NO_CONTENT|IPF::FILTER_ALL));
    if (!Children.empty()) {
@@ -2259,7 +2255,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    escCellEnd esccell_end;
    esccell_end.CellID = cell.CellID;
-   Self->insertEscape(Index, esccell_end);
+   Self->insertCode(Index, esccell_end);
 
    if (!cell.EditDef.empty()) {
       // Links are added to the list of tabbable points
@@ -2274,7 +2270,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 //********************************************************************************************************************
 // This instruction can only be used from within a template.
 
-static void tag_inject(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_inject(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    if (Self->InTemplate) {
@@ -2288,7 +2284,7 @@ static void tag_inject(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 //********************************************************************************************************************
 // No response is required for page tags, but we can check for validity.
 
-static void tag_page(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_page(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
    if (auto name = Tag.attrib("name")) {
@@ -2312,10 +2308,10 @@ static void tag_page(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 ** Usage: <trigger event="resize" function="script.function"/>
 */
 
-static void tag_trigger(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, INDEX &Index, IPF Flags)
+static void tag_trigger(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
-   LONG trigger_code;
+   DRT trigger_code;
    OBJECTPTR script;
    LARGE function_id;
 
@@ -2331,16 +2327,16 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
       // These are described in the documentation for the AddListener method
 
       switch(StrHash(event)) {
-         case HASH_AfterLayout:       trigger_code = DRT_AFTER_LAYOUT; break;
-         case HASH_BeforeLayout:      trigger_code = DRT_BEFORE_LAYOUT; break;
-         case HASH_UserClick:         trigger_code = DRT_USER_CLICK; break;
-         case HASH_UserClickRelease:  trigger_code = DRT_USER_CLICK_RELEASE; break;
-         case HASH_UserMovement:      trigger_code = DRT_USER_MOVEMENT; break;
-         case HASH_Refresh:           trigger_code = DRT_REFRESH; break;
-         case HASH_GotFocus:          trigger_code = DRT_GOT_FOCUS; break;
-         case HASH_LostFocus:         trigger_code = DRT_LOST_FOCUS; break;
-         case HASH_LeavingPage:       trigger_code = DRT_LEAVING_PAGE; break;
-         case HASH_PageProcessed:     trigger_code = DRT_PAGE_PROCESSED; break;
+         case HASH_AfterLayout:       trigger_code = DRT::AFTER_LAYOUT; break;
+         case HASH_BeforeLayout:      trigger_code = DRT::BEFORE_LAYOUT; break;
+         case HASH_UserClick:         trigger_code = DRT::USER_CLICK; break;
+         case HASH_UserClickRelease:  trigger_code = DRT::USER_CLICK_RELEASE; break;
+         case HASH_UserMovement:      trigger_code = DRT::USER_MOVEMENT; break;
+         case HASH_Refresh:           trigger_code = DRT::REFRESH; break;
+         case HASH_GotFocus:          trigger_code = DRT::GOT_FOCUS; break;
+         case HASH_LostFocus:         trigger_code = DRT::LOST_FOCUS; break;
+         case HASH_LeavingPage:       trigger_code = DRT::LEAVING_PAGE; break;
+         case HASH_PageProcessed:     trigger_code = DRT::PAGE_PROCESSED; break;
          default:
             log.warning("Trigger event '%s' for function '%s' is not recognised.", event.c_str(), function_name.c_str());
             return;
@@ -2351,7 +2347,7 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
       std::string args;
       if (!extract_script(Self, function_name.c_str(), &script, function_name, args)) {
          if (!scGetProcedureID(script, function_name.c_str(), &function_id)) {
-            Self->Triggers[trigger_code].emplace_back(make_function_script(script, function_id));
+            Self->Triggers[LONG(trigger_code)].emplace_back(make_function_script(script, function_id));
          }
          else log.warning("Unable to resolve '%s' in script #%d to a function ID (the procedure may not exist)", function_name.c_str(), script->UID);
       }

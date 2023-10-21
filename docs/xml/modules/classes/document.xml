@@ -48,8 +48,7 @@
       <name>DataFeed</name>
       <comment>Document data can be sent and consumed via feeds.</comment>
       <description>
-<p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the DATA::DOCUMENT and DATA::XML types for this purpose.</p>
-<p>The surface that is associated with the Document object will be redrawn as a result of calling this action.</p>
+<p>Appending content to an active document can be achieved via the data feed feature.  The Document class currently supports the <code>DATA::TEXT</code> and <code>DATA::XML</code> types for this purpose.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -110,9 +109,9 @@
     <method>
       <name>AddListener</name>
       <comment>Adds a listener to a document trigger for receiving special callbacks.</comment>
-      <prototype>ERROR docAddListener(OBJECTPTR Object, LONG Trigger, FUNCTION * Function)</prototype>
+      <prototype>ERROR docAddListener(OBJECTPTR Object, DRT Trigger, FUNCTION * Function)</prototype>
       <input>
-        <param type="LONG" name="Trigger" lookup="DRT">The unique identifier for the trigger.</param>
+        <param type="DRT" name="Trigger" lookup="DRT">The unique identifier for the trigger.</param>
         <param type="FUNCTION *" name="Function">The function to call when the trigger activates.</param>
       </input>
       <description>
@@ -257,9 +256,9 @@
     <method>
       <name>ReadContent</name>
       <comment>Returns selected content from the document, either as plain text or original byte code.</comment>
-      <prototype>ERROR docReadContent(OBJECTPTR Object, LONG Format, LONG Start, LONG End, STRING * Result)</prototype>
+      <prototype>ERROR docReadContent(OBJECTPTR Object, DATA Format, LONG Start, LONG End, STRING * Result)</prototype>
       <input>
-        <param type="LONG" name="Format">Set to TEXT to receive plain-text, or RAW to receive the original byte-code.</param>
+        <param type="DATA" name="Format" lookup="DATA">Set to TEXT to receive plain-text, or RAW to receive the original byte-code.</param>
         <param type="LONG" name="Start">An index in the document stream from which data will be extracted.</param>
         <param type="LONG" name="End">An index in the document stream at which extraction will stop.</param>
         <param type="STRING *" name="Result">The data is returned in this parameter as an allocated string.</param>
@@ -712,6 +711,21 @@
 
   </fields>
   <types>
+    <constants lookup="DATA" comment="Data codes">
+      <const name="AUDIO">Audio file data, recognised by the Sound class</const>
+      <const name="CONTENT">Document content (between XML tags) - sent by document objects only</const>
+      <const name="DEVICE_INPUT">Device activity</const>
+      <const name="FILE">File location (the data will reflect the complete file path)</const>
+      <const name="IMAGE">Image file data, recognised by the Image class</const>
+      <const name="INPUT_READY">Device input that has been transformed into user input</const>
+      <const name="RAW">Raw unprocessed data</const>
+      <const name="RECEIPT">Receipt for item data, in response to an earlier request</const>
+      <const name="RECORD">Database record</const>
+      <const name="REQUEST">Make a request for item data</const>
+      <const name="TEXT">Standard ASCII text</const>
+      <const name="XML">Markup based text data.  NOTE - For clipboard data, the top-level encapsulating tag must declare the type of XML, e.g. 'html', 'ripple'.  For plain XML, use 'xml'</const>
+    </constants>
+
     <constants lookup="DBE" comment="Border edge flags.">
       <const name="BOTTOM">Bottom border edge.</const>
       <const name="LEFT">Left border edge.</const>

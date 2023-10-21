@@ -58,7 +58,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
          for (auto &link : Self->Links) {
-            if (link.EscapeCode IS ESC::LINK) {
+            if (link.BaseCode IS ESC::LINK) {
                if (link.asLink()->ID IS Self->Tabs[Self->FocusIndex].Ref) {
                   Self->Page->draw();
                   break;
@@ -69,12 +69,18 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    }
 }
 
+//********************************************************************************************************************
+// Receiver for incoming redimension messages from Self->Viewport
+
 static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
-   log.traceBranch("Redimension: %.2fx%.2f", Self->VPWidth, Self->VPHeight);
+   log.traceBranch("Redimension: %.2fx%.2f -> %.2fx%.2f", Self->VPWidth, Self->VPHeight, Width, Height);
+
+   Self->VPWidth = Width;
+   Self->VPHeight = Height;
 
    Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
    Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
@@ -83,7 +89,7 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
 
    acRedimension(Self->View, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
 
-   for (auto &trigger : Self->Triggers[DRT_BEFORE_LAYOUT]) {
+   for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
       if (trigger.Type IS CALL_SCRIPT) {
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
          // function to resize elements on the page in preparation of the new layout.
@@ -173,9 +179,9 @@ NullArgs
 
 static ERROR DOCUMENT_AddListener(extDocument *Self, struct docAddListener *Args)
 {
-   if ((!Args) or (!Args->Trigger) or (!Args->Function)) return ERR_NullArgs;
+   if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR_NullArgs;
 
-   Self->Triggers[Args->Trigger].push_back(*Args->Function);
+   Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
    return ERR_Okay;
 }
 
@@ -330,9 +336,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
 DataFeed: Document data can be sent and consumed via feeds.
 
 Appending content to an active document can be achieved via the data feed feature.  The Document class currently
-supports the DATA::DOCUMENT and DATA::XML types for this purpose.
-
-The surface that is associated with the Document object will be redrawn as a result of calling this action.
+supports the `DATA::TEXT` and `DATA::XML` types for this purpose.
 
 -ERRORS-
 Okay
@@ -526,7 +530,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_START) {
+      if (Self->Stream[i].Code IS ESC::INDEX_START) {
          auto &index = escape_data<escIndex>(Self, i);
          if (name_hash IS index.NameHash) {
             auto end_id = index.ID;
@@ -535,7 +539,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
             // Search for the end (ID match)
 
             for (++i; i < INDEX(Self->Stream.size()); i++) {
-               if (ESCAPE_CODE(Self->Stream, i) IS ESC::INDEX_END) {
+               if (Self->Stream[i].Code IS ESC::INDEX_END) {
                   if (end_id IS escape_data<escIndexEnd>(Self, i).ID) {
                      Args->End = i;
                      log.trace("Found index at range %d - %d", Args->Start, Args->End);
@@ -582,13 +586,9 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->LinkSelectFill) { FreeResource(Self->LinkSelectFill); Self->LinkSelectFill = NULL; }
    if (Self->BorderStroke)   { FreeResource(Self->BorderStroke);   Self->BorderStroke   = NULL; }
 
-   if ((Self->Focus) and (Self->Focus != Self->Viewport)) {
-      UnsubscribeAction(Self->Focus, 0);
-   }
+   if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 
-   if (Self->Viewport) {
-      UnsubscribeAction(Self->Viewport, 0);
-   }
+   if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
 
    if (Self->PointerLocked) {
       gfxRestoreCursor(PTC::DEFAULT, Self->UID);
@@ -602,9 +602,9 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    unload_doc(Self, ULD::TERMINATE);
 
-   if (Self->XML)         { FreeResource(Self->XML); Self->XML = NULL; }
-   if (Self->FontFace)    { FreeResource(Self->FontFace); Self->FontFace = NULL; }
-   if (Self->Templates)   { FreeResource(Self->Templates); Self->Templates = NULL; }
+   if (Self->XML)       { FreeResource(Self->XML); Self->XML = NULL; }
+   if (Self->FontFace)  { FreeResource(Self->FontFace); Self->FontFace = NULL; }
+   if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
 
    Self->~extDocument();
    return ERR_Okay;
@@ -669,7 +669,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    call = make_function_stdc(notify_enable_viewport);
    SubscribeAction(Self->Viewport, AC_Enable, &call);
-   
+
    call = make_function_stdc(notify_free_viewport);
    SubscribeAction(Self->Viewport, AC_Free, &call);
 
@@ -799,7 +799,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
-      if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
+      if (stream[i].Code IS ESC::INDEX_START) {
          auto &index = escape_data<escIndex>(Self, i);
          if (name_hash IS index.NameHash) {
             if (!index.Visible) return ERR_Okay; // It's already invisible!
@@ -815,7 +815,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
             // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to false.
 
             for (++i; i < INDEX(stream.size()); i++) {
-               auto code = ESCAPE_CODE(stream, i);
+               auto code = stream[i].Code;
                if (code IS ESC::INDEX_END) {
                   auto &end = escape_data<escIndexEnd>(Self, i);
                   if (index.ID IS end.ID) break;
@@ -948,12 +948,12 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    INDEX index = Args->Index;
    if (index < 0) index = Self->Stream.size();
 
-   Self->Style.clear();
+   Self->Style = style_status();
 
    // Find the most recent style at the insertion point
 
    for (INDEX i = Args->Index - 1; i > 0; i--) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::FONT) {
+      if (Self->Stream[i].Code IS ESC::FONT) {
          Self->Style.FontStyle = escape_data<escFont>(Self, i);
          log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
          break;
@@ -1041,7 +1041,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
       std::ostringstream buffer;
 
       for (INDEX i=Args->Start; i < Args->End; i++) {
-         if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
+         if (Self->Stream[i].Code IS ESC::TEXT) {
             buffer << escape_data<escText>(Self, i).Text;
          }
       }
@@ -1082,7 +1082,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
 
    Self->Processing++;
 
-   for (auto &trigger : Self->Triggers[DRT_REFRESH]) {
+   for (auto &trigger : Self->Triggers[LONG(DRT::REFRESH)]) {
       if (trigger.Type IS CALL_SCRIPT) {
          // The refresh trigger can return ERR_Skip to prevent a complete reload of the document.
 
@@ -1363,7 +1363,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
-      if (ESCAPE_CODE(stream, i) IS ESC::INDEX_START) {
+      if (stream[i].Code IS ESC::INDEX_START) {
          auto &index = escape_data<escIndex>(Self, i);
          if (name_hash != index.NameHash) continue;
          if (index.Visible) return ERR_Okay; // It's already visible!
@@ -1379,7 +1379,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
             }
 
             for (++i; i < INDEX(stream.size()); i++) {
-               auto code = ESCAPE_CODE(stream, i);
+               auto code = stream[i].Code;
                if (code IS ESC::INDEX_END) {
                   if (index.ID IS escape_data<escIndexEnd>(Self, i).ID) break;
                }
@@ -1402,7 +1402,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 
                   if (!index.Visible) {
                      for (++i; i < INDEX(stream.size()); i++) {
-                        if (ESCAPE_CODE(stream, i) IS ESC::INDEX_END) {
+                        if (stream[i].Code IS ESC::INDEX_END) {
                            if (index.ID IS escape_data<escIndexEnd>(Self, i).ID) break;
                         }
                      }

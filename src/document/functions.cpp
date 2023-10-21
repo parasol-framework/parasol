@@ -19,7 +19,7 @@ static std::string printable(extDocument *Self, StreamChar Start, ULONG Length)
    result.reserve(Length);
    StreamChar i = Start;
    while ((i.Index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
+      if (Self->Stream[i.Index].Code IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, i);
          result += text.Text.substr(i.Offset, result.capacity() - result.size());
       }
@@ -75,16 +75,15 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
    
    pf::Log log;
    std::ostringstream out;
-   out << "\nSTREAM: " << Stream.size() << " bytes\n";
+   out << "\nSTREAM: " << Stream.size() << " codes\n";
    out << "-------------------------------------------------------------------------------\n";
 
    bool printpos = false;
    for (INDEX i=0; i < INDEX(Stream.size()); i++) {
-      auto code = ESCAPE_CODE(Stream, i);
-      out << "(" << i << ")";
+      auto code = Stream[i].Code;
       if (code IS ESC::FONT) {
          auto style = &escape_data<escFont>(Self, i);
-         out << "[E:Font";
+         out << "[Font";
          if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
          if ((style->Options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
          if ((style->Options & FSO::BOLD) != FSO::NIL) out << ":Bold";
@@ -92,19 +91,19 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       }
       else if (code IS ESC::PARAGRAPH_START) {
          auto para = &escape_data<escParagraph>(Self, i);
-         if (para->ListItem) out << "[E:LI]";
-         else out << "[E:PS]";
+         if (para->ListItem) out << "[LI]";
+         else out << "[PS]";
       }
       else if (code IS ESC::PARAGRAPH_END) {
-         out << "[E:PE]\n";
+         out << "[PE]\n";
       }
 /*
-      else if (ESCAPE_CODE(Stream, i) IS ESC::LIST_ITEM) {
+      else if (code IS ESC::LIST_ITEM) {
          auto item = escape_data<escItem>(str, i);
          out << "[I:X(%d):Width(%d):Custom(%d)]", item->X, item->Width, item->CustomWidth);
       }
 */
-      else out << "[E:" << escCode(code) << "]";
+      else out << "[" << escCode(code) << "]";
 
       printpos = true;
    }
@@ -123,97 +122,99 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
 #undef NULL
 #define NULL 0
 
-static void print_lines(extDocument *Self)
+static void print_lines(extDocument *Self, const RSTREAM &Stream)
 {
-   out << "\nSEGMENTS\n--------\n");
+   pf::Log log;
+   std::ostringstream out;
 
-   STRING str = Self->Stream;
-   for (LONG row=0; row < Self->Segments.size(); row++) {
-      DocSegment *line = Self->Segments + row;
-      LONG i = line->Index;
+   out << "\nSEGMENTS\n--------\n";
 
-      out << "Seg %d, Bytes %d-%d: %dx%d,%dx%d: ", row, line->Index, line->Stop, line->X, line->Y, line->Width, line->Height);
-      if (line->Edit) out << "{ ");
-      out << "\"");
-      while (i < line->Stop) {
-         if (ESCAPE_CODE(str, i) IS ESC::FONT) {
-            auto style = escape_data<escFont>(str, i);
-            out << "[E:Font:%d:$%.2x%.2x%.2x", style->Index, style->Colour.Red, style->Colour.Green, style->Colour.Blue);
-            out << "]");
+   for (unsigned row=0; row < Self->Segments.size(); row++) {
+      auto &line = Self->Segments[row];
+      auto i = line.Start;
+
+      out << std::setw(3) << row << ": Span: " << line.Start.Index << "-" << line.Stop.Index << ": ";
+      out << "(" << line.Area.X << "x" << line.Area.Y << ", " << line.Area.Width << "x" << line.Area.Height << ") ";
+      if (line.Edit) out << "{ ";
+      out << "\"";
+      while (i < line.Stop) {
+         auto code = Stream[i.Index].Code;
+         if (code IS ESC::FONT) {
+            auto style = &escape_data<escFont>(Self, i.Index);
+            out << "[E:Font:" << style->Index << "]";
          }
-         else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_START) {
-            para = escape_data<escParagraph>(str, i);
-            if (para->ListItem) out << "[E:LI]");
-            else out << "[E:PS]");
+         else if (code IS ESC::PARAGRAPH_START) {
+            auto para = &escape_data<escParagraph>(Self, i.Index);
+            if (para->ListItem) out << "[E:LI]";
+            else out << "[E:PS]";
          }
-         else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_END) {
-            out << "[E:PE]\n");
+         else if (code IS ESC::PARAGRAPH_END) {
+            out << "[E:PE]\n";
          }
-         else if (ESCAPE_CODE(str, i) IS ESC::OBJECT) {
-            auto obj = escape_data<escObject>(str, i);
-            out << "[E:OBJ:%d]", obj->ObjectID);
-         }
-         else if (ESCAPE_CODE(str, i) < ARRAYSIZE(strCodes)) {
-            out << "[E:%s]", strCodes[(UBYTE)ESCAPE_CODE(str, i)]);
-         }
-         else out << "[E:%d]", ESCAPE_CODE(str, i));
-         i++;
+         else out << "[E:" <<  escCode(code) << "]";
+         i.nextCode();
       }
 
-      out << "\"");
-      if (line->Edit) out << " }");
-      out << "\n");
+      out << "\"";
+      if (line.Edit) out << " }";
+      out << "\n";
    }
+
+   log.msg("%s", out.str().c_str());
 }
 
-static void print_sorted_lines(extDocument *Self)
+static void print_sorted_lines(extDocument *Self, const RSTREAM &Stream)
 {
-   out << "\nSORTED SEGMENTS\n---------------\n");
+   pf::Log log;
+   std::ostringstream out;
 
-   STRING str = Self->Stream;
-   for (LONG row=0; row < Self->SortSegments.size(); row++) {
-      DocSegment *line = Self->Segments + Self->SortSegments[row].Segment;
-      out << "%d: Y: %d-%d, Seg: %d \"", row, Self->SortSegments[row].Y, Self->Segments[Self->SortSegments[row].Segment].X, Self->SortSegments[row].Segment);
+   out << "\nSORTED SEGMENTS\n---------------\n";
 
-      LONG i = line->Index;
-      while (i < line->Stop) {
-         if (ESCAPE_CODE(str, i) IS ESC::FONT) {
-            auto style = escape_data<escFont>(str, i);
-            out << "[E:Font:%d:$%.2x%.2x%.2x", style->Index, style->Colour.Red, style->Colour.Green, style->Colour.Blue);
-            out << "]");
+   for (unsigned row=0; row < Self->SortSegments.size(); row++) {
+      auto &line = Self->Segments[Self->SortSegments[row].Segment];
+      out << row << ": Y: " << Self->SortSegments[row].Y << "-" << Self->Segments[Self->SortSegments[row].Segment].Area.X;
+      out << ", Seg: " << Self->SortSegments[row].Segment << " \"";
+
+      auto i = line.Start;
+      while (i < line.Stop) {
+         auto code = Stream[i.Index].Code;
+         if (code IS ESC::FONT) {
+            auto style = &escape_data<escFont>(Self, i);
+            out << "[E:Font:" << style->Index;
+            out << "]";
          }
-         else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_START) {
-            para = escape_data<escParagraph>(str, i);
-            if (para->ListItem) out << "[E:LI]");
-            else out << "[E:PS]");
+         else if (code IS ESC::PARAGRAPH_START) {
+            auto para = &escape_data<escParagraph>(Self, i);
+            if (para->ListItem) out << "[E:LI]";
+            else out << "[E:PS]";
          }
-         else if (ESCAPE_CODE(str, i) IS ESC::PARAGRAPH_END) {
-            out << "[E:PE]\n");
+         else if (code IS ESC::PARAGRAPH_END) {
+            out << "[E:PE]\n";
          }
-         else if (ESCAPE_CODE(str, i) IS ESC::OBJECT) {
-            obj = escape_data<escObject>(str, i);
-            out << "[E:OBJ:%d]", obj->ObjectID);
-         }
-         else if (ESCAPE_CODE(str, i) < ARRAYSIZE(strCodes)) {
-            out << "[E:%s]", strCodes[(UBYTE)ESCAPE_CODE(str, i)]);
-         }
-         else out << "[E:%d]", ESCAPE_CODE(str, i));
-         i++;
+         else out << "[E:" <<  escCode(code) << "]";
+         i.nextCode();
       }
 
-      out << "\"\n");
+      out << "\"\n";
    }
+
+   log.msg("%s", out.str().c_str());
 }
 
 static void print_tabfocus(extDocument *Self)
 {
-   if (!Self->Tabs.empty()) {
-      out << "\nTAB FOCUSLIST\n-------------\n");
+   pf::Log log;
+   std::ostringstream out;
 
-      for (LONG i=0; i < Self->Tabs.size(); i++) {
-         out << "%d: Type: %d, Ref: %d, XRef: %d\n", i, Self->Tabs[i].Type, Self->Tabs[i].Ref, Self->Tabs[i].XRef);
+   if (!Self->Tabs.empty()) {
+      out << "\nTAB FOCUSLIST\n-------------\n";
+
+      for (unsigned i=0; i < Self->Tabs.size(); i++) {
+         out << i << ": Type: " << Self->Tabs[i].Type << ", Ref: " << Self->Tabs[i].Ref << ", XRef: " << Self->Tabs[i].XRef << "\n";
       }
    }
+
+   log.msg("%s", out.str().c_str());
 }
 
 #endif
@@ -260,7 +261,7 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
    auto cs = Start;
    size_t size = 0;
    for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
-      if (ESCAPE_CODE(Self->Stream, cs.Index) IS ESC::TEXT) {
+      if (Self->Stream[cs.Index].Code IS ESC::TEXT) {
          auto &text = escape_data<escText>(Self, cs);
          if (cs.Index < End.Index) size = text.Text.size() - cs.Offset;         
          else size = (End.Offset < text.Text.size() ? End.Offset : text.Text.size()) - cs.Offset;
@@ -274,7 +275,7 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
       cs = Start;
       LONG pos = 0;
       for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
-         if (ESCAPE_CODE(Self->Stream, cs.Index) IS ESC::TEXT) {
+         if (Self->Stream[cs.Index].Code IS ESC::TEXT) {
             auto &text = escape_data<escText>(Self, cs);
             if (cs.Index < End.Index) {
                CopyMemory(text.Text.c_str() + cs.Offset, str + pos, text.Text.size() - cs.Offset);
@@ -750,8 +751,8 @@ inline BYTE sortseg_compare(extDocument *Self, SortSegment &Left, SortSegment &R
    if (Left.Y < Right.Y) return 1;
    else if (Left.Y > Right.Y) return -1;
    else {
-      if (Self->Segments[Left.Segment].X < Self->Segments[Right.Segment].X) return 1;
-      else if (Self->Segments[Left.Segment].X > Self->Segments[Right.Segment].X) return -1;
+      if (Self->Segments[Left.Segment].Area.X < Self->Segments[Right.Segment].Area.X) return 1;
+      else if (Self->Segments[Left.Segment].Area.X > Self->Segments[Right.Segment].Area.X) return -1;
       else return 0;
    }
 }
@@ -875,15 +876,14 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       // Do nothing to change the style
    }
    else {
-      Self->Style.clear();
+      Self->Style = style_status();
 
       if (Flags & IXF_RESETSTYLE) {
          // Do not search for the most recent font style
       }
       else {
-         auto str = Self->Stream;
          for (auto i = TargetIndex - 1; i > 0; i--) {
-            if (ESCAPE_CODE(str, i) IS ESC::FONT) {
+            if (Self->Stream[i].Code IS ESC::FONT) {
                Self->Style.FontStyle = escape_data<escFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
                break;
@@ -912,8 +912,8 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 
    // Parse content and insert it at the end of the stream (we will move it to the insertion point afterwards).
 
-   auto inserted_at = INDEX(Self->Stream.size());
-   auto insert_index = INDEX(Self->Stream.size());
+   StreamChar inserted_at(Self->Stream.size());
+   StreamChar insert_index(Self->Stream.size());
    if (Flags & IXF_SIBLINGS) { // Siblings of Tag are included
       parse_tags(Self, XML, Tag, insert_index);
    }
@@ -924,18 +924,18 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 
    if (Flags & IXF_CLOSESTYLE) style_check(Self, insert_index);
 
-   if (INDEX(Self->Stream.size()) <= inserted_at) {
+   if (INDEX(Self->Stream.size()) <= inserted_at.Index) {
       log.trace("parse_tag() did not insert any content into the stream.");
       return ERR_NothingDone;
    }
 
    // Move the content from the end of the stream to the requested insertion point
 
-   if (TargetIndex < inserted_at) {
-      auto length = Self->Stream.size() - inserted_at;
+   if (TargetIndex < inserted_at.Index) {
+      auto length = Self->Stream.size() - inserted_at.Index;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", TargetIndex, length);
-      Self->Stream.insert(Self->Stream.begin() + TargetIndex, Self->Stream.begin() + inserted_at, Self->Stream.begin() + length);
-      Self->Stream.resize(inserted_at + length);
+      Self->Stream.insert(Self->Stream.begin() + TargetIndex, Self->Stream.begin() + inserted_at.Index, Self->Stream.begin() + length);
+      Self->Stream.resize(inserted_at.Index + length);
    }
 
    // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
@@ -946,13 +946,13 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
    return ERR_Okay;
 }
 
-static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG TargetIndex, UBYTE Flags)
+static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar TargetIndex, UBYTE Flags)
 {
    pf::Log log(__FUNCTION__);
 
    if (TargetIndex < 0) TargetIndex = Self->Stream.size();
 
-   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, Flags, Tag.Attribs[0].Name.c_str());
+   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex.Index, Flags, Tag.Attribs[0].Name.c_str());
 
    // Retrieve the most recent font definition and use that as the style that we're going to start with.
 
@@ -960,15 +960,14 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
       // Do nothing to change the style
    }
    else {
-      Self->Style.clear();
+      Self->Style = style_status();
 
       if (Flags & IXF_RESETSTYLE) {
          // Do not search for the most recent font style
       }
       else {
-         auto &str = Self->Stream;
-         for (auto i = TargetIndex - 1; i > 0; i--) {
-            if (ESCAPE_CODE(str, i) IS ESC::FONT) {
+         for (auto i = TargetIndex.Index - 1; i > 0; i--) {
+            if (Self->Stream[i].Code IS ESC::FONT) {
                Self->Style.FontStyle = escape_data<escFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
                break;
@@ -997,14 +996,14 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
 
    // Parse content and insert it at the end of the stream (we will move it to the insertion point afterwards).
 
-   INDEX inserted_at = Self->Stream.size();
-   INDEX insert_index = Self->Stream.size();
+   StreamChar inserted_at(Self->Stream.size());
+   StreamChar insert_index(Self->Stream.size());
    auto flags = IPF::NIL;
    parse_tag(Self, XML, Tag, insert_index, flags);
 
    if (Flags & IXF_CLOSESTYLE) style_check(Self, insert_index);
 
-   if (INDEX(Self->Stream.size()) <= inserted_at) {
+   if (INDEX(Self->Stream.size()) <= inserted_at.Index) {
       log.trace("parse_tag() did not insert any content into the stream.");
       return ERR_NothingDone;
    }
@@ -1012,10 +1011,10 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
    // Move the content from the end of the stream to the requested insertion point
 
    if (TargetIndex < inserted_at) {
-      auto length = INDEX(Self->Stream.size()) - inserted_at;
+      auto length = INDEX(Self->Stream.size()) - inserted_at.Index;
       log.trace("Moving new content of %d bytes to the insertion point at index %d", TargetIndex, length);
-      Self->Stream.insert(Self->Stream.begin() + TargetIndex, Self->Stream.begin() + inserted_at, Self->Stream.begin() + length);
-      Self->Stream.resize(inserted_at + length);
+      Self->Stream.insert(Self->Stream.begin() + TargetIndex.Index, Self->Stream.begin() + inserted_at.Index, Self->Stream.begin() + length);
+      Self->Stream.resize(inserted_at.Index + length);
    }
 
    // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
@@ -1034,13 +1033,13 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, LONG Target
 //   IPF::NO_CONTENT:
 //   IPF::STRIP_FEEDS:
 
-static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, IPF &Flags)
+static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &Index, IPF &Flags)
 {
    pf::Log log(__FUNCTION__);
 
    if (Self->Error) {
       log.traceWarning("Error field is set, returning immediately.");
-      return 0;
+      return TRF::NIL;
    }
 
    IPF filter = Flags & IPF::FILTER_ALL;
@@ -1052,9 +1051,8 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
    auto tagname = Tag.Attribs[0].Name;
    if (tagname.starts_with('$')) tagname.erase(0, 1);
    object_template = NULL;
-
-   StreamChar sc(Index, 0);
-   LONG result = 0;
+  
+   TRF result = TRF::NIL;
    if (Tag.isContent()) {
       if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
          if ((Flags & IPF::STRIP_FEEDS) != IPF::NIL) {
@@ -1073,9 +1071,9 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
                while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
                if (i > 0) {
                   auto content = Tag.Attribs[0].Value.substr(i);
-                  insert_text(Self, sc, content, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
+                  insert_text(Self, Index, content, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
                }
-               else insert_text(Self, sc, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
+               else insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
             }
             Flags &= ~IPF::STRIP_FEEDS;
          }
@@ -1083,7 +1081,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
             if (XML IS Self->InjectXML) acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str());
          }
          else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
-            insert_text(Self, sc, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
+            insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
          }
       }
       Tag.Attribs = saved_attribs;
@@ -1131,10 +1129,9 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
 
          if ((Self->CurrentObject) and ((tr.Flags & (TAG::OBJECTOK|TAG::CONDITIONAL)) IS TAG::NIL)) {
             log.warning("Illegal use of tag %s within object of class '%s'.", tagname.c_str(), Self->CurrentObject->Class->ClassName);
-            result = TRF_BREAK;
+            result = TRF::BREAK;
          }
          else {
-            if ((tr.Flags & TAG::PARAGRAPH) != TAG::NIL) Self->ParagraphDepth++;
 
             if (((Flags & IPF::NO_CONTENT) != IPF::NIL) and ((tr.Flags & TAG::CONTENT) != TAG::NIL)) {
                // Do nothing when content is not allowed
@@ -1147,7 +1144,6 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
             }
             else tr.Routine(Self, XML, Tag, Tag.Children, Index, Flags);
 
-            if ((tr.Flags & TAG::PARAGRAPH) != TAG::NIL) Self->ParagraphDepth--;
          }
       }
    }
@@ -1155,13 +1151,13 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
       // Breaking stops executing all tags (within this section) beyond the breakpoint.  If in a loop, the loop
       // will stop executing.
 
-      result = TRF_BREAK;
+      result = TRF::BREAK;
    }
    else if (!StrMatch("continue", tagname)) {
       // Continuing - does the same thing as a break but the loop continues.
       // If used when not in a loop, then all sibling tags are skipped.
 
-      result = TRF_CONTINUE;
+      result = TRF::CONTINUE;
    }
    else if (!StrMatch("if", tagname)) {
       if (check_tag_conditions(Self, Tag)) { // Statement is true
@@ -1197,7 +1193,7 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
             Tag.Attribs = saved_attribs;
             translate_attrib_args(Self, Tag.Attribs);
 
-            if ((state) and (parse_tags(Self, XML, Tag.Children, Index, Flags) & TRF_BREAK)) break;
+            if ((state) and ((parse_tags(Self, XML, Tag.Children, Index, Flags) & TRF::BREAK) != TRF::NIL)) break;
 
             Self->LoopIndex++;
          }
@@ -1214,22 +1210,23 @@ static LONG parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, LONG &Index, 
    return result;
 }
 
-static LONG parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, LONG &Index, IPF Flags)
+static TRF parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, StreamChar &Index, IPF Flags)
 {
-   LONG result = 0;
+   TRF result = TRF::NIL;
 
    for (auto &tag : Tags) {
       // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
       result = parse_tag(Self, XML, tag, Index, Flags);
-      if ((Self->Error) or (result & (TRF_CONTINUE|TRF_BREAK))) break;
+      if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
    }
 
    return result;
 }
 
 //********************************************************************************************************************
+// Check for a pending font and/or style change and respond appropriately.
 
-static void style_check(extDocument *Self, INDEX &Index)
+static void style_check(extDocument *Self, StreamChar &Cursor)
 {
    if (Self->Style.FontChange) {
       // Create a new font object for the current style
@@ -1244,7 +1241,7 @@ static void style_check(extDocument *Self, INDEX &Index)
    if (Self->Style.StyleChange) {
       // Insert a font change into the text stream
       //log.trace("Style change detected.");
-      Self->insertEscape(Index, Self->Style.FontStyle);
+      Self->insertCode(Cursor, Self->Style.FontStyle);
       Self->Style.StyleChange = false;
    }
 }
@@ -1262,11 +1259,11 @@ static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string
       if (i IS Text.size()) return ERR_Okay;
    }
 
-   style_check(Self, Index.Index);
+   style_check(Self, Index);
 
    if (Preformat) {
       escText et(Text, true);
-      Self->insertEscape(Index.Index, et);
+      Self->insertCode(Index, et);
    }
    else {
       escText et;
@@ -1284,7 +1281,7 @@ static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string
          }
       }
       Self->NoWhitespace = ws;
-      Self->insertEscape(Index.Index, et);
+      Self->insertCode(Index, et);
    }
 
    return ERR_Okay;
@@ -1293,36 +1290,36 @@ static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string
 //********************************************************************************************************************
 // Inserts an escape sequence into the text stream.
 
-template <class T> T & extDocument::insertEscape(INDEX &Index, T &Code)
+template <class T> T & extDocument::insertCode(StreamChar &Cursor, T &Code)
 {
    // All escape codes are saved to a global container.
    Codes[Code.UID] = Code;
 
-   if (Index IS INDEX(Stream.size())) {
+   if (Cursor.Index IS INDEX(Stream.size())) {
       Stream.emplace_back(Code.Code, Code.UID);
    }
    else {
-      const EscCode insert(Code.Code, Code.UID);
-      Stream.insert(Stream.begin() + Index, insert);
+      const StreamCode insert(Code.Code, Code.UID);
+      Stream.insert(Stream.begin() + Cursor.Index, insert);
    }
-   Index++;
+   Cursor.nextCode();
    return std::get<T>(Codes[Code.UID]);
 }
 
-template <class T> T & extDocument::reserveEscape(INDEX &Index)
+template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
 {
    auto key = glEscapeCodeID;
    Codes.emplace(key, T());
    auto &result = std::get<T>(Codes[key]);
 
-   if (Index IS INDEX(Stream.size())) {
+   if (Cursor.Index IS INDEX(Stream.size())) {
       Stream.emplace_back(result.Code, result.UID);
    }
    else {
-      const EscCode insert(result.Code, result.UID);
-      Stream.insert(Stream.begin() + Index, insert);
+      const StreamCode insert(result.Code, result.UID);
+      Stream.insert(Stream.begin() + Cursor.Index, insert);
    }
-   Index++;
+   Cursor.nextCode();
    return result;
 }
 
@@ -1515,7 +1512,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
    }
 
    if (!Self->PageProcessed) {
-      for (auto &trigger : Self->Triggers[DRT_PAGE_PROCESSED]) {
+      for (auto &trigger : Self->Triggers[LONG(DRT::PAGE_PROCESSED)]) {
          if (trigger.Type IS CALL_SCRIPT) {
             scCallback(trigger.Script.Script, trigger.Script.ProcedureID, NULL, 0, NULL);
          }
@@ -1544,7 +1541,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Flags: $%.2x", Flags);
+   log.branch("Flags: $%.2x", LONG(Flags));
 
    #ifdef DBG_STREAM
       print_stream(Self);
@@ -2268,15 +2265,15 @@ static escFont * find_style(extDocument *Self, const RSTREAM &Stream, StreamChar
    escFont *style = NULL;
 
    for (INDEX fi = Char.Index; fi < Char.Index; fi++) {
-      if (ESCAPE_CODE(Stream, fi) IS ESC::FONT) style = &escape_data<escFont>(Self, fi);
-      else if (ESCAPE_CODE(Stream, fi) IS ESC::TEXT) break;
+      if (Stream[fi].Code IS ESC::FONT) style = &escape_data<escFont>(Self, fi);
+      else if (Stream[fi].Code IS ESC::TEXT) break;
    }
 
    // Didn't work?  Try going backwards
 
    if (!style) {
       for (INDEX fi = Char.Index; fi >= 0; fi--) {
-         if (ESCAPE_CODE(Stream, fi) IS ESC::FONT) {
+         if (Stream[fi].Code IS ESC::FONT) {
             style = &escape_data<escFont>(Self, fi);
             break;
          }
@@ -2298,10 +2295,10 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
    if (!font) return ERR_Search;
 
    for (INDEX i = Segment.Start.Index; i < Segment.Stop.Index; i++) {
-      if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
+      if (Self->Stream[i].Code IS ESC::TEXT) {
          auto &str = escape_data<escText>(Self, i).Text;
          LONG offset;
-         if (!fntConvertCoords(font, str.c_str(), X - Segment.X, 0, NULL, NULL, NULL, &offset, CharX)) {
+         if (!fntConvertCoords(font, str.c_str(), X - Segment.Area.X, 0, NULL, NULL, NULL, &offset, CharX)) {
             Char.set(Segment.Start.Index, offset);
             return ERR_Okay;
          }
@@ -2333,7 +2330,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *Ch
    if (SEGINDEX segment = find_segment(Self, Char, true); segment >= 0) {
       auto i = Self->Segments[segment].Start;
       while ((i <= Self->Segments[segment].Stop) and (i < Char)) {
-         if (ESCAPE_CODE(Self->Stream, i) IS ESC::TEXT) {
+         if (Self->Stream[i.Index].Code IS ESC::TEXT) {
             *CharX = fntStringWidth(font, escape_data<escText>(Self, i).Text.c_str(), -1);
             return ERR_Okay;
          }
@@ -2530,7 +2527,7 @@ void DocLink::exec(extDocument *Self)
 
    Self->Processing++;
 
-   if ((EscapeCode IS ESC::LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
+   if ((BaseCode IS ESC::LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
       deLinkActivated params;
       auto link = asLink();
 
@@ -2554,7 +2551,7 @@ void DocLink::exec(extDocument *Self)
       if (result IS ERR_Skip) goto end;
    }
 
-   if (EscapeCode IS ESC::LINK) {
+   if (BaseCode IS ESC::LINK) {
       OBJECTPTR script;
       std::string function_name, fargs;
       CLASSID class_id, subclass_id;
@@ -2629,7 +2626,7 @@ void DocLink::exec(extDocument *Self)
          }
       }
    }
-   else if (EscapeCode IS ESC::CELL) {
+   else if (BaseCode IS ESC::CELL) {
       OBJECTPTR script;
       std::string function_name, script_args;
 

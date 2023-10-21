@@ -138,11 +138,7 @@ static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
 static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
-
-   if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
-   else if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = NULL;
-   else if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = NULL;
-   else if (Self->FeedbackSubscriptions) {
+   if (Self->FeedbackSubscriptions) {
       for (auto it=Self->FeedbackSubscriptions->begin(); it != Self->FeedbackSubscriptions->end(); ) {
          auto &sub = *it;
          if ((sub.Callback.Type IS CALL_SCRIPT) and (sub.Callback.Script.Script->UID IS Object->UID)) {
@@ -151,6 +147,30 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
          else it++;
       }
    }
+}
+
+//********************************************************************************************************************
+
+static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extVector *)CurrentContext();
+   if ((Self->Transition) and (Object->UID IS Self->Transition->UID)) Self->Transition = NULL;
+}
+
+//********************************************************************************************************************
+
+static void notify_free_morph(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extVector *)CurrentContext();
+   if ((Self->Morph) and (Object->UID IS Self->Morph->UID)) Self->Morph = NULL;
+}
+
+//********************************************************************************************************************
+
+static void notify_free_clipmask(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extVector *)CurrentContext();
+   if ((Self->ClipMask) and (Object->UID IS Self->ClipMask->UID)) Self->ClipMask = NULL;
 }
 
 //********************************************************************************************************************
@@ -1568,7 +1588,7 @@ static ERROR VECTOR_SET_Mask(extVector *Self, extVectorClip *Value)
    else if (Value->Class->ClassID IS ID_VECTORCLIP) {
       if (Self->ClipMask) UnsubscribeAction(Self->ClipMask, AC_Free);
       if (Value->initialised()) { // Ensure that the mask is initialised.
-         auto callback = make_function_stdc(notify_free);
+         auto callback = make_function_stdc(notify_free_clipmask);
          SubscribeAction(Value, AC_Free, &callback);
          Self->ClipMask = Value;
          return ERR_Okay;
@@ -1650,7 +1670,7 @@ static ERROR VECTOR_SET_Morph(extVector *Self, extVector *Value)
    else if (Value->Class->BaseClassID IS ID_VECTOR) {
       if (Self->Morph) UnsubscribeAction(Self->Morph, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         auto callback = make_function_stdc(notify_free);
+         auto callback = make_function_stdc(notify_free_morph);
          SubscribeAction(Value, AC_Free, &callback);
          Self->Morph = Value;
          return ERR_Okay;
@@ -2184,7 +2204,7 @@ static ERROR VECTOR_SET_Transition(extVector *Self, objVectorTransition *Value)
    else if (Value->Class->ClassID IS ID_VECTORTRANSITION) {
       if (Self->Transition) UnsubscribeAction(Self->Transition, AC_Free);
       if (Value->initialised()) { // The object must be initialised.
-         auto callback = make_function_stdc(notify_free);
+         auto callback = make_function_stdc(notify_free_transition);
          SubscribeAction(Value, AC_Free, &callback);
          Self->Transition = Value;
          return ERR_Okay;
