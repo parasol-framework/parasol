@@ -317,11 +317,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
                   else error_dialog("Clipboard Paste Error", ERR_AllocMemory);
                }
             }
-            else {
-               char msg[200];
-               snprintf(msg, sizeof(msg), "Failed to load clipboard file \"%s\"", get.Files[0]);
-               error_dialog("Paste Error", msg);
-            }
+            else error_dialog("Paste Error", "Failed to load clipboard file \"" + std::string(get.Files[0]) + "\"");
          }
       }
 
@@ -723,6 +719,28 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
    }
    else return ERR_CreateObject;
+
+#ifdef GUIDELINES
+   // Temporary rectangle to help analyse page sizing
+
+   objVectorRectangle::create::global({
+      fl::Name("pageBorder"),
+      fl::Owner(Self->Page->UID),
+      fl::X(0), fl::Y(0),
+      fl::Width("100%"),
+      fl::Height("100%"),
+      fl::Stroke("rgb(0,0,255,48)"),
+      fl::StrokeWidth(3)});
+
+   objVectorRectangle::create::global({
+      fl::Name("viewBorder"),
+      fl::Owner(Self->View->UID),
+      fl::X(0), fl::Y(0),
+      fl::Width("100%"),
+      fl::Height("100%"),
+      fl::Stroke("rgb(0,255,0,48)"),
+      fl::StrokeWidth(3)});
+#endif
 
    // TODO: Create a scrollbar with references to our Target, Page and View viewports
 

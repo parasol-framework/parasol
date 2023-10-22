@@ -10,7 +10,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
   loadFile(glPath .. 'common.fdl')
 
   const("RIPPLE", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
-    VERSION = "\"20230701\""
+    VERSION = "\"20231021\""
   })
 
   enum("TT", { start=1 }, "OBJECT", "LINK", "EDIT")

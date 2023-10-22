@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE dmd PUBLIC "-//ROCKLYTE//DTD DMD 1.0//EN">
+
+<body face="sans serif" link="60,60,130"/>
+
+<page name="Index">
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam. Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a. Donec id iaculis tellus, et semper magna. Morbi molestie sed risus eget facilisis.</p>
+
+<p>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</p>
+
+<p>Morbi sit amet pretium est, id lobortis turpis. Integer mollis dapibus porttitor. Pellentesque aliquet ornare neque, non auctor quam pretium eget. Cras eget egestas leo. Praesent interdum est vel nunc vehicula dignissim. Aenean sed massa sem. Morbi ipsum metus, hendrerit a tortor et, finibus ultrices dolor. Fusce placerat aliquam lorem sit amet hendrerit. Mauris ultricies tincidunt volutpat. Vestibulum erat tellus, sodales in neque sit amet, fringilla luctus metus. In mattis risus et mi molestie rutrum. Praesent vulputate scelerisque enim eu fringilla. Integer scelerisque diam non purus finibus, in euismod ligula iaculis.</p>
+
+<p>Mauris magna est, tempus at consequat a, euismod sed libero. Aliquam in erat sodales, viverra orci vel, tincidunt massa. Morbi laoreet mi et leo commodo egestas. Donec nec aliquet lacus, sodales tincidunt nunc. Ut tristique non diam in pellentesque. Cras sollicitudin congue interdum. Mauris vel ullamcorper metus. Donec vel neque accumsan, ultricies dui a, dictum nunc. Integer ut ex dolor.</p>
+
+<p>Sed interdum nunc ac justo aliquam, in fringilla lectus porttitor. Proin imperdiet elit malesuada, vehicula nisl vitae, porta libero. Quisque leo purus, eleifend quis ex eu, tristique ornare quam. Curabitur sit amet ex ut leo gravida eleifend eu auctor orci. Ut rhoncus faucibus sem, sit amet pretium dolor fringilla aliquam. Fusce ac suscipit dui. Nulla feugiat mauris erat, vitae pulvinar odio tristique sed. Curabitur mattis massa vel lectus eleifend congue. Integer a ex sit amet diam blandit sagittis. Morbi augue dolor, tempus a elementum vitae, venenatis eu nisl.</p>
+
+<p>This paragraph contains an embedded paragraph <p>right here.  There must be a standard line break prior, in order to separate it from the parent.</p></p>
+
+<p>This paragraph must follow on from the embedded paragraph and be separated with the standard amount of leading whitespace.</p>
+
+</page>

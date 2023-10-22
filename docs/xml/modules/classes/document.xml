@@ -379,7 +379,7 @@
       <access read="R" write="I">Read/Init</access>
       <type lookup="DBE">DBE</type>
       <description>
-<p>This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined in the #Border field.</p>
+<p>This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined in the <field>BorderStroke</field> field.</p>
 <types lookup="DBE"/>
       </description>
     </field>

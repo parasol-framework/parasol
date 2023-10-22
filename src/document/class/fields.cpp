@@ -55,7 +55,7 @@ static ERROR SET_BorderStroke(extDocument *Self, CSTRING Value)
 BorderEdge: Border edge flags.
 
 This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined
-in the #Border field.
+in the #BorderStroke field.
 
 -FIELD-
 BottomMargin: Defines the amount of whitespace to leave at the bottom of the document page.

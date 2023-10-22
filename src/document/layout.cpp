@@ -68,10 +68,10 @@ struct layout {
    }
 
    void reset_segment() { reset_segment(idx, m_cursor_x); }
-   
+
    // Add a single stream code as a draw segment.  This will not include support for text glyphs, so no supplementary
    // information such as X/Y coordinates is defined.
-   
+
    void add_esc_segment() {
       StreamChar start(idx, 0);
       StreamChar stop(idx + 1, 0);
@@ -107,7 +107,7 @@ struct layout {
       }
       return false;
    }
-   
+
    // If the current font is larger or equal to the current line height, extend the line height.
    // Note that we use >= because we want to correct the base line in case there is a vector already set on the
    // line that matches the font's line spacing.
@@ -196,7 +196,7 @@ void layout::procFont()
 }
 
 //********************************************************************************************************************
-// NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.  
+// NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.
 // This can occur if the font colour is changed mid-word for example.
 
 WRAP layout::procText(LONG AbsX, LONG Width)
@@ -267,7 +267,7 @@ WRAP layout::procText(LONG AbsX, LONG Width)
    if (m_word_width) {
       wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
    }
-   
+
    return wrap_result;
 }
 
@@ -366,7 +366,7 @@ void layout::procIndexStart()
 void layout::procCellEnd(escCell *esccell)
 {
    // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
-   // refer to ESC::CELL to see how content is processed and how the cell dimensions are formed.   
+   // refer to ESC::CELL to see how content is processed and how the cell dimensions are formed.
 
    if ((esccell) and (!esccell->OnClick.empty())) {
       add_link(ESC::CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
@@ -446,7 +446,7 @@ void layout::procParagraphStart(LONG Width)
    }
 
    auto escpara = stack_para.top();
-      
+
    if (!stack_list.empty()) {
       // If a paragraph is inside a list then it's treated as a list item.
       // Indentation values are inherited from the list.
@@ -1944,8 +1944,8 @@ extend_page:
 #endif
 
       switch (Self->Stream[idx].Code) {
-         case ESC::TEXT: {            
-            auto wrap_result = procText(AbsX, Width); 
+         case ESC::TEXT: {
+            auto wrap_result = procText(AbsX, Width);
             if (wrap_result IS WRAP::EXTEND_PAGE) { // A word in the text string is too big for the available space.
                DLAYOUT("Expanding page width on wordwrap request.");
                goto extend_page;
@@ -2315,14 +2315,15 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
 
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
-      //log.trace("Line Height being set to font (currently %d/%d)", m_line.height, m_line.full_height);
       m_line.height = m_font->LineSpacing;
       m_line.full_height = m_font->Ascent;
    }
 
-   DLAYOUT("%s: CursorX/Y: %d/%d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
-      Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing, 
+#ifdef DBG_LAYOUT
+   log.branch("%s: CursorX/Y: %d/%d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
+      Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing,
       m_line.index.Index, LONG(m_line.index.Offset), Next.Index, LONG(Next.Offset));
+#endif
 
    for (auto &clip : m_clips) {
       if (clip.Transparent) continue;
@@ -2345,31 +2346,17 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
       auto bottom_line = m_cursor_y + m_line.height;
       if (m_paragraph_bottom > bottom_line) bottom_line = m_paragraph_bottom;
 
-      // Check for an embedded paragraph sequence by back-tracking (this will abort once content is encountered).
-      // The intention is to resolve cases such as "<p>...<p>...</p></p>" that would otherwise cause us to add
-      // too much whitespace.
-      for (auto i = idx - 1; i > 0; i--) {
-         auto code = Self->Stream[idx].Code;
-         if (code IS ESC::PARAGRAPH_START) {
-            // If a custom string is specified in the paragraph, it counts as content.
-
-            auto &para = escape_data<escParagraph>(Self, idx);
-            if (para.Value.empty()) bottom_line = m_paragraph_y;
-            break;
-         }
-         else if (code IS ESC::PARAGRAPH_END) {
-            bottom_line = m_paragraph_y;
-            break;
-         }
-         else if ((code IS ESC::VECTOR) or (code IS ESC::TEXT) or (code IS ESC::TABLE_END)) break; // Content encountered
-      }
-
       m_paragraph_y = bottom_line;
+      if (!m_line.height) {
+         // The line is devoid of content, e.g. in the case of "<p>...<p>...</p></p>" the "</p></p>" is empty.
+         // The m_cursor_y position will not be advanced in this case.
+      }
+      else {
+         // Paragraph gap measured as default line height * spacing ratio
 
-      // Paragraph gap measured as default line height * spacing ratio
-
-      auto new_y = bottom_line + F2I(Self->LineHeight * Spacing);
-      if (new_y > m_cursor_y) m_cursor_y = new_y;
+         auto advance_to = bottom_line + F2I(Self->LineHeight * Spacing);
+         if (advance_to > m_cursor_y) m_cursor_y = advance_to;
+      }
    }
 
    // Reset line management variables for a new line starting from the left margin.
@@ -2387,14 +2374,14 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
 }
 
 //********************************************************************************************************************
-// This function will check the need for word wrapping of an element marked by the area (X, Y, Width, Height).  The 
+// This function will check the need for word wrapping of an element marked by the area (X, Y, Width, Height).  The
 // (X, Y) position will be updated if the element is wrapped.  If clipping boundaries are present on the page,
 // horizontal advancement across the line may occur.
-// 
+//
 // Wrapping is always checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
 // solo <br/> tags).
 
-WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth, StreamChar Cursor, 
+WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth, StreamChar Cursor,
    LONG &X, LONG &Y, LONG Width, LONG Height)
 {
    pf::Log log(__FUNCTION__);
@@ -2435,7 +2422,7 @@ restart:
       }
 
       if ((m_current_link) and (m_link.x != X)) {
-         add_link(ESC::LINK, m_current_link, m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");            
+         add_link(ESC::LINK, m_current_link, m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");
       }
 
       // Set the line segment up to the cursor.  The line.index is updated so that this process only occurs
@@ -2535,7 +2522,7 @@ restart:
       }
 
       if (m_line.index < WordIndex) {
-         if (!m_line.height) add_drawsegment(m_line.index, WordIndex, Y, X - m_line.x, X - m_line.x, "Wrap:EmptyLine");         
+         if (!m_line.height) add_drawsegment(m_line.index, WordIndex, Y, X - m_line.x, X - m_line.x, "Wrap:EmptyLine");
          else add_drawsegment(m_line.index, WordIndex, Y, X + Width - m_line.x, m_align_width - m_line.x, "Wrap");
       }
 
@@ -2552,7 +2539,7 @@ restart:
 //********************************************************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
-void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape, 
+void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape,
    DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, const std::string &Caller)
 {
    pf::Log log(__FUNCTION__);

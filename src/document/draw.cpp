@@ -56,12 +56,6 @@ void layout::draw()
    bool m_cursor_drawn = false;
 
    #ifdef GUIDELINES
-
-      // Page boundary is marked in blue
-      gfxDrawRectangle(Bitmap, Self->LeftMargin-1, Self->TopMargin-1,
-         Self->CalcWidth - Self->RightMargin - Self->LeftMargin + 2, Self->PageHeight - Self->TopMargin - Self->BottomMargin + 2,
-         Bitmap->packPixel(0, 0, 255), 0);
-
       // Special clip regions are marked in grey
       for (unsigned i=0; i < m_clips.size(); i++) {
          gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
@@ -165,7 +159,7 @@ void layout::draw()
 
       auto fx = segment.Area.X;
       std::string font_fill = "rgb(0,0,0,255)";
-      ALIGN font_align = ALIGN::NIL;
+      auto font_align = ALIGN::NIL;
       for (auto cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()) {
          switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
