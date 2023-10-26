@@ -343,8 +343,7 @@ LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
 
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if ((Font->Flags & FTF::SCALABLE) != FTF::NIL) {
-      font_glyph *cache;
-      if ((cache = get_glyph(Font, Char, false))) {
+      if (auto cache = get_glyph(Font, Char, false)) {
          if (((Font->Flags & FTF::KERNING) != FTF::NIL) and (KChar) and (Kerning)) {
             LONG kglyph = FT_Get_Char_Index(Font->Cache->Face, KChar);
             *Kerning = get_kerning(Font->Cache->Face, cache->GlyphIndex, kglyph);
@@ -358,7 +357,7 @@ LONG fntCharWidth(extFont *Font, ULONG Char, ULONG KChar, LONG *Kerning)
          else return 0;
       }
    }
-   else if (Char < 256) return Font->prvChar[Char].Advance;
+   else if ((Char < 256) and (Font->prvChar)) return Font->prvChar[Char].Advance;
    else {
       pf::Log log(__FUNCTION__);
       log.traceWarning("Character %u out of range.", Char);

@@ -173,9 +173,9 @@ class extVectorText : public extVector {
    DOUBLE txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
    DOUBLE txStartOffset;
    DOUBLE txSpacing;
+   DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
    DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
    DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
-   DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
    objFont *txFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
    objVectorImage *txBitmapImage;

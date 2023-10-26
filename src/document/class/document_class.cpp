@@ -973,16 +973,16 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    for (INDEX i = Args->Index - 1; i > 0; i--) {
       if (Self->Stream[i].Code IS ESC::FONT) {
          Self->Style.FontStyle = escape_data<escFont>(Self, i);
-         log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.Index, Self->Style.FontStyle.Options);
+         log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.FontIndex, Self->Style.FontStyle.Options);
          break;
       }
    }
 
    // If no style is available, we need to create a default font style and insert it at the start of the stream.
 
-   if (Self->Style.FontStyle.Index IS -1) {
-      if ((Self->Style.FontStyle.Index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-         if ((Self->Style.FontStyle.Index = create_font("Open Sans", "Regular", 12)) IS -1) {
+   if (Self->Style.FontStyle.FontIndex IS -1) {
+      if ((Self->Style.FontStyle.FontIndex = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
+         if ((Self->Style.FontStyle.FontIndex = create_font("Open Sans", "Regular", 12)) IS -1) {
             return ERR_Failed;
          }
       }
@@ -991,7 +991,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
       Self->Style.FontChange = true;
    }
 
-   if (auto font = lookup_font(Self->Style.FontStyle.Index, "insert_xml")) {
+   if (auto font = Self->Style.FontStyle.getFont()) {
       Self->Style.Face  = font->Face;
       Self->Style.Point = font->Point;
    }

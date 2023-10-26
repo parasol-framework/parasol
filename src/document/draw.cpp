@@ -21,19 +21,19 @@ static void redraw(extDocument *Self, bool Focus)
 //********************************************************************************************************************
 // Convert the layout information to a vector scene.
 
-void layout::draw()
+void layout::gen_scene_graph()
 {
    pf::Log log(__FUNCTION__);
    //escVector *escvector;
 
    if (Self->UpdatingLayout) return; // Drawing is disabled if the layout is being updated
 
-   auto font = lookup_font(0, "draw_document");
-
-   if (!font) {
+   if (glFonts.empty()) {
       log.traceWarning("No default font defined.");
       return;
    }
+
+   auto font = glFonts[0].Font;
 
    #ifdef _DEBUG
    if (Self->Stream.empty()) {
@@ -57,11 +57,13 @@ void layout::draw()
 
    #ifdef GUIDELINES
       // Special clip regions are marked in grey
+/*
       for (unsigned i=0; i < m_clips.size(); i++) {
          gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
             Self->Clips[i].Clip.Right - Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Bottom - Self->Clips[i].Clip.Top,
             Bitmap->packPixel(255, 200, 200), 0);
       }
+*/
    #endif
 
    StreamChar select_start;
@@ -92,6 +94,7 @@ void layout::draw()
 
    FloatRect clip(0, 0, Self->VPWidth, Self->VPHeight);
 
+   std::string font_fill = "rgb(0,0,0,255)";
    //DOUBLE alpha = 1.0;
    for (SEGINDEX seg=0; seg < SEGINDEX(m_segments.size()); seg++) {
       auto &segment = m_segments[seg];
@@ -158,13 +161,12 @@ void layout::draw()
       #endif
 
       auto fx = segment.Area.X;
-      std::string font_fill = "rgb(0,0,0,255)";
       auto font_align = ALIGN::NIL;
       for (auto cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()) {
          switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
                auto &style = escape_data<escFont>(Self, cursor);
-               if (auto font = lookup_font(style.Index, "draw_document")) {
+               if (auto font = style.getFont()) {
                   if (tabfocus IS false) font_fill = style.Fill;
                   else font_fill = Self->LinkSelectFill;
 
@@ -299,6 +301,7 @@ void layout::draw()
             case ESC::LINK: {
                auto esclink = &escape_data<escLink>(Self, cursor);
                if (Self->HasFocus) {
+                  // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) and (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) and (Self->Tabs[Self->FocusIndex].Active)) {
                      link_save_rgb = font_fill;
                      font_fill = Self->LinkSelectFill;
@@ -333,7 +336,10 @@ void layout::draw()
                         //fl::AlignWidth(segment.AlignWidth),
                      });
                      Self->LayoutResources.push_back(text);
-                     fx = font->EndX;
+                     
+                     LONG twidth;
+                     text->get(FID_TextWidth, &twidth);
+                     fx += twidth;
                   }
                }
                break;

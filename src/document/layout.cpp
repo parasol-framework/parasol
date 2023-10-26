@@ -26,7 +26,7 @@ struct layout {
    StreamChar m_word_index; // Position of the word currently being operated on
    LONG m_align_flags;      // Current alignment settings according to the font style
    LONG m_align_width;      // Horizontal alignment will be calculated relative to this value
-   LONG m_cursor_x, m_cursor_y; // Insertion point of the next text character or vector object
+   DOUBLE m_cursor_x, m_cursor_y; // Insertion point of the next text character or vector object
    LONG m_kernchar;         // Previous character of the word being operated on
    LONG m_left_margin;      // Left margin value, controls whitespace for paragraphs and table cells
    LONG m_paragraph_bottom; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
@@ -94,7 +94,7 @@ struct layout {
             // Font style changes don't breakup text unless there's a face change.
             if (m_text_content) {
                auto &style = escape_data<escFont>(Self, idx);
-               if (m_font != lookup_font(style.Index, "ESC::FONT")) return true;
+               if (m_font != style.getFont()) return true;
             }
             break;
 
@@ -123,7 +123,7 @@ struct layout {
 
    INDEX do_layout(INDEX, INDEX, objFont **, LONG, LONG, LONG &, LONG &, ClipRectangle, bool &);
 
-   void draw();
+   void gen_scene_graph();
 
    void procSetMargins(LONG, LONG &);
    void procLink();
@@ -144,8 +144,8 @@ struct layout {
    void add_link(ESC, std::variant<escLink *, escCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void add_drawsegment(StreamChar, StreamChar, LONG, LONG, LONG, const std::string &);
    void end_line(NL, DOUBLE, StreamChar, const std::string &);
-   WRAP check_wordwrap(const std::string &, LONG, LONG &, StreamChar, LONG &, LONG &, LONG, LONG);
-   void wrap_through_clips(StreamChar, LONG &, LONG &, LONG, LONG);
+   WRAP check_wordwrap(const std::string &, LONG, LONG &, StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
+   void wrap_through_clips(StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
    DOUBLE calc_page_height(DOUBLE, DOUBLE);
 };
 
@@ -173,7 +173,7 @@ void layout::procFont()
 {
    pf::Log log;
    auto style = &escape_data<escFont>(Self, idx);
-   m_font = lookup_font(style->Index, "ESC::FONT");
+   m_font = style->getFont();
 
    if (m_font) {
       if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) m_font->Align = ALIGN::RIGHT;
@@ -184,7 +184,7 @@ void layout::procFont()
       m_no_wrap = ((style->Options & FSO::NO_WRAP) != FSO::NIL);
       //if (m_no_wrap) m_wrap_edge = 1000;
 
-      DLAYOUT("Font Index: %d, LineSpacing: %d, Height: %d, Ascent: %d, Cursor: %dx%d", style->Index, m_font->LineSpacing, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
+      DLAYOUT("Font Index: %d, LineSpacing: %d, Height: %d, Ascent: %d, Cursor: %.2fx%.2f", style->FontIndex, m_font->LineSpacing, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
       m_space_width = fntCharWidth(m_font, ' ', 0, 0);
 
       // Treat the font as if it is a text character by setting the m_word_index.
@@ -192,7 +192,7 @@ void layout::procFont()
 
       if (!m_word_width) m_word_index.set(idx, 0);
    }
-   else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->Index);
+   else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->FontIndex);
 }
 
 //********************************************************************************************************************
@@ -237,8 +237,10 @@ WRAP layout::procText(LONG AbsX, LONG Width)
          }
 
          if (str[i] IS '\t') {
-            LONG tabwidth = (m_space_width + m_font->GlyphSpacing) * m_font->TabSize;
-            if (tabwidth) m_cursor_x += pf::roundup(m_cursor_x, tabwidth);
+            auto tabwidth = (m_space_width + m_font->GlyphSpacing) * m_font->TabSize;
+            if (tabwidth) {
+               m_cursor_x += (m_cursor_x + tabwidth) - std::fmod(m_cursor_x, tabwidth); // Round up to Alignment value, e.g. (14,8) = 16
+            }
          }
          else m_cursor_x += m_word_width + m_space_width;
 
@@ -401,7 +403,7 @@ void layout::procRowEnd(escTable *Table)
 
    m_cursor_y += Row->RowHeight + Table->CellVSpacing;
    m_cursor_x = Table->X;
-   DLAYOUT("Row ends, advancing down by %d+%d, new height: %d, y-cursor: %d",
+   DLAYOUT("Row ends, advancing down by %d+%d, new height: %d, y-cursor: %.2f",
       Row->RowHeight, Table->CellVSpacing, Table->Height, m_cursor_y);
 
    if (Table->RowWidth > Table->Width) Table->Width = Table->RowWidth;
@@ -615,7 +617,8 @@ TE layout::procTableEnd(escTable *esctable, LONG Offset, LONG AbsX, LONG TopMarg
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
          auto j = minheight - (esctable->Height + esctable->CellVSpacing + esctable->Thickness);
-         DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %d", minheight, stack_row.top()->RowHeight, j, esctable->MinHeight, esctable->Y);
+         DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %.2f", 
+            minheight, stack_row.top()->RowHeight, j, esctable->MinHeight, esctable->Y);
          stack_row.top()->RowHeight += j;
          return TE::REPASS_ROW_HEIGHT;
       }
@@ -630,7 +633,8 @@ TE layout::procTableEnd(escTable *esctable, LONG Offset, LONG AbsX, LONG TopMarg
 
    LONG j = esctable->X + esctable->Width - AbsX + m_right_margin;
    if ((j > Width) and (Width < WIDTH_LIMIT)) {
-      DLAYOUT("Table width (%d+%d) increases page width to %d, layout restart forced.", esctable->X, esctable->Width, j);
+      DLAYOUT("Table width (%.2f+%d) increases page width to %d, layout restart forced.", 
+         esctable->X, esctable->Width, j);
       Width = j;
       return TE::EXTEND_PAGE;
    }
@@ -659,7 +663,7 @@ TE layout::procTableEnd(escTable *esctable, LONG Offset, LONG AbsX, LONG TopMarg
    // considered (otherwise, clips inside the table cells will cause collisions against the parent
    // table).
 
-   DLAYOUT("Checking table collisions (%dx%d).", esctable->X, esctable->Y);
+   DLAYOUT("Checking table collisions (%.2fx%.2f).", esctable->X, esctable->Y);
 
    std::vector<DocClip> saved_clips(m_clips.begin() + esctable->TotalClips, m_clips.end() + m_clips.size());
    m_clips.resize(esctable->TotalClips);
@@ -684,13 +688,13 @@ TE layout::procTableEnd(escTable *esctable, LONG Offset, LONG AbsX, LONG TopMarg
    //if (clip.Left IS m_left_margin) clip.Left = 0; // Extending the clipping to the left doesn't hurt
 
    m_clips.emplace_back(
-      ClipRectangle(esctable->X, esctable->Y, clip.Left + esctable->Width, clip.Top + esctable->Height),
+      esctable->X, esctable->Y, clip.Left + esctable->Width, clip.Top + esctable->Height,
       idx, false, "Table");
 
    m_cursor_x = esctable->X + esctable->Width;
    m_cursor_y = esctable->Y;
 
-   DLAYOUT("Final Table Size: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
+   DLAYOUT("Final Table Size: %.2fx%.2f,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
 
    esctable = esctable->Stack;
 
@@ -705,7 +709,7 @@ WRAP layout::procVector(LONG Offset, DOUBLE AbsX, DOUBLE AbsY, LONG &Width, LONG
    bool &VerticalRepass, bool &CheckWrap)
 {
    pf::Log log;
-   ClipRectangle cell;
+   DOUBLE cx, cy, cr, cb;
    OBJECTID vector_id;
 
    // Tell the vector our CursorX and CursorY positions so that it can position itself within the stream
@@ -718,18 +722,18 @@ WRAP layout::procVector(LONG Offset, DOUBLE AbsX, DOUBLE AbsY, LONG &Width, LONG
    // cell: Reflects the page/cell coordinates and width/height of the page/cell.
 
 wrap_vector:
-   cell.Left   = AbsX;
-   cell.Top    = AbsY;
-   cell.Right  = cell.Left + Width;
+   cx = AbsX;
+   cy = AbsY;
+   cr  = cx + Width;
    if ((!Offset) and (PageHeight < Self->AreaHeight)) {
-      cell.Bottom = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's viewport area
+      cb = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's viewport area
    }
-   else cell.Bottom = AbsY + PageHeight;
+   else cb = AbsY + PageHeight;
 
    if (m_line.height) {
-      if (cell.Bottom < m_cursor_y + m_line.height) cell.Bottom = AbsY + m_line.height;
+      if (cb < m_cursor_y + m_line.height) cb = AbsY + m_line.height;
    }
-   else if (cell.Bottom < m_cursor_y + 1) cell.Bottom = m_cursor_y + 1;
+   else if (cb < m_cursor_y + 1) cb = m_cursor_y + 1;
 
    LONG dimensions = 0;
    ALIGN align;
@@ -742,8 +746,8 @@ wrap_vector:
       return WRAP::DO_NOTHING;
    }
 
-   DLAYOUT("[Idx:%d] The %s's available page area is %d-%d,%d-%d, cursor %dx%d",
-      idx, vector->Class->ClassName, cell.Left, cell.Right, cell.Top, cell.Bottom, m_cursor_x, m_cursor_y);
+   DLAYOUT("[Idx:%d] The %s's available page area is (%.2fx%.2f, %.2fx%.2f), cursor %.2fx%.2f",
+      idx, vector->Class->ClassName, cx, cr, cy, cb, m_cursor_x, m_cursor_y);
 
 #if true
    DOUBLE new_y, new_width, new_height, calc_x;
@@ -752,14 +756,14 @@ wrap_vector:
    left_margin = m_left_margin - AbsX;
    line_height = (m_line.full_height) ? m_line.full_height : m_font->Ascent;
 
-   cell_width  = cell.Right - cell.Left;
-   cell_height = cell.Bottom - cell.Top;
+   cell_width  = cr - cx;
+   cell_height = cb - cy;
    align = m_font->Align;
 
    // Relative dimensions can use the full size of the page/cell only when text-wrapping is disabled.
 
    zone_height = line_height;
-   cell.Left  += left_margin;
+   cx  += left_margin;
    cell_width  = cell_width - m_right_margin - left_margin; // Remove margins from the cell_width because we're only interested in the space available to the vector
    DOUBLE new_x = m_cursor_x;
 
@@ -781,7 +785,7 @@ wrap_vector:
          // Relative X, such as 10% would mean 'NewX must be at least 10% beyond 'cell.left + leftmargin'
          DOUBLE xp;
          vector->getPercentage(FID_X, &xp);
-         DOUBLE minx = cell.Left + cell_width * xp;
+         DOUBLE minx = cx + cell_width * xp;
          if (minx > calc_x) calc_x = minx;
       }
 
@@ -790,12 +794,12 @@ wrap_vector:
       if (dimensions & DMF_FIXED_X_OFFSET) {
          DOUBLE xo;
          vector->get(FID_XOffset, &xo);
-         new_width = cell_width - xo - (calc_x - cell.Left);
+         new_width = cell_width - xo - (calc_x - cx);
       }
       else {
          DOUBLE xop;
          vector->getPercentage(FID_XOffset, &xop);
-         new_width = cell_width - (calc_x - cell.Left) - (cell_width * xop);
+         new_width = cell_width - (calc_x - cx) - (cell_width * xop);
       }
 
       if (new_width < 1) new_width = 1;
@@ -877,7 +881,7 @@ wrap_vector:
 
    // Y COORD
 
-   const DOUBLE top = vec.IgnoreCursor ? cell.Top : m_cursor_y;
+   const DOUBLE top = vec.IgnoreCursor ? cy : m_cursor_y;
 
    if (dimensions & DMF_RELATIVE_Y) {
       DOUBLE yp;
@@ -889,7 +893,7 @@ wrap_vector:
       vector->get(FID_Height, &height);
       if (dimensions & DMF_FIXED_Y_OFFSET) {
          vector->get(FID_YOffset, &yo);
-         new_y = cell.Top + zone_height - height - yo;
+         new_y = cy + zone_height - height - yo;
       }
       else {
          vector->getPercentage(FID_YOffset, &yop);
@@ -926,33 +930,33 @@ wrap_vector:
 
    DLAYOUT("Clip region is being restricted to the bounds: %.2fx%.2f,%.2fx%.2f", new_x, new_y, new_width, new_height);
 
-   cell.Left   = new_x;
-   cell.Top    = new_y;
-   cell.Right  = new_x + new_width;
-   cell.Bottom = new_y + new_height;
+   cx   = new_x;
+   cy    = new_y;
+   cr  = new_x + new_width;
+   cb = new_y + new_height;
 
    // If BlockRight is true, no text may be printed to the right of the vector.
 
    if (vec.BlockRight) {
-      DLAYOUT("Block Right: Expanding clip.right boundary from %d to %.2f.",
-         cell.Right, AbsX + Width - m_right_margin);
-      cell.Right = (AbsX + Width) - m_right_margin; //cell_width;
+      DLAYOUT("Block Right: Expanding clip.right boundary from %.2f to %.2f.",
+         cr, AbsX + Width - m_right_margin);
+      cr = (AbsX + Width) - m_right_margin; //cell_width;
    }
 
    // If BlockLeft is true, no text may be printed to the left of the vector (but not
    // including text that has already been printed).
 
    if (vec.BlockLeft) {
-      DLAYOUT("Block Left: Expanding clip.left boundary from %d to %.2f.", cell.Left, AbsX);
-      cell.Left  = AbsX; //left_margin;
+      DLAYOUT("Block Left: Expanding clip.left boundary from %.2f to %.2f.", cx, AbsX);
+      cx  = AbsX; //left_margin;
    }
 
-   DOUBLE width_check = vec.IgnoreCursor ? cell.Right - AbsX : cell.Right + m_right_margin;
+   DOUBLE width_check = vec.IgnoreCursor ? cr - AbsX : cr + m_right_margin;
 
    DLAYOUT("#%d, Pos: %.2fx%.2f,%.2fx%.2f, Align: $%.8x, WidthCheck: %.2f/%d",
       vector->UID, new_x, new_y, new_width, new_height, LONG(align), width_check, Width);
-   DLAYOUT("Clip Size: %dx%d,%.2fx%.2f, LineHeight: %.2f",
-      cell.Left, cell.Top, cell_width, cell_height, line_height);
+   DLAYOUT("Clip Size: %.2fx%.2f,%.2fx%.2f, LineHeight: %.2f",
+      cx, cy, cell_width, cell_height, line_height);
 
    dimensions = dimensions;
    error = ERR_Okay;
@@ -963,8 +967,8 @@ wrap_vector:
    left_margin = m_left_margin - AbsX;
    line_height = (m_line.full_height) ? m_line.full_height : m_font->Ascent;
 
-   cell_width  = cell.Right - cell.Left;
-   cell_height = cell.Bottom - cell.Top;
+   cell_width  = cr - cx;
+   cell_height = cb - cy;
    align = m_font->Align;
 
    if (!vec.Embedded) {
@@ -978,25 +982,25 @@ wrap_vector:
       // Gaps are automatically worked into the calculated X/Y value.
 
       if ((vector->GraphicWidth) and (vector->GraphicHeight) and (!(layoutflags & LAYOUT_TILE))) {
-         vector->BoundX = cell.Left;
-         vector->BoundY = cell.Top;
+         vector->BoundX = cx;
+         vector->BoundY = cy;
 
          if ((align & ALIGN::HORIZONTAL) != ALIGN::NIL) {
-            vector->GraphicX = cell.Left + vec.Margins.Left + ((cell_width - vector->GraphicWidth)>>1);
+            vector->GraphicX = cx + vec.Margins.Left + ((cell_width - vector->GraphicWidth)>>1);
          }
-         else if ((align & ALIGN::RIGHT) != ALIGN::NIL) vector->GraphicX = cell.Left + cell_width - vec.Margins.Right - vector->GraphicWidth;
+         else if ((align & ALIGN::RIGHT) != ALIGN::NIL) vector->GraphicX = cx + cell_width - vec.Margins.Right - vector->GraphicWidth;
          else if (!vector->PresetX) {
             if (!vector->PresetWidth) {
-               vector->GraphicX = cell.Left + vec.Margins.Left;
+               vector->GraphicX = cx + vec.Margins.Left;
             }
             else vector->GraphicX = m_cursor_x + vec.Margins.Left;
          }
 
-         if ((align & ALIGN::VERTICAL) != ALIGN::NIL) vector->GraphicY = cell.Top + ((cell_height - vector->TopMargin - vector->BottomMargin - vector->GraphicHeight) * 0.5);
-         else if ((align & ALIGN::BOTTOM) != ALIGN::NIL) vector->GraphicY = cell.Top + cell_height - vector->BottomMargin - vector->GraphicHeight;
+         if ((align & ALIGN::VERTICAL) != ALIGN::NIL) vector->GraphicY = cy + ((cell_height - vector->TopMargin - vector->BottomMargin - vector->GraphicHeight) * 0.5);
+         else if ((align & ALIGN::BOTTOM) != ALIGN::NIL) vector->GraphicY = cy + cell_height - vector->BottomMargin - vector->GraphicHeight;
          else if (!vector->PresetY) {
             if (!vector->PresetHeight) {
-               vector->GraphicY = cell.Top + vec.Margins.Top;
+               vector->GraphicY = cy + vec.Margins.Top;
             }
             else vector->GraphicY = m_cursor_y + vec.Margins.Top;
          }
@@ -1015,16 +1019,16 @@ wrap_vector:
          // we just want to use the preset X/Y/Width/Height in relation to the available
          // space within the cell.
 
-         vector->ParentSurface.Width = cell.Right - cell.Left;
-         vector->ParentSurface.Height = cell.Bottom - cell.Top;
+         vector->ParentSurface.Width = cr - cx;
+         vector->ParentSurface.Height = cb - cy;
 
          vector->get(FID_X, &vector->BoundX);
          vector->get(FID_Y, &vector->BoundY);
          vector->get(FID_Width, &vector->BoundWidth);
          vector->get(FID_Height, &vector->BoundHeight);
 
-         vector->BoundX += cell.Left;
-         vector->BoundY += cell.Top;
+         vector->BoundX += cx;
+         vector->BoundY += cy;
 
 
          DLAYOUT("X/Y: %dx%d, W/H: %dx%d, Parent W/H: %dx%d (Width/Height not preset), Dimensions: $%.8x",
@@ -1071,7 +1075,7 @@ wrap_vector:
          // it is drawn, so we do not cater for vertical alignment when positioning
          // the vector in this code.
 
-         cell.Left += left_margin;
+         cx += left_margin;
          cell_width = cell_width - right_margin - left_margin; // Remove margins from the cell_width because we're only interested in the space available to the vector
       }
 
@@ -1079,7 +1083,7 @@ wrap_vector:
       // width and height is 1, and the bounds may not exceed the size of the
       // available cell space (because a width of 110% would cause infinite recursion).
 
-      if (vec.IgnoreCursor) vector->BoundX = cell.Left;
+      if (vec.IgnoreCursor) vector->BoundX = cx;
       else vector->BoundX = m_cursor_x;
 
       vector->BoundWidth = 1; // Just a default in case no width in the Dimension flags is defined
@@ -1130,7 +1134,7 @@ wrap_vector:
          // WIDTH
 
          if (dimensions & DMF_RELATIVE_WIDTH) {
-            vector->BoundWidth = (DOUBLE)(cell_width - (vector->BoundX - cell.Left)) * (DOUBLE)vector->Width;
+            vector->BoundWidth = (DOUBLE)(cell_width - (vector->BoundX - cx)) * (DOUBLE)vector->Width;
             if (vector->BoundWidth < 1) vector->BoundWidth = 1;
             else if (vector->BoundWidth > cell_width) vector->BoundWidth = cell_width;
          }
@@ -1148,8 +1152,8 @@ wrap_vector:
             vector->BoundWidth = vector->GraphicWidth;
          }
          else if ((dimensions & DMF_X) and (dimensions & DMF_X_OFFSET)) {
-            if (dimensions & DMF_FIXED_X_OFFSET) vector->BoundWidth = cell_width - xoffset - (vector->BoundX - cell.Left);
-            else vector->BoundWidth = cell_width - (vector->BoundX - cell.Left) - xoffset;
+            if (dimensions & DMF_FIXED_X_OFFSET) vector->BoundWidth = cell_width - xoffset - (vector->BoundX - cx);
+            else vector->BoundWidth = cell_width - (vector->BoundX - cx) - xoffset;
 
             if (vector->BoundWidth < 1) vector->BoundWidth = 1;
             else if (vector->BoundWidth > cell_width) vector->BoundWidth = cell_width;
@@ -1190,7 +1194,7 @@ wrap_vector:
 
       LONG obj_y;
 
-      if (vec.IgnoreCursor) vector->BoundY = cell.Top;
+      if (vec.IgnoreCursor) vector->BoundY = cy;
       else vector->BoundY = m_cursor_y;
 
       obj_y = 0;
@@ -1236,7 +1240,7 @@ wrap_vector:
                if (vector->BoundHeight > zone_height) vector->BoundHeight = zone_height;
             }
             else if (dimensions & DMF_HEIGHT) {
-               if (dimensions & DMF_FIXED_Y_OFFSET) vector->BoundY = cell.Top + zone_height - vector->Height - vector->YOffset;
+               if (dimensions & DMF_FIXED_Y_OFFSET) vector->BoundY = cy + zone_height - vector->Height - vector->YOffset;
                else vector->BoundY += (DOUBLE)zone_height - (DOUBLE)vector->Height - ((DOUBLE)zone_height * (DOUBLE)vector->YOffset);
             }
          }
@@ -1250,18 +1254,18 @@ wrap_vector:
 
          DLAYOUT("Clip region is being restricted to the bounds: %dx%d,%dx%d", vector->BoundX, vector->BoundY, vector->BoundWidth, vector->BoundHeight);
 
-         cell.Left  = vector->BoundX - extclip_left;
-         cell.Top   = vector->BoundY - vector->TopMargin;
-         cell.Right = vector->BoundX + vector->BoundWidth + extclip_right;
-         cell.Bottom = vector->BoundY + vector->BoundHeight + vector->BottomMargin;
+         cx  = vector->BoundX - extclip_left;
+         cy   = vector->BoundY - vector->TopMargin;
+         cr = vector->BoundX + vector->BoundWidth + extclip_right;
+         cb = vector->BoundY + vector->BoundHeight + vector->BottomMargin;
 
          // If BlockRight is set, no text may be printed to the right of the vector.  This has no impact
          // on the vector's bounds.
 
          if (vec.BlockRight) {
-            DLAYOUT("BlockRight: Expanding clip.right boundary from %d to %d.", cell.Right, AbsX + Width - l.right_margin);
+            DLAYOUT("BlockRight: Expanding clip.right boundary from %d to %d.", cr, AbsX + Width - l.right_margin);
             LONG new_right = (AbsX + Width) - right_margin; //cell_width;
-            if (new_right > cell.Right) cell.Right = new_right;
+            if (new_right > cr) cr = new_right;
          }
 
          // If BlockLeft is set, no text may be printed to the left of the vector (but not
@@ -1269,17 +1273,17 @@ wrap_vector:
          // bounds.
 
          if (vec.BlockLeft) {
-            DLAYOUT("BlockLeft: Expanding clip.left boundary from %d to %d.", cell.Left, AbsX);
+            DLAYOUT("BlockLeft: Expanding clip.left boundary from %d to %d.", cx, AbsX);
 
-            if (IgnoreCursor) cell.Left = AbsX;
-            else cell.Left  = m_left_margin;
+            if (IgnoreCursor) cx = AbsX;
+            else cx  = m_left_margin;
          }
 
-         if (IgnoreCursor) width_check = cell.Right - AbsX;
-         else width_check = cell.Right + m_right_margin;
+         if (IgnoreCursor) width_check = cr - AbsX;
+         else width_check = cr + m_right_margin;
 
          DLAYOUT("#%d, Pos: %dx%d,%dx%d, Align: $%.8x, WidthCheck: %d/%d", vector->UID, vector->BoundX, vector->BoundY, vector->BoundWidth, vector->BoundHeight, align, vector->X), width_check, Width);
-         DLAYOUT("Clip Size: %dx%d,%dx%d, LineHeight: %d, GfxSize: %dx%d, LayoutFlags: $%.8x", cell.Left, cell.Top, cell_width, cell_height, line_height, vector->GraphicWidth, vector->GraphicHeight, layoutflags);
+         DLAYOUT("Clip Size: %dx%d,%dx%d, LineHeight: %d, GfxSize: %dx%d, LayoutFlags: $%.8x", cx, cy, cell_width, cell_height, line_height, vector->GraphicWidth, vector->GraphicHeight, layoutflags);
 
          dimensions = dimensions;
          error = ERR_Okay;
@@ -1296,9 +1300,9 @@ wrap_vector:
       // Check if the clipping region is invalid.  Invalid clipping regions are not added to the clip
       // region list (i.e. layout of document text will ignore the presence of the vector).
 
-      if ((cell.Bottom <= cell.Top) or (cell.Right <= cell.Left)) {
-         if (auto name = vector->Name) log.warning("%s %s returned an invalid clip region of %dx%d,%dx%d", vector->Class->ClassName, name, cell.Left, cell.Top, cell.Right, cell.Bottom);
-         else log.warning("%s #%d returned an invalid clip region of %dx%d,%dx%d", vector->Class->ClassName, vector->UID, cell.Left, cell.Top, cell.Right, cell.Bottom);
+      if ((cb <= cy) or (cr <= cx)) {
+         if (auto name = vector->Name) log.warning("%s %s returned an invalid clip region of %.2fx%.2f,%.2fx%.2f", vector->Class->ClassName, name, cx, cy, cr, cb);
+         else log.warning("%s #%d returned an invalid clip region of %.2fx%.2f,%.2fx%.2f", vector->Class->ClassName, vector->UID, cx, cy, cr, cb);
          return WRAP::DO_NOTHING;
       }
 
@@ -1311,7 +1315,7 @@ wrap_vector:
       else left_check = m_left_margin; //m_cursor_x;
 
       if (Width >= WIDTH_LIMIT);
-      else if ((cell.Left < left_check) or (vec.IgnoreCursor)) {
+      else if ((cx < left_check) or (vec.IgnoreCursor)) {
          // The vector is < left-hand side of the page/cell, this means that we may have to force a page/cell width
          // increase.
          //
@@ -1320,11 +1324,11 @@ wrap_vector:
 
          LONG cmp_width;
 
-         if (vec.IgnoreCursor) cmp_width = AbsX + (cell.Right - cell.Left);
-         else cmp_width = m_left_margin + (cell.Right - cell.Left) + m_right_margin;
+         if (vec.IgnoreCursor) cmp_width = AbsX + (cr - cx);
+         else cmp_width = m_left_margin + (cr - cx) + m_right_margin;
 
          if (Width < cmp_width) {
-            DLAYOUT("Restarting as %s clip.left %d < %d and extends past the page width (%.2f > %d).", vector->Class->ClassName, cell.Left, left_check, width_check, Width);
+            DLAYOUT("Restarting as %s clip.left %.2f < %d and extends past the page width (%.2f > %d).", vector->Class->ClassName, cx, left_check, width_check, Width);
             Width = cmp_width;
             return WRAP::EXTEND_PAGE;
          }
@@ -1332,16 +1336,16 @@ wrap_vector:
       else if (width_check > Width) {
          // Perform a wrapping check if the vector possibly extends past the width of the page/cell.
 
-         DLAYOUT("Wrapping %s vector #%d as it extends past the page width (%.2f > %d).  Pos: %dx%d", vector->Class->ClassName, vector->UID, width_check, Width, cell.Left, cell.Top);
+         DLAYOUT("Wrapping %s vector #%d as it extends past the page width (%.2f > %d).  Pos: %.2fx%.2f", vector->Class->ClassName, vector->UID, width_check, Width, cx, cy);
 
-         auto ww = check_wordwrap("Vector", AbsX, Width, idx, cell.Left, cell.Top, cell.Right - cell.Left, cell.Bottom - cell.Top);
+         auto ww = check_wordwrap("Vector", AbsX, Width, idx, cx, cy, cr - cx, cb - cy);
 
          if (ww IS WRAP::EXTEND_PAGE) {
             DLAYOUT("Expanding page width due to vector size.");
             return WRAP::EXTEND_PAGE;
          }
          else if (ww IS WRAP::WRAPPED) {
-            DLAYOUT("Vector coordinates wrapped to %dx%d", cell.Left, cell.Top);
+            DLAYOUT("Vector coordinates wrapped to %.2fx%.2f", cx, cy);
             // The check_wordwrap() function will have reset m_cursor_x and m_cursor_y, so
             // on our repass, the cell.left and cell.top will reflect this new cursor position.
 
@@ -1349,13 +1353,13 @@ wrap_vector:
          }
       }
 
-      DLAYOUT("Adding %s clip to the list: %dx%d,%dx%d", vector->Class->ClassName, cell.Left, cell.Top, cell.Right-cell.Left, cell.Bottom-cell.Top);
+      DLAYOUT("Adding %s clip to the list: (%.2fx%.2f, %.2fx%.2f)", vector->Class->ClassName, cx, cy, cr-cx, cb-cy);
 
-      m_clips.emplace_back(cell, idx, !vec.Embedded, "Vector");
+      m_clips.emplace_back(cx, cy, cr, cb, idx, !vec.Embedded, "Vector");
 
       if (vec.Embedded) {
-         if (cell.Bottom > m_cursor_y) {
-            auto objheight = cell.Bottom - m_cursor_y;
+         if (cb > m_cursor_y) {
+            auto objheight = cb - m_cursor_y;
             if ((m_anchor) or (vec.Embedded)) {
                // If all vectors in the current section need to be anchored to the text, each
                // vector becomes part of the current line (e.g. treat the vector as if it were
@@ -1377,10 +1381,10 @@ wrap_vector:
             }
          }
 
-         //if (cell.Right > m_cursor_x) m_word_width += cell.Right - m_cursor_x;
+         //if (cr > m_cursor_x) m_word_width += cr - m_cursor_x;
 
          if (!stack_para.empty()) {
-            auto j = cell.Bottom - stack_para.top()->Y;
+            auto j = cb - stack_para.top()->Y;
             if (j > stack_para.top()->Height) stack_para.top()->Height = j;
          }
       }
@@ -1497,7 +1501,7 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
    }
 
 #ifdef DBG_STREAM
-   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %d, [%.20s]...[%.20s] (%s)",
+   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %.2f, [%.20s]...[%.20s] (%s)",
       LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width, AlignWidth, line_height, m_word_width,
       m_cursor_y, printable(Self, Start).c_str(), printable(Self, Stop).c_str(), Debug.c_str());
 #endif
@@ -1640,13 +1644,13 @@ static void layout_doc(extDocument *Self)
       Self->Error = ERR_Okay;
       Self->Depth = 0;
 
-      objFont *m_font = lookup_font(0, "layout_doc");
-      if (!m_font) return;
+      if (glFonts.empty()) return;
+      auto font = glFonts[0].Font;
 
       LONG page_height = 1;
       l = layout(Self);
       bool vertical_repass = false;
-      l.do_layout(0, Self->Stream.size(), &m_font, 0, 0, page_width, page_height,
+      l.do_layout(0, Self->Stream.size(), &font, 0, 0, page_width, page_height,
          ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin),
          vertical_repass);
 
@@ -1716,43 +1720,13 @@ static void layout_doc(extDocument *Self)
       Self->EditCells.clear();
    }
 
-   // Build the sorted segment array
-
-   if ((!Self->Error) and (!l.m_segments.empty())) {
-      Self->Segments = l.m_segments;
-      Self->SortSegments.resize(l.m_segments.size());
-      unsigned i, j;
-      SEGINDEX seg;
-      for (i=0, seg=0; seg < SEGINDEX(l.m_segments.size()); seg++) {
-         if ((l.m_segments[seg].Area.Height > 0) and (l.m_segments[seg].Area.Width > 0)) {
-            Self->SortSegments[i].Segment = seg;
-            Self->SortSegments[i].Y       = l.m_segments[seg].Area.Y;
-            i++;
-         }
-      }
-
-      // Shell sort
-
-      unsigned h = 1;
-      while (h < Self->SortSegments.size() / 9) h = 3 * h + 1;
-
-      for (; h > 0; h /= 3) {
-         for (auto i=h; i < Self->SortSegments.size(); i++) {
-            SortSegment temp = Self->SortSegments[i];
-            for (j=i; (j >= h) and (sortseg_compare(Self, Self->SortSegments[j - h], temp) < 0); j -= h) {
-               Self->SortSegments[j] = Self->SortSegments[j - h];
-            }
-            Self->SortSegments[j] = temp;
-         }
-      }
-   }
+   if ((!Self->Error) and (!l.m_segments.empty())) Self->Segments = l.m_segments;
    else Self->Segments.clear();
 
    Self->UpdatingLayout = false;
 
 #ifdef DBG_LINES
-   print_lines(Self, Self->Stream);
-   //print_sorted_lines(Self);
+   print_segments(Self, Self->Stream);
    print_tabfocus(Self);
 #endif
 
@@ -1764,7 +1738,7 @@ static void layout_doc(extDocument *Self)
       unload_doc(Self, ULD::REDRAW);
 
       std::string msg = "A failure occurred during the layout of this document - it cannot be displayed.\n\nDetails: ";
-      if (Self->Error IS ERR_Loop) msg.append("This page cannot be rendered correctly due to its design.");
+      if (Self->Error IS ERR_Loop) msg.append("This page cannot be rendered correctly in its current form.");
       else msg.append(GetErrorMsg(Self->Error));
 
       error_dialog("Document Layout Error", msg);
@@ -1772,7 +1746,7 @@ static void layout_doc(extDocument *Self)
    else {
       acResize(Self->Page, Self->CalcWidth, Self->PageHeight, 0);
 
-      l.draw();
+      l.gen_scene_graph();
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.Type IS CALL_SCRIPT) {
@@ -1865,11 +1839,11 @@ extend_page:
    stack_para = {};
    stack_row  = {};
 
-   last_height     = page_height;
-   esctable        = NULL;
-   esccell         = NULL;
-   edit_segment    = 0;
-   check_wrap      = false;  // true if a wordwrap or collision check is required
+   last_height  = page_height;
+   esctable     = NULL;
+   esccell      = NULL;
+   edit_segment = 0;
+   check_wrap   = false;  // true if a wordwrap or collision check is required
 
    m_current_link     = NULL;
    m_anchor           = false;  // true if in an anchored section (vectors are anchored to the line)
@@ -2061,12 +2035,12 @@ wrap_table_cell:
             esctable->TotalClips = m_clips.size();
             esctable->Height     = esctable->Thickness;
 
-            DLAYOUT("(i%d) Laying out table of %dx%d, coords %dx%d,%dx%d%s, page width %d.",
+            DLAYOUT("(i%d) Laying out table of %dx%d, coords %.2fx%.2f,%dx%d%s, page width %d.",
                idx, LONG(esctable->Columns.size()), esctable->Rows, esctable->X, esctable->Y, esctable->Width, esctable->MinHeight, esctable->HeightPercent ? "%" : "", Width);
 
             esctable->computeColumns();
 
-            DLAYOUT("Checking for table collisions before layout (%dx%d).  ResetRowHeight: %d", esctable->X, esctable->Y, esctable->ResetRowHeight);
+            DLAYOUT("Checking for table collisions before layout (%.2fx%.2f).  ResetRowHeight: %d", esctable->X, esctable->Y, esctable->ResetRowHeight);
 
             auto ww = check_wordwrap("Table", AbsX, Width, idx, esctable->X, esctable->Y, esctable->Width, esctable->Height);
             if (ww IS WRAP::EXTEND_PAGE) {
@@ -2077,7 +2051,7 @@ wrap_table_cell:
                // The width of the table and positioning information needs to be recalculated in the event of a
                // table wrap.
 
-               DLAYOUT("Restarting table calculation due to page wrap to position %dx%d.", m_cursor_x, m_cursor_y);
+               DLAYOUT("Restarting table calculation due to page wrap to position %.2fx%.2f.", m_cursor_x, m_cursor_y);
                esctable->ComputeColumns = 1;
                goto wrap_table_start;
             }
@@ -2161,7 +2135,7 @@ repass_row_height_ext:
             esccell->Height = stack_row.top()->RowHeight;
             //DLAYOUT("%d / %d", escrow->MinHeight, escrow->RowHeight);
 
-            DLAYOUT("Index %d, Processing cell at %dx %dy, size %dx%d, column %d", idx, m_cursor_x, m_cursor_y, esccell->Width, esccell->Height, esccell->Column);
+            DLAYOUT("Index %d, Processing cell at (%.2f,%.2fy), size (%d,%d), column %d", idx, m_cursor_x, m_cursor_y, esccell->Width, esccell->Height, esccell->Column);
 
             // Find the matching CELL_END
 
@@ -2320,16 +2294,16 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
    }
 
 #ifdef DBG_LAYOUT
-   log.branch("%s: CursorX/Y: %d/%d, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
+   log.branch("%s: CursorX/Y: %.2f/%.2f, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
       Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing,
       m_line.index.Index, LONG(m_line.index.Offset), Next.Index, LONG(Next.Offset));
 #endif
 
    for (auto &clip : m_clips) {
       if (clip.Transparent) continue;
-      if ((m_cursor_y + m_line.height >= clip.Clip.Top) and (m_cursor_y < clip.Clip.Bottom)) {
-         if (m_cursor_x + m_word_width < clip.Clip.Left) {
-            if (clip.Clip.Left < m_align_width) m_align_width = clip.Clip.Left;
+      if ((m_cursor_y + m_line.height >= clip.Top) and (m_cursor_y < clip.Bottom)) {
+         if (m_cursor_x + m_word_width < clip.Left) {
+            if (clip.Left < m_align_width) m_align_width = clip.Left;
          }
       }
    }
@@ -2382,7 +2356,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
 // solo <br/> tags).
 
 WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth, StreamChar Cursor,
-   LONG &X, LONG &Y, LONG Width, LONG Height)
+   DOUBLE &X, DOUBLE &Y, LONG Width, LONG Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2390,7 +2364,7 @@ WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth,
    if (Width < 1) Width = 1;
 
 #ifdef DBG_WORDWRAP
-   log.branch("Index: %d/%d, %s: %dx%d,%dx%d, LineHeight: %d, Cursor: %dx%d, PageWidth: %d, Edge: %d",
+   log.branch("Index: %d/%d, %s: %dx%d,%dx%d, LineHeight: %d, Cursor: %.2fx%.2f, PageWidth: %d, Edge: %d",
       idx, Cursor.Index, Type.c_str(), X, Y, Width, Height, m_line.height, m_cursor_x, m_cursor_y, Width, m_wrap_edge);
 #endif
 
@@ -2462,7 +2436,7 @@ restart:
    }
 
    #ifdef DBG_WORDWRAP
-      if (result IS WRAP::WRAPPED) log.msg("A wrap to Y coordinate %d has occurred.", m_cursor_y);
+      if (result IS WRAP::WRAPPED) log.msg("A wrap to Y coordinate %.2f has occurred.", m_cursor_y);
    #endif
 
    return result;
@@ -2471,7 +2445,7 @@ restart:
 //********************************************************************************************************************
 // Compare a given area against clip regions and move the X,Y position when there's an intersection.
 
-void layout::wrap_through_clips(StreamChar WordIndex, LONG &X, LONG &Y, LONG Width, LONG Height)
+void layout::wrap_through_clips(StreamChar WordIndex, DOUBLE &X, DOUBLE &Y, LONG Width, LONG Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -2483,13 +2457,13 @@ void layout::wrap_through_clips(StreamChar WordIndex, LONG &X, LONG &Y, LONG Wid
 restart:
    for (auto &clip : m_clips) {
       if (clip.Transparent) continue;
-      if ((Y + Height < clip.Clip.Top) or (Y >= clip.Clip.Bottom)) continue;
-      if ((X >= clip.Clip.Right) or (X + Width < clip.Clip.Left)) continue;
+      if ((Y + Height < clip.Top) or (Y >= clip.Bottom)) continue;
+      if ((X >= clip.Right) or (X + Width < clip.Left)) continue;
 
-      if (clip.Clip.Left < m_align_width) m_align_width = clip.Clip.Left;
+      if (clip.Left < m_align_width) m_align_width = clip.Left;
 
       DWRAP("Word: \"%.20s\" (%dx%d,%dx%d) advances over clip %d-%d",
-         printable(Self, vs).c_str(), X, Y, Width, Height, clip.Clip.Left, clip.Clip.Right);
+         printable(Self, vs).c_str(), X, Y, Width, Height, clip.Left, clip.Right);
 
       // Set the line segment up to the encountered boundary and continue checking the vector position against the
       // clipping boundaries.
@@ -2512,12 +2486,12 @@ restart:
       // Advance the position.  We break if a wordwrap is required - the code outside of this loop will detect
       // the need for a wordwrap and then restart the wordwrapping process.
 
-      if (X IS m_line.x) m_line.x = clip.Clip.Right;
-      X = clip.Clip.Right; // Go past the clip boundary
+      if (X IS m_line.x) m_line.x = clip.Right;
+      X = clip.Right; // Go past the clip boundary
 
       if (X + Width > m_wrap_edge) {
          DWRAP("Wrapping-Break: X(%d)+Width(%d) > Edge(%d) at clip '%s' %dx%d,%dx%d",
-            X, Width, m_wrap_edge, clip.Name.c_str(), clip.Clip.Left, clip.Clip.Top, clip.Clip.Right, clip.Clip.Bottom);
+            X, Width, m_wrap_edge, clip.Name.c_str(), clip.Left, clip.Top, clip.Right, clip.Bottom);
          break;
       }
 
@@ -2544,12 +2518,12 @@ void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape,
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Width < 1) or (Height < 1)) {
-      log.traceWarning("Illegal width/height for link @ %.2fx%.2f, W/H %.2fx%.2f [%s]", X, Y, Width, Height, Caller.c_str());
+   if ((Width < 0.01) or (Height < 0.01)) {
+      log.traceWarning("Illegal link dimensions of (%.2fx%.2f, %.2fx%.2f) [%s]", X, Y, Width, Height, Caller.c_str());
       return;
    }
 
-   DLAYOUT("%.2fx%.2f,%.2fx%.2f, %s", X, Y, Width, Height, Caller.c_str());
+   DLAYOUT("(%.2fx%.2f, %.2fx%.2f), %s", X, Y, Width, Height, Caller.c_str());
 
    m_links.emplace_back(BaseCode, Escape, m_segments.size(), X, Y, Width, Height);
 }
@@ -2584,7 +2558,7 @@ DOUBLE layout::calc_page_height(DOUBLE Y, DOUBLE BottomMargin)
 
    for (auto &clip : Self->Clips) {
       if (clip.Transparent) continue;
-      if (clip.Clip.Bottom > page_height) page_height = clip.Clip.Bottom;
+      if (clip.Bottom > page_height) page_height = clip.Bottom;
    }
 
    // Add the bottom margin and subtract the Y offset so that we have the true height of the page/cell.

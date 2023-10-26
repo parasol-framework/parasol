@@ -80,20 +80,20 @@ static void trim_preformat(extDocument *Self, StreamChar &Index)
 ** style change.
 */
 
-static void saved_style_check(extDocument *Self, style_status &SaveStatus)
+static void saved_style_check(extDocument *Self, style_status &SavedStatus)
 {
    auto font = Self->Style.FontChange;
    auto style = Self->Style.StyleChange;
 
-   if (SaveStatus.FontStyle.Index != Self->Style.FontStyle.Index) font = true;
+   if (SavedStatus.FontStyle.FontIndex != Self->Style.FontStyle.FontIndex) font = true;
 
-   if ((SaveStatus.FontStyle.Options != Self->Style.FontStyle.Options) or
-       (SaveStatus.FontStyle.Fill != Self->Style.FontStyle.Fill)) {
+   if ((SavedStatus.FontStyle.Options != Self->Style.FontStyle.Options) or
+       (SavedStatus.FontStyle.Fill != Self->Style.FontStyle.Fill)) {
       style = true;
    }
 
    if ((font) or (style)) {
-      Self->Style = SaveStatus; // Restore the style that we had before processing the children
+      Self->Style = SavedStatus; // Restore the style that we had before processing the children
 
       // Reapply the fontstate and stylestate information
 
@@ -228,7 +228,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    }
 
    Self->Style.Face = Self->FontFace;
-   Self->Style.FontStyle.Index   = create_font(Self->FontFace, "Regular", Self->FontSize);
+   Self->Style.FontStyle.FontIndex   = create_font(Self->FontFace, "Regular", Self->FontSize);
    Self->Style.FontStyle.Options = FSO::NIL;
    Self->Style.FontStyle.Fill    = Self->FontFill;
    Self->Style.Point       = Self->FontSize;
@@ -910,10 +910,10 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       Self->reserveCode<escLinkEnd>(Index);
 
-      // This style check will forcibly revert the font back to whatever it was rather than waiting for new content to result in
-      // a change.  The reason why we want to do this is to make it easier to manage run-time insertion of new content.  For
-      // instance if the user enters text on a new line following an <h1> heading, the user's expectation would be for the new
-      // text to be in the format of the body's font and not the <h1> font.
+      // This style check will forcibly revert the font back to whatever it was rather than waiting for new content 
+      // to result in a change.  The reason why we want to do this is to make it easier to manage run-time insertion 
+      // of new content.  For instance if the user enters text on a new line following an <h1> heading, the user's 
+      // expectation would be for the new text to be in the format of the body's font and not the <h1> font.
 
       style_check(Self, Index);
 

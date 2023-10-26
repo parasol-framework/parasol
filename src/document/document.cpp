@@ -139,6 +139,7 @@ thickness, or text inside the cell will mix with the border.
 #include <array>
 #include <variant>
 #include <stack>
+#include <cmath>
 #include "hashes.h"
 
 typedef int INDEX;
@@ -310,8 +311,8 @@ struct StreamCode {
 using RSTREAM = std::vector<StreamCode>;
 
 //********************************************************************************************************************
-// StreamChar is an index that refers to a specific character in the stream.  It is designed to handle positional
-// changes so that text string boundaries can be crossed without incident.
+// StreamChar provides indexing to specific characters in the stream.  It is designed to handle positional changes so
+// that text string boundaries can be crossed without incident.
 //
 // The Index and Offset are set to -1 if the StreamChar is invalidated.
 
@@ -413,11 +414,13 @@ public:
 //********************************************************************************************************************
 
 struct escFont : public BaseCode {
-   WORD Index;          // Font lookup
+   WORD FontIndex;      // Font lookup
    FSO  Options;
    std::string Fill;    // Font fill
 
-   escFont(): Index(-1), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
+   escFont(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
+
+   objFont * getFont();
 };
 
 struct style_status {
@@ -446,21 +449,21 @@ struct DocSegment {
    UWORD AlignWidth;      // Full width of this segment if it were non-breaking
    UWORD Depth;           // Branch depth associated with the segment - helps to differentiate between inner and outer tables
    bool  Edit;            // true if this segment represents content that can be edited
-   bool  TextContent;     // true if there are text characters in this segment
+   bool  TextContent;     // true if there is TEXT in this segment
    bool  FloatingVectors; // true if there are user defined vectors in this segment with independent X,Y coordinates
-   bool  AllowMerge;      // true if this segment can be merged with sibling segments that have AllowMerge set to true
+   bool  AllowMerge;      // true if this segment can be merged with siblings that have AllowMerge set to true
 };
 
 struct DocClip {
-   ClipRectangle Clip;
+   DOUBLE Left, Top, Right, Bottom;
    INDEX Index; // The stream index of the object/table/item that is creating the clip.
    bool Transparent; // If true, wrapping will not be performed around the clip region.
    std::string Name;
 
    DocClip() = default;
 
-   DocClip(const ClipRectangle &pClip, LONG pIndex, bool pTransparent, const std::string &pName) :
-      Clip(pClip), Index(pIndex), Transparent(pTransparent), Name(pName) { }
+   DocClip(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom, LONG pIndex, bool pTransparent, const std::string &pName) :
+      Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom), Index(pIndex), Transparent(pTransparent), Name(pName) { }
 };
 
 struct DocEdit {
@@ -498,9 +501,10 @@ struct DocMouseOver {
    LONG ElementID;
 };
 
-struct SortSegment {
+class SortedSegment { // Efficient lookup to the DocSegment array, sorted by vertical position
+public:
    SEGINDEX Segment;
-   LONG Y;
+   DOUBLE Y;
 };
 
 static const char IXF_SIBLINGS   = 0x01;
@@ -639,7 +643,7 @@ struct escTable : public BaseCode {
    WORD  CellVSpacing = 0, CellHSpacing = 0; // Spacing between each cell
    WORD  CellPadding = 0;             // Spacing inside each cell (margins)
    LONG  RowWidth = 0;                // Assists in the computation of row width
-   LONG  X = 0, Y = 0;                // Calculated X/Y coordinate of the table
+   DOUBLE  X = 0, Y = 0;              // Calculated X/Y coordinate of the table
    LONG  Width = 0, Height = 0;       // Calculated table width/height
    LONG  MinWidth = 0, MinHeight = 0; // User-determined minimum table width/height
    LONG  Rows = 0;                    // Total number of rows in table
@@ -783,7 +787,7 @@ class extDocument : public objDocument {
    struct style_status Style;
    struct style_status RestoreStyle;
    std::vector<DocSegment> Segments;
-   std::vector<SortSegment> SortSegments;
+   std::vector<SortedSegment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<DocClip> Clips;
    std::vector<DocLink> Links;
    std::vector<DocMouseOver> MouseOverChain;
@@ -853,7 +857,100 @@ class extDocument : public objDocument {
 
    template <class T = BaseCode> T & insertCode(StreamChar &, T &);
    template <class T = BaseCode> T & reserveCode(StreamChar &);
+   std::vector<SortedSegment> & getSortedSegments();
 };
+
+//********************************************************************************************************************
+
+std::vector<SortedSegment> & extDocument::getSortedSegments() 
+{
+   if ((!SortSegments.empty()) or (Segments.empty())) return SortSegments;
+   
+   auto sortseg_compare = [&] (SortedSegment &Left, SortedSegment &Right) {
+      if (Left.Y < Right.Y) return 1;
+      else if (Left.Y > Right.Y) return -1;
+      else {
+         if (Segments[Left.Segment].Area.X < Segments[Right.Segment].Area.X) return 1;
+         else if (Segments[Left.Segment].Area.X > Segments[Right.Segment].Area.X) return -1;
+         else return 0;
+      }
+   };
+
+   // Build the SortSegments array (unsorted)
+
+   SortSegments.resize(Segments.size());     
+   unsigned i;
+   SEGINDEX seg;
+   for (i=0, seg=0; seg < SEGINDEX(Segments.size()); seg++) {
+      if ((Segments[seg].Area.Height > 0) and (Segments[seg].Area.Width > 0)) {
+         SortSegments[i].Segment = seg;
+         SortSegments[i].Y       = Segments[seg].Area.Y;
+         i++;
+      }
+   }
+
+   // Shell sort
+
+   unsigned j, h = 1;
+   while (h < SortSegments.size() / 9) h = 3 * h + 1;
+
+   for (; h > 0; h /= 3) {
+      for (auto i=h; i < SortSegments.size(); i++) {
+         SortedSegment temp = SortSegments[i];
+         for (j=i; (j >= h) and (sortseg_compare(SortSegments[j - h], temp) < 0); j -= h) {
+            SortSegments[j] = SortSegments[j - h];
+         }
+         SortSegments[j] = temp;
+      }
+   }
+
+   return SortSegments;
+}
+
+//********************************************************************************************************************
+// Inserts an escape sequence into the text stream.
+
+template <class T> T & extDocument::insertCode(StreamChar &Cursor, T &Code)
+{
+   // All escape codes are saved to a global container.
+
+   if (Codes.contains(Code.UID)) { 
+      // Sanity check - is the UID unique?  The caller probably needs to utilise glEscapeCodeID++
+      // NB: At some point the re-use of codes should be allowed, e.g. escFont reversions would benefit from this.
+      pf::Log log(__FUNCTION__);
+      log.warning("Code #%d is already registered.", Code.UID);
+   }
+   else Codes[Code.UID] = Code;
+
+   if (Cursor.Index IS INDEX(Stream.size())) {
+      Stream.emplace_back(Code.Code, Code.UID);
+   }
+   else {
+      const StreamCode insert(Code.Code, Code.UID);
+      Stream.insert(Stream.begin() + Cursor.Index, insert);
+   }
+   Cursor.nextCode();
+   return std::get<T>(Codes[Code.UID]);
+}
+
+template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
+{
+   auto key = glEscapeCodeID;
+   Codes.emplace(key, T());
+   auto &result = std::get<T>(Codes[key]);
+
+   if (Cursor.Index IS INDEX(Stream.size())) {
+      Stream.emplace_back(result.Code, result.UID);
+   }
+   else {
+      const StreamCode insert(result.Code, result.UID);
+      Stream.insert(Stream.begin() + Cursor.Index, insert);
+   }
+   Cursor.nextCode();
+   return result;
+}
+
+//********************************************************************************************************************
 
 enum {
    RT_OBJECT_TEMP=1,
@@ -965,7 +1062,6 @@ static ERROR insert_xml(extDocument *, objXML *, XMLTag &, StreamChar TargetInde
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD);
-static objFont * lookup_font(LONG, const std::string &);
 static void notify_disable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_enable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
@@ -975,9 +1071,6 @@ static void notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE
 static TRF parse_tag(extDocument *, objXML *, XMLTag &, StreamChar &, IPF &);
 static TRF parse_tags(extDocument *, objXML *, objXML::TAGS &, StreamChar &, IPF = IPF::NIL);
 static void print_xmltree(objXML::TAGS &, LONG &);
-#ifdef DBG_LINES
-static void print_sorted_lines(extDocument *, const RSTREAM &Stream) __attribute__ ((unused));
-#endif
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
@@ -1011,6 +1104,9 @@ static void print_stream(extDocument *, const RSTREAM &);
 static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); }
 #endif
 
+//********************************************************************************************************************
+// Basic font caching on an index basis.
+
 struct FontEntry {
    objFont *Font;
    LONG Point;
@@ -1026,6 +1122,18 @@ struct FontEntry {
 
 static std::vector<FontEntry> glFonts;
 
+objFont * escFont::getFont() 
+{
+   if ((FontIndex < INDEX(glFonts.size())) and (FontIndex >= 0)) return glFonts[FontIndex].Font;
+   else {
+      pf::Log log(__FUNCTION__);
+      log.warning("Bad font index %d.  Max: %d", FontIndex, LONG(glFonts.size()));
+      if (!glFonts.empty()) return glFonts[0].Font; // Always try to return a font rather than NULL
+      else return NULL;
+   }
+}
+
+//********************************************************************************************************************
 // For a given index in the stream, return the element code.  Index MUST be a valid reference to an escape sequence.
 
 template <class T> T & escape_data(extDocument *Self, StreamChar Index) {

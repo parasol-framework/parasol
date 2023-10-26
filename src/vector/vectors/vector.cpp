@@ -134,7 +134,7 @@ static ERROR set_parent(extVector *Self, OBJECTID OwnerID)
 }
 
 //********************************************************************************************************************
-
+#if 0
 static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extVector *)CurrentContext();
@@ -148,7 +148,7 @@ static void notify_free(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR 
       }
    }
 }
-
+#endif
 //********************************************************************************************************************
 
 static void notify_free_transition(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)

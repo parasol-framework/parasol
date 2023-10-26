@@ -600,8 +600,9 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          log.warning("Analysing cell area %d - %d", cell_start, cell_end);
 
          SEGINDEX last_segment = -1;
-         for (unsigned sortseg=0; sortseg < Self->SortSegments.size(); sortseg++) {
-            SEGINDEX seg = Self->SortSegments[sortseg].Segment;
+         auto &ss = Self->getSortedSegments();
+         for (unsigned sortseg=0; sortseg < ss.size(); sortseg++) {
+            SEGINDEX seg = ss[sortseg].Segment;
             if ((Self->Segments[seg].Start.Index >= cell_start) and (Self->Segments[seg].Stop.Index <= cell_end)) {
                last_segment = seg;
                // Segment found.  Break if the segment's vertical position is past the mouse pointer
@@ -693,12 +694,14 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->MouseOver) {
       unsigned row;
-      for (row=0; (row < Self->SortSegments.size()) and (Y < Self->SortSegments[row].Y); row++);
+      auto &ss = Self->getSortedSegments();
 
-      for (; row < Self->SortSegments.size(); row++) {
-         if ((Y >= Self->SortSegments[row].Y) and (Y < Self->SortSegments[row].Y + Self->Segments[Self->SortSegments[row].Segment].Area.Height)) {
-            if ((X >= Self->Segments[Self->SortSegments[row].Segment].Area.X) and (X < Self->Segments[Self->SortSegments[row].Segment].Area.X + Self->Segments[Self->SortSegments[row].Segment].Area.Width)) {
-               Self->MouseOverSegment = Self->SortSegments[row].Segment;
+      for (row=0; (row < ss.size()) and (Y < ss[row].Y); row++);
+
+      for (; row < ss.size(); row++) {
+         if ((Y >= ss[row].Y) and (Y < ss[row].Y + Self->Segments[ss[row].Segment].Area.Height)) {
+            if ((X >= Self->Segments[ss[row].Segment].Area.X) and (X < Self->Segments[ss[row].Segment].Area.X + Self->Segments[ss[row].Segment].Area.Width)) {
+               Self->MouseOverSegment = ss[row].Segment;
                break;
             }
          }
