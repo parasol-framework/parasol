@@ -27,6 +27,16 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
    Self->Viewport = NULL;
 }
 
+// Used by EventCallback for subscribers that disappear without notice.
+
+static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
+{
+   auto Self = (extDocument *)CurrentContext();
+   Self->EventCallback.Type = CALL_NONE;
+}
+
+//********************************************************************************************************************
+
 static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
@@ -36,14 +46,6 @@ static void notify_focus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Res
    Self->HasFocus = true;
 
    if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "FocusNotify");
-}
-
-// Used by EventCallback for subscribers that disappear without notice.
-
-static void notify_free_event(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
-{
-   auto Self = (extDocument *)CurrentContext();
-   Self->EventCallback.Type = CALL_NONE;
 }
 
 static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR Args)
@@ -387,7 +389,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
 
 /*********************************************************************************************************************
 -ACTION-
-Disable: Disables object functionality.
+Disable: Disables user interactivity.
 -END-
 *********************************************************************************************************************/
 
@@ -397,7 +399,11 @@ static ERROR DOCUMENT_Disable(extDocument *Self, APTR Void)
    return ERR_Okay;
 }
 
-//********************************************************************************************************************
+/*********************************************************************************************************************
+-ACTION-
+Draw: Force a page layout update (if changes are pending) and redraw to the display.
+-END-
+*********************************************************************************************************************/
 
 static ERROR DOCUMENT_Draw(extDocument *Self, APTR Void)
 {
@@ -585,11 +591,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 
    if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
-
-   if (Self->PointerLocked) {
-      gfxRestoreCursor(PTC::DEFAULT, Self->UID);
-      Self->PointerLocked = false;
-   }
 
    if (Self->EventCallback.Type IS CALL_SCRIPT) {
       UnsubscribeAction(Self->EventCallback.Script.Script, AC_Free);

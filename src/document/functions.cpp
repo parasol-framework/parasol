@@ -719,8 +719,9 @@ static ERROR consume_input_events(objVector *Vector, const InputEvent *Events)
             input = scan;
          }
 
-         if (input->OverID IS Self->Page->UID) Self->MouseOver = true;
-         else Self->MouseOver = false;
+         if (input->OverID IS Self->Page->UID) Self->MouseInPage = true;
+         else Self->MouseInPage = false;
+
 
          check_mouse_pos(Self, input->X, input->Y);
 
@@ -1327,7 +1328,6 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       Self->SelectEnd.reset();
       Self->XPosition    = 0;
       Self->YPosition    = 0;
-      Self->ClickHeld    = false;
       Self->UpdatingLayout = true;
       Self->Error        = ERR_Okay;
 
@@ -1420,7 +1420,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       Self->Error = ERR_Search;
    }
 
-   if ((!Self->Error) and (Self->MouseOver)) {
+   if ((!Self->Error) and (Self->MouseInPage)) {
       DOUBLE x, y;
       if (!gfxGetRelativeCursorPos(Self->Page->UID, &x, &y)) {
          check_mouse_pos(Self, x, y);
@@ -2551,15 +2551,6 @@ void DocLink::exec(extDocument *Self)
 
 end:
    Self->Processing--;
-}
-
-//********************************************************************************************************************
-
-static void exec_link(extDocument *Self, INDEX Index)
-{
-   if ((Index IS -1) or (unsigned(Index) >= Self->Links.size())) return;
-
-   Self->Links[Index].exec(Self);
 }
 
 //********************************************************************************************************************

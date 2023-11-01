@@ -1698,7 +1698,7 @@ static void layout_doc(extDocument *Self)
       for (auto &link : Self->Links) {
          if (link.BaseCode != ESC::LINK) continue;
 
-         auto esclink = std::get<escLink *>(link.Escape);
+         auto esclink = std::get<escLink *>(link.Ref);
          if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
             auto &segment = l.m_segments[link.Segment];
             if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {

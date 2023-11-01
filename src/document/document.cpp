@@ -479,19 +479,26 @@ struct DocEdit {
 struct escLink;
 struct escCell;
 
+// DocLink describes an area on the page that can be interacted with as a link or table cell.
+// The link will be associated with a segment and an originating stream code.
+// 
+// TODO: We'll need to swap the X/Y/Width/Height variables for a vector path that represents the link
+// area.  This will allow us to support transforms correctly, as well as links that need to accurately
+// map to vector shapes.
+
 struct DocLink {
-   std::variant<escLink *, escCell *> Escape;
+   std::variant<escLink *, escCell *> Ref;
    DOUBLE X, Y, Width, Height;
    SEGINDEX Segment;
    ESC  BaseCode;
 
-   DocLink(ESC pCode, std::variant<escLink *, escCell *> pEscape, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
-       Escape(pEscape), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), BaseCode(pCode) { }
+   DocLink(ESC pCode, std::variant<escLink *, escCell *> pRef, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
+       Ref(pRef), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), BaseCode(pCode) { }
 
    DocLink() : X(0), Y(0), Width(0), Height(0), Segment(0), BaseCode(ESC::NIL) { }
 
-   escLink * asLink() { return std::get<escLink *>(Escape); }
-   escCell * asCell() { return std::get<escCell *>(Escape); }
+   escLink * asLink() { return std::get<escLink *>(Ref); }
+   escCell * asCell() { return std::get<escCell *>(Ref); }
    void exec(extDocument *);
 };
 
@@ -837,23 +844,21 @@ class extDocument : public objDocument {
    UWORD  LinkID;             // Unique counter for links
    WORD   FocusIndex;         // Tab focus index
    WORD   Invisible;          // Incremented for sections within a hidden index
-   UBYTE  Processing;
+   UBYTE  Processing;         // If > 0, the page layout is being altered
    UBYTE  InTemplate;
    UBYTE  BkgdGfx;
    UBYTE  State:3;
-   bool   RelPageWidth;      // Relative page width
-   bool   PointerLocked;
-   bool   ClickHeld;
-   bool   UpdatingLayout;
-   bool   VScrollVisible;
-   bool   MouseInPage;       // True if the mouse cursor is in the page area.
-   bool   PageProcessed;
-   bool   NoWhitespace;
-   bool   HasFocus;
-   bool   CursorSet;
-   bool   LMB;
+   bool   RelPageWidth;     // Relative page width
+   bool   UpdatingLayout;   // True if the page layout is in the process of being updated
+   bool   VScrollVisible;   // True if the vertical scrollbar is visible to the user
+   bool   MouseInPage;      // True if the mouse cursor is in the page area
+   bool   PageProcessed;    // True if the parsing of page content has been completed
+   bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
+   bool   HasFocus;         // True if the main viewport has the focus
+   bool   CursorSet;        // True if the mouse cursor image has been altered from the default
+   bool   LMB;              // True if the LMB is depressed.
    bool   EditMode;
-   bool   CursorState;     // true if the edit cursor is on, false if off.  Used for flashing of the cursor
+   bool   CursorState;      // true if the edit cursor is on, false if off.  Used for flashing of the cursor
 
    template <class T = BaseCode> T & insertCode(StreamChar &, T &);
    template <class T = BaseCode> T & reserveCode(StreamChar &);
@@ -1044,7 +1049,6 @@ static void  translate_attrib_args(extDocument *, pf::vector<XMLAttrib> &);
 static LONG  create_font(const std::string &, const std::string &, LONG);
 static void  deactivate_edit(extDocument *, bool);
 static void  deselect_text(extDocument *);
-static void  exec_link(extDocument *, LONG);
 static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);

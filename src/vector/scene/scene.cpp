@@ -1018,8 +1018,8 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
    auto cursor = PTC(-1);
 
-   // Distribute input events to any vectors that have subscribed.  Bear in mind that a consequence of calling client
-   // code is that the scene's surface could be destroyed at any time.
+   // Distribute input events to any vectors that have subscribed.
+   // Be mindful that client code can potentially destroy the scene's surface at any time.
    //
    // NOTE: The ActiveVector refers to the vector that received the most recent input movement event.  It
    // receives wheel events and button presses.
@@ -1058,6 +1058,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
+               event.OverID = Self->ActiveVector;
                event.AbsX = input->X; // Absolute coordinates are not translated.
                event.AbsY = input->Y;
                event.X    = Self->ActiveVectorX;
@@ -1113,6 +1114,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
 
                InputEvent event = *input;
                event.Next = NULL;
+               event.OverID = vector->UID;
                event.AbsX = input->X; // Absolute coordinates are not translated.
                event.AbsY = input->Y;
                event.X    = tx;

@@ -10,7 +10,7 @@ static void redraw(extDocument *Self, bool Focus)
 
    {
       pf::LogLevel level(3);
-      layout_doc(Self);
+      layout_doc(Self); // Does nothing if UpdatingLayout is false
    }
 
    Self->Viewport->draw();
@@ -66,10 +66,8 @@ void layout::gen_scene_graph()
 */
    #endif
 
-   StreamChar select_start;
-   StreamChar select_end;
-   LONG select_startx;
-   LONG select_endx;
+   StreamChar select_start, select_end;
+   LONG select_startx, select_endx;
 
    if ((Self->ActiveEditDef) and (!Self->SelectIndex.valid())) {
       select_start  = Self->CursorIndex;

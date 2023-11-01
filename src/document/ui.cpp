@@ -679,7 +679,9 @@ static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
       return;
    }
 
-   if (Self->LinkIndex != -1) exec_link(Self, Self->LinkIndex);
+   if ((Self->LinkIndex >= 0) and (Self->LinkIndex < Self->Links.size())) {
+      Self->Links[Self->LinkIndex].exec(Self);
+   }
 }
 
 //********************************************************************************************************************
@@ -776,8 +778,8 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
          if ((X >= Self->Links[i].X) and (Y >= Self->Links[i].Y) and
              (X < Self->Links[i].X + Self->Links[i].Width) and
              (Y < Self->Links[i].Y + Self->Links[i].Height)) {
-            // The mouse pointer is inside a link
 
+            // The mouse pointer is inside a link or table cell.
             if (Self->LinkIndex IS -1) {
                gfxSetCursor(0, CRF::BUFFER, PTC::HAND, 0, Self->UID);
                Self->CursorSet = true;
