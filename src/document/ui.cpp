@@ -692,7 +692,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    check_pointer_exit(Self, X, Y); // For function callbacks
 
-   if (Self->MouseOver) {
+   if (Self->MouseInPage) {
       unsigned row;
       auto &ss = Self->getSortedSegments();
 
@@ -771,7 +771,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    // Check if the user moved onto a link
 
-   if ((Self->MouseOver) and (!Self->LMB)) {
+   if ((Self->MouseInPage) and (!Self->LMB)) {
       for (auto i = LONG(Self->Links.size())-1; i >= 0; i--) { // Search from front to back
          if ((X >= Self->Links[i].X) and (Y >= Self->Links[i].Y) and
              (X < Self->Links[i].X + Self->Links[i].Width) and

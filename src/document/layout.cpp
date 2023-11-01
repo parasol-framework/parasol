@@ -184,7 +184,8 @@ void layout::procFont()
       m_no_wrap = ((style->Options & FSO::NO_WRAP) != FSO::NIL);
       //if (m_no_wrap) m_wrap_edge = 1000;
 
-      DLAYOUT("Font Index: %d, LineSpacing: %d, Height: %d, Ascent: %d, Cursor: %.2fx%.2f", style->FontIndex, m_font->LineSpacing, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
+      DLAYOUT("Font Index: %d, LineSpacing: %d, Pt: %.2f, Height: %d, Ascent: %d, Cursor: %.2fx%.2f", 
+         style->FontIndex, m_font->LineSpacing, m_font->Point, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
       m_space_width = fntCharWidth(m_font, ' ', 0, 0);
 
       // Treat the font as if it is a text character by setting the m_word_index.

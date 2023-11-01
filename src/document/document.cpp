@@ -828,7 +828,7 @@ class extDocument : public objDocument {
    SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
    LONG   SelectCharX;        // The X coordinate of the SelectIndex character
    LONG   CursorCharX;        // The X coordinate of the CursorIndex character
-   LONG   PointerX, PointerY; // Current pointer coordinates on the document surface
+   DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
    TIMER  FlashTimer;         // For flashing the cursor
    LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
    ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
@@ -846,7 +846,7 @@ class extDocument : public objDocument {
    bool   ClickHeld;
    bool   UpdatingLayout;
    bool   VScrollVisible;
-   bool   MouseOver;
+   bool   MouseInPage;       // True if the mouse cursor is in the page area.
    bool   PageProcessed;
    bool   NoWhitespace;
    bool   HasFocus;
@@ -1023,9 +1023,8 @@ struct CaseInsensitiveMap {
    }
 };
 
-/*********************************************************************************************************************
-** Function prototypes.
-*/
+//********************************************************************************************************************
+// Function prototypes.
 
 #include "module_def.c"
 
@@ -1114,9 +1113,38 @@ struct FontEntry {
    FontEntry(objFont *pFont, LONG pPoint) : Font(pFont), Point(pPoint) { }
 
    ~FontEntry() {
-      pf::Log log(__FUNCTION__);
-      log.msg("Removing font entry.");
-      if (Font) { FreeResource(Font); Font = NULL; }
+      if (Font) {
+         pf::Log log(__FUNCTION__);
+         log.msg("Removing cached font %s:%.2f.", Font->Face, Font->Point);
+         FreeResource(Font); 
+         Font = NULL; 
+      }
+   }
+    
+   FontEntry(FontEntry &&other) noexcept { // Move constructor
+      Font  = other.Font;
+      Point = other.Point;
+      other.Font = NULL;
+   }
+
+   FontEntry(const FontEntry &other) { // Copy constructor
+      Font  = other.Font;
+      Point = other.Point;
+   }
+
+   FontEntry& operator=(FontEntry &&other) noexcept { // Move assignment
+      if (this == &other) return *this;
+      Font  = other.Font;
+      Point = other.Point;
+      other.Font = NULL;
+      return *this;
+   }
+
+   FontEntry& operator=(const FontEntry& other) { // Copy assignment
+      if (this == &other) return *this;
+      Font  = other.Font;
+      Point = other.Point;
+      return *this;
    }
 };
 

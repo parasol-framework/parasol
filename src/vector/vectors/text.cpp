@@ -362,7 +362,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->GeneratePath = (void (*)(extVector *))&generate_text;
    Self->StrokeWidth  = 0.0;
    Self->txWeight     = DEFAULT_WEIGHT;
-   Self->txFontSize   = 10 * 4.0 / 3.0;
+   Self->txFontSize   = 10 * (4.0 / 3.0);
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
    Self->FillColour.Red   = 1;
@@ -632,6 +632,23 @@ static ERROR TEXT_GET_Font(extVectorText *Self, OBJECTPTR *Value)
       return ERR_Okay;
    }
    else return ERR_FieldNotSet;
+}
+
+static ERROR TEXT_SET_Font(extVectorText *Self, objFont *Value)
+{
+   // Setting the Font with a reference to an external font object will copy across the configuration of
+   // that font.  It is recommended that the external font is initialised beforehand.
+
+   if (Value->Class->BaseClassID IS ID_FONT) {      
+      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+      Self->txFamily = StrClone(Value->Face);
+
+      Self->txFontSize = Value->Point * (4.0 / 3.0);
+      Self->txRelativeFontSize = false;
+
+      return ERR_Okay;
+   }
+   else return ERR_NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -2390,7 +2407,7 @@ static const FieldArray clTextFields[] = {
    { "TextWidth",     FDF_VIRTUAL|FDF_LONG|FDF_R, TEXT_GET_TextWidth },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_StartOffset, TEXT_SET_StartOffset },
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },
-   { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_R, TEXT_GET_Font },
+   { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_RI, TEXT_GET_Font, TEXT_SET_Font },
    // Non-SVG fields related to real-time text editing
    { "Focus",         FDF_VIRTUAL|FDF_OBJECTID|FDF_RI, TEXT_GET_Focus, TEXT_SET_Focus },
    { "CursorColumn",  FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_CursorColumn, TEXT_SET_CursorColumn },

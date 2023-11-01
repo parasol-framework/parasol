@@ -84,6 +84,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       if (code IS ESC::FONT) {
          auto style = &escape_data<escFont>(Self, i);
          out << "[Font";
+         out << ":#" << style->FontIndex;
          if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
          if ((style->Options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
          if ((style->Options & FSO::BOLD) != FSO::NIL) out << ":Bold";

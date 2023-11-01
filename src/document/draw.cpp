@@ -166,7 +166,7 @@ void layout::gen_scene_graph()
          switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
                auto &style = escape_data<escFont>(Self, cursor);
-               if (auto font = style.getFont()) {
+               if (auto new_font = style.getFont()) {
                   if (tabfocus IS false) font_fill = style.Fill;
                   else font_fill = Self->LinkSelectFill;
 
@@ -174,8 +174,10 @@ void layout::gen_scene_graph()
                   else if ((style.Options & FSO::ALIGN_CENTER) != FSO::NIL) font_align = ALIGN::HORIZONTAL;
                   else font_align = ALIGN::NIL;
 
-                  if ((style.Options & FSO::UNDERLINE) != FSO::NIL) font->Underline = font->Colour;
-                  else font->Underline.Alpha = 0;
+                  if ((style.Options & FSO::UNDERLINE) != FSO::NIL) new_font->Underline = new_font->Colour;
+                  else new_font->Underline.Alpha = 0;
+
+                  font = new_font;
                }
                break;
             }
@@ -332,6 +334,7 @@ void layout::gen_scene_graph()
                         fl::Owner(Self->Page->UID),
                         fl::X(fx), fl::Y(segment.Area.Y + segment.BaseLine),
                         fl::String(str),
+                        fl::Font(font),
                         fl::Fill(font_fill)
                         //fl::AlignWidth(segment.AlignWidth),
                      });

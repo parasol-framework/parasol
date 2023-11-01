@@ -185,6 +185,11 @@ inline FieldValue FileDescription(const std::string &Value) { return FieldValue(
 constexpr FieldValue FileHeader(CSTRING Value) { return FieldValue(FID_FileHeader, Value); }
 inline FieldValue FileHeader(const std::string &Value) { return FieldValue(FID_FileHeader, Value.c_str()); }
 
+constexpr FieldValue FontSize(DOUBLE Value) { return FieldValue(FID_FontSize, Value); }
+constexpr FieldValue FontSize(LONG Value) { return FieldValue(FID_FontSize, Value); }
+constexpr FieldValue FontSize(CSTRING Value) { return FieldValue(FID_FontSize, Value); }
+inline FieldValue FontSize(const std::string &Value) { return FieldValue(FID_FontSize, Value.c_str()); }
+
 constexpr FieldValue ArchiveName(CSTRING Value) { return FieldValue(FID_ArchiveName, Value); }
 inline FieldValue ArchiveName(const std::string &Value) { return FieldValue(FID_ArchiveName, Value.c_str()); }
 
@@ -224,6 +229,7 @@ constexpr FieldValue DoubleClick(DOUBLE Value) { return FieldValue(FID_DoubleCli
 constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 constexpr FieldValue Flags(LONG Value) { return FieldValue(FID_Flags, Value); }
+constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
 constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
