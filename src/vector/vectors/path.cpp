@@ -352,7 +352,7 @@ will be cleared as a result of this process.
 NOTE: This method is not compatible with Fluid calls.
 
 -INPUT-
-buf(ptr) Commands: An array of path command structures.
+buf(ptr) Commands: An array of PathCommand structures.
 bufsize Size: The byte size of the Commands buffer.
 
 -RESULT-

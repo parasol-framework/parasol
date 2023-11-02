@@ -20,7 +20,7 @@ struct layout {
 
    extDocument *Self;
    objFont *m_font;
-   escLink *m_current_link;
+   escLink *m_current_link; // Set by procLink() and remains until procLinkend()
 
    INDEX idx;               // Current seek position for processing of the stream
    StreamChar m_word_index; // Position of the word currently being operated on
@@ -52,7 +52,7 @@ struct layout {
       LONG  x;
       INDEX index;
       ALIGN align;
-      bool  open;
+      bool  open;        // Maintained as true when between a link start and end point.
    } m_link;
 
    // Resets the string management variables, usually done when a string
@@ -215,10 +215,10 @@ WRAP layout::procText(LONG AbsX, LONG Width)
       //   <a href="">blah blah <br/> blah </a>
       // But we haven't tested it in a document yet.
 
-      if ((link) and (link_open IS false)) {
+      if ((m_current_link) and (m_link.open IS false)) {
          // A link is due to be closed
          add_link(ESC::LINK, link, link_x, m_cursor_y, m_cursor_x + m_word_width - link_x, m_line.height, "<br/>");
-         link = NULL;
+         m_current_link = NULL;
       }
 #endif
          check_line_height();
@@ -281,7 +281,8 @@ void layout::procLink()
    if (m_current_link) {
       // Close the currently open link because it's illegal to have a link embedded within a link.
 
-      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "esc_link");
+      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+         m_line.height ? m_line.height : m_font->LineSpacing, "esc_link");
    }
 
    m_current_link = &escape_data<::escLink>(Self, idx);
@@ -295,13 +296,15 @@ void layout::procLinkEnd()
 {
    if (!m_current_link) return;
 
-   m_link.open = false;
+   m_link.open = false; // Must be set to false, but m_current_link can remain until the link is added.
 
-   // add_link() is not called unless the entire word containing the link has been processed, due to possible word-wrap
-
-   if (m_word_width < 1) {
-      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "esc_link_end");
+   if (!m_word_width) { // Confirm that the active word has been processed
+      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x - m_link.x, 
+         m_line.height ? m_line.height : m_font->LineSpacing, "esc_link_end");
       m_current_link = NULL;
+   }
+   else {
+      // add_link() can't be called yet because the active word might be word-wrapped.
    }
 }
 
@@ -510,7 +513,7 @@ void layout::procParagraphEnd()
       m_line.x      = para->X - para->BlockIndent;
       stack_para.pop();
    }
-   else end_line(NL::PARAGRAPH, 0, sc, "PE-NP"); // Technically an error without a matching PS code.
+   else end_line(NL::PARAGRAPH, 0, sc, "PE-NP"); // Technically an error when there's no matching PS code.
 }
 
 //********************************************************************************************************************
@@ -2431,7 +2434,7 @@ restart:
 
    // No wrap has occurred
 
-   if ((m_current_link) and (!m_link.open)) { // A link is due to be closed
+   if ((m_current_link) and (!m_link.open)) { // A link is marked for closure
       add_link(ESC::LINK, m_current_link, m_link.x, Y, X + Width - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "check_wrap");
       m_current_link = NULL;
    }

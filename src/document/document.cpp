@@ -858,7 +858,7 @@ class extDocument : public objDocument {
    bool   CursorSet;        // True if the mouse cursor image has been altered from the default
    bool   LMB;              // True if the LMB is depressed.
    bool   EditMode;
-   bool   CursorState;      // true if the edit cursor is on, false if off.  Used for flashing of the cursor
+   bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
    template <class T = BaseCode> T & insertCode(StreamChar &, T &);
    template <class T = BaseCode> T & reserveCode(StreamChar &);
