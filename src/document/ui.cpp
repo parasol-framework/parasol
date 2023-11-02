@@ -417,8 +417,8 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
    }
 
    Self->ActiveEditCellID = cell.CellID;
-   Self->ActiveEditDef = &edit;
-   Self->CursorIndex   = CursorIndex;
+   Self->ActiveEditDef    = &edit;
+   Self->CursorIndex      = CursorIndex;
    Self->SelectIndex.reset();
 
    log.msg("Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x", 

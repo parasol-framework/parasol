@@ -12,6 +12,7 @@ struct layout {
    std::stack<escList *>      stack_list;
    std::stack<escRow *>       stack_row;
    std::stack<escParagraph *> stack_para;
+   std::stack<escLink *>      stack_link; // Set by procLink() and remains until procLinkend()
 
    std::vector<DocLink>    m_links;
    std::vector<DocClip>    m_clips;
@@ -20,7 +21,6 @@ struct layout {
 
    extDocument *Self;
    objFont *m_font;
-   escLink *m_current_link; // Set by procLink() and remains until procLinkend()
 
    INDEX idx;               // Current seek position for processing of the stream
    StreamChar m_word_index; // Position of the word currently being operated on
@@ -36,6 +36,7 @@ struct layout {
    LONG m_word_width;       // Pixel width of the current word
    LONG m_wrap_edge;        // Marks the boundary at which graphics and text will need to wrap.
    WORD m_space_width;      // Caches the pixel width of a single space in the current font.
+   WORD m_terminate_link;   // Incremented whenever a link in stack_link requires termination.
    bool m_anchor;           // Set to true when graphics must be anchored to the line.
    bool m_no_wrap;          // Set to true when word-wrap is disabled.
    bool m_text_content;     // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
@@ -49,10 +50,9 @@ struct layout {
    } m_line;
 
    struct {
-      LONG  x;
+      LONG  x;           // Starting coordinate of the link.  Can change if the link is split across multiple lines.
       INDEX index;
       ALIGN align;
-      bool  open;        // Maintained as true when between a link start and end point.
    } m_link;
 
    // Resets the string management variables, usually done when a string
@@ -141,6 +141,7 @@ struct layout {
    WRAP procText(LONG, LONG);
    void procImage();
 
+   void terminate_link();
    void add_link(ESC, std::variant<escLink *, escCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void add_drawsegment(StreamChar, StreamChar, LONG, LONG, LONG, const std::string &);
    void end_line(NL, DOUBLE, StreamChar, const std::string &);
@@ -215,10 +216,10 @@ WRAP layout::procText(LONG AbsX, LONG Width)
       //   <a href="">blah blah <br/> blah </a>
       // But we haven't tested it in a document yet.
 
-      if ((m_current_link) and (m_link.open IS false)) {
+      if ((!stack_link.empty()) and (m_link.open IS false)) {
          // A link is due to be closed
          add_link(ESC::LINK, link, link_x, m_cursor_y, m_cursor_x + m_word_width - link_x, m_line.height, "<br/>");
-         m_current_link = NULL;
+         stack_link.pop();
       }
 #endif
          check_line_height();
@@ -276,36 +277,39 @@ WRAP layout::procText(LONG AbsX, LONG Width)
 
 //********************************************************************************************************************
 
+void layout::terminate_link()
+{
+   if (stack_link.empty()) return;
+
+   add_link(ESC::LINK, stack_link.top(), m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+      m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
+   stack_link.pop();
+}
+
 void layout::procLink()
 {
-   if (m_current_link) {
-      // Close the currently open link because it's illegal to have a link embedded within a link.
+   if (!stack_link.empty()) {
+      // Close the current link.  Use of the stack means it will be reopened when the embedded link is closed.      
 
-      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
-         m_line.height ? m_line.height : m_font->LineSpacing, "esc_link");
+      add_link(ESC::LINK, stack_link.top(), m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+         m_line.height ? m_line.height : m_font->LineSpacing, "link_start");
    }
 
-   m_current_link = &escape_data<::escLink>(Self, idx);
-   m_link.x       = m_cursor_x + m_word_width;
-   m_link.index   = idx;
-   m_link.open    = true;
-   m_link.align   = m_font->Align;
+   stack_link.push(&escape_data<::escLink>(Self, idx));
+
+   m_link.x     = m_cursor_x + m_word_width;
+   m_link.index = idx;
+   m_link.align = m_font->Align;
 }
 
 void layout::procLinkEnd()
 {
-   if (!m_current_link) return;
+   if (stack_link.empty()) return;
 
-   m_link.open = false; // Must be set to false, but m_current_link can remain until the link is added.
+   // We can't terminate links here due to word-wrapping concerns, so instead we increment a counter to indicate that 
+   // a link is due for termination.  Search for m_terminate_link to see where link termination actually occurs.
 
-   if (!m_word_width) { // Confirm that the active word has been processed
-      add_link(ESC::LINK, m_current_link, m_link.x, m_cursor_y, m_cursor_x - m_link.x, 
-         m_line.height ? m_line.height : m_font->LineSpacing, "esc_link_end");
-      m_current_link = NULL;
-   }
-   else {
-      // add_link() can't be called yet because the active word might be word-wrapped.
-   }
+   m_terminate_link++;
 }
 
 //********************************************************************************************************************
@@ -1842,6 +1846,7 @@ extend_page:
    stack_list = {};
    stack_para = {};
    stack_row  = {};
+   stack_link = {};
 
    last_height  = page_height;
    esctable     = NULL;
@@ -1849,8 +1854,8 @@ extend_page:
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
-   m_current_link     = NULL;
    m_anchor           = false;  // true if in an anchored section (vectors are anchored to the line)
+   m_terminate_link   = 0;
    m_align_flags      = 0;
    m_paragraph_y      = 0;
    m_paragraph_bottom = 0;
@@ -1873,7 +1878,6 @@ extend_page:
    m_split_start      = m_segments.size();
    m_font             = *Font;
    m_no_wrap          = false; // true if word wrapping is to be turned off
-   m_link.open        = false;
    m_text_content     = false;
    m_space_width      = fntCharWidth(m_font, ' ', 0, NULL);
 
@@ -2297,6 +2301,15 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
       m_line.full_height = m_font->Ascent;
    }
 
+   if (m_terminate_link) terminate_link();
+   else if ((!stack_link.empty()) and (m_cursor_x + m_word_width > m_link.x)) { 
+      // A link is active and will continue to the next line.
+      
+      add_link(ESC::LINK, stack_link.top(), m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+         m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
+      m_link.x = m_left_margin;
+   }
+
 #ifdef DBG_LAYOUT
    log.branch("%s: CursorX/Y: %.2f/%.2f, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
       Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing,
@@ -2399,8 +2412,8 @@ restart:
          m_line.full_height = 1;
       }
 
-      if ((m_current_link) and (m_link.x != X)) {
-         add_link(ESC::LINK, m_current_link, m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");
+      if ((!stack_link.empty()) and (m_link.x != X)) {
+         add_link(ESC::LINK, stack_link.top(), m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");
       }
 
       // Set the line segment up to the cursor.  The line.index is updated so that this process only occurs
@@ -2432,11 +2445,11 @@ restart:
       }
    }
 
-   // No wrap has occurred
+   // No wrap has occurred.
 
-   if ((m_current_link) and (!m_link.open)) { // A link is marked for closure
-      add_link(ESC::LINK, m_current_link, m_link.x, Y, X + Width - m_link.x, m_line.height ? m_line.height : m_font->LineSpacing, "check_wrap");
-      m_current_link = NULL;
+   if (m_terminate_link) { // Check if a link termination is pending for this word
+      m_terminate_link--;
+      terminate_link();
    }
 
    #ifdef DBG_WORDWRAP
@@ -2473,7 +2486,7 @@ restart:
       // clipping boundaries.
 
       bool reset_link;
-      if ((m_current_link) and (clip.Index < m_link.index)) {
+      if ((!stack_link.empty()) and (clip.Index < m_link.index)) {
          // An open link intersects with a clipping region that was created prior to the opening of the link.  We do
          // not want to include this vector as a clickable part of the link - we will wrap over or around it, so
          // set a partial link now and ensure the link is reopened after the clipping region.
@@ -2481,7 +2494,7 @@ restart:
          DWRAP("Setting hyperlink now to cross a clipping boundary.");
 
          auto height = m_line.height ? m_line.height : m_font->LineSpacing;
-         add_link(ESC::LINK, m_current_link, m_link.x, Y, X + Width - m_link.x, height, "clip_intersect");
+         add_link(ESC::LINK, stack_link.top(), m_link.x, Y, X + Width - m_link.x, height, "clip_intersect");
 
          reset_link = true;
       }
@@ -2508,7 +2521,7 @@ restart:
 
       m_line.index = WordIndex;
       m_line.x = X;
-      if ((reset_link) and (m_current_link)) m_link.x = X;
+      if ((reset_link) and (!stack_link.empty())) m_link.x = X;
 
       goto restart; // Check all the clips from the beginning
    }
@@ -2527,7 +2540,7 @@ void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape,
       return;
    }
 
-   DLAYOUT("(%.2fx%.2f, %.2fx%.2f), %s", X, Y, Width, Height, Caller.c_str());
+   DLAYOUT("#%d (%.2fx%.2f, %.2fx%.2f), %s", LONG(m_links.size()), X, Y, Width, Height, Caller.c_str());
 
    m_links.emplace_back(BaseCode, Escape, m_segments.size(), X, Y, Width, Height);
 }
