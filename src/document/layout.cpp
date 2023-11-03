@@ -9,10 +9,20 @@ enum class TE : char {
 // State machine for the layout proces
 
 struct layout {
+   struct link_marker {
+      LONG  x;            // Starting coordinate of the link.  Can change if the link is split across multiple lines.
+      LONG  word_width;   // Reflects the m_word_width value at the moment of a link's termination.
+      INDEX index;
+      ALIGN align;
+
+      link_marker(LONG pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
+   };
+
    std::stack<escList *>      stack_list;
    std::stack<escRow *>       stack_row;
    std::stack<escParagraph *> stack_para;
    std::stack<escLink *>      stack_link; // Set by procLink() and remains until procLinkend()
+   std::stack<link_marker>    stack_mklink; // Maintains link placement information.  Stack matches that of stack_link.
 
    std::vector<DocLink>    m_links;
    std::vector<DocClip>    m_clips;
@@ -48,12 +58,6 @@ struct layout {
       LONG increase;
       LONG x;
    } m_line;
-
-   struct {
-      LONG  x;           // Starting coordinate of the link.  Can change if the link is split across multiple lines.
-      INDEX index;
-      ALIGN align;
-   } m_link;
 
    // Resets the string management variables, usually done when a string
    // has been broken up on the current line due to a vector or table graphic for example.
@@ -223,7 +227,8 @@ WRAP layout::procText(LONG AbsX, LONG Width)
       }
 #endif
          check_line_height();
-         wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+         wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+            (m_line.height < 1) ? 1 : m_line.height);
          if (wrap_result IS WRAP::EXTEND_PAGE) break;
 
          StreamChar end(idx, i);
@@ -234,7 +239,8 @@ WRAP layout::procText(LONG AbsX, LONG Width)
          check_line_height();
 
          if (m_word_width) {
-            wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+            wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+               (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) break;
          }
 
@@ -279,27 +285,34 @@ WRAP layout::procText(LONG AbsX, LONG Width)
 
 void layout::terminate_link()
 {
+   m_terminate_link--;
    if (stack_link.empty()) return;
 
-   add_link(ESC::LINK, stack_link.top(), m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+   add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y, 
+      m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x, 
       m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
    stack_link.pop();
+   stack_mklink.pop();
+
+   if (!stack_link.empty()) { // Nested link detected, reset the X starting point
+      stack_mklink.top().x = m_cursor_x + stack_mklink.top().word_width;
+   }
 }
 
 void layout::procLink()
 {
    if (!stack_link.empty()) {
-      // Close the current link.  Use of the stack means it will be reopened when the embedded link is closed.      
+      // Nested link detected.  Close the current link.  Use of the stack means it will be reopened when
+      // the nested link is closed.
 
-      add_link(ESC::LINK, stack_link.top(), m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+      add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y, 
+         m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x, 
          m_line.height ? m_line.height : m_font->LineSpacing, "link_start");
    }
 
    stack_link.push(&escape_data<::escLink>(Self, idx));
 
-   m_link.x     = m_cursor_x + m_word_width;
-   m_link.index = idx;
-   m_link.align = m_font->Align;
+   stack_mklink.emplace(m_cursor_x + m_word_width, idx, m_font->Align);
 }
 
 void layout::procLinkEnd()
@@ -309,6 +322,9 @@ void layout::procLinkEnd()
    // We can't terminate links here due to word-wrapping concerns, so instead we increment a counter to indicate that 
    // a link is due for termination.  Search for m_terminate_link to see where link termination actually occurs.
 
+   // The current m_word_width value is saved here because links can end in the middle of words.
+
+   stack_mklink.top().word_width = m_word_width;
    m_terminate_link++;
 }
 
@@ -1843,10 +1859,11 @@ extend_page:
    m_segments.clear();
    m_links.clear();
 
-   stack_list = {};
-   stack_para = {};
-   stack_row  = {};
-   stack_link = {};
+   stack_list   = {};
+   stack_para   = {};
+   stack_row    = {};
+   stack_link   = {};
+   stack_mklink = {};
 
    last_height  = page_height;
    esctable     = NULL;
@@ -1873,8 +1890,6 @@ extend_page:
    m_line.height      = 0;
    m_line.full_height = 0;
    m_kernchar         = 0;
-   m_link.x           = 0;
-   m_link.index       = 0;
    m_split_start      = m_segments.size();
    m_font             = *Font;
    m_no_wrap          = false; // true if word wrapping is to be turned off
@@ -1893,8 +1908,7 @@ extend_page:
          }
       }
 
-      // Wordwrap checking.  Any escape code that results in a word-break for the current word will initiate a wrapping
-      // check.  Encountering whitespace also results in a wrapping check.
+      // Any escape code that forces a word-break will initiate a wrapping check.
 
       if (esctable) {
          m_align_width = m_wrap_edge;
@@ -1903,8 +1917,7 @@ extend_page:
          case ESC::TABLE_END:
          case ESC::VECTOR:
          case ESC::ADVANCE:
-         case ESC::IMAGE:
-         case ESC::LINK_END: {
+         case ESC::IMAGE: {
             auto wrap_result = check_wordwrap("EscCode", AbsX, Width, m_word_index.Index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width on wordwrap request.");
@@ -2285,6 +2298,10 @@ exit:
    if (page_height > Height) Height = page_height;
 
    Self->Depth--;
+
+   if (!stack_link.empty()) log.warning("Sanity check for stack_link failed at end of layout.");
+   if (!stack_mklink.empty()) log.warning("Sanity check for stack_mklink failed at end of layout.");
+
    return idx;
 }
 
@@ -2302,12 +2319,13 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
    }
 
    if (m_terminate_link) terminate_link();
-   else if ((!stack_link.empty()) and (m_cursor_x + m_word_width > m_link.x)) { 
+   else if ((!stack_link.empty()) and (m_cursor_x + m_word_width > stack_mklink.top().x)) { 
       // A link is active and will continue to the next line.
       
-      add_link(ESC::LINK, stack_link.top(), m_link.x, m_cursor_y, m_cursor_x + m_word_width - m_link.x, 
+      add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y, 
+         m_cursor_x + m_word_width - stack_mklink.top().x, 
          m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
-      m_link.x = m_left_margin;
+      stack_mklink.top().x = m_left_margin;
    }
 
 #ifdef DBG_LAYOUT
@@ -2412,8 +2430,8 @@ restart:
          m_line.full_height = 1;
       }
 
-      if ((!stack_link.empty()) and (m_link.x != X)) {
-         add_link(ESC::LINK, stack_link.top(), m_link.x, Y, X - m_link.x, m_line.height, "check_wrap");
+      if ((!stack_link.empty()) and (stack_mklink.top().x != X)) {
+         add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, Y, X - stack_mklink.top().x, m_line.height, "check_wrap");
       }
 
       // Set the line segment up to the cursor.  The line.index is updated so that this process only occurs
@@ -2432,10 +2450,13 @@ restart:
       m_cursor_y     = Y;
       m_split_start  = m_segments.size();
       m_line.x       = m_left_margin;
-      m_link.x       = m_left_margin; // Only matters if a link is defined
       m_kernchar     = 0;
       m_line.full_height = 0;
       m_line.height      = 0;
+
+      if (!stack_mklink.empty()) {
+         stack_mklink.top().x = m_left_margin;
+      }
 
       result = WRAP::WRAPPED;
       if (--breakloop > 0) goto restart; // Go back and check the clip boundaries again
@@ -2448,7 +2469,6 @@ restart:
    // No wrap has occurred.
 
    if (m_terminate_link) { // Check if a link termination is pending for this word
-      m_terminate_link--;
       terminate_link();
    }
 
@@ -2486,7 +2506,7 @@ restart:
       // clipping boundaries.
 
       bool reset_link;
-      if ((!stack_link.empty()) and (clip.Index < m_link.index)) {
+      if ((!stack_link.empty()) and (clip.Index < stack_mklink.top().index)) {
          // An open link intersects with a clipping region that was created prior to the opening of the link.  We do
          // not want to include this vector as a clickable part of the link - we will wrap over or around it, so
          // set a partial link now and ensure the link is reopened after the clipping region.
@@ -2494,7 +2514,7 @@ restart:
          DWRAP("Setting hyperlink now to cross a clipping boundary.");
 
          auto height = m_line.height ? m_line.height : m_font->LineSpacing;
-         add_link(ESC::LINK, stack_link.top(), m_link.x, Y, X + Width - m_link.x, height, "clip_intersect");
+         add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, Y, X + Width - stack_mklink.top().x, height, "clip_intersect");
 
          reset_link = true;
       }
@@ -2521,7 +2541,7 @@ restart:
 
       m_line.index = WordIndex;
       m_line.x = X;
-      if ((reset_link) and (!stack_link.empty())) m_link.x = X;
+      if ((reset_link) and (!stack_link.empty())) stack_mklink.top().x = X;
 
       goto restart; // Check all the clips from the beginning
    }
@@ -2536,11 +2556,11 @@ void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape,
    pf::Log log(__FUNCTION__);
 
    if ((Width < 0.01) or (Height < 0.01)) {
-      log.traceWarning("Illegal link dimensions of (%.2fx%.2f, %.2fx%.2f) [%s]", X, Y, Width, Height, Caller.c_str());
+      log.traceWarning("Illegal link dimensions of (%.0fx%.0f, %.0fx%.0f) [%s]", X, Y, Width, Height, Caller.c_str());
       return;
    }
 
-   DLAYOUT("#%d (%.2fx%.2f, %.2fx%.2f), %s", LONG(m_links.size()), X, Y, Width, Height, Caller.c_str());
+   DLAYOUT("#%d (%.0fx%.0f, %.0fx%.0f), %s", LONG(m_links.size()), X, Y, Width, Height, Caller.c_str());
 
    m_links.emplace_back(BaseCode, Escape, m_segments.size(), X, Y, Width, Height);
 }
