@@ -10,12 +10,12 @@ enum class TE : char {
 
 struct layout {
    struct link_marker {
-      LONG  x;            // Starting coordinate of the link.  Can change if the link is split across multiple lines.
-      LONG  word_width;   // Reflects the m_word_width value at the moment of a link's termination.
+      DOUBLE x;           // Starting coordinate of the link.  Can change if the link is split across multiple lines.
+      DOUBLE word_width;  // Reflects the m_word_width value at the moment of a link's termination.
       INDEX index;
       ALIGN align;
 
-      link_marker(LONG pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
+      link_marker(DOUBLE pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
    };
 
    std::stack<escList *>      stack_list;
@@ -147,7 +147,7 @@ struct layout {
 
    void terminate_link();
    void add_link(ESC, std::variant<escLink *, escCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
-   void add_drawsegment(StreamChar, StreamChar, LONG, LONG, LONG, const std::string &);
+   void add_drawsegment(StreamChar, StreamChar, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void end_line(NL, DOUBLE, StreamChar, const std::string &);
    WRAP check_wordwrap(const std::string &, LONG, LONG &, StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
    void wrap_through_clips(StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
@@ -1460,7 +1460,7 @@ void layout::procSetMargins(LONG AbsY, LONG &BottomMargin)
 // This function creates segments, which are used during the drawing process as well as user interactivity, e.g. to
 // determine the character that the mouse is positioned over.
 
-void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Width, LONG AlignWidth, const std::string &Debug)
+void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth, const std::string &Debug)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1525,9 +1525,10 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, LONG Y, LONG Wid
    }
 
 #ifdef DBG_STREAM
-   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%d,%d:%dx%d, WordWidth: %d, CursorY: %.2f, [%.20s]...[%.20s] (%s)",
-      LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width, AlignWidth, line_height, m_word_width,
-      m_cursor_y, printable(Self, Start).c_str(), printable(Self, Stop).c_str(), Debug.c_str());
+   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%.0f,%.0f:%.0fx%d, WordWidth: %d, CursorY: %.2f, [%.20s]...[%.20s] (%s)",
+      LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width, 
+      AlignWidth, line_height, m_word_width, m_cursor_y, printable(Self, Start).c_str(), 
+      printable(Self, Stop).c_str(), Debug.c_str());
 #endif
 
    auto x = m_line.x;

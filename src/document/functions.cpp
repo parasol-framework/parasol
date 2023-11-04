@@ -2499,18 +2499,18 @@ void DocLink::exec(extDocument *Self)
             else {
                log.trace("Link is a file reference.");
 
-               std::string lk;
+               std::string path;
 
                if (!Self->Path.empty()) {
                   auto j = link->Ref.find_first_of("/\\:");
                   if ((j IS std::string::npos) or (link->Ref[j] != ':')) {
                      auto end = Self->Path.find_first_of("&#?");
-                     if (end IS std::string::npos) lk.assign(Self->Path);
-                     else lk.assign(Self->Path, Self->Path.find_last_of("/\\", end));
+                     if (end IS std::string::npos) path.assign(Self->Path);
+                     else path.assign(Self->Path, 0, Self->Path.find_last_of("/\\", end) + 1);
                   }
                }
 
-               lk += link->Ref;
+               auto lk = path + link->Ref;
                auto end = lk.find_first_of("?#&");
                if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
                   if (class_id IS ID_DOCUMENT) {

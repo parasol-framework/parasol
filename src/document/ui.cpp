@@ -299,7 +299,7 @@ static void error_dialog(const std::string Title, const std::string Message)
    static OBJECTID dialog_id = 0;
 
    log.warning("%s", Message.c_str());
-
+#ifndef DBG_LAYOUT || DBG_STREAM || DBG_LINES
    if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
    if (detect_recursive_dialog) return;
    detect_recursive_dialog = true;
@@ -324,44 +324,16 @@ static void error_dialog(const std::string Title, const std::string Message)
    }
 
    detect_recursive_dialog = false;
+#endif
 }
 
 static void error_dialog(const std::string Title, ERROR Error)
 {
-   pf::Log log(__FUNCTION__);
-   static OBJECTID dialog_id = 0;
-
-   log.warning("%s", GetErrorMsg(Error));
-
-   if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
-   if (detect_recursive_dialog) return;
-   detect_recursive_dialog = true;
-
-   OBJECTPTR dialog;
-   if (!NewObject(ID_SCRIPT, &dialog)) {
-      dialog->setFields(fl::Name("scDialog"), fl::Owner(CurrentTaskID()), fl::Path("scripts:gui/dialog.fluid"));
-
-      acSetVar(dialog, "modal", "1");
-      acSetVar(dialog, "title", Title.c_str());
-      acSetVar(dialog, "options", "okay");
-      acSetVar(dialog, "type", "error");
-
-      if (auto errstr = GetErrorMsg(Error)) {
-         std::string buffer("Error: ");
-         buffer.append(errstr);
-         acSetVar(dialog, "message", buffer.c_str());
-      }
-
-      if ((!InitObject(dialog)) and (!acActivate(dialog))) {
-         CSTRING *results;
-         LONG size;
-         if ((!GetFieldArray(dialog, FID_Results, (APTR *)&results, &size)) and (size > 0)) {
-            dialog_id = StrToInt(results[0]);
-         }
-      }
+   if (auto errstr = GetErrorMsg(Error)) {
+      std::string buffer("Error: ");
+      buffer.append(errstr);
+      error_dialog(Title, buffer);
    }
-
-   detect_recursive_dialog = false;
 }
 
 //********************************************************************************************************************
@@ -679,7 +651,7 @@ static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
       return;
    }
 
-   if ((Self->LinkIndex >= 0) and (Self->LinkIndex < Self->Links.size())) {
+   if ((Self->LinkIndex >= 0) and (Self->LinkIndex < LONG(Self->Links.size()))) {
       Self->Links[Self->LinkIndex].exec(Self);
    }
 }

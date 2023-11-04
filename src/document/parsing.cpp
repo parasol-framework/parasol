@@ -838,20 +838,20 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    escLink link;
    bool select = false;
-   std::string href, function, colour, hint, pointermotion;
+   std::string colour, hint, pointermotion;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_href:
             if (link.Type IS LINK::NIL) {
-               href = Tag.Attribs[i].Value;
+               link.Ref = Tag.Attribs[i].Value;
                link.Type = LINK::HREF;
             }
             break;
 
          case HASH_onclick:
             if (link.Type IS LINK::NIL) { // Function to execute on click
-               function = Tag.Attribs[i].Value;
+               link.Ref = Tag.Attribs[i].Value;
                link.Type = LINK::FUNCTION;
             }
             break;
@@ -886,8 +886,8 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       link.Align = Self->Style.FontStyle.Options;
 
       auto pos = sizeof(link);
-      if (link.Type IS LINK::FUNCTION) buffer << function << '\0';
-      else buffer << href << '\0';
+      if (link.Type IS LINK::FUNCTION) buffer << link.Ref << '\0';
+      else buffer << link.Ref << '\0';
 
       if (!pointermotion.empty()) {
          link.PointerMotion = pos;
