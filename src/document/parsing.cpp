@@ -1,9 +1,9 @@
 
-static void check_para_attrib(extDocument *, const std::string &, const std::string &, escParagraph *);
+static void check_para_attrib(extDocument *, const std::string &, const std::string &, bcParagraph *);
 
 //********************************************************************************************************************
 
-static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, escParagraph *esc)
+static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, bcParagraph *esc)
 {
    switch (StrHash(Attrib)) {
       case HASH_anchor:
@@ -517,7 +517,7 @@ static void tag_header(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
 static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   escParagraph esc;
+   bcParagraph esc;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch(Tag.Attribs[i].Name, "units")) {
@@ -534,7 +534,7 @@ static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
       parse_tags(Self, XML, Children, Index);
 
-   Self->reserveCode<escParagraphEnd>(Index);
+   Self->reserveCode<bcParagraphEnd>(Index);
    Self->NoWhitespace = true;
 }
 
@@ -707,7 +707,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
                Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
 
-               escImage esc;
+               bcImage esc;
                esc.Rect = rect;
                Self->insertCode(Index, esc);
                return;
@@ -745,7 +745,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                Self->Resources.emplace_back(pic->UID, RT_OBJECT_UNLOAD_DELAY);
                Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
 
-               escImage esc;
+               bcImage esc;
                esc.Rect = rect;
                Self->insertCode(Index, esc);
                return;
@@ -806,7 +806,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    style_check(Self, Index);
 
    if (name) {
-      escIndex esc(name, Self->UniqueID++, 0, visible, Self->Invisible ? false : true);
+      bcIndex esc(name, Self->UniqueID++, 0, visible, Self->Invisible ? false : true);
 
       Self->insertCode(Index, esc);
 
@@ -816,7 +816,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          if (!visible) Self->Invisible--;
       }
 
-      escIndexEnd end(esc.ID);
+      bcIndexEnd end(esc.ID);
       Self->insertCode(Index, end);
    }
    else if (!Children.empty()) parse_tags(Self, XML, Children, Index);
@@ -839,7 +839,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 {
    pf::Log log(__FUNCTION__);
 
-   escLink link;
+   bcLink link;
    bool select = false;
    std::string colour, hint, pointermotion;
 
@@ -911,7 +911,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       saved_style_check(Self, savestatus);
 
-      Self->reserveCode<escLinkEnd>(Index);
+      Self->reserveCode<bcLinkEnd>(Index);
 
       // This style check will forcibly revert the font back to whatever it was rather than waiting for new content 
       // to result in a change.  The reason why we want to do this is to make it easier to manage run-time insertion 
@@ -933,7 +933,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
-   escList esc, *savelist;
+   bcList esc, *savelist;
 
    esc.Fill    = Self->Style.FontStyle.Fill; // Default fill matches the current font colour
    esc.ItemNum = esc.Start;
@@ -952,14 +952,14 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       }
       else if (!StrMatch("type", Tag.Attribs[i].Name)) {
          if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
-            esc.Type = escList::BULLET;
+            esc.Type = bcList::BULLET;
          }
          else if (!StrMatch("ordered", Tag.Attribs[i].Value)) {
-            esc.Type = escList::ORDERED;
+            esc.Type = bcList::ORDERED;
             esc.ItemIndent = 0;
          }
          else if (!StrMatch("custom", Tag.Attribs[i].Value)) {
-            esc.Type = escList::CUSTOM;
+            esc.Type = bcList::CUSTOM;
             esc.ItemIndent = 0;
          }
       }
@@ -979,7 +979,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    Self->Style.List = savelist;
 
-   Self->reserveCode<escListEnd>(Index);
+   Self->reserveCode<bcListEnd>(Index);
 
    Self->NoWhitespace = true;
 }
@@ -993,7 +993,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
 
    Self->ParagraphDepth++;
 
-   escParagraph esc;
+   bcParagraph esc;
    esc.LeadingRatio = 0;
 
    auto savestatus = Self->Style;
@@ -1019,7 +1019,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
    parse_tags(Self, XML, Children, Index);
    saved_style_check(Self, savestatus);
 
-   escParagraphEnd end;
+   bcParagraphEnd end;
    Self->insertCode(Index, end);
    Self->NoWhitespace = true;
 
@@ -1396,7 +1396,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
    }
 
    if (!InitObject(object)) {
-      escVector escobj;
+      bcVector escobj;
 
       if (Self->Invisible) acHide(object); // Hide the object if it's in an invisible section
 
@@ -1500,7 +1500,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 
 static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-//   escParagraph para;
+//   bcParagraph para;
 //   Self->insertCode(Index, para);
 
    if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
@@ -1514,7 +1514,7 @@ static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
    trim_preformat(Self, Index);
 
-//   Self->reserveCode<escParagraphEnd>(Index);
+//   Self->reserveCode<bcParagraphEnd>(Index);
 //   Self->NoWhitespace = true;
 }
 
@@ -1748,7 +1748,7 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
 
 static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   escSetMargins margins;
+   bcSetMargins margins;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("top", Tag.Attribs[i].Name)) {
@@ -1825,7 +1825,7 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       return;
    }
 
-   escParagraph para;
+   bcParagraph para;
 
    para.ListItem     = true;
    para.LeadingRatio = 0;
@@ -1850,16 +1850,16 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       }
    }
 
-   if ((Self->Style.List->Type IS escList::CUSTOM) and (!para.Value.empty())) {
+   if ((Self->Style.List->Type IS bcList::CUSTOM) and (!para.Value.empty())) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
       Self->insertCode(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveCode<escParagraphEnd>(Index);
+      Self->reserveCode<bcParagraphEnd>(Index);
    }
-   else if (Self->Style.List->Type IS escList::ORDERED) {
+   else if (Self->Style.List->Type IS bcList::ORDERED) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
       auto list_size = Self->Style.List->Buffer.size();
@@ -1872,7 +1872,7 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveCode<escParagraphEnd>(Index);
+      Self->reserveCode<bcParagraphEnd>(Index);
 
       Self->Style.List->ItemNum = save_item;
       Self->Style.List->Buffer.resize(list_size);
@@ -1882,7 +1882,7 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveCode<escParagraphEnd>(Index);
+      Self->reserveCode<bcParagraphEnd>(Index);
       Self->NoWhitespace = true;
    }
 }
@@ -2002,7 +2002,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 {
    pf::Log log(__FUNCTION__);
 
-   auto &start = Self->reserveCode<escTable>(Index);
+   auto &start = Self->reserveCode<bcTable>(Index);
    start.MinWidth  = 1;
    start.MinHeight = 1;
 
@@ -2085,7 +2085,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    auto savevar = Self->Style.Table;
    process_table var;
    Self->Style.Table = &var;
-   Self->Style.Table->escTable = &start;
+   Self->Style.Table->bcTable = &start;
 
       parse_tags(Self, XML, Tag.Children, Index, IPF::NO_CONTENT|IPF::FILTER_TABLE);
 
@@ -2111,7 +2111,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       if (i < start.Columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(start.Columns.size()));
    }
 
-   escTableEnd end;
+   bcTableEnd end;
    Self->insertCode(Index, end);
 
    //style_check(Self, Index);
@@ -2132,7 +2132,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
       return;
    }
 
-   escRow escrow;
+   bcRow escrow;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("height", Tag.Attribs[i].Name)) {
@@ -2145,18 +2145,18 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
    }
 
    Self->insertCode(Index, escrow);
-   Self->Style.Table->escTable->Rows++;
+   Self->Style.Table->bcTable->Rows++;
    Self->Style.Table->RowCol = 0;
 
    if (!Children.empty()) {
       parse_tags(Self, XML, Children, Index, IPF::NO_CONTENT|IPF::FILTER_ROW);
    }
 
-   escRowEnd end;
+   bcRowEnd end;
    Self->insertCode(Index, end);
 
-   if (Self->Style.Table->RowCol > LONG(Self->Style.Table->escTable->Columns.size())) {
-      Self->Style.Table->escTable->Columns.resize(Self->Style.Table->RowCol);
+   if (Self->Style.Table->RowCol > LONG(Self->Style.Table->bcTable->Columns.size())) {
+      Self->Style.Table->bcTable->Columns.resize(Self->Style.Table->RowCol);
    }
 }
 
@@ -2174,7 +2174,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       return;
    }
 
-   escCell cell(Self->UniqueID++, Self->Style.Table->RowCol);
+   bcCell cell(Self->UniqueID++, Self->Style.Table->RowCol);
    bool select = false;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -2256,7 +2256,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    Self->Style.Table->RowCol += cell.ColSpan;
 
-   escCellEnd esccell_end;
+   bcCellEnd esccell_end;
    esccell_end.CellID = cell.CellID;
    Self->insertCode(Index, esccell_end);
 

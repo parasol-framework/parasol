@@ -1175,7 +1175,7 @@ template <class T> T & escape_data(extDocument *Self, INDEX Index) {
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
-template <class T> inline const std::string & ESCAPE_NAME(RSTREAM &Stream, T Index) {
+template <class T> inline const std::string & BC_NAME(RSTREAM &Stream, T Index) {
    return byteCode(Stream[Index].Code);
 }
 

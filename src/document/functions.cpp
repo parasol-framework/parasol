@@ -82,7 +82,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
    for (INDEX i=0; i < INDEX(Stream.size()); i++) {
       auto code = Stream[i].Code;
       if (code IS ESC::FONT) {
-         auto style = &escape_data<escFont>(Self, i);
+         auto style = &escape_data<bcFont>(Self, i);
          out << "[Font";
          out << ":#" << style->FontIndex;
          if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
@@ -91,7 +91,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
          out << ":" << style->Fill << "]";
       }
       else if (code IS ESC::PARAGRAPH_START) {
-         auto para = &escape_data<escParagraph>(Self, i);
+         auto para = &escape_data<bcParagraph>(Self, i);
          if (para->ListItem) out << "[LI]";
          else out << "[PS]";
       }
@@ -104,7 +104,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
          out << "[I:X(%d):Width(%d):Custom(%d)]", item->X, item->Width, item->CustomWidth);
       }
 */
-      else out << "[" << escCode(code) << "]";
+      else out << "[" << byteCode(code) << "]";
 
       printpos = true;
    }
@@ -141,18 +141,18 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
       while (i < line.Stop) {
          auto code = Stream[i.Index].Code;
          if (code IS ESC::FONT) {
-            auto style = &escape_data<escFont>(Self, i.Index);
+            auto style = &escape_data<bcFont>(Self, i.Index);
             out << "[E:Font:#" << style->FontIndex << "]";
          }
          else if (code IS ESC::PARAGRAPH_START) {
-            auto para = &escape_data<escParagraph>(Self, i.Index);
+            auto para = &escape_data<bcParagraph>(Self, i.Index);
             if (para->ListItem) out << "[E:LI]";
             else out << "[E:PS]";
          }
          else if (code IS ESC::PARAGRAPH_END) {
             out << "[E:PE]\n";
          }
-         else out << "[E:" <<  escCode(code) << "]";
+         else out << "[E:" <<  byteCode(code) << "]";
          i.nextCode();
       }
 
@@ -835,7 +835,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       else {
          for (auto i = TargetIndex - 1; i > 0; i--) {
             if (Self->Stream[i].Code IS ESC::FONT) {
-               Self->Style.FontStyle = escape_data<escFont>(Self, i);
+               Self->Style.FontStyle = escape_data<bcFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.FontIndex, Self->Style.FontStyle.Options);
                break;
             }
@@ -919,7 +919,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
       else {
          for (auto i = TargetIndex.Index - 1; i > 0; i--) {
             if (Self->Stream[i].Code IS ESC::FONT) {
-               Self->Style.FontStyle = escape_data<escFont>(Self, i);
+               Self->Style.FontStyle = escape_data<bcFont>(Self, i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.FontIndex, Self->Style.FontStyle.Options);
                break;
             }
@@ -1193,7 +1193,7 @@ static void style_check(extDocument *Self, StreamChar &Cursor)
       // NB: Assigning a new UID is suboptimal in cases where we are reverting to a previously registered state
       // (i.e. anywhere where saved_style_check() has been used).  We could allow insertCode() to lookup formerly
       // allocated UID's and save some memory usage if we improved the management of saved styles.
-      Self->Style.FontStyle.UID = glEscapeCodeID++;
+      Self->Style.FontStyle.UID = glByteCodeID++;
       Self->insertCode(Cursor, Self->Style.FontStyle);
       Self->Style.StyleChange = false;
    }
@@ -2162,12 +2162,12 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
 //********************************************************************************************************************
 // Find the nearest font style that will represent Char
 
-static escFont * find_style(extDocument *Self, const RSTREAM &Stream, StreamChar &Char)
+static bcFont * find_style(extDocument *Self, const RSTREAM &Stream, StreamChar &Char)
 {
-   escFont *style = NULL;
+   bcFont *style = NULL;
 
    for (INDEX fi = Char.Index; fi < Char.Index; fi++) {
-      if (Stream[fi].Code IS ESC::FONT) style = &escape_data<escFont>(Self, fi);
+      if (Stream[fi].Code IS ESC::FONT) style = &escape_data<bcFont>(Self, fi);
       else if (Stream[fi].Code IS ESC::TEXT) break;
    }
 
@@ -2176,7 +2176,7 @@ static escFont * find_style(extDocument *Self, const RSTREAM &Stream, StreamChar
    if (!style) {
       for (INDEX fi = Char.Index; fi >= 0; fi--) {
          if (Stream[fi].Code IS ESC::FONT) {
-            style = &escape_data<escFont>(Self, fi);
+            style = &escape_data<bcFont>(Self, fi);
             break;
          }
       }
@@ -2192,7 +2192,7 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
 {
    pf::Log log(__FUNCTION__);
 
-   escFont *style = find_style(Self, Self->Stream, Char);
+   bcFont *style = find_style(Self, Self->Stream, Char);
    auto font = style ? style->getFont() : glFonts[0].Font;
    if (!font) return ERR_Search;
 
@@ -2222,7 +2222,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *Ch
 
    log.branch("Index: %d", Char.Index);
 
-   escFont *style = find_style(Self, Self->Stream, Char);   
+   bcFont *style = find_style(Self, Self->Stream, Char);   
    auto font = style ? style->getFont() : glFonts[0].Font;
    if (!font) return log.warning(ERR_Search);
 
@@ -2567,7 +2567,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
    if (!docFindIndex(Self, Bookmark.c_str(), &start, &end)) {
       // Get the vertical position of the index and scroll to it
 
-      auto &esc_index = escape_data<escIndex>(Self, start);
+      auto &esc_index = escape_data<bcIndex>(Self, start);
       Self->scrollToPoint(0, esc_index.Y - 4, 0, STP::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());

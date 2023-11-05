@@ -18,10 +18,10 @@ struct layout {
       link_marker(DOUBLE pX, INDEX pIndex, ALIGN pAlign) : x(pX), word_width(0), index(pIndex), align(pAlign) { }
    };
 
-   std::stack<escList *>      stack_list;
-   std::stack<escRow *>       stack_row;
-   std::stack<escParagraph *> stack_para;
-   std::stack<escLink *>      stack_link; // Set by procLink() and remains until procLinkend()
+   std::stack<bcList *>      stack_list;
+   std::stack<bcRow *>       stack_row;
+   std::stack<bcParagraph *> stack_para;
+   std::stack<bcLink *>      stack_link; // Set by procLink() and remains until procLinkend()
    std::stack<link_marker>    stack_mklink; // Maintains link placement information.  Stack matches that of stack_link.
 
    std::vector<DocLink>    m_links;
@@ -79,7 +79,7 @@ struct layout {
    void add_esc_segment() {
       StreamChar start(idx, 0);
       StreamChar stop(idx + 1, 0);
-      add_drawsegment(start, stop, m_cursor_y, 0, 0, ESCAPE_NAME(Self->Stream, idx));
+      add_drawsegment(start, stop, m_cursor_y, 0, 0, BC_NAME(Self->Stream, idx));
       reset_segment(idx+1, m_cursor_x);
    }
 
@@ -97,13 +97,13 @@ struct layout {
          case ESC::FONT:
             // Font style changes don't breakup text unless there's a face change.
             if (m_text_content) {
-               auto &style = escape_data<escFont>(Self, idx);
+               auto &style = escape_data<bcFont>(Self, idx);
                if (m_font != style.getFont()) return true;
             }
             break;
 
          case ESC::INDEX_START: {
-            auto &index = escape_data<escIndex>(Self, idx);
+            auto &index = escape_data<bcIndex>(Self, idx);
             if (!index.Visible) return true;
          }
 
@@ -137,16 +137,16 @@ struct layout {
    WRAP procVector(LONG, DOUBLE, DOUBLE, LONG &, LONG, bool &, bool &);
    void procParagraphStart(LONG);
    void procParagraphEnd();
-   TE procTableEnd(escTable *, LONG, LONG, LONG, LONG, LONG &, LONG &);
-   void procCellEnd(escCell *);
-   void procRowEnd(escTable *);
+   TE procTableEnd(bcTable *, LONG, LONG, LONG, LONG, LONG &, LONG &);
+   void procCellEnd(bcCell *);
+   void procRowEnd(bcTable *);
    void procAdvance();
    bool procListEnd();
    WRAP procText(LONG, LONG);
    void procImage();
 
    void terminate_link();
-   void add_link(ESC, std::variant<escLink *, escCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
+   void add_link(ESC, std::variant<bcLink *, bcCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void add_drawsegment(StreamChar, StreamChar, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void end_line(NL, DOUBLE, StreamChar, const std::string &);
    WRAP check_wordwrap(const std::string &, LONG, LONG &, StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
@@ -168,7 +168,7 @@ void layout::procAdvance()
 
 void layout::procImage()
 {
-   //auto image = &escape_data<escImage>(Self, idx);
+   //auto image = &escape_data<bcImage>(Self, idx);
    add_esc_segment();
 }
 
@@ -177,7 +177,7 @@ void layout::procImage()
 void layout::procFont()
 {
    pf::Log log;
-   auto style = &escape_data<escFont>(Self, idx);
+   auto style = &escape_data<bcFont>(Self, idx);
    m_font = style->getFont();
 
    if (m_font) {
@@ -310,7 +310,7 @@ void layout::procLink()
          m_line.height ? m_line.height : m_font->LineSpacing, "link_start");
    }
 
-   stack_link.push(&escape_data<::escLink>(Self, idx));
+   stack_link.push(&escape_data<::bcLink>(Self, idx));
 
    stack_mklink.emplace(m_cursor_x + m_word_width, idx, m_font->Align);
 }
@@ -336,7 +336,7 @@ bool layout::procListEnd()
 
    // If it is a custom list, a repass may be required
 
-   if ((stack_list.top()->Type IS escList::CUSTOM) and (stack_list.top()->Repass)) {
+   if ((stack_list.top()->Type IS bcList::CUSTOM) and (stack_list.top()->Repass)) {
       return true;
    }
 
@@ -360,7 +360,7 @@ void layout::procIndexStart()
 {
    pf::Log log(__FUNCTION__);
 
-   auto escindex = &escape_data<escIndex>(Self, idx);
+   auto escindex = &escape_data<bcIndex>(Self, idx);
    escindex->Y = m_cursor_y;
 
    if (!escindex->Visible) {
@@ -369,7 +369,7 @@ void layout::procIndexStart()
       auto end = idx;
       while (end < INDEX(Self->Stream.size())) {
          if (Self->Stream[end].Code IS ESC::INDEX_END) {
-            escIndexEnd &iend = escape_data<escIndexEnd>(Self, end);
+            bcIndexEnd &iend = escape_data<bcIndexEnd>(Self, end);
             if (iend.ID IS escindex->ID) break;
             end++;
 
@@ -389,7 +389,7 @@ void layout::procIndexStart()
 
 //********************************************************************************************************************
 
-void layout::procCellEnd(escCell *esccell)
+void layout::procCellEnd(bcCell *esccell)
 {
    // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
    // refer to ESC::CELL to see how content is processed and how the cell dimensions are formed.
@@ -409,7 +409,7 @@ void layout::procCellEnd(escCell *esccell)
 
 //********************************************************************************************************************
 
-void layout::procRowEnd(escTable *Table)
+void layout::procRowEnd(bcTable *Table)
 {
    pf::Log log;
 
@@ -456,10 +456,10 @@ void layout::procParagraphStart(LONG Width)
       StreamChar sc(idx, 0);
       end_line(NL::PARAGRAPH, ratio, sc, "PS");
 
-      stack_para.push(&escape_data<escParagraph>(Self, idx));
+      stack_para.push(&escape_data<bcParagraph>(Self, idx));
    }
    else {
-      stack_para.push(&escape_data<escParagraph>(Self, idx));
+      stack_para.push(&escape_data<bcParagraph>(Self, idx));
 
       // Leading ratio is only used if the paragraph is preceeded by content.
       // This check ensures that the first paragraph is always flush against
@@ -538,7 +538,7 @@ void layout::procParagraphEnd()
 
 //********************************************************************************************************************
 
-TE layout::procTableEnd(escTable *esctable, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG &Height, LONG &Width)
+TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG &Height, LONG &Width)
 {
    pf::Log log(__FUNCTION__);
 
@@ -739,7 +739,7 @@ WRAP layout::procVector(LONG Offset, DOUBLE AbsX, DOUBLE AbsY, LONG &Width, LONG
    // Tell the vector our CursorX and CursorY positions so that it can position itself within the stream
    // layout.  The vector will tell us its clipping boundary when it returns (if it has a clipping boundary).
 
-   auto &vec = escape_data<::escVector>(Self, idx);
+   auto &vec = escape_data<::bcVector>(Self, idx);
    if (!(vector_id = vec.ObjectID)) return WRAP::DO_NOTHING;
    if (vec.Owned) return WRAP::DO_NOTHING; // Do not manipulate vectors that have owners
 
@@ -1432,7 +1432,7 @@ wrap_vector:
 
 void layout::procSetMargins(LONG AbsY, LONG &BottomMargin)
 {
-   auto &escmargins = escape_data<::escSetMargins>(Self, idx);
+   auto &escmargins = escape_data<::bcSetMargins>(Self, idx);
 
    if (escmargins.Left != 0x7fff) {
       m_cursor_x    += escmargins.Left;
@@ -1722,7 +1722,7 @@ static void layout_doc(extDocument *Self)
       for (auto &link : Self->Links) {
          if (link.BaseCode != ESC::LINK) continue;
 
-         auto esclink = std::get<escLink *>(link.Ref);
+         auto esclink = std::get<bcLink *>(link.Ref);
          if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
             auto &segment = l.m_segments[link.Segment];
             if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
@@ -1810,8 +1810,8 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
 {
    pf::Log log(__FUNCTION__);
 
-   escCell *esccell;
-   escTable *esctable;
+   bcCell *esccell;
+   bcTable *esctable;
 
    layout tablestate(Self), rowstate(Self), liststate(Self);
    LONG last_height, edit_segment;
@@ -1900,7 +1900,7 @@ extend_page:
    for (idx = Offset; idx < End; idx++) {
       if (m_line.index.Index < idx) {
          if (breakable_word()) {
-            DLAYOUT("Setting line at code '%s', index %d, line.x: %d, m_word_width: %d", ESCAPE_NAME(Self->Stream,idx).c_str(), m_line.index.Index, m_line.x, m_word_width);
+            DLAYOUT("Setting line at code '%s', index %d, line.x: %d, m_word_width: %d", BC_NAME(Self->Stream,idx).c_str(), m_line.index.Index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             StreamChar sc(idx,0);
             add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
@@ -1936,7 +1936,7 @@ extend_page:
 
 #ifdef DBG_LAYOUT_ESCAPE
       DLAYOUT("ESC_%s Indexes: %d-%d-%d, WordWidth: %d",
-         ESCAPE_NAME(Self->Stream, idx).c_str(), m_line.index.Index, idx, m_word_index.Index, m_word_width);
+         BC_NAME(Self->Stream, idx).c_str(), m_line.index.Index, idx, m_word_index.Index, m_word_width);
 #endif
 
       switch (Self->Stream[idx].Code) {
@@ -1971,7 +1971,7 @@ extend_page:
             // cursor position is advanced by the size of the item graphics element.
 
             liststate = *this;
-            stack_list.push(&escape_data<escList>(Self, idx));
+            stack_list.push(&escape_data<bcList>(Self, idx));
             stack_list.top()->Repass = false;
             break;
 
@@ -2005,11 +2005,11 @@ extend_page:
 
             if (esctable) {
                auto ptr = esctable;
-               esctable = &escape_data<escTable>(Self, idx);
+               esctable = &escape_data<bcTable>(Self, idx);
                esctable->Stack = ptr;
             }
             else {
-               esctable = &escape_data<escTable>(Self, idx);
+               esctable = &escape_data<bcTable>(Self, idx);
                esctable->Stack = NULL;
             }
 
@@ -2096,7 +2096,7 @@ wrap_table_cell:
          }
 
          case ESC::ROW:
-            stack_row.push(&escape_data<escRow>(Self, idx));
+            stack_row.push(&escape_data<bcRow>(Self, idx));
             rowstate = *this;
 
             if (esctable->ResetRowHeight) stack_row.top()->RowHeight = stack_row.top()->MinHeight;
@@ -2122,10 +2122,10 @@ repass_row_height_ext:
 
             bool vertical_repass = false;
 
-            esccell = &escape_data<escCell>(Self, idx);
+            esccell = &escape_data<bcCell>(Self, idx);
 
             if (!esctable) {
-               log.warning("escTable variable not defined for cell @ index %d - document byte code is corrupt.", idx);
+               log.warning("bcTable variable not defined for cell @ index %d - document byte code is corrupt.", idx);
                goto exit;
             }
 
@@ -2164,7 +2164,7 @@ repass_row_height_ext:
             auto cell_end = idx;
             while (cell_end < INDEX(Self->Stream.size())) {
                if (Self->Stream[cell_end].Code IS ESC::CELL_END) {
-                  auto &end = escape_data<escCellEnd>(Self, cell_end);
+                  auto &end = escape_data<bcCellEnd>(Self, cell_end);
                   if (end.CellID IS esccell->CellID) break;
                }
 
@@ -2551,7 +2551,7 @@ restart:
 //********************************************************************************************************************
 // Record a clickable link, cell, or other form of clickable area.
 
-void layout::add_link(ESC BaseCode, std::variant<escLink *, escCell *> Escape,
+void layout::add_link(ESC BaseCode, std::variant<bcLink *, bcCell *> Escape,
    DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, const std::string &Caller)
 {
    pf::Log log(__FUNCTION__);

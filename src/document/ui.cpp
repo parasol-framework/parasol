@@ -107,7 +107,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
                   auto code = Self->Stream[index.Index].Code;
                   if (code IS ESC::CELL) {
-                     auto &cell = escape_data<escCell>(Self, index);
+                     auto &cell = escape_data<bcCell>(Self, index);
                      if (cell.CellID IS Self->ActiveEditCellID) break;
                   }
                   else if (code IS ESC::VECTOR); // Vectors count as a character
@@ -131,7 +131,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
             while (index.valid(Self->Stream)) {
                auto code = Self->Stream[index.Index].Code;
                if (code IS ESC::CELL_END) {
-                  auto &cell_end = escape_data<escCellEnd>(Self, index);
+                  auto &cell_end = escape_data<bcCellEnd>(Self, index);
                   if (cell_end.CellID IS Self->ActiveEditCellID) {
                      // End of editing zone - cursor cannot be moved any further right
                      break;
@@ -351,7 +351,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
       return log.warning(ERR_Failed);
    }
 
-   auto &cell = escape_data<escCell>(Self, CellIndex);
+   auto &cell = escape_data<bcCell>(Self, CellIndex);
    if (CursorIndex.Index <= CellIndex) { // Go to the start of the cell content
       CursorIndex.set(CellIndex + 1, 0);
    }
@@ -379,7 +379,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
    if (!edit.OnChange.empty()) { // Calculate a CRC for the cell content
       for (INDEX i = CellIndex; i < INDEX(Self->Stream.size()); i++) {
          if (stream[i].Code IS ESC::CELL_END) {
-            auto &end = escape_data<escCellEnd>(Self, i);
+            auto &end = escape_data<bcCellEnd>(Self, i);
             if (end.CellID IS cell.CellID) {
                Self->ActiveEditCRC = GenCRC32(0, stream.data() + CellIndex, i - CellIndex);
                break;
@@ -456,13 +456,13 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 
    if (cell_index >= 0) {
       if (!edit->OnChange.empty()) {
-         escCell &cell = escape_data<escCell>(Self, cell_index);
+         bcCell &cell = escape_data<bcCell>(Self, cell_index);
 
          // CRC comparison - has the cell content changed?
 
          for (INDEX i = cell_index; i < INDEX(Self->Stream.size()); i++) {
             if (Self->Stream[i].Code IS ESC::CELL_END) {
-               auto &end = escape_data<escCellEnd>(Self, i);
+               auto &end = escape_data<bcCellEnd>(Self, i);
                if (end.CellID IS cell.CellID) {
                   auto crc = GenCRC32(0, Self->Stream.data() + cell_index, i - cell_index);
                   if (crc != Self->ActiveEditCRC) {
@@ -560,7 +560,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          INDEX cell_end  = cell_start;
          while (cell_end < INDEX(Self->Stream.size())) {
             if (Self->Stream[cell_end].Code IS ESC::CELL_END) {
-               auto &end = escape_data<escCellEnd>(Self, cell_end);
+               auto &end = escape_data<bcCellEnd>(Self, cell_end);
                if (end.CellID IS Self->EditCells[i].CellID) break;
             }
 
@@ -625,7 +625,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 
             for (auto cellindex = Self->Segments[segment].Start; cellindex.valid(); cellindex.prevCode()) {
                if (Self->Stream[cellindex.Index].Code IS ESC::CELL) {
-                  auto &cell = escape_data<escCell>(Self, cellindex);
+                  auto &cell = escape_data<bcCell>(Self, cellindex);
                   if (!cell.EditDef.empty()) {
                      activate_cell_edit(Self, cellindex.Index, Self->CursorIndex);
                      break;
@@ -709,7 +709,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
                      while (i < INDEX(Self->Stream.size())) {
                         if (Self->Stream[i].Code IS ESC::CELL_END) {
-                           auto &cell_end = escape_data<escCellEnd>(Self, i);
+                           auto &cell_end = escape_data<bcCellEnd>(Self, i);
                            if (cell_end.CellID IS Self->ActiveEditCellID) {
                               StreamChar sc(i, 0);
                               if (auto seg = find_segment(Self, sc, false); seg > 0) {

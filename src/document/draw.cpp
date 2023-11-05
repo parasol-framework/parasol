@@ -24,7 +24,7 @@ static void redraw(extDocument *Self, bool Focus)
 void layout::gen_scene_graph()
 {
    pf::Log log(__FUNCTION__);
-   //escVector *escvector;
+   //bcVector *escvector;
 
    if (Self->UpdatingLayout) return; // Drawing is disabled if the layout is being updated
 
@@ -47,10 +47,10 @@ void layout::gen_scene_graph()
    }
    Self->LayoutResources.clear();
 
-   std::stack<escList *> stack_list;
-   std::stack<escRow *> stack_row;
-   std::stack<escParagraph *> stack_para;
-   std::stack<escTable *> stack_table;
+   std::stack<bcList *> stack_list;
+   std::stack<bcRow *> stack_row;
+   std::stack<bcParagraph *> stack_para;
+   std::stack<bcTable *> stack_table;
    std::string link_save_rgb;
    bool tabfocus = false;
    bool m_cursor_drawn = false;
@@ -163,7 +163,7 @@ void layout::gen_scene_graph()
       for (auto cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()) {
          switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
-               auto &style = escape_data<escFont>(Self, cursor);
+               auto &style = escape_data<bcFont>(Self, cursor);
                if (auto new_font = style.getFont()) {
                   if (tabfocus IS false) font_fill = style.Fill;
                   else font_fill = Self->LinkSelectFill;
@@ -181,7 +181,7 @@ void layout::gen_scene_graph()
             }
 
             case ESC::LIST_START:
-               stack_list.push(&escape_data<escList>(Self, cursor));
+               stack_list.push(&escape_data<bcList>(Self, cursor));
                break;
 
             case ESC::LIST_END:
@@ -189,13 +189,13 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::PARAGRAPH_START:
-               stack_para.push(&escape_data<escParagraph>(Self, cursor));
+               stack_para.push(&escape_data<bcParagraph>(Self, cursor));
 
                if ((!stack_list.empty()) and (stack_para.top()->ListItem)) {
                   // Handling for paragraphs that form part of a list
 
-                  if ((stack_list.top()->Type IS escList::CUSTOM) or
-                      (stack_list.top()->Type IS escList::ORDERED)) {
+                  if ((stack_list.top()->Type IS bcList::CUSTOM) or
+                      (stack_list.top()->Type IS bcList::ORDERED)) {
                      if (!stack_para.top()->Value.empty()) {
                         font->X = fx - stack_para.top()->ItemIndent;
                         font->Y = segment.Area.Y + font->Leading + (segment.BaseLine - font->Ascent);
@@ -204,7 +204,7 @@ void layout::gen_scene_graph()
                         font->draw();
                      }
                   }
-                  else if (stack_list.top()->Type IS escList::BULLET) {
+                  else if (stack_list.top()->Type IS bcList::BULLET) {
                      //static const LONG SIZE_BULLET = 5;
                      // TODO: Requires conversion to vector
                      //gfxDrawEllipse(Bitmap,
@@ -219,7 +219,7 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::TABLE_START: {
-               stack_table.push(&escape_data<escTable>(Self, cursor));
+               stack_table.push(&escape_data<bcTable>(Self, cursor));
                auto table = stack_table.top();
 
                //log.trace("Draw Table: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
@@ -250,7 +250,7 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::ROW: {
-               stack_row.push(&escape_data<escRow>(Self, cursor));
+               stack_row.push(&escape_data<bcRow>(Self, cursor));
                auto row = stack_row.top();
                if (!row->Fill.empty()) {
                   auto rect = objVectorRectangle::create::global({
@@ -270,7 +270,7 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::CELL: {
-               auto &cell = escape_data<escCell>(Self, cursor);
+               auto &cell = escape_data<bcCell>(Self, cursor);
 
                #ifdef DBG_LAYOUT
                   cell.Stroke = "rgb(255,0,0)";
@@ -299,7 +299,7 @@ void layout::gen_scene_graph()
             }
 
             case ESC::LINK: {
-               auto esclink = &escape_data<escLink>(Self, cursor);
+               auto esclink = &escape_data<bcLink>(Self, cursor);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) and (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) and (Self->Tabs[Self->FocusIndex].Active)) {
@@ -320,7 +320,7 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::IMAGE: {
-               auto &ei = escape_data<escImage>(Self, cursor);
+               auto &ei = escape_data<bcImage>(Self, cursor);
                acMoveToPoint(ei.Rect, fx, segment.Area.Y, 0, MTF::X|MTF::Y);
                break;
             }
