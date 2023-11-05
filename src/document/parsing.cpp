@@ -55,7 +55,7 @@ static void trim_preformat(extDocument *Self, StreamChar &Index)
    auto i = Index.Index - 1;
    for (; i > 0; i--) {
       if (Self->Stream[i].Code IS ESC::TEXT) {
-         auto &text = escape_data<escText>(Self, i);
+         auto &text = escape_data<bcText>(Self, i);
 
          static const std::string ws(" \t\f\v\n\r");
          auto found = text.Text.find_last_not_of(ws);
@@ -107,7 +107,7 @@ static void saved_style_check(extDocument *Self, style_status &SavedStatus)
 
 static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   auto &advance = Self->reserveCode<escAdvance>(Index);
+   auto &advance = Self->reserveCode<bcAdvance>(Index);
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -683,32 +683,35 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          objVectorViewport *pat_viewport;
          pattern->getPtr(FID_Viewport, &pat_viewport);
 
+         // Load the SVG source file and target the VectorPattern
+
          std::string icon_path = "icons:" + icon + ".svg";
          if (auto svg = objSVG::create::integral({
+               fl::Name("svg_image"),
                fl::Path(icon_path),
                fl::Target(pat_viewport)
             })) {
+            
+            FreeResource(svg);
 
             std::string name = "icon" + std::to_string(Self->UniqueID++);
             scAddDef(Self->Scene, name.c_str(), pattern);
             
             if (auto rect = objVectorRectangle::create::global({ 
+                  fl::Name("rect_image"),
                   fl::Owner(Self->Page->UID), 
-                  fl::X(0), fl::Y(0), 
-                  fl::Width(16), fl::Height(16),
+                  fl::X(0), fl::Y(0), // Position to be corrected during layout
+                  fl::Width(StrToFloat(width)), fl::Height(StrToFloat(height)),
                   fl::Fill("url(#" + name + ")") 
                })) {
-               
+
                Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
-               Self->Resources.emplace_back(svg->UID, RT_OBJECT_UNLOAD_DELAY);
 
                escImage esc;
                esc.Rect = rect;
                Self->insertCode(Index, esc);
                return;
             }
-
-            FreeResource(svg);
          }
          else log.warning("Failed to load '%s'", icon_path.c_str());
 

@@ -13,7 +13,7 @@ The Document module exports a small number of functions in support of the @Docum
 
 THE BYTE CODE
 -------------
-The text stream is an array of escape code structures that indicate font style, paragraphs, hyperlinks, text etc.
+The document stream consists of byte code structures that indicate font style, paragraphs, hyperlinks, text etc.
 
 PARAGRAPH MANAGEMENT
 --------------------
@@ -103,10 +103,9 @@ thickness, or text inside the cell will mix with the border.
 
 //#define _DEBUG
 //#define DBG_LAYOUT
-//#define DBG_LAYOUT_ESCAPE // Do not use unless you want a lot of detail
 //#define DBG_WORDWRAP
 //#define DBG_STREAM
-//#define DBG_LINES // Print list of lines (segments)
+//#define DBG_LINES // Print list of segments
 //#define GUIDELINES // Clipping guidelines
 //#define GUIDELINES_CONTENT // Segment guidelines
 
@@ -206,7 +205,7 @@ enum class ESC : char {
    INDEX_END,
    XML,
    IMAGE,
-   // End of list - NB: PLEASE UPDATE escCode() IF YOU ADD NEW CODES
+   // End of list - NB: PLEASE UPDATE byteCode() IF YOU ADD NEW CODES
    END
 };
 
@@ -400,33 +399,33 @@ struct Tab {
 
 //********************************************************************************************************************
 
-static ULONG glEscapeCodeID = 1;
+static ULONG glByteCodeID = 1;
 
 class BaseCode {
 public:
    ULONG UID;   // Unique identifier for lookup
-   ESC Code = ESC::NIL; // Escape code
+   ESC Code = ESC::NIL; // Byte code
    
-   BaseCode() { UID = glEscapeCodeID++; }
-   BaseCode(ESC pCode) : Code(pCode) { UID = glEscapeCodeID++; }
+   BaseCode() { UID = glByteCodeID++; }
+   BaseCode(ESC pCode) : Code(pCode) { UID = glByteCodeID++; }
 };
 
 //********************************************************************************************************************
 
-struct escFont : public BaseCode {
+struct bcFont : public BaseCode {
    WORD FontIndex;      // Font lookup
    FSO  Options;
    std::string Fill;    // Font fill
 
-   escFont(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
+   bcFont(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
 
    objFont * getFont();
 };
 
 struct style_status {
-   struct escFont FontStyle;
+   struct bcFont FontStyle;
    struct process_table * Table;
-   struct escList * List;
+   struct bcList * List;
    std::string Face;
    WORD Point;
    bool FontChange;      // A major font change has occurred (e.g. face, point size)
@@ -476,8 +475,8 @@ struct DocEdit {
    DocEdit() : MaxChars(-1), Args(0), LineBreaks(false) { }
 };
 
-struct escLink;
-struct escCell;
+struct bcLink;
+struct bcCell;
 
 // DocLink describes an area on the page that can be interacted with as a link or table cell.
 // The link will be associated with a segment and an originating stream code.
@@ -487,18 +486,18 @@ struct escCell;
 // map to vector shapes.
 
 struct DocLink {
-   std::variant<escLink *, escCell *> Ref;
+   std::variant<bcLink *, bcCell *> Ref;
    DOUBLE X, Y, Width, Height;
    SEGINDEX Segment;
    ESC  BaseCode;
 
-   DocLink(ESC pCode, std::variant<escLink *, escCell *> pRef, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
+   DocLink(ESC pCode, std::variant<bcLink *, bcCell *> pRef, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
        Ref(pRef), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), BaseCode(pCode) { }
 
    DocLink() : X(0), Y(0), Width(0), Height(0), Segment(0), BaseCode(ESC::NIL) { }
 
-   escLink * asLink() { return std::get<escLink *>(Ref); }
-   escCell * asCell() { return std::get<escCell *>(Ref); }
+   bcLink * asLink() { return std::get<bcLink *>(Ref); }
+   bcCell * asCell() { return std::get<bcCell *>(Ref); }
    void exec(extDocument *);
 };
 
@@ -538,64 +537,64 @@ struct tablecol {
 
 //********************************************************************************************************************
 
-struct escText : public BaseCode {
+struct bcText : public BaseCode {
    std::string Text;
    bool Formatted = false;
    SEGINDEX Segment = -1; // Reference to the first segment that manages this text string.
 
-   escText() { Code = ESC::TEXT; }
-   escText(std::string pText) : Text(pText) { Code = ESC::TEXT; }
-   escText(std::string pText, bool pFormatted) : Text(pText), Formatted(pFormatted) { Code = ESC::TEXT; }
+   bcText() { Code = ESC::TEXT; }
+   bcText(std::string pText) : Text(pText) { Code = ESC::TEXT; }
+   bcText(std::string pText, bool pFormatted) : Text(pText), Formatted(pFormatted) { Code = ESC::TEXT; }
 };
 
-struct escAdvance : public BaseCode {
+struct bcAdvance : public BaseCode {
    LONG X, Y;
 
-   escAdvance() : X(0), Y(0) { Code = ESC::ADVANCE; }
+   bcAdvance() : X(0), Y(0) { Code = ESC::ADVANCE; }
 };
 
-struct escIndex : public BaseCode {
+struct bcIndex : public BaseCode {
    ULONG NameHash;     // The name of the index is held here as a hash
-   LONG  ID;           // UID for matching to the correct escIndexEnd
+   LONG  ID;           // UID for matching to the correct bcIndexEnd
    LONG  Y;            // The cursor's vertical position of when the index was encountered during layout
    bool Visible;       // true if the content inside the index is visible (this is the default)
    bool ParentVisible; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
 
-   escIndex(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
+   bcIndex(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
       NameHash(pName), ID(pID), Y(pY), Visible(pVisible), ParentVisible(pParentVisible) {
       Code = ESC::INDEX_START;
    }
 };
 
-struct escIndexEnd : public BaseCode {
-   LONG ID; // UID matching to the correct escIndex
-   escIndexEnd(LONG pID) : ID(pID) { Code = ESC::INDEX_END; }
+struct bcIndexEnd : public BaseCode {
+   LONG ID; // UID matching to the correct bcIndex
+   bcIndexEnd(LONG pID) : ID(pID) { Code = ESC::INDEX_END; }
 };
 
-struct escLink : public BaseCode {
+struct bcLink : public BaseCode {
    LINK Type;    // Link type (either a function or hyperlink)
    UWORD ID;
    FSO   Align;
    std::string PointerMotion; // Function to call for pointer motion events
-   std::string Ref;
+   std::string Ref; // Function name or a path, depending on Type
    std::vector<std::pair<std::string,std::string>> Args;
 
-   escLink() : Type(LINK::NIL), ID(0), Align(FSO::NIL) {
+   bcLink() : Type(LINK::NIL), ID(0), Align(FSO::NIL) {
       Code = ESC::LINK;
    }
 };
 
-struct escLinkEnd : public BaseCode {
-   escLinkEnd() { Code = ESC::LINK_END; }
+struct bcLinkEnd : public BaseCode {
+   bcLinkEnd() { Code = ESC::LINK_END; }
 };
 
-struct escImage : public BaseCode {
-   LONG Width = 0, Height = 0; // Client can define fixed a width/height 
+struct bcImage : public BaseCode {
+   DOUBLE Width = 0, Height = 0; // Client can define a fixed width/height 
    objVectorRectangle *Rect = NULL;
-   escImage() { Code = ESC::IMAGE; }
+   bcImage() { Code = ESC::IMAGE; }
 };
 
-struct escList : public BaseCode {
+struct bcList : public BaseCode {
    enum {
       ORDERED=0,
       BULLET,
@@ -613,19 +612,19 @@ struct escList : public BaseCode {
    UBYTE Type = BULLET;
    bool  Repass = false;
 
-   escList() { Code = ESC::LIST_START; }
+   bcList() { Code = ESC::LIST_START; }
 };
 
-struct escListEnd : public BaseCode {
-   escListEnd() { Code = ESC::LIST_END; }
+struct bcListEnd : public BaseCode {
+   bcListEnd() { Code = ESC::LIST_END; }
 };
 
-struct escSetMargins : public BaseCode {
+struct bcSetMargins : public BaseCode {
    WORD Left = 0x7fff; WORD Top = 0x7fff; WORD Bottom = 0x7fff; WORD Right = 0x7fff;
-   escSetMargins() { Code = ESC::SET_MARGINS; }
+   bcSetMargins() { Code = ESC::SET_MARGINS; }
 };
 
-struct escVector : public BaseCode {
+struct bcVector : public BaseCode {
    OBJECTID ObjectID = 0;     // Reference to the vector
    CLASSID ClassID = 0;       // Precise class that the object belongs to, mostly for informative/debugging purposes
    ClipRectangle Margins;
@@ -634,17 +633,17 @@ struct escVector : public BaseCode {
    bool IgnoreCursor = false; // true if the client has set fixed values for both X and Y
    bool BlockRight = false;   // true if no text may be printed to the right of the object
    bool BlockLeft = false;    // true if no text may be printed to the left of the object
-   escVector() { Code = ESC::VECTOR; }
+   bcVector() { Code = ESC::VECTOR; }
 };
 
-struct escXML : public BaseCode {
+struct bcXML : public BaseCode {
    OBJECTID ObjectID = 0;   // Reference to the object
    bool Owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
-   escXML() { Code = ESC::XML; }
+   bcXML() { Code = ESC::XML; }
 };
 
-struct escTable : public BaseCode {
-   struct escTable *Stack = NULL;
+struct bcTable : public BaseCode {
+   struct bcTable *Stack = NULL;
    std::vector<tablecol> Columns; // Table column management
    std::string Fill, Stroke;
    WORD  CellVSpacing = 0, CellHSpacing = 0; // Spacing between each cell
@@ -666,7 +665,7 @@ struct escTable : public BaseCode {
    bool  Wrap = false;
    bool  Thin = false;
    // Entry followed by the minimum width of each column
-   escTable() { Code = ESC::TABLE_START; }
+   bcTable() { Code = ESC::TABLE_START; }
 
    void computeColumns() { // Compute the default column widths
       if (!ComputeColumns) return;
@@ -696,11 +695,11 @@ struct escTable : public BaseCode {
    }
 };
 
-struct escTableEnd : public BaseCode {
-   escTableEnd() { Code = ESC::TABLE_END; }
+struct bcTableEnd : public BaseCode {
+   bcTableEnd() { Code = ESC::TABLE_END; }
 };
 
-class escParagraph : public BaseCode {
+class bcParagraph : public BaseCode {
    public:
    std::string Value = "";
    LONG   X, Y, Height;
@@ -714,7 +713,7 @@ class escParagraph : public BaseCode {
    bool ListItem;
    bool Trim;
 
-   escParagraph() : BaseCode(ESC::PARAGRAPH_START), X(0), Y(0), Height(0),
+   bcParagraph() : BaseCode(ESC::PARAGRAPH_START), X(0), Y(0), Height(0),
       BlockIndent(0), ItemIndent(0), Indent(0), VSpacing(1.0), LeadingRatio(1.0),
       Relative(false), ListItem(false), Trim(false) { }
 
@@ -725,26 +724,26 @@ class escParagraph : public BaseCode {
    }
 };
 
-struct escParagraphEnd : public BaseCode {
-   escParagraphEnd() : BaseCode(ESC::PARAGRAPH_END) { }
+struct bcParagraphEnd : public BaseCode {
+   bcParagraphEnd() : BaseCode(ESC::PARAGRAPH_END) { }
 };
 
-struct escRow : public BaseCode {
+struct bcRow : public BaseCode {
    LONG  Y = 0;
    LONG  RowHeight = 0; // Height of all cells on this row, used when drawing the cells
    LONG  MinHeight = 0;
    std::string Stroke, Fill;
    bool  VerticalRepass = false;
 
-   escRow() : BaseCode(ESC::ROW) { }
+   bcRow() : BaseCode(ESC::ROW) { }
 };
 
-struct escRowEnd : public BaseCode {
-   escRowEnd() : BaseCode(ESC::ROW_END) { }
+struct bcRowEnd : public BaseCode {
+   bcRowEnd() : BaseCode(ESC::ROW_END) { }
 };
 
-struct escCell : public BaseCode {
-   LONG CellID;         // Identifier for the matching escCellEnd
+struct bcCell : public BaseCode {
+   LONG CellID;         // Identifier for the matching bcCellEnd
    LONG Column;         // Column number that the cell starts in
    LONG ColSpan;        // Number of columns spanned by this cell (normally set to 1)
    LONG RowSpan;        // Number of rows spanned by this cell
@@ -756,15 +755,15 @@ struct escCell : public BaseCode {
    std::string Stroke;
    std::string Fill;
 
-   escCell(LONG pCellID, LONG pColumn) :
+   bcCell(LONG pCellID, LONG pColumn) :
       BaseCode(ESC::CELL), CellID(pCellID), Column(pColumn),
       ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0)
       { }
 };
 
-struct escCellEnd : public BaseCode {
-   LONG CellID = 0;    // Matching identifier from escCell
-   escCellEnd() : BaseCode(ESC::CELL_END) { }
+struct bcCellEnd : public BaseCode {
+   LONG CellID = 0;    // Matching identifier from bcCell
+   bcCellEnd() : BaseCode(ESC::CELL_END) { }
 };
 
 //********************************************************************************************************************
@@ -798,14 +797,14 @@ class extDocument : public objDocument {
    std::vector<DocClip> Clips;
    std::vector<DocLink> Links;
    std::vector<DocMouseOver> MouseOverChain;
-   std::vector<struct docresource> Resources;
+   std::vector<struct docresource> Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<Tab> Tabs;
    std::vector<struct EditCell> EditCells;
    std::vector<OBJECTPTR> LayoutResources;
    std::unordered_map<std::string, struct DocEdit> EditDefs;
-   std::unordered_map<ULONG, std::variant<escText, escAdvance, escTable, escTableEnd, escRow, escRowEnd, escParagraph,
-      escParagraphEnd, escCell, escCellEnd, escLink, escLinkEnd, escList, escListEnd, escIndex, escIndexEnd,
-      escFont, escVector, escSetMargins, escXML, escImage>> Codes;
+   std::unordered_map<ULONG, std::variant<bcText, bcAdvance, bcTable, bcTableEnd, bcRow, bcRowEnd, bcParagraph,
+      bcParagraphEnd, bcCell, bcCellEnd, bcLink, bcLinkEnd, bcList, bcListEnd, bcIndex, bcIndexEnd,
+      bcFont, bcVector, bcSetMargins, bcXML, bcImage>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    struct DocEdit *ActiveEditDef; // As for ActiveEditCell, but refers to the active editing definition
@@ -913,15 +912,15 @@ std::vector<SortedSegment> & extDocument::getSortedSegments()
 }
 
 //********************************************************************************************************************
-// Inserts an escape sequence into the text stream.
+// Inserts a byte code sequence into the text stream.
 
 template <class T> T & extDocument::insertCode(StreamChar &Cursor, T &Code)
 {
-   // All escape codes are saved to a global container.
+   // All byte codes are saved to a global container.
 
    if (Codes.contains(Code.UID)) { 
-      // Sanity check - is the UID unique?  The caller probably needs to utilise glEscapeCodeID++
-      // NB: At some point the re-use of codes should be allowed, e.g. escFont reversions would benefit from this.
+      // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
+      // NB: At some point the re-use of codes should be allowed, e.g. bcFont reversions would benefit from this.
       pf::Log log(__FUNCTION__);
       log.warning("Code #%d is already registered.", Code.UID);
    }
@@ -940,7 +939,7 @@ template <class T> T & extDocument::insertCode(StreamChar &Cursor, T &Code)
 
 template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
 {
-   auto key = glEscapeCodeID;
+   auto key = glByteCodeID;
    Codes.emplace(key, T());
    auto &result = std::get<T>(Codes[key]);
 
@@ -958,12 +957,11 @@ template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
 //********************************************************************************************************************
 
 enum {
-   RT_OBJECT_TEMP=1,
-   RT_OBJECT_UNLOAD,
-   RT_OBJECT_UNLOAD_DELAY,
-   RT_MEMORY,
-   RT_PERSISTENT_SCRIPT, // Survives refreshes
-   RT_PERSISTENT_OBJECT  // Survives refreshes
+   RT_OBJECT_TEMP=1,       // The object can be removed after parsing has finished
+   RT_OBJECT_UNLOAD,       // Default choice for object termination, terminates immediately
+   RT_OBJECT_UNLOAD_DELAY, // Use SendMessage() to terminate the object
+   RT_PERSISTENT_SCRIPT,   // The script can survive refreshes
+   RT_PERSISTENT_OBJECT    // The object can survive refreshes
 };
 
 struct docresource {
@@ -978,10 +976,7 @@ struct docresource {
    docresource(OBJECTID pID, BYTE pType) : ObjectID(pID), Type(pType) { }
 
    ~docresource() {
-      if (Type IS RT_MEMORY) {
-         FreeResource(Address);
-      }
-      else if ((Type IS RT_PERSISTENT_SCRIPT) or (Type IS RT_PERSISTENT_OBJECT)) {
+      if ((Type IS RT_PERSISTENT_SCRIPT) or (Type IS RT_PERSISTENT_OBJECT)) {
          if (Terminate) FreeResource(ObjectID);
          else SendMessage(MSGID_FREE, MSF::NIL, &ObjectID, sizeof(OBJECTID));
       }
@@ -1000,7 +995,7 @@ public:
 };
 
 struct process_table {
-   struct escTable *escTable;
+   struct bcTable *bcTable;
    LONG RowCol;
 };
 
@@ -1009,7 +1004,7 @@ struct EditCell {
    LONG X, Y, Width, Height;
 };
 
-static const std::string & escCode(ESC Code) {
+static const std::string & byteCode(ESC Code) {
    static const std::string strCodes[] = {
       "?", "Text", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Vector", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
@@ -1154,7 +1149,7 @@ struct FontEntry {
 
 static std::vector<FontEntry> glFonts;
 
-objFont * escFont::getFont() 
+objFont * bcFont::getFont() 
 {
    if ((FontIndex < INDEX(glFonts.size())) and (FontIndex >= 0)) return glFonts[FontIndex].Font;
    else {
@@ -1166,7 +1161,7 @@ objFont * escFont::getFont()
 }
 
 //********************************************************************************************************************
-// For a given index in the stream, return the element code.  Index MUST be a valid reference to an escape sequence.
+// For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
 
 template <class T> T & escape_data(extDocument *Self, StreamChar Index) {
    auto &sv = Self->Codes[Self->Stream[Index.Index].UID];
@@ -1181,7 +1176,7 @@ template <class T> T & escape_data(extDocument *Self, INDEX Index) {
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
 template <class T> inline const std::string & ESCAPE_NAME(RSTREAM &Stream, T Index) {
-   return escCode(Stream[Index].Code);
+   return byteCode(Stream[Index].Code);
 }
 
 //********************************************************************************************************************
@@ -1257,7 +1252,7 @@ inline INDEX find_cell(extDocument *Self, LONG ID)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].Code IS ESC::CELL) {
-         auto &cell = std::get<escCell>(Self->Codes[Self->Stream[i].UID]);
+         auto &cell = std::get<bcCell>(Self->Codes[Self->Stream[i].UID]);
          if ((ID) and (ID IS cell.CellID)) return i;
       }
    }
@@ -1269,7 +1264,7 @@ inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].Code IS ESC::CELL) {
-         auto &cell = escape_data<escCell>(Self, i);
+         auto &cell = escape_data<bcCell>(Self, i);
          if (EditDef == cell.EditDef) return i;
       }
    }
@@ -1299,7 +1294,7 @@ inline void layout_doc_fast(extDocument *Self)
 void StreamChar::eraseChar(extDocument *Self, RSTREAM &Stream) // Erase a character OR an escape code.
 {
    if (Stream[Index].Code IS ESC::TEXT) {
-      auto &text = escape_data<escText>(Self, Index);
+      auto &text = escape_data<bcText>(Self, Index);
       if (Offset < text.Text.size()) text.Text.erase(Offset, 1);
       if (Offset > text.Text.size()) Offset = text.Text.size();
    }
@@ -1315,7 +1310,7 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream)
    auto seek = Offset;
    while (size_t(idx) < Stream.size()) {
       if (Stream[idx].Code IS ESC::TEXT) {
-         auto &text = escape_data<escText>(Self, idx);
+         auto &text = escape_data<bcText>(Self, idx);
          if (seek < text.Text.size()) return text.Text[seek];
          else seek = 0; // The current character offset isn't valid, reset it.
       }
@@ -1334,7 +1329,7 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
    
    while (unsigned(idx) < Stream.size()) {
       if (Stream[idx].Code IS ESC::TEXT) {
-         auto &text = escape_data<escText>(Self, idx);
+         auto &text = escape_data<bcText>(Self, idx);
          if (off + Seek < text.Text.size()) return text.Text[off + Seek];   
          Seek -= text.Text.size() - off;
          off = 0;
@@ -1348,7 +1343,7 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
 void StreamChar::nextChar(extDocument *Self, const RSTREAM &Stream)
 {
    if (Stream[Index].Code IS ESC::TEXT) {
-      auto &text = escape_data<escText>(Self, Index);
+      auto &text = escape_data<bcText>(Self, Index);
       if (++Offset >= text.Text.size()) {
          Index++;
          Offset = 0;
@@ -1369,7 +1364,7 @@ void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
    if (Index > 0) {
       Index--;
       if (Stream[Index].Code IS ESC::TEXT) {
-         Offset = escape_data<escText>(Self, Index).Text.size()-1;
+         Offset = escape_data<bcText>(Self, Index).Text.size()-1;
       }
       else Offset =0;
    }
@@ -1382,12 +1377,12 @@ void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
 char StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
 {
    if ((Offset > 0) and (Stream[Index].Code IS ESC::TEXT)) {
-      return escape_data<escText>(Self, Index).Text[Offset-1];
+      return escape_data<bcText>(Self, Index).Text[Offset-1];
    }
    
    for (auto i=Index; i > 0; i--) {
       if (Stream[i].Code IS ESC::TEXT) {
-         return escape_data<escText>(Self, i).Text.back();
+         return escape_data<bcText>(Self, i).Text.back();
       }   
    }
 

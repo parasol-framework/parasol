@@ -20,7 +20,7 @@ static std::string printable(extDocument *Self, StreamChar Start, ULONG Length)
    StreamChar i = Start;
    while ((i.Index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
       if (Self->Stream[i.Index].Code IS ESC::TEXT) {
-         auto &text = escape_data<escText>(Self, i);
+         auto &text = escape_data<bcText>(Self, i);
          result += text.Text.substr(i.Offset, result.capacity() - result.size());
       }
       else result += '%';
@@ -225,7 +225,7 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
    size_t size = 0;
    for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
       if (Self->Stream[cs.Index].Code IS ESC::TEXT) {
-         auto &text = escape_data<escText>(Self, cs);
+         auto &text = escape_data<bcText>(Self, cs);
          if (cs.Index < End.Index) size = text.Text.size() - cs.Offset;         
          else size = (End.Offset < text.Text.size() ? End.Offset : text.Text.size()) - cs.Offset;
       }
@@ -239,7 +239,7 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
       LONG pos = 0;
       for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
          if (Self->Stream[cs.Index].Code IS ESC::TEXT) {
-            auto &text = escape_data<escText>(Self, cs);
+            auto &text = escape_data<bcText>(Self, cs);
             if (cs.Index < End.Index) {
                CopyMemory(text.Text.c_str() + cs.Offset, str + pos, text.Text.size() - cs.Offset);
                pos += text.Text.size() - cs.Offset;
@@ -1215,11 +1215,11 @@ static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string
    style_check(Self, Index);
 
    if (Preformat) {
-      escText et(Text, true);
+      bcText et(Text, true);
       Self->insertCode(Index, et);
    }
    else {
-      escText et;
+      bcText et;
       et.Text.reserve(Text.size());
       auto ws = Self->NoWhitespace;
       for (unsigned i=0; i < Text.size(); ) {
@@ -2198,7 +2198,7 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
 
    for (INDEX i = Segment.Start.Index; i < Segment.Stop.Index; i++) {
       if (Self->Stream[i].Code IS ESC::TEXT) {
-         auto &str = escape_data<escText>(Self, i).Text;
+         auto &str = escape_data<bcText>(Self, i).Text;
          LONG offset;
          if (!fntConvertCoords(font, str.c_str(), X - Segment.Area.X, 0, NULL, NULL, NULL, &offset, CharX)) {
             Char.set(Segment.Start.Index, offset);
@@ -2233,7 +2233,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *Ch
       auto i = Self->Segments[segment].Start;
       while ((i <= Self->Segments[segment].Stop) and (i < Char)) {
          if (Self->Stream[i.Index].Code IS ESC::TEXT) {
-            *CharX = fntStringWidth(font, escape_data<escText>(Self, i).Text.c_str(), -1);
+            *CharX = fntStringWidth(font, escape_data<bcText>(Self, i).Text.c_str(), -1);
             return ERR_Okay;
          }
          i.nextCode();

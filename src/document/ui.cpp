@@ -10,7 +10,7 @@ static bool delete_selected(extDocument *Self)
 
       if (start.Offset > 0) {
          if (Self->Stream[start.Index].Code IS ESC::TEXT) {
-            auto &text = escape_data<escText>(Self, start);
+            auto &text = escape_data<bcText>(Self, start);
             if (start.Index IS end.Index) text.Text.erase(start.Offset, end.Offset - start.Offset);
             else text.Text.erase(start.Offset, text.Text.size() - start.Offset);
          }
@@ -23,7 +23,7 @@ static bool delete_selected(extDocument *Self)
          end.Index -= (end.Index - start.Index);
 
          if ((end.Offset > 0) and (Self->Stream[end.Index].Code IS ESC::TEXT)) {
-            auto &text = escape_data<escText>(Self, end);            
+            auto &text = escape_data<bcText>(Self, end);            
             text.Text.erase(0, end.Offset);
          }
       }
@@ -299,7 +299,7 @@ static void error_dialog(const std::string Title, const std::string Message)
    static OBJECTID dialog_id = 0;
 
    log.warning("%s", Message.c_str());
-#ifndef DBG_LAYOUT || DBG_STREAM || DBG_LINES
+#if !(defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_LINES))
    if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
    if (detect_recursive_dialog) return;
    detect_recursive_dialog = true;

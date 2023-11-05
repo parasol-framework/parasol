@@ -25,6 +25,11 @@ static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR Resu
    auto Self = (extDocument *)CurrentContext();
    Self->Scene = NULL;
    Self->Viewport = NULL;
+
+   // If the viewport is being forcibly terminated (e.g. by window closure) then the cleanest way to deal with
+   // lingering page resources is to remove them now.
+
+   Self->Resources.clear();
 }
 
 // Used by EventCallback for subscribers that disappear without notice.
@@ -103,7 +108,7 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
          scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
       else if (trigger.Type IS CALL_STDC) {
-         auto routine = (void (*)(APTR, extDocument *, LONG Width, LONG Height))trigger.StdC.Routine;
+         auto routine = (void (*)(APTR, extDocument *, LONG, LONG))trigger.StdC.Routine;
          pf::SwitchContext context(trigger.StdC.Context);
          routine(trigger.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
       }
@@ -1061,7 +1066,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
       for (INDEX i=Args->Start; i < Args->End; i++) {
          if (Self->Stream[i].Code IS ESC::TEXT) {
-            buffer << escape_data<escText>(Self, i).Text;
+            buffer << escape_data<bcText>(Self, i).Text;
          }
       }
 

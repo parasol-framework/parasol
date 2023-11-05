@@ -319,9 +319,15 @@ void layout::gen_scene_graph()
                }
                break;
 
+            case ESC::IMAGE: {
+               auto &ei = escape_data<escImage>(Self, cursor);
+               acMoveToPoint(ei.Rect, fx, segment.Area.Y, 0, MTF::X|MTF::Y);
+               break;
+            }
+
             case ESC::TEXT: { // cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()
                if (!oob) {
-                  auto &txt = escape_data<escText>(Self, cursor);
+                  auto &txt = escape_data<bcText>(Self, cursor);
 
                   std::string str;
                   if (cursor.Index < segment.TrimStop.Index) str.append(txt.Text, cursor.Offset, std::string::npos);

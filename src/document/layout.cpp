@@ -158,7 +158,7 @@ struct layout {
 
 void layout::procAdvance()
 {
-   auto advance = &escape_data<escAdvance>(Self, idx);
+   auto advance = &escape_data<bcAdvance>(Self, idx);
    m_cursor_x += advance->X;
    m_cursor_y += advance->Y;
    if (advance->X) reset_segment();
@@ -211,7 +211,7 @@ WRAP layout::procText(LONG AbsX, LONG Width)
 
    m_align_width = m_wrap_edge; // TODO: Not sure about this following the switch to embedded TEXT structures
 
-   auto &text = escape_data<escText>(Self, idx);
+   auto &text = escape_data<bcText>(Self, idx);
    auto &str = text.Text;
    for (unsigned i=0; i < str.size(); ) {
       if (str[i] IS '\n') { // The use of '\n' in a string forces a line break
@@ -1948,7 +1948,7 @@ extend_page:
             }
             else if (wrap_result IS WRAP::WRAPPED) { // A wrap occurred during text processing.
                // The presence of the line-break must be ignored, due to word-wrap having already made the new line for us
-               auto &text = escape_data<escText>(Self, idx);
+               auto &text = escape_data<bcText>(Self, idx);
                if (text.Text[0] IS '\n') {
                   if (text.Text.size() > 0) m_line.index.Offset = 1;
                }
