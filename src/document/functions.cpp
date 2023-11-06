@@ -72,7 +72,7 @@ static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
 static void print_stream(extDocument *Self, const RSTREAM &Stream)
 {
    if (Stream.empty()) return;
-   
+
    pf::Log log;
    std::ostringstream out;
    out << "\nSTREAM: " << Stream.size() << " codes\n";
@@ -116,7 +116,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
 
 #endif
 
-#ifdef DBG_LINES
+#ifdef DBG_SEGMENTS
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -226,7 +226,7 @@ static STRING stream_to_string(extDocument *Self, StreamChar Start, StreamChar E
    for (; (cs.Index <= End.Index) and (cs.Index < INDEX(Self->Stream.size())); cs.nextCode()) {
       if (Self->Stream[cs.Index].Code IS ESC::TEXT) {
          auto &text = escape_data<bcText>(Self, cs);
-         if (cs.Index < End.Index) size = text.Text.size() - cs.Offset;         
+         if (cs.Index < End.Index) size = text.Text.size() - cs.Offset;
          else size = (End.Offset < text.Text.size() ? End.Offset : text.Text.size()) - cs.Offset;
       }
    }
@@ -604,111 +604,6 @@ repeat:
 
 //********************************************************************************************************************
 
-static bool eval_condition(const std::string &String)
-{
-   pf::Log log(__FUNCTION__);
-
-   static const FieldDef table[] = {
-      { "<>", COND_NOT_EQUAL },
-      { "!=", COND_NOT_EQUAL },
-      { "=",  COND_EQUAL },
-      { "==", COND_EQUAL },
-      { "<",  COND_LESS_THAN },
-      { "<=", COND_LESS_EQUAL },
-      { ">",  COND_GREATER_THAN },
-      { ">=", COND_GREATER_EQUAL },
-      { NULL, 0 }
-   };
-
-   LONG start = 0;
-   while ((start < LONG(String.size())) and (String[start] <= 0x20)) start++;
-
-   bool reverse = false;
-
-   // Find the condition statement
-
-   LONG i;
-   for (i=start; i < LONG(String.size()); i++) {
-      if ((String[i] IS '!') and (String[i+1] IS '=')) break;
-      if (String[i] IS '>') break;
-      if (String[i] IS '<') break;
-      if (String[i] IS '=') break;
-   }
-
-   // If there is no condition statement, evaluate the statement as an integer
-
-   if (i >= LONG(String.size())) {
-      if (StrToInt(String)) return true;
-      else return false;
-   }
-
-   LONG cpos = i;
-
-   // Extract Test value
-
-   while ((i > 0) and (String[i-1] IS ' ')) i--;
-   std::string test(String, i);
-
-   // Condition value
-
-   LONG condition = 0;
-   {
-      std::string cond;
-      cond.reserve(3);
-      char c;
-      for (i=cpos,c=0; (c < 2) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
-         cond[c++] = String[i];
-      }
-
-      for (unsigned j=0; table[j].Name; j++) {
-         if (!StrMatch(cond, table[j].Name)) {
-            condition = table[j].Value;
-            break;
-         }
-      }
-   }
-
-   while ((String[i]) and (String[i] <= 0x20)) i++; // skip white-space
-
-   bool truth = false;
-   if (!test.empty()) {
-      if (condition) {
-         // Convert the If->Compare to its specified type
-
-         auto cmp_type  = StrDatatype(String.c_str()+i);
-         auto test_type = StrDatatype(test.c_str());
-
-         if (((test_type IS STT::NUMBER) or (test_type IS STT::FLOAT)) and ((cmp_type IS STT::NUMBER) or (cmp_type IS STT::FLOAT))) {
-            auto cmp_float  = StrToFloat(String.c_str()+i);
-            auto test_float = StrToFloat(test);
-            switch (condition) {
-               case COND_NOT_EQUAL:     if (test_float != cmp_float) truth = true; break;
-               case COND_EQUAL:         if (test_float IS cmp_float) truth = true; break;
-               case COND_LESS_THAN:     if (test_float <  cmp_float) truth = true; break;
-               case COND_LESS_EQUAL:    if (test_float <= cmp_float) truth = true; break;
-               case COND_GREATER_THAN:  if (test_float >  cmp_float) truth = true; break;
-               case COND_GREATER_EQUAL: if (test_float >= cmp_float) truth = true; break;
-               default: log.warning("Unsupported condition type %d.", condition);
-            }
-         }
-         else if (condition IS COND_EQUAL) {
-            if (!StrMatch(test, String.c_str()+i)) truth = true;
-         }
-         else if (condition IS COND_NOT_EQUAL) {
-            if (StrMatch(test, String.c_str()+i) != ERR_Okay) truth = true;
-         }
-         else log.warning("String comparison for condition %d not possible.", condition);
-      }
-      else log.warning("No test condition in \"%s\".", String.c_str());
-   }
-   else log.warning("No test value in \"%s\".", String.c_str());
-
-   if (reverse) return truth ^ 1;
-   else return truth;
-}
-
-//********************************************************************************************************************
-
 static ERROR consume_input_events(objVector *Vector, const InputEvent *Events)
 {
    auto Self = (extDocument *)CurrentContext();
@@ -755,54 +650,6 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 
 
    return false;
-}
-
-//********************************************************************************************************************
-// Used by if, elseif, while statements to check the satisfaction of conditions.
-
-static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
-{
-   pf::Log log("eval");
-
-   bool satisfied = false;
-   bool reverse = false;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("statement", Tag.Attribs[i].Name)) {
-         satisfied = eval_condition(Tag.Attribs[i].Value);
-         log.trace("Statement: %s", Tag.Attribs[i].Value);
-         break;
-      }
-      else if (!StrMatch("exists", Tag.Attribs[i].Name)) {
-         OBJECTID object_id;
-         if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id)) {
-            if (valid_objectid(Self, object_id)) {
-               satisfied = true;
-            }
-         }
-         break;
-      }
-      else if (!StrMatch("notnull", Tag.Attribs[i].Name)) {
-         log.trace("NotNull: %s", Tag.Attribs[i].Value);
-         if (Tag.Attribs[i].Value.empty()) satisfied = false;
-         else if (Tag.Attribs[i].Value == "0") satisfied = false;
-         else satisfied = true;
-      }
-      else if ((!StrMatch("isnull", Tag.Attribs[i].Name)) or (!StrMatch("null", Tag.Attribs[i].Name))) {
-         log.trace("IsNull: %s", Tag.Attribs[i].Value);
-            if (Tag.Attribs[i].Value.empty()) satisfied = true;
-            else if (Tag.Attribs[i].Value == "0") satisfied = true;
-            else satisfied = false;
-      }
-      else if (!StrMatch("not", Tag.Attribs[i].Name)) {
-         reverse = true;
-      }
-   }
-
-   // Check for a not condition and invert the satisfied value if found
-
-   if (reverse) satisfied = satisfied ^ 1;
-
-   return satisfied;
 }
 
 /*********************************************************************************************************************
@@ -852,7 +699,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
          }
 
          Self->Style.FontStyle.Fill = Self->FontFill;
-         Self->Style.FontChange = true;
+         Self->Style.FaceChange = true;
       }
 
       if (auto font = Self->Style.FontStyle.getFont()) {
@@ -936,7 +783,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
          }
 
          Self->Style.FontStyle.Fill = Self->FontFill;
-         Self->Style.FontChange = true;
+         Self->Style.FaceChange = true;
       }
 
       if (auto font = Self->Style.FontStyle.getFont()) {
@@ -974,229 +821,6 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
    if (Self->FocusIndex >= LONG(Self->Tabs.size())) Self->FocusIndex = -1;
 
    return ERR_Okay;
-}
-
-//********************************************************************************************************************
-// This is the principal function for the parsing of XML tags.  Insertion into the stream will occur at Index, which
-// is updated on completion.
-//
-// Supported Flags:
-//   IPF::NO_CONTENT:
-//   IPF::STRIP_FEEDS:
-
-static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &Index, IPF &Flags)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Self->Error) {
-      log.traceWarning("Error field is set, returning immediately.");
-      return TRF::NIL;
-   }
-
-   IPF filter = Flags & IPF::FILTER_ALL;
-   XMLTag *object_template = NULL;
-
-   auto saved_attribs = Tag.Attribs;
-   translate_attrib_args(Self, Tag.Attribs);
-
-   auto tagname = Tag.Attribs[0].Name;
-   if (tagname.starts_with('$')) tagname.erase(0, 1);
-   object_template = NULL;
-  
-   TRF result = TRF::NIL;
-   if (Tag.isContent()) {
-      if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
-         if ((Flags & IPF::STRIP_FEEDS) != IPF::NIL) {
-            if (Self->CurrentObject) {
-               // Objects do not normally accept document content (user should use <xml>)
-               // An exception is made for content that is injected within an object tag.
-
-               if (XML IS Self->InjectXML) {
-                  unsigned i = 0;
-                  while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
-                  acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str() + i);
-               }
-            }
-            else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
-               unsigned i = 0;
-               while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
-               if (i > 0) {
-                  auto content = Tag.Attribs[0].Value.substr(i);
-                  insert_text(Self, Index, content, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
-               }
-               else insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
-            }
-            Flags &= ~IPF::STRIP_FEEDS;
-         }
-         else if (Self->CurrentObject) {
-            if (XML IS Self->InjectXML) acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str());
-         }
-         else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
-            insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
-         }
-      }
-      Tag.Attribs = saved_attribs;
-      return result;
-   }
-
-   if (Self->Templates) { // Check for templates first, as they can be used to override the default RPL tag names.
-      bool template_match = false;
-      for (auto &scan : Self->Templates->Tags) {
-         for (unsigned i=0; i < scan.Attribs.size(); i++) {
-            if ((!StrMatch("name", scan.Attribs[i].Name)) and (!StrMatch(tagname, scan.Attribs[i].Value))) {
-               template_match = true;
-            }
-         }
-
-         if (template_match) {
-            // Process the template by jumping into it.  Arguments in the tag are added to a sequential
-            // list that will be processed in reverse by translate_attrib_args().
-
-            pf::Log log(__FUNCTION__);
-
-            initTemplate block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
-
-            log.traceBranch("Executing template '%s'.", tagname.c_str());
-
-            Self->TemplateArgs.push_back(&Tag);
-            parse_tags(Self, Self->Templates, scan.Children, Index, Flags);
-            Self->TemplateArgs.pop_back();
-
-            Tag.Attribs = saved_attribs;
-            return result;
-         }
-      }
-   }
-
-   if (auto tag = glTags.find(tagname); tag != glTags.end()) {
-      auto &tr = tag->second;
-      if (((tr.Flags & TAG::FILTER_ALL) != TAG::NIL) and ((tr.Flags & TAG(filter)) IS TAG::NIL)) {
-         // A filter applies to this tag and the filter flags do not match
-         log.warning("Invalid use of tag '%s' - Not applied to the correct tag parent.", tagname.c_str());
-         Self->Error = ERR_InvalidData;
-      }
-      else if (tr.Routine) {
-         //log.traceBranch("%s", tagname);
-
-         if ((Self->CurrentObject) and ((tr.Flags & (TAG::OBJECTOK|TAG::CONDITIONAL)) IS TAG::NIL)) {
-            log.warning("Illegal use of tag %s within object of class '%s'.", tagname.c_str(), Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else {
-
-            if (((Flags & IPF::NO_CONTENT) != IPF::NIL) and ((tr.Flags & TAG::CONTENT) != TAG::NIL)) {
-               // Do nothing when content is not allowed
-               log.trace("Content disabled on '%s', tag not processed.", tagname.c_str());
-            }
-            else if ((tr.Flags & TAG::CHILDREN) != TAG::NIL) {
-               // Child content is compulsory or tag has no effect
-               if (!Tag.Children.empty()) tr.Routine(Self, XML, Tag, Tag.Children, Index, Flags);
-               else log.trace("No content found in tag '%s'", tagname.c_str());
-            }
-            else tr.Routine(Self, XML, Tag, Tag.Children, Index, Flags);
-
-         }
-      }
-   }
-   else if (!StrMatch("break", tagname)) {
-      // Breaking stops executing all tags (within this section) beyond the breakpoint.  If in a loop, the loop
-      // will stop executing.
-
-      result = TRF::BREAK;
-   }
-   else if (!StrMatch("continue", tagname)) {
-      // Continuing - does the same thing as a break but the loop continues.
-      // If used when not in a loop, then all sibling tags are skipped.
-
-      result = TRF::CONTINUE;
-   }
-   else if (!StrMatch("if", tagname)) {
-      if (check_tag_conditions(Self, Tag)) { // Statement is true
-         Flags &= ~IPF::CHECK_ELSE;
-         result = parse_tags(Self, XML, Tag.Children, Index, Flags);
-      }
-      else Flags |= IPF::CHECK_ELSE;
-   }
-   else if (!StrMatch("elseif", tagname)) {
-      if ((Flags & IPF::CHECK_ELSE) != IPF::NIL) {
-         if (check_tag_conditions(Self, Tag)) { // Statement is true
-            Flags &= ~IPF::CHECK_ELSE;
-            result = parse_tags(Self, XML, Tag.Children, Index, Flags);
-         }
-      }
-   }
-   else if (!StrMatch("else", tagname)) {
-      if ((Flags & IPF::CHECK_ELSE) != IPF::NIL) {
-         Flags &= ~IPF::CHECK_ELSE;
-         result = parse_tags(Self, XML, Tag.Children, Index, Flags);
-      }
-   }
-   else if (!StrMatch("while", tagname)) {
-      if ((!Tag.Children.empty()) and (check_tag_conditions(Self, Tag))) {
-         // Save/restore the statement string on each cycle to fully evaluate the condition each time.
-
-         auto saveindex = Self->LoopIndex;
-         Self->LoopIndex = 0;
-
-         bool state = true;
-         while (state) {
-            state = check_tag_conditions(Self, Tag);
-            Tag.Attribs = saved_attribs;
-            translate_attrib_args(Self, Tag.Attribs);
-
-            if ((state) and ((parse_tags(Self, XML, Tag.Children, Index, Flags) & TRF::BREAK) != TRF::NIL)) break;
-
-            Self->LoopIndex++;
-         }
-
-         Self->LoopIndex = saveindex;
-      }
-   }
-   else if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
-      log.warning("Tag '%s' unsupported as an instruction or template.", tagname.c_str());
-   }
-   else log.warning("Unrecognised tag '%s' used in a content-restricted area.", tagname.c_str());
-
-   Tag.Attribs = saved_attribs;
-   return result;
-}
-
-static TRF parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, StreamChar &Index, IPF Flags)
-{
-   TRF result = TRF::NIL;
-
-   for (auto &tag : Tags) {
-      // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
-      result = parse_tag(Self, XML, tag, Index, Flags);
-      if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
-   }
-
-   return result;
-}
-
-//********************************************************************************************************************
-// Check for a pending font and/or style change and respond appropriately.
-
-static void style_check(extDocument *Self, StreamChar &Cursor)
-{
-   if (Self->Style.FontChange) {
-      // Create a new font object for the current style
-
-      auto style_name = get_font_style(Self->Style.FontStyle.Options);
-      Self->Style.FontStyle.FontIndex = create_font(Self->Style.Face, style_name, Self->Style.Point);
-      //log.trace("Changed font to index %d, face %s, style %s, size %d.", Self->Style.FontStyle.Index, Self->Style.Face, style_name, Self->Style.Point);
-      Self->Style.FontChange  = false;
-      Self->Style.StyleChange = true;
-   }
-
-   if (Self->Style.StyleChange) { // Insert a font change into the text stream
-      // NB: Assigning a new UID is suboptimal in cases where we are reverting to a previously registered state
-      // (i.e. anywhere where saved_style_check() has been used).  We could allow insertCode() to lookup formerly
-      // allocated UID's and save some memory usage if we improved the management of saved styles.
-      Self->Style.FontStyle.UID = glByteCodeID++;
-      Self->insertCode(Cursor, Self->Style.FontStyle);
-      Self->Style.StyleChange = false;
-   }
 }
 
 //********************************************************************************************************************
@@ -1323,7 +947,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       Self->Segments.clear();
       Self->SortSegments.clear();
       Self->TemplateArgs.clear();
-      
+
       Self->SelectStart.reset();
       Self->SelectEnd.reset();
       Self->XPosition    = 0;
@@ -2222,7 +1846,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *Ch
 
    log.branch("Index: %d", Char.Index);
 
-   bcFont *style = find_style(Self, Self->Stream, Char);   
+   bcFont *style = find_style(Self, Self->Stream, Char);
    auto font = style ? style->getFont() : glFonts[0].Font;
    if (!font) return log.warning(ERR_Search);
 

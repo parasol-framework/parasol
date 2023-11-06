@@ -1,6 +1,6 @@
 
 //********************************************************************************************************************
- 
+
 static bool delete_selected(extDocument *Self)
 {
    if ((Self->SelectIndex.valid()) and (Self->SelectIndex != Self->CursorIndex)) {
@@ -23,7 +23,7 @@ static bool delete_selected(extDocument *Self)
          end.Index -= (end.Index - start.Index);
 
          if ((end.Offset > 0) and (Self->Stream[end.Index].Code IS ESC::TEXT)) {
-            auto &text = escape_data<bcText>(Self, end);            
+            auto &text = escape_data<bcText>(Self, end);
             text.Text.erase(0, end.Offset);
          }
       }
@@ -78,7 +78,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
             log.branch("Key: Tab");
             if (Self->TabFocusID) acFocus(Self->TabFocusID);
             else if ((Flags & KQ::SHIFT) != KQ::NIL) advance_tabfocus(Self, -1);
-            else advance_tabfocus(Self, 1);            
+            else advance_tabfocus(Self, 1);
             break;
          }
 
@@ -299,7 +299,7 @@ static void error_dialog(const std::string Title, const std::string Message)
    static OBJECTID dialog_id = 0;
 
    log.warning("%s", Message.c_str());
-#if !(defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_LINES))
+#if !(defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
    if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
    if (detect_recursive_dialog) return;
    detect_recursive_dialog = true;
@@ -393,7 +393,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
    Self->CursorIndex      = CursorIndex;
    Self->SelectIndex.reset();
 
-   log.msg("Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x", 
+   log.msg("Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x",
       Self->ActiveEditCellID, Self->CursorIndex.Index, Self->ActiveEditDef, Self->ActiveEditCRC);
 
    // Set the focus index to the relevant TT_EDIT entry
@@ -701,7 +701,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
                      cursor_index.set(i, 0);
                      if (!resolve_fontx_by_index(Self, cursor_index, &cursor_x)) {
-                      
+
                      }
                   }
                   else {

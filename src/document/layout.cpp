@@ -22,7 +22,7 @@ struct layout {
    std::stack<bcRow *>       stack_row;
    std::stack<bcParagraph *> stack_para;
    std::stack<bcLink *>      stack_link; // Set by procLink() and remains until procLinkend()
-   std::stack<link_marker>    stack_mklink; // Maintains link placement information.  Stack matches that of stack_link.
+   std::stack<link_marker>   stack_mklink; // Maintains link placement information.  Stack matches that of stack_link.
 
    std::vector<DocLink>    m_links;
    std::vector<DocClip>    m_clips;
@@ -53,8 +53,8 @@ struct layout {
 
    struct {
       StreamChar index;
-      LONG full_height;  // The complete height of the line, covers the height of all vectors and tables anchored to the line.  Text is drawn so that the text gutter is aligned to the base line
-      LONG height;       // Height of the line with respect to the text
+      LONG base_line;    // Available line height with respect to the text.  Vertical alignment is determined by this value
+      LONG height;       // The complete height of the line, covers the height of all vectors and tables anchored to the line.  Text is drawn so that the text gutter is aligned to the base line
       LONG increase;
       LONG x;
    } m_line;
@@ -73,7 +73,7 @@ struct layout {
 
    void reset_segment() { reset_segment(idx, m_cursor_x); }
 
-   // Add a single stream code as a draw segment.  This will not include support for text glyphs, so no supplementary
+   // Add a drawable segment for the byte code at position idx.  This will not include support for text glyphs, so no supplementary
    // information such as X/Y coordinates is defined.
 
    void add_esc_segment() {
@@ -118,8 +118,8 @@ struct layout {
 
    void check_line_height() {
       if (m_font->LineSpacing >= m_line.height) {
-         m_line.height      = m_font->LineSpacing;
-         m_line.full_height = m_font->Ascent;
+         m_line.height    = m_font->LineSpacing;
+         m_line.base_line = m_font->Ascent;
       }
    }
 
@@ -168,7 +168,20 @@ void layout::procAdvance()
 
 void layout::procImage()
 {
-   //auto image = &escape_data<bcImage>(Self, idx);
+   auto image = &escape_data<bcImage>(Self, idx);
+
+   m_clips.emplace_back(
+      m_cursor_x, m_cursor_y, m_cursor_x + image->Width, m_cursor_y + image->Height,
+      idx, false, "Image");
+
+   //m_cursor_x += image->Width; // Arguably unnecessary (expect all following content to apply clipping constraints themselves?)
+
+   // Line height is increased if the image is anchored to the line
+   if (image->Height > m_line.height) m_line.height = image->Height;
+
+   // Manipulating the base-line affects how text is positioned vertically within the overall line height value.
+   if (image->Height > m_line.base_line) m_line.base_line = image->Height;
+
    add_esc_segment();
 }
 
@@ -189,7 +202,7 @@ void layout::procFont()
       m_no_wrap = ((style->Options & FSO::NO_WRAP) != FSO::NIL);
       //if (m_no_wrap) m_wrap_edge = 1000;
 
-      DLAYOUT("Font Index: %d, LineSpacing: %d, Pt: %.2f, Height: %d, Ascent: %d, Cursor: %.2fx%.2f", 
+      DLAYOUT("Font Index: %d, LineSpacing: %d, Pt: %.2f, Height: %d, Ascent: %d, Cursor: %.2fx%.2f",
          style->FontIndex, m_font->LineSpacing, m_font->Point, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
       m_space_width = fntCharWidth(m_font, ' ', 0, 0);
 
@@ -227,7 +240,7 @@ WRAP layout::procText(LONG AbsX, LONG Width)
       }
 #endif
          check_line_height();
-         wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+         wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width,
             (m_line.height < 1) ? 1 : m_line.height);
          if (wrap_result IS WRAP::EXTEND_PAGE) break;
 
@@ -239,7 +252,7 @@ WRAP layout::procText(LONG AbsX, LONG Width)
          check_line_height();
 
          if (m_word_width) {
-            wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+            wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width,
                (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) break;
          }
@@ -288,8 +301,8 @@ void layout::terminate_link()
    m_terminate_link--;
    if (stack_link.empty()) return;
 
-   add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y, 
-      m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x, 
+   add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y,
+      m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x,
       m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
    stack_link.pop();
    stack_mklink.pop();
@@ -305,8 +318,8 @@ void layout::procLink()
       // Nested link detected.  Close the current link.  Use of the stack means it will be reopened when
       // the nested link is closed.
 
-      add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y, 
-         m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x, 
+      add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y,
+         m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x,
          m_line.height ? m_line.height : m_font->LineSpacing, "link_start");
    }
 
@@ -319,7 +332,7 @@ void layout::procLinkEnd()
 {
    if (stack_link.empty()) return;
 
-   // We can't terminate links here due to word-wrapping concerns, so instead we increment a counter to indicate that 
+   // We can't terminate links here due to word-wrapping concerns, so instead we increment a counter to indicate that
    // a link is due for termination.  Search for m_terminate_link to see where link termination actually occurs.
 
    // The current m_word_width value is saved here because links can end in the middle of words.
@@ -641,7 +654,7 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
          auto j = minheight - (esctable->Height + esctable->CellVSpacing + esctable->Thickness);
-         DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %.2f", 
+         DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %.2f",
             minheight, stack_row.top()->RowHeight, j, esctable->MinHeight, esctable->Y);
          stack_row.top()->RowHeight += j;
          return TE::REPASS_ROW_HEIGHT;
@@ -657,7 +670,7 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
 
    LONG j = esctable->X + esctable->Width - AbsX + m_right_margin;
    if ((j > Width) and (Width < WIDTH_LIMIT)) {
-      DLAYOUT("Table width (%.2f+%d) increases page width to %d, layout restart forced.", 
+      DLAYOUT("Table width (%.2f+%d) increases page width to %d, layout restart forced.",
          esctable->X, esctable->Width, j);
       Width = j;
       return TE::EXTEND_PAGE;
@@ -669,8 +682,8 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
 
    if ((m_anchor) or ((esctable->X <= m_left_margin) and (esctable->X + esctable->Width >= m_wrap_edge))) {
       if (esctable->Height > m_line.height) {
-         m_line.height = esctable->Height;
-         m_line.full_height = m_font->Ascent;
+         m_line.height    = esctable->Height;
+         m_line.base_line = m_font->Ascent;
       }
    }
 
@@ -778,7 +791,7 @@ wrap_vector:
    vector->get(FID_Dimensions, &dimensions);
 
    left_margin = m_left_margin - AbsX;
-   line_height = (m_line.full_height) ? m_line.full_height : m_font->Ascent;
+   line_height = (m_line.base_line) ? m_line.base_line : m_font->Ascent;
 
    cell_width  = cr - cx;
    cell_height = cb - cy;
@@ -989,7 +1002,7 @@ wrap_vector:
 
 #else
    left_margin = m_left_margin - AbsX;
-   line_height = (m_line.full_height) ? m_line.full_height : m_font->Ascent;
+   line_height = (m_line.base_line) ? m_line.base_line : m_font->Ascent;
 
    cell_width  = cr - cx;
    cell_height = cb - cy;
@@ -1390,8 +1403,8 @@ wrap_vector:
                // a text character).  This requires us to adjust the line height.
 
                if (objheight > m_line.height) {
-                  m_line.height = objheight;
-                  m_line.full_height = m_font->Ascent;
+                  m_line.height    = objheight;
+                  m_line.base_line = m_font->Ascent;
                }
             }
             else {
@@ -1399,8 +1412,8 @@ wrap_vector:
                // of the line, but cannot exceed the height of the font for that line.
 
                if (objheight < m_font->LineSpacing) {
-                  m_line.height = objheight;
-                  m_line.full_height = objheight;
+                  m_line.height    = objheight;
+                  m_line.base_line = objheight;
                }
             }
          }
@@ -1508,26 +1521,26 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    }
 
    auto line_height = m_line.height;
-   auto line_height_full = m_line.full_height;
+   auto base_line   = m_line.base_line;
    if (text_content) {
       if (line_height <= 0) {
          // No line-height given and there is text content - use the most recent font to determine the line height
-         line_height      = m_font->LineSpacing;
-         line_height_full = m_font->Ascent;
+         line_height = m_font->LineSpacing;
+         base_line   = m_font->Ascent;
       }
-      else if (!line_height_full) { // If base-line is missing for some reason, define it
-         line_height_full = m_font->Ascent;
+      else if (!base_line) { // If base-line is missing for some reason, define it
+         base_line = m_font->Ascent;
       }
    }
    else {
       if (line_height <= 0) line_height = 0;
-      if (line_height_full <= 0) line_height_full = 0;
+      if (base_line <= 0) base_line = 0;
    }
 
 #ifdef DBG_STREAM
    DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%.0f,%.0f:%.0fx%d, WordWidth: %d, CursorY: %.2f, [%.20s]...[%.20s] (%s)",
-      LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width, 
-      AlignWidth, line_height, m_word_width, m_cursor_y, printable(Self, Start).c_str(), 
+      LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width,
+      AlignWidth, line_height, m_word_width, m_cursor_y, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
 #endif
 
@@ -1569,8 +1582,8 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
       Width += segment.Area.Width;
       AlignWidth += segment.AlignWidth;
       if (segment.Area.Height > line_height) {
-         line_height      = segment.Area.Height;
-         line_height_full = segment.BaseLine;
+         line_height = segment.Area.Height;
+         base_line   = segment.BaseLine;
       }
    }
 
@@ -1597,7 +1610,7 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    segment.Area.Y         = Y;
    segment.Area.Width     = Width;
    segment.Area.Height    = line_height;
-   segment.BaseLine       = line_height_full;
+   segment.BaseLine       = base_line;
    segment.Depth          = Self->Depth;
    segment.AlignWidth     = AlignWidth;
    segment.TextContent    = text_content;
@@ -1605,16 +1618,16 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    segment.AllowMerge     = allow_merge;
    segment.Edit           = Self->EditMode;
 
-   // If a line is segmented, we need to check for earlier line segments and ensure that their height and full_height
-   // is matched to that of the last line (which always contains the maximum height and full_height values).
+   // If a line is segmented, we need to check for earlier line segments and ensure that their height and base_line
+   // is matched to that of the last line (which always contains the maximum height and base_line values).
 
    if ((m_split_start != NOTSPLIT) and (line_height)) {
       if (LONG(m_segments.size()) != m_split_start) {
-         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", line_height, line_height_full, segment.Start.Index, m_split_start);
+         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", line_height, base_line, segment.Start.Index, m_split_start);
          for (unsigned i=m_split_start; i < m_segments.size(); i++) {
             if (m_segments[i].Depth != Self->Depth) continue;
             m_segments[i].Area.Height = line_height;
-            m_segments[i].BaseLine = line_height_full;
+            m_segments[i].BaseLine    = base_line;
          }
       }
    }
@@ -1750,7 +1763,7 @@ static void layout_doc(extDocument *Self)
 
    Self->UpdatingLayout = false;
 
-#ifdef DBG_LINES
+#ifdef DBG_SEGMENTS
    print_segments(Self, Self->Stream);
    print_tabfocus(Self);
 #endif
@@ -1889,7 +1902,7 @@ extend_page:
    m_line.index.set(Offset, 0);    // The starting index of the line we are operating on
    m_line.x           = AbsX + Margins.Left;
    m_line.height      = 0;
-   m_line.full_height = 0;
+   m_line.base_line   = 0;
    m_kernchar         = 0;
    m_split_start      = m_segments.size();
    m_font             = *Font;
@@ -2316,15 +2329,15 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
       m_line.height = m_font->LineSpacing;
-      m_line.full_height = m_font->Ascent;
+      m_line.base_line = m_font->Ascent;
    }
 
    if (m_terminate_link) terminate_link();
-   else if ((!stack_link.empty()) and (m_cursor_x + m_word_width > stack_mklink.top().x)) { 
+   else if ((!stack_link.empty()) and (m_cursor_x + m_word_width > stack_mklink.top().x)) {
       // A link is active and will continue to the next line.
-      
-      add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y, 
-         m_cursor_x + m_word_width - stack_mklink.top().x, 
+
+      add_link(ESC::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y,
+         m_cursor_x + m_word_width - stack_mklink.top().x,
          m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
       stack_mklink.top().x = m_left_margin;
    }
@@ -2374,7 +2387,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
    m_cursor_x         = m_left_margin;
    m_line.x           = m_left_margin;
    m_line.height      = 0;
-   m_line.full_height = 0;
+   m_line.base_line   = 0;
    m_split_start      = m_segments.size();
    m_line.index       = Next;
    m_word_index       = m_line.index;
@@ -2427,8 +2440,8 @@ restart:
       }
 
       if (!m_line.height) {
-         m_line.height = 1;
-         m_line.full_height = 1;
+         m_line.height    = 1;
+         m_line.base_line = 1;
       }
 
       if ((!stack_link.empty()) and (stack_mklink.top().x != X)) {
@@ -2447,13 +2460,13 @@ restart:
 
       X  = m_left_margin;
       Y += m_line.height;
-      m_cursor_x     = X;
-      m_cursor_y     = Y;
-      m_split_start  = m_segments.size();
-      m_line.x       = m_left_margin;
-      m_kernchar     = 0;
-      m_line.full_height = 0;
-      m_line.height      = 0;
+      m_cursor_x       = X;
+      m_cursor_y       = Y;
+      m_split_start    = m_segments.size();
+      m_line.x         = m_left_margin;
+      m_kernchar       = 0;
+      m_line.base_line = 0;
+      m_line.height    = 0;
 
       if (!stack_mklink.empty()) {
          stack_mklink.top().x = m_left_margin;

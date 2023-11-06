@@ -2,6 +2,382 @@
 static void check_para_attrib(extDocument *, const std::string &, const std::string &, bcParagraph *);
 
 //********************************************************************************************************************
+// Check for a pending font and/or style change and respond appropriately.
+
+static void style_check(extDocument *Self, StreamChar &Cursor)
+{
+   if (Self->Style.FaceChange) {
+      // Create a new font object for the current style
+
+      auto style_name = get_font_style(Self->Style.FontStyle.Options);
+      Self->Style.FontStyle.FontIndex = create_font(Self->Style.Face, style_name, Self->Style.Point);
+      //log.trace("Changed font to index %d, face %s, style %s, size %d.", Self->Style.FontStyle.Index, Self->Style.Face, style_name, Self->Style.Point);
+      Self->Style.FaceChange  = false;
+      Self->Style.StyleChange = true;
+   }
+
+   if (Self->Style.StyleChange) { // Insert a font change into the text stream
+      // NB: Assigning a new UID is suboptimal in cases where we are reverting to a previously registered state
+      // (i.e. anywhere where saved_style_check() has been used).  We could allow insertCode() to lookup formerly
+      // allocated UID's and save some memory usage if we improved the management of saved styles.
+      Self->Style.FontStyle.UID = glByteCodeID++;
+      Self->insertCode(Cursor, Self->Style.FontStyle);
+      Self->Style.StyleChange = false;
+   }
+}
+
+//********************************************************************************************************************
+
+static bool eval_condition(const std::string &String)
+{
+   pf::Log log(__FUNCTION__);
+
+   static const FieldDef table[] = {
+      { "<>", COND_NOT_EQUAL },
+      { "!=", COND_NOT_EQUAL },
+      { "=",  COND_EQUAL },
+      { "==", COND_EQUAL },
+      { "<",  COND_LESS_THAN },
+      { "<=", COND_LESS_EQUAL },
+      { ">",  COND_GREATER_THAN },
+      { ">=", COND_GREATER_EQUAL },
+      { NULL, 0 }
+   };
+
+   LONG start = 0;
+   while ((start < LONG(String.size())) and (String[start] <= 0x20)) start++;
+
+   bool reverse = false;
+
+   // Find the condition statement
+
+   LONG i;
+   for (i=start; i < LONG(String.size()); i++) {
+      if ((String[i] IS '!') and (String[i+1] IS '=')) break;
+      if (String[i] IS '>') break;
+      if (String[i] IS '<') break;
+      if (String[i] IS '=') break;
+   }
+
+   // If there is no condition statement, evaluate the statement as an integer
+
+   if (i >= LONG(String.size())) {
+      if (StrToInt(String)) return true;
+      else return false;
+   }
+
+   LONG cpos = i;
+
+   // Extract Test value
+
+   while ((i > 0) and (String[i-1] IS ' ')) i--;
+   std::string test(String, i);
+
+   // Condition value
+
+   LONG condition = 0;
+   {
+      std::string cond;
+      cond.reserve(3);
+      char c;
+      for (i=cpos,c=0; (c < 2) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
+         cond[c++] = String[i];
+      }
+
+      for (unsigned j=0; table[j].Name; j++) {
+         if (!StrMatch(cond, table[j].Name)) {
+            condition = table[j].Value;
+            break;
+         }
+      }
+   }
+
+   while ((String[i]) and (String[i] <= 0x20)) i++; // skip white-space
+
+   bool truth = false;
+   if (!test.empty()) {
+      if (condition) {
+         // Convert the If->Compare to its specified type
+
+         auto cmp_type  = StrDatatype(String.c_str()+i);
+         auto test_type = StrDatatype(test.c_str());
+
+         if (((test_type IS STT::NUMBER) or (test_type IS STT::FLOAT)) and ((cmp_type IS STT::NUMBER) or (cmp_type IS STT::FLOAT))) {
+            auto cmp_float  = StrToFloat(String.c_str()+i);
+            auto test_float = StrToFloat(test);
+            switch (condition) {
+               case COND_NOT_EQUAL:     if (test_float != cmp_float) truth = true; break;
+               case COND_EQUAL:         if (test_float IS cmp_float) truth = true; break;
+               case COND_LESS_THAN:     if (test_float <  cmp_float) truth = true; break;
+               case COND_LESS_EQUAL:    if (test_float <= cmp_float) truth = true; break;
+               case COND_GREATER_THAN:  if (test_float >  cmp_float) truth = true; break;
+               case COND_GREATER_EQUAL: if (test_float >= cmp_float) truth = true; break;
+               default: log.warning("Unsupported condition type %d.", condition);
+            }
+         }
+         else if (condition IS COND_EQUAL) {
+            if (!StrMatch(test, String.c_str()+i)) truth = true;
+         }
+         else if (condition IS COND_NOT_EQUAL) {
+            if (StrMatch(test, String.c_str()+i) != ERR_Okay) truth = true;
+         }
+         else log.warning("String comparison for condition %d not possible.", condition);
+      }
+      else log.warning("No test condition in \"%s\".", String.c_str());
+   }
+   else log.warning("No test value in \"%s\".", String.c_str());
+
+   if (reverse) return truth ^ 1;
+   else return truth;
+}
+
+//********************************************************************************************************************
+// Used by if, elseif, while statements to check the satisfaction of conditions.
+
+static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
+{
+   pf::Log log("eval");
+
+   bool satisfied = false;
+   bool reverse = false;
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      if (!StrMatch("statement", Tag.Attribs[i].Name)) {
+         satisfied = eval_condition(Tag.Attribs[i].Value);
+         log.trace("Statement: %s", Tag.Attribs[i].Value);
+         break;
+      }
+      else if (!StrMatch("exists", Tag.Attribs[i].Name)) {
+         OBJECTID object_id;
+         if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id)) {
+            if (valid_objectid(Self, object_id)) {
+               satisfied = true;
+            }
+         }
+         break;
+      }
+      else if (!StrMatch("notnull", Tag.Attribs[i].Name)) {
+         log.trace("NotNull: %s", Tag.Attribs[i].Value);
+         if (Tag.Attribs[i].Value.empty()) satisfied = false;
+         else if (Tag.Attribs[i].Value == "0") satisfied = false;
+         else satisfied = true;
+      }
+      else if ((!StrMatch("isnull", Tag.Attribs[i].Name)) or (!StrMatch("null", Tag.Attribs[i].Name))) {
+         log.trace("IsNull: %s", Tag.Attribs[i].Value);
+            if (Tag.Attribs[i].Value.empty()) satisfied = true;
+            else if (Tag.Attribs[i].Value == "0") satisfied = true;
+            else satisfied = false;
+      }
+      else if (!StrMatch("not", Tag.Attribs[i].Name)) {
+         reverse = true;
+      }
+   }
+
+   // Check for a not condition and invert the satisfied value if found
+
+   if (reverse) satisfied = satisfied ^ 1;
+
+   return satisfied;
+}
+
+//********************************************************************************************************************
+// This is the principal function for the parsing of XML tags.  Insertion into the stream will occur at Index, which
+// is updated on completion.
+//
+// Supported Flags:
+//   IPF::NO_CONTENT:
+//   IPF::STRIP_FEEDS:
+
+static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &Index, IPF &Flags)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Self->Error) {
+      log.traceWarning("Error field is set, returning immediately.");
+      return TRF::NIL;
+   }
+
+   IPF filter = Flags & IPF::FILTER_ALL;
+   XMLTag *object_template = NULL;
+
+   auto saved_attribs = Tag.Attribs;
+   translate_attrib_args(Self, Tag.Attribs);
+
+   auto tagname = Tag.Attribs[0].Name;
+   if (tagname.starts_with('$')) tagname.erase(0, 1);
+   object_template = NULL;
+
+   TRF result = TRF::NIL;
+   if (Tag.isContent()) {
+      if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
+         if ((Flags & IPF::STRIP_FEEDS) != IPF::NIL) {
+            if (Self->CurrentObject) {
+               // Objects do not normally accept document content (user should use <xml>)
+               // An exception is made for content that is injected within an object tag.
+
+               if (XML IS Self->InjectXML) {
+                  unsigned i = 0;
+                  while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
+                  acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str() + i);
+               }
+            }
+            else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
+               unsigned i = 0;
+               while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
+               if (i > 0) {
+                  auto content = Tag.Attribs[0].Value.substr(i);
+                  insert_text(Self, Index, content, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
+               }
+               else insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
+            }
+            Flags &= ~IPF::STRIP_FEEDS;
+         }
+         else if (Self->CurrentObject) {
+            if (XML IS Self->InjectXML) acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str());
+         }
+         else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
+            insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.FontStyle.Options & FSO::PREFORMAT) != FSO::NIL));
+         }
+      }
+      Tag.Attribs = saved_attribs;
+      return result;
+   }
+
+   if (Self->Templates) { // Check for templates first, as they can be used to override the default RPL tag names.
+      bool template_match = false;
+      for (auto &scan : Self->Templates->Tags) {
+         for (unsigned i=0; i < scan.Attribs.size(); i++) {
+            if ((!StrMatch("name", scan.Attribs[i].Name)) and (!StrMatch(tagname, scan.Attribs[i].Value))) {
+               template_match = true;
+            }
+         }
+
+         if (template_match) {
+            // Process the template by jumping into it.  Arguments in the tag are added to a sequential
+            // list that will be processed in reverse by translate_attrib_args().
+
+            pf::Log log(__FUNCTION__);
+
+            initTemplate block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
+
+            log.traceBranch("Executing template '%s'.", tagname.c_str());
+
+            Self->TemplateArgs.push_back(&Tag);
+            parse_tags(Self, Self->Templates, scan.Children, Index, Flags);
+            Self->TemplateArgs.pop_back();
+
+            Tag.Attribs = saved_attribs;
+            return result;
+         }
+      }
+   }
+
+   if (auto tag = glTags.find(tagname); tag != glTags.end()) {
+      auto &tr = tag->second;
+      if (((tr.Flags & TAG::FILTER_ALL) != TAG::NIL) and ((tr.Flags & TAG(filter)) IS TAG::NIL)) {
+         // A filter applies to this tag and the filter flags do not match
+         log.warning("Invalid use of tag '%s' - Not applied to the correct tag parent.", tagname.c_str());
+         Self->Error = ERR_InvalidData;
+      }
+      else if (tr.Routine) {
+         //log.traceBranch("%s", tagname);
+
+         if ((Self->CurrentObject) and ((tr.Flags & (TAG::OBJECTOK|TAG::CONDITIONAL)) IS TAG::NIL)) {
+            log.warning("Illegal use of tag %s within object of class '%s'.", tagname.c_str(), Self->CurrentObject->Class->ClassName);
+            result = TRF::BREAK;
+         }
+         else {
+
+            if (((Flags & IPF::NO_CONTENT) != IPF::NIL) and ((tr.Flags & TAG::CONTENT) != TAG::NIL)) {
+               // Do nothing when content is not allowed
+               log.trace("Content disabled on '%s', tag not processed.", tagname.c_str());
+            }
+            else if ((tr.Flags & TAG::CHILDREN) != TAG::NIL) {
+               // Child content is compulsory or tag has no effect
+               if (!Tag.Children.empty()) tr.Routine(Self, XML, Tag, Tag.Children, Index, Flags);
+               else log.trace("No content found in tag '%s'", tagname.c_str());
+            }
+            else tr.Routine(Self, XML, Tag, Tag.Children, Index, Flags);
+
+         }
+      }
+   }
+   else if (!StrMatch("break", tagname)) {
+      // Breaking stops executing all tags (within this section) beyond the breakpoint.  If in a loop, the loop
+      // will stop executing.
+
+      result = TRF::BREAK;
+   }
+   else if (!StrMatch("continue", tagname)) {
+      // Continuing - does the same thing as a break but the loop continues.
+      // If used when not in a loop, then all sibling tags are skipped.
+
+      result = TRF::CONTINUE;
+   }
+   else if (!StrMatch("if", tagname)) {
+      if (check_tag_conditions(Self, Tag)) { // Statement is true
+         Flags &= ~IPF::CHECK_ELSE;
+         result = parse_tags(Self, XML, Tag.Children, Index, Flags);
+      }
+      else Flags |= IPF::CHECK_ELSE;
+   }
+   else if (!StrMatch("elseif", tagname)) {
+      if ((Flags & IPF::CHECK_ELSE) != IPF::NIL) {
+         if (check_tag_conditions(Self, Tag)) { // Statement is true
+            Flags &= ~IPF::CHECK_ELSE;
+            result = parse_tags(Self, XML, Tag.Children, Index, Flags);
+         }
+      }
+   }
+   else if (!StrMatch("else", tagname)) {
+      if ((Flags & IPF::CHECK_ELSE) != IPF::NIL) {
+         Flags &= ~IPF::CHECK_ELSE;
+         result = parse_tags(Self, XML, Tag.Children, Index, Flags);
+      }
+   }
+   else if (!StrMatch("while", tagname)) {
+      if ((!Tag.Children.empty()) and (check_tag_conditions(Self, Tag))) {
+         // Save/restore the statement string on each cycle to fully evaluate the condition each time.
+
+         auto saveindex = Self->LoopIndex;
+         Self->LoopIndex = 0;
+
+         bool state = true;
+         while (state) {
+            state = check_tag_conditions(Self, Tag);
+            Tag.Attribs = saved_attribs;
+            translate_attrib_args(Self, Tag.Attribs);
+
+            if ((state) and ((parse_tags(Self, XML, Tag.Children, Index, Flags) & TRF::BREAK) != TRF::NIL)) break;
+
+            Self->LoopIndex++;
+         }
+
+         Self->LoopIndex = saveindex;
+      }
+   }
+   else if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
+      log.warning("Tag '%s' unsupported as an instruction or template.", tagname.c_str());
+   }
+   else log.warning("Unrecognised tag '%s' used in a content-restricted area.", tagname.c_str());
+
+   Tag.Attribs = saved_attribs;
+   return result;
+}
+
+static TRF parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, StreamChar &Index, IPF Flags)
+{
+   TRF result = TRF::NIL;
+
+   for (auto &tag : Tags) {
+      // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
+      result = parse_tag(Self, XML, tag, Index, Flags);
+      if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
+   }
+
+   return result;
+}
+
+//********************************************************************************************************************
 
 static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, bcParagraph *esc)
 {
@@ -22,6 +398,21 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
       case HASH_nowrap:
          Self->Style.StyleChange = true;
          Self->Style.FontStyle.Options |= FSO::NO_WRAP;
+         break;
+
+      case HASH_valign: {
+         // Vertical alignment defines the vertical position for text in cases where the line height is greater than
+         // the text itself (e.g. if an image is anchored in the line).
+         ALIGN align = ALIGN::NIL;
+         if (!StrMatch("top", Value)) align = ALIGN::TOP;
+         else if (!StrMatch("center", Value)) align = ALIGN::VERTICAL;
+         else if (!StrMatch("bottom", Value)) align = ALIGN::BOTTOM;
+         if (align != ALIGN::NIL) {
+            Self->Style.StyleChange = true;
+            Self->Style.FontStyle.VAlign = (Self->Style.FontStyle.VAlign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) | align;
+         }
+         break;
+      }
 
       case HASH_kerning:  // REQUIRES CODE and DOCUMENTATION
          break;
@@ -33,7 +424,9 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
          //if (Self->Style.LineHeightRatio < MIN_LINEHEIGHT) Self->Style.LineHeightRatio = MIN_LINEHEIGHT;
          break;
 
-      case HASH_trim: esc->Trim = true; break;
+      case HASH_trim:
+         esc->Trim = true;
+         break;
 
       case HASH_vspacing:
          // Vertical spacing between embedded paragraphs.  Ratio is expressed as a measure of the *default* lineheight (not the height of the
@@ -82,22 +475,23 @@ static void trim_preformat(extDocument *Self, StreamChar &Index)
 
 static void saved_style_check(extDocument *Self, style_status &SavedStatus)
 {
-   auto font = Self->Style.FontChange;
+   auto face_change = Self->Style.FaceChange;
    auto style = Self->Style.StyleChange;
 
-   if (SavedStatus.FontStyle.FontIndex != Self->Style.FontStyle.FontIndex) font = true;
+   if (SavedStatus.FontStyle.FontIndex != Self->Style.FontStyle.FontIndex) face_change = true;
 
    if ((SavedStatus.FontStyle.Options != Self->Style.FontStyle.Options) or
-       (SavedStatus.FontStyle.Fill != Self->Style.FontStyle.Fill)) {
+       (SavedStatus.FontStyle.Fill != Self->Style.FontStyle.Fill) or
+       (SavedStatus.FontStyle.VAlign != Self->Style.FontStyle.VAlign)) {
       style = true;
    }
 
-   if ((font) or (style)) {
+   if ((face_change) or (style)) {
       Self->Style = SavedStatus; // Restore the style that we had before processing the children
 
       // Reapply the fontstate and stylestate information
 
-      Self->Style.FontChange  = font;
+      Self->Style.FaceChange  = face_change;
       Self->Style.StyleChange = style;
    }
 }
@@ -227,12 +621,13 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       }
    }
 
-   Self->Style.Face = Self->FontFace;
-   Self->Style.FontStyle.FontIndex   = create_font(Self->FontFace, "Regular", Self->FontSize);
-   Self->Style.FontStyle.Options = FSO::NIL;
-   Self->Style.FontStyle.Fill    = Self->FontFill;
+   Self->Style.FontStyle.FontIndex = create_font(Self->FontFace, "Regular", Self->FontSize);
+   Self->Style.FontStyle.Options   = FSO::NIL;
+   Self->Style.FontStyle.Fill      = Self->FontFill;
+
+   Self->Style.Face        = Self->FontFace;
    Self->Style.Point       = Self->FontSize;
-   Self->Style.FontChange  = true;
+   Self->Style.FaceChange  = true;
    Self->Style.StyleChange = true;
 
    if (!Children.empty()) Self->BodyTag = &Children;
@@ -254,7 +649,7 @@ static void tag_bold(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 {
    if ((Self->Style.FontStyle.Options & FSO::BOLD) IS FSO::NIL) {
       auto savestatus = Self->Style; // Save the current style
-      Self->Style.FontChange = true; // Bold fonts are typically a different typeset
+      Self->Style.FaceChange = true; // Bold fonts are typically a different typeset
       Self->Style.FontStyle.Options |= FSO::BOLD;
       parse_tags(Self, XML, Children, Index);
       saved_style_check(Self, savestatus);
@@ -401,8 +796,8 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
-// Use div to structure the document in a similar way to paragraphs.  Its main
-// difference is that it avoids the declaration of paragraph start and end points.
+// Use div to structure the document in a similar way to paragraphs.  The main difference is that it avoids the
+// declaration of paragraph start and end points and won't cause line breaks.
 
 static void tag_div(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
@@ -626,16 +1021,16 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
-// Bitmap images are supported as vector rectangles with a texture map.  If the image is SVG then it is loaded into a 
+// Bitmap images are supported as vector rectangles with a texture map.  If the image is SVG then it is loaded into a
 // viewport, so effectively the same, but scalable.
 //
-// TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless 
+// TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless
 // changed to a higher resolution or otherwise modified.
 
 static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
-   
+
    std::string src, icon, align, westgap, eastgap, northgap, southgap, width, height;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -691,24 +1086,26 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                fl::Path(icon_path),
                fl::Target(pat_viewport)
             })) {
-            
+
             FreeResource(svg);
 
             std::string name = "icon" + std::to_string(Self->UniqueID++);
             scAddDef(Self->Scene, name.c_str(), pattern);
-            
-            if (auto rect = objVectorRectangle::create::global({ 
+
+            if (auto rect = objVectorRectangle::create::global({
                   fl::Name("rect_image"),
-                  fl::Owner(Self->Page->UID), 
+                  fl::Owner(Self->Page->UID),
                   fl::X(0), fl::Y(0), // Position to be corrected during layout
                   fl::Width(StrToFloat(width)), fl::Height(StrToFloat(height)),
-                  fl::Fill("url(#" + name + ")") 
+                  fl::Fill("url(#" + name + ")")
                })) {
 
                Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
 
                bcImage esc;
                esc.Rect = rect;
+               esc.Width = StrToFloat(width);
+               esc.Height = StrToFloat(height);
                Self->insertCode(Index, esc);
                return;
             }
@@ -720,8 +1117,8 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    }
    else if (!src.empty()) { // Load a static bitmap image.
       if (auto pic = objPicture::create::integral({
-            fl::Path(src), 
-            fl::BitsPerPixel(32), 
+            fl::Path(src),
+            fl::BitsPerPixel(32),
             fl::Flags(PCF::FORCE_ALPHA_32)
          })) {
 
@@ -734,12 +1131,12 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                fl::SpreadMethod(VSPREAD::PAD)
             })) {
             scAddDef(Self->Scene, name.c_str(), img_cache);
-            
-            if (auto rect = objVectorRectangle::create::global({ 
-                  fl::Owner(Self->Page->UID), 
-                  fl::X(0), fl::Y(0), 
+
+            if (auto rect = objVectorRectangle::create::global({
+                  fl::Owner(Self->Page->UID),
+                  fl::X(0), fl::Y(0),
                   fl::Width(1), fl::Height(1),
-                  fl::Fill("url(#" + name + ")") 
+                  fl::Fill("url(#" + name + ")")
                })) {
                Self->Resources.emplace_back(img_cache->UID, RT_OBJECT_UNLOAD_DELAY);
                Self->Resources.emplace_back(pic->UID, RT_OBJECT_UNLOAD_DELAY);
@@ -757,7 +1154,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       }
       else log.warning("Failed to load '%s'", src.c_str());
    }
-   else { 
+   else {
       log.warning("No src or icon defined for <image> tag.");
       return;
    }
@@ -913,9 +1310,9 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       Self->reserveCode<bcLinkEnd>(Index);
 
-      // This style check will forcibly revert the font back to whatever it was rather than waiting for new content 
-      // to result in a change.  The reason why we want to do this is to make it easier to manage run-time insertion 
-      // of new content.  For instance if the user enters text on a new line following an <h1> heading, the user's 
+      // This style check will forcibly revert the font back to whatever it was rather than waiting for new content
+      // to result in a change.  The reason why we want to do this is to make it easier to manage run-time insertion
+      // of new content.  For instance if the user enters text on a new line following an <h1> heading, the user's
       // expectation would be for the new text to be in the format of the body's font and not the <h1> font.
 
       style_check(Self, Index);
@@ -1208,7 +1605,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          Self->Style.FontStyle.Fill = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("face", Tag.Attribs[i].Name)) {
-         Self->Style.FontChange = true;
+         Self->Style.FaceChange = true;
 
          auto j = Tag.Attribs[i].Value.find(':');
          if (j != std::string::npos) { // Point size follows
@@ -1219,15 +1616,15 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             if (j != std::string::npos) { // Style follows
                j++;
                if (!StrMatch("bold", str+j)) {
-                  Self->Style.FontChange = true;
+                  Self->Style.FaceChange = true;
                   Self->Style.FontStyle.Options |= FSO::BOLD;
                }
                else if (!StrMatch("italic", str+j)) {
-                  Self->Style.FontChange = true;
+                  Self->Style.FaceChange = true;
                   Self->Style.FontStyle.Options |= FSO::ITALIC;
                }
                else if (!StrMatch("bold italic", str+j)) {
-                  Self->Style.FontChange = true;
+                  Self->Style.FaceChange = true;
                   Self->Style.FontStyle.Options |= FSO::BOLD|FSO::ITALIC;
                }
             }
@@ -1236,20 +1633,20 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          Self->Style.Face = Tag.Attribs[i].Value.substr(0, j);
       }
       else if (!StrMatch("size", Tag.Attribs[i].Name)) {
-         Self->Style.FontChange = true;
+         Self->Style.FaceChange = true;
          Self->Style.Point = StrToFloat(Tag.Attribs[i].Value);
       }
       else if (!StrMatch("style", Tag.Attribs[i].Name)) {
          if (!StrMatch("bold", Tag.Attribs[i].Value)) {
-            Self->Style.FontChange = true;
+            Self->Style.FaceChange = true;
             Self->Style.FontStyle.Options |= FSO::BOLD;
          }
          else if (!StrMatch("italic", Tag.Attribs[i].Value)) {
-            Self->Style.FontChange = true;
+            Self->Style.FaceChange = true;
             Self->Style.FontStyle.Options |= FSO::ITALIC;
          }
          else if (!StrMatch("bold italic", Tag.Attribs[i].Value)) {
-            Self->Style.FontChange = true;
+            Self->Style.FaceChange = true;
             Self->Style.FontStyle.Options |= FSO::BOLD|FSO::ITALIC;
          }
       }
@@ -1710,26 +2107,26 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
             break;
 
          case HASH_face:
-            Self->Style.FontChange = true;
+            Self->Style.FaceChange = true;
             Self->Style.Face = Tag.Attribs[i].Value;
             break;
 
          case HASH_size:
-            Self->Style.FontChange = true;
+            Self->Style.FaceChange = true;
             Self->Style.Point = StrToFloat(Tag.Attribs[i].Value);
             break;
 
          case HASH_style:
             if (!StrMatch("bold", Tag.Attribs[i].Value)) {
-               Self->Style.FontChange = true;
+               Self->Style.FaceChange = true;
                Self->Style.FontStyle.Options |= FSO::BOLD;
             }
             else if (!StrMatch("italic", Tag.Attribs[i].Value)) {
-               Self->Style.FontChange = true;
+               Self->Style.FaceChange = true;
                Self->Style.FontStyle.Options |= FSO::ITALIC;
             }
             else if (!StrMatch("bold italic", Tag.Attribs[i].Value)) {
-               Self->Style.FontChange = true;
+               Self->Style.FaceChange = true;
                Self->Style.FontStyle.Options |= FSO::BOLD|FSO::ITALIC;
             }
             break;
@@ -1796,7 +2193,7 @@ static void tag_savestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
 static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    Self->Style = Self->RestoreStyle; // Restore the saved style
-   Self->Style.FontChange = true;
+   Self->Style.FaceChange = true;
    //style_check(Self, Index);
 }
 
@@ -1806,7 +2203,7 @@ static void tag_italic(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 {
    if ((Self->Style.FontStyle.Options & FSO::ITALIC) IS FSO::NIL) {
       auto savestatus = Self->Style;
-      Self->Style.FontChange = true; // Italic fonts are typically a different typeset
+      Self->Style.FaceChange = true; // Italic fonts are typically a different typeset
       Self->Style.FontStyle.Options |= FSO::ITALIC;
       parse_tags(Self, XML, Children, Index);
       saved_style_check(Self, savestatus);
@@ -2357,70 +2754,3 @@ static void tag_trigger(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
       else log.warning("The script for '%s' is not available - check if it is declared prior to the trigger tag.", function_name.c_str());
    }
 }
-
-//********************************************************************************************************************
-// TAG::OBJECTOK: Indicates that the tag can be used inside an object section, e.g. <image>.<this_tag_ok/>..</image>
-// FILTER_TABLE: The tag is restricted to use within <table> sections.
-// FILTER_ROW:   The tag is restricted to use within <row> sections.
-
-static std::map<std::string, tagroutine, CaseInsensitiveMap> glTags = {
-   // Content tags (tags that affect text, the page layout etc)
-   { "a",             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { "link",          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { "blockquote",    { tag_indent,       TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "b",             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
-   { "caps",          { tag_caps,         TAG::CHILDREN|TAG::CONTENT } },
-   { "div",           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "p",             { tag_paragraph,    TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "font",          { tag_font,         TAG::CHILDREN|TAG::CONTENT } },
-   { "i",             { tag_italic,       TAG::CHILDREN|TAG::CONTENT } },
-   { "li",            { tag_li,           TAG::CHILDREN|TAG::CONTENT } },
-   { "pre",           { tag_pre,          TAG::CHILDREN|TAG::CONTENT } },
-   { "indent",        { tag_indent,       TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "u",             { tag_underline,    TAG::CHILDREN|TAG::CONTENT } },
-   { "list",          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "advance",       { tag_advance,      TAG::CONTENT } },
-   { "br",            { tag_br,           TAG::CONTENT } },
-   { "image",         { tag_image,        TAG::CONTENT } },
-   // Conditional command tags
-   { "else",          { NULL,             TAG::CONDITIONAL } },
-   { "elseif",        { NULL,             TAG::CONDITIONAL } },
-   { "repeat",        { tag_repeat,       TAG::CHILDREN|TAG::CONDITIONAL } },
-   // Special instructions
-   { "cache",         { tag_cache,        TAG::INSTRUCTION } },
-   { "call",          { tag_call,         TAG::INSTRUCTION } },
-   { "debug",         { tag_debug,        TAG::INSTRUCTION } },
-   { "focus",         { tag_focus,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "include",       { tag_include,      TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "print",         { tag_print,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "parse",         { tag_parse,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "set",           { tag_set,          TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "trigger",       { tag_trigger,      TAG::INSTRUCTION } },
-   // Root level tags
-   { "page",          { tag_page,         TAG::CHILDREN | TAG::ROOT } },
-   // Others
-   { "background",    { tag_background,   TAG::NIL } },
-   { "data",          { NULL,             TAG::NIL } },
-   { "editdef",       { tag_editdef,      TAG::NIL } },
-   { "footer",        { tag_footer,       TAG::NIL } },
-   { "head",          { tag_head,         TAG::NIL } }, // Synonym for info
-   { "header",        { tag_header,       TAG::NIL } },
-   { "info",          { tag_head,         TAG::NIL } },
-   { "inject",        { tag_inject,       TAG::OBJECTOK } },
-   { "row",           { tag_row,          TAG::CHILDREN|TAG::FILTER_TABLE } },
-   { "cell",          { tag_cell,         TAG::PARAGRAPH|TAG::FILTER_ROW } },
-   { "table",         { tag_table,        TAG::CHILDREN } },
-   { "td",            { tag_cell,         TAG::CHILDREN|TAG::FILTER_ROW } },
-   { "tr",            { tag_row,          TAG::CHILDREN } },
-   { "body",          { tag_body,         TAG::NIL } },
-   { "index",         { tag_index,        TAG::NIL } },
-   { "setmargins",    { tag_setmargins,   TAG::OBJECTOK } },
-   { "setfont",       { tag_setfont,      TAG::OBJECTOK } },
-   { "restorestyle",  { tag_restorestyle, TAG::OBJECTOK } },
-   { "savestyle",     { tag_savestyle,    TAG::OBJECTOK } },
-   { "script",        { tag_script,       TAG::NIL } },
-   { "template",      { tag_template,     TAG::NIL } },
-   { "xml",           { tag_xml,          TAG::OBJECTOK } },
-   { "xml_raw",       { tag_xmlraw,       TAG::OBJECTOK } },
-   { "xml_translate", { tag_xmltranslate, TAG::OBJECTOK } }
-};

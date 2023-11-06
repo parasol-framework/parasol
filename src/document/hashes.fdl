@@ -12,6 +12,8 @@ header({ copyright="Paul Manias © 2023" }, function()
     "LostFocus",
     "LeavingPage",
     "a",
+    "align",
+    "valign",
     "link",
     "blockquote",
     "b",

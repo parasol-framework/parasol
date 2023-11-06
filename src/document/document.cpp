@@ -332,19 +332,19 @@ struct StreamChar {
       else if ((this->Index IS Other.Index) and (this->Offset < Other.Offset)) return true;
       else return false;
    }
-   
+
    bool operator>(const StreamChar &Other) const {
       if (this->Index > Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset > Other.Offset)) return true;
       else return false;
    }
-   
+
    bool operator<=(const StreamChar &Other) const {
       if (this->Index < Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset <= Other.Offset)) return true;
       else return false;
    }
-   
+
    bool operator>=(const StreamChar &Other) const {
       if (this->Index > Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset >= Other.Offset)) return true;
@@ -354,7 +354,7 @@ struct StreamChar {
    void operator+=(const LONG Value) {
       Offset += Value;
    }
-   
+
    inline void reset() { Index = -1; Offset = -1; }
    inline bool valid() { return Index != -1; }
    inline bool valid(const RSTREAM &Stream) { return (Index != -1) and (Index < INDEX(Stream.size())); }
@@ -362,7 +362,7 @@ struct StreamChar {
    inline void set(INDEX pIndex, ULONG pOffset) {
       Index  = pIndex;
       Offset = pOffset;
-   }    
+   }
 
    inline INDEX prevCode() {
       Index--;
@@ -405,7 +405,7 @@ class BaseCode {
 public:
    ULONG UID;   // Unique identifier for lookup
    ESC Code = ESC::NIL; // Byte code
-   
+
    BaseCode() { UID = glByteCodeID++; }
    BaseCode(ESC pCode) : Code(pCode) { UID = glByteCodeID++; }
 };
@@ -416,8 +416,9 @@ struct bcFont : public BaseCode {
    WORD FontIndex;      // Font lookup
    FSO  Options;
    std::string Fill;    // Font fill
+   ALIGN VAlign;        // Vertical alignment of text within the available line height
 
-   bcFont(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)") { Code = ESC::FONT; }
+   bcFont(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)"), VAlign(ALIGN::BOTTOM) { Code = ESC::FONT; }
 
    objFont * getFont();
 };
@@ -427,16 +428,16 @@ struct style_status {
    struct process_table * Table;
    struct bcList * List;
    std::string Face;
-   WORD Point;
-   bool FontChange;      // A major font change has occurred (e.g. face, point size)
+   DOUBLE Point;
+   bool FaceChange;      // A major font change has occurred (e.g. face, point size)
    bool StyleChange;     // A minor style change has occurred (e.g. font colour)
 
-   style_status() : Table(NULL), List(NULL), Face(""), Point(0), FontChange(false), StyleChange(false) { }
+   style_status() : Table(NULL), List(NULL), Face(""), Point(0), FaceChange(false), StyleChange(false) { }
 };
 
 //********************************************************************************************************************
 // Refer to layout::add_drawsegment().  A segment represents graphical content, which can be in the form of text,
-// graphics or both.  A segment can consist of one line only - so if the layout process encounters a boundary causing 
+// graphics or both.  A segment can consist of one line only - so if the layout process encounters a boundary causing
 // wordwrap then a new segment must be created.
 
 struct DocSegment {
@@ -480,7 +481,7 @@ struct bcCell;
 
 // DocLink describes an area on the page that can be interacted with as a link or table cell.
 // The link will be associated with a segment and an originating stream code.
-// 
+//
 // TODO: We'll need to swap the X/Y/Width/Height variables for a vector path that represents the link
 // area.  This will allow us to support transforms correctly, as well as links that need to accurately
 // map to vector shapes.
@@ -589,8 +590,8 @@ struct bcLinkEnd : public BaseCode {
 };
 
 struct bcImage : public BaseCode {
-   DOUBLE Width = 0, Height = 0; // Client can define a fixed width/height 
-   objVectorRectangle *Rect = NULL;
+   DOUBLE Width = 0, Height = 0; // Client can define a fixed width/height
+   objVectorRectangle *Rect = NULL; // A vector will host the image and define a clipping mask for it
    bcImage() { Code = ESC::IMAGE; }
 };
 
@@ -826,7 +827,7 @@ class extDocument : public objDocument {
    LONG   XPosition, YPosition; // Scrolling offset
    LONG   AreaX, AreaY, AreaWidth, AreaHeight;
    LONG   ClickX, ClickY;
-   LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.   
+   LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.
    LONG   TemplatesModified;  // Track modifications to Self->Templates
    LONG   BreakLoop;
    LONG   GeneratedID;        // Unique ID that is regenerated on each load/refresh
@@ -866,10 +867,10 @@ class extDocument : public objDocument {
 
 //********************************************************************************************************************
 
-std::vector<SortedSegment> & extDocument::getSortedSegments() 
+std::vector<SortedSegment> & extDocument::getSortedSegments()
 {
    if ((!SortSegments.empty()) or (Segments.empty())) return SortSegments;
-   
+
    auto sortseg_compare = [&] (SortedSegment &Left, SortedSegment &Right) {
       if (Left.Y < Right.Y) return 1;
       else if (Left.Y > Right.Y) return -1;
@@ -882,7 +883,7 @@ std::vector<SortedSegment> & extDocument::getSortedSegments()
 
    // Build the SortSegments array (unsorted)
 
-   SortSegments.resize(Segments.size());     
+   SortSegments.resize(Segments.size());
    unsigned i;
    SEGINDEX seg;
    for (i=0, seg=0; seg < SEGINDEX(Segments.size()); seg++) {
@@ -918,7 +919,7 @@ template <class T> T & extDocument::insertCode(StreamChar &Cursor, T &Code)
 {
    // All byte codes are saved to a global container.
 
-   if (Codes.contains(Code.UID)) { 
+   if (Codes.contains(Code.UID)) {
       // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
       // NB: At some point the re-use of codes should be allowed, e.g. bcFont reversions would benefit from this.
       pf::Log log(__FUNCTION__);
@@ -988,9 +989,11 @@ struct docresource {
    }
 };
 
+typedef void TAGROUTINE (extDocument *, objXML *, XMLTag &, objXML::TAGS &, StreamChar &, IPF);
+
 class tagroutine {
 public:
-   void (*Routine)(extDocument *, objXML *, XMLTag &, objXML::TAGS &, StreamChar &, IPF);
+   TAGROUTINE *Routine;
    TAG Flags;
 };
 
@@ -1097,6 +1100,80 @@ inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
    return read_rgb8(Value.c_str(), RGB);
 }
 
+static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_cache, tag_call, tag_caps, tag_cell;
+static TAGROUTINE tag_debug, tag_div, tag_editdef, tag_focus, tag_font, tag_footer, tag_head, tag_header, tag_image;
+static TAGROUTINE tag_include, tag_indent, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
+static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_restorestyle, tag_row, tag_savestyle;
+static TAGROUTINE tag_script, tag_set, tag_setfont, tag_setmargins, tag_table, tag_template, tag_trigger;
+static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
+
+//********************************************************************************************************************
+// TAG::OBJECTOK: Indicates that the tag can be used inside an object section, e.g. <image>.<this_tag_ok/>..</image>
+// FILTER_TABLE: The tag is restricted to use within <table> sections.
+// FILTER_ROW:   The tag is restricted to use within <row> sections.
+
+static std::map<std::string, tagroutine, CaseInsensitiveMap> glTags = {
+   // Content tags (tags that affect text, the page layout etc)
+   { "a",             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
+   { "link",          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
+   { "blockquote",    { tag_indent,       TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { "b",             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
+   { "caps",          { tag_caps,         TAG::CHILDREN|TAG::CONTENT } },
+   { "div",           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { "p",             { tag_paragraph,    TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { "font",          { tag_font,         TAG::CHILDREN|TAG::CONTENT } },
+   { "i",             { tag_italic,       TAG::CHILDREN|TAG::CONTENT } },
+   { "li",            { tag_li,           TAG::CHILDREN|TAG::CONTENT } },
+   { "pre",           { tag_pre,          TAG::CHILDREN|TAG::CONTENT } },
+   { "indent",        { tag_indent,       TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { "u",             { tag_underline,    TAG::CHILDREN|TAG::CONTENT } },
+   { "list",          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { "advance",       { tag_advance,      TAG::CONTENT } },
+   { "br",            { tag_br,           TAG::CONTENT } },
+   { "image",         { tag_image,        TAG::CONTENT } },
+   // Conditional command tags
+   { "else",          { NULL,             TAG::CONDITIONAL } },
+   { "elseif",        { NULL,             TAG::CONDITIONAL } },
+   { "repeat",        { tag_repeat,       TAG::CHILDREN|TAG::CONDITIONAL } },
+   // Special instructions
+   { "cache",         { tag_cache,        TAG::INSTRUCTION } },
+   { "call",          { tag_call,         TAG::INSTRUCTION } },
+   { "debug",         { tag_debug,        TAG::INSTRUCTION } },
+   { "focus",         { tag_focus,        TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { "include",       { tag_include,      TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { "print",         { tag_print,        TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { "parse",         { tag_parse,        TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { "set",           { tag_set,          TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { "trigger",       { tag_trigger,      TAG::INSTRUCTION } },
+   // Root level tags
+   { "page",          { tag_page,         TAG::CHILDREN | TAG::ROOT } },
+   // Others
+   { "background",    { tag_background,   TAG::NIL } },
+   { "data",          { NULL,             TAG::NIL } },
+   { "editdef",       { tag_editdef,      TAG::NIL } },
+   { "footer",        { tag_footer,       TAG::NIL } },
+   { "head",          { tag_head,         TAG::NIL } }, // Synonym for info
+   { "header",        { tag_header,       TAG::NIL } },
+   { "info",          { tag_head,         TAG::NIL } },
+   { "inject",        { tag_inject,       TAG::OBJECTOK } },
+   { "row",           { tag_row,          TAG::CHILDREN|TAG::FILTER_TABLE } },
+   { "cell",          { tag_cell,         TAG::PARAGRAPH|TAG::FILTER_ROW } },
+   { "table",         { tag_table,        TAG::CHILDREN } },
+   { "td",            { tag_cell,         TAG::CHILDREN|TAG::FILTER_ROW } },
+   { "tr",            { tag_row,          TAG::CHILDREN } },
+   { "body",          { tag_body,         TAG::NIL } },
+   { "index",         { tag_index,        TAG::NIL } },
+   { "setmargins",    { tag_setmargins,   TAG::OBJECTOK } },
+   { "setfont",       { tag_setfont,      TAG::OBJECTOK } },
+   { "restorestyle",  { tag_restorestyle, TAG::OBJECTOK } },
+   { "savestyle",     { tag_savestyle,    TAG::OBJECTOK } },
+   { "script",        { tag_script,       TAG::NIL } },
+   { "template",      { tag_template,     TAG::NIL } },
+   { "xml",           { tag_xml,          TAG::OBJECTOK } },
+   { "xml_raw",       { tag_xmlraw,       TAG::OBJECTOK } },
+   { "xml_translate", { tag_xmltranslate, TAG::OBJECTOK } }
+};
+
 #ifdef DBG_STREAM
 static void print_stream(extDocument *, const RSTREAM &);
 static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); }
@@ -1115,11 +1192,11 @@ struct FontEntry {
       if (Font) {
          pf::Log log(__FUNCTION__);
          log.msg("Removing cached font %s:%.2f.", Font->Face, Font->Point);
-         FreeResource(Font); 
-         Font = NULL; 
+         FreeResource(Font);
+         Font = NULL;
       }
    }
-    
+
    FontEntry(FontEntry &&other) noexcept { // Move constructor
       Font  = other.Font;
       Point = other.Point;
@@ -1149,7 +1226,7 @@ struct FontEntry {
 
 static std::vector<FontEntry> glFonts;
 
-objFont * bcFont::getFont() 
+objFont * bcFont::getFont()
 {
    if ((FontIndex < INDEX(glFonts.size())) and (FontIndex >= 0)) return glFonts[FontIndex].Font;
    else {
@@ -1304,7 +1381,7 @@ void StreamChar::eraseChar(extDocument *Self, RSTREAM &Stream) // Erase a charac
 //********************************************************************************************************************
 // Retrieve the first available character.  Assumes that the position is valid.
 
-char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream) 
+char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream)
 {
    auto idx = Index;
    auto seek = Offset;
@@ -1322,21 +1399,21 @@ char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream)
 //********************************************************************************************************************
 // Retrieve the first character after seeking past N viable characters (forward only).
 
-char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek) 
-{     
+char StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
+{
    auto idx = Index;
    auto off = Offset;
-   
+
    while (unsigned(idx) < Stream.size()) {
       if (Stream[idx].Code IS ESC::TEXT) {
          auto &text = escape_data<bcText>(Self, idx);
-         if (off + Seek < text.Text.size()) return text.Text[off + Seek];   
+         if (off + Seek < text.Text.size()) return text.Text[off + Seek];
          Seek -= text.Text.size() - off;
          off = 0;
       }
       idx++;
    }
-   
+
    return 0;
 }
 
@@ -1360,7 +1437,7 @@ void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
    if (Stream[Index].Code IS ESC::TEXT) {
       if (Offset > 0) { Offset--; return; }
    }
-   
+
    if (Index > 0) {
       Index--;
       if (Stream[Index].Code IS ESC::TEXT) {
@@ -1379,11 +1456,11 @@ char StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
    if ((Offset > 0) and (Stream[Index].Code IS ESC::TEXT)) {
       return escape_data<bcText>(Self, Index).Text[Offset-1];
    }
-   
+
    for (auto i=Index; i > 0; i--) {
       if (Stream[i].Code IS ESC::TEXT) {
          return escape_data<bcText>(Self, i).Text.back();
-      }   
+      }
    }
 
    return 0;

@@ -13,6 +13,8 @@
 #define HASH_LostFocus 0x319b8e67UL
 #define HASH_LeavingPage 0x6af1c368UL
 #define HASH_a 0x0002b606UL
+#define HASH_align 0x0f174e50UL
+#define HASH_valign 0x22380d26UL
 #define HASH_link 0x7c9a15b3UL
 #define HASH_blockquote 0x1d60c29eUL
 #define HASH_b 0x0002b607UL

@@ -994,7 +994,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
       }
 
       Self->Style.FontStyle.Fill = Self->FontFill;
-      Self->Style.FontChange = true;
+      Self->Style.FaceChange = true;
    }
 
    if (auto font = Self->Style.FontStyle.getFont()) {

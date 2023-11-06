@@ -93,6 +93,7 @@ void layout::gen_scene_graph()
    FloatRect clip(0, 0, Self->VPWidth, Self->VPHeight);
 
    std::string font_fill = "rgb(0,0,0,255)";
+   auto font_align = ALIGN::NIL;
    //DOUBLE alpha = 1.0;
    for (SEGINDEX seg=0; seg < SEGINDEX(m_segments.size()); seg++) {
       auto &segment = m_segments[seg];
@@ -159,7 +160,6 @@ void layout::gen_scene_graph()
       #endif
 
       auto fx = segment.Area.X;
-      auto font_align = ALIGN::NIL;
       for (auto cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()) {
          switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
@@ -171,6 +171,12 @@ void layout::gen_scene_graph()
                   if ((style.Options & FSO::ALIGN_RIGHT) != FSO::NIL) font_align = ALIGN::RIGHT;
                   else if ((style.Options & FSO::ALIGN_CENTER) != FSO::NIL) font_align = ALIGN::HORIZONTAL;
                   else font_align = ALIGN::NIL;
+
+                  if (style.VAlign != ALIGN::NIL) {
+                     if ((style.VAlign & ALIGN::TOP) != ALIGN::NIL) font_align |= ALIGN::TOP;
+                     else if ((style.VAlign & ALIGN::VERTICAL) != ALIGN::NIL) font_align |= ALIGN::VERTICAL;
+                     else font_align |= ALIGN::BOTTOM;
+                  }
 
                   if ((style.Options & FSO::UNDERLINE) != FSO::NIL) new_font->Underline = new_font->Colour;
                   else new_font->Underline.Alpha = 0;
@@ -333,10 +339,15 @@ void layout::gen_scene_graph()
                   if (cursor.Index < segment.TrimStop.Index) str.append(txt.Text, cursor.Offset, std::string::npos);
                   else str.append(txt.Text, cursor.Offset, segment.TrimStop.Offset - cursor.Offset);
 
+                  DOUBLE y = segment.Area.Y;
+                  if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
+                  else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) y += segment.BaseLine - (segment.BaseLine - font->Ascent) * 0.5;
+                  else y += segment.BaseLine;
+
                   if (!str.empty()) {
                      auto text = objVectorText::create::global({
                         fl::Owner(Self->Page->UID),
-                        fl::X(fx), fl::Y(segment.Area.Y + segment.BaseLine),
+                        fl::X(fx), fl::Y(y),
                         fl::String(str),
                         fl::Font(font),
                         fl::Fill(font_fill)
