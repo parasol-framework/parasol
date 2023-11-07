@@ -327,7 +327,7 @@ void layout::gen_scene_graph()
 
             case ESC::IMAGE: {
                auto &ei = escape_data<bcImage>(Self, cursor);
-               acMoveToPoint(ei.Rect, fx, segment.Area.Y, 0, MTF::X|MTF::Y);
+               acMoveToPoint(ei.Rect, ei.X, segment.Area.Y, 0, MTF::X|MTF::Y);
                break;
             }
 
@@ -355,7 +355,7 @@ void layout::gen_scene_graph()
                      });
                      Self->LayoutResources.push_back(text);
                      
-                     LONG twidth;
+                     DOUBLE twidth;
                      text->get(FID_TextWidth, &twidth);
                      fx += twidth;
                   }

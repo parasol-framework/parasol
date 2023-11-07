@@ -1024,6 +1024,9 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // Bitmap images are supported as vector rectangles with a texture map.  If the image is SVG then it is loaded into a
 // viewport, so effectively the same, but scalable.
 //
+// Images are always inline by default, that is to say that they do not prevent content from appearing on either side.
+// If content should be blocked on either side then the client can place the image within <p> tags.
+// 
 // TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless
 // changed to a higher resolution or otherwise modified.
 
@@ -1031,35 +1034,49 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 {
    pf::Log log(__FUNCTION__);
 
-   std::string src, icon, align, westgap, eastgap, northgap, southgap, width, height;
+   std::string src, icon, westgap, eastgap, northgap, southgap, width, height;
+   ALIGN align = ALIGN::NIL;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("src", Tag.Attribs[i].Name)) {
+      auto hash = StrHash(Tag.Attribs[i].Name);
+      if (hash IS HASH_src) {
          src = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("icon", Tag.Attribs[i].Name)) {
+      else if (hash IS HASH_icon) {
+         // If dimensions are not set, the default size of the icon will be equivalent to the line height.
          icon = Tag.Attribs[i].Value; // e.g. "items/checkmark"
-         // The default size of the icon will be equivalent to the line height.
+         if (height.empty()) height = "100%";
       }
-      else if (!StrMatch("align", Tag.Attribs[i].Name)) {
-         align = Tag.Attribs[i].Value;
+      else if (hash IS HASH_unicode) {
+         // TODO: The unicode option reads the first glyph in the provided string and treats it in the same fashion
+         // as the 'icon' attribute.
+         if (height.empty()) height = "100%";
       }
-      else if (!StrMatch("westgap", Tag.Attribs[i].Name)) {
+      else if ((hash IS HASH_float) or (hash IS HASH_align)) {
+         // Setting the horizontal alignment of an image will cause it to float above the text.
+         // If the image is declared inside a paragraph, it will be completely de-anchored as a result.
+         if (!StrMatch("left", Tag.Attribs[i].Value)) align = ALIGN::LEFT;
+         else if (!StrMatch("right", Tag.Attribs[i].Value)) align = ALIGN::RIGHT;
+         else if (!StrMatch("center", Tag.Attribs[i].Value)) align = ALIGN::CENTER;
+      }
+      else if (hash IS HASH_westgap) {
+         // If a percentage is used as a gap value, the final value is calculated from the area of the image itself 
+         // and the container size is ignored.  (Area meaning the diagonal length).
          westgap = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("eastgap", Tag.Attribs[i].Name)) {
+      else if (hash IS HASH_eastgap) {
          eastgap = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("northgap", Tag.Attribs[i].Name)) {
+      else if (hash IS HASH_northgap) {
          northgap = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("southgap", Tag.Attribs[i].Name)) {
+      else if (hash IS HASH_southgap) {
          southgap = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("width", Tag.Attribs[i].Name)) {
+      else if (hash IS HASH_width) {
          width = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("height", Tag.Attribs[i].Name)) {
+      else if (hash IS HASH_height) {
          height = Tag.Attribs[i].Value;
       }
       else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -1103,9 +1120,10 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
 
                bcImage esc;
-               esc.Rect = rect;
-               esc.Width = StrToFloat(width);
+               esc.Rect   = rect;
+               esc.Width  = StrToFloat(width);
                esc.Height = StrToFloat(height);
+               esc.Align  = align;
                Self->insertCode(Index, esc);
                return;
             }
@@ -1531,24 +1549,24 @@ static void tag_template(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TA
 
 static void tag_xml(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   tag_xml_content(Self, XML, Tag, PXF_ARGS);
+   tag_xml_content(Self, XML, Tag, PXF::ARGS);
 }
 
 static void tag_xmlraw(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   tag_xml_content(Self, XML, Tag, 0);
+   tag_xml_content(Self, XML, Tag, PXF::NIL);
 }
 
 static void tag_xmltranslate(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   tag_xml_content(Self, XML, Tag, PXF_TRANSLATE|PXF_ARGS);
+   tag_xml_content(Self, XML, Tag, PXF::TRANSLATE|PXF::ARGS);
 }
 
 //********************************************************************************************************************
 // For use the by tag_xml*() range of functions only.  Forwards <xml> data sections to a target object via XML data
 // channels.  Content will be translated only if requested by the caller.
 
-static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag &Tag, WORD Flags)
+static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag &Tag, PXF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1575,11 +1593,11 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag &Tag, WORD Fl
 
    STRING xmlstr;
    if (!xmlGetString(XML, Tag.ID, XMF::INCLUDE_SIBLINGS, &xmlstr)) {
-      if (Flags & (PXF_ARGS|PXF_TRANSLATE)) {
+      if ((Flags & (PXF::ARGS|PXF::TRANSLATE)) != PXF::NIL) {
          std::string str(xmlstr);
          translate_args(Self, str, str);
 
-         if (Flags & PXF_TRANSLATE) tag_xml_content_eval(Self, str);
+         if ((Flags & PXF::TRANSLATE) != PXF::NIL) tag_xml_content_eval(Self, str);
 
          acDataXML(target, str.c_str());
       }

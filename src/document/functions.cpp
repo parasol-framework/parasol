@@ -9,179 +9,6 @@ static const char glDefaultStyles[] =
 <template name=\"h5\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"12\" colour=\"0,0,0\"><inject/></font></p></template>\n\
 <template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\" colour=\"0,0,0\"><inject/></font></p></template>\n";
 
-//********************************************************************************************************************
-
-static std::string printable(extDocument *, StreamChar, ULONG = 60) __attribute__ ((unused));
-
-static std::string printable(extDocument *Self, StreamChar Start, ULONG Length)
-{
-   std::string result;
-   result.reserve(Length);
-   StreamChar i = Start;
-   while ((i.Index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
-      if (Self->Stream[i.Index].Code IS ESC::TEXT) {
-         auto &text = escape_data<bcText>(Self, i);
-         result += text.Text.substr(i.Offset, result.capacity() - result.size());
-      }
-      else result += '%';
-      i.nextCode();
-   }
-   return result;
-}
-
-//********************************************************************************************************************
-
-static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
-{
-   pf::Log log(__FUNCTION__);
-
-   for (auto &tag : Tags) {
-      std::ostringstream buffer;
-      for (LONG i=0; i < Indent; i++) buffer << ' ';
-
-      if (tag.isContent()) {
-         auto output = tag.Attribs[0].Value;
-         auto pos = output.find("\n", 0);
-         while (pos != std::string::npos) {
-            output.replace(pos, 1, "_");
-            pos = output.find("\n", pos+1);
-         }
-
-         buffer << '[' << output << ']';
-      }
-      else {
-         buffer << '<' << tag.Attribs[0].Name;
-         for (unsigned a=1; a < tag.Attribs.size(); a++) {
-            buffer << " " << tag.Attribs[a].Name << "=\"" << tag.Attribs[a].Value << "\"";
-         }
-         buffer << '>';
-      }
-
-      log.msg("%s", buffer.str().c_str());
-
-      Indent++;
-      print_xmltree(tag.Children, Indent);
-      Indent--;
-   }
-}
-
-//********************************************************************************************************************
-
-#ifdef DBG_STREAM
-
-static void print_stream(extDocument *Self, const RSTREAM &Stream)
-{
-   if (Stream.empty()) return;
-
-   pf::Log log;
-   std::ostringstream out;
-   out << "\nSTREAM: " << Stream.size() << " codes\n";
-   out << "-------------------------------------------------------------------------------\n";
-
-   bool printpos = false;
-   for (INDEX i=0; i < INDEX(Stream.size()); i++) {
-      auto code = Stream[i].Code;
-      if (code IS ESC::FONT) {
-         auto style = &escape_data<bcFont>(Self, i);
-         out << "[Font";
-         out << ":#" << style->FontIndex;
-         if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
-         if ((style->Options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
-         if ((style->Options & FSO::BOLD) != FSO::NIL) out << ":Bold";
-         out << ":" << style->Fill << "]";
-      }
-      else if (code IS ESC::PARAGRAPH_START) {
-         auto para = &escape_data<bcParagraph>(Self, i);
-         if (para->ListItem) out << "[LI]";
-         else out << "[PS]";
-      }
-      else if (code IS ESC::PARAGRAPH_END) {
-         out << "[PE]\n";
-      }
-/*
-      else if (code IS ESC::LIST_ITEM) {
-         auto item = escape_data<escItem>(str, i);
-         out << "[I:X(%d):Width(%d):Custom(%d)]", item->X, item->Width, item->CustomWidth);
-      }
-*/
-      else out << "[" << byteCode(code) << "]";
-
-      printpos = true;
-   }
-
-   out << "\nActive Edit: " << Self->ActiveEditCellID << ", Cursor Index: " << Self->CursorIndex.Index << " / X: " << Self->CursorCharX << ", Select Index: " << Self->SelectIndex.Index << "\n";
-
-   log.msg("%s", out.str().c_str());
-}
-
-#endif
-
-#ifdef DBG_SEGMENTS
-
-#include <stdio.h>
-#include <stdarg.h>
-#undef NULL
-#define NULL 0
-
-static void print_segments(extDocument *Self, const RSTREAM &Stream)
-{
-   pf::Log log;
-   std::ostringstream out;
-
-   out << "\nSEGMENTS\n--------\n";
-
-   for (unsigned row=0; row < Self->Segments.size(); row++) {
-      auto &line = Self->Segments[row];
-      auto i = line.Start;
-
-      out << std::setw(3) << row << ": Span: " << line.Start.Index << "-" << line.Stop.Index << ": ";
-      out << "(" << line.Area.X << "x" << line.Area.Y << ", " << line.Area.Width << "x" << line.Area.Height << ") ";
-      if (line.Edit) out << "{ ";
-      out << "\"";
-      while (i < line.Stop) {
-         auto code = Stream[i.Index].Code;
-         if (code IS ESC::FONT) {
-            auto style = &escape_data<bcFont>(Self, i.Index);
-            out << "[E:Font:#" << style->FontIndex << "]";
-         }
-         else if (code IS ESC::PARAGRAPH_START) {
-            auto para = &escape_data<bcParagraph>(Self, i.Index);
-            if (para->ListItem) out << "[E:LI]";
-            else out << "[E:PS]";
-         }
-         else if (code IS ESC::PARAGRAPH_END) {
-            out << "[E:PE]\n";
-         }
-         else out << "[E:" <<  byteCode(code) << "]";
-         i.nextCode();
-      }
-
-      out << "\"";
-      if (line.Edit) out << " }";
-      out << "\n";
-   }
-
-   log.msg("%s", out.str().c_str());
-}
-
-static void print_tabfocus(extDocument *Self)
-{
-   pf::Log log;
-   std::ostringstream out;
-
-   if (!Self->Tabs.empty()) {
-      out << "\nTAB FOCUSLIST\n-------------\n";
-
-      for (unsigned i=0; i < Self->Tabs.size(); i++) {
-         out << i << ": Type: " << LONG(Self->Tabs[i].Type) << ", Ref: " << Self->Tabs[i].Ref << ", XRef: " << Self->Tabs[i].XRef << "\n";
-      }
-   }
-
-   log.msg("%s", out.str().c_str());
-}
-
-#endif
-
 //static BYTE glWhitespace = true;  // Setting this to true tells the parser to ignore whitespace (prevents whitespace being used as content)
 
 static Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
@@ -655,12 +482,12 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 /*********************************************************************************************************************
 ** Processes an XML tag and passes it to parse_tag().
 **
-** IXF_HOLDSTYLE:  If set, the font style will not be cleared.
-** IXF_RESETSTYLE: If set, the current font style will be completely reset, rather than defaulting to the most recent font style used at the insertion point.
-** IXF_SIBLINGS:   If set, sibling tags that follow the root will be parsed.
+** IXF::HOLDSTYLE:  If set, the font style will not be cleared.
+** IXF::RESETSTYLE: If set, the current font style will be completely reset, rather than defaulting to the most recent font style used at the insertion point.
+** IXF::SIBLINGS:   If set, sibling tags that follow the root will be parsed.
 */
 
-static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, UBYTE Flags)
+static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, IXF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -670,13 +497,13 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 
    // Retrieve the most recent font definition and use that as the style that we're going to start with.
 
-   if (Flags & IXF_HOLDSTYLE) {
+   if ((Flags & IXF::HOLDSTYLE) != IXF::NIL) {
       // Do nothing to change the style
    }
    else {
       Self->Style = style_status();
 
-      if (Flags & IXF_RESETSTYLE) {
+      if ((Flags & IXF::RESETSTYLE) != IXF::NIL) {
          // Do not search for the most recent font style
       }
       else {
@@ -712,7 +539,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 
    StreamChar inserted_at(Self->Stream.size());
    StreamChar insert_index(Self->Stream.size());
-   if (Flags & IXF_SIBLINGS) { // Siblings of Tag are included
+   if ((Flags & IXF::SIBLINGS) != IXF::NIL) { // Siblings of Tag are included
       parse_tags(Self, XML, Tag, insert_index);
    }
    else { // Siblings of Tag are not included
@@ -720,7 +547,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       parse_tag(Self, XML, Tag[0], insert_index, parse_flags);
    }
 
-   if (Flags & IXF_CLOSESTYLE) style_check(Self, insert_index);
+   if ((Flags & IXF::CLOSESTYLE) != IXF::NIL) style_check(Self, insert_index);
 
    if (INDEX(Self->Stream.size()) <= inserted_at.Index) {
       log.trace("parse_tag() did not insert any content into the stream.");
@@ -744,7 +571,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
    return ERR_Okay;
 }
 
-static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar TargetIndex, UBYTE Flags)
+static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar TargetIndex, IXF Flags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -754,13 +581,13 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
 
    // Retrieve the most recent font definition and use that as the style that we're going to start with.
 
-   if (Flags & IXF_HOLDSTYLE) {
+   if ((Flags & IXF::HOLDSTYLE) != IXF::NIL) {
       // Do nothing to change the style
    }
    else {
       Self->Style = style_status();
 
-      if (Flags & IXF_RESETSTYLE) {
+      if ((Flags & IXF::RESETSTYLE) != IXF::NIL) {
          // Do not search for the most recent font style
       }
       else {
@@ -799,7 +626,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
    auto flags = IPF::NIL;
    parse_tag(Self, XML, Tag, insert_index, flags);
 
-   if (Flags & IXF_CLOSESTYLE) style_check(Self, insert_index);
+   if ((Flags & IXF::CLOSESTYLE) != IXF::NIL) style_check(Self, insert_index);
 
    if (INDEX(Self->Stream.size()) <= inserted_at.Index) {
       log.trace("parse_tag() did not insert any content into the stream.");
@@ -992,7 +819,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       if ((Self->HeaderTag) and (!noheader)) {
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing header.");
-         insert_xml(Self, xml, Self->HeaderTag[0][0], Self->Stream.size(), IXF_SIBLINGS|IXF_RESETSTYLE);
+         insert_xml(Self, xml, Self->HeaderTag[0][0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
       }
 
       if (Self->BodyTag) {
@@ -1000,19 +827,19 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          log.traceBranch("Processing this page through the body tag.");
 
          initTemplate block(Self, page->Children, xml);
-         insert_xml(Self, xml, Self->BodyTag[0][0], Self->Stream.size(), IXF_SIBLINGS|IXF_RESETSTYLE);
+         insert_xml(Self, xml, Self->BodyTag[0][0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
       }
       else {
          pf::Log log(__FUNCTION__);
          auto page_name = page->attrib("name");
          log.traceBranch("Processing page '%s'.", page_name ? page_name->c_str() : "");
-         insert_xml(Self, xml, page->Children, Self->Stream.size(), IXF_SIBLINGS|IXF_RESETSTYLE);
+         insert_xml(Self, xml, page->Children, Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
       }
 
       if ((Self->FooterTag) and (!nofooter)) {
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing footer.");
-         insert_xml(Self, xml, Self->FooterTag[0][0], Self->Stream.size(), IXF_SIBLINGS|IXF_RESETSTYLE);
+         insert_xml(Self, xml, Self->FooterTag[0][0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
       }
 
       #ifdef DBG_STREAM

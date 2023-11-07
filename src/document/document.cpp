@@ -141,9 +141,6 @@ thickness, or text inside the cell will mix with the border.
 #include <cmath>
 #include "hashes.h"
 
-typedef int INDEX;
-using SEGINDEX = int;
-
 static const LONG MAX_PAGEWIDTH    = 200000;
 static const LONG MAX_PAGEHEIGHT   = 200000;
 static const LONG MIN_PAGE_WIDTH   = 20;
@@ -161,14 +158,7 @@ static const DOUBLE MIN_LINEHEIGHT = 0.001;
 static const DOUBLE MIN_VSPACING   = 0.001;
 static const DOUBLE MIN_LEADING    = 0.001;
 
-enum {
-   COND_NOT_EQUAL=1,
-   COND_EQUAL,
-   COND_LESS_THAN,
-   COND_LESS_EQUAL,
-   COND_GREATER_THAN,
-   COND_GREATER_EQUAL
-};
+static ULONG glByteCodeID = 1;
 
 using namespace pf;
 
@@ -177,108 +167,7 @@ JUMPTABLE_FONT
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
-enum class ESC : char {
-   NIL = 0,
-   TEXT,
-   FONT,
-   FONTCOLOUR,
-   UNDERLINE,
-   BACKGROUND,
-   INVERSE,
-   VECTOR,
-   LINK,
-   TABDEF,
-   PARAGRAPH_END,   // 10
-   PARAGRAPH_START,
-   LINK_END,
-   ADVANCE,
-   LIST_START,
-   LIST_END,        // 15
-   TABLE_START,
-   TABLE_END,
-   ROW,
-   CELL,
-   CELL_END,        // 20
-   ROW_END,
-   SET_MARGINS,
-   INDEX_START,
-   INDEX_END,
-   XML,
-   IMAGE,
-   // End of list - NB: PLEASE UPDATE byteCode() IF YOU ADD NEW CODES
-   END
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(ESC)
-
-enum class ULD : UBYTE {
-   NIL             = 0,
-   TERMINATE       = 0x01,
-   KEEP_PARAMETERS = 0x02,
-   REFRESH         = 0x04,
-   REDRAW          = 0x08
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(ULD)
-
-enum class NL : char {
-   NONE = 0,
-   PARAGRAPH
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(NL)
-
-enum class WRAP : char {
-   DO_NOTHING = 0,
-   EXTEND_PAGE,
-   WRAPPED
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(WRAP)
-
-enum {
-   STATE_OUTSIDE=0,
-   STATE_ENTERED,
-   STATE_INSIDE
-};
-
-enum class IPF : ULONG {
-   NIL = 0,
-   NO_CONTENT  = 0x0001,
-   STRIP_FEEDS = 0x0002,
-   CHECK_ELSE  = 0x0004,
-   // These flag values are in the upper word so that we can or them with IPF and TAG constants.
-   FILTER_TABLE = 0x80000000, // The tag is restricted to use within <table> sections.
-   FILTER_ROW   = 0X40000000, // The tag is restricted to use within <row> sections.
-   FILTER_ALL   = 0xffff0000
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(IPF)
-
-enum class TAG : ULONG {
-   NIL = 0,
-   CHILDREN     = 0x00000001, // Children are compulsory for the tag to have an effect
-   CONTENT      = 0x00000002, // Tag has a direct impact on text content or the page layout
-   CONDITIONAL  = 0x00000004, // Tag is a conditional statement
-   INSTRUCTION  = 0x00000008, // Tag is an executable instruction
-   ROOT         = 0x00000010, // Tag is limited to use at the root of the document
-   PARAGRAPH    = 0x00000020, // Tag results in paragraph formatting (will force some type of line break)
-   OBJECTOK     = 0x00000040, // It is OK for this tag to be used within any object
-   // These flag values are in the upper word so that we can or them with IPF and TAG constants.
-   FILTER_TABLE = 0x80000000, // The tag is restricted to use within <table> sections.
-   FILTER_ROW   = 0X40000000, // The tag is restricted to use within <row> sections.
-   FILTER_ALL   = 0xffff0000
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(TAG)
-
-enum class TRF : ULONG {
-   NIL      = 0,
-   BREAK    = 0x00000001,
-   CONTINUE = 0x00000002
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(TRF)
+#include "document.h"
 
 //********************************************************************************************************************
 
@@ -286,129 +175,6 @@ static std::string glHighlight = "rgb(219,219,255,255)";
 
 static OBJECTPTR clDocument = NULL;
 static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVector = NULL;
-
-class extDocument;
-
-//********************************************************************************************************************
-
-struct deLinkActivated {
-   std::map<std::string, std::string> Values;  // All key-values associated with the link.
-};
-
-//********************************************************************************************************************
-// Every instruction in the document stream is represented by a StreamCode entity.  The Code refers to what the thing
-// is, while the UID hash refers to further information in the Codes table.
-
-struct StreamCode {
-   ESC Code;  // Type
-   ULONG UID; // Lookup for the Codes table
-
-   StreamCode() : Code(ESC::NIL), UID(0) { }
-   StreamCode(ESC pCode, ULONG pID) : Code(pCode), UID(pID) { }
-};
-
-using RSTREAM = std::vector<StreamCode>;
-
-//********************************************************************************************************************
-// StreamChar provides indexing to specific characters in the stream.  It is designed to handle positional changes so
-// that text string boundaries can be crossed without incident.
-//
-// The Index and Offset are set to -1 if the StreamChar is invalidated.
-
-struct StreamChar {
-   INDEX Index;     // A TEXT code position within the stream
-   size_t Offset;   // Specific character offset within the escText.Text string
-
-   StreamChar() : Index(-1), Offset(-1) { }
-   StreamChar(INDEX pIndex, ULONG pOffset) : Index(pIndex), Offset(pOffset) { }
-   StreamChar(INDEX pIndex) : Index(pIndex), Offset(0) { }
-
-   bool operator==(const StreamChar &Other) const {
-      return (this->Index == Other.Index) and (this->Offset == Other.Offset);
-   }
-
-   bool operator<(const StreamChar &Other) const {
-      if (this->Index < Other.Index) return true;
-      else if ((this->Index IS Other.Index) and (this->Offset < Other.Offset)) return true;
-      else return false;
-   }
-
-   bool operator>(const StreamChar &Other) const {
-      if (this->Index > Other.Index) return true;
-      else if ((this->Index IS Other.Index) and (this->Offset > Other.Offset)) return true;
-      else return false;
-   }
-
-   bool operator<=(const StreamChar &Other) const {
-      if (this->Index < Other.Index) return true;
-      else if ((this->Index IS Other.Index) and (this->Offset <= Other.Offset)) return true;
-      else return false;
-   }
-
-   bool operator>=(const StreamChar &Other) const {
-      if (this->Index > Other.Index) return true;
-      else if ((this->Index IS Other.Index) and (this->Offset >= Other.Offset)) return true;
-      else return false;
-   }
-
-   void operator+=(const LONG Value) {
-      Offset += Value;
-   }
-
-   inline void reset() { Index = -1; Offset = -1; }
-   inline bool valid() { return Index != -1; }
-   inline bool valid(const RSTREAM &Stream) { return (Index != -1) and (Index < INDEX(Stream.size())); }
-
-   inline void set(INDEX pIndex, ULONG pOffset) {
-      Index  = pIndex;
-      Offset = pOffset;
-   }
-
-   inline INDEX prevCode() {
-      Index--;
-      if (Index < 0) { Index = -1; Offset = -1; }
-      else Offset = 0;
-      return Index;
-   }
-
-   inline INDEX nextCode() {
-      Offset = 0;
-      Index++;
-      return Index;
-   }
-
-   char getChar(extDocument *, const RSTREAM &);
-   char getChar(extDocument *, const RSTREAM &, LONG Seek);
-   char getPrevChar(extDocument *, const RSTREAM &);
-   void eraseChar(extDocument *, RSTREAM &); // Erase a character OR an escape code.
-   void nextChar(extDocument *, const RSTREAM &);
-   void prevChar(extDocument *, const RSTREAM &);
-};
-
-
-//********************************************************************************************************************
-// Tab is used to represent interactive entities within the document that can be tabbed to.
-
-struct Tab {
-   // The Ref is a UID for the Type, so you can use it to find the tab in the document stream
-   LONG  Ref;        // For TT_OBJECT: ObjectID; TT_LINK: LinkID
-   LONG  XRef;       // For TT_OBJECT: SurfaceID (if found)
-   UBYTE Type;       // TT_LINK, TT_OBJECT
-   bool  Active;     // true if the tabbable entity is active/visible
-};
-
-//********************************************************************************************************************
-
-static ULONG glByteCodeID = 1;
-
-class BaseCode {
-public:
-   ULONG UID;   // Unique identifier for lookup
-   ESC Code = ESC::NIL; // Byte code
-
-   BaseCode() { UID = glByteCodeID++; }
-   BaseCode(ESC pCode) : Code(pCode) { UID = glByteCodeID++; }
-};
 
 //********************************************************************************************************************
 
@@ -514,22 +280,6 @@ public:
    DOUBLE Y;
 };
 
-static const char IXF_SIBLINGS   = 0x01;
-static const char IXF_HOLDSTYLE  = 0x02;
-static const char IXF_RESETSTYLE = 0x04;
-static const char IXF_CLOSESTYLE = 0x08;
-
-static const WORD PXF_ARGS      = 0x0001;
-static const WORD PXF_TRANSLATE = 0x0002;
-
-enum class LINK : UBYTE {
-   NIL = 0,
-   HREF,
-   FUNCTION
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(LINK)
-
 struct tablecol {
    UWORD PresetWidth;
    UWORD MinWidth;   // For assisting layout
@@ -592,6 +342,8 @@ struct bcLinkEnd : public BaseCode {
 struct bcImage : public BaseCode {
    DOUBLE Width = 0, Height = 0; // Client can define a fixed width/height
    objVectorRectangle *Rect = NULL; // A vector will host the image and define a clipping mask for it
+   DOUBLE X = 0;    // Horizontal position, calculated during layout
+   ALIGN Align = ALIGN::NIL; // NB: If horizontal alignment is defined then the image is treated as floating.
    bcImage() { Code = ESC::IMAGE; }
 };
 
@@ -989,8 +741,6 @@ struct docresource {
    }
 };
 
-typedef void TAGROUTINE (extDocument *, objXML *, XMLTag &, objXML::TAGS &, StreamChar &, IPF);
-
 class tagroutine {
 public:
    TAGROUTINE *Routine;
@@ -1058,8 +808,8 @@ static std::string get_font_style(FSO);
 //static LONG   get_line_from_index(extDocument *, INDEX Index);
 static LONG  getutf8(CSTRING, LONG *);
 static ERROR insert_text(extDocument *, StreamChar &, const std::string &, bool);
-static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, UBYTE);
-static ERROR insert_xml(extDocument *, objXML *, XMLTag &, StreamChar TargetIndex = StreamChar(), UBYTE Flags = 0);
+static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, IXF);
+static ERROR insert_xml(extDocument *, objXML *, XMLTag &, StreamChar TargetIndex = StreamChar(), IXF Flags = IXF::NIL);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD);
@@ -1085,7 +835,7 @@ static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
 static STRING stream_to_string(extDocument *, StreamChar, StreamChar);
 static void  style_check(extDocument *, StreamChar &);
-static void  tag_xml_content(extDocument *, objXML *, XMLTag &, WORD);
+static void  tag_xml_content(extDocument *, objXML *, XMLTag &, PXF);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
 static bool  valid_objectid(extDocument *, OBJECTID);
@@ -1470,6 +1220,7 @@ char StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
 #include "parsing.cpp"
 #include "class/fields.cpp"
 #include "class/document_class.cpp"
+#include "debug.cpp"
 #include "functions.cpp"
 #include "ui.cpp"
 #include "layout.cpp"

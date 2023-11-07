@@ -1726,8 +1726,8 @@ struct FieldValue {
 
 class FloatRect {
    public:
-   DOUBLE X;    // Left-most coordinate
-   DOUBLE Y;     // Top coordinate
+   DOUBLE X;       // Left-most coordinate
+   DOUBLE Y;       // Top coordinate
    DOUBLE Width;   // Right-most coordinate
    DOUBLE Height;  // Bottom coordinate
    FloatRect() { }

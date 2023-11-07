@@ -170,17 +170,30 @@ void layout::procImage()
 {
    auto image = &escape_data<bcImage>(Self, idx);
 
+   bool floating = false;
+   image->X = m_cursor_x;
+   if ((image->Align & ALIGN::LEFT) != ALIGN::NIL) {
+      floating = true;
+      image->X = m_left_margin;
+   }
+   else if ((image->Align & ALIGN::CENTER) != ALIGN::NIL) {
+      floating = true;
+      image->X = m_cursor_x + ((m_align_width - image->Width) * 0.5);
+   }
+   if ((image->Align & ALIGN::RIGHT) != ALIGN::NIL) {
+      floating = true;
+      image->X = m_align_width - image->Width;
+   }
+
    m_clips.emplace_back(
-      m_cursor_x, m_cursor_y, m_cursor_x + image->Width, m_cursor_y + image->Height,
+      image->X, m_cursor_y, image->X + image->Width, m_cursor_y + image->Height,
       idx, false, "Image");
 
-   //m_cursor_x += image->Width; // Arguably unnecessary (expect all following content to apply clipping constraints themselves?)
-
    // Line height is increased if the image is anchored to the line
-   if (image->Height > m_line.height) m_line.height = image->Height;
+   if ((!floating) and (image->Height > m_line.height)) m_line.height = image->Height;
 
    // Manipulating the base-line affects how text is positioned vertically within the overall line height value.
-   if (image->Height > m_line.base_line) m_line.base_line = image->Height;
+   if ((!floating) and (image->Height > m_line.base_line)) m_line.base_line = image->Height;
 
    add_esc_segment();
 }
