@@ -340,11 +340,23 @@ struct bcLinkEnd : public BaseCode {
 };
 
 struct bcImage : public BaseCode {
-   DOUBLE Width = 0, Height = 0; // Client can define a fixed width/height
-   objVectorRectangle *Rect = NULL; // A vector will host the image and define a clipping mask for it
-   DOUBLE X = 0;    // Horizontal position, calculated during layout
-   ALIGN Align = ALIGN::NIL; // NB: If horizontal alignment is defined then the image is treated as floating.
+   DOUBLE width = 0, height = 0; // Client can define a fixed width/height
+   DOUBLE final_width, final_height; // Computed during layout
+   objVectorRectangle *rect = NULL; // A vector will host the image and define a clipping mask for it
+   DOUBLE x = 0;    // Horizontal position, calculated during layout
+   ALIGN align = ALIGN::NIL; // NB: If horizontal alignment is defined then the image is treated as floating.
+   bool width_pct = false, height_pct = false, padding = false;
+   
+   struct {
+      DOUBLE left = 0, right = 0, top = 0, bottom = 0;
+      bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
+   } pad, final_pad;
+
    bcImage() { Code = ESC::IMAGE; }
+
+   inline bool floating() {
+      return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
+   }
 };
 
 struct bcList : public BaseCode {
@@ -501,7 +513,7 @@ struct bcCell : public BaseCode {
    LONG ColSpan;        // Number of columns spanned by this cell (normally set to 1)
    LONG RowSpan;        // Number of rows spanned by this cell
    LONG AbsX, AbsY;     // Cell coordinates, these are absolute
-   LONG Width, Height;  // Width and height of the cell
+   DOUBLE Width, Height;  // Width and height of the cell
    std::string OnClick; // Name of an onclick function
    std::string EditDef; // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> Args;
@@ -709,35 +721,59 @@ template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
 
 //********************************************************************************************************************
 
-enum {
-   RT_OBJECT_TEMP=1,       // The object can be removed after parsing has finished
-   RT_OBJECT_UNLOAD,       // Default choice for object termination, terminates immediately
-   RT_OBJECT_UNLOAD_DELAY, // Use SendMessage() to terminate the object
-   RT_PERSISTENT_SCRIPT,   // The script can survive refreshes
-   RT_PERSISTENT_OBJECT    // The object can survive refreshes
-};
-
 struct docresource {
-   union {
-      APTR Address;
-      OBJECTID ObjectID;
-   };
+   OBJECTID ObjectID;
    CLASSID ClassID;
-   BYTE Type;
+   RTD Type;
    bool Terminate = false; // If true, can be freed immediately and not on a delay
 
-   docresource(OBJECTID pID, BYTE pType) : ObjectID(pID), Type(pType) { }
+   docresource(OBJECTID pID, RTD pType, CLASSID pClassID = 0) : 
+      ObjectID(pID), ClassID(pClassID), Type(pType) { }
 
    ~docresource() {
-      if ((Type IS RT_PERSISTENT_SCRIPT) or (Type IS RT_PERSISTENT_OBJECT)) {
+      if ((Type IS RTD::PERSISTENT_SCRIPT) or (Type IS RTD::PERSISTENT_OBJECT)) {
          if (Terminate) FreeResource(ObjectID);
          else SendMessage(MSGID_FREE, MSF::NIL, &ObjectID, sizeof(OBJECTID));
       }
-      else if (Type IS RT_OBJECT_UNLOAD_DELAY) {
+      else if (Type IS RTD::OBJECT_UNLOAD_DELAY) {
          if (Terminate) FreeResource(ObjectID);
          else SendMessage(MSGID_FREE, MSF::NIL, &ObjectID, sizeof(OBJECTID));
       }
-      else FreeResource(ObjectID);
+      else if (Type != RTD::NIL) FreeResource(ObjectID);
+   }
+   
+   docresource(docresource &&other) noexcept { // Move constructor
+      ObjectID  = other.ObjectID;
+      ClassID   = other.ClassID;
+      Type      = other.Type;
+      Terminate = other.Terminate;
+      other.Type = RTD::NIL;
+   }
+
+   docresource(const docresource &other) { // Copy constructor
+      ObjectID  = other.ObjectID;
+      ClassID   = other.ClassID;
+      Type      = other.Type;
+      Terminate = other.Terminate;
+   }
+
+   docresource& operator=(docresource &&other) noexcept { // Move assignment
+      if (this == &other) return *this;
+      ObjectID  = other.ObjectID;
+      ClassID   = other.ClassID;
+      Type      = other.Type;
+      Terminate = other.Terminate;
+      other.Type = RTD::NIL;
+      return *this;
+   }
+
+   docresource& operator=(const docresource& other) { // Copy assignment
+      if (this == &other) return *this;
+      ObjectID  = other.ObjectID;
+      ClassID   = other.ClassID;
+      Type      = other.Type;
+      Terminate = other.Terminate;
+      return *this;
    }
 };
 
@@ -825,6 +861,7 @@ static void  print_xmltree(objXML::TAGS &, LONG &);
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
+static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative);
 static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
 static void  reset_cursor(extDocument *);

@@ -27,6 +27,15 @@ static Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // 
 
 //********************************************************************************************************************
 
+static DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
+{
+   if (Width > Height) std::swap(Width, Height);
+   if ((Height / Width) <= 1.5) return 5.0 * (Width + Height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
+   else return std::sqrt((Width * Width) + (Height * Height));
+}
+
+//********************************************************************************************************************
+
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
    FRGB rgb;
@@ -466,6 +475,54 @@ static ERROR consume_input_events(objVector *Vector, const InputEvent *Events)
 }
 
 //********************************************************************************************************************
+// Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
+
+static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative)
+{
+   bool isnumber = true;
+   auto v = Input;
+   while ((*v) and (*v <= 0x20)) v++;
+
+   auto str = v;
+   if ((*str IS '-') or (*str IS '+')) str++;
+
+   Relative = false;
+   if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
+      while ((*str >= '0') and (*str <= '9')) str++;
+
+      if (*str IS '.') {
+         str++;
+         if ((*str >= '0') and (*str <= '9')) {
+            while ((*str >= '0') and (*str <= '9')) str++;
+         }
+         else isnumber = false;
+      }
+
+      DOUBLE multiplier = 1.0;
+      DOUBLE dpi = 96.0;
+
+      if (*str IS '%') {
+         Relative = true;
+         multiplier = 0.01;
+         str++;
+      }
+      else if ((str[0] IS 'p') and (str[1] IS 'x')) str += 2; // Pixel.  This is the default type
+      else if ((str[0] IS 'e') and (str[1] IS 'm')) { str += 2; multiplier = 12.0 * (4.0 / 3.0); } // Multiply the current font's pixel height by the provided em value
+      else if ((str[0] IS 'e') and (str[1] IS 'x')) { str += 2; multiplier = 6.0 * (4.0 / 3.0); } // As for em, but multiple by the pixel height of the 'x' character.  If no x character, revert to 0.5em
+      else if ((str[0] IS 'i') and (str[1] IS 'n')) { str += 2; multiplier = dpi; } // Inches
+      else if ((str[0] IS 'c') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 2.56) * dpi; } // Centimetres
+      else if ((str[0] IS 'm') and (str[1] IS 'm')) { str += 2; multiplier = (1.0 / 20.56) * dpi; } // Millimetres
+      else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
+      else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
+
+      Output = StrToFloat(v) * multiplier;
+   }
+   else Output = 0;
+
+   return str;
+}
+
+//********************************************************************************************************************
 // Checks if the file path is safe, i.e. does not refer to an absolute file location.
 
 static LONG safe_file_path(extDocument *Self, const std::string &Path)
@@ -493,7 +550,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 
    if (TargetIndex < 0) TargetIndex = Self->Stream.size();
 
-   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, Flags, Tag[0].Attribs[0].Name.c_str());
+   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(Flags), Tag[0].Attribs[0].Name.c_str());
 
    // Retrieve the most recent font definition and use that as the style that we're going to start with.
 
@@ -577,7 +634,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
 
    if (TargetIndex < 0) TargetIndex = Self->Stream.size();
 
-   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex.Index, Flags, Tag.Attribs[0].Name.c_str());
+   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex.Index, LONG(Flags), Tag.Attribs[0].Name.c_str());
 
    // Retrieve the most recent font definition and use that as the style that we're going to start with.
 
@@ -1003,14 +1060,14 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 
    // Remove all page related resources
 
-   {
+   if (!Self->Resources.empty()) {
       pf::Log log(__FUNCTION__);
-      log.traceBranch("Freeing page-allocated resources.");
+      log.branch("Freeing page-allocated resources.");
 
       for (auto it = Self->Resources.begin(); it != Self->Resources.end(); ) {
          if ((ULD::TERMINATE) != ULD::NIL) it->Terminate = true;
 
-         if ((it->Type IS RT_PERSISTENT_SCRIPT) or (it->Type IS RT_PERSISTENT_OBJECT)) {
+         if ((it->Type IS RTD::PERSISTENT_SCRIPT) or (it->Type IS RTD::PERSISTENT_OBJECT)) {
             // Persistent objects and scripts will survive refreshes
             if ((Flags & ULD::REFRESH) != ULD::NIL);
             else { it = Self->Resources.erase(it); continue; }

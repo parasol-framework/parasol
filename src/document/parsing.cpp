@@ -406,6 +406,7 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
          ALIGN align = ALIGN::NIL;
          if (!StrMatch("top", Value)) align = ALIGN::TOP;
          else if (!StrMatch("center", Value)) align = ALIGN::VERTICAL;
+         else if (!StrMatch("middle", Value)) align = ALIGN::VERTICAL;
          else if (!StrMatch("bottom", Value)) align = ALIGN::BOTTOM;
          if (align != ALIGN::NIL) {
             Self->Style.StyleChange = true;
@@ -765,7 +766,7 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          // Add the created XML object to the document rather than destroying it
 
-         Self->Resources.emplace_back(xmlinc->UID, RT_OBJECT_TEMP);
+         Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
       }
       FreeResource(results);
    }
@@ -986,7 +987,7 @@ static void tag_include(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
       if (!StrMatch("src", Tag.Attribs[i].Name)) {
          if (auto xmlinc = objXML::create::integral(fl::Path(Tag.Attribs[i].Value), fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS))) {
             parse_tags(Self, xmlinc, xmlinc->Tags, Index, Flags);
-            Self->Resources.emplace_back(xmlinc->UID, RT_OBJECT_TEMP);
+            Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
          }
          else log.warning("Failed to include '%s'", Tag.Attribs[i].Value.c_str());
          return;
@@ -1014,7 +1015,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
             // Add the created XML object to the document rather than destroying it
 
-            Self->Resources.emplace_back(xmlinc->UID, RT_OBJECT_TEMP);
+            Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
          }
       }
    }
@@ -1034,61 +1035,69 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 {
    pf::Log log(__FUNCTION__);
 
-   std::string src, icon, westgap, eastgap, northgap, southgap, width, height;
-   ALIGN align = ALIGN::NIL;
+   bcImage img;
+   std::string src, icon;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
+      auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_src) {
-         src = Tag.Attribs[i].Value;
+         src = value;
       }
       else if (hash IS HASH_icon) {
-         // If dimensions are not set, the default size of the icon will be equivalent to the line height.
-         icon = Tag.Attribs[i].Value; // e.g. "items/checkmark"
-         if (height.empty()) height = "100%";
+         icon = value; // e.g. "items/checkmark"
       }
       else if (hash IS HASH_unicode) {
          // TODO: The unicode option reads the first glyph in the provided string and treats it in the same fashion
          // as the 'icon' attribute.
-         if (height.empty()) height = "100%";
       }
       else if ((hash IS HASH_float) or (hash IS HASH_align)) {
          // Setting the horizontal alignment of an image will cause it to float above the text.
          // If the image is declared inside a paragraph, it will be completely de-anchored as a result.
-         if (!StrMatch("left", Tag.Attribs[i].Value)) align = ALIGN::LEFT;
-         else if (!StrMatch("right", Tag.Attribs[i].Value)) align = ALIGN::RIGHT;
-         else if (!StrMatch("center", Tag.Attribs[i].Value)) align = ALIGN::CENTER;
+         auto vh = StrHash(value);
+         if (vh IS HASH_left)        img.align = ALIGN::LEFT;
+         else if (vh IS HASH_right)  img.align = ALIGN::RIGHT;
+         else if (vh IS HASH_center) img.align = ALIGN::CENTER;
+         else if (vh IS HASH_middle) img.align = ALIGN::CENTER;
+         else log.warning("Invalid alignment value '%s'", value.c_str());
       }
-      else if (hash IS HASH_westgap) {
-         // If a percentage is used as a gap value, the final value is calculated from the area of the image itself 
-         // and the container size is ignored.  (Area meaning the diagonal length).
-         westgap = Tag.Attribs[i].Value;
+      else if (hash IS HASH_valign) {
+         // If the image is anchored and the line is taller than the image, the image can be vertically aligned.
+         auto vh = StrHash(value);
+         if (vh IS HASH_top) img.align = ALIGN::TOP;
+         else if (vh IS HASH_center) img.align = ALIGN::VERTICAL;
+         else if (vh IS HASH_middle) img.align = ALIGN::VERTICAL;
+         else if (vh IS HASH_bottom) img.align = ALIGN::BOTTOM;
+         else log.warning("Invalid valign value '%s'", value.c_str());
       }
-      else if (hash IS HASH_eastgap) {
-         eastgap = Tag.Attribs[i].Value;
-      }
-      else if (hash IS HASH_northgap) {
-         northgap = Tag.Attribs[i].Value;
-      }
-      else if (hash IS HASH_southgap) {
-         southgap = Tag.Attribs[i].Value;
+      else if (hash IS HASH_padding) {
+         // Set padding values in clockwise order.  For percentages, the final value is calculated from the area of 
+         // the image itself (area being taken as the diagonal length).
+
+         auto str = value.c_str();
+         str = read_unit(str, img.pad.left, img.pad.left_pct);
+         str = read_unit(str, img.pad.top, img.pad.top_pct);
+         str = read_unit(str, img.pad.right, img.pad.right_pct);
+         str = read_unit(str, img.pad.bottom, img.pad.bottom_pct);
+         img.padding = true;
       }
       else if (hash IS HASH_width) {
-         width = Tag.Attribs[i].Value;
+         read_unit(value.c_str(), img.width, img.width_pct);
       }
       else if (hash IS HASH_height) {
-         height = Tag.Attribs[i].Value;
+         read_unit(value.c_str(), img.height, img.height_pct);
       }
       else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
    if (!icon.empty()) { // Load a vector image via a named SVG icon.
-      if (width.empty()) width = "16";
-      if (height.empty()) height = "16";
+      if (img.width < 0) img.width = 0; // Zero is equivalent to 'auto', meaning on-the-fly computation
+      if (img.height < 0) img.height = 0;
+
       if (auto pattern = objVectorPattern::create::global({
             fl::Owner(Self->Scene->UID),
-            fl::PageHeight(StrToFloat(width)),
-            fl::PageHeight(StrToFloat(height)),
+            fl::PageWidth(8),
+            fl::PageHeight(8),
             fl::SpreadMethod(VSPREAD::PAD)
          })) {
 
@@ -1112,19 +1121,14 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             if (auto rect = objVectorRectangle::create::global({
                   fl::Name("rect_image"),
                   fl::Owner(Self->Page->UID),
-                  fl::X(0), fl::Y(0), // Position to be corrected during layout
-                  fl::Width(StrToFloat(width)), fl::Height(StrToFloat(height)),
+                  fl::X(0), fl::Y(0), fl::Width(8), fl::Height(8), // Will be corrected during layout
                   fl::Fill("url(#" + name + ")")
                })) {
 
-               Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
 
-               bcImage esc;
-               esc.Rect   = rect;
-               esc.Width  = StrToFloat(width);
-               esc.Height = StrToFloat(height);
-               esc.Align  = align;
-               Self->insertCode(Index, esc);
+               img.rect = rect;
+               Self->insertCode(Index, img);
                return;
             }
          }
@@ -1156,12 +1160,12 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                   fl::Width(1), fl::Height(1),
                   fl::Fill("url(#" + name + ")")
                })) {
-               Self->Resources.emplace_back(img_cache->UID, RT_OBJECT_UNLOAD_DELAY);
-               Self->Resources.emplace_back(pic->UID, RT_OBJECT_UNLOAD_DELAY);
-               Self->Resources.emplace_back(rect->UID, RT_OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(img_cache->UID, RTD::OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(pic->UID, RTD::OBJECT_UNLOAD_DELAY);
+               Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
 
                bcImage esc;
-               esc.Rect = rect;
+               esc.rect = rect;
                Self->insertCode(Index, esc);
                return;
             }
@@ -1840,7 +1844,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 
       if (!CheckObjectExists(object->UID)) {
          if (Self->BkgdGfx) {
-            auto &resource = Self->Resources.emplace_back(object->UID, RT_OBJECT_UNLOAD);
+            auto &resource = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
             resource.ClassID = class_id;
          }
          else {
@@ -1869,7 +1873,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
                   case ID_CONFIG:
                   case ID_COMPRESSION:
                   case ID_SCRIPT: {
-                     Self->Resources.emplace_back(object->UID, RT_PERSISTENT_OBJECT);
+                     Self->Resources.emplace_back(object->UID, RTD::PERSISTENT_OBJECT);
                      break;
                   }
 
@@ -1878,12 +1882,12 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
                   default:
                      log.warning("Cannot cache object of class type '%s'", object->Class->ClassName);
                   //case ID_IMAGE:
-                  //   auto &res = Self->Resources.emplace_back(object->UID, RT_OBJECT_UNLOAD);
+                  //   auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
                      break;
                }
             }
             else {
-               auto &res = Self->Resources.emplace_back(object->UID, RT_OBJECT_UNLOAD);
+               auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
                res.ClassID = class_id;
             }
 
@@ -2032,7 +2036,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
    if (persistent) {
       for (auto &resource : Self->Resources) {
-         if (resource.Type IS RT_PERSISTENT_SCRIPT) {
+         if (resource.Type IS RTD::PERSISTENT_SCRIPT) {
             script = (objScript *)GetObjectPtr(resource.ObjectID);
             if (!StrMatch(name, script->Name)) {
                log.msg("Persistent script discovered.");
@@ -2084,7 +2088,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
          }
 
          if (!acActivate(script)) { // Persistent scripts survive refreshes.
-            Self->Resources.emplace_back(script->UID, persistent ? RT_PERSISTENT_SCRIPT : RT_OBJECT_UNLOAD_DELAY);
+            Self->Resources.emplace_back(script->UID, persistent ? RTD::PERSISTENT_SCRIPT : RTD::OBJECT_UNLOAD_DELAY);
 
             if ((!Self->DefaultScript) or (defaultscript)) {
                log.msg("Script #%d is the default script for this document.", script->UID);
@@ -2102,7 +2106,7 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
                   // Add the created XML object to the document rather than destroying it
 
-                  Self->Resources.emplace_back(xmlinc->UID, RT_OBJECT_TEMP);
+                  Self->Resources.emplace_back(xmlinc->UID, RTD::OBJECT_TEMP);
                }
             }
          }

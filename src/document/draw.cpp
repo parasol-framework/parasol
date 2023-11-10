@@ -19,7 +19,7 @@ static void redraw(extDocument *Self, bool Focus)
 }
 
 //********************************************************************************************************************
-// Convert the layout information to a vector scene.
+// Convert the layout information to a vector scene.  This is the final step in the layout process.
 
 void layout::gen_scene_graph()
 {
@@ -203,7 +203,7 @@ void layout::gen_scene_graph()
                   if ((stack_list.top()->Type IS bcList::CUSTOM) or
                       (stack_list.top()->Type IS bcList::ORDERED)) {
                      if (!stack_para.top()->Value.empty()) {
-                        font->X = fx - stack_para.top()->ItemIndent;
+                        font->X = segment.Area.X - stack_para.top()->ItemIndent;
                         font->Y = segment.Area.Y + font->Leading + (segment.BaseLine - font->Ascent);
                         font->AlignWidth = segment.AlignWidth;
                         font->setString(stack_para.top()->Value);
@@ -326,8 +326,11 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::IMAGE: {
-               auto &ei = escape_data<bcImage>(Self, cursor);
-               acMoveToPoint(ei.Rect, ei.X, segment.Area.Y, 0, MTF::X|MTF::Y);
+               auto &img = escape_data<bcImage>(Self, cursor);
+               // Apply the rectangle dimensions as defined during layout.
+               DOUBLE x = img.x + img.final_pad.left, y = segment.Area.Y + img.final_pad.top;
+               acMoveToPoint(img.rect, x, y, 0, MTF::X|MTF::Y);
+               acResize(img.rect, img.final_width, img.final_height, 0);
                break;
             }
 

@@ -15,12 +15,14 @@
 #define HASH_blockquote 0x1d60c29eUL
 #define HASH_body 0x7c94b233UL
 #define HASH_border 0xf4916c63UL
+#define HASH_bottom 0xf492ca7aUL
 #define HASH_bottommargin 0xc2a11ab8UL
 #define HASH_br 0x00597759UL
 #define HASH_cache 0x0f355db9UL
 #define HASH_call 0x7c950401UL
 #define HASH_caps 0x7c95048cUL
 #define HASH_cell 0x7c951505UL
+#define HASH_center 0xf62fb286UL
 #define HASH_colour 0xf6e37b99UL
 #define HASH_colour 0xf6e37b99UL
 #define HASH_colour 0xf6e37b99UL
@@ -67,6 +69,7 @@
 #define HASH_kerning 0x243d11f3UL
 #define HASH_leading 0x6ffe3259UL
 #define HASH_LeavingPage 0x6af1c368UL
+#define HASH_left 0x7c9a03b0UL
 #define HASH_leftmargin 0xe837e46eUL
 #define HASH_li 0x0059789aUL
 #define HASH_linebreaks 0x811267a5UL
@@ -76,6 +79,7 @@
 #define HASH_LostFocus 0x319b8e67UL
 #define HASH_margins 0xb4d91256UL
 #define HASH_maxchars 0x5db12b7cUL
+#define HASH_middle 0x0dc5ebd4UL
 #define HASH_name 0x7c9b0c46UL
 #define HASH_northgap 0x72d71708UL
 #define HASH_nowrap 0x10924cdcUL
@@ -96,6 +100,7 @@
 #define HASH_Refresh 0x3e3db654UL
 #define HASH_repeat 0x192dec66UL
 #define HASH_restorestyle 0x07ae549aUL
+#define HASH_right 0x10494163UL
 #define HASH_rightmargin 0xb6995c61UL
 #define HASH_row 0x0b88a69dUL
 #define HASH_rowspan 0x56c5a60fUL
@@ -119,6 +124,7 @@
 #define HASH_thickness 0x369e2871UL
 #define HASH_thin 0x7c9e73d8UL
 #define HASH_title 0x106daa27UL
+#define HASH_top 0x0b88af18UL
 #define HASH_topmargin 0xdde37dd6UL
 #define HASH_tr 0x005979abUL
 #define HASH_trigger 0xf6b58819UL

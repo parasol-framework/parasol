@@ -37,6 +37,7 @@ struct layout {
    LONG m_align_flags;      // Current alignment settings according to the font style
    LONG m_align_width;      // Horizontal alignment will be calculated relative to this value
    DOUBLE m_cursor_x, m_cursor_y; // Insertion point of the next text character or vector object
+   DOUBLE m_page_width;
    LONG m_kernchar;         // Previous character of the word being operated on
    LONG m_left_margin;      // Left margin value, controls whitespace for paragraphs and table cells
    LONG m_paragraph_bottom; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
@@ -125,7 +126,7 @@ struct layout {
 
    layout(extDocument *pSelf) : Self(pSelf) { }
 
-   INDEX do_layout(INDEX, INDEX, objFont **, LONG, LONG, LONG &, LONG &, ClipRectangle, bool &);
+   INDEX do_layout(INDEX, INDEX, objFont **, LONG, LONG, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
 
    void gen_scene_graph();
 
@@ -134,22 +135,22 @@ struct layout {
    void procLinkEnd();
    void procIndexStart();
    void procFont();
-   WRAP procVector(LONG, DOUBLE, DOUBLE, LONG &, LONG, bool &, bool &);
-   void procParagraphStart(LONG);
+   WRAP procVector(LONG, DOUBLE, DOUBLE, DOUBLE &, LONG, bool &, bool &);
+   void procParagraphStart();
    void procParagraphEnd();
-   TE procTableEnd(bcTable *, LONG, LONG, LONG, LONG, LONG &, LONG &);
+   TE procTableEnd(bcTable *, LONG, LONG, LONG, LONG, DOUBLE &, DOUBLE &);
    void procCellEnd(bcCell *);
    void procRowEnd(bcTable *);
    void procAdvance();
    bool procListEnd();
-   WRAP procText(LONG, LONG);
+   WRAP procText(LONG, DOUBLE);
    void procImage();
 
    void terminate_link();
    void add_link(ESC, std::variant<bcLink *, bcCell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void add_drawsegment(StreamChar, StreamChar, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void end_line(NL, DOUBLE, StreamChar, const std::string &);
-   WRAP check_wordwrap(const std::string &, LONG, LONG &, StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
+   WRAP check_wordwrap(const std::string &, LONG, DOUBLE &, StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
    void wrap_through_clips(StreamChar, DOUBLE &, DOUBLE &, LONG, LONG);
    DOUBLE calc_page_height(DOUBLE, DOUBLE);
 };
@@ -165,35 +166,79 @@ void layout::procAdvance()
 }
 
 //********************************************************************************************************************
+// Calculate the image position.  The host rectangle is modified in gen_scene_graph() as this is the most optimal 
+// approach (i.e. if the page width expands during layout).
 
 void layout::procImage()
 {
-   auto image = &escape_data<bcImage>(Self, idx);
+   auto &image = escape_data<bcImage>(Self, idx);
 
-   bool floating = false;
-   image->X = m_cursor_x;
-   if ((image->Align & ALIGN::LEFT) != ALIGN::NIL) {
-      floating = true;
-      image->X = m_left_margin;
+   // Calculate the final width and height.
+
+   if (image.width_pct) {
+      image.final_width = image.width * (m_page_width - m_left_margin - m_right_margin);
    }
-   else if ((image->Align & ALIGN::CENTER) != ALIGN::NIL) {
-      floating = true;
-      image->X = m_cursor_x + ((m_align_width - image->Width) * 0.5);
+   else if (!image.width) {
+      if (image.height) {
+         if (image.height_pct) {
+            if (image.floating()) image.final_width = image.height * (m_page_width - m_left_margin - m_right_margin);
+            else image.final_width = image.height * m_line.base_line;
+         }
+         else image.final_width = image.height;
+      }
+      else image.final_width = m_line.base_line;
    }
-   if ((image->Align & ALIGN::RIGHT) != ALIGN::NIL) {
-      floating = true;
-      image->X = m_align_width - image->Width;
+   else image.final_width = image.width;
+
+   if (image.height_pct) {
+      if (image.floating()) image.final_height = image.height * (m_page_width - m_left_margin - m_right_margin);
+      else image.final_height = image.height * m_line.base_line;
    }
+   else if (!image.height) {
+      if (image.floating()) image.final_height = image.final_width;
+      else image.final_height = m_line.base_line;
+   }
+   else image.final_height = image.height;
+
+   if (image.final_height < 0.01) image.final_height = 0.01;
+   if (image.final_width < 0.01) image.final_width = 0.01;
+   
+   if (image.padding) {
+      auto hypot = fast_hypot(image.final_width, image.final_height);
+      image.final_pad.left   = image.pad.left_pct ? (image.pad.left * hypot) : image.pad.left;
+      image.final_pad.top    = image.pad.top_pct ? (image.pad.top * hypot) : image.pad.top;
+      image.final_pad.right  = image.pad.right_pct ? (image.pad.right * hypot) : image.pad.right;
+      image.final_pad.bottom = image.pad.bottom_pct ? (image.pad.bottom * hypot) : image.pad.bottom;
+   }
+   
+   // Calculate horizontal position
+
+   if ((image.align & ALIGN::LEFT) != ALIGN::NIL) {
+      image.x = m_left_margin;
+   }
+   else if ((image.align & ALIGN::CENTER) != ALIGN::NIL) {
+      // We use the left margin and not the cursor for calculating the center because the image is floating.
+      image.x = m_left_margin + ((m_align_width - (image.final_width + image.final_pad.left + image.final_pad.right)) * 0.5);
+   }
+   else if ((image.align & ALIGN::RIGHT) != ALIGN::NIL) {
+      image.x = m_align_width - (image.final_width + image.final_pad.left + image.final_pad.right);
+   }
+   else image.x = m_cursor_x;
+
+   // Define the clip region based on the final image dimensions.
+   // TODO: Add support for masked clipping through SVG paths.
 
    m_clips.emplace_back(
-      image->X, m_cursor_y, image->X + image->Width, m_cursor_y + image->Height,
+      image.x, m_cursor_y, 
+      image.x + image.final_pad.left + image.final_width + image.final_pad.right, 
+      m_cursor_y + image.final_pad.top + image.final_height + image.final_pad.bottom,
       idx, false, "Image");
 
    // Line height is increased if the image is anchored to the line
-   if ((!floating) and (image->Height > m_line.height)) m_line.height = image->Height;
+   if ((!image.floating()) and (image.final_height > m_line.height)) m_line.height = image.final_height;
 
    // Manipulating the base-line affects how text is positioned vertically within the overall line height value.
-   if ((!floating) and (image->Height > m_line.base_line)) m_line.base_line = image->Height;
+   if ((!image.floating()) and (image.final_height > m_line.base_line)) m_line.base_line = image.final_height;
 
    add_esc_segment();
 }
@@ -231,7 +276,7 @@ void layout::procFont()
 // NOTE: Bear in mind that the first word in a TEXT string could be a direct continuation of a previous TEXT word.
 // This can occur if the font colour is changed mid-word for example.
 
-WRAP layout::procText(LONG AbsX, LONG Width)
+WRAP layout::procText(LONG AbsX, DOUBLE Width)
 {
    WRAP wrap_result = WRAP::DO_NOTHING; // Needs to to change to WRAP::EXTEND_PAGE if a word is > Width
 
@@ -301,7 +346,8 @@ WRAP layout::procText(LONG AbsX, LONG Width)
    }
 
    if (m_word_width) {
-      wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+      wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width, 
+         (m_line.height < 1) ? 1 : m_line.height);
    }
 
    return wrap_result;
@@ -464,7 +510,7 @@ void layout::procRowEnd(bcTable *Table)
 
 //********************************************************************************************************************
 
-void layout::procParagraphStart(LONG Width)
+void layout::procParagraphStart()
 {
    if (!stack_para.empty()) {
       DOUBLE ratio;
@@ -522,7 +568,7 @@ void layout::procParagraphStart(LONG Width)
    }
 
    if (escpara->Indent) {
-      if (escpara->Relative) escpara->BlockIndent = escpara->Indent * 100 / Width;
+      if (escpara->Relative) escpara->BlockIndent = escpara->Indent * (0.01 * m_page_width);
       else escpara->BlockIndent = escpara->Indent;
    }
 
@@ -564,7 +610,7 @@ void layout::procParagraphEnd()
 
 //********************************************************************************************************************
 
-TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, LONG &Height, LONG &Width)
+TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargin, LONG BottomMargin, DOUBLE &Height, DOUBLE &Width)
 {
    pf::Log log(__FUNCTION__);
 
@@ -755,7 +801,7 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
 //********************************************************************************************************************
 // Embedded vectors are always contained by a VectorViewport irrespective of whether or not the client asked for one.
 
-WRAP layout::procVector(LONG Offset, DOUBLE AbsX, DOUBLE AbsY, LONG &Width, LONG PageHeight,
+WRAP layout::procVector(LONG Offset, DOUBLE AbsX, DOUBLE AbsY, DOUBLE &Width, LONG PageHeight,
    bool &VerticalRepass, bool &CheckWrap)
 {
    pf::Log log;
@@ -1678,7 +1724,7 @@ static void layout_doc(extDocument *Self)
       restart = false;
       Self->BreakLoop--;
 
-      LONG page_width;
+      DOUBLE page_width;
 
       if (Self->PageWidth <= 0) {
          // No preferred page width; maximise the page width to the available viewing area
@@ -1698,7 +1744,7 @@ static void layout_doc(extDocument *Self)
       if (glFonts.empty()) return;
       auto font = glFonts[0].Font;
 
-      LONG page_height = 1;
+      DOUBLE page_height = 1;
       l = layout(Self);
       bool vertical_repass = false;
       l.do_layout(0, Self->Stream.size(), &font, 0, 0, page_width, page_height,
@@ -1831,7 +1877,7 @@ static void layout_doc(extDocument *Self)
 // Height:   Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
 // Margins:  Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, margins reflect cell padding values.
 
-INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG AbsY, LONG &Width, LONG &Height,
+INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG AbsY, DOUBLE &Width, DOUBLE &Height,
    ClipRectangle Margins, bool &VerticalRepass)
 {
    pf::Log log(__FUNCTION__);
@@ -1854,19 +1900,20 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
    }
 
    auto page_height = Height;
+   m_page_width = Width;
 
    #ifdef DBG_LAYOUT
-   log.branch("Dimensions: %dx%d,%dx%d (edge %d), LM %d RM %d TM %d BM %d",
-      AbsX, AbsY, Width, Height, AbsX + Width - Margins.Right,
+   log.branch("Dimensions: %dx%d,%.0fx%.0f (edge %d), LM %d RM %d TM %d BM %d",
+      AbsX, AbsY, m_page_width, page_height, AbsX + m_page_width - Margins.Right,
       Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
 
    Self->Depth++;
 
 extend_page:
-   if (Width > WIDTH_LIMIT) {
-      DLAYOUT("Restricting page width from %d to %d", Width, WIDTH_LIMIT);
-      Width = WIDTH_LIMIT;
+   if (m_page_width > WIDTH_LIMIT) {
+      DLAYOUT("Restricting page width from %d to %d", m_page_width, WIDTH_LIMIT);
+      m_page_width = WIDTH_LIMIT;
       if (Self->BreakLoop > 4) Self->BreakLoop = 4; // Very large page widths normally means that there's a parsing problem
    }
 
@@ -1906,7 +1953,7 @@ extend_page:
    m_line.increase    = 0;
    m_left_margin      = AbsX + Margins.Left;
    m_right_margin     = Margins.Right;   // Retain the right margin in an adjustable variable, in case we adjust the margin
-   m_wrap_edge        = AbsX + Width - Margins.Right;
+   m_wrap_edge        = AbsX + m_page_width - Margins.Right;
    m_align_width      = m_wrap_edge;
    m_cursor_x         = AbsX + Margins.Left;  // The absolute position of the cursor
    m_cursor_y         = AbsY + Margins.Top;
@@ -1945,7 +1992,7 @@ extend_page:
          case ESC::VECTOR:
          case ESC::ADVANCE:
          case ESC::IMAGE: {
-            auto wrap_result = check_wordwrap("EscCode", AbsX, Width, m_word_index.Index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
+            auto wrap_result = check_wordwrap("EscCode", AbsX, m_page_width, m_word_index.Index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width on wordwrap request.");
                goto extend_page;
@@ -1967,7 +2014,7 @@ extend_page:
 
       switch (Self->Stream[idx].Code) {
          case ESC::TEXT: {
-            auto wrap_result = procText(AbsX, Width);
+            auto wrap_result = procText(AbsX, m_page_width);
             if (wrap_result IS WRAP::EXTEND_PAGE) { // A word in the text string is too big for the available space.
                DLAYOUT("Expanding page width on wordwrap request.");
                goto extend_page;
@@ -1989,7 +2036,7 @@ extend_page:
          case ESC::LINK_END:        procLinkEnd(); break;
          case ESC::CELL_END:        procCellEnd(esccell); break;
          case ESC::IMAGE:           procImage(); break;
-         case ESC::PARAGRAPH_START: procParagraphStart(Width); break;
+         case ESC::PARAGRAPH_START: procParagraphStart(); break;
          case ESC::PARAGRAPH_END:   procParagraphEnd(); break;
 
          case ESC::LIST_START:
@@ -2009,7 +2056,7 @@ extend_page:
             break;
 
          case ESC::VECTOR: {
-            auto ww = procVector(Offset, AbsX, AbsY, Width, page_height, VerticalRepass, check_wrap);
+            auto ww = procVector(Offset, AbsX, AbsY, m_page_width, page_height, VerticalRepass, check_wrap);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
@@ -2058,7 +2105,7 @@ wrap_table_start:
             if (width < 0) width = 0;
 
             {
-               LONG min = (esctable->Thickness * 2) + (esctable->CellHSpacing * (esctable->Columns.size()-1)) + (esctable->CellPadding * 2 * esctable->Columns.size());
+               DOUBLE min = (esctable->Thickness * 2) + (esctable->CellHSpacing * (esctable->Columns.size()-1)) + (esctable->CellPadding * 2 * esctable->Columns.size());
                if (esctable->Thin) min -= esctable->CellHSpacing * 2; // Thin tables do not have spacing on the left and right borders
                if (width < min) width = min;
             }
@@ -2417,7 +2464,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
 // Wrapping is always checked even if there is no 'active word' because we need to be able to wrap empty lines (e.g.
 // solo <br/> tags).
 
-WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, LONG &PageWidth, StreamChar Cursor,
+WRAP layout::check_wordwrap(const std::string &Type, LONG AbsX, DOUBLE &PageWidth, StreamChar Cursor,
    DOUBLE &X, DOUBLE &Y, LONG Width, LONG Height)
 {
    pf::Log log(__FUNCTION__);

@@ -4,6 +4,17 @@ class extDocument;
 typedef int INDEX;
 using SEGINDEX = int;
 
+enum class RTD : UBYTE {
+   NIL=0,
+   OBJECT_TEMP,         // The object can be removed after parsing has finished
+   OBJECT_UNLOAD,       // Default choice for object termination, terminates immediately
+   OBJECT_UNLOAD_DELAY, // Use SendMessage() to terminate the object
+   PERSISTENT_SCRIPT,   // The script can survive refreshes
+   PERSISTENT_OBJECT    // The object can survive refreshes
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(RTD)
+
 enum class IXF : UBYTE {
    NIL        = 0x00,
    SIBLINGS   = 0x01,
