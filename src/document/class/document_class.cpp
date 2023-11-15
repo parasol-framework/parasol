@@ -275,23 +275,20 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       // Calculate the length of the highlighted document
 
       if (Self->SelectEnd != Self->SelectStart) {
-         if (auto buffer = stream_to_string(Self, Self->SelectStart, Self->SelectEnd)) {
-            // Send the document to the clipboard object
+         auto buffer = stream_to_string(Self, Self->SelectStart, Self->SelectEnd);
 
-            objClipboard::create clipboard = { };
-            if (clipboard.ok()) {
-               if (!clipAddText(*clipboard, buffer)) {
-                  // Delete the highlighted document if the CUT mode was used
-                  if (Args->Mode IS CLIPMODE::CUT) {
-                     //delete_selection(Self);
-                  }
+         // Send the document to the clipboard object
+
+         objClipboard::create clipboard = { };
+         if (clipboard.ok()) {
+            if (!clipAddText(*clipboard, buffer.c_str())) {
+               // Delete the highlighted document if the CUT mode was used
+               if (Args->Mode IS CLIPMODE::CUT) {
+                  //delete_selection(Self);
                }
-               else error_dialog("Clipboard Error", "Failed to add document to the system clipboard.");
             }
-
-            FreeResource(buffer);
+            else error_dialog("Clipboard Error", "Failed to add document to the system clipboard.");
          }
-         else return ERR_AllocMemory;
       }
 
       return ERR_Okay;

@@ -309,7 +309,7 @@ WRAP layout::procText(LONG AbsX, DOUBLE Width)
       else if (str[i] <= 0x20) { // Whitespace encountered
          check_line_height();
 
-         if (m_word_width) {
+         if (m_word_width) { // Existing word finished, check for wordwrap
             wrap_result = check_wordwrap("Text", AbsX, Width, m_word_index, m_cursor_x, m_cursor_y, m_word_width,
                (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) break;
@@ -1597,9 +1597,9 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    }
 
 #ifdef DBG_STREAM
-   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%.0f,%.0f:%.0fx%d, WordWidth: %d, CursorY: %.2f, [%.20s]...[%.20s] (%s)",
+   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%.0f,%.0f:%.0fx%d, WordWidth: %d [%.20s]...[%.20s] (%s)",
       LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width,
-      AlignWidth, line_height, m_word_width, m_cursor_y, printable(Self, Start).c_str(),
+      AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
 #endif
 
@@ -1662,20 +1662,20 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    }
 #endif
 
-   segment.Start          = Start;
-   segment.Stop           = Stop;
-   segment.TrimStop       = trim_stop;
-   segment.Area.X         = x;
-   segment.Area.Y         = Y;
-   segment.Area.Width     = Width;
-   segment.Area.Height    = line_height;
-   segment.BaseLine       = base_line;
-   segment.Depth          = Self->Depth;
-   segment.AlignWidth     = AlignWidth;
-   segment.TextContent    = text_content;
+   segment.Start           = Start;
+   segment.Stop            = Stop;
+   segment.TrimStop        = trim_stop;
+   segment.Area.X          = x;
+   segment.Area.Y          = Y;
+   segment.Area.Width      = Width;
+   segment.Area.Height     = line_height;
+   segment.BaseLine        = base_line;
+   segment.Depth           = Self->Depth;
+   segment.AlignWidth      = AlignWidth;
+   segment.TextContent     = text_content;
    segment.FloatingVectors = floating_vectors;
-   segment.AllowMerge     = allow_merge;
-   segment.Edit           = Self->EditMode;
+   segment.AllowMerge      = allow_merge;
+   segment.Edit            = Self->EditMode;
 
    // If a line is segmented, we need to check for earlier line segments and ensure that their height and base_line
    // is matched to that of the last line (which always contains the maximum height and base_line values).

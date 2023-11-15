@@ -1160,13 +1160,13 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                   fl::Width(1), fl::Height(1),
                   fl::Fill("url(#" + name + ")")
                })) {
+
                Self->Resources.emplace_back(img_cache->UID, RTD::OBJECT_UNLOAD_DELAY);
                Self->Resources.emplace_back(pic->UID, RTD::OBJECT_UNLOAD_DELAY);
                Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
 
-               bcImage esc;
-               esc.rect = rect;
-               Self->insertCode(Index, esc);
+               img.rect = rect;
+               Self->insertCode(Index, img);
                return;
             }
 
@@ -1609,6 +1609,305 @@ static void tag_xml_content(extDocument *Self, objXML *XML, XMLTag &Tag, PXF Fla
 
       FreeResource(xmlstr);
    }
+}
+
+//********************************************************************************************************************
+
+static ERROR calc(const std::string &String, DOUBLE *Result, std::string &Output)
+{
+   enum SIGN { PLUS=1, MINUS, MULTIPLY, DIVIDE, MODULO };
+
+   if (Result) *Result = 0;
+
+   Output.clear();
+
+   // Search for brackets and translate them first
+
+   std::string in(String);
+   while (true) {
+      // Find the last bracketed reference
+
+      LONG last_bracket = 0;
+      for (unsigned i=0; i < in.size(); i++) {
+         if (in[i] IS '\'') { // Skip anything in quotes
+            i++;
+            while (in[i]) {
+               if (in[i] IS '\\') {
+                  i++; // Skip backslashes and the following character
+                  if (!in[i]) break;
+               }
+               else if (in[i] IS '\'') break;
+               i++;
+            }
+            if (in[i] IS '\'') i++;
+         }
+         else if (in[i] IS '(') last_bracket = i;
+      }
+
+      if (last_bracket > 0) { // Bracket found, translate its contents
+         LONG end;
+         for (end=last_bracket+1; (in[end]) and (in[end-1] != ')'); end++);
+         std::string buf(in, last_bracket, end - last_bracket);
+
+         DOUBLE calc_float;
+         std::string out;
+         calc(buf.c_str()+1, &calc_float, out);
+         in.replace(last_bracket, end - last_bracket, out);
+      }
+      else break;
+   }
+
+   // Perform the calculation
+
+   STRING end;
+   WORD precision = 9;
+   DOUBLE total   = 0;
+   DOUBLE overall = 0;
+   LONG index     = 0;
+   SIGN sign      = PLUS;
+   bool number    = false;
+   for (unsigned s=0; in[s];) {
+      if (in[s] <= 0x20); // Do nothing with whitespace
+      else if (in[s] IS '\'') {
+         if (number) { // Write the current floating point number to the buffer before the next calculation
+            Output  += write_calc(total, precision);
+            overall += total; // Reset the number
+            total   = 0;
+            number  = false;
+         }
+
+         s++;
+         while (index < LONG(Output.size())-1) {
+            if (in[s] IS '\\') s++; // Skip the \ character and continue so that we can copy the character immediately after it
+            else if (in[s] IS '\'') break;
+
+            Output += in[s++];
+         }
+      }
+      else if (in[s] IS 'f') { // Fixed floating point precision adjustment
+         s++;
+         precision = -strtol(in.c_str() + s, &end, 10);
+         s += end - in.c_str();
+         continue;
+      }
+      else if (in[s] IS 'p') { // Floating point precision adjustment
+         s++;
+         precision = strtol(in.c_str() + s, &end, 10);
+         s += end - in.c_str();
+         continue;
+      }
+      else if ((in[s] >= '0') and (in[s] <= '9')) {
+         number = true;
+         DOUBLE fvalue = strtod(in.c_str() + s, &end);
+         s += end - in.c_str();
+
+         if (sign IS MINUS)         total = total - fvalue;
+         else if (sign IS MULTIPLY) total = total * fvalue;
+         else if (sign IS MODULO)   total = F2I(total) % F2I(fvalue);
+         else if (sign IS DIVIDE) {
+            if (fvalue) total = total / fvalue; // NB: Avoid division by zero errors
+         }
+         else total += fvalue;
+
+         sign = PLUS; // The mathematical sign is reset whenever a number is encountered
+         continue;
+      }
+      else if (in[s] IS '-') {
+         if (sign IS MINUS) sign = PLUS; // Handle double-negatives
+         else sign = MINUS;
+      }
+      else if (in[s] IS '+') sign = PLUS;
+      else if (in[s] IS '*') sign = MULTIPLY;
+      else if (in[s] IS '/') sign = DIVIDE;
+      else if (in[s] IS '%') sign = MODULO;
+
+      for (++s; (in[s] & 0xc0) IS 0x80; s++);
+   }
+
+   if (number) Output += write_calc(total, precision);
+   if (Result) *Result = overall + total;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+This function is used to translate strings that make object and field references using the standard referencing format.
+References are made to objects by enclosing statements within square brackets.  As a result of calling this function,
+all references within the Buffer will be translated to their relevant format.  The Buffer needs to be large enough to
+accommodate these adjustments as it will be expanded during the translation.  It is recommended that the Buffer is at
+least two times the actual length of the string that you are translating.
+
+Valid references can be made to an object by name, ID or relative parameters.  Here are some examples illustrating the
+different variations:
+
+<types type="Reference">
+<type name="[surface]">Name reference.</>
+<type name="[#49302]">ID reference.</>
+<type name="[self]">Relative reference to the object that has the current context, or the document.</>
+</table>
+
+Field references are a slightly different matter and will be converted to the value of the field that they are
+referencing.  A field reference is defined using the object referencing format, but they contain a `.fieldname`
+extension.  Here are some examples:
+
+<pre>
+[surface.width]
+[file.location]
+</pre>
+
+A string such as `[mywindow.height] + [mywindow.width]` could be translated to `255 + 120` for instance.  References to
+string based fields can expand the Buffer very quickly, which is why large buffer spaces are recommended for all-purpose
+translations.
+
+Simple calculations are possible by enclosing a statement within a `[=...]` section.  For example the aforementioned
+string can be expanded to `[=[mywindow.height] + [mywindow.width]]`, which would give a result of 375.
+
+The escape character for string translation is `$` and should be used as `[$...]`, which prevents everything within the
+square brackets from being translated.  The `[$]` characters will be removed as part of this process unless the
+KEEP_ESCAPE flag is used.  To escape a single right or left bracket, use `[rb]` or `[lb]` respectively.
+
+*********************************************************************************************************************/
+
+// Evaluate object references and calculations
+
+static ERROR tag_xml_content_eval(extDocument *Self, std::string &Buffer)
+{
+   pf::Log log(__FUNCTION__);
+   LONG i;
+
+   // Quick check for translation symbols
+
+   if (Buffer.find('[') IS std::string::npos) return ERR_EmptyString;
+
+   log.traceBranch("%.80s", Buffer.c_str());
+
+   ERROR error = ERR_Okay;
+   ERROR majorerror = ERR_Okay;
+
+   // Skip to the end of the buffer (translation occurs 'backwards')
+
+   auto pos = LONG(Buffer.size() - 1);
+   while (pos >= 0) {
+      if ((Buffer[pos] IS '[') and ((Buffer[pos+1] IS '@') or (Buffer[pos+1] IS '%'))) {
+         // Ignore arguments, e.g. [@id] or [%id].  It's also useful for ignoring [@attrib] in xpath.
+         pos--;
+      }
+      else if (Buffer[pos] IS '[') {
+         // Make sure that there is a balanced closing bracket
+
+         LONG end;
+         LONG balance = 0;
+         for (end=pos; Buffer[end]; end++) {
+            if (Buffer[end] IS '[') balance++;
+            else if (Buffer[end] IS ']') {
+               balance--;
+               if (!balance) break;
+            }
+         }
+
+         if (Buffer[end] != ']') {
+            log.warning("Unbalanced string: %.90s ...", Buffer.c_str());
+            return ERR_InvalidData;
+         }
+
+         if (Buffer[pos+1] IS '=') { // Perform a calculation
+            std::string num;
+            num.assign(Buffer, pos+2, end-(pos+2));
+
+            std::string calcbuffer;
+            DOUBLE value;
+            calc(num, &value, calcbuffer);
+            Buffer.insert(end-pos+1, calcbuffer);
+         }
+         else if (Buffer[pos+1] IS '$') { // Escape sequence - e.g. translates [$ABC] to ABC.  Note: Use [rb] and [lb] instead for brackets.
+            Buffer.erase(end, 1); // ']'
+            Buffer.erase(pos, 2); // '[$'
+            pos--;
+            continue;
+         }
+         else {
+            std::string name;
+            name.reserve(64);
+
+            for (i=pos+1; (Buffer[i] != '.') and (i < end); i++) {
+               name += std::tolower(Buffer[i]);
+            }
+
+            // Check for [lb] and [rb] escape codes
+
+            char code = 0;
+            if (name == "rb") code = ']';
+            else if (name == "lb") code = '[';
+
+            if (code) {
+               Buffer[pos] = code;
+               Buffer.erase(pos+1, 3);
+               pos--;
+               continue;
+            }
+            else {
+               OBJECTID objectid = 0;
+               if (!StrMatch(name, "self")) objectid = CurrentContext()->UID;
+               else FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid);
+
+               if (objectid) {
+                  OBJECTPTR object = NULL;
+                  if (Buffer[i] IS '.') {
+                     // Get the field from the object
+                     i++;
+
+                     std::string field(Buffer, i, end);
+                     if (!AccessObject(objectid, 2000, &object)) {
+                        OBJECTPTR target;
+                        const Field *classfield;
+                        if (((classfield = find_field(object, field.c_str(), &target))) and (classfield->Flags & FD_STRING)) {
+                           CSTRING str;
+                           if (!GetField(object, (FIELD)classfield->FieldID|TSTR, &str)) {
+                              Buffer.insert(end-pos+1, str);
+                           }
+                        }
+                        else { // Get field as an unlisted type and manage any buffer overflow
+                           std::string tbuffer;
+                           tbuffer.reserve(4096);
+repeat:
+                           tbuffer[tbuffer.capacity()-1] = 0;
+                           if (!GetFieldVariable(object, field.c_str(), tbuffer.data(), tbuffer.capacity())) {
+                              if (tbuffer[tbuffer.capacity()-1]) {
+                                 tbuffer.reserve(tbuffer.capacity() * 2);
+                                 goto repeat;
+                              }
+                              Buffer.insert(end-pos+1, tbuffer);
+                           }
+                        }
+                        // NB: For fields, error code is always Okay so that the reference evaluates to NULL
+
+                        ReleaseObject(object);
+                     }
+                     else error = ERR_AccessObject;
+                  }
+                  else { // Convert the object reference to an ID
+                     Buffer.insert(end-pos+1, std::string("#") + std::to_string(objectid));
+                  }
+               }
+               else {
+                  error = ERR_NoMatchingObject;
+                  log.traceWarning("Failed to find object '%s'", name.c_str());
+               }
+            }
+         }
+
+         if (error != ERR_Okay) {
+            pos--;
+            majorerror = error;
+            error = ERR_Okay;
+         }
+      }
+      else pos--;
+   }
+
+   log.trace("Result: %s", Buffer.c_str());
+
+   return majorerror;
 }
 
 //********************************************************************************************************************

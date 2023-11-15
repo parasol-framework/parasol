@@ -721,7 +721,8 @@ template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
 
 //********************************************************************************************************************
 
-struct docresource {
+class docresource {
+public:
    OBJECTID ObjectID;
    CLASSID ClassID;
    RTD Type;
@@ -741,7 +742,7 @@ struct docresource {
       }
       else if (Type != RTD::NIL) FreeResource(ObjectID);
    }
-   
+
    docresource(docresource &&other) noexcept { // Move constructor
       ObjectID  = other.ObjectID;
       ClassID   = other.ClassID;
@@ -836,6 +837,7 @@ static void  deselect_text(extDocument *);
 static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
+static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source);
 static ERROR tag_xml_content_eval(extDocument *, std::string &);
 static SEGINDEX find_segment(extDocument *, StreamChar, bool);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
@@ -870,13 +872,14 @@ static ERROR resolve_font_pos(extDocument *, DocSegment &, LONG X, LONG *, Strea
 static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
-static STRING stream_to_string(extDocument *, StreamChar, StreamChar);
+static std::string stream_to_string(extDocument *, StreamChar, StreamChar);
 static void  style_check(extDocument *, StreamChar &);
 static void  tag_xml_content(extDocument *, objXML *, XMLTag &, PXF);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
 static bool  valid_objectid(extDocument *, OBJECTID);
 static BYTE  view_area(extDocument *, LONG Left, LONG Top, LONG Right, LONG Bottom);
+static std::string write_calc(DOUBLE Value, WORD Precision);
 
 inline void print_xmltree(objXML::TAGS &Tags) {
    LONG indent = 0;
