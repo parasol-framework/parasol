@@ -346,7 +346,7 @@ struct bcImage : public BaseCode {
    DOUBLE x = 0;    // Horizontal position, calculated during layout
    ALIGN align = ALIGN::NIL; // NB: If horizontal alignment is defined then the image is treated as floating.
    bool width_pct = false, height_pct = false, padding = false;
-   
+
    struct {
       DOUBLE left = 0, right = 0, top = 0, bottom = 0;
       bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
@@ -728,7 +728,7 @@ public:
    RTD Type;
    bool Terminate = false; // If true, can be freed immediately and not on a delay
 
-   docresource(OBJECTID pID, RTD pType, CLASSID pClassID = 0) : 
+   docresource(OBJECTID pID, RTD pType, CLASSID pClassID = 0) :
       ObjectID(pID), ClassID(pClassID), Type(pType) { }
 
    ~docresource() {

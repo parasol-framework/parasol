@@ -60,12 +60,12 @@
 
     <action>
       <name>Disable</name>
-      <comment>Disables object functionality.</comment>
+      <comment>Disables user interactivity.</comment>
     </action>
 
     <action>
       <name>Draw</name>
-      <comment>Draws object graphics to drawable areas.</comment>
+      <comment>Force a page layout update (if changes are pending) and redraw to the display.</comment>
     </action>
 
     <action>

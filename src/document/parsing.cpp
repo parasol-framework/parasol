@@ -384,7 +384,7 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
    switch (StrHash(Attrib)) {
       case HASH_anchor:
          Self->Style.StyleChange = true;
-         Self->Style.FontStyle.Options |= FSO::ANCHOR;
+         Self->Style.FontStyle.Options |= FSO::IN_LINE;
          break;
 
       case HASH_leading:
@@ -1027,7 +1027,7 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 //
 // Images are always inline by default, that is to say that they do not prevent content from appearing on either side.
 // If content should be blocked on either side then the client can place the image within <p> tags.
-// 
+//
 // TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless
 // changed to a higher resolution or otherwise modified.
 
@@ -1071,7 +1071,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          else log.warning("Invalid valign value '%s'", value.c_str());
       }
       else if (hash IS HASH_padding) {
-         // Set padding values in clockwise order.  For percentages, the final value is calculated from the area of 
+         // Set padding values in clockwise order.  For percentages, the final value is calculated from the area of
          // the image itself (area being taken as the diagonal length).
 
          auto str = value.c_str();
@@ -1128,6 +1128,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
 
                img.rect = rect;
+               if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
                Self->insertCode(Index, img);
                return;
             }
@@ -1165,6 +1166,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
                Self->Resources.emplace_back(pic->UID, RTD::OBJECT_UNLOAD_DELAY);
                Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
 
+               if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
                img.rect = rect;
                Self->insertCode(Index, img);
                return;

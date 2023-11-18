@@ -55,7 +55,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     "CAPS: Print all text in caps.",
     "ALIGN_RIGHT",
     "ALIGN_CENTER",
-    "ANCHOR: Anchor objects to the text.",
+    "IN_LINE: Keep non-glyph graphics inline with the text.",
     "NO_WRAP: Do not wrap the text.",
     { STYLES = "BOLD|UNDERLINE|ITALIC|CAPS" })
 

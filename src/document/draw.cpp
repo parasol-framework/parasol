@@ -331,6 +331,9 @@ void layout::gen_scene_graph()
                DOUBLE x = img.x + img.final_pad.left, y = segment.Area.Y + img.final_pad.top;
                acMoveToPoint(img.rect, x, y, 0, MTF::X|MTF::Y);
                acResize(img.rect, img.final_width, img.final_height, 0);
+
+               // Inline images are treated as text, so fx requires advancing.
+               if (!img.floating()) fx += img.final_width;
                break;
             }
 
@@ -357,7 +360,7 @@ void layout::gen_scene_graph()
                         //fl::AlignWidth(segment.AlignWidth),
                      });
                      Self->LayoutResources.push_back(text);
-                     
+
                      DOUBLE twidth;
                      text->get(FID_TextWidth, &twidth);
                      fx += twidth;

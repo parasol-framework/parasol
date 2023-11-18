@@ -386,9 +386,9 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar 
 }
 
 //********************************************************************************************************************
-// This is the principal function for adding/inserting text into the document stream, whether that be in the parse 
+// This is the principal function for adding/inserting text into the document stream, whether that be in the parse
 // phase or from user editing.
-// 
+//
 // Preformat must be set to true if all consecutive whitespace characters in Text are to be inserted.
 
 static ERROR insert_text(extDocument *Self, StreamChar &Index, const std::string &Text, bool Preformat)

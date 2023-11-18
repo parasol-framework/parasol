@@ -4,6 +4,13 @@ class extDocument;
 typedef int INDEX;
 using SEGINDEX = int;
 
+enum class TE : char {
+   NIL = 0,
+   WRAP_TABLE,
+   REPASS_ROW_HEIGHT,
+   EXTEND_PAGE
+};
+
 enum class RTD : UBYTE {
    NIL=0,
    OBJECT_TEMP,         // The object can be removed after parsing has finished
