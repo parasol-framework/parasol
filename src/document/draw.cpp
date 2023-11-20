@@ -138,7 +138,7 @@ void layout::gen_scene_graph()
       if ((Self->ActiveEditDef) and (Self->CursorState) and (!m_cursor_drawn)) {
          if ((Self->CursorIndex >= segment.Start) and (Self->CursorIndex <= segment.Stop)) {
             if ((Self->CursorIndex IS segment.Stop) and
-                (Self->CursorIndex.getPrevChar(Self, Self->Stream) IS '\n'));
+                (Self->CursorIndex.getPrevCharOrInline(Self, Self->Stream) IS '\n'));
             else if ((Self->Page->Flags & VF::HAS_FOCUS) != VF::NIL) { // Standard text cursor
                auto rect = objVectorRectangle::create::global({
                   fl::Owner(Self->Page->UID),
@@ -327,13 +327,16 @@ void layout::gen_scene_graph()
 
             case ESC::IMAGE: {
                auto &img = escape_data<bcImage>(Self, cursor);
-               // Apply the rectangle dimensions as defined during layout.
-               DOUBLE x = img.x + img.final_pad.left, y = segment.Area.Y + img.final_pad.top;
+               // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
+               // fx for managing the horizontal position amongst the text.
+
+               DOUBLE x = (img.floating() ? img.x : fx) + img.final_pad.left;
+               DOUBLE y = segment.Area.Y + img.final_pad.top;
+
                acMoveToPoint(img.rect, x, y, 0, MTF::X|MTF::Y);
                acResize(img.rect, img.final_width, img.final_height, 0);
 
-               // Inline images are treated as text, so fx requires advancing.
-               if (!img.floating()) fx += img.final_width;
+               if (!img.floating()) fx += img.final_width + img.final_pad.left + img.final_pad.right;
                break;
             }
 

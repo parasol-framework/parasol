@@ -270,9 +270,12 @@ struct StreamChar {
       return Index;
    }
 
-   char getChar(extDocument *, const RSTREAM &);
-   char getChar(extDocument *, const RSTREAM &, LONG Seek);
-   char getPrevChar(extDocument *, const RSTREAM &);
+   // NB: None of these support unicode.
+
+   UBYTE getChar(extDocument *, const RSTREAM &);
+   UBYTE getChar(extDocument *, const RSTREAM &, LONG Seek);
+   UBYTE getPrevChar(extDocument *, const RSTREAM &);
+   UBYTE getPrevCharOrInline(extDocument *, const RSTREAM &);
    void eraseChar(extDocument *, RSTREAM &); // Erase a character OR an escape code.
    void nextChar(extDocument *, const RSTREAM &);
    void prevChar(extDocument *, const RSTREAM &);
