@@ -82,18 +82,12 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       }
       else if (code IS ESC::PARAGRAPH_START) {
          auto para = &escape_data<bcParagraph>(Self, i);
-         if (para->ListItem) out << "[LI]";
+         if (para->ListItem) out << "[PS:LI]";
          else out << "[PS]";
       }
       else if (code IS ESC::PARAGRAPH_END) {
          out << "[PE]\n";
       }
-/*
-      else if (code IS ESC::LIST_ITEM) {
-         auto item = escape_data<escItem>(str, i);
-         out << "[I:X(%d):Width(%d):Custom(%d)]", item->X, item->Width, item->CustomWidth);
-      }
-*/
       else out << "[" << byteCode(code) << "]";
 
       printpos = true;

@@ -451,7 +451,7 @@ struct DocSegment {
    StreamChar TrimStop;   // The stopping point when whitespace is removed
    FloatRect Area;        // Dimensions of the segment.
    DOUBLE Gutter;         // The largest gutter value after taking into account all fonts used on the line.
-   UWORD AlignWidth;      // Full width of this segment if it were non-breaking
+   DOUBLE AlignWidth;      // Full width of this segment if it were non-breaking
    UWORD Depth;           // Branch depth associated with the segment - helps to differentiate between inner and outer tables
    bool  Edit;            // true if this segment represents content that can be edited
    bool  TextContent;     // true if there is TEXT in this segment
@@ -520,9 +520,10 @@ public:
 };
 
 struct tablecol {
-   UWORD PresetWidth;
-   UWORD MinWidth;   // For assisting layout
-   UWORD Width;
+   DOUBLE PresetWidth = 0;
+   DOUBLE MinWidth = 0;   // For assisting layout
+   DOUBLE Width = 0;
+   bool PresetWidthRel = false;
 };
 
 //********************************************************************************************************************
@@ -546,7 +547,7 @@ struct bcAdvance : public BaseCode {
 struct bcIndex : public BaseCode {
    ULONG NameHash;     // The name of the index is held here as a hash
    LONG  ID;           // UID for matching to the correct bcIndexEnd
-   LONG  Y;            // The cursor's vertical position of when the index was encountered during layout
+   DOUBLE Y;           // The cursor's vertical position of when the index was encountered during layout
    bool Visible;       // true if the content inside the index is visible (this is the default)
    bool ParentVisible; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
 
@@ -653,24 +654,24 @@ struct bcTable : public BaseCode {
    struct bcTable *Stack = NULL;
    std::vector<tablecol> Columns; // Table column management
    std::string Fill, Stroke;
-   WORD  CellVSpacing = 0, CellHSpacing = 0; // Spacing between each cell
-   WORD  CellPadding = 0;             // Spacing inside each cell (margins)
-   LONG  RowWidth = 0;                // Assists in the computation of row width
-   DOUBLE  X = 0, Y = 0;              // Calculated X/Y coordinate of the table
-   LONG  Width = 0, Height = 0;       // Calculated table width/height
-   LONG  MinWidth = 0, MinHeight = 0; // User-determined minimum table width/height
-   LONG  Rows = 0;                    // Total number of rows in table
-   LONG  RowIndex = 0;                // Current row being processed, generally for debugging
-   LONG  CursorX = 0, CursorY = 0;    // Cursor coordinates
-   LONG  TotalClips = 0;              // Temporary record of Document->Clips.size()
-   UWORD Thickness  = 0;              // Border thickness
-   UBYTE ComputeColumns = 0;
-   bool  WidthPercent   = false;   // true if width is a percentage
-   bool  HeightPercent  = false;   // true if height is a percentage
-   bool  CellsExpanded  = false;   // false if the table cells have not been expanded to match the inside table width
-   bool  ResetRowHeight = false;   // true if the height of all rows needs to be reset in the current pass
-   bool  Wrap = false;
-   bool  Thin = false;
+   DOUBLE CellVSpacing = 0, CellHSpacing = 0; // Spacing between each cell
+   DOUBLE CellPadding = 0;               // Spacing inside each cell (margins)
+   DOUBLE RowWidth = 0;                  // Assists in the computation of row width
+   DOUBLE X = 0, Y = 0;                  // Calculated X/Y coordinate of the table
+   DOUBLE Width = 0, Height = 0;         // Calculated table width/height
+   DOUBLE MinWidth = 0, MinHeight = 0;   // User-determined minimum table width/height
+   LONG   Rows = 0;                      // Total number of rows in table
+   LONG   RowIndex = 0;                  // Current row being processed, generally for debugging
+   DOUBLE CursorX = 0, CursorY = 0;      // Cursor coordinates
+   LONG   TotalClips = 0;                // Temporary record of Document->Clips.size()
+   UWORD  Thickness  = 0;                // Border thickness
+   UBYTE  ComputeColumns = 0;
+   bool   WidthPercent   = false;   // true if width is a percentage
+   bool   HeightPercent  = false;   // true if height is a percentage
+   bool   CellsExpanded  = false;   // false if the table cells have not been expanded to match the inside table width
+   bool   ResetRowHeight = false;   // true if the height of all rows needs to be reset in the current pass
+   bool   Wrap = false;
+   bool   Thin = false;
    // Entry followed by the minimum width of each column
    bcTable() { Code = ESC::TABLE_START; }
 
@@ -687,8 +688,8 @@ struct bcTable : public BaseCode {
             //   Columns[j].MinWidth = 0;
             //}
 
-            if (Columns[j].PresetWidth & 0x8000) { // Percentage width value
-               Columns[j].Width = (DOUBLE)((Columns[j].PresetWidth & 0x7fff) * Width) * 0.01;
+            if (Columns[j].PresetWidthRel) { // Percentage width value
+               Columns[j].Width = Columns[j].PresetWidth * Width;
             }
             else if (Columns[j].PresetWidth) { // Fixed width value
                Columns[j].Width = Columns[j].PresetWidth;

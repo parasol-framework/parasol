@@ -2535,6 +2535,7 @@ static void tag_italic(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 }
 
 //********************************************************************************************************************
+// List item parser
 
 static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
@@ -2824,8 +2825,8 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
       unsigned i;
       for (i=0; (i < start.Columns.size()) and (i < list.size()); i++) {
-         start.Columns[i].PresetWidth = StrToInt(list[i]);
-         if (list[i].find_first_of('%') != std::string::npos) start.Columns[i].PresetWidth |= 0x8000;
+         start.Columns[i].PresetWidth = StrToFloat(list[i]);
+         if (list[i].find_first_of('%') != std::string::npos) start.Columns[i].PresetWidthRel = true;
       }
 
       if (i < start.Columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(start.Columns.size()));
