@@ -143,7 +143,7 @@ void layout::gen_scene_graph()
                auto rect = objVectorRectangle::create::global({
                   fl::Owner(Self->Page->UID),
                   fl::X(segment.Area.X + Self->CursorCharX), fl::Y(segment.Area.Y),
-                  fl::Width(2), fl::Height(segment.BaseLine),
+                  fl::Width(2), fl::Height(segment.Area.Height - segment.Gutter),
                   fl::Fill("rgb(255,0,0,255)") });
                Self->LayoutResources.push_back(rect);
                m_cursor_drawn = true;
@@ -204,7 +204,7 @@ void layout::gen_scene_graph()
                       (stack_list.top()->Type IS bcList::ORDERED)) {
                      if (!stack_para.top()->Value.empty()) {
                         font->X = segment.Area.X - stack_para.top()->ItemIndent;
-                        font->Y = segment.Area.Y + font->Leading + (segment.BaseLine - font->Ascent);
+                        font->Y = segment.Area.Y + segment.Area.Height - segment.Gutter;
                         font->AlignWidth = segment.AlignWidth;
                         font->setString(stack_para.top()->Value);
                         font->draw();
@@ -350,8 +350,11 @@ void layout::gen_scene_graph()
 
                   DOUBLE y = segment.Area.Y;
                   if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
-                  else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) y += segment.BaseLine - (segment.BaseLine - font->Ascent) * 0.5;
-                  else y += segment.BaseLine;
+                  else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) {
+                     DOUBLE avail_space = segment.Area.Height - segment.Gutter;
+                     y += avail_space - ((avail_space - font->Ascent) * 0.5);
+                  }
+                  else y += segment.Area.Height - segment.Gutter;
 
                   if (!str.empty()) {
                      auto text = objVectorText::create::global({

@@ -45,16 +45,16 @@ struct layout {
    bool m_text_content;     // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
 
    struct {
-      StreamChar index; // Stream position for the line's content.
-      LONG base_line;   // Available line height with respect to the text.  Vertical alignment is determined by this value
-      LONG height;      // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text gutter is aligned to the base line
-      LONG x;           // Starting horizontal position
+      StreamChar index;   // Stream position for the line's content.
+      DOUBLE gutter;      // Amount of vertical spacing appropriated for text.  Inclusive within the height value, not additive
+      DOUBLE height;      // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text gutter is aligned to the base line
+      DOUBLE x;           // Starting horizontal position
       DOUBLE word_height; // Height of the current word (including inline graphics), utilised for word wrapping
 
       void reset(DOUBLE LeftMargin) {
-         x         = LeftMargin;
-         base_line = 0;
-         height    = 0;
+         x      = LeftMargin;
+         gutter = 0;
+         height = 0;
       }
 
       void full_reset(DOUBLE LeftMargin) {
@@ -64,7 +64,6 @@ struct layout {
 
       void apply_word_height() {
          if (word_height > height) height = word_height;
-         if (word_height > base_line) base_line = word_height;
          word_height = 0;
       }
 
@@ -156,8 +155,8 @@ struct layout {
 
    void check_line_height() {
       if (m_font->LineSpacing >= m_line.height) {
-         m_line.height    = m_font->LineSpacing;
-         m_line.base_line = m_font->Ascent;
+         m_line.height = m_font->LineSpacing;
+         m_line.gutter = m_font->LineSpacing - m_font->Ascent;
       }
    }
 
@@ -803,8 +802,7 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
 
    if ((m_inline) or ((esctable->X <= m_left_margin) and (esctable->X + esctable->Width >= m_wrap_edge))) {
       if (esctable->Height > m_line.height) {
-         m_line.height    = esctable->Height;
-         m_line.base_line = esctable->Height;
+         m_line.height = esctable->Height;
       }
    }
 
@@ -912,7 +910,7 @@ wrap_vector:
    vector->get(FID_Dimensions, &dimensions);
 
    left_margin = m_left_margin - AbsX;
-   line_height = m_line.base_line ? m_line.base_line : m_font->Ascent;
+   line_height = m_line.height ? (m_line.height - m_line.gutter) : m_font->Ascent;
 
    cell_width  = cr - cx;
    cell_height = cb - cy;
@@ -1123,7 +1121,7 @@ wrap_vector:
 
 #else
    left_margin = m_left_margin - AbsX;
-   line_height = m_line.base_line ? m_line.base_line : m_font->Ascent;
+   line_height = m_line.height ? (m_line.height - m_line.gutter) : m_font->Ascent;
 
    cell_width  = cr - cx;
    cell_height = cb - cy;
@@ -1518,19 +1516,8 @@ wrap_vector:
       if (vec.Inline) {
          if (cb > m_cursor_y) {
             auto objheight = cb - m_cursor_y;
-            if ((m_inline) or (vec.Inline)) {
-               // Inline vectors affect the line height.
-
+            if ((m_inline) or (vec.Inline)) { // Inline graphics affect the line height.
                if (objheight > m_line.word_height) m_line.word_height = objheight;
-            }
-            else {
-               // If not inline, the height of the vector will still define the height
-               // of the line, but cannot exceed the height of the font for that line.
-
-               if (objheight < m_font->LineSpacing) {
-                  m_line.height    = objheight;
-                  m_line.base_line = objheight;
-               }
             }
          }
 
@@ -1637,24 +1624,21 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    }
 
    auto line_height = m_line.height;
-   auto base_line   = m_line.base_line;
+   auto gutter      = m_line.gutter;
    if (text_content) {
       if (line_height <= 0) {
          // No line-height given and there is text content - use the most recent font to determine the line height
          line_height = m_font->LineSpacing;
-         base_line   = m_font->Ascent;
+         gutter      = m_font->LineSpacing - m_font->Ascent;
       }
-      else if (!base_line) { // If base-line is missing for some reason, define it
-         base_line = m_font->Ascent;
+      else if (!gutter) { // If gutter is missing for some reason, define it
+         gutter = m_font->LineSpacing - m_font->Ascent;
       }
    }
-   else {
-      if (line_height <= 0) line_height = 0;
-      if (base_line <= 0) base_line = 0;
-   }
+   else if (line_height < 0) line_height = 0;   
 
 #ifdef DBG_STREAM
-   DLAYOUT("#%d %d:%d - %d:%d, Area: %dx%.0f,%.0f:%.0fx%d, WordWidth: %d [%.20s]...[%.20s] (%s)",
+   DLAYOUT("#%d %d:%d - %d:%d, Area: %.0fx%.0f,%.0f:%.0fx%.0f, WordWidth: %d [%.20s]...[%.20s] (%s)",
       LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width,
       AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
@@ -1687,7 +1671,7 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    // Is the new segment a continuation of the previous one, and does the previous segment contain content?
    if ((allow_merge) and (!m_segments.empty()) and (m_segments.back().Stop IS Start) and
        (m_segments.back().AllowMerge)) {
-      // We are going to extend the previous line rather than add a new one, as the two
+      // We are going to extend the previous segment rather than add a new one, as the two
       // segments only contain control codes.
 
       segment = m_segments.back();
@@ -1699,7 +1683,7 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
       AlignWidth += segment.AlignWidth;
       if (segment.Area.Height > line_height) {
          line_height = segment.Area.Height;
-         base_line   = segment.BaseLine;
+         gutter      = segment.Gutter;
       }
    }
 
@@ -1722,11 +1706,8 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    segment.Start           = Start;
    segment.Stop            = Stop;
    segment.TrimStop        = trim_stop;
-   segment.Area.X          = x;
-   segment.Area.Y          = Y;
-   segment.Area.Width      = Width;
-   segment.Area.Height     = line_height;
-   segment.BaseLine        = base_line;
+   segment.Area            = { x, Y, Width, line_height };
+   segment.Gutter          = gutter;
    segment.Depth           = Self->Depth;
    segment.AlignWidth      = AlignWidth;
    segment.TextContent     = text_content;
@@ -1734,16 +1715,16 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
    segment.AllowMerge      = allow_merge;
    segment.Edit            = Self->EditMode;
 
-   // If a line is segmented, we need to check for earlier line segments and ensure that their height and base_line
-   // is matched to that of the last line (which always contains the maximum height and base_line values).
+   // If a line is segmented, we need to check for earlier line segments and ensure that their height and gutter
+   // is matched to that of the last line (which always contains the maximum height and gutter values).
 
    if ((m_split_start != NOTSPLIT) and (line_height)) {
       if (LONG(m_segments.size()) != m_split_start) {
-         DLAYOUT("Resetting height (%d) & base (%d) of segments index %d-%d.", line_height, base_line, segment.Start.Index, m_split_start);
+         DLAYOUT("Resetting height (%.0f) & gutter (%.0f) of segments index %d-%d.", line_height, gutter, segment.Start.Index, m_split_start);
          for (unsigned i=m_split_start; i < m_segments.size(); i++) {
             if (m_segments[i].Depth != Self->Depth) continue;
             m_segments[i].Area.Height = line_height;
-            m_segments[i].BaseLine    = base_line;
+            m_segments[i].Gutter      = gutter;
          }
       }
    }
@@ -2010,7 +1991,8 @@ extend_page:
    for (idx = Offset; idx < End; idx++) {
       if (m_line.index.Index < idx) {
          if (breakable_word()) {
-            DLAYOUT("Setting line at code '%s', index %d, line.x: %d, m_word_width: %d", BC_NAME(Self->Stream,idx).c_str(), m_line.index.Index, m_line.x, m_word_width);
+            DLAYOUT("Setting line at code '%s', index %d, line.x: %.0f, m_word_width: %d", 
+               BC_NAME(Self->Stream,idx).c_str(), m_line.index.Index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             StreamChar sc(idx,0);
             add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
@@ -2429,8 +2411,8 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
 
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
-      m_line.height    = m_font->LineSpacing;
-      m_line.base_line = m_font->Ascent;
+      m_line.height = m_font->LineSpacing;
+      m_line.gutter = m_font->LineSpacing - m_font->Ascent;
    }
 
    if (m_terminate_link) terminate_link();
@@ -2444,7 +2426,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, StreamChar Next, const std::st
    }
 
 #ifdef DBG_LAYOUT
-   log.branch("%s: CursorX/Y: %.2f/%.2f, ParaY: %d, ParaEnd: %d, Line Height: %d * %.2f, Span: %d:%d - %d:%d",
+   log.branch("%s: CursorX/Y: %.2f/%.2f, ParaY: %d, ParaEnd: %d, Line Height: %.0f * %.2f, Span: %d:%d - %d:%d",
       Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing,
       m_line.index.Index, LONG(m_line.index.Offset), Next.Index, LONG(Next.Offset));
 #endif
@@ -2540,8 +2522,8 @@ restart:
       }
 
       if (!m_line.height) {
-         m_line.height    = 1;
-         m_line.base_line = 1;
+         m_line.height = 1;
+         m_line.gutter = 0;
       }
 
       if ((!stack_link.empty()) and (stack_mklink.top().x != X)) {

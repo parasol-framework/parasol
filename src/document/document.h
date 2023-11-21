@@ -450,7 +450,7 @@ struct DocSegment {
    StreamChar Stop;       // Stop at this index/character
    StreamChar TrimStop;   // The stopping point when whitespace is removed
    FloatRect Area;        // Dimensions of the segment.
-   UWORD BaseLine;        // Base-line - this is the height of the largest font down to the base line
+   DOUBLE Gutter;         // The largest gutter value after taking into account all fonts used on the line.
    UWORD AlignWidth;      // Full width of this segment if it were non-breaking
    UWORD Depth;           // Branch depth associated with the segment - helps to differentiate between inner and outer tables
    bool  Edit;            // true if this segment represents content that can be edited

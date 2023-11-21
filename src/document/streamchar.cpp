@@ -121,9 +121,13 @@ UBYTE StreamChar::getPrevCharOrInline(extDocument *Self, const RSTREAM &Stream)
          }
       }
       else if (Stream[i].Code IS ESC::VECTOR) {
-         auto &vec = escape_data<bcVector>(Self, i);
+         //auto &vec = escape_data<bcVector>(Self, i);
          return 0xff; // TODO: Check for inline status
       }
+      //else if (Stream[i].Code IS ESC::OBJECT) {
+      //   auto &vec = escape_data<bcObject>(Self, i);
+      //   return 0xff; // TODO: Check for inline status
+      //}
    }
 
    return 0;
