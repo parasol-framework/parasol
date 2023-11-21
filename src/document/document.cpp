@@ -102,9 +102,9 @@ thickness, or text inside the cell will mix with the border.
 
 //#define _DEBUG
 //#define DBG_LAYOUT
-//#define DBG_WORDWRAP
 //#define DBG_STREAM
 //#define DBG_LINES // Print list of segments
+//#define DBG_WORDWRAP
 //#define GUIDELINES // Clipping guidelines
 //#define GUIDELINES_CONTENT // Segment guidelines
 

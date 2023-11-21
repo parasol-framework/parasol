@@ -462,6 +462,7 @@ void layout::procLinkEnd()
 }
 
 //********************************************************************************************************************
+// Returns true if a repass is required
 
 bool layout::procListEnd()
 {
@@ -1635,10 +1636,10 @@ void layout::add_drawsegment(StreamChar Start, StreamChar Stop, DOUBLE Y, DOUBLE
          gutter = m_font->LineSpacing - m_font->Ascent;
       }
    }
-   else if (line_height < 0) line_height = 0;   
+   else if (line_height < 0) line_height = 0;
 
 #ifdef DBG_STREAM
-   DLAYOUT("#%d %d:%d - %d:%d, Area: %.0fx%.0f,%.0f:%.0fx%.0f, WordWidth: %d [%.20s]...[%.20s] (%s)",
+   log.branch("#%d %d:%d - %d:%d, Area: %.0fx%.0f,%.0f:%.0fx%.0f, WordWidth: %d [%.20s]...[%.20s] (%s)",
       LONG(m_segments.size()), Start.Index, LONG(Start.Offset), Stop.Index, LONG(Stop.Offset), m_line.x, Y, Width,
       AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
@@ -1991,7 +1992,7 @@ extend_page:
    for (idx = Offset; idx < End; idx++) {
       if (m_line.index.Index < idx) {
          if (breakable_word()) {
-            DLAYOUT("Setting line at code '%s', index %d, line.x: %.0f, m_word_width: %d", 
+            DLAYOUT("Setting line at code '%s', index %d, line.x: %.0f, m_word_width: %d",
                BC_NAME(Self->Stream,idx).c_str(), m_line.index.Index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             StreamChar sc(idx,0);
@@ -2066,7 +2067,6 @@ extend_page:
          case ESC::LIST_END:
             if (procListEnd()) {
                *this = liststate;
-               stack_list.top()->Repass = false;
             }
             break;
 

@@ -203,19 +203,31 @@ void layout::gen_scene_graph()
                   if ((stack_list.top()->Type IS bcList::CUSTOM) or
                       (stack_list.top()->Type IS bcList::ORDERED)) {
                      if (!stack_para.top()->Value.empty()) {
-                        font->X = segment.Area.X - stack_para.top()->ItemIndent;
-                        font->Y = segment.Area.Y + segment.Area.Height - segment.Gutter;
-                        font->AlignWidth = segment.AlignWidth;
-                        font->setString(stack_para.top()->Value);
-                        font->draw();
+                        DOUBLE ix = segment.Area.X - stack_para.top()->ItemIndent;
+                        DOUBLE iy = segment.Area.Y + segment.Area.Height - segment.Gutter;
+
+                        auto text = objVectorText::create::global({
+                           fl::Owner(Self->Page->UID),
+                           fl::X(ix), fl::Y(iy),
+                           fl::String(stack_para.top()->Value),
+                           fl::Font(font),
+                           fl::Fill(font_fill)
+                           //fl::AlignWidth(segment.AlignWidth),
+                        });
+                        Self->LayoutResources.push_back(text);
                      }
                   }
-                  else if (stack_list.top()->Type IS bcList::BULLET) {
-                     //static const LONG SIZE_BULLET = 5;
-                     // TODO: Requires conversion to vector
-                     //gfxDrawEllipse(Bitmap,
-                     //   fx - stack_para.top()->ItemIndent, segment.Y + ((segment.BaseLine - SIZE_BULLET)/2),
-                     //   SIZE_BULLET, SIZE_BULLET, Bitmap->packPixel(esclist->Colour), true);
+                  else if (stack_list.top()->Type IS bcList::BULLET) {                     
+                     DOUBLE ix = segment.Area.X - stack_para.top()->ItemIndent + (m_font->Height * 0.5);
+                     DOUBLE iy = segment.Area.Y + (segment.Area.Height - segment.Gutter) - (m_font->Height * 0.5);
+
+                     auto bullet = objVectorEllipse::create::global({
+                        fl::Owner(Self->Page->UID),
+                        fl::CenterX(ix), fl::CenterY(iy),
+                        fl::Radius(m_font->Height * 0.25),
+                        fl::Fill(font_fill)
+                     });
+                     Self->LayoutResources.push_back(bullet);
                   }
                }
                break;

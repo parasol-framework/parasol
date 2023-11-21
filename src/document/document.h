@@ -710,7 +710,7 @@ struct bcTableEnd : public BaseCode {
 class bcParagraph : public BaseCode {
    public:
    std::string Value = "";
-   LONG   X, Y, Height;
+   DOUBLE X, Y, Height;
    LONG   BlockIndent;
    LONG   ItemIndent;
    DOUBLE Indent;
@@ -720,10 +720,11 @@ class bcParagraph : public BaseCode {
    bool Relative;
    bool ListItem;
    bool Trim;
+   bool aggregate;
 
    bcParagraph() : BaseCode(ESC::PARAGRAPH_START), X(0), Y(0), Height(0),
       BlockIndent(0), ItemIndent(0), Indent(0), VSpacing(1.0), LeadingRatio(1.0),
-      Relative(false), ListItem(false), Trim(false) { }
+      Relative(false), ListItem(false), Trim(false), aggregate(false) { }
 
    void applyStyle(const style_status &Style) {
       VSpacing     = Style.List->VSpacing;
@@ -737,9 +738,9 @@ struct bcParagraphEnd : public BaseCode {
 };
 
 struct bcRow : public BaseCode {
-   LONG  Y = 0;
-   LONG  RowHeight = 0; // Height of all cells on this row, used when drawing the cells
-   LONG  MinHeight = 0;
+   DOUBLE Y = 0;
+   DOUBLE RowHeight = 0; // Height of all cells on this row, used when drawing the cells
+   DOUBLE MinHeight = 0;
    std::string Stroke, Fill;
    bool  VerticalRepass = false;
 
@@ -751,14 +752,14 @@ struct bcRowEnd : public BaseCode {
 };
 
 struct bcCell : public BaseCode {
-   LONG CellID;         // Identifier for the matching bcCellEnd
-   LONG Column;         // Column number that the cell starts in
-   LONG ColSpan;        // Number of columns spanned by this cell (normally set to 1)
-   LONG RowSpan;        // Number of rows spanned by this cell
-   LONG AbsX, AbsY;     // Cell coordinates, these are absolute
-   DOUBLE Width, Height;  // Width and height of the cell
-   std::string OnClick; // Name of an onclick function
-   std::string EditDef; // The edit definition that this cell is linked to (if any)
+   LONG CellID;          // Identifier for the matching bcCellEnd
+   LONG Column;          // Column number that the cell starts in
+   LONG ColSpan;         // Number of columns spanned by this cell (normally set to 1)
+   LONG RowSpan;         // Number of rows spanned by this cell
+   DOUBLE AbsX, AbsY;    // Cell coordinates, these are absolute
+   DOUBLE Width, Height; // Width and height of the cell
+   std::string OnClick;  // Name of an onclick function
+   std::string EditDef;  // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> Args;
    std::string Stroke;
    std::string Fill;

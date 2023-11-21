@@ -2569,7 +2569,13 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
          if (para.VSpacing < MIN_LEADING) para.VSpacing = MIN_LEADING;
          else if (para.VSpacing > MAX_VSPACING) para.VSpacing = MAX_VSPACING;
       }
+      else if (!StrMatch("aggregate", tagname)) {
+         if (Tag.Attribs[i].Value == "true") para.aggregate = true;
+         else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
+      }
    }
+
+   Self->ParagraphDepth++;
 
    if ((Self->Style.List->Type IS bcList::CUSTOM) and (!para.Value.empty())) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
@@ -2586,8 +2592,13 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       auto list_size = Self->Style.List->Buffer.size();
       Self->Style.List->Buffer.push_back(std::to_string(Self->Style.List->ItemNum) + ".");
 
+      // ItemNum is reset because a child list could be created
+
       auto save_item = Self->Style.List->ItemNum;
       Self->Style.List->ItemNum = 1;
+
+      if (para.aggregate) for (auto &p : Self->Style.List->Buffer) para.Value += p;
+      else para.Value = Self->Style.List->Buffer.back();
 
       Self->insertCode(Index, para);
 
@@ -2597,8 +2608,10 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
       Self->Style.List->ItemNum = save_item;
       Self->Style.List->Buffer.resize(list_size);
+
+      Self->Style.List->ItemNum++;
    }
-   else {
+   else { // BULLET
       Self->insertCode(Index, para);
 
          parse_tags(Self, XML, Children, Index);
@@ -2606,6 +2619,8 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       Self->reserveCode<bcParagraphEnd>(Index);
       Self->NoWhitespace = true;
    }
+
+   Self->ParagraphDepth--;
 }
 
 //********************************************************************************************************************
