@@ -18,4 +18,6 @@
 
 <p>This paragraph must follow on from the embedded paragraph and be separated with the standard amount of leading whitespace.</p>
 
+<p>This paragraph includes unicode characters: Pound: £ Copyright: ©</p>
+
 </page>

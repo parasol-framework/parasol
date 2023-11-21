@@ -337,7 +337,7 @@ void layout::procFont()
 
 WRAP layout::procText(LONG AbsX)
 {
-   WRAP wrap_result = WRAP::DO_NOTHING; // Needs to to change to WRAP::EXTEND_PAGE if a word is > Width
+   auto wrap_result = WRAP::DO_NOTHING; // Needs to to change to WRAP::EXTEND_PAGE if a word is > Width
 
    m_align_width = m_wrap_edge; // TODO: Not sure about this following the switch to embedded TEXT structures
 
@@ -1513,13 +1513,13 @@ wrap_vector:
 
       DLAYOUT("Adding %s clip to the list: (%.2fx%.2f, %.2fx%.2f)", vector->Class->ClassName, cx, cy, cr-cx, cb-cy);
 
-      m_clips.emplace_back(cx, cy, cr, cb, idx, !vec.Embedded, "Vector");
+      m_clips.emplace_back(cx, cy, cr, cb, idx, !vec.Inline, "Vector");
 
-      if (vec.Embedded) {
+      if (vec.Inline) {
          if (cb > m_cursor_y) {
             auto objheight = cb - m_cursor_y;
-            if ((m_inline) or (vec.Embedded)) {
-               // If all vectors in the current section are inline, we adjust the line height.
+            if ((m_inline) or (vec.Inline)) {
+               // Inline vectors affect the line height.
 
                if (objheight > m_line.word_height) m_line.word_height = objheight;
             }
@@ -1547,7 +1547,7 @@ wrap_vector:
    // increases.
 
    if ((dimensions & (DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) and
-       ((!vec.Embedded) or (vec.IgnoreCursor))) {
+       ((!vec.Inline) or (vec.IgnoreCursor))) {
       DLAYOUT("Vertical repass may be required.");
       VerticalRepass = true;
    }

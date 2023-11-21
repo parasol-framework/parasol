@@ -2151,7 +2151,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
          else {
             escobj.ObjectID = object->UID;
             escobj.ClassID  = object->Class->ClassID;
-            escobj.Embedded = false;
+            escobj.Inline = false;
             if (Self->CurrentObject) escobj.Owned = true;
 
             // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
@@ -2159,9 +2159,9 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 
             if (object->Class->ClassID IS ID_VECTOR) {
                //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
-               //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Embedded = true;
+               //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Inline = true;
             }
-            else escobj.Embedded = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
+            else escobj.Inline = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
             style_check(Self, Index);
             Self->insertCode(Index, escobj);
@@ -2192,9 +2192,9 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
                res.ClassID = class_id;
             }
 
-            // If the object is embedded in the text stream, we will allow whitespace to immediately follow the object.
+            // If the object is inline, we will allow whitespace to immediately follow the object.
 
-            if (escobj.Embedded) Self->NoWhitespace = false;
+            if (escobj.Inline) Self->NoWhitespace = false;
 
             // Add the object to the tab-list if it is in our list of classes that support keyboard input.
 
