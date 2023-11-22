@@ -389,9 +389,9 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
 
       case HASH_leading:
          if (esc) {
-            esc->LeadingRatio = StrToFloat(Value);
-            if (esc->LeadingRatio < MIN_LEADING) esc->LeadingRatio = MIN_LEADING;
-            else if (esc->LeadingRatio > MAX_LEADING) esc->LeadingRatio = MAX_LEADING;
+            esc->leading_ratio = StrToFloat(Value);
+            if (esc->leading_ratio < MIN_LEADING) esc->leading_ratio = MIN_LEADING;
+            else if (esc->leading_ratio > MAX_LEADING) esc->leading_ratio = MAX_LEADING;
          }
          break;
 
@@ -426,7 +426,7 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
          break;
 
       case HASH_trim:
-         esc->Trim = true;
+         if (esc) esc->trim = true;
          break;
 
       case HASH_vspacing:
@@ -434,9 +434,16 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
          // last line of the paragraph).  E.g. 1.5 is one and a half times the standard lineheight.  The default is 1.0.
 
          if (esc) {
-            esc->VSpacing = StrToFloat(Value);
-            if (esc->VSpacing < MIN_VSPACING) esc->VSpacing = MIN_VSPACING;
-            else if (esc->VSpacing > MAX_VSPACING) esc->VSpacing = MAX_VSPACING;
+            esc->vspacing = StrToFloat(Value);
+            if (esc->vspacing < MIN_VSPACING) esc->vspacing = MIN_VSPACING;
+            else if (esc->vspacing > MAX_VSPACING) esc->vspacing = MAX_VSPACING;
+         }
+         break;
+
+      case HASH_indent:
+         if (esc) {
+            read_unit(Value.c_str(), esc->indent, esc->relative);
+            if (esc->indent < 0) esc->indent = 0;
          }
          break;
    }
@@ -907,33 +914,6 @@ static void tag_header(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
    Self->HeaderTag = &Children;
 }
 
-/*********************************************************************************************************************
-** Indent document block.  The extent of the indentation can be customised in the Units value.
-*/
-
-static void tag_indent(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
-{
-   bcParagraph esc;
-
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch(Tag.Attribs[i].Name, "units")) {
-         esc.Indent = StrToInt(Tag.Attribs[i].Name);
-         if (esc.Indent < 0) esc.Indent = 0;
-         for (LONG j=0; Tag.Attribs[i].Name[j]; j++) {
-            if (Tag.Attribs[i].Name[j] IS '%') { esc.Relative = true; break; }
-         }
-      }
-      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &esc);
-   }
-
-   Self->insertCode(Index, esc);
-
-      parse_tags(Self, XML, Children, Index);
-
-   Self->reserveCode<bcParagraphEnd>(Index);
-   Self->NoWhitespace = true;
-}
-
 //********************************************************************************************************************
 // Use of <meta> for custom information is allowed and is ignored by the parser.
 
@@ -1368,8 +1348,8 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          esc.BlockIndent = StrToInt(Tag.Attribs[i].Value);
       }
       else if (!StrMatch("vspacing", Tag.Attribs[i].Name)) {
-         esc.VSpacing = StrToFloat(Tag.Attribs[i].Value);
-         if (esc.VSpacing < 0) esc.VSpacing = 0;
+         esc.vspacing = StrToFloat(Tag.Attribs[i].Value);
+         if (esc.vspacing < 0) esc.vspacing = 0;
       }
       else if (!StrMatch("type", Tag.Attribs[i].Name)) {
          if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
@@ -1415,7 +1395,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
    Self->ParagraphDepth++;
 
    bcParagraph esc;
-   esc.LeadingRatio = 0;
+   esc.leading_ratio = 0;
 
    auto savestatus = Self->Style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -1435,7 +1415,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
 
    Self->insertCode(Index, esc);
 
-   Self->NoWhitespace = esc.Trim;
+   Self->NoWhitespace = esc.trim;
 
    parse_tags(Self, XML, Children, Index);
    saved_style_check(Self, savestatus);
@@ -2217,25 +2197,44 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 }
 
 //********************************************************************************************************************
+// Pre normally just switches the font style, but it will automatically create a paragraph if it is not already in one.
 
 static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-//   bcParagraph para;
-//   Self->insertCode(Index, para);
+   if (!Self->ParagraphDepth) {
+      bcParagraph para;
+      Self->insertCode(Index, para);
 
-   if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
-      auto savestatus = Self->Style;
-      Self->Style.StyleChange = true;
-      Self->Style.FontStyle.Options |= FSO::PREFORMAT;
-      parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
-      saved_style_check(Self, savestatus);
+      Self->ParagraphDepth++;
+
+      if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
+         auto savestatus = Self->Style;
+         Self->Style.StyleChange = true;
+         Self->Style.FontStyle.Options |= FSO::PREFORMAT;
+         parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
+         saved_style_check(Self, savestatus);
+      }
+      else parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
+
+      trim_preformat(Self, Index);
+
+      Self->ParagraphDepth--;
+
+      Self->reserveCode<bcParagraphEnd>(Index);
+      Self->NoWhitespace = true;
    }
-   else parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
+   else {
+      if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
+         auto savestatus = Self->Style;
+         Self->Style.StyleChange = true;
+         Self->Style.FontStyle.Options |= FSO::PREFORMAT;
+         parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
+         saved_style_check(Self, savestatus);
+      }
+      else parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
 
-   trim_preformat(Self, Index);
-
-//   Self->reserveCode<bcParagraphEnd>(Index);
-//   Self->NoWhitespace = true;
+      trim_preformat(Self, Index);
+   }
 }
 
 //********************************************************************************************************************
@@ -2548,8 +2547,8 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
    bcParagraph para;
 
-   para.ListItem     = true;
-   para.LeadingRatio = 0;
+   para.list_item    = true;
+   para.leading_ratio = 0;
    para.applyStyle(Self->Style);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -2557,17 +2556,17 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       if (*tagname IS '$') tagname++;
 
       if (!StrMatch("value", tagname)) {
-         para.Value = Tag.Attribs[i].Value;
+         para.value = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("leading", tagname)) {
-         para.LeadingRatio = StrToFloat(Tag.Attribs[i].Value);
-         if (para.LeadingRatio < MIN_LEADING) para.LeadingRatio = MIN_LEADING;
-         else if (para.LeadingRatio > MAX_LEADING) para.LeadingRatio = MAX_LEADING;
+         para.leading_ratio = StrToFloat(Tag.Attribs[i].Value);
+         if (para.leading_ratio < MIN_LEADING) para.leading_ratio = MIN_LEADING;
+         else if (para.leading_ratio > MAX_LEADING) para.leading_ratio = MAX_LEADING;
       }
       else if (!StrMatch("vspacing", tagname)) {
-         para.VSpacing = StrToFloat(Tag.Attribs[i].Value);
-         if (para.VSpacing < MIN_LEADING) para.VSpacing = MIN_LEADING;
-         else if (para.VSpacing > MAX_VSPACING) para.VSpacing = MAX_VSPACING;
+         para.vspacing = StrToFloat(Tag.Attribs[i].Value);
+         if (para.vspacing < MIN_LEADING) para.vspacing = MIN_LEADING;
+         else if (para.vspacing > MAX_VSPACING) para.vspacing = MAX_VSPACING;
       }
       else if (!StrMatch("aggregate", tagname)) {
          if (Tag.Attribs[i].Value == "true") para.aggregate = true;
@@ -2577,7 +2576,7 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
    Self->ParagraphDepth++;
 
-   if ((Self->Style.List->Type IS bcList::CUSTOM) and (!para.Value.empty())) {
+   if ((Self->Style.List->Type IS bcList::CUSTOM) and (!para.value.empty())) {
       style_check(Self, Index); // Font changes must take place prior to the printing of custom string items
 
       Self->insertCode(Index, para);
@@ -2597,8 +2596,8 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       auto save_item = Self->Style.List->ItemNum;
       Self->Style.List->ItemNum = 1;
 
-      if (para.aggregate) for (auto &p : Self->Style.List->Buffer) para.Value += p;
-      else para.Value = Self->Style.List->Buffer.back();
+      if (para.aggregate) for (auto &p : Self->Style.List->Buffer) para.value += p;
+      else para.value = Self->Style.List->Buffer.back();
 
       Self->insertCode(Index, para);
 

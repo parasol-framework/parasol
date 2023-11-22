@@ -479,7 +479,7 @@ bool layout::procListEnd()
    if (stack_list.empty()) {
       // At the end of a list, increase the whitespace to that of a standard paragraph.
       StreamChar sc(idx, 0);
-      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->VSpacing, sc, "ListEnd");
+      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->vspacing, sc, "ListEnd");
       else end_line(NL::PARAGRAPH, 1.0, sc, "ListEnd");
    }
 
@@ -579,13 +579,13 @@ void layout::procParagraphStart()
 
       // If a paragraph is embedded within a paragraph, insert a newline before the new paragraph starts.
 
-      m_left_margin = stack_para.top()->X; // Reset the margin so that the next line will be flush with the parent
+      m_left_margin = stack_para.top()->x; // Reset the margin so that the next line will be flush with the parent
 
       if (m_paragraph_y > 0) {
-         if (stack_para.top()->LeadingRatio > stack_para.top()->VSpacing) ratio = stack_para.top()->LeadingRatio;
-         else ratio = stack_para.top()->VSpacing;
+         if (stack_para.top()->leading_ratio > stack_para.top()->vspacing) ratio = stack_para.top()->leading_ratio;
+         else ratio = stack_para.top()->vspacing;
       }
-      else ratio = stack_para.top()->VSpacing;
+      else ratio = stack_para.top()->vspacing;
 
       StreamChar sc(idx, 0);
       end_line(NL::PARAGRAPH, ratio, sc, "PS");
@@ -599,9 +599,9 @@ void layout::procParagraphStart()
       // This check ensures that the first paragraph is always flush against
       // the top of the page.
 
-      if ((stack_para.top()->LeadingRatio > 0) and (m_paragraph_y > 0)) {
+      if ((stack_para.top()->leading_ratio > 0) and (m_paragraph_y > 0)) {
          StreamChar sc(idx, 0);
-         end_line(NL::PARAGRAPH, stack_para.top()->LeadingRatio, sc, "PS");
+         end_line(NL::PARAGRAPH, stack_para.top()->leading_ratio, sc, "PS");
       }
    }
 
@@ -612,40 +612,40 @@ void layout::procParagraphStart()
       // Indentation values are inherited from the list.
 
       auto list = stack_list.top();
-      if (escpara->ListItem) {
-         if (stack_para.size() > 1) escpara->Indent = list->BlockIndent;
-         escpara->ItemIndent = list->ItemIndent;
-         escpara->Relative = false;
+      if (escpara->list_item) {
+         if (stack_para.size() > 1) escpara->indent = list->BlockIndent;
+         escpara->item_indent = list->ItemIndent;
+         escpara->relative = false;
 
-         if (!escpara->Value.empty()) {
-            auto strwidth = fntStringWidth(m_font, escpara->Value.c_str(), -1) + 10;
+         if (!escpara->value.empty()) {
+            auto strwidth = fntStringWidth(m_font, escpara->value.c_str(), -1) + 10;
             if (strwidth > list->ItemIndent) {
-               list->ItemIndent    = strwidth;
-               escpara->ItemIndent = strwidth;
-               list->Repass        = true;
+               list->ItemIndent     = strwidth;
+               escpara->item_indent = strwidth;
+               list->Repass         = true;
             }
          }
       }
-      else escpara->Indent = list->ItemIndent;
+      else escpara->indent = list->ItemIndent;
    }
 
-   if (escpara->Indent) {
-      if (escpara->Relative) escpara->BlockIndent = escpara->Indent * (0.01 * m_page_width);
-      else escpara->BlockIndent = escpara->Indent;
+   if (escpara->indent) {
+      if (escpara->relative) escpara->block_indent = escpara->indent * (0.01 * m_page_width);
+      else escpara->block_indent = escpara->indent;
    }
 
-   escpara->X = m_left_margin + escpara->BlockIndent;
+   escpara->x = m_left_margin + escpara->block_indent;
 
-   m_left_margin += escpara->BlockIndent + escpara->ItemIndent;
-   m_cursor_x    += escpara->BlockIndent + escpara->ItemIndent;
-   m_line.x      += escpara->BlockIndent + escpara->ItemIndent;
+   m_left_margin += escpara->block_indent + escpara->item_indent;
+   m_cursor_x    += escpara->block_indent + escpara->item_indent;
+   m_line.x      += escpara->block_indent + escpara->item_indent;
 
    // Paragraph management variables
 
-   if (!stack_list.empty()) escpara->VSpacing = stack_list.top()->VSpacing;
+   if (!stack_list.empty()) escpara->vspacing = stack_list.top()->vspacing;
 
-   escpara->Y = m_cursor_y;
-   escpara->Height = 0;
+   escpara->y = m_cursor_y;
+   escpara->height = 0;
 }
 
 //********************************************************************************************************************
@@ -658,13 +658,13 @@ void layout::procParagraphEnd()
       // any vectors and tables within the paragraph.
 
       auto para = stack_para.top();
-      m_paragraph_bottom = para->Y + para->Height;
+      m_paragraph_bottom = para->y + para->height;
 
-      end_line(NL::PARAGRAPH, para->VSpacing, sc, "PE");
+      end_line(NL::PARAGRAPH, para->vspacing, sc, "PE");
 
-      m_left_margin = para->X - para->BlockIndent;
-      m_cursor_x    = para->X - para->BlockIndent;
-      m_line.x      = para->X - para->BlockIndent;
+      m_left_margin = para->x - para->block_indent;
+      m_cursor_x    = para->x - para->block_indent;
+      m_line.x      = para->x - para->block_indent;
       stack_para.pop();
    }
    else end_line(NL::PARAGRAPH, 0, sc, "PE-NP"); // Technically an error when there's no matching PS code.
@@ -808,8 +808,8 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
    }
 
    if (!stack_para.empty()) {
-      j = (esctable->Y + esctable->Height) - stack_para.top()->Y;
-      if (j > stack_para.top()->Height) stack_para.top()->Height = j;
+      j = (esctable->Y + esctable->Height) - stack_para.top()->y;
+      if (j > stack_para.top()->height) stack_para.top()->height = j;
    }
 
    // Check if the table collides with clipping boundaries and adjust its position accordingly.
@@ -1525,8 +1525,8 @@ wrap_vector:
          //if (cr > m_cursor_x) m_word_width += cr - m_cursor_x;
 
          if (!stack_para.empty()) {
-            auto j = cb - stack_para.top()->Y;
-            if (j > stack_para.top()->Height) stack_para.top()->Height = j;
+            auto j = cb - stack_para.top()->y;
+            if (j > stack_para.top()->height) stack_para.top()->height = j;
          }
       }
    }

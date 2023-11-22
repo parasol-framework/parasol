@@ -616,7 +616,7 @@ struct bcList : public BaseCode {
    LONG  BlockIndent = BULLET_WIDTH; // Indentation for each set of items
    LONG  ItemNum     = 0;
    LONG  OrderInsert = 0;
-   DOUBLE VSpacing   = 0.5;          // Spacing between list items, expressed as a ratio
+   DOUBLE vspacing   = 0.5;          // Spacing between list items, expressed as a ratio
    UBYTE Type        = BULLET;
    bool  Repass      = false;
 
@@ -709,27 +709,27 @@ struct bcTableEnd : public BaseCode {
 
 class bcParagraph : public BaseCode {
    public:
-   std::string Value = "";
-   DOUBLE X, Y, Height;
-   LONG   BlockIndent;
-   LONG   ItemIndent;
-   DOUBLE Indent;
-   DOUBLE VSpacing;     // Trailing whitespace, expressed as a ratio of the default line height
-   DOUBLE LeadingRatio; // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
+   std::string value = "";
+   DOUBLE x, y, height;
+   LONG   block_indent;
+   LONG   item_indent;
+   DOUBLE indent;
+   DOUBLE vspacing;      // Trailing whitespace, expressed as a ratio of the default line height
+   DOUBLE leading_ratio; // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
    // Options
-   bool Relative;
-   bool ListItem;
-   bool Trim;
+   bool relative;
+   bool list_item;
+   bool trim;
    bool aggregate;
 
-   bcParagraph() : BaseCode(ESC::PARAGRAPH_START), X(0), Y(0), Height(0),
-      BlockIndent(0), ItemIndent(0), Indent(0), VSpacing(1.0), LeadingRatio(1.0),
-      Relative(false), ListItem(false), Trim(false), aggregate(false) { }
+   bcParagraph() : BaseCode(ESC::PARAGRAPH_START), x(0), y(0), height(0),
+      block_indent(0), item_indent(0), indent(0), vspacing(1.0), leading_ratio(1.0),
+      relative(false), list_item(false), trim(false), aggregate(false) { }
 
    void applyStyle(const style_status &Style) {
-      VSpacing     = Style.List->VSpacing;
-      BlockIndent  = Style.List->BlockIndent;
-      ItemIndent   = Style.List->ItemIndent;
+      vspacing     = Style.List->vspacing;
+      block_indent = Style.List->BlockIndent;
+      item_indent  = Style.List->ItemIndent;
    }
 };
 

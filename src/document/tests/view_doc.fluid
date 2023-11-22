@@ -1,0 +1,15 @@
+
+   require 'gui/window'
+
+   glScript = obj.find('self')
+
+   local win = gui.window({ title='Document Test', insideWidth=1024, insideHeight=800, center=true })
+
+   local src_file = arg('file', 'test.rpl')
+
+   lDoc = win:clientViewport().new('document', {
+      path = glScript.workingPath .. src_file .. '#Index'
+   })
+
+   win:show()
+   processing.sleep()

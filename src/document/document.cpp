@@ -455,7 +455,7 @@ inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
 
 static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_cache, tag_call, tag_caps, tag_cell;
 static TAGROUTINE tag_debug, tag_div, tag_editdef, tag_focus, tag_font, tag_footer, tag_head, tag_header, tag_image;
-static TAGROUTINE tag_include, tag_indent, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
+static TAGROUTINE tag_include, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
 static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_restorestyle, tag_row, tag_savestyle;
 static TAGROUTINE tag_script, tag_set, tag_setfont, tag_setmargins, tag_table, tag_template, tag_trigger;
 static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
@@ -469,7 +469,6 @@ static std::map<std::string, tagroutine, CaseInsensitiveMap> glTags = {
    // Content tags (tags that affect text, the page layout etc)
    { "a",             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
    { "link",          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { "blockquote",    { tag_indent,       TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
    { "b",             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
    { "caps",          { tag_caps,         TAG::CHILDREN|TAG::CONTENT } },
    { "div",           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
@@ -478,7 +477,6 @@ static std::map<std::string, tagroutine, CaseInsensitiveMap> glTags = {
    { "i",             { tag_italic,       TAG::CHILDREN|TAG::CONTENT } },
    { "li",            { tag_li,           TAG::CHILDREN|TAG::CONTENT } },
    { "pre",           { tag_pre,          TAG::CHILDREN|TAG::CONTENT } },
-   { "indent",        { tag_indent,       TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
    { "u",             { tag_underline,    TAG::CHILDREN|TAG::CONTENT } },
    { "list",          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
    { "advance",       { tag_advance,      TAG::CONTENT } },

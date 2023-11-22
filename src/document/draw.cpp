@@ -197,35 +197,35 @@ void layout::gen_scene_graph()
             case ESC::PARAGRAPH_START:
                stack_para.push(&escape_data<bcParagraph>(Self, cursor));
 
-               if ((!stack_list.empty()) and (stack_para.top()->ListItem)) {
+               if ((!stack_list.empty()) and (stack_para.top()->list_item)) {
                   // Handling for paragraphs that form part of a list
 
                   if ((stack_list.top()->Type IS bcList::CUSTOM) or
                       (stack_list.top()->Type IS bcList::ORDERED)) {
-                     if (!stack_para.top()->Value.empty()) {
-                        DOUBLE ix = segment.Area.X - stack_para.top()->ItemIndent;
+                     if (!stack_para.top()->value.empty()) {
+                        DOUBLE ix = segment.Area.X - stack_para.top()->item_indent;
                         DOUBLE iy = segment.Area.Y + segment.Area.Height - segment.Gutter;
 
                         auto text = objVectorText::create::global({
                            fl::Owner(Self->Page->UID),
                            fl::X(ix), fl::Y(iy),
-                           fl::String(stack_para.top()->Value),
+                           fl::String(stack_para.top()->value),
                            fl::Font(font),
-                           fl::Fill(font_fill)
+                           fl::Fill(stack_list.top()->Fill)
                            //fl::AlignWidth(segment.AlignWidth),
                         });
                         Self->LayoutResources.push_back(text);
                      }
                   }
                   else if (stack_list.top()->Type IS bcList::BULLET) {                     
-                     DOUBLE ix = segment.Area.X - stack_para.top()->ItemIndent + (m_font->Height * 0.5);
+                     DOUBLE ix = segment.Area.X - stack_para.top()->item_indent + (m_font->Height * 0.5);
                      DOUBLE iy = segment.Area.Y + (segment.Area.Height - segment.Gutter) - (m_font->Height * 0.5);
 
                      auto bullet = objVectorEllipse::create::global({
                         fl::Owner(Self->Page->UID),
                         fl::CenterX(ix), fl::CenterY(iy),
                         fl::Radius(m_font->Height * 0.25),
-                        fl::Fill(font_fill)
+                        fl::Fill(stack_list.top()->Fill)
                      });
                      Self->LayoutResources.push_back(bullet);
                   }
