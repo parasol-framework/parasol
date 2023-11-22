@@ -763,7 +763,7 @@ TE layout::procTableEnd(bcTable *esctable, LONG Offset, LONG AbsX, LONG TopMargi
       // respect to the height of the display port.
 
       if (!Offset) {
-         minheight = ((Self->AreaHeight - BottomMargin - esctable->Y) * esctable->MinHeight) / 100;
+         minheight = ((Self->Area.Height - BottomMargin - esctable->Y) * esctable->MinHeight) / 100;
       }
       else minheight = ((Height - BottomMargin - TopMargin) * esctable->MinHeight) / 100;
 
@@ -882,8 +882,8 @@ wrap_vector:
    cx = AbsX;
    cy = AbsY;
    cr  = cx + m_page_width;
-   if ((!Offset) and (PageHeight < Self->AreaHeight)) {
-      cb = AbsY + Self->AreaHeight; // The reported page height cannot be shorter than the document's viewport area
+   if ((!Offset) and (PageHeight < Self->Area.Height)) {
+      cb = AbsY + Self->Area.Height; // The reported page height cannot be shorter than the document's viewport area
    }
    else cb = AbsY + PageHeight;
 
@@ -1754,7 +1754,7 @@ static void layout_doc(extDocument *Self)
    // of the page.
 
    #ifdef DBG_LAYOUT
-      log.branch("Area: %dx%d,%dx%d Visible: %d ----------", Self->AreaX, Self->AreaY, Self->AreaWidth, Self->AreaHeight, Self->VScrollVisible);
+      log.branch("Area: %dx%d,%dx%d Visible: %d ----------", Self->AreaX, Self->AreaY, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
    #endif
 
    Self->BreakLoop = MAXLOOP;
@@ -1769,10 +1769,10 @@ static void layout_doc(extDocument *Self)
 
       if (Self->PageWidth <= 0) {
          // No preferred page width; maximise the page width to the available viewing area
-         page_width = Self->AreaWidth;
+         page_width = Self->Area.Width;
       }
       else if (!Self->RelPageWidth) page_width = Self->PageWidth;
-      else page_width = (Self->PageWidth * Self->AreaWidth) * 0.01;
+      else page_width = (Self->PageWidth * Self->Area.Width) * 0.01;
 
       if (page_width < Self->MinPageWidth) page_width = Self->MinPageWidth;
 
@@ -1795,7 +1795,7 @@ static void layout_doc(extDocument *Self)
       // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
       // the number of passes required for the next time we do a layout.
 
-      if ((page_width > Self->AreaWidth) and (Self->MinPageWidth < page_width)) Self->MinPageWidth = page_width;
+      if ((page_width > Self->Area.Width) and (Self->MinPageWidth < page_width)) Self->MinPageWidth = page_width;
 
       Self->PageHeight = page_height;
       //if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
@@ -1804,7 +1804,7 @@ static void layout_doc(extDocument *Self)
       // Recalculation may be required if visibility of the scrollbar needs to change.
 
       if ((Self->BreakLoop > 0) and (!Self->Error)) {
-         if (Self->PageHeight > Self->AreaHeight) {
+         if (Self->PageHeight > Self->Area.Height) {
             // Page height is bigger than the viewport, so the scrollbar needs to be visible.
 
             if (!Self->VScrollVisible) {
@@ -1887,8 +1887,8 @@ static void layout_doc(extDocument *Self)
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.Type IS CALL_SCRIPT) {
             const ScriptArg args[] = {
-               { "ViewWidth",  Self->AreaWidth },
-               { "ViewHeight", Self->AreaHeight },
+               { "ViewWidth",  Self->Area.Width },
+               { "ViewHeight", Self->Area.Height },
                { "PageWidth",  Self->CalcWidth },
                { "PageHeight", Self->PageHeight }
             };
@@ -1897,7 +1897,7 @@ static void layout_doc(extDocument *Self)
          else if (trigger.Type IS CALL_STDC) {
             auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger.StdC.Routine;
             pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight, Self->CalcWidth, Self->PageHeight);
+            routine(trigger.StdC.Context, Self, Self->Area.Width, Self->Area.Height, Self->CalcWidth, Self->PageHeight);
          }
       }
    }

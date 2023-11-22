@@ -18,6 +18,7 @@
 #define HASH_bottom 0xf492ca7aUL
 #define HASH_bottommargin 0xc2a11ab8UL
 #define HASH_br 0x00597759UL
+#define HASH_break 0x0f2c9f4aUL
 #define HASH_cache 0x0f355db9UL
 #define HASH_call 0x7c950401UL
 #define HASH_caps 0x7c95048cUL
@@ -28,6 +29,7 @@
 #define HASH_colour 0xf6e37b99UL
 #define HASH_colspan 0xd3550935UL
 #define HASH_columns 0xd35616e6UL
+#define HASH_continue 0x42aefb8aUL
 #define HASH_data 0x7c95915fUL
 #define HASH_debug 0x0f49a52cUL
 #define HASH_div 0x0b886a48UL
@@ -61,11 +63,14 @@
 #define HASH_hspacing 0x17303632UL
 #define HASH_i 0x0002b60eUL
 #define HASH_icon 0x7c98572eUL
+#define HASH_if 0x00597834UL
+#define HASH_image 0x0fa87ca8UL
 #define HASH_include 0x9e36af89UL
 #define HASH_indent 0x04cbc867UL
 #define HASH_index 0x0fa9159dUL
 #define HASH_info 0x7c9884d1UL
 #define HASH_inject 0x04cf1142UL
+#define HASH_inline 0x04d03c64UL
 #define HASH_kerning 0x243d11f3UL
 #define HASH_leading 0x6ffe3259UL
 #define HASH_LeavingPage 0x6af1c368UL
@@ -138,6 +143,7 @@
 #define HASH_vlink 0x109351c9UL
 #define HASH_vspacing 0x02c9da80UL
 #define HASH_westgap 0xc00d43a0UL
+#define HASH_while 0x10a3387eUL
 #define HASH_width 0x10a3b0a5UL
 #define HASH_width 0x10a3b0a5UL
 #define HASH_x 0x0002b61dUL

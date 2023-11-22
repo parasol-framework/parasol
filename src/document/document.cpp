@@ -217,8 +217,7 @@ class extDocument : public objDocument {
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    DocEdit *ActiveEditDef;    // As for ActiveEditCell, but refers to the active editing definition
-   StreamChar SelectStart;    // Selection start (stream index)
-   StreamChar SelectEnd;      // Selection end (stream index)
+   StreamChar SelectStart, SelectEnd;  // Selection start & end (stream index)
    StreamChar CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    StreamChar SelectIndex;    // The end of the selected text area, if text is selected.
    DOUBLE VPWidth, VPHeight;
@@ -226,23 +225,23 @@ class extDocument : public objDocument {
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
    objVectorViewport *Page;  // Page viewport - this holds the graphics content
-   LONG   MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
+   DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    DOUBLE PageWidth;         // Width of the widest section of the document page.  Can be pre-defined for a fixed width.
    LONG   LinkIndex;         // Currently selected link (mouse over)
    LONG   CalcWidth;         // Final page width calculated from the layout process
    LONG   LoopIndex;
    LONG   ElementCounter;       // Counter for element ID's
-   LONG   XPosition, YPosition; // Scrolling offset
-   LONG   AreaX, AreaY, AreaWidth, AreaHeight;
-   LONG   ClickX, ClickY;
+   DOUBLE XPosition, YPosition; // Scrolling offset
+   FloatRect Area;              // Available space in the viewport for hosting the document
+   DOUBLE ClickX, ClickY;
    LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.
    LONG   TemplatesModified;  // Track modifications to Self->Templates
    LONG   BreakLoop;
    LONG   GeneratedID;        // Unique ID that is regenerated on each load/refresh
    SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
    SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
-   LONG   SelectCharX;        // The X coordinate of the SelectIndex character
-   LONG   CursorCharX;        // The X coordinate of the CursorIndex character
+   DOUBLE SelectCharX;        // The X coordinate of the SelectIndex character
+   DOUBLE CursorCharX;        // The X coordinate of the CursorIndex character
    DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
    TIMER  FlashTimer;         // For flashing the cursor
    LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
@@ -430,7 +429,7 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative);
 static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
 static void  reset_cursor(extDocument *);
-static ERROR resolve_fontx_by_index(extDocument *, StreamChar, LONG *);
+static ERROR resolve_fontx_by_index(extDocument *, StreamChar, DOUBLE &);
 static ERROR resolve_font_pos(extDocument *, DocSegment &, LONG X, LONG *, StreamChar &);
 static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
@@ -465,64 +464,64 @@ static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
 // FILTER_TABLE: The tag is restricted to use within <table> sections.
 // FILTER_ROW:   The tag is restricted to use within <row> sections.
 
-static std::map<std::string, tagroutine, CaseInsensitiveMap> glTags = {
+static std::map<ULONG, tagroutine> glTags = {
    // Content tags (tags that affect text, the page layout etc)
-   { "a",             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { "link",          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { "b",             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
-   { "caps",          { tag_caps,         TAG::CHILDREN|TAG::CONTENT } },
-   { "div",           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "p",             { tag_paragraph,    TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "font",          { tag_font,         TAG::CHILDREN|TAG::CONTENT } },
-   { "i",             { tag_italic,       TAG::CHILDREN|TAG::CONTENT } },
-   { "li",            { tag_li,           TAG::CHILDREN|TAG::CONTENT } },
-   { "pre",           { tag_pre,          TAG::CHILDREN|TAG::CONTENT } },
-   { "u",             { tag_underline,    TAG::CHILDREN|TAG::CONTENT } },
-   { "list",          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { "advance",       { tag_advance,      TAG::CONTENT } },
-   { "br",            { tag_br,           TAG::CONTENT } },
-   { "image",         { tag_image,        TAG::CONTENT } },
+   { HASH_a,             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_link,          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_b,             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_caps,          { tag_caps,         TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_div,           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { HASH_p,             { tag_paragraph,    TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { HASH_font,          { tag_font,         TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_i,             { tag_italic,       TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_li,            { tag_li,           TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_pre,           { tag_pre,          TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_u,             { tag_underline,    TAG::CHILDREN|TAG::CONTENT } },
+   { HASH_list,          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
+   { HASH_advance,       { tag_advance,      TAG::CONTENT } },
+   { HASH_br,            { tag_br,           TAG::CONTENT } },
+   { HASH_image,         { tag_image,        TAG::CONTENT } },
    // Conditional command tags
-   { "else",          { NULL,             TAG::CONDITIONAL } },
-   { "elseif",        { NULL,             TAG::CONDITIONAL } },
-   { "repeat",        { tag_repeat,       TAG::CHILDREN|TAG::CONDITIONAL } },
+   { HASH_else,          { NULL,             TAG::CONDITIONAL } },
+   { HASH_elseif,        { NULL,             TAG::CONDITIONAL } },
+   { HASH_repeat,        { tag_repeat,       TAG::CHILDREN|TAG::CONDITIONAL } },
    // Special instructions
-   { "cache",         { tag_cache,        TAG::INSTRUCTION } },
-   { "call",          { tag_call,         TAG::INSTRUCTION } },
-   { "debug",         { tag_debug,        TAG::INSTRUCTION } },
-   { "focus",         { tag_focus,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "include",       { tag_include,      TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "print",         { tag_print,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "parse",         { tag_parse,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "set",           { tag_set,          TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { "trigger",       { tag_trigger,      TAG::INSTRUCTION } },
+   { HASH_cache,         { tag_cache,        TAG::INSTRUCTION } },
+   { HASH_call,          { tag_call,         TAG::INSTRUCTION } },
+   { HASH_debug,         { tag_debug,        TAG::INSTRUCTION } },
+   { HASH_focus,         { tag_focus,        TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { HASH_include,       { tag_include,      TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { HASH_print,         { tag_print,        TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { HASH_parse,         { tag_parse,        TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { HASH_set,           { tag_set,          TAG::INSTRUCTION|TAG::OBJECTOK } },
+   { HASH_trigger,       { tag_trigger,      TAG::INSTRUCTION } },
    // Root level tags
-   { "page",          { tag_page,         TAG::CHILDREN | TAG::ROOT } },
+   { HASH_page,          { tag_page,         TAG::CHILDREN | TAG::ROOT } },
    // Others
-   { "background",    { tag_background,   TAG::NIL } },
-   { "data",          { NULL,             TAG::NIL } },
-   { "editdef",       { tag_editdef,      TAG::NIL } },
-   { "footer",        { tag_footer,       TAG::NIL } },
-   { "head",          { tag_head,         TAG::NIL } }, // Synonym for info
-   { "header",        { tag_header,       TAG::NIL } },
-   { "info",          { tag_head,         TAG::NIL } },
-   { "inject",        { tag_inject,       TAG::OBJECTOK } },
-   { "row",           { tag_row,          TAG::CHILDREN|TAG::FILTER_TABLE } },
-   { "cell",          { tag_cell,         TAG::PARAGRAPH|TAG::FILTER_ROW } },
-   { "table",         { tag_table,        TAG::CHILDREN } },
-   { "td",            { tag_cell,         TAG::CHILDREN|TAG::FILTER_ROW } },
-   { "tr",            { tag_row,          TAG::CHILDREN } },
-   { "body",          { tag_body,         TAG::NIL } },
-   { "index",         { tag_index,        TAG::NIL } },
-   { "setmargins",    { tag_setmargins,   TAG::OBJECTOK } },
-   { "setfont",       { tag_setfont,      TAG::OBJECTOK } },
-   { "restorestyle",  { tag_restorestyle, TAG::OBJECTOK } },
-   { "savestyle",     { tag_savestyle,    TAG::OBJECTOK } },
-   { "script",        { tag_script,       TAG::NIL } },
-   { "template",      { tag_template,     TAG::NIL } },
-   { "xml",           { tag_xml,          TAG::OBJECTOK } },
-   { "xml_raw",       { tag_xmlraw,       TAG::OBJECTOK } },
-   { "xml_translate", { tag_xmltranslate, TAG::OBJECTOK } }
+   { HASH_background,    { tag_background,   TAG::NIL } },
+   { HASH_data,          { NULL,             TAG::NIL } },
+   { HASH_editdef,       { tag_editdef,      TAG::NIL } },
+   { HASH_footer,        { tag_footer,       TAG::NIL } },
+   { HASH_head,          { tag_head,         TAG::NIL } }, // Synonym for info
+   { HASH_header,        { tag_header,       TAG::NIL } },
+   { HASH_info,          { tag_head,         TAG::NIL } },
+   { HASH_inject,        { tag_inject,       TAG::OBJECTOK } },
+   { HASH_row,           { tag_row,          TAG::CHILDREN|TAG::FILTER_TABLE } },
+   { HASH_cell,          { tag_cell,         TAG::PARAGRAPH|TAG::FILTER_ROW } },
+   { HASH_table,         { tag_table,        TAG::CHILDREN } },
+   { HASH_td,            { tag_cell,         TAG::CHILDREN|TAG::FILTER_ROW } },
+   { HASH_tr,            { tag_row,          TAG::CHILDREN } },
+   { HASH_body,          { tag_body,         TAG::NIL } },
+   { HASH_index,         { tag_index,        TAG::NIL } },
+   { HASH_setmargins,    { tag_setmargins,   TAG::OBJECTOK } },
+   { HASH_setfont,       { tag_setfont,      TAG::OBJECTOK } },
+   { HASH_restorestyle,  { tag_restorestyle, TAG::OBJECTOK } },
+   { HASH_savestyle,     { tag_savestyle,    TAG::OBJECTOK } },
+   { HASH_script,        { tag_script,       TAG::NIL } },
+   { HASH_template,      { tag_template,     TAG::NIL } },
+   { HASH_xml,           { tag_xml,          TAG::OBJECTOK } },
+   { HASH_xml_raw,       { tag_xmlraw,       TAG::OBJECTOK } },
+   { HASH_xml_translate, { tag_xmltranslate, TAG::OBJECTOK } }
 };
 
 #ifdef DBG_STREAM

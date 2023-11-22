@@ -89,12 +89,12 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
    Self->VPWidth = Width;
    Self->VPHeight = Height;
 
-   Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->AreaWidth  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-   Self->AreaHeight = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->Area.X = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
+   Self->Area.Y = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
+   Self->Area.Width  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->Area.Height = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
-   acRedimension(Self->View, Self->AreaX, Self->AreaY, 0, Self->AreaWidth, Self->AreaHeight, 0);
+   acRedimension(Self->View, Self->Area.X, Self->Area.Y, 0, Self->Area.Width, Self->Area.Height, 0);
 
    for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
       if (trigger.Type IS CALL_SCRIPT) {
@@ -102,15 +102,15 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
          // function to resize elements on the page in preparation of the new layout.
 
          const ScriptArg args[] = {
-            { "ViewWidth",  Self->AreaWidth },
-            { "ViewHeight", Self->AreaHeight }
+            { "ViewWidth",  Self->Area.Width },
+            { "ViewHeight", Self->Area.Height }
          };
          scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
       else if (trigger.Type IS CALL_STDC) {
          auto routine = (void (*)(APTR, extDocument *, LONG, LONG))trigger.StdC.Routine;
          pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self, Self->AreaWidth, Self->AreaHeight);
+         routine(trigger.StdC.Context, Self, Self->Area.Width, Self->Area.Height);
       }
    }
 
@@ -689,10 +689,10 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          fl::StrokeWidth(1), fl::Stroke(Self->BorderStroke));
    }
 
-   Self->AreaX = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->AreaY = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->AreaWidth  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-   Self->AreaHeight = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->Area.X = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
+   Self->Area.Y = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
+   Self->Area.Width  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
+   Self->Area.Height = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
    // Allocate the view and page areas
 
@@ -707,8 +707,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    if ((Self->View = objVectorViewport::create::integral(
          fl::Name("docView"),
          fl::Owner(Self->Viewport->UID),
-         fl::X(Self->AreaX), fl::Y(Self->AreaY),
-         fl::Width(Self->AreaWidth), fl::Height(Self->AreaHeight)))) {
+         fl::X(Self->Area.X), fl::Y(Self->Area.Y),
+         fl::Width(Self->Area.Width), fl::Height(Self->Area.Height)))) {
    }
    else return ERR_CreateObject;
 
@@ -1261,8 +1261,8 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    // Validation: coordinates must be negative offsets
 
-   if (-Self->YPosition > Self->PageHeight - Self->AreaHeight) {
-      Self->YPosition = -(Self->PageHeight - Self->AreaHeight);
+   if (-Self->YPosition > Self->PageHeight - Self->Area.Height) {
+      Self->YPosition = -(Self->PageHeight - Self->Area.Height);
    }
 
    if (Self->YPosition > 0) Self->YPosition = 0;

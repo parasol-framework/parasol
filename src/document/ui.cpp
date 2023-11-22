@@ -67,7 +67,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
          layout_doc_fast(Self);
 
-         resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
+         resolve_fontx_by_index(Self, Self->CursorIndex, Self->CursorCharX);
 
          Self->Viewport->draw();
          return ERR_Okay;
@@ -89,7 +89,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
             Self->CursorIndex.nextChar(Self, Self->Stream);
 
             layout_doc_fast(Self);
-            resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
+            resolve_fontx_by_index(Self, Self->CursorIndex, Self->CursorCharX);
             Self->Viewport->draw();
             break;
          }
@@ -113,7 +113,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                   else if (code IS ESC::VECTOR); // Vectors count as a character
                   else if (code != ESC::TEXT) continue;
 
-                  if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
+                  if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
                      Self->CursorIndex = index;
                      Self->Viewport->draw();
                      log.warning("LeftCursor: %d, X: %d", Self->CursorIndex.Index, Self->CursorCharX);
@@ -146,7 +146,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                // The current index references a content character or object.  Advance the cursor to the next index.
 
                index.nextChar(Self, Self->Stream);
-               if (!resolve_fontx_by_index(Self, index, &Self->CursorCharX)) {
+               if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
                   Self->CursorIndex = index;
                   Self->Viewport->draw();
                   log.warning("RightCursor: %d, X: %d", Self->CursorIndex.Index, Self->CursorCharX);
@@ -188,7 +188,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
                   Self->UpdatingLayout = true;
                   layout_doc_fast(Self);
-                  resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
+                  resolve_fontx_by_index(Self, Self->CursorIndex, Self->CursorCharX);
                   Self->Viewport->draw();
                }
             }
@@ -205,7 +205,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                }
                Self->UpdatingLayout = true;
                layout_doc_fast(Self);
-               resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
+               resolve_fontx_by_index(Self, Self->CursorIndex, Self->CursorCharX);
                Self->Viewport->draw();
             }
 
@@ -243,14 +243,14 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
       case KEY::PAGE_DOWN:
          scroll.DeltaX = 0;
-         scroll.DeltaY = Self->AreaHeight;
+         scroll.DeltaY = Self->Area.Height;
          scroll.DeltaZ = 0;
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::PAGE_UP:
          scroll.DeltaX = 0;
-         scroll.DeltaY = -Self->AreaHeight;
+         scroll.DeltaY = -Self->Area.Height;
          scroll.DeltaZ = 0;
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
@@ -405,7 +405,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, StreamChar C
       }
    }
 
-   resolve_fontx_by_index(Self, Self->CursorIndex, &Self->CursorCharX);
+   resolve_fontx_by_index(Self, Self->CursorIndex, Self->CursorCharX);
 
    reset_cursor(Self); // Reset cursor flashing
 
@@ -606,7 +606,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (segment != -1) {
       StreamChar sc;
-      if (!resolve_font_pos(Self, Self->Segments[segment], X, &Self->CursorCharX, sc)) {
+      if (!resolve_font_pos(Self, Self->Segments[segment], X, Self->CursorCharX, sc)) {
          if (Self->CursorIndex.valid()) deselect_text(Self); // A click results in the deselection of existing text
 
          if (!Self->Segments[segment].Edit) deactivate_edit(Self, true);
@@ -688,9 +688,9 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
       if (!Self->SelectIndex.valid()) Self->SelectIndex = Self->CursorIndex;
 
       if (Self->MouseOverSegment != -1) {
-         LONG cursor_x;
+         DOUBLE cursor_x;
          StreamChar cursor_index;
-         if (!resolve_font_pos(Self, Self->Segments[Self->MouseOverSegment], X, &cursor_x, cursor_index)) {
+         if (!resolve_font_pos(Self, Self->Segments[Self->MouseOverSegment], X, cursor_x, cursor_index)) {
             if (Self->ActiveEditDef) {
                // For select-dragging, we must check that the selection is within the bounds of the editing area.
 
@@ -700,7 +700,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                      // If the cursor index precedes the start of the editing area, reset it
 
                      cursor_index.set(i, 0);
-                     if (!resolve_fontx_by_index(Self, cursor_index, &cursor_x)) {
+                     if (!resolve_fontx_by_index(Self, cursor_index, cursor_x)) {
 
                      }
                   }
@@ -716,7 +716,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                                  seg--;
                                  sc = Self->Segments[seg].Stop;
                                  if (cursor_index > sc) {
-                                    if (!resolve_fontx_by_index(Self, sc, &cursor_x)) {
+                                    if (!resolve_fontx_by_index(Self, sc, cursor_x)) {
                                        cursor_index = sc;
                                     }
                                  }
@@ -976,21 +976,18 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
 {
    pf::Log log(__FUNCTION__);
 
-   LONG hgap = Self->AreaWidth * 0.1;
-   LONG vgap = Self->AreaHeight * 0.1;
-   LONG view_x = -Self->XPosition;
-   LONG view_y = -Self->YPosition;
-   LONG view_height = Self->AreaHeight;
-   LONG view_width  = Self->AreaWidth;
+   DOUBLE hgap = Self->Area.Width * 0.1, vgap = Self->Area.Height * 0.1;
+   DOUBLE view_x = -Self->XPosition, view_y = -Self->YPosition;
+   DOUBLE view_height = Self->Area.Height, view_width  = Self->Area.Width;
 
    log.trace("View: %dx%d,%dx%d Link: %dx%d,%dx%d", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
 
    // Vertical
 
-   if (Self->PageHeight > Self->AreaHeight) {
+   if (Self->PageHeight > Self->Area.Height) {
       if (Top < view_y + vgap) {
          view_y = Top - vgap;
-         if (view_y < view_height>>2) view_y = 0;
+         if (view_y < view_height * 0.25) view_y = 0;
 
          if ((Bottom < view_height - vgap) and (-Self->YPosition > view_height)) {
             view_y = 0;
@@ -998,14 +995,14 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
       }
       else if (Bottom > view_y + view_height - vgap) {
          view_y = Bottom + vgap - view_height;
-         if (view_y > Self->PageHeight - view_height - (view_height>>2)) view_y = Self->PageHeight - view_height;
+         if (view_y > Self->PageHeight - view_height - (view_height * 0.25)) view_y = Self->PageHeight - view_height;
       }
    }
    else view_y = 0;
 
    // Horizontal
 
-   if (Self->CalcWidth > Self->AreaWidth) {
+   if (Self->CalcWidth > Self->Area.Width) {
       if (Left < view_x + hgap) {
          view_x = Left - hgap;
          if (view_x < 0) view_x = 0;
@@ -1089,7 +1086,7 @@ static void calc_scroll(extDocument *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->AreaHeight, Self->CalcWidth, Self->AreaWidth, Self->XPosition, Self->YPosition);
+   log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
 }
 
 //********************************************************************************************************************

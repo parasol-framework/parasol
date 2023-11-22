@@ -93,7 +93,7 @@
       <comment>The fastest available mechanism for setting a series of path instructions.</comment>
       <prototype>ERROR vpSetCommandList(OBJECTPTR Object, APTR Commands, LONG Size)</prototype>
       <input>
-        <param type="APTR" name="Commands">An array of path command structures.</param>
+        <param type="APTR" name="Commands">An array of PathCommand structures.</param>
         <param type="LONG" name="Size">The byte size of the Commands buffer.</param>
       </input>
       <description>

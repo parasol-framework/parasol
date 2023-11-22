@@ -136,7 +136,7 @@
     <field>
       <name>Font</name>
       <comment>The primary Font object that is used to source glyphs for the text string.</comment>
-      <access read="G">Get</access>
+      <access read="G" write="S">Get/Set</access>
       <type>OBJECTPTR</type>
       <description>
 <p>Returns the <class name="Font">Font</class> object that is used for drawing the text.  The object may be queried but must remain unmodified. Any modification by the client that happens to work in the present code release may fail in future releases.</p>

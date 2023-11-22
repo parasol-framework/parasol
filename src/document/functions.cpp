@@ -1102,10 +1102,10 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
                Output.replace(pos, sizeof("[%version]")-1, RIPPLE_VERSION);
             }
             else if (!Output.compare(pos, std::string::npos, "[%viewheight]")) {
-               Output.replace(pos, sizeof("[%viewheight]")-1, std::to_string(Self->AreaHeight));
+               Output.replace(pos, sizeof("[%viewheight]")-1, std::to_string(Self->Area.Height));
             }
             else if (!Output.compare(pos, std::string::npos, "[%viewwidth]")) {
-               Output.replace(pos, sizeof("[%viewwidth]")-1, std::to_string(Self->AreaWidth));
+               Output.replace(pos, sizeof("[%viewwidth]")-1, std::to_string(Self->Area.Width));
             }
          }
          else if (Output[pos+1] IS '@') {
@@ -1376,7 +1376,7 @@ static bcFont * find_style(extDocument *Self, const RSTREAM &Stream, StreamChar 
 //********************************************************************************************************************
 // For a given line segment, convert a horizontal coordinate to the corresponding character index and its coordinate.
 
-static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LONG *CharX, StreamChar &Char)
+static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, DOUBLE X, DOUBLE &CharX, StreamChar &Char)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1387,8 +1387,9 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
    for (INDEX i = Segment.Start.Index; i < Segment.Stop.Index; i++) {
       if (Self->Stream[i].Code IS ESC::TEXT) {
          auto &str = escape_data<bcText>(Self, i).Text;
-         LONG offset;
-         if (!fntConvertCoords(font, str.c_str(), X - Segment.Area.X, 0, NULL, NULL, NULL, &offset, CharX)) {
+         LONG offset, cx;
+         if (!fntConvertCoords(font, str.c_str(), X - Segment.Area.X, 0, NULL, NULL, NULL, &offset, &cx)) {
+            CharX = cx;
             Char.set(Segment.Start.Index, offset);
             return ERR_Okay;
          }
@@ -1404,7 +1405,7 @@ static ERROR resolve_font_pos(extDocument *Self, DocSegment &Segment, LONG X, LO
 // Using only a stream index, this function will determine the X coordinate of the character at that index.  This is
 // slower than resolve_font_pos(), because the segment has to be resolved by this function.
 
-static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *CharX)
+static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, DOUBLE &CharX)
 {
    pf::Log log("resolve_fontx");
 
@@ -1421,7 +1422,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, StreamChar Char, LONG *Ch
       auto i = Self->Segments[segment].Start;
       while ((i <= Self->Segments[segment].Stop) and (i < Char)) {
          if (Self->Stream[i.Index].Code IS ESC::TEXT) {
-            *CharX = fntStringWidth(font, escape_data<bcText>(Self, i).Text.c_str(), -1);
+            CharX = fntStringWidth(font, escape_data<bcText>(Self, i).Text.c_str(), -1);
             return ERR_Okay;
          }
          i.nextCode();

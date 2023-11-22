@@ -204,6 +204,7 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &In
 
    auto tagname = Tag.Attribs[0].Name;
    if (tagname.starts_with('$')) tagname.erase(0, 1);
+   auto tag_hash = StrHash(tagname);
    object_template = NULL;
 
    TRF result = TRF::NIL;
@@ -271,7 +272,7 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &In
       }
    }
 
-   if (auto tag = glTags.find(tagname); tag != glTags.end()) {
+   if (auto tag = glTags.find(tag_hash); tag != glTags.end()) {
       auto &tr = tag->second;
       if (((tr.Flags & TAG::FILTER_ALL) != TAG::NIL) and ((tr.Flags & TAG(filter)) IS TAG::NIL)) {
          // A filter applies to this tag and the filter flags do not match
@@ -286,7 +287,6 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &In
             result = TRF::BREAK;
          }
          else {
-
             if (((Flags & IPF::NO_CONTENT) != IPF::NIL) and ((tr.Flags & TAG::CONTENT) != TAG::NIL)) {
                // Do nothing when content is not allowed
                log.trace("Content disabled on '%s', tag not processed.", tagname.c_str());
@@ -301,26 +301,26 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &In
          }
       }
    }
-   else if (!StrMatch("break", tagname)) {
+   else if (HASH_break IS tag_hash) {
       // Breaking stops executing all tags (within this section) beyond the breakpoint.  If in a loop, the loop
       // will stop executing.
 
       result = TRF::BREAK;
    }
-   else if (!StrMatch("continue", tagname)) {
+   else if (HASH_continue IS tag_hash) {
       // Continuing - does the same thing as a break but the loop continues.
       // If used when not in a loop, then all sibling tags are skipped.
 
       result = TRF::CONTINUE;
    }
-   else if (!StrMatch("if", tagname)) {
+   else if (HASH_if IS tag_hash) {
       if (check_tag_conditions(Self, Tag)) { // Statement is true
          Flags &= ~IPF::CHECK_ELSE;
          result = parse_tags(Self, XML, Tag.Children, Index, Flags);
       }
       else Flags |= IPF::CHECK_ELSE;
    }
-   else if (!StrMatch("elseif", tagname)) {
+   else if (HASH_elseif IS tag_hash) {
       if ((Flags & IPF::CHECK_ELSE) != IPF::NIL) {
          if (check_tag_conditions(Self, Tag)) { // Statement is true
             Flags &= ~IPF::CHECK_ELSE;
@@ -328,13 +328,13 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, StreamChar &In
          }
       }
    }
-   else if (!StrMatch("else", tagname)) {
+   else if (HASH_else IS tag_hash) {
       if ((Flags & IPF::CHECK_ELSE) != IPF::NIL) {
          Flags &= ~IPF::CHECK_ELSE;
          result = parse_tags(Self, XML, Tag.Children, Index, Flags);
       }
    }
-   else if (!StrMatch("while", tagname)) {
+   else if (HASH_while IS tag_hash) {
       if ((!Tag.Children.empty()) and (check_tag_conditions(Self, Tag))) {
          // Save/restore the statement string on each cycle to fully evaluate the condition each time.
 
@@ -382,7 +382,8 @@ static TRF parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, Stream
 static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, bcParagraph *esc)
 {
    switch (StrHash(Attrib)) {
-      case HASH_anchor:
+      case HASH_inline:
+      case HASH_anchor: // DEPRECATED
          Self->Style.StyleChange = true;
          Self->Style.FontStyle.Options |= FSO::IN_LINE;
          break;
