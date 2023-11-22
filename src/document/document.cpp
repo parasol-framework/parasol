@@ -195,6 +195,7 @@ class extDocument : public objDocument {
    std::string PageName;           // Page name to load from the Path
    std::string Bookmark;           // Bookmark name processed from the Path
    std::string WorkingPath;        // String storage for the WorkingPath field
+   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill;
    RSTREAM Stream;                 // Internal stream buffer
    OBJECTPTR CurrentObject;
    OBJECTPTR UserDefaultScript;  // Allows the developer to define a custom default script.
@@ -227,6 +228,7 @@ class extDocument : public objDocument {
    objVectorViewport *Page;  // Page viewport - this holds the graphics content
    DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    DOUBLE PageWidth;         // Width of the widest section of the document page.  Can be pre-defined for a fixed width.
+   DOUBLE LeftMargin, TopMargin, RightMargin, BottomMargin;
    LONG   LinkIndex;         // Currently selected link (mouse over)
    LONG   CalcWidth;         // Final page width calculated from the layout process
    LONG   LoopIndex;
@@ -430,7 +432,7 @@ static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
 static void  reset_cursor(extDocument *);
 static ERROR resolve_fontx_by_index(extDocument *, StreamChar, DOUBLE &);
-static ERROR resolve_font_pos(extDocument *, DocSegment &, LONG X, LONG *, StreamChar &);
+static ERROR resolve_font_pos(extDocument *, DocSegment &, DOUBLE, DOUBLE &, StreamChar &);
 static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
@@ -460,7 +462,7 @@ static TAGROUTINE tag_script, tag_set, tag_setfont, tag_setmargins, tag_table, t
 static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
 
 //********************************************************************************************************************
-// TAG::OBJECTOK: Indicates that the tag can be used inside an object section, e.g. <image>.<this_tag_ok/>..</image>
+// TAG::OBJECTOK: Indicates that the tag can be used inside an object element, e.g. <image>.<this_tag_ok/>..</image>
 // FILTER_TABLE: The tag is restricted to use within <table> sections.
 // FILTER_ROW:   The tag is restricted to use within <row> sections.
 

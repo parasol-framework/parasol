@@ -7,17 +7,6 @@ Author: The author(s) of the document.
 If a document declares the names of its author(s) under a head tag, the author string will be readable from this field.
 This field is always NULL if a document does not declare an author string.
 
-*********************************************************************************************************************/
-
-static ERROR SET_Author(extDocument *Self, CSTRING Value)
-{
-   if (Self->Author) { FreeResource(Self->Author); Self->Author = NULL; }
-   if ((Value) and (*Value)) Self->Author = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
 -FIELD-
 Background: Optional background colour for the document.
 
@@ -58,30 +47,10 @@ This field controls the border edge that is drawn around the document's surface.
 in the #BorderStroke field.
 
 -FIELD-
-BottomMargin: Defines the amount of whitespace to leave at the bottom of the document page.
-
-The BottomMargin value determines the amount of whitespace at the bottom of the page.  The default margin can be
-altered prior to initialisation of a document object, however the loaded content may declare its own margins and
-overwrite this value during processing.
-
-This value can be set as a fixed pixel coordinate only.
-
--FIELD-
 Copyright: Copyright information for the document.
 
 If a document declares copyright information under a head tag, the copyright string will be readable from this field.
 This field is always NULL if a document does not declare a copyright string.
-
-*********************************************************************************************************************/
-
-static ERROR SET_Copyright(extDocument *Self, CSTRING Value)
-{
-   if (Self->Copyright) { FreeResource(Self->Copyright); Self->Copyright = NULL; }
-   if ((Value) and (*Value)) Self->Copyright = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 CursorStroke: The colour used for the document cursor.
@@ -204,22 +173,6 @@ receives the focus.  If you would like to change this so that a document becomes
 the focus, refer to that object by writing its ID to this field.
 
 -FIELD-
-FontFill: Default font colour.
-
-This field defines the default font colour if the source document does not specify one.
-
-*********************************************************************************************************************/
-
-static ERROR SET_FontFill(extDocument *Self, CSTRING Value)
-{
-   if (Self->FontFill) { FreeResource(Self->FontFill); Self->FontFill = NULL; }
-   if ((Value) and (*Value)) Self->FontFill = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 FontFace: Defines the default font face.
 
 The default font face to use when processing a document is defined in this field.  A document may override the default
@@ -294,45 +247,8 @@ always NULL if a document does not declare any keywords.  It is recommended that
 commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword
 separation.
 
-*********************************************************************************************************************/
-
-static ERROR SET_Keywords(extDocument *Self, STRING Value)
-{
-   if (Self->Keywords) FreeResource(Self->Keywords);
-   if ((Value) and (*Value)) Self->Keywords = StrClone(Value);
-   else Self->Keywords = NULL;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-LeftMargin: Defines the amount of whitespace to leave at the left of the page.
-
-The LeftMargin value determines the amount of whitespace at the left of the page.  The default margin can be altered
-prior to initialisation of a document object, however the loaded content may declare its own margins and overwrite this
-value during processing.
-
-This value can be set as a fixed pixel coordinate only.
-
 -FIELD-
 LineHeight: Default line height (taken as an average) for all text on the page.
-
--FIELD-
-LinkFill: Default font colour for hyperlinks.
-
-The default font colour for hyperlinks is defined here.  If the alpha component is zero, this feature is disabled.
-
-*********************************************************************************************************************/
-
-static ERROR SET_LinkFill(extDocument *Self, CSTRING Value)
-{
-   if (Self->LinkFill) { FreeResource(Self->LinkFill); Self->LinkFill = NULL; }
-   if ((Value) and (*Value)) Self->LinkFill = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 Path: Identifies the location of a document file to load.
@@ -561,32 +477,6 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-RightMargin: Defines the amount of white-space to leave at the right side of the document page.
-
-The RightMargin value determines the amount of white-space at the right of the page.  The default margin can be altered
-prior to initialisation of a document object, however the loaded content may declare its own margins and overwrite this
-value during processing.
-
-This value can be set as a fixed pixel coordinate only.
-
--FIELD-
-LinkSelectFill: Default font fill to use when hyperlinks are selected.
-
-This field defines the font fill for hyperlinks that are selected - for instance, when the user tabs to a link or
-hovers over it.  If the alpha component is zero, this field has no effect.
-
-*********************************************************************************************************************/
-
-static ERROR SET_LinkSelectFill(extDocument *Self, CSTRING Value)
-{
-   if (Self->LinkSelectFill) { FreeResource(Self->LinkSelectFill); Self->LinkSelectFill = NULL; }
-   if ((Value) and (*Value)) Self->LinkSelectFill = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Viewport: A target viewport that will host the document graphics.
 
 The Viewport field must refer to a @VectorViewport that will host the document graphics.  If not initialised,
@@ -620,43 +510,6 @@ Title: The title of the document.
 
 If a document declares a title under a head tag, the title string will be readable from this field.   This field is
 always NULL if a document does not declare a title.
-
-*********************************************************************************************************************/
-
-static ERROR SET_Title(extDocument *Self, STRING Value)
-{
-   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
-   if ((Value) and (*Value)) Self->Title = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-TopMargin: Defines the amount of white-space to leave at the top of the document page.
-
-The TopMargin value determines the amount of white-space at the top of the page.  The default margin can be altered
-prior to initialisation of a document object, however the loaded content may declare its own margins and overwrite this
-value during processing.
-
-This value can be set as a fixed pixel coordinate only.
-
--FIELD-
-VLinkFill: Default font fill for visited hyperlinks.
-
-The default font fill for visited hyperlinks is stored in this field.  The source document can specify its own
-colour for visited links if the author desires.
-
-*********************************************************************************************************************/
-
-static ERROR SET_VLinkFill(extDocument *Self, CSTRING Value)
-{
-   if (Self->VLinkFill) { FreeResource(Self->VLinkFill); Self->VLinkFill = NULL; }
-   if ((Value) and (*Value)) Self->VLinkFill = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 WorkingPath: Defines the working path (folder or URI).

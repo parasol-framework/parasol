@@ -654,23 +654,18 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 
    log.trace("Resetting variables.");
 
-   if (Self->FontFill) FreeResource(Self->FontFill);
-   Self->FontFill     = StrClone("rgb(0,0,0)");
-
    if (Self->Highlight) FreeResource(Self->Highlight);
    Self->Highlight    = StrClone(glHighlight.c_str());
 
    if (Self->CursorStroke) FreeResource(Self->CursorStroke);
    Self->CursorStroke = StrClone("rgb(102,102,204,255)");
 
-   if (Self->LinkFill) FreeResource(Self->LinkFill);
-   Self->LinkFill     = StrClone("rgb(0,0,255,255)");
+   Self->FontFill       = "rgb(0,0,0)";
+   Self->LinkFill       = "rgb(0,0,255,255)";
+   Self->LinkSelectFill = "rgb(255,0,0,255)";
 
    if (Self->Background) FreeResource(Self->Background);
    Self->Background   = StrClone("rgb(255,255,255,255)");
-
-   if (Self->LinkSelectFill) FreeResource(Self->LinkSelectFill);
-   Self->LinkSelectFill = StrClone("rgb(255,0,0,255)");
 
    Self->LeftMargin    = 10;
    Self->RightMargin   = 10;

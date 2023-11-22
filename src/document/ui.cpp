@@ -116,7 +116,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                   if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
                      Self->CursorIndex = index;
                      Self->Viewport->draw();
-                     log.warning("LeftCursor: %d, X: %d", Self->CursorIndex.Index, Self->CursorCharX);
+                     log.warning("LeftCursor: %d, X: %.0f", Self->CursorIndex.Index, Self->CursorCharX);
                   }
                   break;
                }
@@ -149,7 +149,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
                   Self->CursorIndex = index;
                   Self->Viewport->draw();
-                  log.warning("RightCursor: %d, X: %d", Self->CursorIndex.Index, Self->CursorCharX);
+                  log.warning("RightCursor: %d, X: %.0f", Self->CursorIndex.Index, Self->CursorCharX);
                }
                break;
             }
@@ -617,7 +617,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          Self->SelectIndex.reset(); //sc; // SelectIndex is for text selections where the user holds the LMB and drags the mouse
          Self->SelectCharX = Self->CursorCharX;
 
-         log.msg("User clicked on point %.2fx%.2f in segment %d, cursor index: %d, char x: %d", X, Y, segment, Self->CursorIndex.Index, Self->CursorCharX);
+         log.msg("User clicked on point %.2fx%.2f in segment %d, cursor index: %d, char x: %.0f", X, Y, segment, Self->CursorIndex.Index, Self->CursorCharX);
 
          if (Self->Segments[segment].Edit) {
             // If the segment is editable, we'll have to turn on edit mode so
@@ -1086,7 +1086,7 @@ static void calc_scroll(extDocument *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("PageHeight: %d/%d, PageWidth: %d/%d, XPos: %d, YPos: %d", Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
+   log.traceBranch("PageHeight: %d/%.0f, PageWidth: %d/%.0f, XPos: %.0f, YPos: %.0f", Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
 }
 
 //********************************************************************************************************************

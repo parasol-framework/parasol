@@ -581,13 +581,9 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    Self->View = NULL;
 
    if (Self->InsertXML)      { FreeResource(Self->InsertXML);      Self->InsertXML      = NULL; }
-   if (Self->FontFill)       { FreeResource(Self->FontFill);       Self->FontFill       = NULL; }
    if (Self->Highlight)      { FreeResource(Self->Highlight);      Self->Highlight      = NULL; }
    if (Self->Background)     { FreeResource(Self->Background);     Self->Background     = NULL; }
    if (Self->CursorStroke)   { FreeResource(Self->CursorStroke);   Self->CursorStroke   = NULL; }
-   if (Self->LinkFill)       { FreeResource(Self->LinkFill);       Self->LinkFill       = NULL; }
-   if (Self->VLinkFill)      { FreeResource(Self->VLinkFill);      Self->VLinkFill      = NULL; }
-   if (Self->LinkSelectFill) { FreeResource(Self->LinkSelectFill); Self->LinkSelectFill = NULL; }
    if (Self->BorderStroke)   { FreeResource(Self->BorderStroke);   Self->BorderStroke   = NULL; }
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
@@ -1448,29 +1444,21 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 static const FieldArray clFields[] = {
    { "Description",    FDF_STRING|FDF_R },
    { "FontFace",       FDF_STRING|FDF_RW, NULL, SET_FontFace },
-   { "Title",          FDF_STRING|FDF_RW, NULL, SET_Title },
-   { "Author",         FDF_STRING|FDF_RW, NULL, SET_Author },
-   { "Copyright",      FDF_STRING|FDF_RW, NULL, SET_Copyright },
-   { "Keywords",       FDF_STRING|FDF_RW, NULL, SET_Keywords },
-   { "FontFill",       FDF_STRING|FDF_RW, NULL, SET_FontFill },
+   { "Title",          FDF_STRING|FDF_R },
+   { "Author",         FDF_STRING|FDF_R },
+   { "Copyright",      FDF_STRING|FDF_R },
+   { "Keywords",       FDF_STRING|FDF_R },
    { "Highlight",      FDF_STRING|FDF_RW, NULL, SET_Highlight },
    { "Background",     FDF_STRING|FDF_RW, NULL, SET_Background },
    { "CursorStroke",   FDF_STRING|FDF_RW, NULL, SET_CursorStroke },
-   { "LinkFill",       FDF_STRING|FDF_RW, NULL, SET_LinkFill },
-   { "VLinkFill",      FDF_STRING|FDF_RW, NULL, SET_VLinkFill },
-   { "LinkSelectFill", FDF_STRING|FDF_RW, NULL, SET_LinkSelectFill },
    { "BorderStroke",   FDF_STRING|FDF_RW, NULL, SET_BorderStroke },
    { "Viewport",       FDF_OBJECT|FDF_RW, NULL, SET_Viewport, ID_VECTORVIEWPORT },
    { "Focus",          FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORVIEWPORT },
    { "TabFocus",       FDF_OBJECTID|FDF_RW },
    { "EventMask",      FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
-   { "LeftMargin",     FDF_LONG|FDF_RI },
-   { "TopMargin",      FDF_LONG|FDF_RI },
-   { "RightMargin",    FDF_LONG|FDF_RI },
-   { "BottomMargin",   FDF_LONG|FDF_RI },
    { "FontSize",       FDF_LONG|FDF_RW, NULL, SET_FontSize },
-   { "PageHeight",     FDF_LONG|FDF_R, NULL, NULL },
+   { "PageHeight",     FDF_LONG|FDF_R },
    { "BorderEdge",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDocumentBorderEdge },
    { "LineHeight",     FDF_LONG|FDF_R },
    { "Error",          FDF_LONG|FDF_R },

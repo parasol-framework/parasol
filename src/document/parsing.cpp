@@ -541,18 +541,15 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_link:
-            if (Self->LinkFill) FreeResource(Self->LinkFill);
-            Self->LinkFill = StrClone(Tag.Attribs[i].Value.c_str());
+            Self->LinkFill = Tag.Attribs[i].Value;
             break;
 
          case HASH_vlink:
-            if (Self->VLinkFill) FreeResource(Self->VLinkFill);
-            Self->VLinkFill = StrClone(Tag.Attribs[i].Value.c_str());
+            Self->VisitedLinkFill = Tag.Attribs[i].Value;
             break;
 
          case HASH_selectcolour: // Colour to use when a link is selected (using the tab key to get to a link will select it)
-            if (Self->LinkSelectFill) FreeResource(Self->LinkSelectFill);
-            Self->LinkSelectFill = StrClone(Tag.Attribs[i].Value.c_str());
+            Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
 
          case HASH_leftmargin:
@@ -605,7 +602,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             log.msg("Page width forced to %.0f%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
             break;
 
-         case HASH_colour: // Background colour
+         case HASH_colour: // Background fill
             if (Self->Background) FreeResource(Self->Background);
             Self->Background = StrClone(Tag.Attribs[i].Value.c_str());
             break;
@@ -616,12 +613,11 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             break;
 
          case HASH_fontsize: // Default font point size
-            Self->FontSize = StrToInt(Tag.Attribs[i].Value);
+            Self->FontSize = StrToFloat(Tag.Attribs[i].Value);
             break;
 
          case HASH_fontcolour: // Default font colour
-            if (Self->FontFill) FreeResource(Self->FontFill);
-            Self->FontFill = StrClone(Tag.Attribs[i].Value.c_str());
+            Self->FontFill = Tag.Attribs[i].Value;
             break;
 
          default:
@@ -2198,44 +2194,21 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 }
 
 //********************************************************************************************************************
-// Pre normally just switches the font style, but it will automatically create a paragraph if it is not already in one.
+// The use of pre will turn off the automated whitespace management so that all whitespace is parsed as-is.  It does
+// not switch to a monospaced font.
 
 static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
-   if (!Self->ParagraphDepth) {
-      bcParagraph para;
-      Self->insertCode(Index, para);
-
-      Self->ParagraphDepth++;
-
-      if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
-         auto savestatus = Self->Style;
-         Self->Style.StyleChange = true;
-         Self->Style.FontStyle.Options |= FSO::PREFORMAT;
-         parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
-         saved_style_check(Self, savestatus);
-      }
-      else parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
-
-      trim_preformat(Self, Index);
-
-      Self->ParagraphDepth--;
-
-      Self->reserveCode<bcParagraphEnd>(Index);
-      Self->NoWhitespace = true;
+   if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
+      auto savestatus = Self->Style;
+      Self->Style.StyleChange = true;
+      Self->Style.FontStyle.Options |= FSO::PREFORMAT;
+      parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
+      saved_style_check(Self, savestatus);
    }
-   else {
-      if ((Self->Style.FontStyle.Options & FSO::PREFORMAT) IS FSO::NIL) {
-         auto savestatus = Self->Style;
-         Self->Style.StyleChange = true;
-         Self->Style.FontStyle.Options |= FSO::PREFORMAT;
-         parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
-         saved_style_check(Self, savestatus);
-      }
-      else parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
+   else parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
 
-      trim_preformat(Self, Index);
-   }
+   trim_preformat(Self, Index);
 }
 
 //********************************************************************************************************************

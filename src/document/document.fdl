@@ -82,23 +82,15 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     str Author           # The author of the document
     str Copyright        # Copyright information for the document
     str Keywords         # Keywords for the document
-    str FontFill         # Default font fill
     str Highlight        # The fill for highlighting document selections
     str Background       # Fill for document background
     str CursorStroke     # The stroke style of the cursor
-    str LinkFill         # The fill to use for hyperlinks
-    str VLinkFill        # The fill to use for visited hyperlinks
-    str LinkSelectFill   # The fill to use when links are selected (e.g. when the user tabs to a link)
     str BorderStroke     # The stroke to apply to the border of the document window
     obj(VectorViewport) Viewport  # The viewport that will host the document graphics
     obj(VectorViewport) Focus
     oid TabFocus         # If the tab key is pressed, focus can be changed to this object
     int(DEF) EventMask   # Event mask for selectively receiving events from the Document object.
     int(DCF) Flags       # Optional flags
-    int LeftMargin       # Size of the left margin
-    int TopMargin        # Size of the top margin
-    int RightMargin      # Size of the right margin
-    int BottomMargin     # Size of the bottom margin
     int FontSize         # The user's default font size
     int PageHeight       # Height of the document page
     int(DBE) BorderEdge

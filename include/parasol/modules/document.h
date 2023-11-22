@@ -213,23 +213,15 @@ class objDocument : public BaseClass {
    STRING   Author;                 // The author(s) of the document.
    STRING   Copyright;              // Copyright information for the document.
    STRING   Keywords;               // Includes keywords declared by the source document.
-   STRING   FontFill;               // Default font colour.
    STRING   Highlight;              // Defines the fill used to highlight the document.
    STRING   Background;             // Optional background colour for the document.
    STRING   CursorStroke;           // The colour used for the document cursor.
-   STRING   LinkFill;               // Default font colour for hyperlinks.
-   STRING   VLinkFill;              // Default font fill for visited hyperlinks.
-   STRING   LinkSelectFill;         // Default font fill to use when hyperlinks are selected.
    STRING   BorderStroke;           // The stroke to use for drawing a border around the document window.
    objVectorViewport * Viewport;    // A target viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
    OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.
    DCF      Flags;                  // Optional flags that affect object behaviour.
-   LONG     LeftMargin;             // Defines the amount of whitespace to leave at the left of the page.
-   LONG     TopMargin;              // Defines the amount of white-space to leave at the top of the document page.
-   LONG     RightMargin;            // Defines the amount of white-space to leave at the right side of the document page.
-   LONG     BottomMargin;           // Defines the amount of whitespace to leave at the bottom of the document page.
    LONG     FontSize;               // The point-size of the default font.
    LONG     PageHeight;             // Measures the page height of the document, in pixels.
    DBE      BorderEdge;             // Border edge flags.
@@ -285,81 +277,33 @@ class objDocument : public BaseClass {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setTitle(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setAuthor(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[37];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setCopyright(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[15];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setKeywords(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[27];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setFontFill(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[1];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    template <class T> inline ERROR setHighlight(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setBackground(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setCursorStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setLinkFill(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[28];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setVLinkFill(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[36];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   template <class T> inline ERROR setLinkSelectFill(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setBorderStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[35];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -381,37 +325,13 @@ class objDocument : public BaseClass {
 
    inline ERROR setFlags(const DCF Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERROR setLeftMargin(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->LeftMargin = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setTopMargin(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->TopMargin = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setRightMargin(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->RightMargin = Value;
-      return ERR_Okay;
-   }
-
-   inline ERROR setBottomMargin(const LONG Value) {
-      if (this->initialised()) return ERR_NoFieldAccess;
-      this->BottomMargin = Value;
-      return ERR_Okay;
    }
 
    inline ERROR setFontSize(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[2];
+      auto field = &this->Class->Dictionary[1];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -423,31 +343,31 @@ class objDocument : public BaseClass {
 
    inline ERROR setDefaultScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[38];
+      auto field = &this->Class->Dictionary[30];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setOrigin(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[15];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
