@@ -22,7 +22,7 @@ static ERROR SET_Background(extDocument *Self, CSTRING Value)
 }
 
 /*********************************************************************************************************************
- 
+
 -FIELD-
 BorderStroke: The stroke to use for drawing a border around the document window.
 
@@ -173,57 +173,6 @@ receives the focus.  If you would like to change this so that a document becomes
 the focus, refer to that object by writing its ID to this field.
 
 -FIELD-
-FontFace: Defines the default font face.
-
-The default font face to use when processing a document is defined in this field.  A document may override the default
-font face by declaring a body tag containing a face attribute.  If this occurs, the FontFace field will reflect the
-default font face chosen by that document.
-
-*********************************************************************************************************************/
-
-static ERROR SET_FontFace(extDocument *Self, CSTRING Value)
-{
-   if (Self->FontFace) FreeResource(Self->FontFace);
-   if (Value) {
-      Self->FontFace = StrClone(Value);
-
-      // Check for facename:point usage
-
-      auto str = Self->FontFace;
-      while (*str) {
-         if (*str IS ':') {
-            *str = 0;
-            Self->FontSize = StrToInt(str + 1);
-            break;
-         }
-         str++;
-      }
-   }
-   else Self->FontFace = NULL;
-
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
-FontSize: The point-size of the default font.
-
-The point size of the default font is defined here.  Valid values range between 6 and 128.
-
-*********************************************************************************************************************/
-
-static ERROR SET_FontSize(extDocument *Self, LONG Value)
-{
-   if (Value < 6) Self->FontSize = 6;
-   else if (Value > 128) Self->FontSize = 128;
-   else Self->FontSize = Value;
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Highlight: Defines the fill used to highlight the document.
 
 The Highlight field determines the colour that is used when highlighting selected document areas.
@@ -342,19 +291,19 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
             { "OldURI", Self->Path },
             { "NewURI", newpath },
          };
-         scCallback(script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);         
+         scCallback(script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
       else if (trigger.Type IS CALL_STDC) {
          auto routine = (void (*)(APTR, extDocument *, CSTRING, CSTRING))trigger.StdC.Routine;
          pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self, Self->Path.c_str(), newpath.c_str());         
+         routine(trigger.StdC.Context, Self, Self->Path.c_str(), newpath.c_str());
       }
    }
    recursion--;
 
    Self->Path.clear();
-   Self->PageName.clear(); 
-   Self->Bookmark.clear(); 
+   Self->PageName.clear();
+   Self->Bookmark.clear();
 
    if (!newpath.empty()) {
       Self->Path = newpath;
@@ -378,8 +327,8 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
 
       if (Self->Error) {
          Self->Path.clear();
-         Self->PageName.clear(); 
-         Self->Bookmark.clear(); 
+         Self->PageName.clear();
+         Self->Bookmark.clear();
          if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
 
          Self->Viewport->draw();
@@ -406,7 +355,7 @@ changed without causing a load operation.
 static ERROR SET_Origin(extDocument *Self, CSTRING Value)
 {
    Self->Path.clear();
-   if ((Value) and (*Value)) Self->Path.assign(Value);   
+   if ((Value) and (*Value)) Self->Path.assign(Value);
    return ERR_Okay;
 }
 
@@ -566,7 +515,7 @@ static ERROR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 
       // Using ResolvePath() can help to determine relative paths such as "../path/file"
 
-      if (j > 0) buf += Self->Path.substr(0, j);      
+      if (j > 0) buf += Self->Path.substr(0, j);
 
       if (!ResolvePath(buf.c_str(), RSF::APPROXIMATE, &workingpath)) {
          Self->WorkingPath.assign(workingpath);

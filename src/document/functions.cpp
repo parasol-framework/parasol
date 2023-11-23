@@ -701,10 +701,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
       gfxRestoreCursor(PTC::DEFAULT, Self->UID);
    }
 
-   if (Self->FontFace) FreeResource(Self->FontFace);
-   if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->FontFace = NULL;
-   else Self->FontFace = StrClone("Open Sans");
-
+   Self->FontFace = "Open Sans";
    Self->PageTag = NULL;
 
    Self->EditCells.clear();

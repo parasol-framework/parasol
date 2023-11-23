@@ -208,7 +208,6 @@ class objDocument : public BaseClass {
    using create = pf::Create<objDocument>;
 
    STRING   Description;            // A description of the document, provided by its author.
-   STRING   FontFace;               // Defines the default font face.
    STRING   Title;                  // The title of the document.
    STRING   Author;                 // The author(s) of the document.
    STRING   Copyright;              // Copyright information for the document.
@@ -222,7 +221,6 @@ class objDocument : public BaseClass {
    OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.
    DCF      Flags;                  // Optional flags that affect object behaviour.
-   LONG     FontSize;               // The point-size of the default font.
    LONG     PageHeight;             // Measures the page height of the document, in pixels.
    DBE      BorderEdge;             // Border edge flags.
    LONG     LineHeight;             // Default line height (taken as an average) for all text on the page.
@@ -271,39 +269,33 @@ class objDocument : public BaseClass {
 
    // Customised field setting
 
-   template <class T> inline ERROR setFontFace(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[0];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    template <class T> inline ERROR setHighlight(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setBackground(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setCursorStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setBorderStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[25];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -325,13 +317,7 @@ class objDocument : public BaseClass {
 
    inline ERROR setFlags(const DCF Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
-      return field->WriteValue(target, field, FD_LONG, &Value, 1);
-   }
-
-   inline ERROR setFontSize(const LONG Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[1];
+      auto field = &this->Class->Dictionary[3];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
@@ -343,31 +329,31 @@ class objDocument : public BaseClass {
 
    inline ERROR setDefaultScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[30];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setOrigin(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[13];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }

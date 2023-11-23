@@ -646,6 +646,8 @@ static ERROR TEXT_SET_Font(extVectorText *Self, objFont *Value)
       Self->txFontSize = Value->Point * (4.0 / 3.0);
       Self->txRelativeFontSize = false;
 
+      StrCopy(Value->Style, Self->txFontStyle);
+
       return ERR_Okay;
    }
    else return ERR_NoSupport;

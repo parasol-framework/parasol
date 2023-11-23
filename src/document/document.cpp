@@ -217,11 +217,13 @@ class extDocument : public objDocument {
       bcFont, bcVector, bcSetMargins, bcXML, bcImage>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
+   std::string FontFace;      // Default font face
    DocEdit *ActiveEditDef;    // As for ActiveEditCell, but refers to the active editing definition
    StreamChar SelectStart, SelectEnd;  // Selection start & end (stream index)
    StreamChar CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    StreamChar SelectIndex;    // The end of the selected text area, if text is selected.
    DOUBLE VPWidth, VPHeight;
+   DOUBLE FontSize;
    LONG   UniqueID;          // Use for generating unique/incrementing ID's, e.g. cell ID
    objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
    objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
@@ -530,6 +532,8 @@ static std::map<ULONG, tagroutine> glTags = {
 static void print_stream(extDocument *, const RSTREAM &);
 static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); }
 #endif
+
+//********************************************************************************************************************
 
 static std::vector<FontEntry> glFonts;
 

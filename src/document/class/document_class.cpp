@@ -598,7 +598,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    unload_doc(Self, ULD::TERMINATE);
 
    if (Self->XML)       { FreeResource(Self->XML); Self->XML = NULL; }
-   if (Self->FontFace)  { FreeResource(Self->FontFace); Self->FontFace = NULL; }
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
 
    Self->~extDocument();
@@ -1443,7 +1442,6 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
 
 static const FieldArray clFields[] = {
    { "Description",    FDF_STRING|FDF_R },
-   { "FontFace",       FDF_STRING|FDF_RW, NULL, SET_FontFace },
    { "Title",          FDF_STRING|FDF_R },
    { "Author",         FDF_STRING|FDF_R },
    { "Copyright",      FDF_STRING|FDF_R },
@@ -1457,7 +1455,6 @@ static const FieldArray clFields[] = {
    { "TabFocus",       FDF_OBJECTID|FDF_RW },
    { "EventMask",      FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
-   { "FontSize",       FDF_LONG|FDF_RW, NULL, SET_FontSize },
    { "PageHeight",     FDF_LONG|FDF_R },
    { "BorderEdge",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDocumentBorderEdge },
    { "LineHeight",     FDF_LONG|FDF_R },

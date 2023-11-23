@@ -490,26 +490,6 @@
     </field>
 
     <field>
-      <name>FontFace</name>
-      <comment>Defines the default font face.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
-      <description>
-<p>The default font face to use when processing a document is defined in this field.  A document may override the default font face by declaring a body tag containing a face attribute.  If this occurs, the FontFace field will reflect the default font face chosen by that document.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>FontSize</name>
-      <comment>The point-size of the default font.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>INT</type>
-      <description>
-<p>The point size of the default font is defined here.  Valid values range between 6 and 128.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Highlight</name>
       <comment>Defines the fill used to highlight the document.</comment>
       <access read="R" write="S">Read/Set</access>
