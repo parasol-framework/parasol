@@ -202,26 +202,26 @@ class extDocument : public objDocument {
    OBJECTPTR DefaultScript;
    style_status Style;
    style_status RestoreStyle;
-   std::vector<DocSegment> Segments;
-   std::vector<SortedSegment> SortSegments; // Used for UI interactivity when determining who is front-most
-   std::vector<DocClip> Clips;
-   std::vector<DocLink> Links;
-   std::vector<DocMouseOver> MouseOverChain;
+   std::vector<doc_segment> Segments;
+   std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
+   std::vector<doc_clip> Clips;
+   std::vector<doc_link> Links;
+   std::vector<mouse_over> MouseOverChain;
    std::vector<docresource> Resources; // Tracks resources that are page related.  Terminated on page unload.
-   std::vector<Tab> Tabs;
-   std::vector<EditCell> EditCells;
+   std::vector<tab> Tabs;
+   std::vector<edit_cell> EditCells;
    std::vector<OBJECTPTR> LayoutResources;
-   std::unordered_map<std::string, DocEdit> EditDefs;
-   std::unordered_map<ULONG, std::variant<bcText, bcAdvance, bcTable, bcTableEnd, bcRow, bcRowEnd, bcParagraph,
-      bcParagraphEnd, bcCell, bcCellEnd, bcLink, bcLinkEnd, bcList, bcListEnd, bcIndex, bcIndexEnd,
-      bcFont, bcVector, bcSetMargins, bcXML, bcImage>> Codes;
+   std::unordered_map<std::string, doc_edit> EditDefs;
+   std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
+      bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
+      bc_font, bc_vector, bc_set_margins, bc_xml, bc_image>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;      // Default font face
-   DocEdit *ActiveEditDef;    // As for ActiveEditCell, but refers to the active editing definition
-   StreamChar SelectStart, SelectEnd;  // Selection start & end (stream index)
-   StreamChar CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
-   StreamChar SelectIndex;    // The end of the selected text area, if text is selected.
+   doc_edit *ActiveEditDef;    // As for ActiveEditCell, but refers to the active editing definition
+   stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
+   stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
+   stream_char SelectIndex;    // The end of the selected text area, if text is selected.
    DOUBLE VPWidth, VPHeight;
    DOUBLE FontSize;
    LONG   UniqueID;          // Use for generating unique/incrementing ID's, e.g. cell ID
@@ -229,7 +229,7 @@ class extDocument : public objDocument {
    objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
    objVectorViewport *Page;  // Page viewport - this holds the graphics content
    DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
-   DOUBLE PageWidth;         // Width of the widest section of the document page.  Can be pre-defined for a fixed width.
+   DOUBLE PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
    DOUBLE LeftMargin, TopMargin, RightMargin, BottomMargin;
    LONG   LinkIndex;         // Currently selected link (mouse over)
    LONG   CalcWidth;         // Final page width calculated from the layout process
@@ -244,8 +244,8 @@ class extDocument : public objDocument {
    LONG   GeneratedID;        // Unique ID that is regenerated on each load/refresh
    SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
    SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
-   DOUBLE SelectCharX;        // The X coordinate of the SelectIndex character
-   DOUBLE CursorCharX;        // The X coordinate of the CursorIndex character
+   DOUBLE SelectCharX;        // The x coordinate of the SelectIndex character
+   DOUBLE CursorCharX;        // The x coordinate of the CursorIndex character
    DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
    TIMER  FlashTimer;         // For flashing the cursor
    LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
@@ -271,23 +271,23 @@ class extDocument : public objDocument {
    bool   EditMode;
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
-   template <class T = BaseCode> T & insertCode(StreamChar &, T &);
-   template <class T = BaseCode> T & reserveCode(StreamChar &);
-   std::vector<SortedSegment> & getSortedSegments();
+   template <class T = base_code> T & insertCode(stream_char &, T &);
+   template <class T = base_code> T & reserveCode(stream_char &);
+   std::vector<sorted_segment> & getSortedSegments();
 };
 
 //********************************************************************************************************************
 
-std::vector<SortedSegment> & extDocument::getSortedSegments()
+std::vector<sorted_segment> & extDocument::getSortedSegments()
 {
    if ((!SortSegments.empty()) or (Segments.empty())) return SortSegments;
 
-   auto sortseg_compare = [&] (SortedSegment &Left, SortedSegment &Right) {
-      if (Left.Y < Right.Y) return 1;
-      else if (Left.Y > Right.Y) return -1;
+   auto sortseg_compare = [&] (sorted_segment &Left, sorted_segment &Right) {
+      if (Left.y < Right.y) return 1;
+      else if (Left.y > Right.y) return -1;
       else {
-         if (Segments[Left.Segment].Area.X < Segments[Right.Segment].Area.X) return 1;
-         else if (Segments[Left.Segment].Area.X > Segments[Right.Segment].Area.X) return -1;
+         if (Segments[Left.segment].area.X < Segments[Right.segment].area.X) return 1;
+         else if (Segments[Left.segment].area.X > Segments[Right.segment].area.X) return -1;
          else return 0;
       }
    };
@@ -298,9 +298,9 @@ std::vector<SortedSegment> & extDocument::getSortedSegments()
    unsigned i;
    SEGINDEX seg;
    for (i=0, seg=0; seg < SEGINDEX(Segments.size()); seg++) {
-      if ((Segments[seg].Area.Height > 0) and (Segments[seg].Area.Width > 0)) {
-         SortSegments[i].Segment = seg;
-         SortSegments[i].Y       = Segments[seg].Area.Y;
+      if ((Segments[seg].area.Height > 0) and (Segments[seg].area.Width > 0)) {
+         SortSegments[i].segment = seg;
+         SortSegments[i].y       = Segments[seg].area.Y;
          i++;
       }
    }
@@ -312,7 +312,7 @@ std::vector<SortedSegment> & extDocument::getSortedSegments()
 
    for (; h > 0; h /= 3) {
       for (auto i=h; i < SortSegments.size(); i++) {
-         SortedSegment temp = SortSegments[i];
+         sorted_segment temp = SortSegments[i];
          for (j=i; (j >= h) and (sortseg_compare(SortSegments[j - h], temp) < 0); j -= h) {
             SortSegments[j] = SortSegments[j - h];
          }
@@ -326,40 +326,40 @@ std::vector<SortedSegment> & extDocument::getSortedSegments()
 //********************************************************************************************************************
 // Inserts a byte code sequence into the text stream.
 
-template <class T> T & extDocument::insertCode(StreamChar &Cursor, T &Code)
+template <class T> T & extDocument::insertCode(stream_char &Cursor, T &Code)
 {
    // All byte codes are saved to a global container.
 
-   if (Codes.contains(Code.UID)) {
+   if (Codes.contains(Code.uid)) {
       // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
-      // NB: At some point the re-use of codes should be allowed, e.g. bcFont reversions would benefit from this.
+      // NB: At some point the re-use of codes should be allowed, e.g. bc_font reversions would benefit from this.
       pf::Log log(__FUNCTION__);
-      log.warning("Code #%d is already registered.", Code.UID);
+      log.warning("Code #%d is already registered.", Code.uid);
    }
-   else Codes[Code.UID] = Code;
+   else Codes[Code.uid] = Code;
 
    if (Cursor.Index IS INDEX(Stream.size())) {
-      Stream.emplace_back(Code.Code, Code.UID);
+      Stream.emplace_back(Code.code, Code.uid);
    }
    else {
-      const StreamCode insert(Code.Code, Code.UID);
+      const stream_code insert(Code.code, Code.uid);
       Stream.insert(Stream.begin() + Cursor.Index, insert);
    }
    Cursor.nextCode();
-   return std::get<T>(Codes[Code.UID]);
+   return std::get<T>(Codes[Code.uid]);
 }
 
-template <class T> T & extDocument::reserveCode(StreamChar &Cursor)
+template <class T> T & extDocument::reserveCode(stream_char &Cursor)
 {
    auto key = glByteCodeID;
    Codes.emplace(key, T());
    auto &result = std::get<T>(Codes[key]);
 
    if (Cursor.Index IS INDEX(Stream.size())) {
-      Stream.emplace_back(result.Code, result.UID);
+      Stream.emplace_back(result.code, result.uid);
    }
    else {
-      const StreamCode insert(result.Code, result.UID);
+      const stream_code insert(result.code, result.uid);
       Stream.insert(Stream.begin() + Cursor.Index, insert);
    }
    Cursor.nextCode();
@@ -386,7 +386,7 @@ static const std::string & byteCode(ESC Code) {
 
 struct layout; // Pre-def
 
-static ERROR activate_cell_edit(extDocument *, LONG, StreamChar);
+static ERROR activate_cell_edit(extDocument *, LONG, stream_char);
 static ERROR add_document_class(void);
 static LONG  add_tabfocus(extDocument *, UBYTE, LONG);
 static void  add_template(extDocument *, objXML *, XMLTag &);
@@ -405,15 +405,15 @@ static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
 static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source);
 static ERROR tag_xml_content_eval(extDocument *, std::string &);
-static SEGINDEX find_segment(extDocument *, StreamChar, bool);
+static SEGINDEX find_segment(extDocument *, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 static std::string get_font_style(FSO);
-//static LONG   get_line_from_index(extDocument *, INDEX Index);
+//static LONG   get_line_from_index(extDocument *, INDEX index);
 static LONG  getutf8(CSTRING, LONG *);
-static ERROR insert_text(extDocument *, StreamChar &, const std::string &, bool);
+static ERROR insert_text(extDocument *, stream_char &, const std::string &, bool);
 static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, IXF);
-static ERROR insert_xml(extDocument *, objXML *, XMLTag &, StreamChar TargetIndex = StreamChar(), IXF Flags = IXF::NIL);
+static ERROR insert_xml(extDocument *, objXML *, XMLTag &, stream_char TargetIndex = stream_char(), IXF Flags = IXF::NIL);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD);
@@ -423,8 +423,8 @@ static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height);
-static TRF   parse_tag(extDocument *, objXML *, XMLTag &, StreamChar &, IPF &);
-static TRF   parse_tags(extDocument *, objXML *, objXML::TAGS &, StreamChar &, IPF = IPF::NIL);
+static TRF   parse_tag(extDocument *, objXML *, XMLTag &, stream_char &, IPF &);
+static TRF   parse_tags(extDocument *, objXML *, objXML::TAGS &, stream_char &, IPF = IPF::NIL);
 static void  print_xmltree(objXML::TAGS &, LONG &);
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
@@ -433,13 +433,13 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative);
 static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
 static void  reset_cursor(extDocument *);
-static ERROR resolve_fontx_by_index(extDocument *, StreamChar, DOUBLE &);
-static ERROR resolve_font_pos(extDocument *, DocSegment &, DOUBLE, DOUBLE &, StreamChar &);
+static ERROR resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
+static ERROR resolve_font_pos(extDocument *, doc_segment &, DOUBLE, DOUBLE &, stream_char &);
 static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
-static std::string stream_to_string(extDocument *, StreamChar, StreamChar);
-static void  style_check(extDocument *, StreamChar &);
+static std::string stream_to_string(extDocument *, stream_char, stream_char);
+static void  style_check(extDocument *, stream_char &);
 static void  tag_xml_content(extDocument *, objXML *, XMLTag &, PXF);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
@@ -534,15 +534,15 @@ static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); 
 
 //********************************************************************************************************************
 
-static std::vector<FontEntry> glFonts;
+static std::vector<font_entry> glFonts;
 
-objFont * bcFont::getFont()
+objFont * bc_font::getFont()
 {
-   if ((FontIndex < INDEX(glFonts.size())) and (FontIndex >= 0)) return glFonts[FontIndex].Font;
+   if ((FontIndex < INDEX(glFonts.size())) and (FontIndex >= 0)) return glFonts[FontIndex].font;
    else {
       pf::Log log(__FUNCTION__);
       log.warning("Bad font index %d.  Max: %d", FontIndex, LONG(glFonts.size()));
-      if (!glFonts.empty()) return glFonts[0].Font; // Always try to return a font rather than NULL
+      if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
       else return NULL;
    }
 }
@@ -550,20 +550,20 @@ objFont * bcFont::getFont()
 //********************************************************************************************************************
 // For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
 
-template <class T> T & escape_data(extDocument *Self, StreamChar Index) {
-   auto &sv = Self->Codes[Self->Stream[Index.Index].UID];
+template <class T> T & escape_data(extDocument *Self, stream_char Index) {
+   auto &sv = Self->Codes[Self->Stream[Index.Index].uid];
    return std::get<T>(sv);
 }
 
 template <class T> T & escape_data(extDocument *Self, INDEX Index) {
-   auto &sv = Self->Codes[Self->Stream[Index].UID];
+   auto &sv = Self->Codes[Self->Stream[Index].uid];
    return std::get<T>(sv);
 }
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
 template <class T> inline const std::string & BC_NAME(RSTREAM &Stream, T Index) {
-   return byteCode(Stream[Index].Code);
+   return byteCode(Stream[Index].code);
 }
 
 //********************************************************************************************************************
@@ -638,8 +638,8 @@ static ERROR CMDOpen(OBJECTPTR Module)
 inline INDEX find_cell(extDocument *Self, LONG ID)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].Code IS ESC::CELL) {
-         auto &cell = std::get<bcCell>(Self->Codes[Self->Stream[i].UID]);
+      if (Self->Stream[i].code IS ESC::CELL) {
+         auto &cell = std::get<bc_cell>(Self->Codes[Self->Stream[i].uid]);
          if ((ID) and (ID IS cell.CellID)) return i;
       }
    }
@@ -650,8 +650,8 @@ inline INDEX find_cell(extDocument *Self, LONG ID)
 inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].Code IS ESC::CELL) {
-         auto &cell = escape_data<bcCell>(Self, i);
+      if (Self->Stream[i].code IS ESC::CELL) {
+         auto &cell = escape_data<bc_cell>(Self, i);
          if (EditDef == cell.EditDef) return i;
       }
    }
@@ -661,7 +661,7 @@ inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
 
 //********************************************************************************************************************
 
-inline DocEdit * find_editdef(extDocument *Self, const std::string Name)
+inline doc_edit * find_editdef(extDocument *Self, const std::string Name)
 {
    auto it = Self->EditDefs.find(Name);
    if (it != Self->EditDefs.end()) return &it->second;

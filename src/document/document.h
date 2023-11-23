@@ -163,89 +163,89 @@ DEFINE_ENUM_FLAG_OPERATORS(TRF)
 //********************************************************************************************************************
 // Tab is used to represent interactive entities within the document that can be tabbed to.
 
-struct Tab {
-   // The Ref is a UID for the Type, so you can use it to find the tab in the document stream
-   LONG  Ref;        // For TT_OBJECT: ObjectID; TT_LINK: LinkID
-   LONG  XRef;       // For TT_OBJECT: SurfaceID (if found)
-   UBYTE Type;       // TT_LINK, TT_OBJECT
-   bool  Active;     // true if the tabbable entity is active/visible
+struct tab {
+   // The ref is a UID for the Type, so you can use it to find the tab in the document stream
+   LONG  ref;        // For TT_OBJECT: ObjectID; TT_LINK: LinkID
+   LONG  xref;       // For TT_OBJECT: SurfaceID (if found)
+   UBYTE type;       // TT_LINK, TT_OBJECT
+   bool  active;     // true if the tabbable entity is active/visible
 };
 
 //********************************************************************************************************************
 
-struct EditCell {
-   LONG CellID;
-   LONG X, Y, Width, Height;
+struct edit_cell {
+   LONG cell_id;
+   DOUBLE x, y, width, height;
 };
 
 //********************************************************************************************************************
 
-struct deLinkActivated {
+struct link_activated {
    std::map<std::string, std::string> Values;  // All key-values associated with the link.
 };
 
 //********************************************************************************************************************
-// Every instruction in the document stream is represented by a StreamCode entity.  The Code refers to what the thing
+// Every instruction in the document stream is represented by a stream_code entity.  The code refers to what the thing
 // is, while the UID hash refers to further information in the Codes table.
 
-struct StreamCode {
-   ESC Code;  // Type
-   ULONG UID; // Lookup for the Codes table
+struct stream_code {
+   ESC code;  // Type
+   ULONG uid; // Lookup for the Codes table
 
-   StreamCode() : Code(ESC::NIL), UID(0) { }
-   StreamCode(ESC pCode, ULONG pID) : Code(pCode), UID(pID) { }
+   stream_code() : code(ESC::NIL), uid(0) { }
+   stream_code(ESC pCode, ULONG pID) : code(pCode), uid(pID) { }
 };
 
-using RSTREAM = std::vector<StreamCode>;
+using RSTREAM = std::vector<stream_code>;
 
 //********************************************************************************************************************
 
-class BaseCode {
+class base_code {
 public:
-   ULONG UID;   // Unique identifier for lookup
-   ESC Code = ESC::NIL; // Byte code
+   ULONG uid;   // Unique identifier for lookup
+   ESC code = ESC::NIL; // Byte code
 
-   BaseCode() { UID = glByteCodeID++; }
-   BaseCode(ESC pCode) : Code(pCode) { UID = glByteCodeID++; }
+   base_code() { uid = glByteCodeID++; }
+   base_code(ESC pCode) : code(pCode) { uid = glByteCodeID++; }
 };
 
 //********************************************************************************************************************
-// StreamChar provides indexing to specific characters in the stream.  It is designed to handle positional changes so
+// stream_char provides indexing to specific characters in the stream.  It is designed to handle positional changes so
 // that text string boundaries can be crossed without incident.
 //
-// The Index and Offset are set to -1 if the StreamChar is invalidated.
+// The index and Offset are set to -1 if the stream_char is invalidated.
 
-struct StreamChar {
+struct stream_char {
    INDEX Index;     // A TEXT code position within the stream
-   size_t Offset;   // Specific character offset within the escText.Text string
+   size_t Offset;   // Specific character offset within the bc_text.text string
 
-   StreamChar() : Index(-1), Offset(-1) { }
-   StreamChar(INDEX pIndex, ULONG pOffset) : Index(pIndex), Offset(pOffset) { }
-   StreamChar(INDEX pIndex) : Index(pIndex), Offset(0) { }
+   stream_char() : Index(-1), Offset(-1) { }
+   stream_char(INDEX pIndex, ULONG pOffset) : Index(pIndex), Offset(pOffset) { }
+   stream_char(INDEX pIndex) : Index(pIndex), Offset(0) { }
 
-   bool operator==(const StreamChar &Other) const {
+   bool operator==(const stream_char &Other) const {
       return (this->Index == Other.Index) and (this->Offset == Other.Offset);
    }
 
-   bool operator<(const StreamChar &Other) const {
+   bool operator<(const stream_char &Other) const {
       if (this->Index < Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset < Other.Offset)) return true;
       else return false;
    }
 
-   bool operator>(const StreamChar &Other) const {
+   bool operator>(const stream_char &Other) const {
       if (this->Index > Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset > Other.Offset)) return true;
       else return false;
    }
 
-   bool operator<=(const StreamChar &Other) const {
+   bool operator<=(const stream_char &Other) const {
       if (this->Index < Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset <= Other.Offset)) return true;
       else return false;
    }
 
-   bool operator>=(const StreamChar &Other) const {
+   bool operator>=(const stream_char &Other) const {
       if (this->Index > Other.Index) return true;
       else if ((this->Index IS Other.Index) and (this->Offset >= Other.Offset)) return true;
       else return false;
@@ -349,22 +349,22 @@ public:
 
 //********************************************************************************************************************
 
-typedef void TAGROUTINE (extDocument *, objXML *, XMLTag &, objXML::TAGS &, StreamChar &, IPF);
+typedef void TAGROUTINE (extDocument *, objXML *, XMLTag &, objXML::TAGS &, stream_char &, IPF);
 
 class tagroutine {
 public:
-   TAGROUTINE *Routine;
-   TAG Flags;
+   TAGROUTINE *routine;
+   TAG flags;
 };
 
 struct process_table {
-   struct bcTable *bcTable;
-   LONG RowCol;
+   struct bc_table *table;
+   LONG row_col;
 };
 
 //********************************************************************************************************************
 
-struct CaseInsensitiveMap {
+struct case_insensitive_map {
    bool operator() (const std::string &lhs, const std::string &rhs) const {
       return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
    }
@@ -373,71 +373,71 @@ struct CaseInsensitiveMap {
 //********************************************************************************************************************
 // Basic font caching on an index basis.
 
-struct FontEntry {
-   objFont *Font;
-   LONG Point;
+struct font_entry {
+   objFont *font;
+   DOUBLE point;
 
-   FontEntry(objFont *pFont, LONG pPoint) : Font(pFont), Point(pPoint) { }
+   font_entry(objFont *pFont, DOUBLE pPoint) : font(pFont), point(pPoint) { }
 
-   ~FontEntry() {
-      if (Font) {
+   ~font_entry() {
+      if (font) {
          pf::Log log(__FUNCTION__);
-         log.msg("Removing cached font %s:%.2f.", Font->Face, Font->Point);
-         FreeResource(Font);
-         Font = NULL;
+         log.msg("Removing cached font %s:%.2f.", font->Face, font->Point);
+         FreeResource(font);
+         font = NULL;
       }
    }
 
-   FontEntry(FontEntry &&other) noexcept { // Move constructor
-      Font  = other.Font;
-      Point = other.Point;
-      other.Font = NULL;
+   font_entry(font_entry &&other) noexcept { // Move constructor
+      font  = other.font;
+      point = other.point;
+      other.font = NULL;
    }
 
-   FontEntry(const FontEntry &other) { // Copy constructor
-      Font  = other.Font;
-      Point = other.Point;
+   font_entry(const font_entry &other) { // Copy constructor
+      font  = other.font;
+      point = other.point;
    }
 
-   FontEntry& operator=(FontEntry &&other) noexcept { // Move assignment
+   font_entry& operator=(font_entry &&other) noexcept { // Move assignment
       if (this == &other) return *this;
-      Font  = other.Font;
-      Point = other.Point;
-      other.Font = NULL;
+      font  = other.font;
+      point = other.point;
+      other.font = NULL;
       return *this;
    }
 
-   FontEntry& operator=(const FontEntry& other) { // Copy assignment
+   font_entry& operator=(const font_entry& other) { // Copy assignment
       if (this == &other) return *this;
-      Font  = other.Font;
-      Point = other.Point;
+      font  = other.font;
+      point = other.point;
       return *this;
    }
 };
 
 //********************************************************************************************************************
 
-struct bcFont : public BaseCode {
-   WORD FontIndex;      // Font lookup
+struct bc_font : public base_code {
+   WORD FontIndex;      // font lookup
    FSO  Options;
-   std::string Fill;    // Font fill
+   std::string Fill;    // font fill
    ALIGN VAlign;        // Vertical alignment of text within the available line height
 
-   bcFont(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)"), VAlign(ALIGN::BOTTOM) { Code = ESC::FONT; }
+   bc_font(): FontIndex(-1), Options(FSO::NIL), Fill("rgb(0,0,0)"), VAlign(ALIGN::BOTTOM) { code = ESC::FONT; }
 
    objFont * getFont();
 };
 
 struct style_status {
-   struct bcFont FontStyle;
-   struct process_table * Table;
-   struct bcList * List;
-   std::string Face;
-   DOUBLE Point;
-   bool FaceChange;      // A major font change has occurred (e.g. face, point size)
-   bool StyleChange;     // A minor style change has occurred (e.g. font colour)
+   struct bc_font font_style;
+   struct process_table *table;
+   struct bc_list *list;
+   std::string face;
+   DOUBLE point;
+   bool face_change;      // A major font change has occurred (e.g. face, point size)
+   bool style_change;     // A minor style change has occurred (e.g. font colour)
 
-   style_status() : Table(NULL), List(NULL), Face(""), Point(0), FaceChange(false), StyleChange(false) { }
+   style_status() : table(NULL), list(NULL), face(""), point(0), face_change(false), style_change(false) { }
 };
 
 //********************************************************************************************************************
@@ -445,141 +445,139 @@ struct style_status {
 // graphics or both.  A segment can consist of one line only - so if the layout process encounters a boundary causing
 // wordwrap then a new segment must be created.
 
-struct DocSegment {
-   StreamChar Start;      // Starting index (including character if text)
-   StreamChar Stop;       // Stop at this index/character
-   StreamChar TrimStop;   // The stopping point when whitespace is removed
-   FloatRect Area;        // Dimensions of the segment.
-   DOUBLE Gutter;         // The largest gutter value after taking into account all fonts used on the line.
-   DOUBLE AlignWidth;      // Full width of this segment if it were non-breaking
-   UWORD Depth;           // Branch depth associated with the segment - helps to differentiate between inner and outer tables
-   bool  Edit;            // true if this segment represents content that can be edited
-   bool  TextContent;     // true if there is TEXT in this segment
-   bool  FloatingVectors; // true if there are user defined vectors in this segment with independent X,Y coordinates
-   bool  AllowMerge;      // true if this segment can be merged with siblings that have AllowMerge set to true
+struct doc_segment {
+   stream_char start;       // Starting index (including character if text)
+   stream_char stop;        // stop at this index/character
+   stream_char trim_stop;   // The stopping point when whitespace is removed
+   FloatRect area;          // Dimensions of the segment.
+   DOUBLE gutter;           // The largest gutter value after taking into account all fonts used on the line.
+   DOUBLE align_width;      // Full width of this segment if it were non-breaking
+   UWORD depth;             // Branch depth associated with the segment - helps to differentiate between inner and outer tables
+   bool  edit;              // true if this segment represents content that can be edited
+   bool  text_content;      // true if there is TEXT in this segment
+   bool  floating_vectors;  // true if there are user defined vectors in this segment with independent x,y coordinates
+   bool  allow_merge;       // true if this segment can be merged with siblings that have allow_merge set to true
 };
 
-struct DocClip {
-   DOUBLE Left, Top, Right, Bottom;
-   INDEX Index; // The stream index of the object/table/item that is creating the clip.
-   bool Transparent; // If true, wrapping will not be performed around the clip region.
-   std::string Name;
+struct doc_clip {
+   DOUBLE left, top, right, bottom;
+   INDEX index; // The stream index of the object/table/item that is creating the clip.
+   bool transparent; // If true, wrapping will not be performed around the clip region.
+   std::string name;
 
-   DocClip() = default;
+   doc_clip() = default;
 
-   DocClip(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom, LONG pIndex, bool pTransparent, const std::string &pName) :
-      Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom), Index(pIndex), Transparent(pTransparent), Name(pName) { }
+   doc_clip(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom, LONG pIndex, bool pTransparent, const std::string &pName) :
+      left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) { }
 };
 
-struct DocEdit {
-   LONG MaxChars;
-   std::string Name;
-   std::string OnEnter, OnExit, OnChange;
-   std::vector<std::pair<std::string, std::string>> Args;
-   bool LineBreaks;
+struct doc_edit {
+   LONG max_chars;
+   std::string name;
+   std::string on_enter, on_exit, on_change;
+   std::vector<std::pair<std::string, std::string>> args;
+   bool line_breaks;
 
-   DocEdit() : MaxChars(-1), Args(0), LineBreaks(false) { }
+   doc_edit() : max_chars(-1), args(0), line_breaks(false) { }
 };
 
-struct bcLink;
-struct bcCell;
+struct bc_link;
+struct bc_cell;
 
-// DocLink describes an area on the page that can be interacted with as a link or table cell.
+// doc_link describes an area on the page that can be interacted with as a link or table cell.
 // The link will be associated with a segment and an originating stream code.
 //
-// TODO: We'll need to swap the X/Y/Width/Height variables for a vector path that represents the link
+// TODO: We'll need to swap the x/y/width/height variables for a vector path that represents the link
 // area.  This will allow us to support transforms correctly, as well as links that need to accurately
 // map to vector shapes.
 
-struct DocLink {
-   std::variant<bcLink *, bcCell *> Ref;
-   DOUBLE X, Y, Width, Height;
-   SEGINDEX Segment;
-   ESC  BaseCode;
+struct doc_link {
+   std::variant<bc_link *, bc_cell *> ref;
+   DOUBLE x, y, width, height;
+   SEGINDEX segment;
+   ESC  base_code;
 
-   DocLink(ESC pCode, std::variant<bcLink *, bcCell *> pRef, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
-       Ref(pRef), X(pX), Y(pY), Width(pWidth), Height(pHeight), Segment(pSegment), BaseCode(pCode) { }
+   doc_link(ESC pCode, std::variant<bc_link *, bc_cell *> pRef, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
+       ref(pRef), x(pX), y(pY), width(pWidth), height(pHeight), segment(pSegment), base_code(pCode) { }
 
-   DocLink() : X(0), Y(0), Width(0), Height(0), Segment(0), BaseCode(ESC::NIL) { }
+   doc_link() : x(0), y(0), width(0), height(0), segment(0), base_code(ESC::NIL) { }
 
-   bcLink * asLink() { return std::get<bcLink *>(Ref); }
-   bcCell * asCell() { return std::get<bcCell *>(Ref); }
+   bc_link * as_link() { return std::get<bc_link *>(ref); }
+   bc_cell * as_cell() { return std::get<bc_cell *>(ref); }
    void exec(extDocument *);
 };
 
-struct DocMouseOver {
-   std::string Function; // Name of function to call.
-   LONG Top, Left, Bottom, Right;
-   LONG ElementID;
+struct mouse_over {
+   std::string function; // name of function to call.
+   DOUBLE top, left, bottom, right;
+   LONG element_id;
 };
 
-class SortedSegment { // Efficient lookup to the DocSegment array, sorted by vertical position
+class sorted_segment { // Efficient lookup to the doc_segment array, sorted by vertical position
 public:
-   SEGINDEX Segment;
-   DOUBLE Y;
+   SEGINDEX segment;
+   DOUBLE y;
 };
 
 struct tablecol {
-   DOUBLE PresetWidth = 0;
-   DOUBLE MinWidth = 0;   // For assisting layout
-   DOUBLE Width = 0;
-   bool PresetWidthRel = false;
+   DOUBLE preset_width = 0;
+   DOUBLE min_width = 0;   // For assisting layout
+   DOUBLE width = 0;
+   bool preset_width_rel = false;
 };
 
 //********************************************************************************************************************
 
-struct bcText : public BaseCode {
-   std::string Text;
+struct bc_text : public base_code {
+   std::string text;
    bool Formatted = false;
    SEGINDEX Segment = -1; // Reference to the first segment that manages this text string.
 
-   bcText() { Code = ESC::TEXT; }
-   bcText(std::string pText) : Text(pText) { Code = ESC::TEXT; }
-   bcText(std::string pText, bool pFormatted) : Text(pText), Formatted(pFormatted) { Code = ESC::TEXT; }
+   bc_text() { code = ESC::TEXT; }
+   bc_text(std::string pText) : text(pText) { code = ESC::TEXT; }
+   bc_text(std::string pText, bool pFormatted) : text(pText), Formatted(pFormatted) { code = ESC::TEXT; }
 };
 
-struct bcAdvance : public BaseCode {
-   DOUBLE X, Y;
+struct bc_advance : public base_code {
+   DOUBLE x, y;
 
-   bcAdvance() : X(0), Y(0) { Code = ESC::ADVANCE; }
+   bc_advance() : x(0), y(0) { code = ESC::ADVANCE; }
 };
 
-struct bcIndex : public BaseCode {
+struct bc_index : public base_code {
    ULONG NameHash;     // The name of the index is held here as a hash
-   LONG  ID;           // UID for matching to the correct bcIndexEnd
+   LONG  ID;           // UID for matching to the correct bc_index_end
    DOUBLE Y;           // The cursor's vertical position of when the index was encountered during layout
    bool Visible;       // true if the content inside the index is visible (this is the default)
    bool ParentVisible; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
 
-   bcIndex(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
+   bc_index(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
       NameHash(pName), ID(pID), Y(pY), Visible(pVisible), ParentVisible(pParentVisible) {
-      Code = ESC::INDEX_START;
+      code = ESC::INDEX_START;
    }
 };
 
-struct bcIndexEnd : public BaseCode {
-   LONG ID; // UID matching to the correct bcIndex
-   bcIndexEnd(LONG pID) : ID(pID) { Code = ESC::INDEX_END; }
+struct bc_index_end : public base_code {
+   LONG ID; // UID matching to the correct bc_index
+   bc_index_end(LONG pID) : ID(pID) { code = ESC::INDEX_END; }
 };
 
-struct bcLink : public BaseCode {
-   LINK Type;    // Link type (either a function or hyperlink)
+struct bc_link : public base_code {
+   LINK  Type;    // Link type (either a function or hyperlink)
    UWORD ID;
    FSO   Align;
-   std::string PointerMotion; // Function to call for pointer motion events
-   std::string Ref; // Function name or a path, depending on Type
+   std::string PointerMotion; // function to call for pointer motion events
+   std::string Ref; // function name or a path, depending on Type
    std::vector<std::pair<std::string,std::string>> Args;
 
-   bcLink() : Type(LINK::NIL), ID(0), Align(FSO::NIL) {
-      Code = ESC::LINK;
-   }
+   bc_link() : Type(LINK::NIL), ID(0), Align(FSO::NIL) { code = ESC::LINK; }
 };
 
-struct bcLinkEnd : public BaseCode {
-   bcLinkEnd() { Code = ESC::LINK_END; }
+struct bc_link_end : public base_code {
+   bc_link_end() { code = ESC::LINK_END; }
 };
 
-struct bcImage : public BaseCode {
+struct bc_image : public base_code {
    DOUBLE width = 0, height = 0;     // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DOUBLE final_width, final_height; // Final dimensions computed during layout
    objVectorRectangle *rect = NULL;  // A vector will host the image and define a clipping mask for it
@@ -592,7 +590,7 @@ struct bcImage : public BaseCode {
       bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
    } pad, final_pad;
 
-   bcImage() { Code = ESC::IMAGE; }
+   bc_image() { code = ESC::IMAGE; }
 
    inline bool floating() {
       return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
@@ -602,7 +600,7 @@ struct bcImage : public BaseCode {
    constexpr DOUBLE full_height() { return final_height + final_pad.top + final_pad.bottom; }
 };
 
-struct bcList : public BaseCode {
+struct bc_list : public base_code {
    enum {
       ORDERED=0,
       BULLET,
@@ -620,44 +618,44 @@ struct bcList : public BaseCode {
    UBYTE Type        = BULLET;
    bool  Repass      = false;
 
-   bcList() { Code = ESC::LIST_START; }
+   bc_list() { code = ESC::LIST_START; }
 };
 
-struct bcListEnd : public BaseCode {
-   bcListEnd() { Code = ESC::LIST_END; }
+struct bc_list_end : public base_code {
+   bc_list_end() { code = ESC::LIST_END; }
 };
 
-struct bcSetMargins : public BaseCode {
+struct bc_set_margins : public base_code {
    WORD Left = 0x7fff; WORD Top = 0x7fff; WORD Bottom = 0x7fff; WORD Right = 0x7fff;
-   bcSetMargins() { Code = ESC::SET_MARGINS; }
+   bc_set_margins() { code = ESC::SET_MARGINS; }
 };
 
-struct bcVector : public BaseCode {
+struct bc_vector : public base_code {
    OBJECTID ObjectID = 0;     // Reference to the vector
    CLASSID ClassID = 0;       // Precise class that the object belongs to, mostly for informative/debugging purposes
    ClipRectangle Margins;
    bool Inline       = false; // true if object is embedded as part of the text stream (treated as if it were a character)
    bool Owned        = false; // true if the object is owned by a parent (not subject to normal document layout)
-   bool IgnoreCursor = false; // true if the client has set fixed values for both X and Y
+   bool IgnoreCursor = false; // true if the client has set fixed values for both x and y
    bool BlockRight   = false; // true if no text may be printed to the right of the object
    bool BlockLeft    = false; // true if no text may be printed to the left of the object
-   bcVector() { Code = ESC::VECTOR; }
+   bc_vector() { code = ESC::VECTOR; }
 };
 
-struct bcXML : public BaseCode {
+struct bc_xml : public base_code {
    OBJECTID ObjectID = 0;   // Reference to the object
    bool Owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
-   bcXML() { Code = ESC::XML; }
+   bc_xml() { code = ESC::XML; }
 };
 
-struct bcTable : public BaseCode {
-   struct bcTable *Stack = NULL;
+struct bc_table : public base_code {
+   struct bc_table *Stack = NULL;
    std::vector<tablecol> Columns; // Table column management
    std::string Fill, Stroke;
    DOUBLE CellVSpacing = 0, CellHSpacing = 0; // Spacing between each cell
    DOUBLE CellPadding = 0;               // Spacing inside each cell (margins)
    DOUBLE RowWidth = 0;                  // Assists in the computation of row width
-   DOUBLE X = 0, Y = 0;                  // Calculated X/Y coordinate of the table
+   DOUBLE X = 0, Y = 0;                  // Calculated x/y coordinate of the table
    DOUBLE Width = 0, Height = 0;         // Calculated table width/height
    DOUBLE MinWidth = 0, MinHeight = 0;   // User-determined minimum table width/height
    LONG   Rows = 0;                      // Total number of rows in table
@@ -673,7 +671,7 @@ struct bcTable : public BaseCode {
    bool   Wrap = false;
    bool   Thin = false;
    // Entry followed by the minimum width of each column
-   bcTable() { Code = ESC::TABLE_START; }
+   bc_table() { code = ESC::TABLE_START; }
 
    void computeColumns() { // Compute the default column widths
       if (!ComputeColumns) return;
@@ -684,35 +682,35 @@ struct bcTable : public BaseCode {
       if (!Columns.empty()) {
          for (unsigned j=0; j < Columns.size(); j++) {
             //if (ComputeColumns IS 1) {
-            //   Columns[j].Width = 0;
-            //   Columns[j].MinWidth = 0;
+            //   Columns[j].width = 0;
+            //   Columns[j].min_width = 0;
             //}
 
-            if (Columns[j].PresetWidthRel) { // Percentage width value
-               Columns[j].Width = Columns[j].PresetWidth * Width;
+            if (Columns[j].preset_width_rel) { // Percentage width value
+               Columns[j].width = Columns[j].preset_width * Width;
             }
-            else if (Columns[j].PresetWidth) { // Fixed width value
-               Columns[j].Width = Columns[j].PresetWidth;
+            else if (Columns[j].preset_width) { // Fixed width value
+               Columns[j].width = Columns[j].preset_width;
             }
-            else Columns[j].Width = 0;
+            else Columns[j].width = 0;
 
-            if (Columns[j].MinWidth > Columns[j].Width) Columns[j].Width = Columns[j].MinWidth;
+            if (Columns[j].min_width > Columns[j].width) Columns[j].width = Columns[j].min_width;
          }
       }
       else Columns.clear();
    }
 };
 
-struct bcTableEnd : public BaseCode {
-   bcTableEnd() { Code = ESC::TABLE_END; }
+struct bc_table_end : public base_code {
+   bc_table_end() { code = ESC::TABLE_END; }
 };
 
-class bcParagraph : public BaseCode {
+class bc_paragraph : public base_code {
    public:
    std::string value = "";
    DOUBLE x, y, height;
-   LONG   block_indent;
-   LONG   item_indent;
+   DOUBLE block_indent;
+   DOUBLE item_indent;
    DOUBLE indent;
    DOUBLE vspacing;      // Trailing whitespace, expressed as a ratio of the default line height
    DOUBLE leading_ratio; // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
@@ -722,55 +720,55 @@ class bcParagraph : public BaseCode {
    bool trim;
    bool aggregate;
 
-   bcParagraph() : BaseCode(ESC::PARAGRAPH_START), x(0), y(0), height(0),
+   bc_paragraph() : base_code(ESC::PARAGRAPH_START), x(0), y(0), height(0),
       block_indent(0), item_indent(0), indent(0), vspacing(1.0), leading_ratio(1.0),
       relative(false), list_item(false), trim(false), aggregate(false) { }
 
    void applyStyle(const style_status &Style) {
-      vspacing     = Style.List->vspacing;
-      block_indent = Style.List->BlockIndent;
-      item_indent  = Style.List->ItemIndent;
+      vspacing     = Style.list->vspacing;
+      block_indent = Style.list->BlockIndent;
+      item_indent  = Style.list->ItemIndent;
    }
 };
 
-struct bcParagraphEnd : public BaseCode {
-   bcParagraphEnd() : BaseCode(ESC::PARAGRAPH_END) { }
+struct bc_paragraph_end : public base_code {
+   bc_paragraph_end() : base_code(ESC::PARAGRAPH_END) { }
 };
 
-struct bcRow : public BaseCode {
+struct bc_row : public base_code {
    DOUBLE Y = 0;
-   DOUBLE RowHeight = 0; // Height of all cells on this row, used when drawing the cells
+   DOUBLE RowHeight = 0; // height of all cells on this row, used when drawing the cells
    DOUBLE MinHeight = 0;
    std::string Stroke, Fill;
    bool  VerticalRepass = false;
 
-   bcRow() : BaseCode(ESC::ROW) { }
+   bc_row() : base_code(ESC::ROW) { }
 };
 
-struct bcRowEnd : public BaseCode {
-   bcRowEnd() : BaseCode(ESC::ROW_END) { }
+struct bc_row_end : public base_code {
+   bc_row_end() : base_code(ESC::ROW_END) { }
 };
 
-struct bcCell : public BaseCode {
-   LONG CellID;          // Identifier for the matching bcCellEnd
+struct bc_cell : public base_code {
+   LONG CellID;          // Identifier for the matching bc_cell_end
    LONG Column;          // Column number that the cell starts in
    LONG ColSpan;         // Number of columns spanned by this cell (normally set to 1)
    LONG RowSpan;         // Number of rows spanned by this cell
    DOUBLE AbsX, AbsY;    // Cell coordinates, these are absolute
-   DOUBLE Width, Height; // Width and height of the cell
-   std::string OnClick;  // Name of an onclick function
+   DOUBLE Width, Height; // width and height of the cell
+   std::string OnClick;  // name of an onclick function
    std::string EditDef;  // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> Args;
    std::string Stroke;
    std::string Fill;
 
-   bcCell(LONG pCellID, LONG pColumn) :
-      BaseCode(ESC::CELL), CellID(pCellID), Column(pColumn),
+   bc_cell(LONG pCellID, LONG pColumn) :
+      base_code(ESC::CELL), CellID(pCellID), Column(pColumn),
       ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0)
       { }
 };
 
-struct bcCellEnd : public BaseCode {
-   LONG CellID = 0;    // Matching identifier from bcCell
-   bcCellEnd() : BaseCode(ESC::CELL_END) { }
+struct bc_cell_end : public base_code {
+   LONG CellID = 0;    // Matching identifier from bc_cell
+   bc_cell_end() : base_code(ESC::CELL_END) { }
 };

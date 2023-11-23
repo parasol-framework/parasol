@@ -1,12 +1,12 @@
 
 //********************************************************************************************************************
 
-void StreamChar::eraseChar(extDocument *Self, RSTREAM &Stream) // Erase a character OR an escape code.
+void stream_char::eraseChar(extDocument *Self, RSTREAM &Stream) // Erase a character OR an escape code.
 {
-   if (Stream[Index].Code IS ESC::TEXT) {
-      auto &text = escape_data<bcText>(Self, Index);
-      if (Offset < text.Text.size()) text.Text.erase(Offset, 1);
-      if (Offset > text.Text.size()) Offset = text.Text.size();
+   if (Stream[Index].code IS ESC::TEXT) {
+      auto &text = escape_data<bc_text>(Self, Index);
+      if (Offset < text.text.size()) text.text.erase(Offset, 1);
+      if (Offset > text.text.size()) Offset = text.text.size();
    }
    else Stream.erase(Stream.begin() + Index);
 }
@@ -14,14 +14,14 @@ void StreamChar::eraseChar(extDocument *Self, RSTREAM &Stream) // Erase a charac
 //********************************************************************************************************************
 // Retrieve the first available character.  Assumes that the position is valid.  Does not support unicode!
 
-UBYTE StreamChar::getChar(extDocument *Self, const RSTREAM &Stream)
+UBYTE stream_char::getChar(extDocument *Self, const RSTREAM &Stream)
 {
    auto idx = Index;
    auto seek = Offset;
    while (size_t(idx) < Stream.size()) {
-      if (Stream[idx].Code IS ESC::TEXT) {
-         auto &text = escape_data<bcText>(Self, idx);
-         if (seek < text.Text.size()) return text.Text[seek];
+      if (Stream[idx].code IS ESC::TEXT) {
+         auto &text = escape_data<bc_text>(Self, idx);
+         if (seek < text.text.size()) return text.text[seek];
          else seek = 0; // The current character offset isn't valid, reset it.
       }
       idx++;
@@ -32,16 +32,16 @@ UBYTE StreamChar::getChar(extDocument *Self, const RSTREAM &Stream)
 //********************************************************************************************************************
 // Retrieve the first character after seeking past N viable characters (forward only).  Does not support unicode!
 
-UBYTE StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
+UBYTE stream_char::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
 {
    auto idx = Index;
    auto off = Offset;
 
    while (unsigned(idx) < Stream.size()) {
-      if (Stream[idx].Code IS ESC::TEXT) {
-         auto &text = escape_data<bcText>(Self, idx);
-         if (off + Seek < text.Text.size()) return text.Text[off + Seek];
-         Seek -= text.Text.size() - off;
+      if (Stream[idx].code IS ESC::TEXT) {
+         auto &text = escape_data<bc_text>(Self, idx);
+         if (off + Seek < text.text.size()) return text.text[off + Seek];
+         Seek -= text.text.size() - off;
          off = 0;
       }
       idx++;
@@ -50,11 +50,11 @@ UBYTE StreamChar::getChar(extDocument *Self, const RSTREAM &Stream, INDEX Seek)
    return 0;
 }
 
-void StreamChar::nextChar(extDocument *Self, const RSTREAM &Stream)
+void stream_char::nextChar(extDocument *Self, const RSTREAM &Stream)
 {
-   if (Stream[Index].Code IS ESC::TEXT) {
-      auto &text = escape_data<bcText>(Self, Index);
-      if (++Offset >= text.Text.size()) {
+   if (Stream[Index].code IS ESC::TEXT) {
+      auto &text = escape_data<bc_text>(Self, Index);
+      if (++Offset >= text.text.size()) {
          Index++;
          Offset = 0;
       }
@@ -65,16 +65,16 @@ void StreamChar::nextChar(extDocument *Self, const RSTREAM &Stream)
 //********************************************************************************************************************
 // Move the cursor to the previous character OR code.
 
-void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
+void stream_char::prevChar(extDocument *Self, const RSTREAM &Stream)
 {
-   if (Stream[Index].Code IS ESC::TEXT) {
+   if (Stream[Index].code IS ESC::TEXT) {
       if (Offset > 0) { Offset--; return; }
    }
 
    if (Index > 0) {
       Index--;
-      if (Stream[Index].Code IS ESC::TEXT) {
-         Offset = escape_data<bcText>(Self, Index).Text.size()-1;
+      if (Stream[Index].code IS ESC::TEXT) {
+         Offset = escape_data<bc_text>(Self, Index).text.size()-1;
       }
       else Offset = 0;
    }
@@ -85,15 +85,15 @@ void StreamChar::prevChar(extDocument *Self, const RSTREAM &Stream)
 // Return the previous printable character for a given position.  Does not support unicode!  Non-text codes are 
 // completely ignored.
 
-UBYTE StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
+UBYTE stream_char::getPrevChar(extDocument *Self, const RSTREAM &Stream)
 {
-   if ((Offset > 0) and (Stream[Index].Code IS ESC::TEXT)) {
-      return escape_data<bcText>(Self, Index).Text[Offset-1];
+   if ((Offset > 0) and (Stream[Index].code IS ESC::TEXT)) {
+      return escape_data<bc_text>(Self, Index).text[Offset-1];
    }
 
    for (auto i=Index-1; i > 0; i--) {
-      if (Stream[i].Code IS ESC::TEXT) {
-         return escape_data<bcText>(Self, i).Text.back();
+      if (Stream[i].code IS ESC::TEXT) {
+         return escape_data<bc_text>(Self, i).text.back();
       }
    }
 
@@ -104,27 +104,27 @@ UBYTE StreamChar::getPrevChar(extDocument *Self, const RSTREAM &Stream)
 // Return the previous printable character for a given position.  Inline graphics are considered characters but will
 // be returned as 0xff.
 
-UBYTE StreamChar::getPrevCharOrInline(extDocument *Self, const RSTREAM &Stream)
+UBYTE stream_char::getPrevCharOrInline(extDocument *Self, const RSTREAM &Stream)
 {
-   if ((Offset > 0) and (Stream[Index].Code IS ESC::TEXT)) {
-      return escape_data<bcText>(Self, Index).Text[Offset-1];
+   if ((Offset > 0) and (Stream[Index].code IS ESC::TEXT)) {
+      return escape_data<bc_text>(Self, Index).text[Offset-1];
    }
 
    for (auto i=Index-1; i > 0; i--) {
-      if (Stream[i].Code IS ESC::TEXT) {
-         return escape_data<bcText>(Self, i).Text.back();
+      if (Stream[i].code IS ESC::TEXT) {
+         return escape_data<bc_text>(Self, i).text.back();
       }
-      else if (Stream[i].Code IS ESC::IMAGE) {
-         auto &image = escape_data<bcImage>(Self, i);
+      else if (Stream[i].code IS ESC::IMAGE) {
+         auto &image = escape_data<bc_image>(Self, i);
          if (!image.floating()) {
             return 0xff;
          }
       }
-      else if (Stream[i].Code IS ESC::VECTOR) {
-         //auto &vec = escape_data<bcVector>(Self, i);
+      else if (Stream[i].code IS ESC::VECTOR) {
+         //auto &vec = escape_data<bc_vector>(Self, i);
          return 0xff; // TODO: Check for inline status
       }
-      //else if (Stream[i].Code IS ESC::OBJECT) {
+      //else if (Stream[i].code IS ESC::OBJECT) {
       //   auto &vec = escape_data<bcObject>(Self, i);
       //   return 0xff; // TODO: Check for inline status
       //}

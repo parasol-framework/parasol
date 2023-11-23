@@ -1,17 +1,17 @@
 
 //********************************************************************************************************************
 
-static std::string printable(extDocument *, StreamChar, ULONG = 60) __attribute__ ((unused));
+static std::string printable(extDocument *, stream_char, ULONG = 60) __attribute__ ((unused));
 
-static std::string printable(extDocument *Self, StreamChar Start, ULONG Length)
+static std::string printable(extDocument *Self, stream_char Start, ULONG Length)
 {
    std::string result;
    result.reserve(Length);
-   StreamChar i = Start;
+   stream_char i = Start;
    while ((i.Index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
-      if (Self->Stream[i.Index].Code IS ESC::TEXT) {
-         auto &text = escape_data<bcText>(Self, i);
-         result += text.Text.substr(i.Offset, result.capacity() - result.size());
+      if (Self->Stream[i.Index].code IS ESC::TEXT) {
+         auto &text = escape_data<bc_text>(Self, i);
+         result += text.text.substr(i.Offset, result.capacity() - result.size());
       }
       else result += '%';
       i.nextCode();
@@ -72,7 +72,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
    for (INDEX i=0; i < INDEX(Stream.size()); i++) {
       auto code = Stream[i].Code;
       if (code IS ESC::FONT) {
-         auto style = &escape_data<bcFont>(Self, i);
+         auto style = &escape_data<bc_font>(Self, i);
          out << "[Font";
          out << ":#" << style->FontIndex;
          if ((style->Options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
@@ -81,7 +81,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
          out << ":" << style->Fill << "]";
       }
       else if (code IS ESC::PARAGRAPH_START) {
-         auto para = &escape_data<bcParagraph>(Self, i);
+         auto para = &escape_data<bc_paragraph>(Self, i);
          if (para->list_item) out << "[PS:LI]";
          else out << "[PS]";
       }
@@ -93,7 +93,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       printpos = true;
    }
 
-   out << "\nActive Edit: " << Self->ActiveEditCellID << ", Cursor Index: " << Self->CursorIndex.Index << " / X: " << Self->CursorCharX << ", Select Index: " << Self->SelectIndex.Index << "\n";
+   out << "\nActive Edit: " << Self->ActiveEditCellID << ", Cursor Index: " << Self->CursorIndex.index << " / X: " << Self->CursorCharX << ", Select Index: " << Self->SelectIndex.index << "\n";
 
    log.msg("%s", out.str().c_str());
 }
@@ -118,18 +118,18 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
       auto &line = Self->Segments[row];
       auto i = line.Start;
 
-      out << std::setw(3) << row << ": Span: " << line.Start.Index << "-" << line.Stop.Index << ": ";
-      out << "(" << line.Area.X << "x" << line.Area.Y << ", " << line.Area.Width << "x" << line.Area.Height << ") ";
+      out << std::setw(3) << row << ": Span: " << line.Start.index << "-" << line.Stop.index << ": ";
+      out << "(" << line.Area.x << "x" << line.Area.y << ", " << line.Area.width << "x" << line.Area.height << ") ";
       if (line.Edit) out << "{ ";
       out << "\"";
       while (i < line.Stop) {
-         auto code = Stream[i.Index].Code;
+         auto code = Stream[i.index].Code;
          if (code IS ESC::FONT) {
-            auto style = &escape_data<bcFont>(Self, i.Index);
+            auto style = &escape_data<bc_font>(Self, i.index);
             out << "[E:Font:#" << style->FontIndex << "]";
          }
          else if (code IS ESC::PARAGRAPH_START) {
-            auto para = &escape_data<bcParagraph>(Self, i.Index);
+            auto para = &escape_data<bc_paragraph>(Self, i.index);
             if (para->ListItem) out << "[E:LI]";
             else out << "[E:PS]";
          }
@@ -157,7 +157,7 @@ static void print_tabfocus(extDocument *Self)
       out << "\nTAB FOCUSLIST\n-------------\n";
 
       for (unsigned i=0; i < Self->Tabs.size(); i++) {
-         out << i << ": Type: " << LONG(Self->Tabs[i].Type) << ", Ref: " << Self->Tabs[i].Ref << ", XRef: " << Self->Tabs[i].XRef << "\n";
+         out << i << ": Type: " << LONG(Self->Tabs[i].Type) << ", Ref: " << Self->Tabs[i].ref << ", XRef: " << Self->Tabs[i].XRef << "\n";
       }
    }
 

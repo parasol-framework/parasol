@@ -24,7 +24,7 @@ static void redraw(extDocument *Self, bool Focus)
 void layout::gen_scene_graph()
 {
    pf::Log log(__FUNCTION__);
-   //bcVector *escvector;
+   //bc_vector *escvector;
 
    if (Self->UpdatingLayout) return; // Drawing is disabled if the layout is being updated
 
@@ -33,7 +33,7 @@ void layout::gen_scene_graph()
       return;
    }
 
-   auto font = glFonts[0].Font;
+   auto font = glFonts[0].font;
 
    #ifdef _DEBUG
    if (Self->Stream.empty()) {
@@ -47,10 +47,10 @@ void layout::gen_scene_graph()
    }
    Self->LayoutResources.clear();
 
-   std::stack<bcList *> stack_list;
-   std::stack<bcRow *> stack_row;
-   std::stack<bcParagraph *> stack_para;
-   std::stack<bcTable *> stack_table;
+   std::stack<bc_list *> stack_list;
+   std::stack<bc_row *> stack_row;
+   std::stack<bc_paragraph *> stack_para;
+   std::stack<bc_table *> stack_table;
    std::string link_save_rgb;
    bool tabfocus = false;
    bool m_cursor_drawn = false;
@@ -59,14 +59,14 @@ void layout::gen_scene_graph()
       // Special clip regions are marked in grey
 /*
       for (unsigned i=0; i < m_clips.size(); i++) {
-         gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Top,
-            Self->Clips[i].Clip.Right - Self->Clips[i].Clip.Left, Self->Clips[i].Clip.Bottom - Self->Clips[i].Clip.Top,
+         gfxDrawRectangle(Bitmap, Self->Clips[i].Clip.left, Self->Clips[i].Clip.top,
+            Self->Clips[i].Clip.right - Self->Clips[i].Clip.left, Self->Clips[i].Clip.bottom - Self->Clips[i].Clip.top,
             Bitmap->packPixel(255, 200, 200), 0);
       }
 */
    #endif
 
-   StreamChar select_start, select_end;
+   stream_char select_start, select_end;
    LONG select_startx, select_endx;
 
    if ((Self->ActiveEditDef) and (!Self->SelectIndex.valid())) {
@@ -101,34 +101,34 @@ void layout::gen_scene_graph()
       // Don't process segments that are out of bounds.  Be mindful of floating vectors as they can be placed at any coordinate.
 
       bool oob = false;
-      if (!segment.FloatingVectors) {
-         if (segment.Area.Y >= clip.Height) oob = true;
-         else if (segment.Area.Y + segment.Area.Height < clip.Y) oob = true;
-         else if (segment.Area.X + segment.Area.Width < clip.X) oob = true;
-         else if (segment.Area.X >= clip.Width) oob = true;
+      if (!segment.floating_vectors) {
+         if (segment.area.Y >= clip.Height) oob = true;
+         else if (segment.area.Y + segment.area.Height < clip.Y) oob = true;
+         else if (segment.area.X + segment.area.Width < clip.X) oob = true;
+         else if (segment.area.X >= clip.Width) oob = true;
       }
 
       // Highlighting of selected text
       /*
-      if ((select_start <= segment.Stop) and (select_end > segment.Start)) {
+      if ((select_start <= segment.stop) and (select_end > segment.start)) {
          if (select_start != select_end) {
             alpha = 80.0/255.0;
-            if ((select_start > segment.Start) and (select_start < segment.Stop)) {
-               if (select_end < segment.Stop) {
-                  gfxDrawRectangle(Bitmap, segment.X + select_startx, segment.Y,
-                     select_endx - select_startx, segment.Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
+            if ((select_start > segment.start) and (select_start < segment.stop)) {
+               if (select_end < segment.stop) {
+                  gfxDrawRectangle(Bitmap, segment.x + select_startx, segment.y,
+                     select_endx - select_startx, segment.height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
                }
                else {
-                  gfxDrawRectangle(Bitmap, segment.X + select_startx, segment.Y,
-                     segment.Width - select_startx, segment.Height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
+                  gfxDrawRectangle(Bitmap, segment.x + select_startx, segment.y,
+                     segment.width - select_startx, segment.height, Bitmap->packPixel(0, 128, 0), BAF::FILL);
                }
             }
-            else if (select_end < segment.Stop) {
-               gfxDrawRectangle(Bitmap, segment.X, segment.Y, select_endx, segment.Height,
+            else if (select_end < segment.stop) {
+               gfxDrawRectangle(Bitmap, segment.x, segment.y, select_endx, segment.height,
                   Bitmap->packPixel(0, 128, 0), BAF::FILL);
             }
             else {
-               gfxDrawRectangle(Bitmap, segment.X, segment.Y, segment.Width, segment.Height,
+               gfxDrawRectangle(Bitmap, segment.x, segment.y, segment.width, segment.height,
                   Bitmap->packPixel(0, 128, 0), BAF::FILL);
             }
             alpha = 1.0;
@@ -136,14 +136,14 @@ void layout::gen_scene_graph()
       }
       */
       if ((Self->ActiveEditDef) and (Self->CursorState) and (!m_cursor_drawn)) {
-         if ((Self->CursorIndex >= segment.Start) and (Self->CursorIndex <= segment.Stop)) {
-            if ((Self->CursorIndex IS segment.Stop) and
+         if ((Self->CursorIndex >= segment.start) and (Self->CursorIndex <= segment.stop)) {
+            if ((Self->CursorIndex IS segment.stop) and
                 (Self->CursorIndex.getPrevCharOrInline(Self, Self->Stream) IS '\n'));
             else if ((Self->Page->Flags & VF::HAS_FOCUS) != VF::NIL) { // Standard text cursor
                auto rect = objVectorRectangle::create::global({
                   fl::Owner(Self->Page->UID),
-                  fl::X(segment.Area.X + Self->CursorCharX), fl::Y(segment.Area.Y),
-                  fl::Width(2), fl::Height(segment.Area.Height - segment.Gutter),
+                  fl::X(segment.area.X + Self->CursorCharX), fl::Y(segment.area.Y),
+                  fl::Width(2), fl::Height(segment.area.Height - segment.gutter),
                   fl::Fill("rgb(255,0,0,255)") });
                Self->LayoutResources.push_back(rect);
                m_cursor_drawn = true;
@@ -152,18 +152,18 @@ void layout::gen_scene_graph()
       }
 
       #ifdef GUIDELINES_CONTENT
-         if (segment.TextContent) {
-            gfxDrawRectangle(Bitmap, segment.X, segment.Y,
-               (segment.Width > 0) ? segment.Width : 5, segment.Height,
+         if (segment.text_content) {
+            gfxDrawRectangle(Bitmap, segment.x, segment.y,
+               (segment.width > 0) ? segment.width : 5, segment.height,
                Bitmap->packPixel(0, 255, 0), 0);
          }
       #endif
 
-      auto fx = segment.Area.X;
-      for (auto cursor = segment.Start; cursor < segment.Stop; cursor.nextCode()) {
-         switch (Self->Stream[cursor.Index].Code) {
+      auto fx = segment.area.X;
+      for (auto cursor = segment.start; cursor < segment.stop; cursor.nextCode()) {
+         switch (Self->Stream[cursor.Index].code) {
             case ESC::FONT: {
-               auto &style = escape_data<bcFont>(Self, cursor);
+               auto &style = escape_data<bc_font>(Self, cursor);
                if (auto new_font = style.getFont()) {
                   if (tabfocus IS false) font_fill = style.Fill;
                   else font_fill = Self->LinkSelectFill;
@@ -187,7 +187,7 @@ void layout::gen_scene_graph()
             }
 
             case ESC::LIST_START:
-               stack_list.push(&escape_data<bcList>(Self, cursor));
+               stack_list.push(&escape_data<bc_list>(Self, cursor));
                break;
 
             case ESC::LIST_END:
@@ -195,16 +195,16 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::PARAGRAPH_START:
-               stack_para.push(&escape_data<bcParagraph>(Self, cursor));
+               stack_para.push(&escape_data<bc_paragraph>(Self, cursor));
 
                if ((!stack_list.empty()) and (stack_para.top()->list_item)) {
                   // Handling for paragraphs that form part of a list
 
-                  if ((stack_list.top()->Type IS bcList::CUSTOM) or
-                      (stack_list.top()->Type IS bcList::ORDERED)) {
+                  if ((stack_list.top()->Type IS bc_list::CUSTOM) or
+                      (stack_list.top()->Type IS bc_list::ORDERED)) {
                      if (!stack_para.top()->value.empty()) {
-                        DOUBLE ix = segment.Area.X - stack_para.top()->item_indent;
-                        DOUBLE iy = segment.Area.Y + segment.Area.Height - segment.Gutter;
+                        DOUBLE ix = segment.area.X - stack_para.top()->item_indent;
+                        DOUBLE iy = segment.area.Y + segment.area.Height - segment.gutter;
 
                         auto text = objVectorText::create::global({
                            fl::Owner(Self->Page->UID),
@@ -217,9 +217,9 @@ void layout::gen_scene_graph()
                         Self->LayoutResources.push_back(text);
                      }
                   }
-                  else if (stack_list.top()->Type IS bcList::BULLET) {                     
-                     DOUBLE ix = segment.Area.X - stack_para.top()->item_indent + (m_font->Height * 0.5);
-                     DOUBLE iy = segment.Area.Y + (segment.Area.Height - segment.Gutter) - (m_font->Height * 0.5);
+                  else if (stack_list.top()->Type IS bc_list::BULLET) {                     
+                     DOUBLE ix = segment.area.X - stack_para.top()->item_indent + (m_font->Height * 0.5);
+                     DOUBLE iy = segment.area.Y + (segment.area.Height - segment.gutter) - (m_font->Height * 0.5);
 
                      auto bullet = objVectorEllipse::create::global({
                         fl::Owner(Self->Page->UID),
@@ -237,10 +237,10 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::TABLE_START: {
-               stack_table.push(&escape_data<bcTable>(Self, cursor));
+               stack_table.push(&escape_data<bc_table>(Self, cursor));
                auto table = stack_table.top();
 
-               //log.trace("Draw Table: %dx%d,%dx%d", esctable->X, esctable->Y, esctable->Width, esctable->Height);
+               //log.trace("Draw Table: %dx%d,%dx%d", esctable->x, esctable->y, esctable->width, esctable->height);
 
                if ((!table->Fill.empty()) or (!table->Stroke.empty())) {
                   auto rect = objVectorRectangle::create::global({
@@ -268,7 +268,7 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::ROW: {
-               stack_row.push(&escape_data<bcRow>(Self, cursor));
+               stack_row.push(&escape_data<bc_row>(Self, cursor));
                auto row = stack_row.top();
                if (!row->Fill.empty()) {
                   auto rect = objVectorRectangle::create::global({
@@ -288,7 +288,7 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::CELL: {
-               auto &cell = escape_data<bcCell>(Self, cursor);
+               auto &cell = escape_data<bc_cell>(Self, cursor);
 
                #ifdef DBG_LAYOUT
                   cell.Stroke = "rgb(255,0,0)";
@@ -298,7 +298,7 @@ void layout::gen_scene_graph()
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Self->Page->UID),
                      fl::X(cell.AbsX), fl::Y(cell.AbsY),
-                     fl::Width(stack_table.top()->Columns[cell.Column].Width),
+                     fl::Width(stack_table.top()->Columns[cell.Column].width),
                      fl::Height(stack_row.top()->RowHeight)
                   });
 
@@ -317,10 +317,12 @@ void layout::gen_scene_graph()
             }
 
             case ESC::LINK: {
-               auto esclink = &escape_data<bcLink>(Self, cursor);
+               auto esclink = &escape_data<bc_link>(Self, cursor);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
-                  if ((Self->Tabs[Self->FocusIndex].Type IS TT_LINK) and (Self->Tabs[Self->FocusIndex].Ref IS esclink->ID) and (Self->Tabs[Self->FocusIndex].Active)) {
+                  if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and 
+                      (Self->Tabs[Self->FocusIndex].ref IS esclink->ID) and 
+                      (Self->Tabs[Self->FocusIndex].active)) {
                      link_save_rgb = font_fill;
                      font_fill = Self->LinkSelectFill;
                      tabfocus = true;
@@ -338,12 +340,12 @@ void layout::gen_scene_graph()
                break;
 
             case ESC::IMAGE: {
-               auto &img = escape_data<bcImage>(Self, cursor);
+               auto &img = escape_data<bc_image>(Self, cursor);
                // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
                // fx for managing the horizontal position amongst the text.
 
                DOUBLE x = (img.floating() ? img.x : fx) + img.final_pad.left;
-               DOUBLE y = segment.Area.Y + img.final_pad.top;
+               DOUBLE y = segment.area.Y + img.final_pad.top;
 
                acMoveToPoint(img.rect, x, y, 0, MTF::X|MTF::Y);
                acResize(img.rect, img.final_width, img.final_height, 0);
@@ -352,21 +354,21 @@ void layout::gen_scene_graph()
                break;
             }
 
-            case ESC::TEXT: { // cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()
+            case ESC::TEXT: { // cursor = segment.start; cursor < segment.trim_stop; cursor.nextCode()
                if (!oob) {
-                  auto &txt = escape_data<bcText>(Self, cursor);
+                  auto &txt = escape_data<bc_text>(Self, cursor);
 
                   std::string str;
-                  if (cursor.Index < segment.TrimStop.Index) str.append(txt.Text, cursor.Offset, std::string::npos);
-                  else str.append(txt.Text, cursor.Offset, segment.TrimStop.Offset - cursor.Offset);
+                  if (cursor.Index < segment.trim_stop.Index) str.append(txt.text, cursor.Offset, std::string::npos);
+                  else str.append(txt.text, cursor.Offset, segment.trim_stop.Offset - cursor.Offset);
 
-                  DOUBLE y = segment.Area.Y;
+                  DOUBLE y = segment.area.Y;
                   if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
                   else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) {
-                     DOUBLE avail_space = segment.Area.Height - segment.Gutter;
+                     DOUBLE avail_space = segment.area.Height - segment.gutter;
                      y += avail_space - ((avail_space - font->Ascent) * 0.5);
                   }
-                  else y += segment.Area.Height - segment.Gutter;
+                  else y += segment.area.Height - segment.gutter;
 
                   if (!str.empty()) {
                      auto text = objVectorText::create::global({

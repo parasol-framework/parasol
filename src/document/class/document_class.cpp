@@ -63,10 +63,10 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    // Redraw any selected link so that it is unhighlighted
 
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
-      if (Self->Tabs[Self->FocusIndex].Type IS TT_LINK) {
+      if (Self->Tabs[Self->FocusIndex].type IS TT_LINK) {
          for (auto &link : Self->Links) {
-            if (link.BaseCode IS ESC::LINK) {
-               if (link.asLink()->ID IS Self->Tabs[Self->FocusIndex].Ref) {
+            if (link.base_code IS ESC::LINK) {
+               if (link.as_link()->ID IS Self->Tabs[Self->FocusIndex].ref) {
                   Self->Page->draw();
                   break;
                }
@@ -450,7 +450,7 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
       return ERR_Okay;
    }
    else if (auto cellindex = find_editable_cell(Self, Args->Name); cellindex >= 0) {
-      return activate_cell_edit(Self, cellindex, StreamChar(0,0));
+      return activate_cell_edit(Self, cellindex, stream_char(0,0));
    }
    else return ERR_Search;
 }
@@ -534,8 +534,8 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].Code IS ESC::INDEX_START) {
-         auto &index = escape_data<bcIndex>(Self, i);
+      if (Self->Stream[i].code IS ESC::INDEX_START) {
+         auto &index = escape_data<bc_index>(Self, i);
          if (name_hash IS index.NameHash) {
             auto end_id = index.ID;
             Args->Start = i;
@@ -543,8 +543,8 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
             // Search for the end (ID match)
 
             for (++i; i < INDEX(Self->Stream.size()); i++) {
-               if (Self->Stream[i].Code IS ESC::INDEX_END) {
-                  if (end_id IS escape_data<bcIndexEnd>(Self, i).ID) {
+               if (Self->Stream[i].code IS ESC::INDEX_END) {
+                  if (end_id IS escape_data<bc_index_end>(Self, i).ID) {
                      Args->End = i;
                      log.trace("Found index at range %d - %d", Args->Start, Args->End);
                      return ERR_Okay;
@@ -815,8 +815,8 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
-      if (stream[i].Code IS ESC::INDEX_START) {
-         auto &index = escape_data<bcIndex>(Self, i);
+      if (stream[i].code IS ESC::INDEX_START) {
+         auto &index = escape_data<bc_index>(Self, i);
          if (name_hash IS index.NameHash) {
             if (!index.Visible) return ERR_Okay; // It's already invisible!
 
@@ -831,27 +831,27 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
             // Any objects within the index will need to be hidden.  Also, set ParentVisible markers to false.
 
             for (++i; i < INDEX(stream.size()); i++) {
-               auto code = stream[i].Code;
+               auto code = stream[i].code;
                if (code IS ESC::INDEX_END) {
-                  auto &end = escape_data<bcIndexEnd>(Self, i);
+                  auto &end = escape_data<bc_index_end>(Self, i);
                   if (index.ID IS end.ID) break;
                }
                else if (code IS ESC::VECTOR) {
-                  auto &vec = escape_data<bcVector>(Self, i);
+                  auto &vec = escape_data<bc_vector>(Self, i);
                   if (vec.ObjectID) acHide(vec.ObjectID);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
-                     Self->Tabs[tab].Active = false;
+                     Self->Tabs[tab].active = false;
                   }
                }
                else if (code IS ESC::LINK) {
-                  auto &esclink = escape_data<bcLink>(Self, i);
+                  auto &esclink = escape_data<bc_link>(Self, i);
                   if ((tab = find_tabfocus(Self, TT_LINK, esclink.ID)) >= 0) {
-                     Self->Tabs[tab].Active = false;
+                     Self->Tabs[tab].active = false;
                   }
                }
                else if (code IS ESC::INDEX_START) {
-                  auto &index = escape_data<bcIndex>(Self, i);
+                  auto &index = escape_data<bc_index>(Self, i);
                   index.ParentVisible = false;
                }
             }
@@ -969,32 +969,32 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    // Find the most recent style at the insertion point
 
    for (INDEX i = Args->Index - 1; i > 0; i--) {
-      if (Self->Stream[i].Code IS ESC::FONT) {
-         Self->Style.FontStyle = escape_data<bcFont>(Self, i);
-         log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.FontStyle.FontIndex, Self->Style.FontStyle.Options);
+      if (Self->Stream[i].code IS ESC::FONT) {
+         Self->Style.font_style = escape_data<bc_font>(Self, i);
+         log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.font_style.FontIndex, Self->Style.font_style.Options);
          break;
       }
    }
 
    // If no style is available, we need to create a default font style and insert it at the start of the stream.
 
-   if (Self->Style.FontStyle.FontIndex IS -1) {
-      if ((Self->Style.FontStyle.FontIndex = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-         if ((Self->Style.FontStyle.FontIndex = create_font("Open Sans", "Regular", 12)) IS -1) {
+   if (Self->Style.font_style.FontIndex IS -1) {
+      if ((Self->Style.font_style.FontIndex = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
+         if ((Self->Style.font_style.FontIndex = create_font("Open Sans", "Regular", 12)) IS -1) {
             return ERR_Failed;
          }
       }
 
-      Self->Style.FontStyle.Fill = Self->FontFill;
-      Self->Style.FaceChange = true;
+      Self->Style.font_style.Fill = Self->FontFill;
+      Self->Style.face_change = true;
    }
 
-   if (auto font = Self->Style.FontStyle.getFont()) {
-      Self->Style.Face  = font->Face;
-      Self->Style.Point = font->Point;
+   if (auto font = Self->Style.font_style.getFont()) {
+      Self->Style.face  = font->Face;
+      Self->Style.point = font->Point;
    }
 
-   StreamChar sc(index, 0);
+   stream_char sc(index, 0);
    ERROR error = insert_text(Self, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
@@ -1057,8 +1057,8 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
       std::ostringstream buffer;
 
       for (INDEX i=Args->Start; i < Args->End; i++) {
-         if (Self->Stream[i].Code IS ESC::TEXT) {
-            buffer << escape_data<bcText>(Self, i).Text;
+         if (Self->Stream[i].code IS ESC::TEXT) {
+            buffer << escape_data<bc_text>(Self, i).text;
          }
       }
 
@@ -1308,7 +1308,7 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
       for (i=0; i < Self->Tabs.size(); i++) {
          if (Self->Tabs[i].Type IS TT_OBJECT) {
             name = GetObjectName(?)
-            if (!(StrMatch(Args->Name, name))) {
+            if (!(StrMatch(args->name, name))) {
 
             }
          }
@@ -1379,8 +1379,8 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    auto &stream = Self->Stream;
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
-      if (stream[i].Code IS ESC::INDEX_START) {
-         auto &index = escape_data<bcIndex>(Self, i);
+      if (stream[i].code IS ESC::INDEX_START) {
+         auto &index = escape_data<bc_index>(Self, i);
          if (name_hash != index.NameHash) continue;
          if (index.Visible) return ERR_Okay; // It's already visible!
 
@@ -1395,31 +1395,31 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
             }
 
             for (++i; i < INDEX(stream.size()); i++) {
-               auto code = stream[i].Code;
+               auto code = stream[i].code;
                if (code IS ESC::INDEX_END) {
-                  if (index.ID IS escape_data<bcIndexEnd>(Self, i).ID) break;
+                  if (index.ID IS escape_data<bc_index_end>(Self, i).ID) break;
                }
                else if (code IS ESC::VECTOR) {
-                  auto &vec = escape_data<bcVector>(Self, i);
+                  auto &vec = escape_data<bc_vector>(Self, i);
                   if (vec.ObjectID) acShow(vec.ObjectID);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.ObjectID); tab >= 0) {
-                     Self->Tabs[tab].Active = true;
+                     Self->Tabs[tab].active = true;
                   }
                }
                else if (code IS ESC::LINK) {
-                  if (auto tab = find_tabfocus(Self, TT_LINK, escape_data<bcLink>(Self, i).ID); tab >= 0) {
-                     Self->Tabs[tab].Active = true;
+                  if (auto tab = find_tabfocus(Self, TT_LINK, escape_data<bc_link>(Self, i).ID); tab >= 0) {
+                     Self->Tabs[tab].active = true;
                   }
                }
                else if (code IS ESC::INDEX_START) {
-                  auto &index = escape_data<bcIndex>(Self, i);
+                  auto &index = escape_data<bc_index>(Self, i);
                   index.ParentVisible = true;
 
                   if (!index.Visible) {
                      for (++i; i < INDEX(stream.size()); i++) {
-                        if (stream[i].Code IS ESC::INDEX_END) {
-                           if (index.ID IS escape_data<bcIndexEnd>(Self, i).ID) break;
+                        if (stream[i].code IS ESC::INDEX_END) {
+                           if (index.ID IS escape_data<bc_index_end>(Self, i).ID) break;
                         }
                      }
                   }
