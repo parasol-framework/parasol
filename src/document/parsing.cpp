@@ -2835,8 +2835,8 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
          if (escrow.min_height < 0) escrow.min_height = 0;
          else if (escrow.min_height > 4000) escrow.min_height = 4000;
       }
-      else if (!StrMatch("fill", Tag.Attribs[i].Name))   escrow.Fill   = Tag.Attribs[i].Value;
-      else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.Stroke = Tag.Attribs[i].Value;
+      else if (!StrMatch("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
+      else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
    }
 
    Self->insertCode(Index, escrow);
@@ -2874,15 +2874,15 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_colspan:
-            cell.ColSpan = StrToInt(Tag.Attribs[i].Value);
-            if (cell.ColSpan < 1) cell.ColSpan = 1;
-            else if (cell.ColSpan > 1000) cell.ColSpan = 1000;
+            cell.col_span = StrToInt(Tag.Attribs[i].Value);
+            if (cell.col_span < 1) cell.col_span = 1;
+            else if (cell.col_span > 1000) cell.col_span = 1000;
             break;
 
          case HASH_rowspan:
-            cell.RowSpan = StrToInt(Tag.Attribs[i].Value);
-            if (cell.RowSpan < 1) cell.RowSpan = 1;
-            else if (cell.RowSpan > 1000) cell.RowSpan = 1000;
+            cell.row_span = StrToInt(Tag.Attribs[i].Value);
+            if (cell.row_span < 1) cell.row_span = 1;
+            else if (cell.row_span > 1000) cell.row_span = 1000;
             break;
 
          case HASH_edit: {
@@ -2891,11 +2891,11 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
                Self->Error = ERR_Recursion;
                return;
             }
-            cell.EditDef = Tag.Attribs[i].Value;
+            cell.edit_def = Tag.Attribs[i].Value;
 
             if (!Self->EditDefs.contains(Tag.Attribs[i].Value)) {
                log.warning("Edit definition '%s' does not exist.", Tag.Attribs[i].Value.c_str());
-               cell.EditDef.clear();
+               cell.edit_def.clear();
             }
 
             break;
@@ -2903,9 +2903,9 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          case HASH_select: select = true; break;
 
-         case HASH_fill: cell.Fill = Tag.Attribs[i].Value; break;
+         case HASH_fill: cell.fill = Tag.Attribs[i].Value; break;
 
-         case HASH_stroke: cell.Stroke = Tag.Attribs[i].Value; break;
+         case HASH_stroke: cell.stroke = Tag.Attribs[i].Value; break;
 
          case HASH_nowrap:
             Self->Style.style_change = true;
@@ -2913,20 +2913,20 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             break;
 
          case HASH_onclick:
-            cell.OnClick = Tag.Attribs[i].Value;
+            cell.onclick = Tag.Attribs[i].Value;
             break;
 
          default:
             if (Tag.Attribs[i].Name.starts_with('@')) {
-               cell.Args.emplace_back(std::make_pair(Tag.Attribs[i].Name.substr(1), Tag.Attribs[i].Value));
+               cell.args.emplace_back(std::make_pair(Tag.Attribs[i].Name.substr(1), Tag.Attribs[i].Value));
             }
             else if (Tag.Attribs[i].Name.starts_with('_')) {
-               cell.Args.emplace_back(std::make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
+               cell.args.emplace_back(std::make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
             }
       }
    }
 
-   if (!cell.EditDef.empty()) edit_recurse++;
+   if (!cell.edit_def.empty()) edit_recurse++;
 
    // Edit sections enforce preformatting, which means that all whitespace entered by the user
    // will be taken into account.  The following check sets FSO::PREFORMAT if it hasn't been set already.
@@ -2939,7 +2939,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    if (!Children.empty()) {
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
-      if ((!cell.EditDef.empty()) and ((Self->Style.font_style.options & FSO::PREFORMAT) IS FSO::NIL)) {
+      if ((!cell.edit_def.empty()) and ((Self->Style.font_style.options & FSO::PREFORMAT) IS FSO::NIL)) {
          savestatus = Self->Style;
          Self->Style.style_change = true;
          Self->Style.font_style.options |= FSO::PREFORMAT;
@@ -2949,20 +2949,20 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       else parse_tags(Self, XML, Children, Index, parse_flags);
    }
 
-   Self->Style.table->row_col += cell.ColSpan;
+   Self->Style.table->row_col += cell.col_span;
 
    bc_cell_end esccell_end;
-   esccell_end.CellID = cell.CellID;
+   esccell_end.cell_id = cell.cell_id;
    Self->insertCode(Index, esccell_end);
 
-   if (!cell.EditDef.empty()) {
+   if (!cell.edit_def.empty()) {
       // Links are added to the list of tabbable points
 
-      LONG tab = add_tabfocus(Self, TT_EDIT, cell.CellID);
+      LONG tab = add_tabfocus(Self, TT_EDIT, cell.cell_id);
       if (select) Self->FocusIndex = tab;
    }
 
-   if (!cell.EditDef.empty()) edit_recurse--;
+   if (!cell.edit_def.empty()) edit_recurse--;
 }
 
 //********************************************************************************************************************

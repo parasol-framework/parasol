@@ -640,7 +640,7 @@ inline INDEX find_cell(extDocument *Self, LONG ID)
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].code IS SCODE::CELL) {
          auto &cell = std::get<bc_cell>(Self->Codes[Self->Stream[i].uid]);
-         if ((ID) and (ID IS cell.CellID)) return i;
+         if ((ID) and (ID IS cell.cell_id)) return i;
       }
    }
 
@@ -652,7 +652,7 @@ inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].code IS SCODE::CELL) {
          auto &cell = stream_data<bc_cell>(Self, i);
-         if (EditDef == cell.EditDef) return i;
+         if (EditDef == cell.edit_def) return i;
       }
    }
 

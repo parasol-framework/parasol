@@ -607,16 +607,16 @@ struct bc_list : public base_code {
       CUSTOM
    };
 
-   std::string fill;                  // Fill to use for bullet points (valid for BULLET only).
-   std::vector<std::string> buffer;   // Temp buffer, used for ordered lists
-   LONG  start        = 1;            // Starting value for ordered lists (default: 1)
-   LONG  item_indent  = BULLET_WIDTH; // Minimum indentation for text printed for each item
-   LONG  block_indent = BULLET_WIDTH; // Indentation for each set of items
-   LONG  item_num     = 0;
-   LONG  order_insert = 0;
-   DOUBLE vspacing    = 0.5;          // Spacing between list items, expressed as a ratio
-   UBYTE type         = BULLET;
-   bool  repass       = false;
+   std::string fill;                   // Fill to use for bullet points (valid for BULLET only).
+   std::vector<std::string> buffer;    // Temp buffer, used for ordered lists
+   LONG   start        = 1;            // Starting value for ordered lists (default: 1)
+   LONG   item_indent  = BULLET_WIDTH; // Minimum indentation for text printed for each item
+   LONG   block_indent = BULLET_WIDTH; // Indentation for each set of items
+   LONG   item_num     = 0;
+   LONG   order_insert = 0;
+   DOUBLE vspacing    = 0.5;           // Spacing between list items, expressed as a ratio
+   UBYTE  type         = BULLET;
+   bool   repass       = false;
 
    bc_list() { code = SCODE::LIST_START; }
 };
@@ -736,11 +736,11 @@ struct bc_paragraph_end : public base_code {
 };
 
 struct bc_row : public base_code {
-   DOUBLE Y = 0;
-   DOUBLE RowHeight = 0; // height of all cells on this row, used when drawing the cells
+   DOUBLE y = 0;
+   DOUBLE row_height = 0; // height of all cells on this row, used when drawing the cells
    DOUBLE min_height = 0;
-   std::string Stroke, Fill;
-   bool  VerticalRepass = false;
+   std::string stroke, fill;
+   bool  vertical_repass = false;
 
    bc_row() : base_code(SCODE::ROW) { }
 };
@@ -750,25 +750,25 @@ struct bc_row_end : public base_code {
 };
 
 struct bc_cell : public base_code {
-   LONG CellID;          // Identifier for the matching bc_cell_end
-   LONG Column;          // Column number that the cell starts in
-   LONG ColSpan;         // Number of columns spanned by this cell (normally set to 1)
-   LONG RowSpan;         // Number of rows spanned by this cell
-   DOUBLE AbsX, AbsY;    // Cell coordinates, these are absolute
-   DOUBLE Width, Height; // width and height of the cell
-   std::string OnClick;  // name of an onclick function
-   std::string EditDef;  // The edit definition that this cell is linked to (if any)
-   std::vector<std::pair<std::string, std::string>> Args;
-   std::string Stroke;
-   std::string Fill;
+   LONG cell_id;          // Identifier for the matching bc_cell_end
+   LONG column;           // Column number that the cell starts in
+   LONG col_span;         // Number of columns spanned by this cell (normally set to 1)
+   LONG row_span;         // Number of rows spanned by this cell
+   DOUBLE abs_x, abs_y;   // Cell coordinates, these are absolute
+   DOUBLE width, height;  // width and height of the cell
+   std::string onclick;   // name of an onclick function
+   std::string edit_def;  // The edit definition that this cell is linked to (if any)
+   std::vector<std::pair<std::string, std::string>> args;
+   std::string stroke;
+   std::string fill;
 
    bc_cell(LONG pCellID, LONG pColumn) :
-      base_code(SCODE::CELL), CellID(pCellID), Column(pColumn),
-      ColSpan(1), RowSpan(1), AbsX(0), AbsY(0), Width(0), Height(0)
+      base_code(SCODE::CELL), cell_id(pCellID), column(pColumn),
+      col_span(1), row_span(1), abs_x(0), abs_y(0), width(0), height(0)
       { }
 };
 
 struct bc_cell_end : public base_code {
-   LONG CellID = 0;    // Matching identifier from bc_cell
+   LONG cell_id = 0;    // Matching identifier from bc_cell
    bc_cell_end() : base_code(SCODE::CELL_END) { }
 };

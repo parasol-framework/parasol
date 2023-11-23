@@ -270,13 +270,13 @@ void layout::gen_scene_graph()
             case SCODE::ROW: {
                stack_row.push(&stream_data<bc_row>(Self, cursor));
                auto row = stack_row.top();
-               if (!row->Fill.empty()) {
+               if (!row->fill.empty()) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Self->Page->UID),
-                     fl::X(stack_table.top()->x), fl::Y(row->Y),
+                     fl::X(stack_table.top()->x), fl::Y(row->y),
                      fl::Width(stack_table.top()->width),
-                     fl::Height(row->RowHeight),
-                     fl::Fill(row->Fill)
+                     fl::Height(row->row_height),
+                     fl::Fill(row->fill)
                   });
                   Self->LayoutResources.push_back(rect);
                }
@@ -294,21 +294,21 @@ void layout::gen_scene_graph()
                   cell.stroke = "rgb(255,0,0)";
                #endif
 
-               if ((!cell.Fill.empty()) or (!cell.Stroke.empty())) {
+               if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Self->Page->UID),
-                     fl::X(cell.AbsX), fl::Y(cell.AbsY),
-                     fl::Width(stack_table.top()->columns[cell.Column].width),
-                     fl::Height(stack_row.top()->RowHeight)
+                     fl::X(cell.abs_x), fl::Y(cell.abs_y),
+                     fl::Width(stack_table.top()->columns[cell.column].width),
+                     fl::Height(stack_row.top()->row_height)
                   });
 
-                  if (!cell.Stroke.empty()) {
-                     rect->set(FID_Stroke, cell.Stroke);
+                  if (!cell.stroke.empty()) {
+                     rect->set(FID_Stroke, cell.stroke);
                      rect->set(FID_StrokeWidth, 1);
                   }
 
-                  if (!cell.Fill.empty()) {
-                     rect->set(FID_Fill, cell.Fill);
+                  if (!cell.fill.empty()) {
+                     rect->set(FID_Fill, cell.fill);
                   }
 
                   Self->LayoutResources.push_back(rect);

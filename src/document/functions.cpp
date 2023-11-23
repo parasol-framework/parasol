@@ -1713,10 +1713,10 @@ void doc_link::exec(extDocument *Self)
       std::string function_name, script_args;
 
       auto cell = as_cell();
-      if (!extract_script(Self, cell->OnClick, &script, function_name, script_args)) {
+      if (!extract_script(Self, cell->onclick, &script, function_name, script_args)) {
          std::vector<ScriptArg> args;
-         if (!cell->Args.empty()) {
-            for (auto &cell_arg : cell->Args) {
+         if (!cell->args.empty()) {
+            for (auto &cell_arg : cell->args) {
                if (cell_arg.first.starts_with('_')) { // Global variable setting
                   acSetVar(script, cell_arg.first.c_str()+1, cell_arg.second.c_str());
                }

@@ -531,14 +531,14 @@ void layout::procCellEnd(bc_cell *esccell)
    // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
    // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
 
-   if ((esccell) and (!esccell->OnClick.empty())) {
-      add_link(SCODE::CELL, esccell, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height, "esc_cell_end");
+   if ((esccell) and (!esccell->onclick.empty())) {
+      add_link(SCODE::CELL, esccell, esccell->abs_x, esccell->abs_y, esccell->width, esccell->height, "esc_cell_end");
    }
 
-   if ((esccell) and (!esccell->EditDef.empty())) {
+   if ((esccell) and (!esccell->edit_def.empty())) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
 
-      m_ecells.emplace_back(esccell->CellID, esccell->AbsX, esccell->AbsY, esccell->Width, esccell->Height);
+      m_ecells.emplace_back(esccell->cell_id, esccell->abs_x, esccell->abs_y, esccell->width, esccell->height);
    }
 
    add_esc_segment();
@@ -555,17 +555,17 @@ void layout::procRowEnd(bc_table *Table)
 
    // Increase the table height if the row extends beyond it
 
-   auto j = Row->Y + Row->RowHeight + Table->cell_vspacing;
+   auto j = Row->y + Row->row_height + Table->cell_vspacing;
    if (j > Table->y + Table->height) {
       Table->height = j - Table->y;
    }
 
    // Advance the cursor by the height of this row
 
-   m_cursor_y += Row->RowHeight + Table->cell_vspacing;
+   m_cursor_y += Row->row_height + Table->cell_vspacing;
    m_cursor_x = Table->x;
    DLAYOUT("Row ends, advancing down by %d+%d, new height: %d, y-cursor: %.2f",
-      Row->RowHeight, Table->cell_vspacing, Table->height, m_cursor_y);
+      Row->row_height, Table->cell_vspacing, Table->height, m_cursor_y);
 
    if (Table->row_width > Table->width) Table->width = Table->row_width;
 
@@ -779,8 +779,8 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, LONG AbsX, LONG TopMarg
       if (!stack_row.empty()) {
          auto j = minheight - (esctable->height + esctable->cell_vspacing + esctable->thickness);
          DLAYOUT("Extending table height to %d (row %d+%d) due to a minimum height of %d at coord %.2f",
-            minheight, stack_row.top()->RowHeight, j, esctable->min_height, esctable->y);
-         stack_row.top()->RowHeight += j;
+            minheight, stack_row.top()->row_height, j, esctable->min_height, esctable->y);
+         stack_row.top()->row_height += j;
          return TE::REPASS_ROW_HEIGHT;
       }
       else log.warning("No last row defined for table height extension.");
@@ -2199,11 +2199,11 @@ wrap_table_cell:
             stack_row.push(&stream_data<bc_row>(Self, idx));
             rowstate = *this;
 
-            if (esctable->reset_row_height) stack_row.top()->RowHeight = stack_row.top()->min_height;
+            if (esctable->reset_row_height) stack_row.top()->row_height = stack_row.top()->min_height;
 
 repass_row_height_ext:
-            stack_row.top()->VerticalRepass = false;
-            stack_row.top()->Y = m_cursor_y;
+            stack_row.top()->vertical_repass = false;
+            stack_row.top()->y = m_cursor_y;
             esctable->row_width = (esctable->thickness<<1) + esctable->cell_hspacing;
 
             add_esc_segment();
@@ -2229,8 +2229,8 @@ repass_row_height_ext:
                goto exit;
             }
 
-            if (esccell->Column >= LONG(esctable->columns.size())) {
-               DLAYOUT("Cell %d exceeds total table column limit of %d.", esccell->Column, LONG(esctable->columns.size()));
+            if (esccell->column >= LONG(esctable->columns.size())) {
+               DLAYOUT("Cell %d exceeds total table column limit of %d.", esccell->column, LONG(esctable->columns.size()));
                break;
             }
 
@@ -2242,23 +2242,23 @@ repass_row_height_ext:
 
             // Set the AbsX location of the cel  AbsX determines the true location of the cell for do_layout()
 
-            esccell->AbsX = m_cursor_x;
-            esccell->AbsY = m_cursor_y;
+            esccell->abs_x = m_cursor_x;
+            esccell->abs_y = m_cursor_y;
 
             if (esctable->thin) {
-               //if (esccell->Column IS 0);
+               //if (esccell->column IS 0);
                //else esccell->AbsX += esctable->cell_hspacing;
             }
-            else esccell->AbsX += esctable->cell_hspacing;
+            else esccell->abs_x += esctable->cell_hspacing;
 
-            if (esccell->Column IS 0) esccell->AbsX += esctable->thickness;
+            if (esccell->column IS 0) esccell->abs_x += esctable->thickness;
 
-            esccell->Width  = esctable->columns[esccell->Column].width; // Minimum width for the cell's column
-            esccell->Height = stack_row.top()->RowHeight;
-            //DLAYOUT("%d / %d", escrow->min_height, escrow->RowHeight);
+            esccell->width  = esctable->columns[esccell->column].width; // Minimum width for the cell's column
+            esccell->height = stack_row.top()->row_height;
+            //DLAYOUT("%d / %d", escrow->min_height, escrow->row_height);
 
             DLAYOUT("Index %d, Processing cell at (%.2f,%.2fy), size (%.0f,%.0f), column %d",
-               idx, m_cursor_x, m_cursor_y, esccell->Width, esccell->Height, esccell->Column);
+               idx, m_cursor_x, m_cursor_y, esccell->width, esccell->height, esccell->column);
 
             // Find the matching CELL_END
 
@@ -2266,7 +2266,7 @@ repass_row_height_ext:
             while (cell_end < INDEX(Self->Stream.size())) {
                if (Self->Stream[cell_end].code IS SCODE::CELL_END) {
                   auto &end = stream_data<bc_cell_end>(Self, cell_end);
-                  if (end.CellID IS esccell->CellID) break;
+                  if (end.cell_id IS esccell->cell_id) break;
                }
 
                cell_end++;
@@ -2282,15 +2282,15 @@ repass_row_height_ext:
             if (idx < cell_end) {
                auto segcount = m_segments.size();
 
-               Self->EditMode = (!esccell->EditDef.empty()) ? true : false;
+               Self->EditMode = (!esccell->edit_def.empty()) ? true : false;
 
                layout sl(Self);
-               idx = sl.do_layout(idx, cell_end, &m_font, esccell->AbsX, esccell->AbsY,
-                  esccell->Width, esccell->Height, ClipRectangle(esctable->cell_padding), vertical_repass);
+               idx = sl.do_layout(idx, cell_end, &m_font, esccell->abs_x, esccell->abs_y,
+                  esccell->width, esccell->height, ClipRectangle(esctable->cell_padding), vertical_repass);
 
-               if (!esccell->EditDef.empty()) Self->EditMode = false;
+               if (!esccell->edit_def.empty()) Self->EditMode = false;
 
-               if (!esccell->EditDef.empty()) {
+               if (!esccell->edit_def.empty()) {
                   // Edit cells have a minimum width/height so that the user can still interact with them when empty.
 
                   if (m_segments.size() IS segcount) {
@@ -2306,28 +2306,28 @@ repass_row_height_ext:
                      // TODO Work on this problem next
                   }
 
-                  if (esccell->Width < 16) esccell->Width = 16;
-                  if (esccell->Height < m_font->LineSpacing) esccell->Height = m_font->LineSpacing;
+                  if (esccell->width < 16) esccell->width = 16;
+                  if (esccell->height < m_font->LineSpacing) esccell->height = m_font->LineSpacing;
                }
             }
 
             if (!idx) goto exit;
 
-            DLAYOUT("Cell (%d:%d) is size %.0fx%.0f (min width %d)", esctable->row_index, esccell->Column, esccell->Width, esccell->Height, esctable->columns[esccell->Column].width);
+            DLAYOUT("Cell (%d:%d) is size %.0fx%.0f (min width %d)", esctable->row_index, esccell->column, esccell->width, esccell->height, esctable->columns[esccell->column].width);
 
             // Increase the overall width for the entire column if this cell has increased the column width.
             // This will affect the entire table, so a restart from TABLE_START is required.
 
-            if (esctable->columns[esccell->Column].width < esccell->Width) {
-               DLAYOUT("Increasing column width of cell (%d:%d) from %d to %.0f (table_start repass required).", esctable->row_index, esccell->Column, esctable->columns[esccell->Column].width, esccell->Width);
-               esctable->columns[esccell->Column].width = esccell->Width; // This has the effect of increasing the minimum column width for all cells in the column
+            if (esctable->columns[esccell->column].width < esccell->width) {
+               DLAYOUT("Increasing column width of cell (%d:%d) from %d to %.0f (table_start repass required).", esctable->row_index, esccell->column, esctable->columns[esccell->column].width, esccell->width);
+               esctable->columns[esccell->column].width = esccell->width; // This has the effect of increasing the minimum column width for all cells in the column
 
                // Percentage based and zero columns need to be recalculated.  The easiest thing to do
                // would be for a complete recompute (ComputeColumns = true) with the new minwidth.  The
                // problem with ComputeColumns is that it does it all from scratch - we need to adjust it
                // so that it can operate in a second style of mode where it recognises temporary width values.
 
-               esctable->columns[esccell->Column].min_width = esccell->Width; // Column must be at least this size
+               esctable->columns[esccell->column].min_width = esccell->width; // Column must be at least this size
                esctable->compute_columns = 2;
 
                esctable->reset_row_height = true; // Row heights need to be reset due to the width increase
@@ -2337,33 +2337,33 @@ repass_row_height_ext:
 
             // Advance the width of the entire row and adjust the row height
 
-            esctable->row_width += esctable->columns[esccell->Column].width;
+            esctable->row_width += esctable->columns[esccell->column].width;
 
             if (!esctable->thin) esctable->row_width += esctable->cell_hspacing;
-            else if ((esccell->Column + esccell->ColSpan) < LONG(esctable->columns.size())-1) esctable->row_width += esctable->cell_hspacing;
+            else if ((esccell->column + esccell->col_span) < LONG(esctable->columns.size())-1) esctable->row_width += esctable->cell_hspacing;
 
-            if ((esccell->Height > stack_row.top()->RowHeight) or (stack_row.top()->VerticalRepass)) {
+            if ((esccell->height > stack_row.top()->row_height) or (stack_row.top()->vertical_repass)) {
                // A repass will be required if the row height has increased and vectors or tables have been used
                // in earlier cells, because vectors need to know the final dimensions of their table cell.
 
-               if (esccell->Column IS LONG(esctable->columns.size())-1) {
-                  DLAYOUT("Extending row height from %d to %.0f (row repass required)", stack_row.top()->RowHeight, esccell->Height);
+               if (esccell->column IS LONG(esctable->columns.size())-1) {
+                  DLAYOUT("Extending row height from %d to %.0f (row repass required)", stack_row.top()->row_height, esccell->height);
                }
 
-               stack_row.top()->RowHeight = esccell->Height;
-               if ((esccell->Column + esccell->ColSpan) >= LONG(esctable->columns.size())) {
+               stack_row.top()->row_height = esccell->height;
+               if ((esccell->column + esccell->col_span) >= LONG(esctable->columns.size())) {
                   *this = rowstate;
                   goto repass_row_height_ext;
                }
-               else stack_row.top()->VerticalRepass = true; // Make a note to do a vertical repass once all columns on this row have been processed
+               else stack_row.top()->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed
             }
 
-            m_cursor_x += esctable->columns[esccell->Column].width;
+            m_cursor_x += esctable->columns[esccell->column].width;
 
             if (!esctable->thin) m_cursor_x += esctable->cell_hspacing;
-            else if ((esccell->Column + esccell->ColSpan) < LONG(esctable->columns.size())) m_cursor_x += esctable->cell_hspacing;
+            else if ((esccell->column + esccell->col_span) < LONG(esctable->columns.size())) m_cursor_x += esctable->cell_hspacing;
 
-            if (esccell->Column IS 0) m_cursor_x += esctable->thickness;
+            if (esccell->column IS 0) m_cursor_x += esctable->thickness;
             break;
          }
 

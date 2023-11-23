@@ -108,7 +108,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                   auto code = Self->Stream[index.index].code;
                   if (code IS SCODE::CELL) {
                      auto &cell = stream_data<bc_cell>(Self, index);
-                     if (cell.CellID IS Self->ActiveEditCellID) break;
+                     if (cell.cell_id IS Self->ActiveEditCellID) break;
                   }
                   else if (code IS SCODE::VECTOR); // Vectors count as a character
                   else if (code != SCODE::TEXT) continue;
@@ -132,7 +132,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                auto code = Self->Stream[index.index].code;
                if (code IS SCODE::CELL_END) {
                   auto &cell_end = stream_data<bc_cell_end>(Self, index);
-                  if (cell_end.CellID IS Self->ActiveEditCellID) {
+                  if (cell_end.cell_id IS Self->ActiveEditCellID) {
                      // End of editing zone - cursor cannot be moved any further right
                      break;
                   }
@@ -370,7 +370,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
       }
    }
 
-   auto it = Self->EditDefs.find(cell.EditDef);
+   auto it = Self->EditDefs.find(cell.edit_def);
    if (it IS Self->EditDefs.end()) return log.warning(ERR_Search);
 
    deactivate_edit(Self, false);
@@ -380,7 +380,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
       for (INDEX i = CellIndex; i < INDEX(Self->Stream.size()); i++) {
          if (stream[i].code IS SCODE::CELL_END) {
             auto &end = stream_data<bc_cell_end>(Self, i);
-            if (end.CellID IS cell.CellID) {
+            if (end.cell_id IS cell.cell_id) {
                Self->ActiveEditCRC = GenCRC32(0, stream.data() + CellIndex, i - CellIndex);
                break;
             }
@@ -388,7 +388,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
       }
    }
 
-   Self->ActiveEditCellID = cell.CellID;
+   Self->ActiveEditCellID = cell.cell_id;
    Self->ActiveEditDef    = &edit;
    Self->CursorIndex      = CursorIndex;
    Self->SelectIndex.reset();
@@ -399,7 +399,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
    // Set the focus index to the relevant TT_EDIT entry
 
    for (unsigned tab=0; tab < Self->Tabs.size(); tab++) {
-      if ((Self->Tabs[tab].type IS TT_EDIT) and (Self->Tabs[tab].ref IS cell.CellID)) {
+      if ((Self->Tabs[tab].type IS TT_EDIT) and (Self->Tabs[tab].ref IS cell.cell_id)) {
          Self->FocusIndex = tab;
          break;
       }
@@ -463,10 +463,10 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
          for (INDEX i = cell_index; i < INDEX(Self->Stream.size()); i++) {
             if (Self->Stream[i].code IS SCODE::CELL_END) {
                auto &end = stream_data<bc_cell_end>(Self, i);
-               if (end.CellID IS cell.CellID) {
+               if (end.cell_id IS cell.cell_id) {
                   auto crc = GenCRC32(0, Self->Stream.data() + cell_index, i - cell_index);
                   if (crc != Self->ActiveEditCRC) {
-                     log.trace("Change detected in editable cell %d", cell.CellID);
+                     log.trace("Change detected in editable cell %d", cell.cell_id);
 
                      OBJECTPTR script;
                      std::string function_name, argstring;
@@ -480,7 +480,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
                            ScriptArg("End", i)
                         };
 
-                        for (auto &cell_arg : cell.Args) args.emplace_back("", cell_arg.second);
+                        for (auto &cell_arg : cell.args) args.emplace_back("", cell_arg.second);
 
                         scExec(script, function_name.c_str(), args.data(), args.size());
                      }
@@ -561,7 +561,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          while (cell_end < INDEX(Self->Stream.size())) {
             if (Self->Stream[cell_end].code IS SCODE::CELL_END) {
                auto &end = stream_data<bc_cell_end>(Self, cell_end);
-               if (end.CellID IS Self->EditCells[i].cell_id) break;
+               if (end.cell_id IS Self->EditCells[i].cell_id) break;
             }
 
             cell_end++;
@@ -626,7 +626,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
             for (auto cellindex = Self->Segments[segment].start; cellindex.valid(); cellindex.prevCode()) {
                if (Self->Stream[cellindex.index].code IS SCODE::CELL) {
                   auto &cell = stream_data<bc_cell>(Self, cellindex);
-                  if (!cell.EditDef.empty()) {
+                  if (!cell.edit_def.empty()) {
                      activate_cell_edit(Self, cellindex.index, Self->CursorIndex);
                      break;
                   }
@@ -710,7 +710,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                      while (i < INDEX(Self->Stream.size())) {
                         if (Self->Stream[i].code IS SCODE::CELL_END) {
                            auto &cell_end = stream_data<bc_cell_end>(Self, i);
-                           if (cell_end.CellID IS Self->ActiveEditCellID) {
+                           if (cell_end.cell_id IS Self->ActiveEditCellID) {
                               stream_char sc(i, 0);
                               if (auto seg = find_segment(Self, sc, false); seg > 0) {
                                  seg--;
