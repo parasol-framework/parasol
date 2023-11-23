@@ -9,8 +9,8 @@ static void style_check(extDocument *Self, stream_char &Cursor)
    if (Self->Style.face_change) {
       // Create a new font object for the current style
 
-      auto style_name = get_font_style(Self->Style.font_style.Options);
-      Self->Style.font_style.FontIndex = create_font(Self->Style.face, style_name, Self->Style.point);
+      auto style_name = get_font_style(Self->Style.font_style.options);
+      Self->Style.font_style.font_index = create_font(Self->Style.face, style_name, Self->Style.point);
       //log.trace("Changed font to index %d, face %s, style %s, size %d.", Self->Style.font_style.index, Self->Style.Face, style_name, Self->Style.point);
       Self->Style.face_change  = false;
       Self->Style.style_change = true;
@@ -226,9 +226,9 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
                while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
                if (i > 0) {
                   auto content = Tag.Attribs[0].Value.substr(i);
-                  insert_text(Self, Index, content, ((Self->Style.font_style.Options & FSO::PREFORMAT) != FSO::NIL));
+                  insert_text(Self, Index, content, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
                }
-               else insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.font_style.Options & FSO::PREFORMAT) != FSO::NIL));
+               else insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
             }
             Flags &= ~IPF::STRIP_FEEDS;
          }
@@ -236,7 +236,7 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
             if (XML IS Self->InjectXML) acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str());
          }
          else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
-            insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.font_style.Options & FSO::PREFORMAT) != FSO::NIL));
+            insert_text(Self, Index, Tag.Attribs[0].Value, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
          }
       }
       Tag.Attribs = saved_attribs;
@@ -385,7 +385,7 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
       case HASH_inline:
       case HASH_anchor: // DEPRECATED
          Self->Style.style_change = true;
-         Self->Style.font_style.Options |= FSO::IN_LINE;
+         Self->Style.font_style.options |= FSO::IN_LINE;
          break;
 
       case HASH_leading:
@@ -398,7 +398,7 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
 
       case HASH_nowrap:
          Self->Style.style_change = true;
-         Self->Style.font_style.Options |= FSO::NO_WRAP;
+         Self->Style.font_style.options |= FSO::NO_WRAP;
          break;
 
       case HASH_valign: {
@@ -411,7 +411,7 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
          else if (!StrMatch("bottom", Value)) align = ALIGN::BOTTOM;
          if (align != ALIGN::NIL) {
             Self->Style.style_change = true;
-            Self->Style.font_style.VAlign = (Self->Style.font_style.VAlign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) | align;
+            Self->Style.font_style.valign = (Self->Style.font_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) | align;
          }
          break;
       }
@@ -454,10 +454,10 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
 
 static void trim_preformat(extDocument *Self, stream_char &Index)
 {
-   auto i = Index.Index - 1;
+   auto i = Index.index - 1;
    for (; i > 0; i--) {
-      if (Self->Stream[i].code IS ESC::TEXT) {
-         auto &text = escape_data<bc_text>(Self, i);
+      if (Self->Stream[i].code IS SCODE::TEXT) {
+         auto &text = stream_data<bc_text>(Self, i);
 
          static const std::string ws(" \t\f\v\n\r");
          auto found = text.text.find_last_not_of(ws);
@@ -487,11 +487,11 @@ static void saved_style_check(extDocument *Self, style_status &SavedStatus)
    auto face_change = Self->Style.face_change;
    auto style = Self->Style.style_change;
 
-   if (SavedStatus.font_style.FontIndex != Self->Style.font_style.FontIndex) face_change = true;
+   if (SavedStatus.font_style.font_index != Self->Style.font_style.font_index) face_change = true;
 
-   if ((SavedStatus.font_style.Options != Self->Style.font_style.Options) or
-       (SavedStatus.font_style.Fill != Self->Style.font_style.Fill) or
-       (SavedStatus.font_style.VAlign != Self->Style.font_style.VAlign)) {
+   if ((SavedStatus.font_style.options != Self->Style.font_style.options) or
+       (SavedStatus.font_style.fill != Self->Style.font_style.fill) or
+       (SavedStatus.font_style.valign != Self->Style.font_style.valign)) {
       style = true;
    }
 
@@ -626,9 +626,9 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       }
    }
 
-   Self->Style.font_style.FontIndex = create_font(Self->FontFace, "Regular", Self->FontSize);
-   Self->Style.font_style.Options   = FSO::NIL;
-   Self->Style.font_style.Fill      = Self->FontFill;
+   Self->Style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize);
+   Self->Style.font_style.options   = FSO::NIL;
+   Self->Style.font_style.fill      = Self->FontFill;
 
    Self->Style.face        = Self->FontFace;
    Self->Style.point       = Self->FontSize;
@@ -652,10 +652,10 @@ static void tag_background(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::
 
 static void tag_bold(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
-   if ((Self->Style.font_style.Options & FSO::BOLD) IS FSO::NIL) {
+   if ((Self->Style.font_style.options & FSO::BOLD) IS FSO::NIL) {
       auto savestatus = Self->Style; // Save the current style
       Self->Style.face_change = true; // Bold fonts are typically a different typeset
-      Self->Style.font_style.Options |= FSO::BOLD;
+      Self->Style.font_style.options |= FSO::BOLD;
       parse_tags(Self, XML, Children, Index);
       saved_style_check(Self, savestatus);
    }
@@ -799,11 +799,11 @@ static void tag_div(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
       if (!StrMatch("align", Tag.Attribs[i].Name)) {
          if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
             Self->Style.style_change = true;
-            Self->Style.font_style.Options |= FSO::ALIGN_CENTER;
+            Self->Style.font_style.options |= FSO::ALIGN_CENTER;
          }
          else if (!StrMatch(Tag.Attribs[i].Value, "right")) {
             Self->Style.style_change = true;
-            Self->Style.font_style.Options |= FSO::ALIGN_RIGHT;
+            Self->Style.font_style.options |= FSO::ALIGN_RIGHT;
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
@@ -1200,7 +1200,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          if (!visible) Self->Invisible--;
       }
 
-      bc_index_end end(esc.ID);
+      bc_index_end end(esc.id);
       Self->insertCode(Index, end);
    }
    else if (!Children.empty()) parse_tags(Self, XML, Children, Index);
@@ -1270,7 +1270,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    if ((link.Type != LINK::NIL) or (!Tag.Children.empty())) {
       link.ID    = ++Self->LinkID;
-      link.Align = Self->Style.font_style.Options;
+      link.Align = Self->Style.font_style.options;
 
       auto pos = sizeof(link);
       if (link.Type IS LINK::FUNCTION) buffer << link.Ref << '\0';
@@ -1286,10 +1286,10 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       auto savestatus = Self->Style;
 
       Self->Style.style_change        = true;
-      Self->Style.font_style.Options |= FSO::UNDERLINE;
+      Self->Style.font_style.options |= FSO::UNDERLINE;
 
-      if (!colour.empty()) Self->Style.font_style.Fill = colour;
-      else Self->Style.font_style.Fill = Self->LinkFill;
+      if (!colour.empty()) Self->Style.font_style.fill = colour;
+      else Self->Style.font_style.fill = Self->LinkFill;
 
       parse_tags(Self, XML, Tag.Children, Index);
 
@@ -1319,16 +1319,16 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    pf::Log log(__FUNCTION__);
    bc_list esc, *savelist;
 
-   esc.Fill    = Self->Style.font_style.Fill; // Default fill matches the current font colour
-   esc.ItemNum = esc.Start;
+   esc.fill    = Self->Style.font_style.fill; // Default fill matches the current font colour
+   esc.item_num = esc.start;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("fill", Tag.Attribs[i].Name)) {
-         esc.Fill = Tag.Attribs[i].Value;
+         esc.fill = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("indent", Tag.Attribs[i].Name)) {
          // Affects the indenting to apply to child items.
-         esc.BlockIndent = StrToInt(Tag.Attribs[i].Value);
+         esc.block_indent = StrToInt(Tag.Attribs[i].Value);
       }
       else if (!StrMatch("vspacing", Tag.Attribs[i].Name)) {
          esc.vspacing = StrToFloat(Tag.Attribs[i].Value);
@@ -1336,15 +1336,15 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       }
       else if (!StrMatch("type", Tag.Attribs[i].Name)) {
          if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
-            esc.Type = bc_list::BULLET;
+            esc.type = bc_list::BULLET;
          }
          else if (!StrMatch("ordered", Tag.Attribs[i].Value)) {
-            esc.Type = bc_list::ORDERED;
-            esc.ItemIndent = 0;
+            esc.type = bc_list::ORDERED;
+            esc.item_indent = 0;
          }
          else if (!StrMatch("custom", Tag.Attribs[i].Value)) {
-            esc.Type = bc_list::CUSTOM;
-            esc.ItemIndent = 0;
+            esc.type = bc_list::CUSTOM;
+            esc.item_indent = 0;
          }
       }
       else log.msg("Unknown list attribute '%s'", Tag.Attribs[i].Name.c_str());
@@ -1385,11 +1385,11 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
       if (!StrMatch("align", Tag.Attribs[i].Name)) {
          if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
             Self->Style.style_change = true;
-            Self->Style.font_style.Options |= FSO::ALIGN_CENTER;
+            Self->Style.font_style.options |= FSO::ALIGN_CENTER;
          }
          else if (!StrMatch(Tag.Attribs[i].Value, "right")) {
             Self->Style.style_change = true;
-            Self->Style.font_style.Options |= FSO::ALIGN_RIGHT;
+            Self->Style.font_style.options |= FSO::ALIGN_RIGHT;
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
@@ -1435,7 +1435,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             acDataText(Self->CurrentObject, Tag.Attribs[1].Value.c_str());
          }
          else {
-            insert_text(Self, Index, Tag.Attribs[1].Value, (Self->Style.font_style.Options & FSO::PREFORMAT) != FSO::NIL);
+            insert_text(Self, Index, Tag.Attribs[1].Value, (Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
          }
       }
       else if (!StrMatch("src", Tag.Attribs[1].Name)) {
@@ -1443,7 +1443,7 @@ static void tag_print(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             CacheFile *cache;
             if (!LoadFile(Tag.Attribs[1].Value.c_str(), LDF::NIL, &cache)) {
-               insert_text(Self, Index, std::string((CSTRING)cache->Data), (Self->Style.font_style.Options & FSO::PREFORMAT) != FSO::NIL);
+               insert_text(Self, Index, std::string((CSTRING)cache->Data), (Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
                UnloadFile(cache);
             }
          }
@@ -1888,7 +1888,7 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("colour", Tag.Attribs[i].Name)) {
          Self->Style.style_change = true;
-         Self->Style.font_style.Fill = Tag.Attribs[i].Value;
+         Self->Style.font_style.fill = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("face", Tag.Attribs[i].Name)) {
          Self->Style.face_change = true;
@@ -1903,15 +1903,15 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
                j++;
                if (!StrMatch("bold", str+j)) {
                   Self->Style.face_change = true;
-                  Self->Style.font_style.Options |= FSO::BOLD;
+                  Self->Style.font_style.options |= FSO::BOLD;
                }
                else if (!StrMatch("italic", str+j)) {
                   Self->Style.face_change = true;
-                  Self->Style.font_style.Options |= FSO::ITALIC;
+                  Self->Style.font_style.options |= FSO::ITALIC;
                }
                else if (!StrMatch("bold italic", str+j)) {
                   Self->Style.face_change = true;
-                  Self->Style.font_style.Options |= FSO::BOLD|FSO::ITALIC;
+                  Self->Style.font_style.options |= FSO::BOLD|FSO::ITALIC;
                }
             }
          }
@@ -1925,20 +1925,20 @@ static void tag_font(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       else if (!StrMatch("style", Tag.Attribs[i].Name)) {
          if (!StrMatch("bold", Tag.Attribs[i].Value)) {
             Self->Style.face_change = true;
-            Self->Style.font_style.Options |= FSO::BOLD;
+            Self->Style.font_style.options |= FSO::BOLD;
          }
          else if (!StrMatch("italic", Tag.Attribs[i].Value)) {
             Self->Style.face_change = true;
-            Self->Style.font_style.Options |= FSO::ITALIC;
+            Self->Style.font_style.options |= FSO::ITALIC;
          }
          else if (!StrMatch("bold italic", Tag.Attribs[i].Value)) {
             Self->Style.face_change = true;
-            Self->Style.font_style.Options |= FSO::BOLD|FSO::ITALIC;
+            Self->Style.font_style.options |= FSO::BOLD|FSO::ITALIC;
          }
       }
       else if (!StrMatch("preformat", Tag.Attribs[i].Name)) {
          Self->Style.style_change = true;
-         Self->Style.font_style.Options |= FSO::PREFORMAT;
+         Self->Style.font_style.options |= FSO::PREFORMAT;
          preformat = true;
          flags |= IPF::STRIP_FEEDS;
       }
@@ -2109,13 +2109,13 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
       if (!CheckObjectExists(object->UID)) {
          if (Self->BkgdGfx) {
             auto &resource = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-            resource.ClassID = class_id;
+            resource.class_id = class_id;
          }
          else {
-            escobj.ObjectID = object->UID;
-            escobj.ClassID  = object->Class->ClassID;
-            escobj.Inline = false;
-            if (Self->CurrentObject) escobj.Owned = true;
+            escobj.object_id = object->UID;
+            escobj.class_id  = object->Class->ClassID;
+            escobj.in_line = false;
+            if (Self->CurrentObject) escobj.owned = true;
 
             // By default objects are assumed to be in the background (thus not embedded as part of the text stream).
             // This section is intended to confirm the graphical state of the object.
@@ -2124,7 +2124,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
                //if (layout->Layout & (LAYOUT_BACKGROUND|LAYOUT_FOREGROUND));
                //else if (layout->Layout & LAYOUT_EMBEDDED) escobj.Inline = true;
             }
-            else escobj.Inline = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
+            else escobj.in_line = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
             style_check(Self, Index);
             Self->insertCode(Index, escobj);
@@ -2152,12 +2152,12 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
             }
             else {
                auto &res = Self->Resources.emplace_back(object->UID, RTD::OBJECT_UNLOAD);
-               res.ClassID = class_id;
+               res.class_id = class_id;
             }
 
             // If the object is inline, we will allow whitespace to immediately follow the object.
 
-            if (escobj.Inline) Self->NoWhitespace = false;
+            if (escobj.in_line) Self->NoWhitespace = false;
 
             // Add the object to the tab-list if it is in our list of classes that support keyboard input.
 
@@ -2185,10 +2185,10 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
 
 static void tag_pre(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
-   if ((Self->Style.font_style.Options & FSO::PREFORMAT) IS FSO::NIL) {
+   if ((Self->Style.font_style.options & FSO::PREFORMAT) IS FSO::NIL) {
       auto savestatus = Self->Style;
       Self->Style.style_change = true;
-      Self->Style.font_style.Options |= FSO::PREFORMAT;
+      Self->Style.font_style.options |= FSO::PREFORMAT;
       parse_tags(Self, XML, Children, Index, IPF::STRIP_FEEDS);
       saved_style_check(Self, savestatus);
    }
@@ -2296,8 +2296,8 @@ static void tag_script(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
    if (persistent) {
       for (auto &resource : Self->Resources) {
-         if (resource.Type IS RTD::PERSISTENT_SCRIPT) {
-            script = (objScript *)GetObjectPtr(resource.ObjectID);
+         if (resource.type IS RTD::PERSISTENT_SCRIPT) {
+            script = (objScript *)GetObjectPtr(resource.object_id);
             if (!StrMatch(name, script->Name)) {
                log.msg("Persistent script discovered.");
                if ((!Self->DefaultScript) or (defaultscript)) Self->DefaultScript = script;
@@ -2385,7 +2385,7 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_colour:
             Self->Style.style_change = true;
-            Self->Style.font_style.Fill = Tag.Attribs[i].Value;
+            Self->Style.font_style.fill = Tag.Attribs[i].Value;
             break;
 
          case HASH_face:
@@ -2401,21 +2401,21 @@ static void tag_setfont(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
          case HASH_style:
             if (!StrMatch("bold", Tag.Attribs[i].Value)) {
                Self->Style.face_change = true;
-               Self->Style.font_style.Options |= FSO::BOLD;
+               Self->Style.font_style.options |= FSO::BOLD;
             }
             else if (!StrMatch("italic", Tag.Attribs[i].Value)) {
                Self->Style.face_change = true;
-               Self->Style.font_style.Options |= FSO::ITALIC;
+               Self->Style.font_style.options |= FSO::ITALIC;
             }
             else if (!StrMatch("bold italic", Tag.Attribs[i].Value)) {
                Self->Style.face_change = true;
-               Self->Style.font_style.Options |= FSO::BOLD|FSO::ITALIC;
+               Self->Style.font_style.options |= FSO::BOLD|FSO::ITALIC;
             }
             break;
 
          case HASH_preformat:
             Self->Style.style_change = true;
-            Self->Style.font_style.Options |= FSO::PREFORMAT;
+            Self->Style.font_style.options |= FSO::PREFORMAT;
             break;
       }
    }
@@ -2431,31 +2431,31 @@ static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("top", Tag.Attribs[i].Name)) {
-         margins.Top = StrToInt(Tag.Attribs[i].Value);
-         if (margins.Top < -4000) margins.Top = -4000;
-         else if (margins.Top > 4000) margins.Top = 4000;
+         margins.top = StrToInt(Tag.Attribs[i].Value);
+         if (margins.top < -4000) margins.top = -4000;
+         else if (margins.top > 4000) margins.top = 4000;
       }
       else if (!StrMatch("bottom", Tag.Attribs[i].Name)) {
-         margins.Bottom = StrToInt(Tag.Attribs[i].Value);
-         if (margins.Bottom < -4000) margins.Bottom = -4000;
-         else if (margins.Bottom > 4000) margins.Bottom = 4000;
+         margins.bottom = StrToInt(Tag.Attribs[i].Value);
+         if (margins.bottom < -4000) margins.bottom = -4000;
+         else if (margins.bottom > 4000) margins.bottom = 4000;
       }
       else if (!StrMatch("right", Tag.Attribs[i].Name)) {
-         margins.Right = StrToInt(Tag.Attribs[i].Value);
-         if (margins.Right < -4000) margins.Right = -4000;
-         else if (margins.Right > 4000) margins.Right = 4000;
+         margins.right = StrToInt(Tag.Attribs[i].Value);
+         if (margins.right < -4000) margins.right = -4000;
+         else if (margins.right > 4000) margins.right = 4000;
       }
       else if (!StrMatch("left", Tag.Attribs[i].Name)) {
-         margins.Left = StrToInt(Tag.Attribs[i].Value);
-         if (margins.Left < -4000) margins.Left = -4000;
-         else if (margins.Left > 4000) margins.Left = 4000;
+         margins.left = StrToInt(Tag.Attribs[i].Value);
+         if (margins.left < -4000) margins.left = -4000;
+         else if (margins.left > 4000) margins.left = 4000;
       }
       else if (!StrMatch("all", Tag.Attribs[i].Name)) {
          LONG value;
          value = StrToInt(Tag.Attribs[i].Value);
          if (value < -4000) value = -4000;
          else if (value > 4000) value = 4000;
-         margins.Left = margins.Top = margins.Right = margins.Bottom = value;
+         margins.left = margins.top = margins.right = margins.bottom = value;
       }
    }
 
@@ -2483,10 +2483,10 @@ static void tag_restorestyle(extDocument *Self, objXML *XML, XMLTag &Tag, objXML
 
 static void tag_italic(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
-   if ((Self->Style.font_style.Options & FSO::ITALIC) IS FSO::NIL) {
+   if ((Self->Style.font_style.options & FSO::ITALIC) IS FSO::NIL) {
       auto savestatus = Self->Style;
       Self->Style.face_change = true; // Italic fonts are typically a different typeset
-      Self->Style.font_style.Options |= FSO::ITALIC;
+      Self->Style.font_style.options |= FSO::ITALIC;
       parse_tags(Self, XML, Children, Index);
       saved_style_check(Self, savestatus);
    }
@@ -2536,7 +2536,7 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
    Self->ParagraphDepth++;
 
-   if ((Self->Style.list->Type IS bc_list::CUSTOM) and (!para.value.empty())) {
+   if ((Self->Style.list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
       style_check(Self, Index); // font changes must take place prior to the printing of custom string items
 
       Self->insertCode(Index, para);
@@ -2545,19 +2545,19 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
       Self->reserveCode<bc_paragraph_end>(Index);
    }
-   else if (Self->Style.list->Type IS bc_list::ORDERED) {
+   else if (Self->Style.list->type IS bc_list::ORDERED) {
       style_check(Self, Index); // font changes must take place prior to the printing of custom string items
 
-      auto list_size = Self->Style.list->Buffer.size();
-      Self->Style.list->Buffer.push_back(std::to_string(Self->Style.list->ItemNum) + ".");
+      auto list_size = Self->Style.list->buffer.size();
+      Self->Style.list->buffer.push_back(std::to_string(Self->Style.list->item_num) + ".");
 
       // ItemNum is reset because a child list could be created
 
-      auto save_item = Self->Style.list->ItemNum;
-      Self->Style.list->ItemNum = 1;
+      auto save_item = Self->Style.list->item_num;
+      Self->Style.list->item_num = 1;
 
-      if (para.aggregate) for (auto &p : Self->Style.list->Buffer) para.value += p;
-      else para.value = Self->Style.list->Buffer.back();
+      if (para.aggregate) for (auto &p : Self->Style.list->buffer) para.value += p;
+      else para.value = Self->Style.list->buffer.back();
 
       Self->insertCode(Index, para);
 
@@ -2565,10 +2565,10 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
       Self->reserveCode<bc_paragraph_end>(Index);
 
-      Self->Style.list->ItemNum = save_item;
-      Self->Style.list->Buffer.resize(list_size);
+      Self->Style.list->item_num = save_item;
+      Self->Style.list->buffer.resize(list_size);
 
-      Self->Style.list->ItemNum++;
+      Self->Style.list->item_num++;
    }
    else { // BULLET
       Self->insertCode(Index, para);
@@ -2586,10 +2586,10 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
 
 static void tag_underline(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
-   if ((Self->Style.font_style.Options & FSO::UNDERLINE) IS FSO::NIL) {
+   if ((Self->Style.font_style.options & FSO::UNDERLINE) IS FSO::NIL) {
       auto savestatus = Self->Style;
       Self->Style.style_change = true;
-      Self->Style.font_style.Options |= FSO::UNDERLINE;
+      Self->Style.font_style.options |= FSO::UNDERLINE;
       parse_tags(Self, XML, Children, Index);
       saved_style_check(Self, savestatus);
    }
@@ -2690,16 +2690,16 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 // Thickness:    Thickness of the border colour.
 //
 // The only acceptable child tags inside a <table> section are row, brk and cell tags.  Command tags are acceptable
-// (repeat, if statements, etc).  The table byte code is typically generated as ESC::TABLE_START, ESC::ROW, ESC::CELL...,
-// ESC::ROW_END, ESC::TABLE_END.
+// (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW, SCODE::CELL...,
+// SCODE::ROW_END, SCODE::TABLE_END.
 
 static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
    auto &start = Self->reserveCode<bc_table>(Index);
-   start.MinWidth  = 1;
-   start.MinHeight = 1;
+   start.min_width  = 1;
+   start.min_height = 1;
 
    std::string columns;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -2710,68 +2710,68 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             break;
 
          case HASH_width:
-            start.MinWidth = StrToInt(Tag.Attribs[i].Value);
-            start.WidthPercent = false;
+            start.min_width = StrToInt(Tag.Attribs[i].Value);
+            start.width_pct = false;
             if (Tag.Attribs[i].Value.find_first_of('%') != std::string::npos) {
-               start.WidthPercent = true;
+               start.width_pct = true;
             }
-            if (start.MinWidth < 1) start.MinWidth = 1;
-            else if (start.MinWidth > 10000) start.MinWidth = 10000;
+            if (start.min_width < 1) start.min_width = 1;
+            else if (start.min_width > 10000) start.min_width = 10000;
             break;
 
          case HASH_height:
-            start.MinHeight = StrToInt(Tag.Attribs[i].Value);
+            start.min_height = StrToInt(Tag.Attribs[i].Value);
             if (Tag.Attribs[i].Value.find_first_of('%') != std::string::npos) {
-               start.HeightPercent = true;
+               start.height_pct = true;
             }
-            if (start.MinHeight < 1) start.MinHeight = 1;
-            else if (start.MinHeight > 10000) start.MinHeight = 10000;
+            if (start.min_height < 1) start.min_height = 1;
+            else if (start.min_height > 10000) start.min_height = 10000;
             break;
 
          case HASH_fill:
-            start.Fill = Tag.Attribs[i].Value;
+            start.fill = Tag.Attribs[i].Value;
             break;
 
          case HASH_stroke:
-            start.Stroke = Tag.Attribs[i].Value;
-            if (start.Thickness < 1) start.Thickness = 1;
+            start.stroke = Tag.Attribs[i].Value;
+            if (start.thickness < 1) start.thickness = 1;
             break;
 
          case HASH_spacing: // Spacing between the cells
-            start.CellVSpacing = StrToInt(Tag.Attribs[i].Value);
-            if (start.CellVSpacing < 0) start.CellVSpacing = 0;
-            else if (start.CellVSpacing > 200) start.CellVSpacing = 200;
-            start.CellHSpacing = start.CellVSpacing;
+            start.cell_vspacing = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_vspacing < 0) start.cell_vspacing = 0;
+            else if (start.cell_vspacing > 200) start.cell_vspacing = 200;
+            start.cell_hspacing = start.cell_vspacing;
             break;
 
          case HASH_thin: // Thin tables do not have spacing (defined by 'spacing' or 'hspacing') on the sides
-            start.Thin = true;
+            start.thin = true;
             break;
 
          case HASH_vspacing: // Spacing between the cells
-            start.CellVSpacing = StrToInt(Tag.Attribs[i].Value);
-            if (start.CellVSpacing < 0) start.CellVSpacing = 0;
-            else if (start.CellVSpacing > 200) start.CellVSpacing = 200;
+            start.cell_vspacing = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_vspacing < 0) start.cell_vspacing = 0;
+            else if (start.cell_vspacing > 200) start.cell_vspacing = 200;
             break;
 
          case HASH_hspacing: // Spacing between the cells
-            start.CellHSpacing = StrToInt(Tag.Attribs[i].Value);
-            if (start.CellHSpacing < 0) start.CellHSpacing = 0;
-            else if (start.CellHSpacing > 200) start.CellHSpacing = 200;
+            start.cell_hspacing = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_hspacing < 0) start.cell_hspacing = 0;
+            else if (start.cell_hspacing > 200) start.cell_hspacing = 200;
             break;
 
          case HASH_margins:
          case HASH_padding: // Padding inside the cells
-            start.CellPadding = StrToInt(Tag.Attribs[i].Value);
-            if (start.CellPadding < 0) start.CellPadding = 0;
-            else if (start.CellPadding > 200) start.CellPadding = 200;
+            start.cell_padding = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_padding < 0) start.cell_padding = 0;
+            else if (start.cell_padding > 200) start.cell_padding = 200;
             break;
 
          case HASH_thickness: {
             auto j = StrToInt(Tag.Attribs[i].Value);
             if (j < 0) j = 0;
             else if (j > 255) j = 255;
-            start.Thickness = j;
+            start.thickness = j;
             break;
          }
       }
@@ -2798,12 +2798,12 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       }
 
       unsigned i;
-      for (i=0; (i < start.Columns.size()) and (i < list.size()); i++) {
-         start.Columns[i].preset_width = StrToFloat(list[i]);
-         if (list[i].find_first_of('%') != std::string::npos) start.Columns[i].preset_width_rel = true;
+      for (i=0; (i < start.columns.size()) and (i < list.size()); i++) {
+         start.columns[i].preset_width = StrToFloat(list[i]);
+         if (list[i].find_first_of('%') != std::string::npos) start.columns[i].preset_width_rel = true;
       }
 
-      if (i < start.Columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(start.Columns.size()));
+      if (i < start.columns.size()) log.warning("Warning - columns attribute '%s' did not define %d columns.", columns.c_str(), LONG(start.columns.size()));
    }
 
    bc_table_end end;
@@ -2831,16 +2831,16 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("height", Tag.Attribs[i].Name)) {
-         escrow.MinHeight = StrToInt(Tag.Attribs[i].Value);
-         if (escrow.MinHeight < 0) escrow.MinHeight = 0;
-         else if (escrow.MinHeight > 4000) escrow.MinHeight = 4000;
+         escrow.min_height = StrToInt(Tag.Attribs[i].Value);
+         if (escrow.min_height < 0) escrow.min_height = 0;
+         else if (escrow.min_height > 4000) escrow.min_height = 4000;
       }
       else if (!StrMatch("fill", Tag.Attribs[i].Name))   escrow.Fill   = Tag.Attribs[i].Value;
       else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.Stroke = Tag.Attribs[i].Value;
    }
 
    Self->insertCode(Index, escrow);
-   Self->Style.table->table->Rows++;
+   Self->Style.table->table->rows++;
    Self->Style.table->row_col = 0;
 
    if (!Children.empty()) {
@@ -2850,8 +2850,8 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
    bc_row_end end;
    Self->insertCode(Index, end);
 
-   if (Self->Style.table->row_col > LONG(Self->Style.table->table->Columns.size())) {
-      Self->Style.table->table->Columns.resize(Self->Style.table->row_col);
+   if (Self->Style.table->row_col > LONG(Self->Style.table->table->columns.size())) {
+      Self->Style.table->table->columns.resize(Self->Style.table->row_col);
    }
 }
 
@@ -2909,7 +2909,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          case HASH_nowrap:
             Self->Style.style_change = true;
-            Self->Style.font_style.Options |= FSO::NO_WRAP;
+            Self->Style.font_style.options |= FSO::NO_WRAP;
             break;
 
          case HASH_onclick:
@@ -2939,10 +2939,10 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    if (!Children.empty()) {
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
-      if ((!cell.EditDef.empty()) and ((Self->Style.font_style.Options & FSO::PREFORMAT) IS FSO::NIL)) {
+      if ((!cell.EditDef.empty()) and ((Self->Style.font_style.options & FSO::PREFORMAT) IS FSO::NIL)) {
          savestatus = Self->Style;
          Self->Style.style_change = true;
-         Self->Style.font_style.Options |= FSO::PREFORMAT;
+         Self->Style.font_style.options |= FSO::PREFORMAT;
          parse_tags(Self, XML, Children, Index, parse_flags);
          saved_style_check(Self, savestatus);
       }

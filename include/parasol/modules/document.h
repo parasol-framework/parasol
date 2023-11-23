@@ -17,7 +17,7 @@ class objDocument;
 
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
-#define RIPPLE_VERSION "20231021"
+#define RIPPLE_VERSION "20231123"
 
 #define TT_OBJECT 1
 #define TT_LINK 2
@@ -211,7 +211,6 @@ class objDocument : public BaseClass {
    STRING   Author;                 // The author(s) of the document.
    STRING   Copyright;              // Copyright information for the document.
    STRING   Keywords;               // Includes keywords declared by the source document.
-   STRING   Highlight;              // Defines the fill used to highlight the document.
    STRING   Background;             // Optional background colour for the document.
    STRING   CursorStroke;           // The colour used for the document cursor.
    STRING   BorderStroke;           // The stroke to use for drawing a border around the document window.
@@ -268,33 +267,27 @@ class objDocument : public BaseClass {
 
    // Customised field setting
 
-   template <class T> inline ERROR setHighlight(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[8];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    template <class T> inline ERROR setBackground(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setCursorStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERROR setBorderStroke(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -328,19 +321,19 @@ class objDocument : public BaseClass {
 
    inline ERROR setDefaultScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -352,7 +345,7 @@ class objDocument : public BaseClass {
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[12];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }

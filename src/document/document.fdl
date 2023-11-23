@@ -10,7 +10,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
   loadFile(glPath .. 'common.fdl')
 
   const("RIPPLE", { comment="Official version number (date format).  Any changes to the handling of document content require that this number be updated." }, {
-    VERSION = "\"20231021\""
+    VERSION = "\"20231123\""
   })
 
   enum("TT", { start=1 }, "OBJECT", "LINK", "EDIT")
@@ -80,7 +80,6 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     str Author           # The author of the document
     str Copyright        # Copyright information for the document
     str Keywords         # Keywords for the document
-    str Highlight        # The fill for highlighting document selections
     str Background       # Fill for document background
     str CursorStroke     # The stroke style of the cursor
     str BorderStroke     # The stroke to apply to the border of the document window

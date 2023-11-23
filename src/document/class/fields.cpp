@@ -173,22 +173,6 @@ receives the focus.  If you would like to change this so that a document becomes
 the focus, refer to that object by writing its ID to this field.
 
 -FIELD-
-Highlight: Defines the fill used to highlight the document.
-
-The Highlight field determines the colour that is used when highlighting selected document areas.
-
-*********************************************************************************************************************/
-
-static ERROR SET_Highlight(extDocument *Self, CSTRING Value)
-{
-   if (Self->Highlight) { FreeResource(Self->Highlight); Self->Highlight = NULL; }
-   if ((Value) and (*Value)) Self->Highlight = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Keywords: Includes keywords declared by the source document.
 
 If a document declares keywords under a head tag, the keywords string will be readable from this field.   This field is

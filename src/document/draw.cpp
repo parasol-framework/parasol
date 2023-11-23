@@ -138,7 +138,7 @@ void layout::gen_scene_graph()
       if ((Self->ActiveEditDef) and (Self->CursorState) and (!m_cursor_drawn)) {
          if ((Self->CursorIndex >= segment.start) and (Self->CursorIndex <= segment.stop)) {
             if ((Self->CursorIndex IS segment.stop) and
-                (Self->CursorIndex.getPrevCharOrInline(Self, Self->Stream) IS '\n'));
+                (Self->CursorIndex.get_prev_char_or_inline(Self, Self->Stream) IS '\n'));
             else if ((Self->Page->Flags & VF::HAS_FOCUS) != VF::NIL) { // Standard text cursor
                auto rect = objVectorRectangle::create::global({
                   fl::Owner(Self->Page->UID),
@@ -161,24 +161,24 @@ void layout::gen_scene_graph()
 
       auto fx = segment.area.X;
       for (auto cursor = segment.start; cursor < segment.stop; cursor.nextCode()) {
-         switch (Self->Stream[cursor.Index].code) {
-            case ESC::FONT: {
-               auto &style = escape_data<bc_font>(Self, cursor);
-               if (auto new_font = style.getFont()) {
-                  if (tabfocus IS false) font_fill = style.Fill;
+         switch (Self->Stream[cursor.index].code) {
+            case SCODE::FONT: {
+               auto &style = stream_data<bc_font>(Self, cursor);
+               if (auto new_font = style.get_font()) {
+                  if (tabfocus IS false) font_fill = style.fill;
                   else font_fill = Self->LinkSelectFill;
 
-                  if ((style.Options & FSO::ALIGN_RIGHT) != FSO::NIL) font_align = ALIGN::RIGHT;
-                  else if ((style.Options & FSO::ALIGN_CENTER) != FSO::NIL) font_align = ALIGN::HORIZONTAL;
+                  if ((style.options & FSO::ALIGN_RIGHT) != FSO::NIL) font_align = ALIGN::RIGHT;
+                  else if ((style.options & FSO::ALIGN_CENTER) != FSO::NIL) font_align = ALIGN::HORIZONTAL;
                   else font_align = ALIGN::NIL;
 
-                  if (style.VAlign != ALIGN::NIL) {
-                     if ((style.VAlign & ALIGN::TOP) != ALIGN::NIL) font_align |= ALIGN::TOP;
-                     else if ((style.VAlign & ALIGN::VERTICAL) != ALIGN::NIL) font_align |= ALIGN::VERTICAL;
+                  if (style.valign != ALIGN::NIL) {
+                     if ((style.valign & ALIGN::TOP) != ALIGN::NIL) font_align |= ALIGN::TOP;
+                     else if ((style.valign & ALIGN::VERTICAL) != ALIGN::NIL) font_align |= ALIGN::VERTICAL;
                      else font_align |= ALIGN::BOTTOM;
                   }
 
-                  if ((style.Options & FSO::UNDERLINE) != FSO::NIL) new_font->Underline = new_font->Colour;
+                  if ((style.options & FSO::UNDERLINE) != FSO::NIL) new_font->Underline = new_font->Colour;
                   else new_font->Underline.Alpha = 0;
 
                   font = new_font;
@@ -186,22 +186,22 @@ void layout::gen_scene_graph()
                break;
             }
 
-            case ESC::LIST_START:
-               stack_list.push(&escape_data<bc_list>(Self, cursor));
+            case SCODE::LIST_START:
+               stack_list.push(&stream_data<bc_list>(Self, cursor));
                break;
 
-            case ESC::LIST_END:
+            case SCODE::LIST_END:
                stack_list.pop();
                break;
 
-            case ESC::PARAGRAPH_START:
-               stack_para.push(&escape_data<bc_paragraph>(Self, cursor));
+            case SCODE::PARAGRAPH_START:
+               stack_para.push(&stream_data<bc_paragraph>(Self, cursor));
 
                if ((!stack_list.empty()) and (stack_para.top()->list_item)) {
                   // Handling for paragraphs that form part of a list
 
-                  if ((stack_list.top()->Type IS bc_list::CUSTOM) or
-                      (stack_list.top()->Type IS bc_list::ORDERED)) {
+                  if ((stack_list.top()->type IS bc_list::CUSTOM) or
+                      (stack_list.top()->type IS bc_list::ORDERED)) {
                      if (!stack_para.top()->value.empty()) {
                         DOUBLE ix = segment.area.X - stack_para.top()->item_indent;
                         DOUBLE iy = segment.area.Y + segment.area.Height - segment.gutter;
@@ -211,13 +211,13 @@ void layout::gen_scene_graph()
                            fl::X(ix), fl::Y(iy),
                            fl::String(stack_para.top()->value),
                            fl::Font(font),
-                           fl::Fill(stack_list.top()->Fill)
+                           fl::Fill(stack_list.top()->fill)
                            //fl::AlignWidth(segment.AlignWidth),
                         });
                         Self->LayoutResources.push_back(text);
                      }
                   }
-                  else if (stack_list.top()->Type IS bc_list::BULLET) {                     
+                  else if (stack_list.top()->type IS bc_list::BULLET) {                     
                      DOUBLE ix = segment.area.X - stack_para.top()->item_indent + (m_font->Height * 0.5);
                      DOUBLE iy = segment.area.Y + (segment.area.Height - segment.gutter) - (m_font->Height * 0.5);
 
@@ -225,56 +225,56 @@ void layout::gen_scene_graph()
                         fl::Owner(Self->Page->UID),
                         fl::CenterX(ix), fl::CenterY(iy),
                         fl::Radius(m_font->Height * 0.25),
-                        fl::Fill(stack_list.top()->Fill)
+                        fl::Fill(stack_list.top()->fill)
                      });
                      Self->LayoutResources.push_back(bullet);
                   }
                }
                break;
 
-            case ESC::PARAGRAPH_END:
+            case SCODE::PARAGRAPH_END:
                stack_para.pop();
                break;
 
-            case ESC::TABLE_START: {
-               stack_table.push(&escape_data<bc_table>(Self, cursor));
+            case SCODE::TABLE_START: {
+               stack_table.push(&stream_data<bc_table>(Self, cursor));
                auto table = stack_table.top();
 
                //log.trace("Draw Table: %dx%d,%dx%d", esctable->x, esctable->y, esctable->width, esctable->height);
 
-               if ((!table->Fill.empty()) or (!table->Stroke.empty())) {
+               if ((!table->fill.empty()) or (!table->stroke.empty())) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Self->Page->UID),
-                     fl::X(table->X), fl::Y(table->Y),
-                     fl::Width(table->Width), fl::Height(table->Height)
+                     fl::X(table->x), fl::Y(table->y),
+                     fl::Width(table->width), fl::Height(table->height)
                   });
 
                   Self->LayoutResources.push_back(rect);
 
-                  if (!table->Fill.empty()) {
-                     rect->set(FID_Fill, table->Fill);
+                  if (!table->fill.empty()) {
+                     rect->set(FID_Fill, table->fill);
                   }
 
-                  if (!table->Stroke.empty()) {
-                     rect->set(FID_Stroke, table->Stroke);
-                     rect->set(FID_StrokeWidth, table->Thickness);
+                  if (!table->stroke.empty()) {
+                     rect->set(FID_Stroke, table->stroke);
+                     rect->set(FID_StrokeWidth, table->thickness);
                   }
                }
                break;
             }
 
-            case ESC::TABLE_END:
+            case SCODE::TABLE_END:
                stack_table.pop();
                break;
 
-            case ESC::ROW: {
-               stack_row.push(&escape_data<bc_row>(Self, cursor));
+            case SCODE::ROW: {
+               stack_row.push(&stream_data<bc_row>(Self, cursor));
                auto row = stack_row.top();
                if (!row->Fill.empty()) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Self->Page->UID),
-                     fl::X(stack_table.top()->X), fl::Y(row->Y),
-                     fl::Width(stack_table.top()->Width),
+                     fl::X(stack_table.top()->x), fl::Y(row->Y),
+                     fl::Width(stack_table.top()->width),
                      fl::Height(row->RowHeight),
                      fl::Fill(row->Fill)
                   });
@@ -283,22 +283,22 @@ void layout::gen_scene_graph()
                break;
             }
 
-            case ESC::ROW_END:
+            case SCODE::ROW_END:
                stack_row.pop();
                break;
 
-            case ESC::CELL: {
-               auto &cell = escape_data<bc_cell>(Self, cursor);
+            case SCODE::CELL: {
+               auto &cell = stream_data<bc_cell>(Self, cursor);
 
                #ifdef DBG_LAYOUT
-                  cell.Stroke = "rgb(255,0,0)";
+                  cell.stroke = "rgb(255,0,0)";
                #endif
 
                if ((!cell.Fill.empty()) or (!cell.Stroke.empty())) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Self->Page->UID),
                      fl::X(cell.AbsX), fl::Y(cell.AbsY),
-                     fl::Width(stack_table.top()->Columns[cell.Column].width),
+                     fl::Width(stack_table.top()->columns[cell.Column].width),
                      fl::Height(stack_row.top()->RowHeight)
                   });
 
@@ -316,8 +316,8 @@ void layout::gen_scene_graph()
                break;
             }
 
-            case ESC::LINK: {
-               auto esclink = &escape_data<bc_link>(Self, cursor);
+            case SCODE::LINK: {
+               auto esclink = &stream_data<bc_link>(Self, cursor);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and 
@@ -332,15 +332,15 @@ void layout::gen_scene_graph()
                break;
             }
 
-            case ESC::LINK_END:
+            case SCODE::LINK_END:
                if (tabfocus) {
                   font_fill = link_save_rgb;
                   tabfocus = false;
                }
                break;
 
-            case ESC::IMAGE: {
-               auto &img = escape_data<bc_image>(Self, cursor);
+            case SCODE::IMAGE: {
+               auto &img = stream_data<bc_image>(Self, cursor);
                // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
                // fx for managing the horizontal position amongst the text.
 
@@ -354,13 +354,13 @@ void layout::gen_scene_graph()
                break;
             }
 
-            case ESC::TEXT: { // cursor = segment.start; cursor < segment.trim_stop; cursor.nextCode()
+            case SCODE::TEXT: { // cursor = segment.start; cursor < segment.trim_stop; cursor.nextCode()
                if (!oob) {
-                  auto &txt = escape_data<bc_text>(Self, cursor);
+                  auto &txt = stream_data<bc_text>(Self, cursor);
 
                   std::string str;
-                  if (cursor.Index < segment.trim_stop.Index) str.append(txt.text, cursor.Offset, std::string::npos);
-                  else str.append(txt.text, cursor.Offset, segment.trim_stop.Offset - cursor.Offset);
+                  if (cursor.index < segment.trim_stop.index) str.append(txt.text, cursor.offset, std::string::npos);
+                  else str.append(txt.text, cursor.offset, segment.trim_stop.offset - cursor.offset);
 
                   DOUBLE y = segment.area.Y;
                   if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;

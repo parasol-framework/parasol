@@ -186,7 +186,7 @@
       </input>
       <description>
 <p>Use the FindIndex method to search for indexes that have been declared in a loaded document.  Indexes are declared using the &lt;index/&gt; tag and must be given a unique name.  They are useful for marking areas of interest - such as a section of content that may change during run-time viewing, or as place-markers for rapid scrolling to an exact document position.</p>
-<p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an ESC::INDEX_START code and the end byte will refer to an ESC::INDEX_END code.</p>
+<p>If the named index exists, then the start and end points (as determined by the opening and closing of the index tag) will be returned as byte indexes in the document stream.  The starting byte will refer to an SCODE::INDEX_START code and the end byte will refer to an SCODE::INDEX_END code.</p>
       </description>
       <result>
         <error code="Okay">The index was found and the Start and End parameters reflect its position.</error>
@@ -486,16 +486,6 @@
       <type class="VectorViewport">*VectorViewport</type>
       <description>
 <p>By default, a document object will become active (i.e. capable of receiving keyboard input) when its surface container receives the focus.  If you would like to change this so that a document becomes active when some other object receives the focus, refer to that object by writing its ID to this field.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>Highlight</name>
-      <comment>Defines the fill used to highlight the document.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
-      <description>
-<p>The Highlight field determines the colour that is used when highlighting selected document areas.</p>
       </description>
     </field>
 

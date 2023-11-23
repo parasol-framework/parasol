@@ -195,7 +195,7 @@ class extDocument : public objDocument {
    std::string PageName;           // Page name to load from the Path
    std::string Bookmark;           // Bookmark name processed from the Path
    std::string WorkingPath;        // String storage for the WorkingPath field
-   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill;
+   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    RSTREAM Stream;                 // Internal stream buffer
    OBJECTPTR CurrentObject;
    OBJECTPTR UserDefaultScript;  // Allows the developer to define a custom default script.
@@ -338,12 +338,12 @@ template <class T> T & extDocument::insertCode(stream_char &Cursor, T &Code)
    }
    else Codes[Code.uid] = Code;
 
-   if (Cursor.Index IS INDEX(Stream.size())) {
+   if (Cursor.index IS INDEX(Stream.size())) {
       Stream.emplace_back(Code.code, Code.uid);
    }
    else {
       const stream_code insert(Code.code, Code.uid);
-      Stream.insert(Stream.begin() + Cursor.Index, insert);
+      Stream.insert(Stream.begin() + Cursor.index, insert);
    }
    Cursor.nextCode();
    return std::get<T>(Codes[Code.uid]);
@@ -355,12 +355,12 @@ template <class T> T & extDocument::reserveCode(stream_char &Cursor)
    Codes.emplace(key, T());
    auto &result = std::get<T>(Codes[key]);
 
-   if (Cursor.Index IS INDEX(Stream.size())) {
+   if (Cursor.index IS INDEX(Stream.size())) {
       Stream.emplace_back(result.code, result.uid);
    }
    else {
       const stream_code insert(result.code, result.uid);
-      Stream.insert(Stream.begin() + Cursor.Index, insert);
+      Stream.insert(Stream.begin() + Cursor.index, insert);
    }
    Cursor.nextCode();
    return result;
@@ -368,7 +368,7 @@ template <class T> T & extDocument::reserveCode(stream_char &Cursor)
 
 //********************************************************************************************************************
 
-static const std::string & byteCode(ESC Code) {
+static const std::string & byteCode(SCODE Code) {
    static const std::string strCodes[] = {
       "?", "Text", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Vector", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
@@ -536,12 +536,12 @@ static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); 
 
 static std::vector<font_entry> glFonts;
 
-objFont * bc_font::getFont()
+objFont * bc_font::get_font()
 {
-   if ((FontIndex < INDEX(glFonts.size())) and (FontIndex >= 0)) return glFonts[FontIndex].font;
+   if ((font_index < INDEX(glFonts.size())) and (font_index >= 0)) return glFonts[font_index].font;
    else {
       pf::Log log(__FUNCTION__);
-      log.warning("Bad font index %d.  Max: %d", FontIndex, LONG(glFonts.size()));
+      log.warning("Bad font index %d.  Max: %d", font_index, LONG(glFonts.size()));
       if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
       else return NULL;
    }
@@ -550,12 +550,12 @@ objFont * bc_font::getFont()
 //********************************************************************************************************************
 // For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
 
-template <class T> T & escape_data(extDocument *Self, stream_char Index) {
-   auto &sv = Self->Codes[Self->Stream[Index.Index].uid];
+template <class T> T & stream_data(extDocument *Self, stream_char Index) {
+   auto &sv = Self->Codes[Self->Stream[Index.index].uid];
    return std::get<T>(sv);
 }
 
-template <class T> T & escape_data(extDocument *Self, INDEX Index) {
+template <class T> T & stream_data(extDocument *Self, INDEX Index) {
    auto &sv = Self->Codes[Self->Stream[Index].uid];
    return std::get<T>(sv);
 }
@@ -638,7 +638,7 @@ static ERROR CMDOpen(OBJECTPTR Module)
 inline INDEX find_cell(extDocument *Self, LONG ID)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].code IS ESC::CELL) {
+      if (Self->Stream[i].code IS SCODE::CELL) {
          auto &cell = std::get<bc_cell>(Self->Codes[Self->Stream[i].uid]);
          if ((ID) and (ID IS cell.CellID)) return i;
       }
@@ -650,8 +650,8 @@ inline INDEX find_cell(extDocument *Self, LONG ID)
 inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].code IS ESC::CELL) {
-         auto &cell = escape_data<bc_cell>(Self, i);
+      if (Self->Stream[i].code IS SCODE::CELL) {
+         auto &cell = stream_data<bc_cell>(Self, i);
          if (EditDef == cell.EditDef) return i;
       }
    }
