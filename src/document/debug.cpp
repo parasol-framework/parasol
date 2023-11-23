@@ -82,7 +82,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       }
       else if (code IS ESC::PARAGRAPH_START) {
          auto para = &escape_data<bcParagraph>(Self, i);
-         if (para->ListItem) out << "[PS:LI]";
+         if (para->list_item) out << "[PS:LI]";
          else out << "[PS]";
       }
       else if (code IS ESC::PARAGRAPH_END) {

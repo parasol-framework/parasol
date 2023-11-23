@@ -340,6 +340,7 @@ WRAP layout::procText(LONG AbsX)
 
    m_align_width = m_wrap_edge; // TODO: Not sure about this following the switch to embedded TEXT structures
 
+   auto ascent = m_font->Ascent;
    auto &text = escape_data<bcText>(Self, idx);
    auto &str = text.Text;
    for (unsigned i=0; i < str.size(); ) {
@@ -401,6 +402,8 @@ WRAP layout::procText(LONG AbsX)
          m_word_width  += kerning;
          m_kernchar     = unicode;
          m_text_content = true;
+
+         if (ascent > m_line.word_height) m_line.word_height = ascent;
       }
    }
 
