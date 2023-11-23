@@ -1230,16 +1230,16 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_href:
-            if (link.Type IS LINK::NIL) {
-               link.Ref = Tag.Attribs[i].Value;
-               link.Type = LINK::HREF;
+            if (link.type IS LINK::NIL) {
+               link.ref = Tag.Attribs[i].Value;
+               link.type = LINK::HREF;
             }
             break;
 
          case HASH_onclick:
-            if (link.Type IS LINK::NIL) { // Function to execute on click
-               link.Ref = Tag.Attribs[i].Value;
-               link.Type = LINK::FUNCTION;
+            if (link.type IS LINK::NIL) { // Function to execute on click
+               link.ref = Tag.Attribs[i].Value;
+               link.type = LINK::FUNCTION;
             }
             break;
 
@@ -1260,24 +1260,24 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          case HASH_select: select = true; break;
 
          default:
-            if (Tag.Attribs[i].Name.starts_with('@')) link.Args.push_back(make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
-            else if (Tag.Attribs[i].Name.starts_with('_')) link.Args.push_back(make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
+            if (Tag.Attribs[i].Name.starts_with('@')) link.args.push_back(make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
+            else if (Tag.Attribs[i].Name.starts_with('_')) link.args.push_back(make_pair(Tag.Attribs[i].Name, Tag.Attribs[i].Value));
             else log.warning("<a|link> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
       }
    }
 
    std::ostringstream buffer;
 
-   if ((link.Type != LINK::NIL) or (!Tag.Children.empty())) {
-      link.ID    = ++Self->LinkID;
-      link.Align = Self->Style.font_style.options;
+   if ((link.type != LINK::NIL) or (!Tag.Children.empty())) {
+      link.id    = ++Self->LinkID;
+      link.align = Self->Style.font_style.options;
 
       auto pos = sizeof(link);
-      if (link.Type IS LINK::FUNCTION) buffer << link.Ref << '\0';
-      else buffer << link.Ref << '\0';
+      if (link.type IS LINK::FUNCTION) buffer << link.ref << '\0';
+      else buffer << link.ref << '\0';
 
       if (!pointermotion.empty()) {
-         link.PointerMotion = pos;
+         link.pointer_motion = pos;
          buffer << pointermotion << '\0';
       }
 
@@ -1306,7 +1306,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       // Links are added to the list of tab-able points
 
-      auto i = add_tabfocus(Self, TT_LINK, link.ID);
+      auto i = add_tabfocus(Self, TT_LINK, link.id);
       if (select) Self->FocusIndex = i;
    }
    else parse_tags(Self, XML, Tag.Children, Index, Flags & (~IPF::FILTER_ALL));

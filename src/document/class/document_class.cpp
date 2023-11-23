@@ -66,7 +66,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
       if (Self->Tabs[Self->FocusIndex].type IS TT_LINK) {
          for (auto &link : Self->Links) {
             if (link.base_code IS SCODE::LINK) {
-               if (link.as_link()->ID IS Self->Tabs[Self->FocusIndex].ref) {
+               if (link.as_link()->id IS Self->Tabs[Self->FocusIndex].ref) {
                   Self->Page->draw();
                   break;
                }
@@ -845,7 +845,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                }
                else if (code IS SCODE::LINK) {
                   auto &esclink = stream_data<bc_link>(Self, i);
-                  if ((tab = find_tabfocus(Self, TT_LINK, esclink.ID)) >= 0) {
+                  if ((tab = find_tabfocus(Self, TT_LINK, esclink.id)) >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
@@ -1407,7 +1407,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                   }
                }
                else if (code IS SCODE::LINK) {
-                  if (auto tab = find_tabfocus(Self, TT_LINK, stream_data<bc_link>(Self, i).ID); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT_LINK, stream_data<bc_link>(Self, i).id); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }

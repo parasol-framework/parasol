@@ -1613,19 +1613,19 @@ void doc_link::exec(extDocument *Self)
       link_activated params;
       auto link = as_link();
 
-      if (link->Type IS LINK::FUNCTION) {
+      if (link->type IS LINK::FUNCTION) {
          std::string function_name, args;
-         if (!extract_script(Self, link->Ref, NULL, function_name, args)) {
+         if (!extract_script(Self, link->ref, NULL, function_name, args)) {
             params.Values["onclick"] = function_name;
          }
       }
-      else if (link->Type IS LINK::HREF) {
-         params.Values["href"] = link->Ref;
+      else if (link->type IS LINK::HREF) {
+         params.Values["href"] = link->ref;
       }
 
-      if (!link->Args.empty()) {
-         for (unsigned i=0; i < link->Args.size(); i++) {
-            params.Values[link->Args[i].first] = link->Args[i].second;
+      if (!link->args.empty()) {
+         for (unsigned i=0; i < link->args.size(); i++) {
+            params.Values[link->args[i].first] = link->args[i].second;
          }
       }
 
@@ -1639,12 +1639,12 @@ void doc_link::exec(extDocument *Self)
       CLASSID class_id, subclass_id;
 
       auto link = as_link();
-      if (link->Type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
-         if (!extract_script(Self, link->Ref, &script, function_name, fargs)) {
+      if (link->type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
+         if (!extract_script(Self, link->ref, &script, function_name, fargs)) {
             std::vector<ScriptArg> args;
 
-            if (!link->Args.empty()) {
-               for (auto &arg : link->Args) {
+            if (!link->args.empty()) {
+               for (auto &arg : link->args) {
                   if (arg.first.starts_with('_')) { // Global variable setting
                      acSetVar(script, arg.first.c_str()+1, arg.second.c_str());
                   }
@@ -1655,24 +1655,24 @@ void doc_link::exec(extDocument *Self)
             scExec(script, function_name.c_str(), args.data(), args.size());
          }
       }
-      else if (link->Type IS LINK::HREF) {
-         if (link->Ref[0] IS ':') {
-            Self->Bookmark = link->Ref.substr(1);
+      else if (link->type IS LINK::HREF) {
+         if (link->ref[0] IS ':') {
+            Self->Bookmark = link->ref.substr(1);
             show_bookmark(Self, Self->Bookmark);
          }
          else {
-            if ((link->Ref[0] IS '#') or (link->Ref[0] IS '?')) {
-               log.trace("Switching to page '%s'", link->Ref.c_str());
+            if ((link->ref[0] IS '#') or (link->ref[0] IS '?')) {
+               log.trace("Switching to page '%s'", link->ref.c_str());
 
                if (!Self->Path.empty()) {
                   LONG end;
                   for (end=0; Self->Path[end]; end++) {
                      if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
                   }
-                  auto path = std::string(Self->Path, end) + link->Ref;
+                  auto path = std::string(Self->Path, end) + link->ref;
                   Self->set(FID_Path, path);
                }
-               else Self->set(FID_Path, link->Ref);
+               else Self->set(FID_Path, link->ref);
 
                if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);
             }
@@ -1682,15 +1682,15 @@ void doc_link::exec(extDocument *Self)
                std::string path;
 
                if (!Self->Path.empty()) {
-                  auto j = link->Ref.find_first_of("/\\:");
-                  if ((j IS std::string::npos) or (link->Ref[j] != ':')) {
+                  auto j = link->ref.find_first_of("/\\:");
+                  if ((j IS std::string::npos) or (link->ref[j] != ':')) {
                      auto end = Self->Path.find_first_of("&#?");
                      if (end IS std::string::npos) path.assign(Self->Path);
                      else path.assign(Self->Path, 0, Self->Path.find_last_of("/\\", end) + 1);
                   }
                }
 
-               auto lk = path + link->Ref;
+               auto lk = path + link->ref;
                auto end = lk.find_first_of("?#&");
                if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
                   if (class_id IS ID_DOCUMENT) {

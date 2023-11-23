@@ -563,14 +563,14 @@ struct bc_index_end : public base_code {
 };
 
 struct bc_link : public base_code {
-   LINK  Type;    // Link type (either a function or hyperlink)
-   UWORD ID;
-   FSO   Align;
-   std::string PointerMotion; // function to call for pointer motion events
-   std::string Ref; // function name or a path, depending on Type
-   std::vector<std::pair<std::string,std::string>> Args;
+   LINK  type;    // Link type (either a function or hyperlink)
+   UWORD id;
+   FSO   align;
+   std::string pointer_motion; // function to call for pointer motion events
+   std::string ref; // function name or a path, depending on Type
+   std::vector<std::pair<std::string,std::string>> args;
 
-   bc_link() : Type(LINK::NIL), ID(0), Align(FSO::NIL) { code = SCODE::LINK; }
+   bc_link() : type(LINK::NIL), id(0), align(FSO::NIL) { code = SCODE::LINK; }
 };
 
 struct bc_link_end : public base_code {
@@ -614,7 +614,7 @@ struct bc_list : public base_code {
    LONG   block_indent = BULLET_WIDTH; // Indentation for each set of items
    LONG   item_num     = 0;
    LONG   order_insert = 0;
-   DOUBLE vspacing    = 0.5;           // Spacing between list items, expressed as a ratio
+   DOUBLE vspacing     = 0.5;           // Spacing between list items, expressed as a ratio
    UBYTE  type         = BULLET;
    bool   repass       = false;
 

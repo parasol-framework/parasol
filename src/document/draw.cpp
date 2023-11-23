@@ -321,7 +321,7 @@ void layout::gen_scene_graph()
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and 
-                      (Self->Tabs[Self->FocusIndex].ref IS esclink->ID) and 
+                      (Self->Tabs[Self->FocusIndex].ref IS esclink->id) and 
                       (Self->Tabs[Self->FocusIndex].active)) {
                      link_save_rgb = font_fill;
                      font_fill = Self->LinkSelectFill;

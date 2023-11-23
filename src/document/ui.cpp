@@ -231,7 +231,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
             if ((Self->Tabs[tab].type IS TT_LINK) and (Self->Tabs[tab].active)) {
                for (auto &link : Self->Links) {
-                  if ((link.base_code IS SCODE::LINK) and (link.as_link()->ID IS Self->Tabs[tab].ref)) {
+                  if ((link.base_code IS SCODE::LINK) and (link.as_link()->id IS Self->Tabs[tab].ref)) {
                      link.exec(Self);
                      break;
                   }
@@ -757,18 +757,18 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                Self->CursorSet = true;
             }
 
-            if ((Self->Links[i].base_code IS SCODE::LINK) and (!Self->Links[i].as_link()->PointerMotion.empty())) {
+            if ((Self->Links[i].base_code IS SCODE::LINK) and (!Self->Links[i].as_link()->pointer_motion.empty())) {
                auto mo = Self->MouseOverChain.emplace(Self->MouseOverChain.begin(),
-                  Self->Links[i].as_link()->PointerMotion,
+                  Self->Links[i].as_link()->pointer_motion,
                   Self->Links[i].y,
                   Self->Links[i].x,
                   Self->Links[i].y + Self->Links[i].height,
                   Self->Links[i].x + Self->Links[i].width,
-                  Self->Links[i].as_link()->ID);
+                  Self->Links[i].as_link()->id);
 
                OBJECTPTR script;
                std::string argstring, func_name;
-               if (!extract_script(Self, Self->Links[i].as_link()->PointerMotion, &script, func_name, argstring)) {
+               if (!extract_script(Self, Self->Links[i].as_link()->pointer_motion, &script, func_name, argstring)) {
                   const ScriptArg args[] = { { "Element", mo->element_id }, { "Status", 1 }, { "Args", argstring } };
                   scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
                }
@@ -945,14 +945,14 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    else if (Self->Tabs[Index].type IS TT_LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          for (unsigned i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].base_code IS SCODE::LINK) and (Self->Links[i].as_link()->ID IS Self->Tabs[Index].ref)) {
+            if ((Self->Links[i].base_code IS SCODE::LINK) and (Self->Links[i].as_link()->id IS Self->Tabs[Index].ref)) {
                auto link_x = Self->Links[i].x;
                auto link_y = Self->Links[i].y;
                auto link_bottom = link_y + Self->Links[i].height;
                auto link_right  = link_x + Self->Links[i].width;
 
                for (++i; i < Self->Links.size(); i++) {
-                  if (Self->Links[i].as_link()->ID IS Self->Tabs[Index].ref) {
+                  if (Self->Links[i].as_link()->id IS Self->Tabs[Index].ref) {
                      if (Self->Links[i].y + Self->Links[i].height > link_bottom) link_bottom = Self->Links[i].y + Self->Links[i].height;
                      if (Self->Links[i].x + Self->Links[i].width > link_right) link_right = Self->Links[i].x + Self->Links[i].width;
                   }

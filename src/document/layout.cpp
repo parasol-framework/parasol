@@ -1837,12 +1837,12 @@ static void layout_doc(extDocument *Self)
          if (link.base_code != SCODE::LINK) continue;
 
          auto esclink = std::get<bc_link *>(link.ref);
-         if ((esclink->Align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
+         if ((esclink->align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
             auto &segment = l.m_segments[link.segment];
-            if ((esclink->Align & FSO::ALIGN_RIGHT) != FSO::NIL) {
+            if ((esclink->align & FSO::ALIGN_RIGHT) != FSO::NIL) {
                link.x = segment.area.X + segment.align_width - link.width;
             }
-            else if ((esclink->Align & FSO::ALIGN_CENTER) != FSO::NIL) {
+            else if ((esclink->align & FSO::ALIGN_CENTER) != FSO::NIL) {
                link.x = link.x + ((segment.align_width - link.width) / 2);
             }
          }
