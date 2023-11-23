@@ -1757,7 +1757,7 @@ static void layout_doc(extDocument *Self)
    // of the page.
 
    #ifdef DBG_LAYOUT
-      log.branch("Area: %dx%d,%dx%d Visible: %d ----------", Self->AreaX, Self->AreaY, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
+      log.branch("Area: %dx%d,%dx%d Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
    #endif
 
    Self->BreakLoop = MAXLOOP;
@@ -2595,7 +2595,7 @@ restart:
       if (clip.Left < m_align_width) m_align_width = clip.Left;
 
       DWRAP("Word: \"%.20s\" (%dx%d,%dx%d) advances over clip %d-%d",
-         printable(Self, vs).c_str(), X, Y, Width, Height, clip.Left, clip.Right);
+         printable(Self, WordIndex).c_str(), X, Y, Width, Height, clip.Left, clip.Right);
 
       // Set the line segment up to the encountered boundary and continue checking the vector position against the
       // clipping boundaries.

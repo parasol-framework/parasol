@@ -11,8 +11,6 @@
 
 <p>This text is <b><i>bold italicised</i></b> and this is not.</p>
 
-<p>This text is <caps>all in caps despite being written in lowercase</caps> but this text is not.</p>
-
 <p>This text <font face="courier" colour="red" style="italic" size="20">changes the font to italicised 20pt Courier mid-sentence</font> and then returns to the previous font.  Check that the word-wrapping of this paragraph correctly manages vertical line spacing when the Courier font wraps to the second line.  Both fonts must share the same base-line for their text.</p>
 
 <p>As above, but this time the font change applies to <font face="courier" colour="red" style="italic" size="20">a_single_word</font>.  The purpose of this test is to check vertical line spacing is correct on word wrap.</p>

@@ -17,9 +17,9 @@ The document stream consists of byte code structures that indicate font style, p
 
 PARAGRAPH MANAGEMENT
 --------------------
-When document text is drawn, we maintain a 'line list' where the index of each line is recorded (see font_wrap()).
-This allows us to do things like Ctrl-K to delete a 'line'. It also allows us to remember the pixel width and height
-of each line, which is important for highlighting selected text.
+Drawing the document starts with a layout process that reads the document stream and generates line segments
+that declare the target area and content.  These segments have a dual purpose in that they are also used for user 
+interaction.
 
 GRAPHICAL OBJECT LAYOUT RULES
 -----------------------------
@@ -456,7 +456,7 @@ inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
    return read_rgb8(Value.c_str(), RGB);
 }
 
-static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_cache, tag_call, tag_caps, tag_cell;
+static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_cache, tag_call, tag_cell;
 static TAGROUTINE tag_debug, tag_div, tag_editdef, tag_focus, tag_font, tag_footer, tag_head, tag_header, tag_image;
 static TAGROUTINE tag_include, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
 static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_restorestyle, tag_row, tag_savestyle;
@@ -473,7 +473,6 @@ static std::map<ULONG, tagroutine> glTags = {
    { HASH_a,             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
    { HASH_link,          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
    { HASH_b,             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_caps,          { tag_caps,         TAG::CHILDREN|TAG::CONTENT } },
    { HASH_div,           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
    { HASH_p,             { tag_paragraph,    TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
    { HASH_font,          { tag_font,         TAG::CHILDREN|TAG::CONTENT } },

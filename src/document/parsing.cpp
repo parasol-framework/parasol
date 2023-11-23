@@ -778,20 +778,6 @@ static void tag_call(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
 //********************************************************************************************************************
 
-static void tag_caps(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
-{
-   if ((Self->Style.FontStyle.Options & FSO::CAPS) IS FSO::NIL) {
-      auto savestatus = Self->Style;
-      Self->Style.StyleChange = true;
-      Self->Style.FontStyle.Options |= FSO::CAPS;
-      parse_tags(Self, XML, Tag.Children, Index);
-      saved_style_check(Self, savestatus);
-   }
-   else parse_tags(Self, XML, Tag.Children, Index, Flags);
-}
-
-//********************************************************************************************************************
-
 static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, StreamChar &Index, IPF Flags)
 {
    pf::Log log("DocMsg");

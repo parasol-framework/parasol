@@ -160,8 +160,7 @@ void layout::gen_scene_graph()
       #endif
 
       auto fx = segment.Area.X;
-      bool caps = false;
-      for (auto cursor = segment.Start; cursor < segment.TrimStop; cursor.nextCode()) {
+      for (auto cursor = segment.Start; cursor < segment.Stop; cursor.nextCode()) {
          switch (Self->Stream[cursor.Index].Code) {
             case ESC::FONT: {
                auto &style = escape_data<bcFont>(Self, cursor);
@@ -181,8 +180,6 @@ void layout::gen_scene_graph()
 
                   if ((style.Options & FSO::UNDERLINE) != FSO::NIL) new_font->Underline = new_font->Colour;
                   else new_font->Underline.Alpha = 0;
-
-                  caps = (style.Options & FSO::CAPS) != FSO::NIL;
 
                   font = new_font;
                }
@@ -370,8 +367,6 @@ void layout::gen_scene_graph()
                      y += avail_space - ((avail_space - font->Ascent) * 0.5);
                   }
                   else y += segment.Area.Height - segment.Gutter;
-
-                  if (caps) std::transform(str.begin(), str.end(), str.begin(), ::toupper);
 
                   if (!str.empty()) {
                      auto text = objVectorText::create::global({

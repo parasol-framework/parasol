@@ -48,16 +48,15 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     "BOTTOM: Bottom border edge.")
 
   flags("FSO", { comment="These are document style flags, as used in the DocStyle structure" },
-    "BOLD",
-    "ITALIC",
-    "UNDERLINE",
+    "BOLD: Enable bold styling.",
+    "ITALIC: Enable italic styling.",
+    "UNDERLINE: Draw a line under the text.",
     "PREFORMAT: All white-space is taken into account.",
-    "CAPS: Print all text in caps.",
-    "ALIGN_RIGHT",
-    "ALIGN_CENTER",
+    "ALIGN_RIGHT: Align to the right.",
+    "ALIGN_CENTER: Align to the left.",
     "IN_LINE: Keep non-glyph graphics inline with the text.",
     "NO_WRAP: Do not wrap the text.",
-    { STYLES = "BOLD|UNDERLINE|ITALIC|CAPS" })
+    { STYLES = "BOLD|UNDERLINE|ITALIC" })
 
   methods("Document", "doc", {
     { id=1,  name="FeedParser" },
