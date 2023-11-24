@@ -70,7 +70,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
 
    bool printpos = false;
    for (INDEX i=0; i < INDEX(Stream.size()); i++) {
-      auto code = Stream[i].Code;
+      auto code = Stream[i].code;
       if (code IS SCODE::FONT) {
          auto style = &stream_data<bc_font>(Self, i);
          out << "[Font";
@@ -88,7 +88,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       else if (code IS SCODE::PARAGRAPH_END) {
          out << "[PE]\n";
       }
-      else out << "[" << byteCode(code) << "]";
+      else out << "[" << byte_code(code) << "]";
 
       printpos = true;
    }

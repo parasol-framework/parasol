@@ -113,7 +113,7 @@ struct layout {
    void add_esc_segment() {
       stream_char start(idx, 0);
       stream_char stop(idx + 1, 0);
-      add_drawsegment(start, stop, m_cursor_y, 0, 0, BC_NAME(Self->Stream, idx));
+      new_segment(start, stop, m_cursor_y, 0, 0, BC_NAME(Self->Stream, idx));
       reset_segment(idx+1, m_cursor_x);
    }
 
@@ -184,7 +184,7 @@ struct layout {
 
    void terminate_link();
    void add_link(SCODE, std::variant<bc_link *, bc_cell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
-   void add_drawsegment(stream_char, stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
+   void new_segment(stream_char, stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void end_line(NL, DOUBLE, stream_char, const std::string &);
    WRAP check_wordwrap(const std::string &, LONG, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, LONG, LONG);
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, LONG, LONG);
@@ -1580,7 +1580,7 @@ void layout::procSetMargins(LONG AbsY, LONG &BottomMargin)
 // This function creates segments, which are used during the drawing process as well as user interactivity, e.g. to
 // determine the character that the mouse is positioned over.
 
-void layout::add_drawsegment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth, const std::string &Debug)
+void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth, const std::string &Debug)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1643,8 +1643,8 @@ void layout::add_drawsegment(stream_char Start, stream_char Stop, DOUBLE Y, DOUB
 
 #ifdef DBG_STREAM
    log.branch("#%d %d:%d - %d:%d, Area: %.0fx%.0f,%.0f:%.0fx%.0f, WordWidth: %d [%.20s]...[%.20s] (%s)",
-      LONG(m_segments.size()), start.index, LONG(start.offset), Stop.index, LONG(Stop.offset), m_line.x, y, width,
-      AlignWidth, line_height, m_word_width, printable(Self, start).c_str(),
+      LONG(m_segments.size()), Start.index, LONG(Start.offset), Stop.index, LONG(Stop.offset), m_line.x, Y, Width,
+      AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
 #endif
 
@@ -1757,7 +1757,7 @@ static void layout_doc(extDocument *Self)
    // of the page.
 
    #ifdef DBG_LAYOUT
-      log.branch("Area: %dx%d,%dx%d Visible: %d ----------", Self->Area.x, Self->Area.y, Self->Area.width, Self->Area.height, Self->VScrollVisible);
+      log.branch("Area: %dx%d,%dx%d Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
    #endif
 
    Self->BreakLoop = MAXLOOP;
@@ -1946,8 +1946,8 @@ INDEX layout::do_layout(INDEX Offset, INDEX End, objFont **Font, LONG AbsX, LONG
 
    #ifdef DBG_LAYOUT
    log.branch("Dimensions: %dx%d,%.0fx%.0f (edge %.0f), LM %d RM %d TM %d BM %d",
-      AbsX, AbsY, m_page_width, page_height, AbsX + m_page_width - margins.right,
-      margins.left, margins.right, margins.top, margins.bottom);
+      AbsX, AbsY, m_page_width, page_height, AbsX + m_page_width - Margins.Right,
+      Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
 
    Self->Depth++;
@@ -1999,7 +1999,7 @@ extend_page:
                BC_NAME(Self->Stream,idx).c_str(), m_line.index.index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             stream_char sc(idx,0);
-            add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
+            new_segment(m_line.index, sc, m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
             reset_segment();
             m_align_width = m_wrap_edge;
          }
@@ -2238,7 +2238,7 @@ repass_row_height_ext:
 
             stream_char start(idx, 0);
             stream_char stop(idx + 1, 0);
-            add_drawsegment(start, stop, m_cursor_y, 0, 0, "Cell");
+            new_segment(start, stop, m_cursor_y, 0, 0, "Cell");
 
             // Set the AbsX location of the cel  AbsX determines the true location of the cell for do_layout()
 
@@ -2445,7 +2445,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
 
    if (idx > m_line.index.index) {
       stream_char sc(idx, 0);
-      add_drawsegment(m_line.index, sc, m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "Esc:EndLine");
+      new_segment(m_line.index, sc, m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "Esc:EndLine");
    }
 
    if (NewLine != NL::NONE) {
@@ -2537,7 +2537,7 @@ restart:
       // in the first iteration.
 
       if (m_line.index < Cursor) {
-         add_drawsegment(m_line.index, Cursor, Y, X - m_line.x, m_align_width - m_line.x, "DoWrap");
+         new_segment(m_line.index, Cursor, Y, X - m_line.x, m_align_width - m_line.x, "DoWrap");
          m_line.index = Cursor;
       }
 
@@ -2628,8 +2628,8 @@ restart:
       }
 
       if (m_line.index < WordIndex) {
-         if (!m_line.height) add_drawsegment(m_line.index, WordIndex, Y, X - m_line.x, X - m_line.x, "Wrap:EmptyLine");
-         else add_drawsegment(m_line.index, WordIndex, Y, X + Width - m_line.x, m_align_width - m_line.x, "Wrap");
+         if (!m_line.height) new_segment(m_line.index, WordIndex, Y, X - m_line.x, X - m_line.x, "Wrap:EmptyLine");
+         else new_segment(m_line.index, WordIndex, Y, X + Width - m_line.x, m_align_width - m_line.x, "Wrap");
       }
 
       DWRAP("Line index reset to %d, previously %d", WordIndex.index, m_line.index.index);

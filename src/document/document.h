@@ -441,7 +441,7 @@ struct style_status {
 };
 
 //********************************************************************************************************************
-// Refer to layout::add_drawsegment().  A segment represents graphical content, which can be in the form of text,
+// Refer to layout::new_segment().  A segment represents graphical content, which can be in the form of text,
 // graphics or both.  A segment can consist of one line only - so if the layout process encounters a boundary causing
 // wordwrap then a new segment must be created.
 
