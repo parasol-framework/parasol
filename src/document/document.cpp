@@ -144,7 +144,7 @@ static const LONG MAX_PAGEWIDTH    = 200000;
 static const LONG MAX_PAGEHEIGHT   = 200000;
 static const LONG MIN_PAGE_WIDTH   = 20;
 static const LONG MAX_DEPTH        = 1000;  // Limits the number of tables-within-tables
-static const LONG BULLET_WIDTH     = 14;    // Minimum column width for bullet point lists
+static const LONG BULLET_INDENT    = 14;    // Minimum indentation for bullet point lists
 static const LONG BORDER_SIZE      = 1;
 static const LONG WIDTH_LIMIT      = 4000;
 static const LONG LINE_HEIGHT      = 16;    // Default line height (measured as an average) for the page
@@ -177,108 +177,7 @@ static OBJECTPTR modDisplay = NULL, modFont = NULL, modDocument = NULL, modVecto
 
 //********************************************************************************************************************
 
-class extDocument : public objDocument {
-   public:
-   FUNCTION EventCallback;
-   objXML *XML;             // Source XML document
-   objXML *InsertXML;       // For temporary XML parsing by the InsertXML method
-   objXML *Templates;       // All templates for the current document are stored here
-   objXML *InjectXML;
-   objXML::TAGS *InjectTag;
-   objXML::TAGS *HeaderTag;
-   objXML::TAGS *FooterTag;
-   objXML::TAGS *BodyTag; // Reference to the children of the body tag, if any
-   XMLTag *PageTag;
-   std::unordered_map<std::string, std::string> Vars;
-   std::unordered_map<std::string, std::string> Params;
-   std::string Path;               // Optional file to load on Init()
-   std::string PageName;           // Page name to load from the Path
-   std::string Bookmark;           // Bookmark name processed from the Path
-   std::string WorkingPath;        // String storage for the WorkingPath field
-   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
-   RSTREAM Stream;                 // Internal stream buffer
-   OBJECTPTR CurrentObject;
-   OBJECTPTR UserDefaultScript;  // Allows the developer to define a custom default script.
-   OBJECTPTR DefaultScript;
-   style_status Style;
-   style_status RestoreStyle;
-   std::vector<doc_segment> Segments;
-   std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
-   std::vector<doc_clip> Clips;
-   std::vector<doc_link> Links;
-   std::vector<mouse_over> MouseOverChain;
-   std::vector<docresource> Resources; // Tracks resources that are page related.  Terminated on page unload.
-   std::vector<tab> Tabs;
-   std::vector<edit_cell> EditCells;
-   std::vector<OBJECTPTR> LayoutResources;
-   std::unordered_map<std::string, doc_edit> EditDefs;
-   std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
-      bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_vector, bc_set_margins, bc_xml, bc_image>> Codes;
-   std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
-   std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
-   std::string FontFace;      // Default font face
-   doc_edit *ActiveEditDef;    // As for ActiveEditCell, but refers to the active editing definition
-   stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
-   stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
-   stream_char SelectIndex;    // The end of the selected text area, if text is selected.
-   DOUBLE VPWidth, VPHeight;
-   DOUBLE FontSize;
-   LONG   UniqueID;          // Use for generating unique/incrementing ID's, e.g. cell ID
-   objVectorScene *Scene;    // A document specific scene is required to keep our resources away from the host
-   objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
-   objVectorViewport *Page;  // Page viewport - this holds the graphics content
-   DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
-   DOUBLE PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
-   DOUBLE LeftMargin, TopMargin, RightMargin, BottomMargin;
-   LONG   LinkIndex;         // Currently selected link (mouse over)
-   LONG   CalcWidth;         // Final page width calculated from the layout process
-   LONG   LoopIndex;
-   LONG   ElementCounter;       // Counter for element ID's
-   DOUBLE XPosition, YPosition; // Scrolling offset
-   FloatRect Area;              // Available space in the viewport for hosting the document
-   DOUBLE ClickX, ClickY;
-   LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.
-   LONG   TemplatesModified;  // Track modifications to Self->Templates
-   LONG   BreakLoop;
-   LONG   GeneratedID;        // Unique ID that is regenerated on each load/refresh
-   SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
-   SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
-   DOUBLE SelectCharX;        // The x coordinate of the SelectIndex character
-   DOUBLE CursorCharX;        // The x coordinate of the CursorIndex character
-   DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
-   TIMER  FlashTimer;         // For flashing the cursor
-   LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
-   ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
-   UWORD  Depth;              // Section depth - increases when do_layout() recurses, e.g. into tables
-   UWORD  ParagraphDepth;     // Incremented when inside <p> tags
-   UWORD  LinkID;             // Unique counter for links
-   WORD   FocusIndex;         // Tab focus index
-   WORD   Invisible;          // Incremented for sections within a hidden index
-   UBYTE  Processing;         // If > 0, the page layout is being altered
-   UBYTE  InTemplate;
-   UBYTE  BkgdGfx;
-   UBYTE  State:3;
-   bool   RelPageWidth;     // Relative page width
-   bool   UpdatingLayout;   // True if the page layout is in the process of being updated
-   bool   VScrollVisible;   // True if the vertical scrollbar is visible to the user
-   bool   MouseInPage;      // True if the mouse cursor is in the page area
-   bool   PageProcessed;    // True if the parsing of page content has been completed
-   bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
-   bool   HasFocus;         // True if the main viewport has the focus
-   bool   CursorSet;        // True if the mouse cursor image has been altered from the default
-   bool   LMB;              // True if the LMB is depressed.
-   bool   EditMode;
-   bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
-
-   template <class T = base_code> T & insertCode(stream_char &, T &);
-   template <class T = base_code> T & reserveCode(stream_char &);
-   std::vector<sorted_segment> & getSortedSegments();
-};
-
-//********************************************************************************************************************
-
-std::vector<sorted_segment> & extDocument::getSortedSegments()
+std::vector<sorted_segment> & extDocument::get_sorted_segments()
 {
    if ((!SortSegments.empty()) or (Segments.empty())) return SortSegments;
 
@@ -326,7 +225,7 @@ std::vector<sorted_segment> & extDocument::getSortedSegments()
 //********************************************************************************************************************
 // Inserts a byte code sequence into the text stream.
 
-template <class T> T & extDocument::insertCode(stream_char &Cursor, T &Code)
+template <class T> T & extDocument::insert_code(stream_char &Cursor, T &Code)
 {
    // All byte codes are saved to a global container.
 
@@ -349,7 +248,7 @@ template <class T> T & extDocument::insertCode(stream_char &Cursor, T &Code)
    return std::get<T>(Codes[Code.uid]);
 }
 
-template <class T> T & extDocument::reserveCode(stream_char &Cursor)
+template <class T> T & extDocument::reserve_code(stream_char &Cursor)
 {
    auto key = glByteCodeID;
    Codes.emplace(key, T());
@@ -368,7 +267,7 @@ template <class T> T & extDocument::reserveCode(stream_char &Cursor)
 
 //********************************************************************************************************************
 
-static const std::string & byteCode(SCODE Code) {
+static const std::string & byte_code(SCODE Code) {
    static const std::string strCodes[] = {
       "?", "Text", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Vector", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
@@ -389,7 +288,6 @@ struct layout; // Pre-def
 static ERROR activate_cell_edit(extDocument *, LONG, stream_char);
 static ERROR add_document_class(void);
 static LONG  add_tabfocus(extDocument *, UBYTE, LONG);
-static void  add_template(extDocument *, objXML *, XMLTag &);
 static void  advance_tabfocus(extDocument *, BYTE);
 static void  check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
 static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
@@ -422,14 +320,14 @@ static void  notify_enable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height);
+static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 static TRF   parse_tag(extDocument *, objXML *, XMLTag &, stream_char &, IPF &);
 static TRF   parse_tags(extDocument *, objXML *, objXML::TAGS &, stream_char &, IPF = IPF::NIL);
 static void  print_xmltree(objXML::TAGS &, LONG &);
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
-static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative);
+static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
 static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
 static void  reset_cursor(extDocument *);
@@ -444,8 +342,8 @@ static void  tag_xml_content(extDocument *, objXML *, XMLTag &, PXF);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
 static bool  valid_objectid(extDocument *, OBJECTID);
-static BYTE  view_area(extDocument *, LONG Left, LONG Top, LONG Right, LONG Bottom);
-static std::string write_calc(DOUBLE Value, WORD Precision);
+static BYTE  view_area(extDocument *, LONG, LONG, LONG, LONG);
+static std::string write_calc(DOUBLE, WORD);
 
 inline void print_xmltree(objXML::TAGS &Tags) {
    LONG indent = 0;
@@ -485,8 +383,6 @@ static std::map<ULONG, tagroutine> glTags = {
    { HASH_br,            { tag_br,           TAG::CONTENT } },
    { HASH_image,         { tag_image,        TAG::CONTENT } },
    // Conditional command tags
-   { HASH_else,          { NULL,             TAG::CONDITIONAL } },
-   { HASH_elseif,        { NULL,             TAG::CONDITIONAL } },
    { HASH_repeat,        { tag_repeat,       TAG::CHILDREN|TAG::CONDITIONAL } },
    // Special instructions
    { HASH_cache,         { tag_cache,        TAG::INSTRUCTION } },
@@ -563,7 +459,7 @@ template <class T> T & stream_data(extDocument *Self, INDEX Index) {
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
 template <class T> inline const std::string & BC_NAME(RSTREAM &Stream, T Index) {
-   return byteCode(Stream[Index].code);
+   return byte_code(Stream[Index].code);
 }
 
 //********************************************************************************************************************
@@ -571,25 +467,25 @@ template <class T> inline const std::string & BC_NAME(RSTREAM &Stream, T Index) 
 // with references to the content that will be injected to the template.  Injection typically occurs when the client
 // uses the <inject/> tag.
 
-class initTemplate {
-   extDocument  *Self;
-   objXML::TAGS *Tags;
-   objXML       *XML;
+class init_template {
+   extDocument  *self;
+   objXML::TAGS *tags;
+   objXML       *xml;
 
    public:
-   initTemplate(extDocument *pSelf, objXML::TAGS &pTag, objXML *pXML) {
-      Self = pSelf;
-      Tags = Self->InjectTag;
-      XML  = Self->InjectXML;
-      Self->InjectTag = &pTag;
-      Self->InjectXML = pXML;
-      Self->InTemplate++;
+   init_template(extDocument *pSelf, objXML::TAGS &pTag, objXML *pXML) {
+      self = pSelf;
+      tags = pSelf->InjectTag;
+      xml  = pSelf->InjectXML;
+      pSelf->InjectTag = &pTag;
+      pSelf->InjectXML = pXML;
+      pSelf->InTemplate++;
    }
 
-   ~initTemplate() {
-      Self->InTemplate--;
-      Self->InjectTag = Tags;
-      Self->InjectXML = XML;
+   ~init_template() {
+      self->InTemplate--;
+      self->InjectTag = tags;
+      self->InjectXML = xml;
    }
 };
 

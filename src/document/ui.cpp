@@ -572,7 +572,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          log.warning("Analysing cell area %d - %d", cell_start, cell_end);
 
          SEGINDEX last_segment = -1;
-         auto &ss = Self->getSortedSegments();
+         auto &ss = Self->get_sorted_segments();
          for (unsigned sortseg=0; sortseg < ss.size(); sortseg++) {
             SEGINDEX seg = ss[sortseg].segment;
             if ((Self->Segments[seg].start.index >= cell_start) and (Self->Segments[seg].stop.index <= cell_end)) {
@@ -668,7 +668,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
 
    if (Self->MouseInPage) {
       unsigned row;
-      auto &ss = Self->getSortedSegments();
+      auto &ss = Self->get_sorted_segments();
 
       for (row=0; (row < ss.size()) and (Y < ss[row].y); row++);
 
@@ -1086,7 +1086,8 @@ static void calc_scroll(extDocument *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("PageHeight: %d/%.0f, PageWidth: %d/%.0f, XPos: %.0f, YPos: %.0f", Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
+   log.traceBranch("PageHeight: %d/%.0f, PageWidth: %.0f/%.0f, XPos: %.0f, YPos: %.0f", 
+      Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
 }
 
 //********************************************************************************************************************

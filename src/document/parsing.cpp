@@ -18,10 +18,10 @@ static void style_check(extDocument *Self, stream_char &Cursor)
 
    if (Self->Style.style_change) { // Insert a font change into the text stream
       // NB: Assigning a new UID is suboptimal in cases where we are reverting to a previously registered state
-      // (i.e. anywhere where saved_style_check() has been used).  We could allow insertCode() to lookup formerly
+      // (i.e. anywhere where saved_style_check() has been used).  We could allow insert_code() to lookup formerly
       // allocated UID's and save some memory usage if we improved the management of saved styles.
       Self->Style.font_style.uid = glByteCodeID++;
-      Self->insertCode(Cursor, Self->Style.font_style);
+      Self->insert_code(Cursor, Self->Style.font_style);
       Self->Style.style_change = false;
    }
 }
@@ -71,7 +71,7 @@ static bool eval_condition(const std::string &String)
    // Extract Test value
 
    while ((i > 0) and (String[i-1] IS ' ')) i--;
-   std::string test(String, i);
+   std::string test(String, 0, i);
 
    // Condition value
 
@@ -149,9 +149,7 @@ static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
       else if (!StrMatch("exists", Tag.Attribs[i].Name)) {
          OBJECTID object_id;
          if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id)) {
-            if (valid_objectid(Self, object_id)) {
-               satisfied = true;
-            }
+            satisfied = valid_objectid(Self, object_id) ? true : false;            
          }
          break;
       }
@@ -244,31 +242,35 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
    }
 
    if (Self->Templates) { // Check for templates first, as they can be used to override the default RPL tag names.
-      bool template_match = false;
-      for (auto &scan : Self->Templates->Tags) {
-         for (unsigned i=0; i < scan.Attribs.size(); i++) {
-            if ((!StrMatch("name", scan.Attribs[i].Name)) and (!StrMatch(tagname, scan.Attribs[i].Value))) {
-               template_match = true;
+      if (Self->RefreshTemplates) {
+         Self->TemplateIndex.clear();
+
+         for (XMLTag &scan : Self->Templates->Tags) {
+            for (unsigned i=0; i < scan.Attribs.size(); i++) {
+               if (!StrMatch("name", scan.Attribs[i].Name)) {
+                  Self->TemplateIndex[StrHash(scan.Attribs[i].Value)] = &scan;
+               }
             }
          }
 
-         if (template_match) {
-            // Process the template by jumping into it.  Arguments in the tag are added to a sequential
-            // list that will be processed in reverse by translate_attrib_args().
+         Self->RefreshTemplates = false;
+      }
 
-            pf::Log log(__FUNCTION__);
+      if (Self->TemplateIndex.contains(tag_hash)) {
+         // Process the template by jumping into it.  Arguments in the tag are added to a sequential
+         // list that will be processed in reverse by translate_attrib_args().
 
-            initTemplate block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
+         init_template block(Self, Tag.Children, XML); // Required for the <inject/> feature to work inside the template
 
-            log.traceBranch("Executing template '%s'.", tagname.c_str());
+         pf::Log log(__FUNCTION__);
+         log.traceBranch("Executing template '%s'.", tagname.c_str());
 
-            Self->TemplateArgs.push_back(&Tag);
-            parse_tags(Self, Self->Templates, scan.Children, Index, Flags);
-            Self->TemplateArgs.pop_back();
+         Self->TemplateArgs.push_back(&Tag);
+         parse_tags(Self, Self->Templates, Self->TemplateIndex[tag_hash]->Children, Index, Flags);
+         Self->TemplateArgs.pop_back();
 
-            Tag.Attribs = saved_attribs;
-            return result;
-         }
+         Tag.Attribs = saved_attribs;
+         return result;
       }
    }
 
@@ -335,11 +337,11 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
       }
    }
    else if (HASH_while IS tag_hash) {
+      auto saveindex = Self->LoopIndex;
+      Self->LoopIndex = 0;
+
       if ((!Tag.Children.empty()) and (check_tag_conditions(Self, Tag))) {
          // Save/restore the statement string on each cycle to fully evaluate the condition each time.
-
-         auto saveindex = Self->LoopIndex;
-         Self->LoopIndex = 0;
 
          bool state = true;
          while (state) {
@@ -351,9 +353,9 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
 
             Self->LoopIndex++;
          }
-
-         Self->LoopIndex = saveindex;
       }
+
+      Self->LoopIndex = saveindex;
    }
    else if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
       log.warning("Tag '%s' unsupported as an instruction or template.", tagname.c_str());
@@ -510,7 +512,7 @@ static void saved_style_check(extDocument *Self, style_status &SavedStatus)
 
 static void tag_advance(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
-   auto &adv = Self->reserveCode<bc_advance>(Index);
+   auto &adv = Self->reserve_code<bc_advance>(Index);
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -609,7 +611,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          case HASH_face:
          case HASH_fontface:
-            SetField(Self, FID_FontFace, Tag.Attribs[i].Value);
+            Self->FontFace = Tag.Attribs[i].Value;
             break;
 
          case HASH_fontsize: // Default font point size
@@ -1092,7 +1094,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
                img.rect = rect;
                if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
-               Self->insertCode(Index, img);
+               Self->insert_code(Index, img);
                return;
             }
          }
@@ -1131,7 +1133,7 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
                if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
                img.rect = rect;
-               Self->insertCode(Index, img);
+               Self->insert_code(Index, img);
                return;
             }
 
@@ -1192,7 +1194,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    if (name) {
       bc_index esc(name, Self->UniqueID++, 0, visible, Self->Invisible ? false : true);
 
-      Self->insertCode(Index, esc);
+      Self->insert_code(Index, esc);
 
       if (!Children.empty()) {
          if (!visible) Self->Invisible++;
@@ -1201,7 +1203,7 @@ static void tag_index(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       }
 
       bc_index_end end(esc.id);
-      Self->insertCode(Index, end);
+      Self->insert_code(Index, end);
    }
    else if (!Children.empty()) parse_tags(Self, XML, Children, Index);
 }
@@ -1281,7 +1283,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          buffer << pointermotion << '\0';
       }
 
-      Self->insertCode(Index, link);
+      Self->insert_code(Index, link);
 
       auto savestatus = Self->Style;
 
@@ -1295,7 +1297,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
       saved_style_check(Self, savestatus);
 
-      Self->reserveCode<bc_link_end>(Index);
+      Self->reserve_code<bc_link_end>(Index);
 
       // This style check will forcibly revert the font back to whatever it was rather than waiting for new content
       // to result in a change.  The reason why we want to do this is to make it easier to manage run-time insertion
@@ -1354,7 +1356,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    // Note: Paragraphs are not inserted because <li> does this
 
-   Self->insertCode(Index, esc);
+   Self->insert_code(Index, esc);
 
    savelist = Self->Style.list;
    Self->Style.list = &esc;
@@ -1363,7 +1365,7 @@ static void tag_list(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    Self->Style.list = savelist;
 
-   Self->reserveCode<bc_list_end>(Index);
+   Self->reserve_code<bc_list_end>(Index);
 
    Self->NoWhitespace = true;
 }
@@ -1396,7 +1398,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
       else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &esc);
    }
 
-   Self->insertCode(Index, esc);
+   Self->insert_code(Index, esc);
 
    Self->NoWhitespace = esc.trim;
 
@@ -1404,7 +1406,7 @@ static void tag_paragraph(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
    saved_style_check(Self, savestatus);
 
    bc_paragraph_end end;
-   Self->insertCode(Index, end);
+   Self->insert_code(Index, end);
    Self->NoWhitespace = true;
 
    // This style check will forcibly revert the font back to whatever it was rather than waiting for new content to
@@ -1501,13 +1503,41 @@ static void tag_set(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 
 static void tag_template(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
+   pf::Log log(__FUNCTION__);
+
    // Templates can be used to create custom tags.
    //
    // <template name="customimage">
    //   <image src="" background="#f0f0f0"/>
    // </template>
 
-   if (!Self->InTemplate) add_template(Self, XML, Tag);
+   if (Self->InTemplate) return;
+
+   // Validate the template (must have a name)
+
+   unsigned i;
+   for (i=1; i < Tag.Attribs.size(); i++) {
+      if ((!StrMatch("name", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
+      if ((!StrMatch("class", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
+   }
+
+   if (i >= Tag.Attribs.size()) {
+      log.warning("A <template> is missing a name or class attribute.");
+      return;
+   }
+
+   Self->RefreshTemplates = true;
+
+   // TODO: It would be nice if we scanned the existing templates and
+   // replaced them correctly, however we're going to be lazy and override
+   // styles by placing updated definitions at the end of the style list.
+
+   STRING strxml;
+   if (!xmlGetString(XML, Tag.ID, XMF::NIL, &strxml)) {
+      xmlInsertXML(Self->Templates, 0, XMI::PREV, strxml, 0);
+      FreeResource(strxml);
+   }
+   else log.warning("Failed to convert template %d to an XML string.", Tag.ID);
 }
 
 //********************************************************************************************************************
@@ -2127,7 +2157,7 @@ static void tag_vector(extDocument *Self, const std::string &pagetarget, CLASSID
             else escobj.in_line = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
             style_check(Self, Index);
-            Self->insertCode(Index, escobj);
+            Self->insert_code(Index, escobj);
 
             if (Self->ObjectCache) {
                switch (object->Class->ClassID) {
@@ -2459,7 +2489,7 @@ static void tag_setmargins(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::
       }
    }
 
-   Self->insertCode(Index, margins);
+   Self->insert_code(Index, margins);
 }
 
 //********************************************************************************************************************
@@ -2539,11 +2569,11 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
    if ((Self->Style.list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
       style_check(Self, Index); // font changes must take place prior to the printing of custom string items
 
-      Self->insertCode(Index, para);
+      Self->insert_code(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveCode<bc_paragraph_end>(Index);
+      Self->reserve_code<bc_paragraph_end>(Index);
    }
    else if (Self->Style.list->type IS bc_list::ORDERED) {
       style_check(Self, Index); // font changes must take place prior to the printing of custom string items
@@ -2559,11 +2589,11 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       if (para.aggregate) for (auto &p : Self->Style.list->buffer) para.value += p;
       else para.value = Self->Style.list->buffer.back();
 
-      Self->insertCode(Index, para);
+      Self->insert_code(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveCode<bc_paragraph_end>(Index);
+      Self->reserve_code<bc_paragraph_end>(Index);
 
       Self->Style.list->item_num = save_item;
       Self->Style.list->buffer.resize(list_size);
@@ -2571,11 +2601,11 @@ static void tag_li(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Ch
       Self->Style.list->item_num++;
    }
    else { // BULLET
-      Self->insertCode(Index, para);
+      Self->insert_code(Index, para);
 
          parse_tags(Self, XML, Children, Index);
 
-      Self->reserveCode<bc_paragraph_end>(Index);
+      Self->reserve_code<bc_paragraph_end>(Index);
       Self->NoWhitespace = true;
    }
 
@@ -2659,9 +2689,7 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
    while (loopstart < loopend) {
       if (indexname.empty()) Self->LoopIndex = loopstart;
-      else {
-         SetVar(Self, indexname.c_str(), std::to_string(loopstart).c_str());
-      }
+      else SetVar(Self, indexname.c_str(), std::to_string(loopstart).c_str());      
 
       parse_tags(Self, XML, Tag.Children, Index, Flags);
       loopstart += step;
@@ -2697,7 +2725,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 {
    pf::Log log(__FUNCTION__);
 
-   auto &start = Self->reserveCode<bc_table>(Index);
+   auto &start = Self->reserve_code<bc_table>(Index);
    start.min_width  = 1;
    start.min_height = 1;
 
@@ -2807,7 +2835,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    }
 
    bc_table_end end;
-   Self->insertCode(Index, end);
+   Self->insert_code(Index, end);
 
    //style_check(Self, index);
    //Self->Style.style_change = false;
@@ -2839,7 +2867,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
       else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
    }
 
-   Self->insertCode(Index, escrow);
+   Self->insert_code(Index, escrow);
    Self->Style.table->table->rows++;
    Self->Style.table->row_col = 0;
 
@@ -2848,7 +2876,7 @@ static void tag_row(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
    }
 
    bc_row_end end;
-   Self->insertCode(Index, end);
+   Self->insert_code(Index, end);
 
    if (Self->Style.table->row_col > LONG(Self->Style.table->table->columns.size())) {
       Self->Style.table->table->columns.resize(Self->Style.table->row_col);
@@ -2933,7 +2961,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    auto cell_index = Index;
 
-   Self->insertCode(Index, cell);
+   Self->insert_code(Index, cell);
 
    auto parse_flags = Flags & (~(IPF::NO_CONTENT|IPF::FILTER_ALL));
    if (!Children.empty()) {
@@ -2953,7 +2981,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    bc_cell_end esccell_end;
    esccell_end.cell_id = cell.cell_id;
-   Self->insertCode(Index, esccell_end);
+   Self->insert_code(Index, esccell_end);
 
    if (!cell.edit_def.empty()) {
       // Links are added to the list of tabbable points

@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<page name="Index">
+
+<h1>If Statement Tests</h1>
+
+<p>There should be five successful tests following this paragraph.</p>
+
+<if statement="1 > 0">
+  <p>If statement satisfied.</p>
+</if>
+<else>
+  <p>If statement failed.</p>
+</else>
+
+<if statement="1 < 0">
+  <p>If statement failed.</p>
+</if>
+<else>
+  <p>Else condition satisfied.</p>
+</else>
+
+<if statement="1 < 0">
+  <p>If statement failed.</p>
+</if>
+<elseif statement="1 > 0">
+  <p>Else-If statement satisfied.</p>
+</elseif>
+<else>
+  <p>If statement failed.</p>
+</else>
+
+<if notnull="true">
+  <p>If-NotNull satisfied.</p>
+</if>
+
+<if null="0">
+  <p>If-Null conditional satisfied.</p>
+</if>
+
+<h2>Repeat Tests</h2>
+
+<p>This repeating section will print numbers from 1 to 10.</p>
+
+<p indent="40"><repeat start="0" end="10"><print value="[%index]"/> </repeat></p>
+
+<p>This while loop will print numbers from 1 to 5.</p>
+
+<p indent="40"><while statement="[%index] < 5"><print value="[%index]"/> </while></p>
+
+<h2>Special Variable Tests</h2>
+
+<font face="courier">
+<p>Current font: <print value="Font: [%font] FontFace: [%fontface] FontSize: [%fontsize] FontColour: [%fontcolour]"/></p>
+<p>Date: <print value="[%tm-day]-[%tm-month]-[%tm-year]"/></p>
+<p>Time: <print value="[%tm-hour]:[%tm-minute]:[%tm-second]"/></p>
+<p>Line Number: <print value="[%lineno]"/></p>
+<p>Page Name: <print value="[%currentpage]"/></p>
+<p>Random Digits: <print value="[%random]"/></p>
+<p>Path: <print value="[%path]"/></p>
+<p>Platform: <print value="[%platform]"/></p>
+<p>Viewport size: <print value="[%viewwidth] x [%viewheight]"/></p>
+</font>
+
+</page>

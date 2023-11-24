@@ -85,7 +85,7 @@ enum class SCODE : char {
    INDEX_END,
    XML,
    IMAGE,
-   // End of list - NB: PLEASE UPDATE byteCode() IF YOU ADD NEW CODES
+   // End of list - NB: PLEASE UPDATE byte_code() IF YOU ADD NEW CODES
    END
 };
 
@@ -610,8 +610,8 @@ struct bc_list : public base_code {
    std::string fill;                   // Fill to use for bullet points (valid for BULLET only).
    std::vector<std::string> buffer;    // Temp buffer, used for ordered lists
    LONG   start        = 1;            // Starting value for ordered lists (default: 1)
-   LONG   item_indent  = BULLET_WIDTH; // Minimum indentation for text printed for each item
-   LONG   block_indent = BULLET_WIDTH; // Indentation for each set of items
+   LONG   item_indent  = BULLET_INDENT; // Minimum indentation for text printed for each item
+   LONG   block_indent = BULLET_INDENT; // Indentation for each set of items
    LONG   item_num     = 0;
    LONG   order_insert = 0;
    DOUBLE vspacing     = 0.5;           // Spacing between list items, expressed as a ratio
@@ -771,4 +771,105 @@ struct bc_cell : public base_code {
 struct bc_cell_end : public base_code {
    LONG cell_id = 0;    // Matching identifier from bc_cell
    bc_cell_end() : base_code(SCODE::CELL_END) { }
+};
+
+//********************************************************************************************************************
+
+class extDocument : public objDocument {
+   public:
+   FUNCTION EventCallback;
+   std::unordered_map<std::string, std::string> Vars;
+   std::unordered_map<std::string, std::string> Params;
+   std::string Path;               // Optional file to load on Init()
+   std::string PageName;           // Page name to load from the Path
+   std::string Bookmark;           // Bookmark name processed from the Path
+   std::string WorkingPath;        // String storage for the WorkingPath field
+   std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
+   RSTREAM Stream;                 // Internal stream buffer
+   style_status Style;
+   style_status RestoreStyle;
+   std::map<ULONG, XMLTag *> TemplateIndex;
+   std::vector<doc_segment>    Segments;
+   std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
+   std::vector<doc_clip>       Clips;
+   std::vector<doc_link>       Links;
+   std::vector<mouse_over>     MouseOverChain;
+   std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
+   std::vector<tab>            Tabs;
+   std::vector<edit_cell>      EditCells;
+   std::vector<OBJECTPTR>      LayoutResources;
+   std::unordered_map<std::string, doc_edit> EditDefs;
+   std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
+      bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
+      bc_font, bc_vector, bc_set_margins, bc_xml, bc_image>> Codes;
+   std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
+   std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
+   std::string FontFace;       // Default font face
+   FloatRect Area;             // Available space in the viewport for hosting the document
+   stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
+   stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
+   stream_char SelectIndex;    // The end of the selected text area, if text is selected.
+   objXML *XML;                // Source XML document
+   objXML *InsertXML;          // For temporary XML parsing by the InsertXML method
+   objXML *Templates;          // All templates for the current document are stored here
+   objXML *InjectXML;
+   objXML::TAGS *InjectTag, *HeaderTag, *FooterTag, *BodyTag;
+   XMLTag *PageTag;
+   objTime *Time;
+   OBJECTPTR CurrentObject;
+   OBJECTPTR UserDefaultScript;    // Allows the developer to define a custom default script.
+   OBJECTPTR DefaultScript;
+   doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
+   objVectorScene    *Scene; // A document specific scene is required to keep our resources away from the host
+   objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
+   objVectorViewport *Page;  // Page viewport - this holds the graphics content
+   DOUBLE VPWidth, VPHeight;
+   DOUBLE FontSize;
+   DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
+   DOUBLE PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
+   DOUBLE LeftMargin, TopMargin, RightMargin, BottomMargin;
+   DOUBLE CalcWidth;         // Final page width calculated from the layout process
+   DOUBLE XPosition, YPosition; // Scrolling offset
+   DOUBLE ClickX, ClickY;
+   DOUBLE SelectCharX;        // The x coordinate of the SelectIndex character
+   DOUBLE CursorCharX;        // The x coordinate of the CursorIndex character
+   DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
+   LONG   UniqueID;           // Use for generating unique/incrementing ID's, e.g. cell ID
+   LONG   LinkIndex;          // Currently selected link (mouse over)
+   LONG   LoopIndex;
+   LONG   ElementCounter;     // Counter for element ID's
+   LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.
+   LONG   TemplatesModified;  // For tracking modifications to Self->Templates (compared to Self->Templates->Modified)
+   LONG   BreakLoop;
+   LONG   GeneratedID;        // Unique ID that is regenerated on each load/refresh
+   SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
+   SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
+   TIMER  FlashTimer;         // For flashing the cursor
+   LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
+   ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
+   UWORD  Depth;              // Section depth - increases when do_layout() recurses, e.g. into tables
+   UWORD  ParagraphDepth;     // Incremented when inside <p> tags
+   UWORD  LinkID;             // Unique counter for links
+   WORD   FocusIndex;         // Tab focus index
+   WORD   Invisible;          // Incremented for sections within a hidden index
+   UBYTE  Processing;         // If > 0, the page layout is being altered
+   UBYTE  InTemplate;
+   UBYTE  BkgdGfx;
+   UBYTE  State:3;
+   bool   RefreshTemplates; // True if the template index requires refreshing.
+   bool   RelPageWidth;     // Relative page width
+   bool   UpdatingLayout;   // True if the page layout is in the process of being updated
+   bool   VScrollVisible;   // True if the vertical scrollbar is visible to the user
+   bool   MouseInPage;      // True if the mouse cursor is in the page area
+   bool   PageProcessed;    // True if the parsing of page content has been completed
+   bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
+   bool   HasFocus;         // True if the main viewport has the focus
+   bool   CursorSet;        // True if the mouse cursor image has been altered from the default
+   bool   LMB;              // True if the LMB is depressed.
+   bool   EditMode;
+   bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
+
+   template <class T = base_code> T & insert_code(stream_char &, T &);
+   template <class T = base_code> T & reserve_code(stream_char &);
+   std::vector<sorted_segment> & get_sorted_segments();
 };

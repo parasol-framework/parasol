@@ -584,6 +584,7 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->Background)     { FreeResource(Self->Background);     Self->Background     = NULL; }
    if (Self->CursorStroke)   { FreeResource(Self->CursorStroke);   Self->CursorStroke   = NULL; }
    if (Self->BorderStroke)   { FreeResource(Self->BorderStroke);   Self->BorderStroke   = NULL; }
+   if (Self->Time)           { FreeResource(Self->Time);           Self->Time = NULL; }
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 

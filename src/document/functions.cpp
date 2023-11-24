@@ -2,12 +2,12 @@
 static const LONG MAXLOOP = 100000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"18\" colour=\"0,0,0\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h2\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"16\" colour=\"0,0,0\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h3\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"14\" colour=\"0,0,0\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h4\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"14\" colour=\"0,0,0\"><inject/></font></p></template>\n\
-<template name=\"h5\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"12\" colour=\"0,0,0\"><inject/></font></p></template>\n\
-<template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\" colour=\"0,0,0\"><inject/></font></p></template>\n";
+"<template name=\"h1\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"18\" style=\"bold\"><inject/></font></p></template>\n\
+<template name=\"h2\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"16\" style=\"bold\"><inject/></font></p></template>\n\
+<template name=\"h3\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"14\" style=\"bold\"><inject/></font></p></template>\n\
+<template name=\"h4\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"14\"><inject/></font></p></template>\n\
+<template name=\"h5\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"12\"><inject/></font></p></template>\n\
+<template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\"><inject/></font></p></template>\n";
 
 static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -405,7 +405,7 @@ static ERROR insert_text(extDocument *Self, stream_char &Index, const std::strin
 
    if (Preformat) {
       bc_text et(Text, true);
-      Self->insertCode(Index, et);
+      Self->insert_code(Index, et);
    }
    else {
       bc_text et;
@@ -423,7 +423,7 @@ static ERROR insert_text(extDocument *Self, stream_char &Index, const std::strin
          }
       }
       Self->NoWhitespace = ws;
-      Self->insertCode(Index, et);
+      Self->insert_code(Index, et);
    }
 
    return ERR_Okay;
@@ -564,7 +564,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing this page through the body tag.");
 
-         initTemplate block(Self, page->Children, xml);
+         init_template block(Self, page->Children, xml);
          insert_xml(Self, xml, Self->BodyTag[0][0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
       }
       else {
@@ -672,7 +672,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    Self->BottomMargin  = 10;
    Self->XPosition     = 0;
    Self->YPosition     = 0;
-//   Self->ScrollVisible = false;
+   //Self->ScrollVisible = false;
    Self->PageHeight    = 0;
    Self->Invisible     = 0;
    Self->PageWidth     = 0;
@@ -685,6 +685,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    Self->FontSize      = DEFAULT_FONTSIZE;
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
+   Self->RefreshTemplates = true;
    Self->MouseOverSegment = -1;
    Self->ActiveEditCellID = 0;
    Self->ActiveEditDef    = NULL;
@@ -755,13 +756,14 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
          fl::Flags(XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) return ERR_CreateObject;
 
       Self->TemplatesModified = Self->Templates->Modified;
+      Self->RefreshTemplates = true;
    }
 
    if (Self->Page) acMoveToPoint(Self->Page, 0, 0, 0, MTF::X|MTF::Y);
 
-   Self->NoWhitespace = true;
+   Self->NoWhitespace   = true;
    Self->UpdatingLayout = true;
-   Self->GeneratedID = AllocateID(IDTYPE::GLOBAL);
+   Self->GeneratedID    = AllocateID(IDTYPE::GLOBAL);
 
    if ((Flags & ULD::REDRAW) != ULD::NIL) {
       Self->Viewport->draw();
@@ -784,37 +786,6 @@ static LONG get_line_from_index(extDocument *Self, INDEX index)
    return 0;
 }
 #endif
-
-//********************************************************************************************************************
-
-static void add_template(extDocument *Self, objXML *XML, XMLTag &Tag)
-{
-   pf::Log log(__FUNCTION__);
-   unsigned i;
-
-   // Validate the template (must have a name)
-
-   for (i=1; i < Tag.Attribs.size(); i++) {
-      if ((!StrMatch("name", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
-      if ((!StrMatch("class", Tag.Attribs[i].Name)) and (!Tag.Attribs[i].Value.empty())) break;
-   }
-
-   if (i >= Tag.Attribs.size()) {
-      log.warning("A <template> is missing a name or class attribute.");
-      return;
-   }
-
-   // Note: It would be nice if we scanned the existing templates and
-   // replaced them correctly, however we're going to be lazy and override
-   // styles by placing updated definitions at the end of the style list.
-
-   STRING strxml;
-   if (!xmlGetString(XML, Tag.ID, XMF::NIL, &strxml)) {
-      xmlInsertXML(Self->Templates, 0, XMI::PREV, strxml, 0);
-      FreeResource(strxml);
-   }
-   else log.warning("Failed to convert template %d to an XML string.", Tag.ID);
-}
 
 //********************************************************************************************************************
 
@@ -927,6 +898,7 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
 {
    pf::Log log(__FUNCTION__);
 
+   bool time_queried = false;
    Output = Input;
 
    // Do nothing if there are no special references being used
@@ -940,7 +912,7 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
       if (i >= Input.size()) return;
    }
 
-   for (auto pos = signed(Output.size()); pos >= 0; pos--) {
+   for (auto pos = signed(Output.size())-1; pos >= 0; pos--) {
       if (Output[pos] IS '&') {
          if (!StrCompare("&lsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "[");
          else if (!StrCompare("&rsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "]");
@@ -972,26 +944,26 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
          else if (Output[pos+1] IS '%') {
             // Check against reserved keywords
 
-            if (!Output.compare(pos, std::string::npos, "[%index]")) {
+            if (!Output.compare(pos, sizeof("[%index]")-1, "[%index]")) {
                Output.replace(pos, sizeof("[%index]")-1, std::to_string(Self->LoopIndex));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%id]")) {
+            else if (!Output.compare(pos, sizeof("[%id]")-1, "[%id]")) {
                Output.replace(pos, sizeof("[%id]")-1, std::to_string(Self->GeneratedID));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%self]")) {
+            else if (!Output.compare(pos, sizeof("[%self]")-1, "[%self]")) {
                Output.replace(pos, sizeof("[%self]")-1, std::to_string(Self->UID));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%platform]")) {
+            else if (!Output.compare(pos, sizeof("[%platform]")-1, "[%platform]")) {
                Output.replace(pos, sizeof("[%platform]")-1, GetSystemState()->Platform);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%random]")) {
+            else if (!Output.compare(pos, sizeof("[%random]")-1, "[%random]")) {
                // Generate a random string of digits
                std::string random;
-               random.reserve(10);
+               random.resize(10);
                for (unsigned j=0; j < random.size(); j++) random[j] = '0' + (rand() % 10);
                Output.replace(pos, sizeof("[%random]")-1, random);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%currentpage]")) {
+            else if (!Output.compare(pos, sizeof("[%currentpage]")-1, "[%currentpage]")) {
                if (Self->PageTag) {
                   if (auto page_name = Self->PageTag[0].attrib("name")) {
                      Output.replace(pos, sizeof("[%currentpage]")-1, page_name[0]);
@@ -1000,67 +972,70 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
                }
                else Output.replace(pos, sizeof("[%currentpage]")-1, "");
             }
-            else if (!Output.compare(pos, std::string::npos, "[%nextpage]")) {
+            else if (!Output.compare(pos, sizeof("[%nextpage]")-1, "[%nextpage]")) {
                if (Self->PageTag) {
                   auto next = Self->PageTag->attrib("nextpage");
                   Output.replace(pos, sizeof("[%nextpage]")-1, next ? *next : "");
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%prevpage]")) {
+            else if (!Output.compare(pos, sizeof("[%prevpage]")-1, "[%prevpage]")) {
                if (Self->PageTag) {
                   auto next = Self->PageTag->attrib("prevpage");
                   Output.replace(pos, sizeof("[%prevpage]")-1, next ? *next : "");
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%path]")) {
+            else if (!Output.compare(pos, sizeof("[%path]"), "[%path]")) {
                CSTRING workingpath = "";
                GET_WorkingPath(Self, &workingpath);
                if (!workingpath) workingpath = "";
                Output.replace(pos, sizeof("[%path]")-1, workingpath);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%author]")) {
+            else if (!Output.compare(pos, sizeof("[%author]")-1, "[%author]")) {
                Output.replace(pos, sizeof("[%author]")-1, Self->Author);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%description]")) {
+            else if (!Output.compare(pos, sizeof("[%description]")-1, "[%description]")) {
                Output.replace(pos, sizeof("[%description]")-1, Self->Description);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%copyright]")) {
+            else if (!Output.compare(pos, sizeof("[%copyright]")-1, "[%copyright]")) {
                Output.replace(pos, sizeof("[%copyright]")-1, Self->Copyright);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%keywords]")) {
+            else if (!Output.compare(pos, sizeof("[%keywords]")-1, "[%keywords]")) {
                Output.replace(pos, sizeof("[%keywords]")-1, Self->Keywords);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%title]")) {
+            else if (!Output.compare(pos, sizeof("[%title]")-1, "[%title]")) {
                Output.replace(pos, sizeof("[%title]")-1, Self->Title);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%font]")) {
+            else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
                if (auto font = Self->Style.font_style.get_font()) {
-                  Output.replace(pos, sizeof("[%font]")-1, std::string(font->Face) + ":" + std::to_string(font->Point) + ":" + font->Style);
+                  char buffer[60];
+                  snprintf(buffer, sizeof(buffer), "%s:%.0f:%s", font->Face, font->Point, font->Style);
+                  Output.replace(pos, sizeof("[%font]")-1, buffer);
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%fontface]")) {
+            else if (!Output.compare(pos, sizeof("[%fontface]")-1, "[%fontface]")) {
                if (auto font = Self->Style.font_style.get_font()) {
                   Output.replace(pos, sizeof("[%fontface]")-1, font->Face);
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%fontcolour]")) {
+            else if (!Output.compare(pos, sizeof("[%fontcolour]")-1, "[%fontcolour]")) {
                if (auto font = Self->Style.font_style.get_font()) {
                   char colour[28];
                   snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
                   Output.replace(pos, sizeof("[%fontcolour]")-1, colour);
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%fontsize]")) {
+            else if (!Output.compare(pos, sizeof("[%fontsize]")-1, "[%fontsize]")) {
                if (auto font = Self->Style.font_style.get_font()) {
-                  auto num = std::to_string(font->Point);
-                  Output.replace(pos, sizeof("[%fontsize]")-1, num);
+                  char buffer[28];
+                  snprintf(buffer, sizeof(buffer), "%.2f", font->Point);
+                  Output.replace(pos, sizeof("[%fontsize]")-1, buffer);
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%lineno]")) {
+            else if (!Output.compare(pos, sizeof("[%lineno]")-1, "[%lineno]")) {
                auto num = std::to_string(Self->Segments.size());
                Output.replace(pos, sizeof("[%lineno]")-1, num);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%content]")) {
+            else if (!Output.compare(pos, sizeof("[%content]")-1, "[%content]")) {
                if ((Self->InTemplate) and (Self->InjectTag)) {
                   std::string content = xmlGetContent(Self->InjectTag[0][0]);
                   Output.replace(pos, sizeof("[%content]")-1, content);
@@ -1071,32 +1046,48 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
                   //}
                }
             }
-            else if (!Output.compare(pos, std::string::npos, "[%tm-day]")) {
-
+            else if (!Output.compare(pos, sizeof("[%tm-day]")-1, "[%tm-day]")) {
+               if (!Self->Time) Self->Time = objTime::create::integral();
+               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(Self->Time->Day));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%tm-month]")) {
-
+            else if (!Output.compare(pos, sizeof("[%tm-month]")-1, "[%tm-month]")) {
+               if (!Self->Time) Self->Time = objTime::create::integral();
+               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(Self->Time->Month));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%tm-year]")) {
-
+            else if (!Output.compare(pos, sizeof("[%tm-year]")-1, "[%tm-year]")) {
+               if (!Self->Time) Self->Time = objTime::create::integral();
+               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(Self->Time->Year));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%tm-hour]")) {
-
+            else if (!Output.compare(pos, sizeof("[%tm-hour]")-1, "[%tm-hour]")) {
+               if (!Self->Time) Self->Time = objTime::create::integral();
+               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(Self->Time->Hour));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%tm-minute]")) {
-
+            else if (!Output.compare(pos, sizeof("[%tm-minute]")-1, "[%tm-minute]")) {
+               if (!Self->Time) Self->Time = objTime::create::integral();
+               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(Self->Time->Minute));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%tm-second]")) {
-
+            else if (!Output.compare(pos, sizeof("[%tm-second]")-1, "[%tm-second]")) {
+               if (!Self->Time) Self->Time = objTime::create::integral();
+               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(Self->Time->Second));
             }
-            else if (!Output.compare(pos, std::string::npos, "[%version]")) {
+            else if (!Output.compare(pos, sizeof("[%version]")-1, "[%version]")) {
                Output.replace(pos, sizeof("[%version]")-1, RIPPLE_VERSION);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%viewheight]")) {
-               Output.replace(pos, sizeof("[%viewheight]")-1, std::to_string(Self->Area.Height));
+            else if (!Output.compare(pos, sizeof("[%viewheight]")-1, "[%viewheight]")) {
+               char buffer[28];
+               snprintf(buffer, sizeof(buffer), "%.0f", Self->Area.Height);
+               Output.replace(pos, sizeof("[%viewheight]")-1, buffer);
             }
-            else if (!Output.compare(pos, std::string::npos, "[%viewwidth]")) {
-               Output.replace(pos, sizeof("[%viewwidth]")-1, std::to_string(Self->Area.Width));
+            else if (!Output.compare(pos, sizeof("[%viewwidth]")-1, "[%viewwidth]")) {
+               char buffer[28];
+               snprintf(buffer, sizeof(buffer), "%.0f", Self->Area.Width);
+               Output.replace(pos, sizeof("[%viewwidth]")-1, buffer);
             }
          }
          else if (Output[pos+1] IS '@') {
