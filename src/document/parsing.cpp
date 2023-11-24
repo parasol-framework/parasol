@@ -182,8 +182,8 @@ static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
 // is updated on completion.
 //
 // Supported Flags:
-//   IPF::NO_CONTENT:
-//   IPF::STRIP_FEEDS:
+//   IPF::NO_CONTENT: XML content data will be ignored
+//   IPF::STRIP_FEEDS: Strip line feeds from content
 
 static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &Index, IPF &Flags)
 {
@@ -963,6 +963,7 @@ static void tag_include(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAG
 }
 
 //********************************************************************************************************************
+// Parse a string value as XML
 
 static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {

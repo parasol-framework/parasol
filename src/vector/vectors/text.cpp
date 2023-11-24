@@ -1579,6 +1579,10 @@ static void raster_text_to_bitmap(extVectorText *Vector)
          Vector->txFont->setString(str);
          Vector->txFont->X = 0;
          Vector->txFont->Y = y;
+         Vector->txFont->Colour.Red   = F2T(Vector->FillColour.Red * 255.0);
+         Vector->txFont->Colour.Green = F2T(Vector->FillColour.Green * 255.0);
+         Vector->txFont->Colour.Blue  = F2T(Vector->FillColour.Blue * 255.0);
+         Vector->txFont->Colour.Alpha = F2T(Vector->FillColour.Alpha * 255.0);
          acDraw(Vector->txFont);
 
          if (Vector->txInlineSize) y = Vector->txFont->EndY + Vector->txFont->LineSpacing;

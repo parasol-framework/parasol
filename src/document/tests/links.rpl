@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
-<body face="sans serif" link="rgb(30,30,180)"/>
+<body face="sans serif" fontsize="12"/>
 
 <page name="Index">
 
@@ -9,13 +9,13 @@
 
 <p>These tests are intended to confirm that hyperlinks are correctly highlighted on the page and support user interaction (confirmed when the mouse cursor switches to a hand image during hover).  The links must wrap with the content that represents them.</p>
 
-<p><a href="paragraphs.rpl">one_word_hyperlink</a></p>
+<p><a href="fonts.rpl">one_word_hyperlink</a></p>
 
-<p><a href="paragraphs.rpl">one_word_partial_hyperlink</a>_not_this_part</p>
+<p><a href="logic.rpl">one_word_partial_hyperlink</a>_not_this_part</p>
 
 <p>The following <a href="paragraphs.rpl">hyperlink</a> consists of one word.</p>
 
-<p>The following <a href="test.rpl">is a very long hyperlink that can be used to test the word wrapping of hyperlinked text.  Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet.</a>.</p>
+<p>The following <a href="layout.rpl">is a very long hyperlink that can be used to test the word wrapping of hyperlinked text.  Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet.</a>.</p>
 
 <p>This paragraph contains a link with an embedded paragraph, so will be split into three lines.  <a href="paragraphs.rpl">The link starts here.  <p>This embedded paragraph must appear on its own line and behave as a link.</p>  The entirety of the link needs to remain interactive up to the end of this sentence.</a></p>
 

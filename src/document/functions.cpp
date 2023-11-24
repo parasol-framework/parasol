@@ -471,7 +471,7 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
 }
 
 //********************************************************************************************************************
-// Converts XML into RIPPLE bytecode, then displays the page that is referenced by the PageName field by calling
+// Converts XML to byte code, then displays the page that is referenced by the PageName field by calling
 // layout_doc().  If the PageName is unspecified, we use the first <page> that has no name, otherwise the first page
 // irrespective of the name.
 //
@@ -504,10 +504,8 @@ static ERROR process_page(extDocument *Self, objXML *xml)
    if ((page) and (!page->Children.empty())) {
       Self->PageTag = page;
 
-      bool noheader = false;
-      bool nofooter = false;
-      if (page->attrib("noheader")) noheader = true;
-      if (page->attrib("nofooter")) nofooter = true;
+      bool no_header = page->attrib("noheader") ? true : false;
+      bool no_footer = page->attrib("nofooter") ? true : false;
 
       Self->Segments.clear();
       Self->SortSegments.clear();
@@ -515,46 +513,19 @@ static ERROR process_page(extDocument *Self, objXML *xml)
 
       Self->SelectStart.reset();
       Self->SelectEnd.reset();
-      Self->XPosition    = 0;
-      Self->YPosition    = 0;
+
+      Self->XPosition      = 0;
+      Self->YPosition      = 0;
       Self->UpdatingLayout = true;
-      Self->Error        = ERR_Okay;
+      Self->Error          = ERR_Okay;
+      Self->BodyTag        = NULL;
+      Self->HeaderTag      = NULL;
+      Self->FooterTag      = NULL;
 
-      // Process tags at the root level, but only those that we allow up to the first <page> entry.
+      stream_char insert_index(Self->Stream.size());
+      parse_tags(Self, xml, xml->Tags, insert_index, IPF::NO_CONTENT);
 
-      pf::Log log(__FUNCTION__);
-
-      log.traceBranch("Processing root level tags.");
-
-      Self->BodyTag   = NULL;
-      Self->HeaderTag = NULL;
-      Self->FooterTag = NULL;
-      for (auto &tag : xml->Tags) {
-         if (tag.isContent()) continue;
-
-         switch (StrHash(tag.Attribs[0].Name)) {
-            case HASH_body:
-               // If a <body> tag contains any children, it is treated as a template and must contain an <inject/> tag so
-               // that the XML insertion point is known.
-
-               insert_xml(Self, xml, tag); // Process the body attributes in tag_body() and set BodyTag
-               break;
-            case HASH_page:       break;
-            case HASH_background: insert_xml(Self, xml, tag); break;
-            case HASH_editdef:    insert_xml(Self, xml, tag); break;
-            case HASH_template:   insert_xml(Self, xml, tag); break;
-            case HASH_head:       insert_xml(Self, xml, tag); break;
-            case HASH_info:       insert_xml(Self, xml, tag); break;
-            case HASH_include:    insert_xml(Self, xml, tag); break;
-            case HASH_parse:      insert_xml(Self, xml, tag); break;
-            case HASH_script:     insert_xml(Self, xml, tag); break;
-            case HASH_header:     Self->HeaderTag = &tag.Children; break;
-            case HASH_footer:     Self->FooterTag = &tag.Children; break;
-            default: log.warning("Tag '%s' Not supported at the root level.", tag.Attribs[0].Name.c_str());
-         }
-      }
-
-      if ((Self->HeaderTag) and (!noheader)) {
+      if ((Self->HeaderTag) and (!no_header)) {
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing header.");
          insert_xml(Self, xml, Self->HeaderTag[0][0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
@@ -574,7 +545,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          insert_xml(Self, xml, page->Children, Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
       }
 
-      if ((Self->FooterTag) and (!nofooter)) {
+      if ((Self->FooterTag) and (!no_footer)) {
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing footer.");
          insert_xml(Self, xml, Self->FooterTag[0][0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESETSTYLE);
@@ -584,8 +555,8 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          print_stream(Self, Self->Stream);
       #endif
 
-      // If an error occurred then we have to kill the document as the stream may contain disconnected escape
-      // sequences (e.g. an unterminated SCODE::TABLE sequence).
+      // If an error occurred then we have to kill the document as the stream may contain unsynchronised
+      // byte codes (e.g. an unterminated SCODE::TABLE sequence).
 
       if (Self->Error) unload_doc(Self, ULD::NIL);
 

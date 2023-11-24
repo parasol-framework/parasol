@@ -3,6 +3,13 @@
 
 <body face="courier" fontcolour="rgb(64,0,0)" fontsize="10"/>
 
+
+<p>This paragraph must be ignored by the parser</p>
+
+This dangling content must be ignored.
+
+<font colour="rgb(255,255,255)">This content must be ignored by the parser</font>
+
 <page name="Index">
 <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam. Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a. Donec id iaculis tellus, et semper magna. Morbi molestie sed risus eget facilisis.</p>
 

@@ -401,7 +401,6 @@ static std::map<ULONG, tagroutine> glTags = {
    { HASH_data,          { NULL,             TAG::NIL } },
    { HASH_editdef,       { tag_editdef,      TAG::NIL } },
    { HASH_footer,        { tag_footer,       TAG::NIL } },
-   { HASH_head,          { tag_head,         TAG::NIL } }, // Synonym for info
    { HASH_header,        { tag_header,       TAG::NIL } },
    { HASH_info,          { tag_head,         TAG::NIL } },
    { HASH_inject,        { tag_inject,       TAG::OBJECTOK } },
