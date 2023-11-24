@@ -366,6 +366,8 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
    return result;
 }
 
+//********************************************************************************************************************
+
 static TRF parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, stream_char &Index, IPF Flags)
 {
    TRF result = TRF::NIL;

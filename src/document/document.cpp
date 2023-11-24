@@ -307,11 +307,9 @@ static SEGINDEX find_segment(extDocument *, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 static std::string get_font_style(FSO);
-//static LONG   get_line_from_index(extDocument *, INDEX index);
 static LONG  getutf8(CSTRING, LONG *);
 static ERROR insert_text(extDocument *, stream_char &, const std::string &, bool);
 static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, IXF);
-static ERROR insert_xml(extDocument *, objXML *, XMLTag &, stream_char TargetIndex = stream_char(), IXF Flags = IXF::NIL);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD);
@@ -363,8 +361,9 @@ static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
 
 //********************************************************************************************************************
 // TAG::OBJECTOK: Indicates that the tag can be used inside an object element, e.g. <image>.<this_tag_ok/>..</image>
-// FILTER_TABLE: The tag is restricted to use within <table> sections.
-// FILTER_ROW:   The tag is restricted to use within <row> sections.
+// TAG::CHILDREN: The tag requires child content/tags in order to be valid.
+// FILTER_TABLE:  The tag is restricted to use within <table> sections.
+// FILTER_ROW:    The tag is restricted to use within <row> sections.
 
 static std::map<ULONG, tagroutine> glTags = {
    // Content tags (tags that affect text, the page layout etc)
@@ -400,8 +399,8 @@ static std::map<ULONG, tagroutine> glTags = {
    { HASH_background,    { tag_background,   TAG::NIL } },
    { HASH_data,          { NULL,             TAG::NIL } },
    { HASH_editdef,       { tag_editdef,      TAG::NIL } },
-   { HASH_footer,        { tag_footer,       TAG::NIL } },
-   { HASH_header,        { tag_header,       TAG::NIL } },
+   { HASH_footer,        { tag_footer,       TAG::CHILDREN } },
+   { HASH_header,        { tag_header,       TAG::CHILDREN } },
    { HASH_info,          { tag_head,         TAG::NIL } },
    { HASH_inject,        { tag_inject,       TAG::OBJECTOK } },
    { HASH_row,           { tag_row,          TAG::CHILDREN|TAG::FILTER_TABLE } },

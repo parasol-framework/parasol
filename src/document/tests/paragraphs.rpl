@@ -3,6 +3,13 @@
 
 <body face="courier" fontcolour="rgb(64,0,0)" fontsize="10"/>
 
+<header>
+  <p><b>HEADER IN BOLD</b></p>
+</header>
+
+<footer>
+  <p><i>FOOTER IN ITALICS</i></p>
+</footer>
 
 <p>This paragraph must be ignored by the parser</p>
 

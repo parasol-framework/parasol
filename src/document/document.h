@@ -23,11 +23,11 @@ enum class RTD : UBYTE {
 DEFINE_ENUM_FLAG_OPERATORS(RTD)
 
 enum class IXF : UBYTE {
-   NIL        = 0x00,
-   SIBLINGS   = 0x01,
-   HOLDSTYLE  = 0x02,
-   RESETSTYLE = 0x04,
-   CLOSESTYLE = 0x08
+   NIL         = 0x00,
+   SIBLINGS    = 0x01,
+   HOLD_STYLE  = 0x02,
+   RESET_STYLE = 0x04,
+   CLOSE_STYLE = 0x08
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(IXF)
@@ -814,7 +814,7 @@ class extDocument : public objDocument {
    objXML *Templates;          // All templates for the current document are stored here
    objXML *InjectXML;
    objXML::TAGS *InjectTag, *HeaderTag, *FooterTag, *BodyTag;
-   XMLTag *PageTag;
+   XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
    objTime *Time;
    OBJECTPTR CurrentObject;
    OBJECTPTR UserDefaultScript;    // Allows the developer to define a custom default script.
