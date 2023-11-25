@@ -13,63 +13,13 @@ The Document module exports a small number of functions in support of the @Docum
 
 THE BYTE CODE
 -------------
-The document stream consists of byte code structures that indicate font style, paragraphs, hyperlinks, text etc.
+The document stream consists of byte codes represented by the base_code class.  that indicate font style, paragraphs, hyperlinks, text etc.
 
 PARAGRAPH MANAGEMENT
 --------------------
 Drawing the document starts with a layout process that reads the document stream and generates line segments
 that declare the target area and content.  These segments have a dual purpose in that they are also used for user 
 interaction.
-
-GRAPHICAL OBJECT LAYOUT RULES
------------------------------
-This text clarifies the layout rules that must be observed by classes that provide support for page layouts.
-
-LAYOUT INTERPRETATION: Information about the available layout space will be passed in the Clip argument of the Layout
-action.  Note that if the object is inside a table cell, the amount of space available will be smaller than the actual
-page size.  Multiple iterations of the page layout will typically result in expanded coordinates in the Clip argument
-each time the page layout is recalculated.
-
-FIXED PLACEMENT: If the class accepts dimension values for X, Y, Width and/or height, fixed placement is enabled if any
-of those values are set by the user.  Fixed placement can occur on the horizontal axis, vertical axis or both depending
-on the number of dimension values that have been set.  When fixed placement occurs, positioning relative to the
-document cursor is disabled and the values supplied by the user are used for placement of the graphical object.  Where
-fixed placement is enabled, the object should still return a clipping region unless it is in background mode.  Document
-margins are honoured when in fixed placement mode.
-
-BACKGROUND MODE: The user can place graphical objects in the background by specifying the BACKGROUND layout option.
-All text will be overlayed on top of the graphics and no text clipping will be performed against the object.  The
-layout support routine must return ERR_NothingDone to indicate that no clipping zone is defined.
-
-FOREGROUND MODE: The user can force an object into the foreground so that it will be drawn over the document's text
-stream.  This is achieved by setting the FOREGROUND layout option.
-
-EXTENDED CLIPPING: By default, clipping is to the graphical area occupied by an object.  In some cases, the user may
-wish to extend the clipping to the edges of the available layout space.  This can be achieved by requesting an object
-layout of RIGHT (extend clip to the right), LEFT (extend clip to the left), WIDE (extend both left and right). The
-default layout clipping is SQUARE, which does not extend the clipping region.
-
-ALIGNMENT: Graphics Alignment can be requested by the document when calling the layout support action.  The class can
-also support alignment by providing an Align field.  The formula that is used for alignment depends on whether or not
-the dimensions are fixed in place. Alignment options will always override dimension settings where appropriate.  Thus
-if horizontal alignment is selected, any predefined X value set by the user can be ignored in favour of calculating the
-alignment from the left-most side of the cell.  The alignment formula must honour the margins of the available cell
-space.  When an object is not in background mode, all alignment values are calculated with respect to the height of the
-current line and not the height of the cell space that is occupied.  If horizontal centering is opted, the left-most
-side used in the calculation must be taken from the current CursorX position.
-
-MARGINS: In standard layout mode, cell margins must be honoured.  In fixed placement mode, cell margins are honoured
-when calculating offsets, relative values and alignment.  In background mode, cell margins are ignored.
-
-WHITESPACE: Gaps of whitespace at the top, left, right or bottom sides of a graphics object may be supported by some
-class types, usually to prevent text from getting too close to the sides of an object.  This feature can only be
-applied to objects that are are not in fixed placement or background mode.
-
-TIGHT CLIPPING: Tight clipping is used where a complex clip region is required that is smaller than the rectangular
-region occupied by a graphical object. A graphic with a circular or triangular shape could be an example of a graphic
-that could use tight clipping.  Support for this feature is currently undefined in the RIPPLE standard.  In future it
-is likely that it will be possible for the user to create customised tight-clipping zones by declaring polygonal areas
-that should be avoided.  There are no plans to implement this feature at the level of object layouts.
 
 TABLES
 ------

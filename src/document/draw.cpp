@@ -159,7 +159,7 @@ void layout::gen_scene_graph()
          }
       #endif
 
-      auto fx = segment.area.X;
+      auto x_offset = segment.area.X;
       for (auto cursor = segment.start; cursor < segment.stop; cursor.nextCode()) {
          switch (Self->Stream[cursor.index].code) {
             case SCODE::FONT: {
@@ -340,51 +340,64 @@ void layout::gen_scene_graph()
                break;
 
             case SCODE::IMAGE: {
-               auto &img = stream_data<bc_image>(Self, cursor);
-               // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
-               // fx for managing the horizontal position amongst the text.
+               if (oob) break;
 
-               DOUBLE x = (img.floating() ? img.x : fx) + img.final_pad.left;
+               auto &img = stream_data<bc_image>(Self, cursor);
+
+               // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
+               // x_offset for managing the horizontal position amongst the text.
+
+               DOUBLE x;
+               if (img.floating()) x = img.x + img.final_pad.left;
+               else {
+                  if ((font_align & ALIGN::HORIZONTAL) != ALIGN::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
+                  else if ((font_align & ALIGN::RIGHT) != ALIGN::NIL) x = x_offset + segment.align_width - segment.area.Width;
+                  else x = x_offset;
+               }
                DOUBLE y = segment.area.Y + img.final_pad.top;
 
                acMoveToPoint(img.rect, x, y, 0, MTF::X|MTF::Y);
                acResize(img.rect, img.final_width, img.final_height, 0);
 
-               if (!img.floating()) fx += img.final_width + img.final_pad.left + img.final_pad.right;
+               if (!img.floating()) x_offset += img.final_width + img.final_pad.left + img.final_pad.right;
                break;
             }
 
-            case SCODE::TEXT: { // cursor = segment.start; cursor < segment.trim_stop; cursor.nextCode()
-               if (!oob) {
-                  auto &txt = stream_data<bc_text>(Self, cursor);
+            case SCODE::TEXT: {
+               if (oob) break;
 
-                  std::string str;
-                  if (cursor.index < segment.trim_stop.index) str.append(txt.text, cursor.offset, std::string::npos);
-                  else str.append(txt.text, cursor.offset, segment.trim_stop.offset - cursor.offset);
+               auto &txt = stream_data<bc_text>(Self, cursor);
 
-                  DOUBLE y = segment.area.Y;
-                  if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
-                  else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) {
-                     DOUBLE avail_space = segment.area.Height - segment.gutter;
-                     y += avail_space - ((avail_space - font->Ascent) * 0.5);
-                  }
-                  else y += segment.area.Height - segment.gutter;
+               std::string str;
+               if (cursor.index < segment.trim_stop.index) str.append(txt.text, cursor.offset, std::string::npos);
+               else str.append(txt.text, cursor.offset, segment.trim_stop.offset - cursor.offset);
 
-                  if (!str.empty()) {
-                     auto text = objVectorText::create::global({
-                        fl::Owner(Self->Page->UID),
-                        fl::X(fx), fl::Y(y),
-                        fl::String(str),
-                        fl::Font(font),
-                        fl::Fill(font_fill)
-                        //fl::AlignWidth(segment.AlignWidth),
-                     });
-                     Self->LayoutResources.push_back(text);
+               DOUBLE y = segment.area.Y;
+               if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
+               else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) {
+                  DOUBLE avail_space = segment.area.Height - segment.gutter;
+                  y += avail_space - ((avail_space - font->Ascent) * 0.5);
+               }
+               else y += segment.area.Height - segment.gutter;
 
-                     DOUBLE twidth;
-                     text->get(FID_TextWidth, &twidth);
-                     fx += twidth;
-                  }
+               DOUBLE x;
+               if ((font_align & ALIGN::HORIZONTAL) != ALIGN::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
+               else if ((font_align & ALIGN::RIGHT) != ALIGN::NIL) x = x_offset + segment.align_width - segment.area.Width;
+               else x = x_offset;
+
+               if (!str.empty()) {
+                  auto text = objVectorText::create::global({
+                     fl::Owner(Self->Page->UID),
+                     fl::X(x), fl::Y(y),
+                     fl::String(str),
+                     fl::Font(font),
+                     fl::Fill(font_fill)
+                  });
+                  Self->LayoutResources.push_back(text);
+
+                  DOUBLE twidth;
+                  text->get(FID_TextWidth, &twidth);
+                  x_offset += twidth;
                }
                break;
             }
