@@ -1820,7 +1820,7 @@ static void reset_font(extVectorText *Vector)
          else font->setStyle(Vector->txFontStyle);
 
          CSTRING location;
-         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize, FTF::PREFER_SCALED, &location)) {
+         if (!fntSelectFont(family.c_str(), style.c_str(), Vector->txFontSize * (3.0 / 4.0), FTF::PREFER_SCALED, &location)) {
             font->setPath(location);
             FreeResource(location);
          }
