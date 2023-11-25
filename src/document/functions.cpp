@@ -712,7 +712,7 @@ static LONG create_font(const std::string &Face, const std::string &Style, LONG 
    pf::LogLevel level(2);
 
    objFont *font = objFont::create::integral(
-      fl::Owner(modDocument->UID), fl::Face(Face), fl::Style(Style), fl::Point(Point), fl::Flags(FTF::ALLOW_SCALE));
+      fl::Owner(modDocument->UID), fl::Face(Face), fl::Style(Style), fl::Point(Point), fl::Flags(FTF::PREFER_SCALED));
 
    if (font) {
       // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
