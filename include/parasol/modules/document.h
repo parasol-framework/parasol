@@ -17,7 +17,7 @@ class objDocument;
 
 // Official version number (date format).  Any changes to the handling of document content require that this number be updated.
 
-#define RIPPLE_VERSION "20231123"
+#define RIPL_VERSION "20231123"
 
 #define TT_OBJECT 1
 #define TT_LINK 2

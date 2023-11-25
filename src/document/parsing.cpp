@@ -149,7 +149,7 @@ static bool check_tag_conditions(extDocument *Self, XMLTag &Tag)
       else if (!StrMatch("exists", Tag.Attribs[i].Name)) {
          OBJECTID object_id;
          if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::SMART_NAMES, &object_id)) {
-            satisfied = valid_objectid(Self, object_id) ? true : false;            
+            satisfied = valid_objectid(Self, object_id) ? true : false;
          }
          break;
       }
@@ -944,7 +944,7 @@ static void tag_head(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 }
 
 //********************************************************************************************************************
-// Include XML from another RIPPLE file.
+// Include XML from another RIPL file.
 
 static void tag_include(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
@@ -2692,7 +2692,7 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 
    while (loopstart < loopend) {
       if (indexname.empty()) Self->LoopIndex = loopstart;
-      else SetVar(Self, indexname.c_str(), std::to_string(loopstart).c_str());      
+      else SetVar(Self, indexname.c_str(), std::to_string(loopstart).c_str());
 
       parse_tags(Self, XML, Tag.Children, Index, Flags);
       loopstart += step;
@@ -2956,6 +2956,8 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             }
       }
    }
+   
+   Self->ParagraphDepth++;
 
    if (!cell.edit_def.empty()) edit_recurse++;
 
@@ -2994,6 +2996,8 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    }
 
    if (!cell.edit_def.empty()) edit_recurse--;
+
+   Self->ParagraphDepth--;
 }
 
 //********************************************************************************************************************

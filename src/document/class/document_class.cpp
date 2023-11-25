@@ -1020,7 +1020,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 ReadContent: Returns selected content from the document, either as plain text or original byte code.
 
 The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as
-a RIPPLE binary stream, or translate the content into plain-text (control codes are removed).
+a RIPL binary stream, or translate the content into plain-text (control codes are removed).
 
 If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from
 an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point,

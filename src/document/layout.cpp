@@ -2054,7 +2054,6 @@ extend_page:
          case SCODE::LINK:            procLink(); break;
          case SCODE::LINK_END:        procLinkEnd(); break;
          case SCODE::CELL_END:        procCellEnd(esccell); break;
-
          case SCODE::PARAGRAPH_START: procParagraphStart(); break;
          case SCODE::PARAGRAPH_END:   procParagraphEnd(); break;
 
@@ -2294,7 +2293,7 @@ repass_row_height_ext:
                   // Edit cells have a minimum width/height so that the user can still interact with them when empty.
 
                   if (m_segments.size() IS segcount) {
-                     // No content segments were created, which means that there's nothing for the cursor to attach
+                     // No content segments were created, which means that there's nothing for the editing cursor to attach
                      // itself too.
 
                      // Do we really want to do something here?

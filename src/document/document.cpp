@@ -13,7 +13,8 @@ The Document module exports a small number of functions in support of the @Docum
 
 THE BYTE CODE
 -------------
-The document stream consists of byte codes represented by the base_code class.  that indicate font style, paragraphs, hyperlinks, text etc.
+The document stream consists of byte codes represented by the base_code class.  Each type of code is represented by a
+C++ class prefixed with 'bc'. Each instantiated by type in the stream gets its own UID.  that indicate font style, paragraphs, hyperlinks, text etc.
 
 PARAGRAPH MANAGEMENT
 --------------------
@@ -472,11 +473,6 @@ ERROR CMDExpunge(void)
    return ERR_Okay;
 }
 
-static ERROR CMDOpen(OBJECTPTR Module)
-{
-   return ERR_Okay;
-}
-
 //********************************************************************************************************************
 
 inline INDEX find_cell(extDocument *Self, LONG ID)
@@ -554,5 +550,5 @@ static ERROR add_document_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(CMDInit, NULL, CMDOpen, CMDExpunge, MOD_IDL, NULL)
+PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }

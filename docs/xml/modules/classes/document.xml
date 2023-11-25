@@ -264,7 +264,7 @@
         <param type="STRING *" name="Result">The data is returned in this parameter as an allocated string.</param>
       </input>
       <description>
-<p>The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as a RIPPLE binary stream, or translate the content into plain-text (control codes are removed).</p>
+<p>The ReadContent method extracts content from the document stream, covering a specific area.  It can return the data as a RIPL binary stream, or translate the content into plain-text (control codes are removed).</p>
 <p>If data is extracted in its original format, no post-processing is performed to fix validity errors that may arise from an invalid data range.  For instance, if an opening paragraph code is not closed with a matching paragraph end point, this will remain the case in the resulting data.</p>
       </description>
       <result>

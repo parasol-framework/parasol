@@ -964,7 +964,7 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
                Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(Self->Time->Second));
             }
             else if (!Output.compare(pos, sizeof("[%version]")-1, "[%version]")) {
-               Output.replace(pos, sizeof("[%version]")-1, RIPPLE_VERSION);
+               Output.replace(pos, sizeof("[%version]")-1, RIPL_VERSION);
             }
             else if (!Output.compare(pos, sizeof("[%viewheight]")-1, "[%viewheight]")) {
                char buffer[28];
@@ -1050,11 +1050,11 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
             OBJECTID objectid = 0;
             if (!name.empty()) {
                if (name == "self") {
-                  // [self] can't be used in RIPPLE, because arguments are parsed prior to object
+                  // [self] can't be used in RIPL, because arguments are parsed prior to object
                   // creation.  We print a message to remind the developer of this rather than
                   // failing quietly.
 
-                  log.warning("Self references are not permitted in RIPPLE.");
+                  log.warning("Self references are not permitted in RIPL.");
                }
                else if (name == "owner") {
                   if (Self->CurrentObject) objectid = Self->CurrentObject->UID;
