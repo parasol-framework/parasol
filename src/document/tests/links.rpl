@@ -5,7 +5,7 @@
 
 <page name="Index">
 
-<p><font colour="rgb(255,0,0)" size="20">Hyperlink Tests</a></p>
+<h1>Hyperlink Tests</h1>
 
 <p>These tests are intended to confirm that hyperlinks are correctly highlighted on the page and support user interaction (confirmed when the mouse cursor switches to a hand image during hover).  The links must wrap with the content that represents them.</p>
 

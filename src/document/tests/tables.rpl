@@ -2,15 +2,12 @@
 
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <pattern id="Diamonds" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-      <rect width="60" height="60" fill="#fff"/>
-      <rect width="42.42" height="42.42" transform="translate(30 0) rotate(45)" fill="#444"/>
-    </pattern>
+    <image id="cancel" xlink:href="icons:items/cancel" width="32" height="32"/>
 
-    <pattern id="Stripes" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
-      <rect width="50" height="50" fill="#eee"/>
-      <rect x="25" width="25" height="50" fill="#ddd"/>
-    </pattern>
+    <linearGradient id="Gradient" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="rgb(255,255,255,192)"/>
+      <stop offset="1" stop-color="rgb(255,255,255,128)"/>
+    </linearGradient>
 
     <pattern id="Honeycomb" x="0" y="0" width="56" height="100" patternUnits="userSpaceOnUse">
       <rect width="56" height="100" fill="#f8d203"/>
@@ -31,10 +28,10 @@
 
   <table stroke="rgb(0,0,0)" margins="4" spacing="4" thickness="1" fill="url(#Honeycomb)">
     <row fill="rgb(0,0,0,30)"><cell><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
-    <row><cell>Hello</cell><cell>World</cell></row>
+    <row><cell fill="url(#Gradient)">Hello</cell><cell>World</cell></row>
     <row>
       <cell>Praesent varius facilisis tortor in volutpat.</cell>
-      <cell><p>single_word_<image icon="items/cancel"/>_containing_image</p></cell>
+      <cell><p>single_word_<image src="url(#cancel)"/>_containing_image</p></cell>
       <cell>The quick <a href="paragraphs.rpl">brown</a> fox jumped over the lazy dog.</cell>
     </row>
   </table>

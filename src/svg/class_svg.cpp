@@ -441,10 +441,10 @@ static ERROR GET_Scene(extSVG *Self, objVectorScene **Value)
 -FIELD-
 Statement: A string containing SVG data.
 
-SVG data can be loaded from a string by specifying it here prior to initialisation.  If the Path field has been
+SVG data can be loaded from a string by specifying it here prior to initialisation.  If the #Path field has been
 defined, it will take precedent and the Statement is ignored.
 
-Alternatively the #DataFeed action can be used to parse data on-the-fly after the SVG object is initialised.
+Alternatively the #DataFeed() action can be used to parse data on-the-fly after the SVG object is initialised.
 
 *********************************************************************************************************************/
 

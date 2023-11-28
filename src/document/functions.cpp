@@ -895,7 +895,7 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
             else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
                if (auto font = Self->Style.font_style.get_font()) {
                   char buffer[60];
-                  snprintf(buffer, sizeof(buffer), "%s:%.0f:%s", font->Face, font->Point, font->Style);
+                  snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->Face, font->Point, font->Style);
                   Output.replace(pos, sizeof("[%font]")-1, buffer);
                }
             }
@@ -914,7 +914,7 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
             else if (!Output.compare(pos, sizeof("[%fontsize]")-1, "[%fontsize]")) {
                if (auto font = Self->Style.font_style.get_font()) {
                   char buffer[28];
-                  snprintf(buffer, sizeof(buffer), "%.2f", font->Point);
+                  snprintf(buffer, sizeof(buffer), "%g", font->Point);
                   Output.replace(pos, sizeof("[%fontsize]")-1, buffer);
                }
             }
@@ -968,12 +968,12 @@ static void translate_args(extDocument *Self, const std::string &Input, std::str
             }
             else if (!Output.compare(pos, sizeof("[%viewheight]")-1, "[%viewheight]")) {
                char buffer[28];
-               snprintf(buffer, sizeof(buffer), "%.0f", Self->Area.Height);
+               snprintf(buffer, sizeof(buffer), "%g", Self->Area.Height);
                Output.replace(pos, sizeof("[%viewheight]")-1, buffer);
             }
             else if (!Output.compare(pos, sizeof("[%viewwidth]")-1, "[%viewwidth]")) {
                char buffer[28];
-               snprintf(buffer, sizeof(buffer), "%.0f", Self->Area.Width);
+               snprintf(buffer, sizeof(buffer), "%g", Self->Area.Width);
                Output.replace(pos, sizeof("[%viewwidth]")-1, buffer);
             }
          }

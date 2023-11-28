@@ -143,6 +143,17 @@
     </field>
 
     <field>
+      <name>Statement</name>
+      <comment>A string containing SVG data.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>SVG data can be loaded from a string by specifying it here prior to initialisation.  If the <field>Path</field> field has been defined, it will take precedent and the Statement is ignored.</p>
+<p>Alternatively the <action>DataFeed</action> action can be used to parse data on-the-fly after the SVG object is initialised.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Target</name>
       <comment>The root Viewport that is generated during SVG initialisation can be created as a child of this target object.</comment>
       <access read="R" write="S">Read/Set</access>

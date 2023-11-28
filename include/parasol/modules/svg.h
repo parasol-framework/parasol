@@ -89,6 +89,12 @@ class objSVG : public BaseClass {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
+   template <class T> inline ERROR setStatement(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
    inline ERROR setFrame(const LONG Value) {
       this->Frame = Value;
       return ERR_Okay;
@@ -101,13 +107,13 @@ class objSVG : public BaseClass {
 
    inline ERROR setFrameRate(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
    inline ERROR setFrameCallback(const FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

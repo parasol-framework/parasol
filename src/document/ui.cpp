@@ -116,7 +116,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                   if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
                      Self->CursorIndex = index;
                      Self->Viewport->draw();
-                     log.warning("LeftCursor: %d, X: %.0f", Self->CursorIndex.index, Self->CursorCharX);
+                     log.warning("LeftCursor: %d, X: %g", Self->CursorIndex.index, Self->CursorCharX);
                   }
                   break;
                }
@@ -149,7 +149,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
                   Self->CursorIndex = index;
                   Self->Viewport->draw();
-                  log.warning("RightCursor: %d, X: %.0f", Self->CursorIndex.index, Self->CursorCharX);
+                  log.warning("RightCursor: %d, X: %g", Self->CursorIndex.index, Self->CursorCharX);
                }
                break;
             }
@@ -617,7 +617,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
          Self->SelectIndex.reset(); //sc; // SelectIndex is for text selections where the user holds the LMB and drags the mouse
          Self->SelectCharX = Self->CursorCharX;
 
-         log.msg("User clicked on point %.2fx%.2f in segment %d, cursor index: %d, char x: %.0f", X, Y, segment, Self->CursorIndex.index, Self->CursorCharX);
+         log.msg("User clicked on point %gx%g in segment %d, cursor index: %d, char x: %g", X, Y, segment, Self->CursorIndex.index, Self->CursorCharX);
 
          if (Self->Segments[segment].edit) {
             // If the segment is editable, we'll have to turn on edit mode so
@@ -1086,7 +1086,7 @@ static void calc_scroll(extDocument *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("PageHeight: %d/%.0f, PageWidth: %.0f/%.0f, XPos: %.0f, YPos: %.0f", 
+   log.traceBranch("PageHeight: %d/%g, PageWidth: %g/%g, XPos: %g, YPos: %g",
       Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
 }
 

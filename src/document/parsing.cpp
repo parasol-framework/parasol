@@ -603,7 +603,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
             if (Tag.Attribs[i].Value.find('%') != std::string::npos) Self->RelPageWidth = true;
             else Self->RelPageWidth = false;
-            log.msg("Page width forced to %.0f%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
+            log.msg("Page width forced to %g%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
             break;
 
          case HASH_colour: // Background fill
@@ -791,7 +791,7 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
-// Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will be applied to the 
+// Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will be applied to the
 // Page viewport.  This feature should only be used for the creation of resources that can then be referred to in the
 // document as named patterns.
 
@@ -1004,17 +1004,15 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
-// Bitmap and vector images are supported as vector rectangles that reference a pattern name.  Images need to be 
+// Bitmap and vector images are supported as vector rectangles that reference a pattern name.  Images need to be
 // loaded as resources in an <svg> tag and can then be referenced by name.  Technically any pattern type can be
 // referenced as an image - so if the client wants to refer to a gradient for example, that is perfectly legal.
 //
-// Images are always inline by default, that is to say that they do not prevent content from appearing on either side.
-// A floating image does not block whitespace on either side.  Blocking whitespace is enabled if the client embeds the
-// image within <p> tags.
+// Images are inline by default.  Whitespace on either side is never blocked, whether inline or floating.
+// Blocking whitespace can be achieved by embedding the image within <p> tags.
 //
-// TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless
-// changed to a higher resolution or otherwise modified.  Such an implementation should be achieved in the Vector
-// module's scene graph renderer.
+// A benefit to rendering SVG images in the <defs> area is that they are converted to cached bitmap textures ahead of
+// time.  This provides a considerable speed boost when drawing them, at a potential cost to image quality.
 
 static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
@@ -2660,7 +2658,7 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 // Thickness:    Thickness of the stroke.
 //
 // The only acceptable child tags inside a <table> section are row, brk and cell tags.  Command tags are acceptable
-// (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW, 
+// (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW,
 // SCODE::CELL..., SCODE::ROW_END, SCODE::TABLE_END.
 
 static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
@@ -2895,7 +2893,7 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             }
       }
    }
-   
+
    Self->ParagraphDepth++;
 
    if (!cell.edit_def.empty()) edit_recurse++;

@@ -12,4 +12,13 @@
 
 <p align="center">This centered line contains <image icon="items/cancel"/> an embedded image.</p>
 
+<p align="center">
+<list type="ordered">
+<li>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus.<li>Embedded list item one.</li><li>Embedded list item two.</li></li>
+<li>Mauris quis cursus sapien.  Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam.</li>
+<li>Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a.</li>
+<li>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</li>
+</list>
+</p>
+
 </page>

@@ -24,7 +24,7 @@ struct layout {
 
    extDocument *Self;
    objFont *m_font;
-   
+
    DOUBLE m_cursor_x, m_cursor_y; // Insertion point of the next text character or vector object
    DOUBLE m_page_width;
 
@@ -321,7 +321,7 @@ void layout::procFont()
       m_no_wrap = ((style->options & FSO::NO_WRAP) != FSO::NIL);
       //if (m_no_wrap) m_wrap_edge = 1000;
 
-      DLAYOUT("Font Index: %d, LineSpacing: %d, Pt: %.2f, Height: %d, Ascent: %d, Cursor: %.2fx%.2f",
+      DLAYOUT("Font Index: %d, LineSpacing: %d, Pt: %g, Height: %d, Ascent: %d, Cursor: %gx%g",
          style->font_index, m_font->LineSpacing, m_font->Point, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
       m_space_width = fntCharWidth(m_font, ' ', 0, 0);
 
@@ -567,7 +567,7 @@ void layout::procRowEnd(bc_table *Table)
 
    m_cursor_y += Row->row_height + Table->cell_vspacing;
    m_cursor_x = Table->x;
-   DLAYOUT("Row ends, advancing down by %.0f+%.0f, new height: %.0f, y-cursor: %.2f",
+   DLAYOUT("Row ends, advancing down by %g+%g, new height: %g, y-cursor: %g",
       Row->row_height, Table->cell_vspacing, Table->height, m_cursor_y);
 
    if (Table->row_width > Table->width) Table->width = Table->row_width;
@@ -690,7 +690,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
       // Table cells need to match the available width inside the table.  This routine checks for that - if the cells
       // are short then the table processing is restarted.
 
-      DLAYOUT("Checking table @ index %d for cell/table widening.  Table width: %.0f", idx, esctable->width);
+      DLAYOUT("Checking table @ index %d for cell/table widening.  Table width: %g", idx, esctable->width);
 
       esctable->cells_expanded = true;
 
@@ -740,7 +740,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
                      if (esctable->columns[j].min_width > cell_width) continue;
 
                      if (esctable->columns[j].width < cell_width) {
-                        DLAYOUT("Expanding column %d from width %.0f to %.2f", j, esctable->columns[j].width, cell_width);
+                        DLAYOUT("Expanding column %d from width %g to %g", j, esctable->columns[j].width, cell_width);
                         esctable->columns[j].width = cell_width;
                         //if (total - (DOUBLE)F2I(total) >= 0.5) esctable->Columns[j].width++; // Fractional correction
 
@@ -759,7 +759,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
       }
       else DLAYOUT("Table is missing its columns array.");
    }
-   else DLAYOUT("Cells already widened - keeping table width of %.0f.", esctable->width);
+   else DLAYOUT("Cells already widened - keeping table width of %g.", esctable->width);
 
    // Cater for the minimum height requested
 
@@ -780,7 +780,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
          auto h = minheight - (esctable->height + esctable->cell_vspacing + esctable->thickness);
-         DLAYOUT("Extending table height to %.2f (row %.2f+%.2f) due to a minimum height of %.2f at coord %.2f",
+         DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
             minheight, stack_row.top()->row_height, h, esctable->min_height, esctable->y);
          stack_row.top()->row_height += h;
          return TE::REPASS_ROW_HEIGHT;
@@ -796,7 +796,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
 
    LONG j = esctable->x + esctable->width + m_right_margin;
    if ((j > Width) and (Width < WIDTH_LIMIT)) {
-      DLAYOUT("Table width (%.2f+%.2f) increases page width to %d, layout restart forced.",
+      DLAYOUT("Table width (%g+%g) increases page width to %d, layout restart forced.",
          esctable->x, esctable->width, j);
       Width = j;
       return TE::EXTEND_PAGE;
@@ -825,7 +825,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
    // considered (otherwise, clips inside the table cells will cause collisions against the parent
    // table).
 
-   DLAYOUT("Checking table collisions (%.2fx%.2f, %.2fx%.2f).", esctable->x, esctable->y, esctable->width, esctable->height);
+   DLAYOUT("Checking table collisions (%gx%g, %gx%g).", esctable->x, esctable->y, esctable->width, esctable->height);
 
    WRAP ww;
    if (esctable->total_clips > m_clips.size()) {
@@ -846,7 +846,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
       return TE::WRAP_TABLE;
    }
 
-   // The table sets a clipping region because its surrounds are available as whitespace for 
+   // The table sets a clipping region because its surrounds are available as whitespace for
    // other content.
 
    m_clips.emplace_back(
@@ -856,7 +856,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
    m_cursor_x = esctable->x + esctable->width;
    m_cursor_y = esctable->y;
 
-   DLAYOUT("Final Table Size: %.2fx%.2f,%.2fx%.2f", esctable->x, esctable->y, esctable->width, esctable->height);
+   DLAYOUT("Final Table Size: %gx%g,%gx%g", esctable->x, esctable->y, esctable->width, esctable->height);
 
    esctable = esctable->stack;
 
@@ -907,7 +907,7 @@ wrap_vector:
       return WRAP::DO_NOTHING;
    }
 
-   DLAYOUT("[Idx:%d] The %s's available page area is (%.2fx%.2f, %.2fx%.2f), cursor %.2fx%.2f",
+   DLAYOUT("[Idx:%d] The %s's available page area is (%gx%g, %gx%g), cursor %gx%g",
       idx, vector->Class->ClassName, cx, cr, cy, cb, m_cursor_x, m_cursor_y);
 
 #if true
@@ -1089,7 +1089,7 @@ wrap_vector:
 
    // Set the clipping
 
-   DLAYOUT("Clip region is being restricted to the bounds: %.2fx%.2f,%.2fx%.2f", new_x, new_y, new_width, new_height);
+   DLAYOUT("Clip region is being restricted to the bounds: %gx%g,%gx%g", new_x, new_y, new_width, new_height);
 
    cx = new_x;
    cy = new_y;
@@ -1099,7 +1099,7 @@ wrap_vector:
    // If BlockRight is true, no text may be printed to the right of the vector.
 
    if (vec.block_right) {
-      DLAYOUT("Block Right: Expanding clip.right boundary from %.2f to %.2f.",
+      DLAYOUT("Block Right: Expanding clip.right boundary from %g to %g.",
          cr, m_page_width - m_right_margin);
       cr = m_page_width - m_right_margin; //cell_width;
    }
@@ -1107,13 +1107,13 @@ wrap_vector:
    // If BlockLeft is true, no text may be printed to the left of the vector (but not
    // including text that has already been printed).
 
-   if (vec.block_left) cx  = 0; // left_margin   
+   if (vec.block_left) cx  = 0; // left_margin
 
    DOUBLE width_check = vec.ignore_cursor ? cr : cr + m_right_margin;
 
-   DLAYOUT("#%d, Pos: %.2fx%.2f,%.2fx%.2f, Align: $%.8x, WidthCheck: %.2f/%.0f",
+   DLAYOUT("#%d, Pos: %gx%g,%gx%g, Align: $%.8x, WidthCheck: %g/%g",
       vector->UID, new_x, new_y, new_width, new_height, LONG(align), width_check, m_page_width);
-   DLAYOUT("Clip Size: %.2fx%.2f,%.2fx%.2f, LineHeight: %.2f",
+   DLAYOUT("Clip Size: %gx%g,%gx%g, LineHeight: %g",
       cx, cy, cell_width, cell_height, line_height);
 
    dimensions = dimensions;
@@ -1430,7 +1430,7 @@ wrap_vector:
          // including text that has already been printed).  This has no impact on the vector's
          // bounds.
 
-         if (vec.BlockLeft) cx = IgnoreCursor ? 0 : m_left_margin;         
+         if (vec.BlockLeft) cx = IgnoreCursor ? 0 : m_left_margin;
          width_check = IgnoreCursor ? cr : cr + m_right_margin;
 
          DLAYOUT("#%d, Pos: %dx%d,%dx%d, Align: $%.8x, WidthCheck: %d/%d", vector->UID, vector->BoundX, vector->BoundY, vector->BoundWidth, vector->BoundHeight, align, vector->x), width_check, width);
@@ -1452,8 +1452,8 @@ wrap_vector:
       // region list (i.e. layout of document text will ignore the presence of the vector).
 
       if ((cb <= cy) or (cr <= cx)) {
-         if (auto name = vector->Name) log.warning("%s %s returned an invalid clip region of %.2fx%.2f,%.2fx%.2f", vector->Class->ClassName, name, cx, cy, cr, cb);
-         else log.warning("%s #%d returned an invalid clip region of %.2fx%.2f,%.2fx%.2f", vector->Class->ClassName, vector->UID, cx, cy, cr, cb);
+         if (auto name = vector->Name) log.warning("%s %s returned an invalid clip region of %gx%g,%gx%g", vector->Class->ClassName, name, cx, cy, cr, cb);
+         else log.warning("%s #%d returned an invalid clip region of %gx%g,%gx%g", vector->Class->ClassName, vector->UID, cx, cy, cr, cb);
          return WRAP::DO_NOTHING;
       }
 
@@ -1479,7 +1479,7 @@ wrap_vector:
          else cmp_width = m_left_margin + (cr - cx) + m_right_margin;
 
          if (m_page_width < cmp_width) {
-            DLAYOUT("Restarting as %s clip.left %.2f < %d and extends past the page width (%.2f > %.0f).", vector->Class->ClassName, cx, left_check, width_check, m_page_width);
+            DLAYOUT("Restarting as %s clip.left %g < %d and extends past the page width (%g > %g).", vector->Class->ClassName, cx, left_check, width_check, m_page_width);
             m_page_width = cmp_width;
             return WRAP::EXTEND_PAGE;
          }
@@ -1487,7 +1487,7 @@ wrap_vector:
       else if (width_check > m_page_width) {
          // Perform a wrapping check if the vector possibly extends past the width of the page/cell.
 
-         DLAYOUT("Wrapping %s vector #%d as it extends past the page width (%.2f > %.0f).  Pos: %.2fx%.2f", vector->Class->ClassName, vector->UID, width_check, m_page_width, cx, cy);
+         DLAYOUT("Wrapping %s vector #%d as it extends past the page width (%g > %g).  Pos: %gx%g", vector->Class->ClassName, vector->UID, width_check, m_page_width, cx, cy);
 
          auto ww = check_wordwrap("Vector", m_page_width, idx, cx, cy, cr - cx, cb - cy);
 
@@ -1496,7 +1496,7 @@ wrap_vector:
             return WRAP::EXTEND_PAGE;
          }
          else if (ww IS WRAP::WRAPPED) {
-            DLAYOUT("Vector coordinates wrapped to %.2fx%.2f", cx, cy);
+            DLAYOUT("Vector coordinates wrapped to %gx%g", cx, cy);
             // The check_wordwrap() function will have reset m_cursor_x and m_cursor_y, so
             // on our repass, the cell.left and cell.top will reflect this new cursor position.
 
@@ -1504,7 +1504,7 @@ wrap_vector:
          }
       }
 
-      DLAYOUT("Adding %s clip to the list: (%.2fx%.2f, %.2fx%.2f)", vector->Class->ClassName, cx, cy, cr-cx, cb-cy);
+      DLAYOUT("Adding %s clip to the list: (%gx%g, %gx%g)", vector->Class->ClassName, cx, cy, cr-cx, cb-cy);
 
       m_clips.emplace_back(cx, cy, cr, cb, idx, !vec.in_line, "Vector");
 
@@ -1633,7 +1633,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
    else if (line_height < 0) line_height = 0;
 
 #ifdef DBG_STREAM
-   log.branch("#%d %d:%d - %d:%d, Area: %.0fx%.0f,%.0f:%.0fx%.0f, WordWidth: %d [%.20s]...[%.20s] (%s)",
+   log.branch("#%d %d:%d - %d:%d, Area: %gx%g,%g:%gx%g, WordWidth: %d [%.20s]...[%.20s] (%s)",
       LONG(m_segments.size()), Start.index, LONG(Start.offset), Stop.index, LONG(Stop.offset), m_line.x, Y, Width,
       AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
@@ -1715,7 +1715,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
 
    if ((m_split_start != NOT_SPLIT) and (line_height)) {
       if (LONG(m_segments.size()) != m_split_start) {
-         DLAYOUT("Resetting height (%.0f) & gutter (%.0f) of segments index %d-%d.", line_height, gutter, segment.start.index, m_split_start);
+         DLAYOUT("Resetting height (%g) & gutter (%g) of segments index %d-%d.", line_height, gutter, segment.start.index, m_split_start);
          for (unsigned i=m_split_start; i < m_segments.size(); i++) {
             if (m_segments[i].depth != Self->Depth) continue;
             m_segments[i].area.Height = line_height;
@@ -1748,7 +1748,7 @@ static void layout_doc(extDocument *Self)
    // of the page.
 
    #ifdef DBG_LAYOUT
-      log.branch("Area: %.2fx%.2f,%.2fx%.2f Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
+      log.branch("Area: %gx%g,%gx%g Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
    #endif
 
    Self->BreakLoop = MAXLOOP;
@@ -1904,10 +1904,10 @@ static void layout_doc(extDocument *Self)
 // TODO: Consider prioritising the layout of table cells first, possibly using concurrent threads.
 //
 // Offset/End: Start and end points within the stream for layout processing.
-// Width:      Minimum width of the page/section.  Can be increased if insufficient space is available.  Includes the 
+// Width:      Minimum width of the page/section.  Can be increased if insufficient space is available.  Includes the
 //             left and right margins in the resulting calculation.
 // Height:     Minimum height of the page/section.  Will be increased to match the number of lines in the layout.
-// Margins:    Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell, 
+// Margins:    Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell,
 //             margins reflect cell padding values.
 
 ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, DOUBLE &Height,
@@ -1935,7 +1935,7 @@ ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, 
    }
 
    #ifdef DBG_LAYOUT
-   log.branch("Dimensions: %.0fx%.0f (edge %.0f), LM %d RM %d TM %d BM %d",
+   log.branch("Dimensions: %gx%g (edge %g), LM %d RM %d TM %d BM %d",
       m_page_width, page_height, m_page_width - Margins.Right,
       Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
@@ -1951,7 +1951,7 @@ ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, 
 
 extend_page:
    if (m_page_width > WIDTH_LIMIT) {
-      DLAYOUT("Restricting page width from %.0f to %d", m_page_width, WIDTH_LIMIT);
+      DLAYOUT("Restricting page width from %g to %d", m_page_width, WIDTH_LIMIT);
       m_page_width = WIDTH_LIMIT;
       if (Self->BreakLoop > 4) Self->BreakLoop = 4; // Very large page widths normally means that there's a parsing problem
    }
@@ -1991,14 +1991,14 @@ extend_page:
 
    for (idx = Offset; idx < End; idx++) {
       if ((m_cursor_x >= MAX_PAGE_WIDTH) or (m_cursor_y >= MAX_PAGE_HEIGHT)) {
-         log.warning("Invalid cursor position reached @ %.2fx%.2f", m_cursor_x, m_cursor_y);
+         log.warning("Invalid cursor position reached @ %gx%g", m_cursor_x, m_cursor_y);
          Self->Error = ERR_InvalidDimension;
          break;
       }
 
       if (m_line.index.index < idx) {
          if (breakable_word()) {
-            DLAYOUT("Setting line at code '%s', index %d, line.x: %.0f, m_word_width: %d",
+            DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
                BC_NAME(Self->Stream,idx).c_str(), m_line.index.index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             stream_char sc(idx,0);
@@ -2156,13 +2156,13 @@ wrap_table_cell:
             esctable->total_clips = m_clips.size();
             esctable->height      = esctable->thickness;
 
-            DLAYOUT("(i%d) Laying out table of %dx%d, coords %.2fx%.2f,%.2fx%.2f%s, page width %.0f.",
-               idx, LONG(esctable->columns.size()), esctable->rows, esctable->x, esctable->y, 
+            DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g%s, page width %g.",
+               idx, LONG(esctable->columns.size()), esctable->rows, esctable->x, esctable->y,
                esctable->width, esctable->min_height, esctable->height_pct ? "%" : "", Width);
 
             esctable->computeColumns();
 
-            DLAYOUT("Checking for table collisions before layout (%.2fx%.2f).  reset_row_height: %d", 
+            DLAYOUT("Checking for table collisions before layout (%gx%g).  reset_row_height: %d",
                esctable->x, esctable->y, esctable->reset_row_height);
 
             auto ww = check_wordwrap("Table", m_page_width, idx, esctable->x, esctable->y, esctable->width, esctable->height);
@@ -2174,7 +2174,7 @@ wrap_table_cell:
                // The width of the table and positioning information needs to be recalculated in the event of a
                // table wrap.
 
-               DLAYOUT("Restarting table calculation due to page wrap to position %.2fx%.2f.", m_cursor_x, m_cursor_y);
+               DLAYOUT("Restarting table calculation due to page wrap to position %gx%g.", m_cursor_x, m_cursor_y);
                esctable->compute_columns = 1;
                goto wrap_table_start;
             }
@@ -2260,7 +2260,7 @@ repass_row_height_ext:
             esccell->height = stack_row.top()->row_height;
             //DLAYOUT("%d / %d", escrow->min_height, escrow->row_height);
 
-            DLAYOUT("Index %d, Processing cell at (%.2f,%.2fy), size (%.0f,%.0f), column %d",
+            DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
                idx, m_cursor_x, m_cursor_y, esccell->width, esccell->height, esccell->column);
 
             // Find the matching CELL_END
@@ -2280,7 +2280,7 @@ repass_row_height_ext:
                Self->EditMode = (!esccell->edit_def.empty()) ? true : false;
 
                layout sl(Self);
-               sl.do_layout(idx, cell_end, &m_font, esccell->width, esccell->height, 
+               sl.do_layout(idx, cell_end, &m_font, esccell->width, esccell->height,
                   ClipRectangle(esctable->cell_padding), vertical_repass);
 
                // The main product of do_layout() are the produced segments, so append them here.
@@ -2314,14 +2314,14 @@ repass_row_height_ext:
 
             if (!idx) goto exit;
 
-            DLAYOUT("Cell (%d:%d) is size %.0fx%.0f (min width %.2f)", esctable->row_index, esccell->column, 
+            DLAYOUT("Cell (%d:%d) is size %gx%g (min width %g)", esctable->row_index, esccell->column,
                esccell->width, esccell->height, esctable->columns[esccell->column].width);
 
             // Increase the overall width for the entire column if this cell has increased the column width.
             // This will affect the entire table, so a restart from TABLE_START is required.
 
             if (esctable->columns[esccell->column].width < esccell->width) {
-               DLAYOUT("Increasing column width of cell (%d:%d) from %.2f to %.2f (table_start repass required).", esctable->row_index, esccell->column, esctable->columns[esccell->column].width, esccell->width);
+               DLAYOUT("Increasing column width of cell (%d:%d) from %g to %g (table_start repass required).", esctable->row_index, esccell->column, esctable->columns[esccell->column].width, esccell->width);
                esctable->columns[esccell->column].width = esccell->width; // This has the effect of increasing the minimum column width for all cells in the column
 
                // Percentage based and zero columns need to be recalculated.  The easiest thing to do
@@ -2349,7 +2349,7 @@ repass_row_height_ext:
                // in earlier cells, because vectors need to know the final dimensions of their table cell.
 
                if (esccell->column IS LONG(esctable->columns.size())-1) {
-                  DLAYOUT("Extending row height from %.2f to %.2f (row repass required)", stack_row.top()->row_height, esccell->height);
+                  DLAYOUT("Extending row height from %g to %g (row repass required)", stack_row.top()->row_height, esccell->height);
                }
 
                stack_row.top()->row_height = esccell->height;
@@ -2386,7 +2386,7 @@ exit:
    page_height = calc_page_height(Margins.Bottom);
 
    if (page_height > MAX_PAGE_HEIGHT) {
-      log.warning("Calculated page_height of %.2f is invalid.", page_height);
+      log.warning("Calculated page_height of %g is invalid.", page_height);
       Self->Error = ERR_InvalidDimension;
       return Self->Error;
    }
@@ -2399,7 +2399,7 @@ exit:
 
    if ((!Offset) and (VerticalRepass) and (last_height < page_height)) {
       DLAYOUT("============================================================");
-      DLAYOUT("SECOND PASS [%d]: Root page height increased from %.0f to %.0f", Offset, last_height, page_height);
+      DLAYOUT("SECOND PASS [%d]: Root page height increased from %g to %g", Offset, last_height, page_height);
       goto extend_page;
    }
 
@@ -2440,7 +2440,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
    }
 
 #ifdef DBG_LAYOUT
-   log.branch("%s: CursorX/Y: %.2f/%.2f, ParaY: %d, ParaEnd: %d, Line Height: %.0f * %.2f, Span: %d:%d - %d:%d",
+   log.branch("%s: CursorX/Y: %g/%g, ParaY: %d, ParaEnd: %d, Line Height: %g * %g, Span: %d:%d - %d:%d",
       Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing,
       m_line.index.index, LONG(m_line.index.offset), Next.index, LONG(Next.offset));
 #endif
@@ -2509,13 +2509,13 @@ WRAP layout::check_wordwrap(const std::string &Type, DOUBLE &PageWidth, stream_c
    if (Width < 1) Width = 1;
 
    if ((X > MAX_PAGE_WIDTH) or (Y > MAX_PAGE_HEIGHT) or (PageWidth > MAX_PAGE_WIDTH)) {
-      log.warning("Invalid element position of %.2fx%.2f in page of %.2f", X, Y, PageWidth);
+      log.warning("Invalid element position of %gx%g in page of %g", X, Y, PageWidth);
       Self->Error = ERR_InvalidDimension;
       return WRAP::DO_NOTHING;
    }
 
 #ifdef DBG_WORDWRAP
-   log.branch("Index: %d/%d, %s: %dx%d,%dx%d, LineHeight: %d, Cursor: %.2fx%.2f, PageWidth: %d, Edge: %d",
+   log.branch("Index: %d/%d, %s: %dx%d,%dx%d, LineHeight: %d, Cursor: %gx%g, PageWidth: %d, Edge: %d",
       idx, Cursor.index, type.c_str(), x, y, width, height, m_line.height, m_cursor_x, m_cursor_y, width, m_wrap_edge);
 #endif
 
@@ -2585,7 +2585,7 @@ restart:
    }
 
    #ifdef DBG_WORDWRAP
-      if (result IS WRAP::WRAPPED) log.msg("A wrap to Y coordinate %.2f has occurred.", m_cursor_y);
+      if (result IS WRAP::WRAPPED) log.msg("A wrap to Y coordinate %g has occurred.", m_cursor_y);
    #endif
 
    return result;
@@ -2611,7 +2611,7 @@ restart:
 
       if (clip.left < m_align_width) m_align_width = clip.left;
 
-      DWRAP("Word: \"%.20s\" (%.2fx%.2f,%.2fx%.2f) advances over clip %d-%d",
+      DWRAP("Word: \"%.20s\" (%gx%g,%gx%g) advances over clip %d-%d",
          printable(Self, WordIndex).c_str(), X, Y, Width, Height, clip.left, clip.right);
 
       // Set the line segment up to the encountered boundary and continue checking the vector position against the
@@ -2639,7 +2639,7 @@ restart:
       X = clip.right; // Go past the clip boundary
 
       if (X + Width > m_wrap_edge) {
-         DWRAP("Wrapping-Break: X(%.2f)+Width(%.2f) > Edge(%d) at clip '%s' %dx%d,%dx%d",
+         DWRAP("Wrapping-Break: X(%g)+Width(%g) > Edge(%d) at clip '%s' %dx%d,%dx%d",
             X, Width, m_wrap_edge, clip.name.c_str(), clip.left, clip.top, clip.right, clip.bottom);
          break;
       }
@@ -2668,11 +2668,11 @@ void layout::add_link(SCODE base_code, std::variant<bc_link *, bc_cell *> Escape
    pf::Log log(__FUNCTION__);
 
    if ((Width < 0.01) or (Height < 0.01)) {
-      log.traceWarning("Illegal link dimensions of (%.0fx%.0f, %.0fx%.0f) [%s]", X, Y, Width, Height, Caller.c_str());
+      log.traceWarning("Illegal link dimensions of (%gx%g, %gx%g) [%s]", X, Y, Width, Height, Caller.c_str());
       return;
    }
 
-   DLAYOUT("#%d (%.0fx%.0f, %.0fx%.0f), %s", LONG(m_links.size()), X, Y, Width, Height, Caller.c_str());
+   DLAYOUT("#%d (%gx%g, %gx%g), %s", LONG(m_links.size()), X, Y, Width, Height, Caller.c_str());
 
    m_links.emplace_back(base_code, Escape, m_segments.size(), X, Y, Width, Height);
 }
@@ -2708,7 +2708,7 @@ DOUBLE layout::calc_page_height(DOUBLE BottomMargin)
 
    page_height = page_height + BottomMargin;
 
-   log.trace("Page Height: %.2f + %.2f -> %.2f, Bottom: %.2f",
+   log.trace("Page Height: %g + %g -> %g, Bottom: %g",
       m_segments.back().area.Y, m_segments.back().area.Height, page_height, BottomMargin);
 
    return page_height;
