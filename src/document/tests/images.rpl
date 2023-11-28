@@ -1,6 +1,13 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="add" xlink:href="icons:items/add" width="64" height="64"/>
+    <image id="cancel" xlink:href="icons:items/cancel" width="32" height="32"/>
+  </defs>
+</svg>
+
 <body face="sans serif" fontsize="10" link="60,60,130" margins="30"/>
 
 <page name="Index">

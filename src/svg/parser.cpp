@@ -1619,7 +1619,7 @@ static ERROR xtag_default(extSVG *Self, objXML *XML, svgState &State, const XMLT
 
 //********************************************************************************************************************
 
-static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
+static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture, DOUBLE Width, DOUBLE Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1674,6 +1674,7 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
          fl::Owner(Self->Scene->UID),
          fl::Path(Path),
          fl::BitsPerPixel(32),
+         fl::Width(Width), fl::Height(Height),
          fl::Flags(PCF::FORCE_ALPHA_32)))) error = ERR_CreateObject;
    }
 
@@ -1693,8 +1694,8 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    objVectorImage *image;
-   std::string id;
-   objPicture *pic = NULL;
+   std::string id, src;
+   DOUBLE width = 0, height = 0;
 
    if (!NewObject(ID_VECTORIMAGE, &image)) {
       image->setFields(fl::Owner(Self->Scene->UID),
@@ -1713,10 +1714,12 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
                else log.warning("Unknown <image> units reference '%s'", val.c_str());
                break;
 
-            case SVF_XLINK_HREF: load_pic(Self, val, &pic); break;
-            case SVF_ID: id = val; break;
-            case SVF_X:  set_double(image, FID_X, val); break;
-            case SVF_Y:  set_double(image, FID_Y, val); break;
+            case SVF_XLINK_HREF: src = val; break;
+            case SVF_ID:     id = val; break;
+            case SVF_X:      set_double(image, FID_X, val); break;
+            case SVF_Y:      set_double(image, FID_Y, val); break;
+            case SVF_WIDTH:  width = read_unit(val, NULL); break;
+            case SVF_HEIGHT: height = read_unit(val, NULL); break;
             default: {
                // Check if this was a reference to some other namespace (ignorable).
                LONG i;
@@ -1726,9 +1729,10 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
             }
          }
       }
-
-      if (!id.empty()) {
-         if (pic) {
+       
+      if ((!id.empty()) and (!src.empty())) {
+         objPicture *pic;
+         if (!load_pic(Self, src, &pic, width, height)) {
             image->set(FID_Picture, pic);
             if (!InitObject(image)) {
                add_id(Self, Tag, id);
@@ -1746,7 +1750,7 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
       }
       else {
          FreeResource(image);
-         log.trace("No id specified in <image/> at line %d", Tag.LineNo);
+         log.trace("No id or src specified in <image/> at line %d", Tag.LineNo);
       }
    }
 }
@@ -1756,62 +1760,67 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
 static ERROR xtag_image(extSVG *Self, objXML *XML, svgState &State, const XMLTag &Tag, OBJECTPTR Parent, objVector **Vector)
 {
    pf::Log log(__FUNCTION__);
+
+   std::string src;
    ARF ratio = ARF::NIL;
-   bool width_set = false;
-   bool height_set = false;
+   DOUBLE width = 0, height = 0;
    svgState state = State;
    objPicture *pic = NULL;
 
    for (unsigned a=1; a < Tag.Attribs.size(); a++) {
       if (!StrMatch("xlink:href", Tag.Attribs[a].Name)) {
-         load_pic(Self, Tag.Attribs[a].Value, &pic);
+         src = Tag.Attribs[a].Value;
       }
       else if (!StrMatch("preserveAspectRatio", Tag.Attribs[a].Name)) {
          ratio = parse_aspect_ratio(Tag.Attribs[a].Value);
       }
       else if (!StrMatch("width", Tag.Attribs[a].Name)) {
-         width_set = true;
+         width = read_unit(Tag.Attribs[a].Value, NULL);
+         if (width < 1) return log.warning(ERR_InvalidDimension);
       }
       else if (!StrMatch("height", Tag.Attribs[a].Name)) {
-         height_set = true;
+         height = read_unit(Tag.Attribs[a].Value, NULL);
+         if (height < 1) return log.warning(ERR_InvalidDimension);
       }
    }
 
-   // Load the image and add it to the vector definition.  It will be rendered as a rectangle within the scene.
-   // This may appear a little confusing as an image can be invoked in SVG like a first-class shape, however to
-   // treat them as such would be out of step with all other scene graph members being true path-based objects.
+   if (!src.empty()) {
+      load_pic(Self, src, &pic, width, height);
 
-   if (pic) {
-      if (auto image = objVectorImage::create::global(
-            fl::Owner(Self->Scene->UID),
-            fl::Picture(pic),
-            fl::SpreadMethod(VSPREAD::PAD),
-            fl::Units(VUNIT::BOUNDING_BOX),
-            fl::AspectRatio(ratio))) {
+      // Load the image and add it to the vector definition.  It will be rendered as a rectangle within the scene.
+      // This may appear a little confusing as an image can be invoked in SVG like a first-class shape, however to
+      // treat them as such would be out of step with all other scene graph members being true path-based objects.
 
-         SetOwner(pic, image); // It's best if the pic belongs to the image.
+      if (pic) {
+         if (auto image = objVectorImage::create::global(
+               fl::Owner(Self->Scene->UID),
+               fl::Picture(pic),
+               fl::SpreadMethod(VSPREAD::PAD),
+               fl::Units(VUNIT::BOUNDING_BOX),
+               fl::AspectRatio(ratio))) {
 
-         auto id = std::to_string(image->UID);
-         id.insert(0, "img");
-         scAddDef(Self->Scene, id.c_str(), image);
+            SetOwner(pic, image); // It's best if the pic belongs to the image.
 
-         std::string fillname("url(#");
-         fillname.append(id);
-         fillname.append(")");
+            auto id = std::to_string(image->UID);
+            id.insert(0, "img");
+            scAddDef(Self->Scene, id.c_str(), image);
 
-         // Use a rectangle shape to represent the image
+            auto fillname = "url(#" + id + ")";
 
-         process_shape(Self, ID_VECTORRECTANGLE, XML, state, Tag, Parent, Vector);
-         Vector[0]->set(FID_Fill, "none");
+            // Use a rectangle shape to host the image
 
-         if (!width_set) Vector[0]->set(FID_Width, pic->Bitmap->Width);
-         if (!height_set) Vector[0]->set(FID_Height, pic->Bitmap->Height);
-         Vector[0]->set(FID_Fill, fillname);
-         return ERR_Okay;
+            process_shape(Self, ID_VECTORRECTANGLE, XML, state, Tag, Parent, Vector);
+            Vector[0]->set(FID_Fill, "none");
+
+            if (width) Vector[0]->set(FID_Width, width);
+            if (height) Vector[0]->set(FID_Height, height);
+            Vector[0]->set(FID_Fill, fillname);
+            return ERR_Okay;
+         }
+         else return ERR_Failed;
       }
-      else return ERR_Failed;
+      else log.warning("Failed to load picture via xlink:href.");
    }
-   else log.warning("Failed to load picture via xlink:href.");
 
    return ERR_Failed;
 }

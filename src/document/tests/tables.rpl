@@ -1,31 +1,49 @@
 <?xml version="1.0"?>
 
-<page name="Index">
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="Diamonds" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+      <rect width="60" height="60" fill="#fff"/>
+      <rect width="42.42" height="42.42" transform="translate(30 0) rotate(45)" fill="#444"/>
+    </pattern>
+
+    <pattern id="Stripes" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
+      <rect width="50" height="50" fill="#eee"/>
+      <rect x="25" width="25" height="50" fill="#ddd"/>
+    </pattern>
+
+    <pattern id="Honeycomb" x="0" y="0" width="56" height="100" patternUnits="userSpaceOnUse">
+      <rect width="56" height="100" fill="#f8d203"/>
+      <path d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" fill="none" stroke="#fff629" stroke-width="2"/>
+      <path d="M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34" fill="none" stroke="#ffe503" stroke-width="2"/>
+    </pattern>
+  </defs>
+</svg>
 
 <body margins="30"/>
 
-<h1>Table Tests</h1>
+<page name="Index">
+  <h1>Table Tests</h1>
 
-<p>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</p>
+  <p>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</p>
 
-<p>The following two tables must appear side-by-side and use the minimum possible width for each.  If the width of the page is reduced then the second table should wrap to a new line.</p>
+  <p>The following two tables must appear side-by-side and use the minimum possible width for each.  If the width of the page is reduced then the second table should wrap to a new line.</p>
 
-<table stroke="rgb(0,0,0)" margins="4" spacing="4" thickness="1">
-  <row fill="rgb(0,0,0,30)"><cell><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
-  <row><cell>Hello</cell><cell>World</cell></row>
-  <row>
-    <cell>Praesent varius facilisis tortor in volutpat.</cell>
-    <cell><p>single_word_<image icon="items/cancel"/>_containing_image</p></cell>
-    <cell>The quick <a href="paragraphs.rpl">brown</a> fox jumped over the lazy dog.</cell>
-  </row>
-</table>
+  <table stroke="rgb(0,0,0)" margins="4" spacing="4" thickness="1" fill="url(#Honeycomb)">
+    <row fill="rgb(0,0,0,30)"><cell><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
+    <row><cell>Hello</cell><cell>World</cell></row>
+    <row>
+      <cell>Praesent varius facilisis tortor in volutpat.</cell>
+      <cell><p>single_word_<image icon="items/cancel"/>_containing_image</p></cell>
+      <cell>The quick <a href="paragraphs.rpl">brown</a> fox jumped over the lazy dog.</cell>
+    </row>
+  </table>
 
-<table stroke="rgb(200,200,200)" padding="8">
-<row><cell><p align="center" nowrap><b>Header 1</b></p></cell><cell><p align="center" nowrap><b>Header 2</b></p></cell></row>
-<row><cell><p align="center">1</p></cell><cell><p align="center">a</p></cell></row>
-<row><cell><p align="center">2</p></cell><cell><p align="center">b</p></cell></row>
-<row><cell><p align="center">3</p></cell><cell><p align="center">c</p></cell></row>
-<row><cell><p align="center">4</p></cell><cell><p align="center">d</p></cell></row>
-</table>
-
+  <table stroke="rgb(200,200,200)" padding="8">
+  <row><cell><p align="center" nowrap><b>Header 1</b></p></cell><cell><p align="center" nowrap><b>Header 2</b></p></cell></row>
+  <row><cell><p align="center">1</p></cell><cell><p align="center">a</p></cell></row>
+  <row><cell><p align="center">2</p></cell><cell><p align="center">b</p></cell></row>
+  <row><cell><p align="center">3</p></cell><cell><p align="center">c</p></cell></row>
+  <row><cell><p align="center">4</p></cell><cell><p align="center">d</p></cell></row>
+  </table>
 </page>
