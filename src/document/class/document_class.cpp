@@ -580,11 +580,11 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    Self->Page = NULL; // Page and View are freed by their parent Viewport.
    Self->View = NULL;
 
-   if (Self->InsertXML)      { FreeResource(Self->InsertXML);      Self->InsertXML      = NULL; }
-   if (Self->Background)     { FreeResource(Self->Background);     Self->Background     = NULL; }
-   if (Self->CursorStroke)   { FreeResource(Self->CursorStroke);   Self->CursorStroke   = NULL; }
-   if (Self->BorderStroke)   { FreeResource(Self->BorderStroke);   Self->BorderStroke   = NULL; }
-   if (Self->Time)           { FreeResource(Self->Time);           Self->Time = NULL; }
+   if (Self->InsertXML)    { FreeResource(Self->InsertXML);    Self->InsertXML      = NULL; }
+   if (Self->Background)   { FreeResource(Self->Background);   Self->Background     = NULL; }
+   if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke   = NULL; }
+   if (Self->BorderStroke) { FreeResource(Self->BorderStroke); Self->BorderStroke   = NULL; }
+   if (Self->Time)         { FreeResource(Self->Time);         Self->Time = NULL; }
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 
@@ -711,7 +711,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          fl::Name("docPage"),
          fl::Owner(Self->View->UID),
          fl::X(0), fl::Y(0),
-         fl::Width(MAX_PAGEWIDTH), fl::Height(MAX_PAGEHEIGHT)))) {
+         fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
 
       auto callback = make_function_stdc(consume_input_events);
       vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
@@ -1236,7 +1236,7 @@ static ERROR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Arg
 
    if (!Args) return log.warning(ERR_NullArgs);
 
-   log.branch("Destination: %d, Lines: %d", Args->Dest->UID, LONG(Self->Segments.size()));
+   log.branch("Destination: %d", Args->Dest->UID);
    acWrite(Args->Dest, "Save not supported.", 0, NULL);
    return ERR_Okay;
 }

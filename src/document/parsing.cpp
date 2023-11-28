@@ -2637,16 +2637,14 @@ static void tag_underline(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::T
 static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
-   LONG loopstart = 0;
-   LONG loopend = 0;
-   LONG count = 0;
-   LONG step  = 0;
-   std::string indexname;
+
+   std::string index_name;
+   LONG loop_start = 0, loop_end = 0, count = 0, step  = 0;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("start", Tag.Attribs[i].Name)) {
-         loopstart = StrToInt(Tag.Attribs[i].Value);
-         if (loopstart < 0) loopstart = 0;
+         loop_start = StrToInt(Tag.Attribs[i].Value);
+         if (loop_start < 0) loop_start = 0;
       }
       else if (!StrMatch("count", Tag.Attribs[i].Name)) {
          count = StrToInt(Tag.Attribs[i].Value);
@@ -2656,7 +2654,7 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
          }
       }
       else if (!StrMatch("end", Tag.Attribs[i].Name)) {
-         loopend = StrToInt(Tag.Attribs[i].Value) + 1;
+         loop_end = StrToInt(Tag.Attribs[i].Value) + 1;
       }
       else if (!StrMatch("step", Tag.Attribs[i].Name)) {
          step = StrToInt(Tag.Attribs[i].Value);
@@ -2665,12 +2663,12 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
          // If an index name is specified, the programmer will need to refer to it as [@indexname] and [%index] will
          // remain unchanged from any parent repeat loop.
 
-         indexname = Tag.Attribs[i].Value;
+         index_name = Tag.Attribs[i].Value;
       }
    }
 
    if (!step) {
-      if (loopend < loopstart) step = -1;
+      if (loop_end < loop_start) step = -1;
       else step = 1;
    }
 
@@ -2679,50 +2677,50 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
    //
    // If the user set both count and end attributes, the count attribute will be given the priority here.
 
-   if (count > 0) loopend = loopstart + (count * step);
+   if (count > 0) loop_end = loop_start + (count * step);
 
    if (step > 0) {
-      if (loopend < loopstart) step = -step;
+      if (loop_end < loop_start) step = -step;
    }
-   else if (loopend > loopstart) step = -step;
+   else if (loop_end > loop_start) step = -step;
 
-   log.traceBranch("Performing a repeat loop (start: %d, end: %d, step: %d).", loopstart, loopend, step);
+   log.traceBranch("Performing a repeat loop (start: %d, end: %d, step: %d).", loop_start, loop_end, step);
 
-   auto saveindex = Self->LoopIndex;
+   auto save_index = Self->LoopIndex;
 
-   while (loopstart < loopend) {
-      if (indexname.empty()) Self->LoopIndex = loopstart;
-      else SetVar(Self, indexname.c_str(), std::to_string(loopstart).c_str());
+   while (loop_start < loop_end) {
+      if (index_name.empty()) Self->LoopIndex = loop_start;
+      else SetVar(Self, index_name.c_str(), std::to_string(loop_start).c_str());
 
       parse_tags(Self, XML, Tag.Children, Index, Flags);
-      loopstart += step;
+      loop_start += step;
    }
 
-   if (indexname.empty()) Self->LoopIndex = saveindex;
+   if (index_name.empty()) Self->LoopIndex = save_index;
 
    log.trace("insert_child:","Repeat loop ends.");
 }
 
 //********************************************************************************************************************
-// <table columns="10%,90%" width="100" height="100" colour="#808080">
+// <table columns="10%,90%" width="100" height="100" fill="rgb(128,128,128)">
 //  <row><cell>Activate<brk/>This activates the object.</cell></row>
 //  <row><cell span="2">Reset</cell></row>
 // </table>
 //
-// <table width="100" height="100" colour="#808080">
+// <table width="100" height="100" fill="rgb(128,128,128)">
 //  <cell>Activate</cell><cell>This activates the object.</cell>
 //  <cell colspan="2">Reset</cell>
 // </table>
 //
 // Columns:      The minimum width of each column in the table.
 // Width/Height: Minimum width and height of the table.
-// Colour:       Background colour for the table.
-// Border:       Border colour for the table (see thickness).
-// Thickness:    Thickness of the border colour.
+// Fill:         Fill instruction for the table.
+// Stroke:       Stroke instruction for the table border (see thickness).
+// Thickness:    Thickness of the stroke.
 //
 // The only acceptable child tags inside a <table> section are row, brk and cell tags.  Command tags are acceptable
-// (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW, SCODE::CELL...,
-// SCODE::ROW_END, SCODE::TABLE_END.
+// (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW, 
+// SCODE::CELL..., SCODE::ROW_END, SCODE::TABLE_END.
 
 static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
@@ -2799,9 +2797,9 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             break;
 
          case HASH_thickness: {
-            auto j = StrToInt(Tag.Attribs[i].Value);
-            if (j < 0) j = 0;
-            else if (j > 255) j = 255;
+            auto j = StrToFloat(Tag.Attribs[i].Value);
+            if (j < 0.0) j = 0.0;
+            else if (j > 255.0) j = 255.0;
             start.thickness = j;
             break;
          }
@@ -2961,8 +2959,8 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
    if (!cell.edit_def.empty()) edit_recurse++;
 
-   // Edit sections enforce preformatting, which means that all whitespace entered by the user
-   // will be taken into account.  The following check sets FSO::PREFORMAT if it hasn't been set already.
+   // Edit sections enforce preformatting, which means that all whitespace entered by the user will be taken
+   // into account.  The following check sets FSO::PREFORMAT if it hasn't been set already.
 
    auto cell_index = Index;
 

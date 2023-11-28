@@ -460,15 +460,23 @@ struct doc_segment {
 };
 
 struct doc_clip {
-   DOUBLE left, top, right, bottom;
-   INDEX index; // The stream index of the object/table/item that is creating the clip.
-   bool transparent; // If true, wrapping will not be performed around the clip region.
+   DOUBLE left = 0, top = 0, right = 0, bottom = 0;
+   INDEX index = 0; // The stream index of the object/table/item that is creating the clip.
+   bool transparent = false; // If true, wrapping will not be performed around the clip region.
    std::string name;
 
    doc_clip() = default;
 
    doc_clip(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom, LONG pIndex, bool pTransparent, const std::string &pName) :
-      left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) { }
+      left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) { 
+      
+      if ((right - left > 20000) or (bottom - top > 20000)) {
+         pf::Log log;
+         log.warning("%s set invalid clip dimensions: %.0f,%.0f,%.0f,%.0f", name.c_str(), left, top, right, bottom);
+         right = left;
+         bottom = top;
+      }
+   }
 };
 
 struct doc_edit {
@@ -545,11 +553,11 @@ struct bc_advance : public base_code {
 };
 
 struct bc_index : public base_code {
-   ULONG  name_hash;      // The name of the index is held here as a hash
-   LONG   id;             // UID for matching to the correct bc_index_end
-   DOUBLE y;              // The cursor's vertical position of when the index was encountered during layout
-   bool   visible;        // true if the content inside the index is visible (this is the default)
-   bool   parent_visible; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
+   ULONG  name_hash = 0;          // The name of the index is held here as a hash
+   LONG   id = 0;                 // UID for matching to the correct bc_index_end
+   DOUBLE y = 0;                  // The cursor's vertical position of when the index was encountered during layout
+   bool   visible = false;        // true if the content inside the index is visible (this is the default)
+   bool   parent_visible = false; // true if the nearest parent index(es) will allow index content to be visible.  true is the default.  This allows Hide/ShowIndex() to manage themselves correctly
 
    bc_index(ULONG pName, LONG pID, LONG pY, bool pVisible, bool pParentVisible) :
       name_hash(pName), id(pID), y(pY), visible(pVisible), parent_visible(pParentVisible) {
@@ -633,7 +641,7 @@ struct bc_set_margins : public base_code {
 struct bc_vector : public base_code {
    OBJECTID object_id = 0;     // Reference to the vector
    CLASSID class_id = 0;       // Precise class that the object belongs to, mostly for informative/debugging purposes
-   ClipRectangle margins;
+   ClipRectangle margins = { 0, 0, 0, 0 };
    bool in_line       = false; // true if object is embedded as part of the text stream (treated as if it were a character)
    bool owned         = false; // true if the object is owned by a parent (not subject to normal document layout)
    bool ignore_cursor = false; // true if the client has set fixed values for both x and y
@@ -655,19 +663,18 @@ struct bc_table : public base_code {
    DOUBLE cell_vspacing = 0, cell_hspacing = 0; // Spacing between each cell
    DOUBLE cell_padding = 0;              // Spacing inside each cell (margins)
    DOUBLE row_width = 0;                 // Assists in the computation of row width
-   DOUBLE x = 0, y = 0;                  // Calculated x/y coordinate of the table
-   DOUBLE width = 0, height = 0;         // Calculated table width/height
+   DOUBLE x = 0, y = 0, width = 0, height = 0; // Dimensions
    DOUBLE min_width = 0, min_height = 0; // User-determined minimum table width/height
+   DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
+   DOUBLE thickness = 0;                 // Stroke thickness
+   size_t total_clips = 0;               // Temporary record of Document->Clips.size()
    LONG   rows = 0;                      // Total number of rows in table
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
-   DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
-   LONG   total_clips = 0;                // Temporary record of Document->Clips.size()
-   UWORD  thickness  = 0;                // Border thickness
    UBYTE  compute_columns = 0;
-   bool   width_pct   = false;   // true if width is a percentage
-   bool   height_pct  = false;   // true if height is a percentage
-   bool   cells_expanded  = false;   // false if the table cells have not been expanded to match the inside table width
-   bool   reset_row_height = false;   // true if the height of all rows needs to be reset in the current pass
+   bool   width_pct = false;             // true if width is a percentage
+   bool   height_pct = false;            // true if height is a percentage
+   bool   cells_expanded = false;        // false if the table cells have not been expanded to match the inside table width
+   bool   reset_row_height = false;      // true if the height of all rows needs to be reset in the current pass
    bool   wrap = false;
    bool   thin = false;
    // Entry followed by the minimum width of each column
@@ -740,7 +747,7 @@ struct bc_row : public base_code {
    DOUBLE row_height = 0; // height of all cells on this row, used when drawing the cells
    DOUBLE min_height = 0;
    std::string stroke, fill;
-   bool  vertical_repass = false;
+   bool vertical_repass = false;
 
    bc_row() : base_code(SCODE::ROW) { }
 };
@@ -749,28 +756,30 @@ struct bc_row_end : public base_code {
    bc_row_end() : base_code(SCODE::ROW_END) { }
 };
 
+struct bc_cell_end : public base_code {
+   LONG cell_id = 0;    // Matching identifier from bc_cell
+   bc_cell_end() : base_code(SCODE::CELL_END) { }
+};
+
 struct bc_cell : public base_code {
-   LONG cell_id;          // Identifier for the matching bc_cell_end
-   LONG column;           // Column number that the cell starts in
-   LONG col_span;         // Number of columns spanned by this cell (normally set to 1)
-   LONG row_span;         // Number of rows spanned by this cell
-   DOUBLE abs_x, abs_y;   // Cell coordinates, these are absolute
-   DOUBLE width, height;  // width and height of the cell
-   std::string onclick;   // name of an onclick function
-   std::string edit_def;  // The edit definition that this cell is linked to (if any)
+   LONG cell_id = 0;              // Identifier for the matching bc_cell_end
+   LONG column = 0;               // Column number that the cell starts in
+   LONG col_span = 0;             // Number of columns spanned by this cell (normally set to 1)
+   LONG row_span = 0;             // Number of rows spanned by this cell
+   DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
+   DOUBLE width = 0, height = 0;  // width and height of the cell
+   std::string onclick;           // name of an onclick function
+   std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> args;
    std::string stroke;
    std::string fill;
 
    bc_cell(LONG pCellID, LONG pColumn) :
       base_code(SCODE::CELL), cell_id(pCellID), column(pColumn),
-      col_span(1), row_span(1), abs_x(0), abs_y(0), width(0), height(0)
+      col_span(1), row_span(1), x(0), y(0), width(0), height(0)
       { }
-};
 
-struct bc_cell_end : public base_code {
-   LONG cell_id = 0;    // Matching identifier from bc_cell
-   bc_cell_end() : base_code(SCODE::CELL_END) { }
+   INDEX find_cell_end(extDocument *, RSTREAM &, INDEX);
 };
 
 //********************************************************************************************************************
@@ -791,13 +800,12 @@ class extDocument : public objDocument {
    std::map<ULONG, XMLTag *> TemplateIndex;
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
-   std::vector<doc_clip>       Clips;
    std::vector<doc_link>       Links;
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
-   std::vector<OBJECTPTR>      LayoutResources;
+   std::vector<OBJECTID>       LayoutResources;
    std::unordered_map<std::string, doc_edit> EditDefs;
    std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,

@@ -552,7 +552,7 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetContent: Extracts the content embedded inside an XML tag.
+GetContent: Extracts the content of an XML tag.
 
 The GetContent method is used to extract the string content from an XML tag.  It will extract content that is
 immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to
@@ -597,17 +597,16 @@ static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetString: Retrieves data from an XML object in standard XML string format.
+GetString: Serialise part of the XML tree to an XML string.
 
-The GetString method builds XML strings from data that has been loaded into an XML object.  The string is created from
-the entire XML object or from a specific area of the XML tree by setting the Index parameter.
+The GetString method will serialise all or part of the XML data tree to a string.
 
-The XML string that is built by this method will be stored in the Result parameter.  The memory block must be freed
-once the content is no longer required.
+The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data
+is no longer required.
 
 -INPUT-
-int Index: Index to a source tag for pulling data out of the XML object.  Zero will always refer to the first tag.
-int(XMF) Flags: Special flags that affect the construction of the XML string.
+int Index: Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.
+int(XMF) Flags: Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.
 !str Result: The resulting string is returned in this parameter.
 
 -ERRORS-
@@ -797,7 +796,7 @@ static ERROR XML_InsertContent(extXML *Self, struct xmlInsertContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-InsertXML: Inserts an XML statement in the XML tree.
+InsertXML: Parse an XML string and insert it in the XML tree.
 
 The InsertXML method is used to translate and insert a new set of XML tags into any position within the XML tree.  A
 standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index

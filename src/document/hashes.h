@@ -32,6 +32,7 @@
 #define HASH_continue 0x42aefb8aUL
 #define HASH_data 0x7c95915fUL
 #define HASH_debug 0x0f49a52cUL
+#define HASH_defs 0x7c95a0a7UL
 #define HASH_div 0x0b886a48UL
 #define HASH_eastgap 0x4d205b8aUL
 #define HASH_edit 0x7c96292bUL
