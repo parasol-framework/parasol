@@ -55,7 +55,7 @@ static ERROR SVG_Deactivate(extSVG *Self, APTR Void)
 
 /*********************************************************************************************************************
 -ACTION-
-DataFeed: Vector graphics are created by passing XML-based instructions here.
+DataFeed: SVG data can be parsed on-the-fly via the data feed mechanism.
 -END-
 *********************************************************************************************************************/
 
@@ -91,9 +91,10 @@ static ERROR SVG_Free(extSVG *Self, APTR Void)
       Self->Target = NULL;
    }
 
-   if (Self->Folder) { FreeResource(Self->Folder); Self->Folder = NULL; }
-   if (Self->Path)   { FreeResource(Self->Path);   Self->Path = NULL; }
-   if (Self->Title)  { FreeResource(Self->Title);  Self->Title = NULL; }
+   if (Self->Folder)    { FreeResource(Self->Folder);    Self->Folder = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
+   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
 
    return ERR_Okay;
 }
@@ -119,6 +120,7 @@ static ERROR SVG_Init(extSVG *Self, APTR Void)
    }
 
    if (Self->Path) return load_svg(Self, Self->Path, NULL);
+   else if (Self->Statement) return load_svg(Self, NULL, Self->Statement);
 
    return ERR_Okay;
 }
@@ -396,7 +398,7 @@ static ERROR SET_FrameRate(extSVG *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Path: The location of the source SVG data.
+Path: A path referring to an SVG file.
 
 SVG data can be loaded from a file source by setting the Path field to an SVG file.
 
@@ -431,6 +433,28 @@ The Scene is a read-only field that assists in quickly finding the @VectorScene 
 static ERROR GET_Scene(extSVG *Self, objVectorScene **Value)
 {
    *Value = Self->Scene;
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Statement: A string containing SVG data.
+
+SVG data can be loaded from a string by specifying it here prior to initialisation.  If the Path field has been
+defined, it will take precedent and the Statement is ignored.
+
+Alternatively the #DataFeed action can be used to parse data on-the-fly after the SVG object is initialised.
+
+*********************************************************************************************************************/
+
+static ERROR SET_Statement(extSVG *Self, CSTRING Value)
+{
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   
+   if ((Value) and (*Value)) {
+      if (!(Self->Statement = StrClone(Value))) return ERR_AllocMemory;
+   }
    return ERR_Okay;
 }
 
@@ -524,14 +548,15 @@ static const FieldArray clSVGFields[] = {
    { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
    { "Path",      FDF_STRING|FDF_RW, GET_Path, SET_Path },
    { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
+   { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
    { "Frame",     FDF_LONG|FDF_RW, NULL, NULL },
    { "Flags",     FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
    { "FrameRate", FDF_LONG|FDF_RW, NULL, SET_FrameRate },
-   { "FrameCallback", FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
    // Virtual Fields
-   { "Src",      FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "Scene",    FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
-   { "Viewport", FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
+   { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
+   { "Src",           FDF_SYNONYM|FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Path, SET_Path },
+   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
+   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
    END_FIELD
 };
 

@@ -1,3 +1,5 @@
+// SVG renderer for the Picture class
+
 #include "../picture/picture.h"
 
 //********************************************************************************************************************
@@ -135,7 +137,7 @@ static ERROR RSVG_Query(extPicture *Self, APTR Void)
       if (!bmp->Height) {
          if (view_height) bmp->Height = view_height;
          else if (Self->DisplayHeight) bmp->Height = Self->DisplayHeight;
-         if (!bmp->Height) bmp->Height = 768;
+         if (!bmp->Height) bmp->Height = bmp->Width; // Equivalent to width in order to maintain a 1:1 scale
       }
 
       if (!Self->DisplayWidth)  Self->DisplayWidth  = bmp->Width;

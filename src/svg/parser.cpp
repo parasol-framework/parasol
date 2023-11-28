@@ -1628,7 +1628,11 @@ static ERROR load_pic(extSVG *Self, std::string Path, objPicture **Picture)
    auto val = Path.c_str();
 
    ERROR error = ERR_Okay;
-   if (!StrCompare("data:", val, 5)) { // Check for embedded content
+   if (!StrCompare("icons:", val, 5)) { 
+      // Parasol feature: Load an SVG image from the icon database.  Nothing needs to be done here
+      // because the FS volume is built-in.
+   }
+   else if (!StrCompare("data:", val, 5)) { // Check for embedded content
       log.branch("Detected embedded source data");
       val += 5;
       if (!StrCompare("image/", val, 6)) { // Has to be an image type
@@ -1706,6 +1710,7 @@ static void def_image(extSVG *Self, const XMLTag &Tag)
             case SVF_UNITS:
                if (!StrMatch("userSpaceOnUse", val)) image->Units = VUNIT::USERSPACE;
                else if (!StrMatch("objectBoundingBox", val)) image->Units = VUNIT::BOUNDING_BOX;
+               else log.warning("Unknown <image> units reference '%s'", val.c_str());
                break;
 
             case SVF_XLINK_HREF: load_pic(Self, val, &pic); break;

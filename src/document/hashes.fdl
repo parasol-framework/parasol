@@ -123,6 +123,7 @@ header({ copyright="Paul Manias © 2023" }, function()
     "src",
     "stroke",
     "style",
+    "svg",
     "table",
     "td",
     "template",

@@ -124,6 +124,7 @@
 #define HASH_src 0x0b88ab2dUL
 #define HASH_stroke 0x1c93c91dUL
 #define HASH_style 0x1061af16UL
+#define HASH_svg 0x0b88abb5UL
 #define HASH_table 0x1068fa8dUL
 #define HASH_td 0x0059799dUL
 #define HASH_template 0xeeaba201UL

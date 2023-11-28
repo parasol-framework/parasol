@@ -791,6 +791,20 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
+// Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will be applied to the 
+// Page viewport.  This feature should only be used for the creation of resources that can then be referred to in the
+// document as named patterns.
+
+static void tag_svg(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
+{
+   STRING def_statement;
+   auto err = xmlGetString(XML, Tag.ID, XMF::NIL, &def_statement);
+   if (!err) {
+      objSVG::create svg = { fl::Statement(def_statement), fl::Target(Self->Page) };
+   }
+}
+
+//********************************************************************************************************************
 // Use div to structure the document in a similar way to paragraphs.  The main difference is that it avoids the
 // declaration of paragraph start and end points and won't cause line breaks.
 
@@ -990,34 +1004,30 @@ static void tag_parse(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
-// Bitmap images are supported as vector rectangles with a texture map.  If the image is SVG then it is loaded into a
-// viewport, so effectively the same, but scalable.
+// Bitmap and vector images are supported as vector rectangles that reference a pattern name.  Images need to be 
+// loaded as resources in an <svg> tag and can then be referenced by name.  Technically any pattern type can be
+// referenced as an image - so if the client wants to refer to a gradient for example, that is perfectly legal.
 //
 // Images are always inline by default, that is to say that they do not prevent content from appearing on either side.
-// If content should be blocked on either side then the client can place the image within <p> tags.
+// A floating image does not block whitespace on either side.  Blocking whitespace is enabled if the client embeds the
+// image within <p> tags.
 //
 // TODO: SVG images should be rendered to a cached bitmap texture so that they do not need to be redrawn unless
-// changed to a higher resolution or otherwise modified.
+// changed to a higher resolution or otherwise modified.  Such an implementation should be achieved in the Vector
+// module's scene graph renderer.
 
 static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
    pf::Log log(__FUNCTION__);
 
    bc_image img;
-   std::string src, icon;
+   std::string src;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_src) {
          src = value;
-      }
-      else if (hash IS HASH_icon) {
-         icon = value; // e.g. "items/checkmark"
-      }
-      else if (hash IS HASH_unicode) {
-         // TODO: The unicode option reads the first glyph in the provided string and treats it in the same fashion
-         // as the 'icon' attribute.
       }
       else if ((hash IS HASH_float) or (hash IS HASH_align)) {
          // Setting the horizontal alignment of an image will cause it to float above the text.
@@ -1058,96 +1068,27 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   if (!icon.empty()) { // Load a vector image via a named SVG icon.
+   if (!src.empty()) {
       if (img.width < 0) img.width = 0; // Zero is equivalent to 'auto', meaning on-the-fly computation
       if (img.height < 0) img.height = 0;
 
-      if (auto pattern = objVectorPattern::create::global({
-            fl::Owner(Self->Scene->UID),
-            fl::PageWidth(8),
-            fl::PageHeight(8),
-            fl::SpreadMethod(VSPREAD::PAD)
+      if (auto rect = objVectorRectangle::create::global({
+            fl::Name("rect_image"),
+            fl::Owner(Self->Page->UID),
+            fl::X(0), fl::Y(0), fl::Width(8), fl::Height(8), // Will be corrected during layout
+            fl::Fill(src)
          })) {
 
-         objVectorViewport *pat_viewport;
-         pattern->getPtr(FID_Viewport, &pat_viewport);
+         Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
 
-         // Load the SVG source file and target the VectorPattern
-
-         std::string icon_path = "icons:" + icon + ".svg";
-         if (auto svg = objSVG::create::integral({
-               fl::Name("svg_image"),
-               fl::Path(icon_path),
-               fl::Target(pat_viewport)
-            })) {
-
-            FreeResource(svg);
-
-            std::string name = "icon" + std::to_string(Self->UniqueID++);
-            scAddDef(Self->Scene, name.c_str(), pattern);
-
-            if (auto rect = objVectorRectangle::create::global({
-                  fl::Name("rect_image"),
-                  fl::Owner(Self->Page->UID),
-                  fl::X(0), fl::Y(0), fl::Width(8), fl::Height(8), // Will be corrected during layout
-                  fl::Fill("url(#" + name + ")")
-               })) {
-
-               Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
-
-               img.rect = rect;
-               if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
-               Self->insert_code(Index, img);
-               return;
-            }
-         }
-         else log.warning("Failed to load '%s'", icon_path.c_str());
-
-         FreeResource(pattern);
+         img.rect = rect;
+         if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
+         Self->insert_code(Index, img);
+         return;
       }
-   }
-   else if (!src.empty()) { // Load a static bitmap image.
-      if (auto pic = objPicture::create::integral({
-            fl::Path(src),
-            fl::BitsPerPixel(32),
-            fl::Flags(PCF::FORCE_ALPHA_32)
-         })) {
-
-         std::string name = "img" + std::to_string(Self->UniqueID++);
-         if (auto img_cache = objVectorImage::create::global({
-               fl::Name(name),
-               fl::Owner(Self->Scene->UID),
-               fl::Picture(pic),
-               fl::Units(VUNIT::BOUNDING_BOX),
-               fl::SpreadMethod(VSPREAD::PAD)
-            })) {
-            scAddDef(Self->Scene, name.c_str(), img_cache);
-
-            if (auto rect = objVectorRectangle::create::global({
-                  fl::Owner(Self->Page->UID),
-                  fl::X(0), fl::Y(0),
-                  fl::Width(1), fl::Height(1),
-                  fl::Fill("url(#" + name + ")")
-               })) {
-
-               Self->Resources.emplace_back(img_cache->UID, RTD::OBJECT_UNLOAD_DELAY);
-               Self->Resources.emplace_back(pic->UID, RTD::OBJECT_UNLOAD_DELAY);
-               Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
-
-               if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
-               img.rect = rect;
-               Self->insert_code(Index, img);
-               return;
-            }
-
-            FreeResource(img_cache);
-         }
-         FreeResource(pic);
-      }
-      else log.warning("Failed to load '%s'", src.c_str());
    }
    else {
-      log.warning("No src or icon defined for <image> tag.");
+      log.warning("No src defined for <image> tag.");
       return;
    }
 }

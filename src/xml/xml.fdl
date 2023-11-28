@@ -17,7 +17,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2023", version=1.0 }, functi
     "WELL_FORMED: By default, the XML class will accept badly structured XML data.  By setting this flag, all processed XML statements must be well formed (tags must balance) or a BadData error will be returned during processing.",
     "INCLUDE_COMMENTS: By default, comments are stripped from all XML input.  This flag ensures that they are retained.",
     "STRIP_CONTENT: Strip all content from incoming XML data.",
-    "READABLE|INDENT: Indent the output of XML tags to improve readability.",
+    "READABLE|INDENT: Indent the output of serialised XML to improve readability.",
     "LOCK_REMOVE: Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.",
     "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
     "NEW: Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.",

@@ -44,8 +44,9 @@ class objSVG : public BaseClass {
    using create = pf::Create<objSVG>;
 
    OBJECTPTR Target;    // The root Viewport that is generated during SVG initialisation can be created as a child of this target object.
-   STRING    Path;      // The location of the source SVG data.
+   STRING    Path;      // A path referring to an SVG file.
    STRING    Title;     // The title of the SVG document.
+   STRING    Statement; // A string containing SVG data.
    LONG      Frame;     // Forces the graphics to be drawn to a specific frame.
    SVF       Flags;     // Optional flags.
    LONG      FrameRate; // The maximum frame rate to use when animating a vector scene.

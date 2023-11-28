@@ -292,7 +292,7 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
 {
    bool isnumber = true;
 
-   *FieldID |= TDOUBLE;
+   if (FieldID) *FieldID |= TDOUBLE;
 
    auto v = Value.c_str();
    while ((*v) and (*v <= 0x20)) v++;
@@ -315,7 +315,7 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
       DOUBLE dpi = 96.0;
 
       if (*str IS '%') {
-         *FieldID |= TPERCENT;
+         if (FieldID) *FieldID |= TPERCENT;
          multiplier = 0.01;
          str++;
       }
@@ -428,7 +428,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Path) return ERR_NullArgs;
+   if ((!Path) and (!Buffer)) return ERR_NullArgs;
 
    log.branch("Path: %s [Log-level reduced]", Path);
 

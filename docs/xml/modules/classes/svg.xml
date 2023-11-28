@@ -124,7 +124,7 @@
 
     <field>
       <name>Path</name>
-      <comment>The location of the source SVG data.</comment>
+      <comment>A path referring to an SVG file.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>

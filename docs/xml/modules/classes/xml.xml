@@ -157,7 +157,7 @@
 
     <method>
       <name>GetContent</name>
-      <comment>Extracts the content embedded inside an XML tag.</comment>
+      <comment>Extracts the content of an XML tag.</comment>
       <prototype>ERROR xmlGetContent(OBJECTPTR Object, LONG Index, STRING Buffer, LONG Length)</prototype>
       <input>
         <param type="LONG" name="Index">Index of a tag that contains content.</param>
@@ -184,16 +184,16 @@
 
     <method>
       <name>GetString</name>
-      <comment>Retrieves data from an XML object in standard XML string format.</comment>
+      <comment>Serialise part of the XML tree to an XML string.</comment>
       <prototype>ERROR xmlGetString(OBJECTPTR Object, LONG Index, XMF Flags, STRING * Result)</prototype>
       <input>
-        <param type="LONG" name="Index">Index to a source tag for pulling data out of the XML object.  Zero will always refer to the first tag.</param>
-        <param type="XMF" name="Flags" lookup="XMF">Special flags that affect the construction of the XML string.</param>
+        <param type="LONG" name="Index">Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</param>
+        <param type="XMF" name="Flags" lookup="XMF">Use INCLUDE_SIBLINGS to include siblings of the tag found at Index.</param>
         <param type="STRING *" name="Result">The resulting string is returned in this parameter.</param>
       </input>
       <description>
-<p>The GetString method builds XML strings from data that has been loaded into an XML object.  The string is created from the entire XML object or from a specific area of the XML tree by setting the Index parameter.</p>
-<p>The XML string that is built by this method will be stored in the Result parameter.  The memory block must be freed once the content is no longer required.</p>
+<p>The GetString method will serialise all or part of the XML data tree to a string.</p>
+<p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
       </description>
       <result>
         <error code="Okay">The XML string was retrieved.</error>
@@ -244,7 +244,7 @@
 
     <method>
       <name>InsertXML</name>
-      <comment>Inserts an XML statement in the XML tree.</comment>
+      <comment>Parse an XML string and insert it in the XML tree.</comment>
       <prototype>ERROR xmlInsertXML(OBJECTPTR Object, LONG Index, XMI Where, CSTRING XML, LONG * Result)</prototype>
       <input>
         <param type="LONG" name="Index">The new data will target the tag specified here.</param>
@@ -491,14 +491,14 @@
       <const name="ALL_CONTENT">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
       <const name="INCLUDE_COMMENTS">By default, comments are stripped from all XML input.  This flag ensures that they are retained.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (GetXMLString only)</const>
-      <const name="INDENT">Indent the output of XML tags to improve readability.</const>
+      <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="NEW">Creates an empty XML object on initialisation - if the Path field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
-      <const name="READABLE">Indent the output of XML tags to improve readability.</const>
+      <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
       <const name="STRIP_CDATA">Do not echo CDATA sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
