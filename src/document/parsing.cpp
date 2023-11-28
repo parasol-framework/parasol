@@ -1019,13 +1019,12 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
    pf::Log log(__FUNCTION__);
 
    bc_image img;
-   std::string src;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_src) {
-         src = value;
+         img.src = value;
       }
       else if ((hash IS HASH_float) or (hash IS HASH_align)) {
          // Setting the horizontal alignment of an image will cause it to float above the text.
@@ -1066,24 +1065,12 @@ static void tag_image(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
       else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   if (!src.empty()) {
+   if (!img.src.empty()) {
       if (img.width < 0) img.width = 0; // Zero is equivalent to 'auto', meaning on-the-fly computation
       if (img.height < 0) img.height = 0;
 
-      if (auto rect = objVectorRectangle::create::global({
-            fl::Name("rect_image"),
-            fl::Owner(Self->Page->UID),
-            fl::X(0), fl::Y(0), fl::Width(8), fl::Height(8), // Will be corrected during layout
-            fl::Fill(src)
-         })) {
-
-         Self->Resources.emplace_back(rect->UID, RTD::OBJECT_UNLOAD_DELAY);
-
-         img.rect = rect;
-         if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
-         Self->insert_code(Index, img);
-         return;
-      }
+      if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
+      Self->insert_code(Index, img);
    }
    else {
       log.warning("No src defined for <image> tag.");

@@ -166,7 +166,7 @@ struct layout {
 
    ERROR do_layout(INDEX, INDEX, objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
 
-   void gen_scene_init();
+   void gen_scene_init(objVectorViewport *);
    void gen_scene_graph(objVectorViewport *, RSTREAM &, SEGINDEX, SEGINDEX);
 
    void procSetMargins(LONG &);
@@ -1737,11 +1737,6 @@ static void layout_doc(extDocument *Self)
 
    if (!Self->UpdatingLayout) return;
 
-   // Remove any resources from the previous layout process.
-
-   for (auto &obj : Self->LayoutResources) FreeResource(obj);
-   Self->LayoutResources.clear();
-
    if (Self->Stream.empty()) return;
 
    // Initial height is 1 and not set to the viewport height because we want to accurately report the final height
@@ -1874,7 +1869,7 @@ static void layout_doc(extDocument *Self)
    else {
       acResize(Self->Page, Self->CalcWidth, Self->PageHeight, 0);
 
-      l.gen_scene_init();
+      l.gen_scene_init(Self->Page);
       l.gen_scene_graph(Self->Page, Self->Stream, 0, SEGINDEX(l.m_segments.size()));
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {

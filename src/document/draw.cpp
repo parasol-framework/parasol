@@ -23,10 +23,12 @@ static void redraw(extDocument *Self, bool Focus)
 // performing this step separately to the layout process is that the graphics resources are managed last, which is 
 // sensible for keeping them out of the layout loop.
 
-void layout::gen_scene_init()
-{
-   for (auto obj : Self->LayoutResources) FreeResource(obj);   
-   Self->LayoutResources.clear();
+void layout::gen_scene_init(objVectorViewport *Viewport)
+{   
+   pf::vector<ChildEntry> list;
+   if (!ListChildren(Viewport->UID, &list)) {
+      for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
+   }
 
    m_cursor_drawn = false;
 }
@@ -67,7 +69,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                fl::Width(m_clips[i].Clip.right - m_clips[i].Clip.left), 
                fl::Height(m_clips[i].Clip.bottom - m_clips[i].Clip.top),
                fl::Fill("rgb(255,200,200,64)") });
-            Self->LayoutResources.push_back(rect);
       }
    #endif
 
@@ -150,7 +151,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                   fl::X(segment.area.X + Self->CursorCharX), fl::Y(segment.area.Y),
                   fl::Width(2), fl::Height(segment.area.Height - segment.gutter),
                   fl::Fill("rgb(255,0,0,255)") });
-               Self->LayoutResources.push_back(rect->UID);
                m_cursor_drawn = true;
             }
          }
@@ -218,7 +218,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                            fl::Font(font),
                            fl::Fill(stack_list.top()->fill)
                         });
-                        Self->LayoutResources.push_back(text->UID);
                      }
                   }
                   else if (stack_list.top()->type IS bc_list::BULLET) {                     
@@ -231,7 +230,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                         fl::Radius(m_font->Height * 0.25),
                         fl::Fill(stack_list.top()->fill)
                      });
-                     Self->LayoutResources.push_back(bullet->UID);
                   }
                }
                break;
@@ -244,20 +242,21 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                stack_table.push(&stream_data<bc_table>(Self, cursor));
                auto table = stack_table.top();
 
-               //log.trace("Draw Table: %dx%d,%dx%d", esctable->x, esctable->y, esctable->width, esctable->height);
+               stack_vp.push(Viewport);
+
+               Viewport = objVectorViewport::create::global({
+                  fl::Owner(Viewport->UID),
+                  fl::X(table->x), fl::Y(table->y),
+                  fl::Width(table->width), fl::Height(table->height)
+               });
 
                if ((!table->fill.empty()) or (!table->stroke.empty())) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Viewport->UID),
-                     fl::X(table->x), fl::Y(table->y),
-                     fl::Width(table->width), fl::Height(table->height)
+                     fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%")
                   });
 
-                  Self->LayoutResources.push_back(rect->UID);
-
-                  if (!table->fill.empty()) {
-                     rect->set(FID_Fill, table->fill);
-                  }
+                  if (!table->fill.empty()) rect->set(FID_Fill, table->fill);
 
                   if (!table->stroke.empty()) {
                      rect->set(FID_Stroke, table->stroke);
@@ -268,6 +267,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::TABLE_END:
+               Viewport = stack_vp.top();
+               stack_vp.pop();
+
                stack_table.pop();
                break;
 
@@ -277,12 +279,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                if ((!row->fill.empty()) and (row->row_height > 0)) {
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Viewport->UID),
-                     fl::X(stack_table.top()->x), fl::Y(row->y),
+                     fl::X(0), fl::Y(row->y - stack_table.top()->y),
                      fl::Width(stack_table.top()->width),
                      fl::Height(row->row_height),
                      fl::Fill(row->fill)
                   });
-                  Self->LayoutResources.push_back(rect->UID);
                }
                break;
             }
@@ -296,20 +297,15 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
                stack_vp.push(Viewport);
 
-               #ifdef DBG_LAYOUT
-                  if (cell.stroke.empty()) cell.stroke = "rgb(255,0,0)";
-               #endif
-               DOUBLE cell_width  = stack_table.top()->columns[cell.column].width;
-               DOUBLE cell_height = stack_row.top()->row_height;
+               //DOUBLE cell_width  = stack_table.top()->columns[cell.column].width;
+               //DOUBLE cell_height = stack_row.top()->row_height;
 
-               if ((cell_width > 0) and (cell_height > 0)) {
+               if ((cell.width > 0) and (cell.height > 0)) {
                   Viewport = objVectorViewport::create::global({
                      fl::Owner(Viewport->UID),
-                     fl::X(cell.x), fl::Y(cell.y),
-                     fl::Width(cell_width), fl::Height(cell_height)
+                     fl::X(cell.x - stack_table.top()->x), fl::Y(cell.y - stack_table.top()->y),
+                     fl::Width(cell.width), fl::Height(cell.height)
                   });
-
-                  Self->LayoutResources.push_back(Viewport->UID);
 
                   auto rect = objVectorRectangle::create::global({
                      fl::Owner(Viewport->UID),
@@ -373,17 +369,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                }
                DOUBLE y = segment.area.Y + img.final_pad.top;
 
-               // TODO: For the time being, images aren't contained by viewports, so this hack exists to temporarily 
-               // get around that problem.
-
-               DOUBLE vx, vy;
-               Viewport->get(FID_X, &vx);
-               Viewport->get(FID_Y, &vy);
-               x += vx;
-               y += vy;
-
-               acMoveToPoint(img.rect, x, y, 0, MTF::X|MTF::Y);
-               acResize(img.rect, img.final_width, img.final_height, 0);
+               if (img.rect = objVectorRectangle::create::global({
+                     fl::Name("rect_image"),
+                     fl::Owner(Viewport->UID),
+                     fl::X(x), fl::Y(y), fl::Width(img.final_width), fl::Height(img.final_height),
+                     fl::Fill(img.src)
+                  })) {
+               }
 
                if (!img.floating()) x_offset += img.final_width + img.final_pad.left + img.final_pad.right;
                break;
@@ -419,7 +411,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                      fl::Font(font),
                      fl::Fill(font_fill)
                   });
-                  Self->LayoutResources.push_back(text->UID);
 
                   DOUBLE twidth;
                   text->get(FID_TextWidth, &twidth);

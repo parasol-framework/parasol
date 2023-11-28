@@ -586,6 +586,7 @@ struct bc_link_end : public base_code {
 };
 
 struct bc_image : public base_code {
+   std::string src;                  // Fill instruction
    DOUBLE width = 0, height = 0;     // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DOUBLE final_width, final_height; // Final dimensions computed during layout
    objVectorRectangle *rect = NULL;  // A vector will host the image and define a clipping mask for it
@@ -805,7 +806,6 @@ class extDocument : public objDocument {
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
-   std::vector<OBJECTID>       LayoutResources;
    std::unordered_map<std::string, doc_edit> EditDefs;
    std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,

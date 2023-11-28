@@ -200,7 +200,6 @@ static ERROR VECTORSCENE_Debug(extVectorScene *Self, APTR Void)
          if (obj IS Self->Viewport) continue;
          log.msg("#%d %s %s", rec.ObjectID, obj->Class->ClassName, obj->Name);
       }
-
    }
 
    LONG level = 0;

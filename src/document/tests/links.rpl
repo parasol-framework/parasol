@@ -9,7 +9,7 @@
 
 <p>These tests are intended to confirm that hyperlinks are correctly highlighted on the page and support user interaction (confirmed when the mouse cursor switches to a hand image during hover).  The links must wrap with the content that represents them.</p>
 
-<p><a href="fonts.rpl">one_word_hyperlink</a></p>
+<p><a href="tables.rpl">one_word_hyperlink</a></p>
 
 <p><a href="logic.rpl">one_word_partial_hyperlink</a>_not_this_part</p>
 

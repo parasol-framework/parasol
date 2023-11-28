@@ -14,12 +14,13 @@ The Document module exports a small number of functions in support of the @Docum
 THE BYTE CODE
 -------------
 The document stream consists of byte codes represented by the base_code class.  Each type of code is represented by a
-C++ class prefixed with 'bc'. Each instantiated by type in the stream gets its own UID.  that indicate font style, paragraphs, hyperlinks, text etc.
+C++ class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph,
+hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
 
-PARAGRAPH MANAGEMENT
---------------------
+LAYOUT MANAGEMENT
+-----------------
 Drawing the document starts with a layout process that reads the document stream and generates line segments
-that declare the target area and content.  These segments have a dual purpose in that they are also used for user 
+that declare locations for content.  These segments have a dual purpose in that they are also used for user 
 interaction.
 
 TABLES
