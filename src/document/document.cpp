@@ -20,7 +20,7 @@ hyperlink etc.  When a type is instantiated it will be assigned a UID and stored
 LAYOUT MANAGEMENT
 -----------------
 Drawing the document starts with a layout process that reads the document stream and generates line segments
-that declare locations for content.  These segments have a dual purpose in that they are also used for user 
+that declare locations for content.  These segments have a dual purpose in that they are also used for user
 interaction.
 
 TABLES
@@ -44,11 +44,6 @@ colour set to the desired value in order to create the illusion of multi-coloure
 
 The page area owned by a table is given a clipping zone by the page layout engine, in the same way that objects are
 given clipping zones.  This allows text to be laid out around the table with no effort on the part of the developer.
-
-CELLS
------
-Borders: Borders are drawn within the cell, so the cell-padding value need to at least be the same value as the border
-thickness, or text inside the cell will mix with the border.
 
 *********************************************************************************************************************/
 

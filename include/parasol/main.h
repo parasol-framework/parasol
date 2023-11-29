@@ -213,6 +213,9 @@ constexpr FieldValue Point(LONG Value) { return FieldValue(FID_Point, Value); }
 constexpr FieldValue Point(CSTRING Value) { return FieldValue(FID_Point, Value); }
 inline FieldValue Point(const std::string &Value) { return FieldValue(FID_Point, Value.c_str()); }
 
+constexpr FieldValue Points(CSTRING Value) { return FieldValue(FID_Points, Value); }
+inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Points, Value.c_str()); }
+
 constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }

@@ -26,7 +26,7 @@
 
   <p>The following two tables must appear side-by-side and use the minimum possible width for each.  If the width of the page is reduced then the second table should wrap to a new line.</p>
 
-  <table stroke="rgb(0,0,0)" margins="4" spacing="4" thickness="1" fill="url(#Honeycomb)">
+  <table stroke="rgb(0,0,0)" margins="4" spacing="4" strokeWidth="1" fill="url(#Honeycomb)">
     <row fill="rgb(0,0,0,30)"><cell><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
     <row><cell fill="url(#Gradient)">Hello</cell><cell>World</cell></row>
     <row>

@@ -695,19 +695,19 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
       esctable->cells_expanded = true;
 
       if (!esctable->columns.empty()) {
-         colwidth = (esctable->thickness * 2) + esctable->cell_hspacing;
+         colwidth = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
          for (auto &col : esctable->columns) {
             colwidth += col.width + esctable->cell_hspacing;
          }
-         if (esctable->thin) colwidth -= esctable->cell_hspacing * 2; // Thin tables have no spacing allocated on the sides
+         if (esctable->collapsed) colwidth -= esctable->cell_hspacing * 2; // Collapsed tables have no spacing allocated on the sides
 
          if (colwidth < esctable->width) { // Cell layout is less than the pre-determined table width
             // Calculate the amount of additional space that is available for cells to expand into
 
-            LONG avail_width = esctable->width - (esctable->thickness * 2) -
+            LONG avail_width = esctable->width - (esctable->strokeWidth * 2) -
                (esctable->cell_hspacing * (esctable->columns.size() - 1));
 
-            if (!esctable->thin) avail_width -= (esctable->cell_hspacing * 2);
+            if (!esctable->collapsed) avail_width -= (esctable->cell_hspacing * 2);
 
             // Count the number of columns that do not have a fixed size
 
@@ -776,10 +776,10 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
    }
    else minheight = esctable->min_height;
 
-   if (minheight > esctable->height + esctable->cell_vspacing + esctable->thickness) {
+   if (minheight > esctable->height + esctable->cell_vspacing + esctable->strokeWidth) {
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
-         auto h = minheight - (esctable->height + esctable->cell_vspacing + esctable->thickness);
+         auto h = minheight - (esctable->height + esctable->cell_vspacing + esctable->strokeWidth);
          DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
             minheight, stack_row.top()->row_height, h, esctable->min_height, esctable->y);
          stack_row.top()->row_height += h;
@@ -790,7 +790,7 @@ TE layout::procTableEnd(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBL
 
    // Adjust for cellspacing at the bottom
 
-   esctable->height += esctable->cell_vspacing + esctable->thickness;
+   esctable->height += esctable->cell_vspacing + esctable->strokeWidth;
 
    // Restart if the width of the table will force an extension of the page.
 
@@ -2126,8 +2126,8 @@ wrap_table_start:
             if (width < 0) width = 0;
 
             {
-               DOUBLE min = (esctable->thickness * 2) + (esctable->cell_hspacing * (esctable->columns.size()-1)) + (esctable->cell_padding * 2 * esctable->columns.size());
-               if (esctable->thin) min -= esctable->cell_hspacing * 2; // Thin tables do not have spacing on the left and right borders
+               DOUBLE min = (esctable->strokeWidth * 2) + (esctable->cell_hspacing * (esctable->columns.size()-1)) + (esctable->cell_padding * 2 * esctable->columns.size());
+               if (esctable->collapsed) min -= esctable->cell_hspacing * 2; // Thin tables do not have spacing on the left and right borders
                if (width < min) width = min;
             }
 
@@ -2149,7 +2149,7 @@ wrap_table_cell:
             esctable->y           = m_cursor_y;
             esctable->row_index   = 0;
             esctable->total_clips = m_clips.size();
-            esctable->height      = esctable->thickness;
+            esctable->height      = esctable->strokeWidth;
 
             DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g%s, page width %g.",
                idx, LONG(esctable->columns.size()), esctable->rows, esctable->x, esctable->y,
@@ -2175,7 +2175,7 @@ wrap_table_cell:
             }
 
             m_cursor_x = esctable->x;
-            m_cursor_y = esctable->y + esctable->thickness + esctable->cell_vspacing;
+            m_cursor_y = esctable->y + esctable->strokeWidth + esctable->cell_vspacing;
             add_esc_segment();
             break;
          }
@@ -2202,7 +2202,7 @@ wrap_table_cell:
 repass_row_height_ext:
             stack_row.top()->vertical_repass = false;
             stack_row.top()->y = m_cursor_y;
-            esctable->row_width = (esctable->thickness * 2) + esctable->cell_hspacing;
+            esctable->row_width = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
 
             add_esc_segment();
             break;
@@ -2243,13 +2243,13 @@ repass_row_height_ext:
             esccell->x = m_cursor_x;
             esccell->y = m_cursor_y;
 
-            if (esctable->thin) {
+            if (esctable->collapsed) {
                //if (esccell->column IS 0);
                //else esccell->AbsX += esctable->cell_hspacing;
             }
             else esccell->x += esctable->cell_hspacing;
 
-            if (esccell->column IS 0) esccell->x += esctable->thickness;
+            if (esccell->column IS 0) esccell->x += esctable->strokeWidth;
 
             esccell->width  = esctable->columns[esccell->column].width; // Minimum width for the cell's column
             esccell->height = stack_row.top()->row_height;
@@ -2336,7 +2336,7 @@ repass_row_height_ext:
 
             esctable->row_width += esctable->columns[esccell->column].width;
 
-            if (!esctable->thin) esctable->row_width += esctable->cell_hspacing;
+            if (!esctable->collapsed) esctable->row_width += esctable->cell_hspacing;
             else if ((esccell->column + esccell->col_span) < LONG(esctable->columns.size())-1) esctable->row_width += esctable->cell_hspacing;
 
             if ((esccell->height > stack_row.top()->row_height) or (stack_row.top()->vertical_repass)) {
@@ -2357,10 +2357,10 @@ repass_row_height_ext:
 
             m_cursor_x += esctable->columns[esccell->column].width;
 
-            if (!esctable->thin) m_cursor_x += esctable->cell_hspacing;
+            if (!esctable->collapsed) m_cursor_x += esctable->cell_hspacing;
             else if ((esccell->column + esccell->col_span) < LONG(esctable->columns.size())) m_cursor_x += esctable->cell_hspacing;
 
-            if (esccell->column IS 0) m_cursor_x += esctable->thickness;
+            if (esccell->column IS 0) m_cursor_x += esctable->strokeWidth;
             break;
          }
 

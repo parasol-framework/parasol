@@ -2638,12 +2638,6 @@ static void tag_repeat(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS
 //  <cell colspan="2">Reset</cell>
 // </table>
 //
-// Columns:      The minimum width of each column in the table.
-// Width/Height: Minimum width and height of the table.
-// Fill:         Fill instruction for the table.
-// Stroke:       Stroke instruction for the table border (see thickness).
-// Thickness:    Thickness of the stroke.
-//
 // The only acceptable child tags inside a <table> section are row, brk and cell tags.  Command tags are acceptable
 // (repeat, if statements, etc).  The table byte code is typically generated as SCODE::TABLE_START, SCODE::ROW,
 // SCODE::CELL..., SCODE::ROW_END, SCODE::TABLE_END.
@@ -2689,7 +2683,7 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 
          case HASH_stroke:
             start.stroke = Tag.Attribs[i].Value;
-            if (start.thickness < 1) start.thickness = 1;
+            if (start.strokeWidth < 1) start.strokeWidth = 1;
             break;
 
          case HASH_spacing: // Spacing between the cells
@@ -2699,8 +2693,8 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             start.cell_hspacing = start.cell_vspacing;
             break;
 
-         case HASH_thin: // Thin tables do not have spacing (defined by 'spacing' or 'hspacing') on the sides
-            start.thin = true;
+         case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'hspacing') on the sides
+            start.collapsed = true;
             break;
 
          case HASH_vspacing: // Spacing between the cells
@@ -2722,11 +2716,11 @@ static void tag_table(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
             else if (start.cell_padding > 200) start.cell_padding = 200;
             break;
 
-         case HASH_thickness: {
+         case HASH_strokeWidth: {
             auto j = StrToFloat(Tag.Attribs[i].Value);
             if (j < 0.0) j = 0.0;
             else if (j > 255.0) j = 255.0;
-            start.thickness = j;
+            start.strokeWidth = j;
             break;
          }
       }

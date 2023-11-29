@@ -24,6 +24,7 @@
 #define HASH_caps 0x7c95048cUL
 #define HASH_cell 0x7c951505UL
 #define HASH_center 0xf62fb286UL
+#define HASH_collapsed 0xeb60fadcUL
 #define HASH_colour 0xf6e37b99UL
 #define HASH_colour 0xf6e37b99UL
 #define HASH_colour 0xf6e37b99UL
@@ -123,6 +124,7 @@
 #define HASH_spacing 0xa47e0e2aUL
 #define HASH_src 0x0b88ab2dUL
 #define HASH_stroke 0x1c93c91dUL
+#define HASH_strokeWidth 0x19a3b3bdUL
 #define HASH_style 0x1061af16UL
 #define HASH_svg 0x0b88abb5UL
 #define HASH_table 0x1068fa8dUL

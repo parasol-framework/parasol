@@ -19,12 +19,12 @@ static void redraw(extDocument *Self, bool Focus)
 }
 
 //********************************************************************************************************************
-// Convert the layout information to a vector scene.  This is the final step in the layout process. The advantage in 
-// performing this step separately to the layout process is that the graphics resources are managed last, which is 
+// Convert the layout information to a vector scene.  This is the final step in the layout process. The advantage in
+// performing this step separately to the layout process is that the graphics resources are managed last, which is
 // sensible for keeping them out of the layout loop.
 
 void layout::gen_scene_init(objVectorViewport *Viewport)
-{   
+{
    pf::vector<ChildEntry> list;
    if (!ListChildren(Viewport->UID, &list)) {
       for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
@@ -66,7 +66,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
          auto rect = objVectorRectangle::create::global({
                fl::Owner(Viewport->UID),
                fl::X(m_clips[i].Clip.left), fl::Y(m_clips[i].Clip.top),
-               fl::Width(m_clips[i].Clip.right - m_clips[i].Clip.left), 
+               fl::Width(m_clips[i].Clip.right - m_clips[i].Clip.left),
                fl::Height(m_clips[i].Clip.bottom - m_clips[i].Clip.top),
                fl::Fill("rgb(255,200,200,64)") });
       }
@@ -220,7 +220,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                         });
                      }
                   }
-                  else if (stack_list.top()->type IS bc_list::BULLET) {                     
+                  else if (stack_list.top()->type IS bc_list::BULLET) {
                      DOUBLE ix = segment.area.X - stack_para.top()->item_indent + (m_font->Height * 0.5);
                      DOUBLE iy = segment.area.Y + (segment.area.Height - segment.gutter) - (m_font->Height * 0.5);
 
@@ -250,17 +250,23 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                   fl::Width(table->width), fl::Height(table->height)
                });
 
-               if ((!table->fill.empty()) or (!table->stroke.empty())) {
-                  auto rect = objVectorRectangle::create::global({
-                     fl::Owner(Viewport->UID),
-                     fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%")
-                  });
+               // To build sophisticated table grids, we allocate a single VectorPath that
+               // the table, rows and cells can all add to.  This ensures efficiency and consistency
+               // in the final result.
 
-                  if (!table->fill.empty()) rect->set(FID_Fill, table->fill);
+               table->path = objVectorPath::create::global({ fl::Owner(Viewport->UID) });
+
+               if ((!table->fill.empty()) or (!table->stroke.empty())) {
+                  char path[120];
+                  snprintf(path, sizeof(path), "M0,0 H%g V%g H0 Z", table->width, table->height);
+
+                  table->path->set(FID_Sequence, path);
+
+                  if (!table->fill.empty()) table->path->set(FID_Fill, table->fill);
 
                   if (!table->stroke.empty()) {
-                     rect->set(FID_Stroke, table->stroke);
-                     rect->set(FID_StrokeWidth, table->thickness);
+                     table->path->set(FID_Stroke, table->stroke);
+                     table->path->set(FID_StrokeWidth, table->strokeWidth);
                   }
                }
                break;
@@ -333,8 +339,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                auto esclink = &stream_data<bc_link>(Self, cursor);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
-                  if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and 
-                      (Self->Tabs[Self->FocusIndex].ref IS esclink->id) and 
+                  if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and
+                      (Self->Tabs[Self->FocusIndex].ref IS esclink->id) and
                       (Self->Tabs[Self->FocusIndex].active)) {
                      link_save_rgb = font_fill;
                      font_fill = Self->LinkSelectFill;

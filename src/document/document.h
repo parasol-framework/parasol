@@ -468,8 +468,8 @@ struct doc_clip {
    doc_clip() = default;
 
    doc_clip(DOUBLE pLeft, DOUBLE pTop, DOUBLE pRight, DOUBLE pBottom, LONG pIndex, bool pTransparent, const std::string &pName) :
-      left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) { 
-      
+      left(pLeft), top(pTop), right(pRight), bottom(pBottom), index(pIndex), transparent(pTransparent), name(pName) {
+
       if ((right - left > 20000) or (bottom - top > 20000)) {
          pf::Log log;
          log.warning("%s set invalid clip dimensions: %.0f,%.0f,%.0f,%.0f", name.c_str(), left, top, right, bottom);
@@ -659,15 +659,16 @@ struct bc_xml : public base_code {
 
 struct bc_table : public base_code {
    struct bc_table *stack = NULL;
-   std::vector<tablecol> columns; // Table column management
-   std::string fill, stroke;
+   objVectorPath *path = NULL;
+   std::vector<tablecol> columns;        // Table column management
+   std::string fill, stroke;             // SVG stroke and fill instructions
    DOUBLE cell_vspacing = 0, cell_hspacing = 0; // Spacing between each cell
    DOUBLE cell_padding = 0;              // Spacing inside each cell (margins)
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Dimensions
    DOUBLE min_width = 0, min_height = 0; // User-determined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
-   DOUBLE thickness = 0;                 // Stroke thickness
+   DOUBLE strokeWidth = 0;               // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
    LONG   rows = 0;                      // Total number of rows in table
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
@@ -677,7 +678,7 @@ struct bc_table : public base_code {
    bool   cells_expanded = false;        // false if the table cells have not been expanded to match the inside table width
    bool   reset_row_height = false;      // true if the height of all rows needs to be reset in the current pass
    bool   wrap = false;
-   bool   thin = false;
+   bool   collapsed = false;             // Equivalent to HTML collapsing, eliminates whitespace between rows and cells
    // Entry followed by the minimum width of each column
    bc_table() { code = SCODE::TABLE_START; }
 
