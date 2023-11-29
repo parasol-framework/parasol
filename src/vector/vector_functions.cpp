@@ -91,9 +91,6 @@ ERROR vecApplyPath(class SimpleVector *Vector, extVectorPath *VectorPath)
    if (VectorPath->Class->ClassID != ID_VECTORPATH) return ERR_Args;
 
    SetField(VectorPath, FID_Sequence, NULL); // Clear any pre-existing path information.
-
-   if (VectorPath->CustomPath) { delete VectorPath->CustomPath; VectorPath->CustomPath = NULL; }
-   VectorPath->CustomPath = new (std::nothrow) agg::path_storage(Vector->mPath);
    return ERR_Okay;
 }
 

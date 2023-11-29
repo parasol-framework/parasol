@@ -5,6 +5,8 @@
 
 namespace pf {
 
+// USAGE: std::vector<std::string> list; pf::split(value, std::back_inserter(list));
+
 template <class InType, class OutIt>
 void split(InType Input, OutIt Output)
 {

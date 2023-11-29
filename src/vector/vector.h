@@ -394,7 +394,6 @@ class extVectorPath : public extVector {
    using create = pf::Create<extVectorPath>;
 
    std::vector<PathCommand> Commands;
-   agg::path_storage *CustomPath;
 };
 
 class extVectorRectangle : public extVector {

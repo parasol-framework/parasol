@@ -158,7 +158,6 @@ void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *Base
 static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 {
    Self->Commands.clear();
-   if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    reset_path(Self);
    return ERR_Okay;
 }
@@ -167,7 +166,6 @@ static ERROR VECTORPATH_Clear(extVectorPath *Self, APTR Void)
 
 static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 {
-//   if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    reset_path(Self);
    return ERR_Okay;
 }
@@ -177,7 +175,6 @@ static ERROR VECTORPATH_Flush(extVectorPath *Self, APTR Void)
 static ERROR VECTORPATH_Free(extVectorPath *Self, APTR Void)
 {
    Self->Commands.~vector();
-   if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
    return ERR_Okay;
 }
 
@@ -232,7 +229,7 @@ static ERROR VECTORPATH_AddCommand(extVectorPath *Self, struct vpAddCommand *Arg
       Self->Commands.push_back(list[i]);
    }
 
-   VECTORPATH_Flush(Self, NULL);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -298,7 +295,7 @@ static ERROR VECTORPATH_RemoveCommand(extVectorPath *Self, struct vpRemoveComman
    auto last = first + Args->Total;
    Self->Commands.erase(first, last);
 
-   VECTORPATH_Flush(Self, NULL);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -337,7 +334,7 @@ static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Arg
       CopyMemory(&list[i], &Self->Commands[Args->Index + i], sizeof(PathCommand));
    }
 
-   VECTORPATH_Flush(Self, NULL);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -381,7 +378,7 @@ static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandL
       Self->Commands.push_back(list[i]);
    }
 
-   VECTORPATH_Flush(Self, NULL);
+   reset_path(Self);
    return ERR_Okay;
 }
 
@@ -461,7 +458,6 @@ To terminate a path without joining it to the first coordinate, omit the 'Z' fro
 static ERROR VECTORPATH_SET_Sequence(extVectorPath *Self, CSTRING Value)
 {
    Self->Commands.clear();
-   if (Self->CustomPath) { delete Self->CustomPath; Self->CustomPath = NULL; }
 
    ERROR error = ERR_Okay;
    if (Value) error = read_path(Self->Commands, Value);

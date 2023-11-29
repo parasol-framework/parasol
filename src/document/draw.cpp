@@ -146,7 +146,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             if ((Self->CursorIndex IS segment.stop) and
                 (Self->CursorIndex.get_prev_char_or_inline(Self, Stream) IS '\n'));
             else if ((Self->Page->Flags & VF::HAS_FOCUS) != VF::NIL) { // Standard text cursor
-               auto rect = objVectorRectangle::create::global({
+               objVectorRectangle::create::global({
                   fl::Owner(Viewport->UID),
                   fl::X(segment.area.X + Self->CursorCharX), fl::Y(segment.area.Y),
                   fl::Width(2), fl::Height(segment.area.Height - segment.gutter),
@@ -211,7 +211,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                         DOUBLE ix = segment.area.X - stack_para.top()->item_indent;
                         DOUBLE iy = segment.area.Y + segment.area.Height - segment.gutter;
 
-                        auto text = objVectorText::create::global({
+                        objVectorText::create::global({
                            fl::Owner(Viewport->UID),
                            fl::X(ix), fl::Y(iy),
                            fl::String(stack_para.top()->value),
@@ -224,7 +224,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                      DOUBLE ix = segment.area.X - stack_para.top()->item_indent + (m_font->Height * 0.5);
                      DOUBLE iy = segment.area.Y + (segment.area.Height - segment.gutter) - (m_font->Height * 0.5);
 
-                     auto bullet = objVectorEllipse::create::global({
+                     objVectorEllipse::create::global({
                         fl::Owner(Viewport->UID),
                         fl::CenterX(ix), fl::CenterY(iy),
                         fl::Radius(m_font->Height * 0.25),
@@ -283,7 +283,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                stack_row.push(&stream_data<bc_row>(Self, cursor));
                auto row = stack_row.top();
                if ((!row->fill.empty()) and (row->row_height > 0)) {
-                  auto rect = objVectorRectangle::create::global({
+                  objVectorRectangle::create::global({
                      fl::Owner(Viewport->UID),
                      fl::X(0), fl::Y(row->y - stack_table.top()->y),
                      fl::Width(stack_table.top()->width),
@@ -306,7 +306,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                //DOUBLE cell_width  = stack_table.top()->columns[cell.column].width;
                //DOUBLE cell_height = stack_row.top()->row_height;
 
-               if ((cell.width > 0) and (cell.height > 0)) {
+               if ((cell.width >= 1) and (cell.height >= 1)) {
                   Viewport = objVectorViewport::create::global({
                      fl::Owner(Viewport->UID),
                      fl::X(cell.x - stack_table.top()->x), fl::Y(cell.y - stack_table.top()->y),
@@ -375,12 +375,12 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                }
                DOUBLE y = segment.area.Y + img.final_pad.top;
 
-               if (img.rect = objVectorRectangle::create::global({
+               if ((img.rect = objVectorRectangle::create::global({
                      fl::Name("rect_image"),
                      fl::Owner(Viewport->UID),
                      fl::X(x), fl::Y(y), fl::Width(img.final_width), fl::Height(img.final_height),
                      fl::Fill(img.src)
-                  })) {
+                  }))) {
                }
 
                if (!img.floating()) x_offset += img.final_width + img.final_pad.left + img.final_pad.right;
