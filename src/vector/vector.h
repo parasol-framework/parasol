@@ -434,6 +434,7 @@ class extVectorClip : public extVector {
 
 extern CSTRING get_name(OBJECTPTR);
 extern CSTRING read_numseq(CSTRING, ...);
+extern CSTRING read_numseq_zero(CSTRING, ...);
 extern DOUBLE read_unit(CSTRING, UBYTE *);
 extern ERROR init_blurfx(void);
 extern ERROR init_colour(void);

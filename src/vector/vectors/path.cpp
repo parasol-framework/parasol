@@ -26,119 +26,140 @@ void convert_to_aggpath(std::vector<PathCommand> &Paths, agg::path_storage *Base
    PathCommand dummy = { PE::NIL, 0, 0, 0, 0, 0 };
    PathCommand &lp = dummy;
 
+   bool lp_curved = false;
    auto bp = BasePath;
    for (size_t i=0; i < Paths.size(); i++) {
       auto path = Paths[i];
+      
 
       switch (path.Type) {
          case PE::Move:
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->move_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::MoveRel:
             path.AbsX = path.X + lp.AbsX;
             path.AbsY = path.Y + lp.AbsY;
             bp->move_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::Line:
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->line_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::LineRel:
             path.AbsX = path.X + lp.AbsX;
             path.AbsY = path.Y + lp.AbsY;
             bp->line_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::HLine:
             path.AbsX = path.X;
             path.AbsY = lp.AbsY;
             bp->line_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::HLineRel:
             path.AbsX = path.X + lp.AbsX;
             path.AbsY = lp.AbsY;
             bp->line_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::VLine:
             path.AbsX = lp.AbsX;
             path.AbsY = path.Y;
             bp->line_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::VLineRel:
             path.AbsX = lp.AbsX;
             path.AbsY = path.Y + lp.AbsY;
             bp->line_to(path.AbsX, path.AbsY);
+            lp_curved = false;
             break;
 
          case PE::Curve: // curve4()
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->curve4(path.X2, path.Y2, path.X3, path.Y3, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::CurveRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
             bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.X3+lp.AbsX, path.Y3+lp.AbsY, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
-         case PE::Smooth: // Simplified curve3/4 with one control inherited from previous vertex
+         case PE::Smooth: 
+            // Simplified curve3/4 with one control inherited from the previous vertex
             path.AbsX = path.X;
             path.AbsY = path.Y;
-            if (!lp.Curved) bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
+            if (!lp_curved) bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
             else bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::SmoothRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
-            if (!lp.Curved) bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            if (!lp_curved) bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
             else bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::QuadCurve:
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->curve3(path.X2, path.Y2, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::QuadCurveRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
             bp->curve3(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::QuadSmooth: // Inherits a control from previous vertex
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->curve4(path.X2, path.Y2, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::QuadSmoothRel: // Inherits a control from previous vertex
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
             bp->curve4(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::Arc:
             path.AbsX = path.X;
             path.AbsY = path.Y;
             bp->arc_to(path.X2, path.Y2, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::ArcRel:
             path.AbsX = lp.AbsX + path.X;
             path.AbsY = lp.AbsY + path.Y;
             bp->arc_to(path.X2+lp.AbsX, path.Y2+lp.AbsY, path.Angle, path.LargeArc, path.Sweep, path.AbsX, path.AbsY);
+            lp_curved = true;
             break;
 
          case PE::ClosePath:
@@ -329,10 +350,7 @@ static ERROR VECTORPATH_SetCommand(extVectorPath *Self, struct vpSetCommand *Arg
    const LONG total_cmds = Args->Size / sizeof(PathCommand);
    if ((size_t)Args->Index + total_cmds > Self->Commands.size()) Self->Commands.resize(Args->Index + total_cmds);
 
-   PathCommand *list = Args->Command;
-   for (LONG i=0; i < total_cmds; i++) {
-      CopyMemory(&list[i], &Self->Commands[Args->Index + i], sizeof(PathCommand));
-   }
+   CopyMemory(Args->Command, &Self->Commands[Args->Index], total_cmds * sizeof(PathCommand));
 
    reset_path(Self);
    return ERR_Okay;

@@ -506,20 +506,19 @@ struct VectorPoint {
 };
 
 struct PathCommand {
-   PE     Type;     // The command type (PE value)
-   UBYTE  Curved;   // Private
-   UBYTE  LargeArc; // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
-   UBYTE  Sweep;    // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
-   UBYTE  Pad1;     // Private
-   DOUBLE X;        // The targeted X coordinate (absolute or relative) for the command
-   DOUBLE Y;        // The targeted Y coordinate (absolute or relative) for the command
-   DOUBLE AbsX;     // Private
-   DOUBLE AbsY;     // Private
-   DOUBLE X2;       // The X2 coordinate for curve commands, or RX for arcs
-   DOUBLE Y2;       // The Y2 coordinate for curve commands, or RY for arcs
-   DOUBLE X3;       // The X3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Y3;       // The Y3 coordinate for curve-to or smooth-curve-to
-   DOUBLE Angle;    // Arc angle
+   PE     Type;       // The command type (PE value)
+   UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
+   UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
+   UBYTE  Pad1;       // Private
+   DOUBLE X;          // The targeted X coordinate (absolute or relative) for the command
+   DOUBLE Y;          // The targeted Y coordinate (absolute or relative) for the command
+   DOUBLE AbsX;       // Private
+   DOUBLE AbsY;       // Private
+   DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
+   DOUBLE Y2;         // The Y2 coordinate for curve commands, or RY for arcs
+   DOUBLE X3;         // The X3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Y3;         // The Y3 coordinate for curve-to or smooth-curve-to
+   DOUBLE Angle;      // Arc angle
 };
 
 struct VectorMatrix {

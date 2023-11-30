@@ -98,79 +98,70 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
       else if (((*Value >= '0') and (*Value <= '9')) or (*Value IS '-') or (*Value IS '+')); // Use the previous command
       else { Value++; continue; }
 
-      ClearMemory(&path, sizeof(path));
-
       switch (cmd) {
          case 'M': case 'm': // MoveTo
-            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X, &path.Y, TAGEND);
             if (cmd IS 'M') {
                path.Type = PE::Move;
-               cmd = 'L'; // This is because the SVG standard requires that sequential coordinate pairs will be interpreted as line-to commands.
+               cmd = 'L'; // This is because the SVG standard requires that uninterrupted coordinate pairs are interpreted as line-to commands.
             }
             else {
                path.Type = PE::MoveRel;
                cmd = 'l';
             }
-            path.Curved = FALSE;
             break;
 
          case 'L': case 'l': // LineTo
-            Value = read_numseq(Value, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X, &path.Y, TAGEND);
             if (cmd IS 'L') path.Type = PE::Line;
             else path.Type = PE::LineRel;
-            path.Curved = FALSE;
             break;
 
          case 'V': case 'v': // Vertical LineTo
-            Value = read_numseq(Value, &path.Y, TAGEND);
+            path.X = 0; // Needs to be zero to satisfy any curve instructions that might follow
+            Value = read_numseq_zero(Value, &path.Y, TAGEND);
             if (cmd IS 'V') path.Type = PE::VLine;
             else path.Type = PE::VLineRel;
-            path.Curved = FALSE;
             break;
 
          case 'H': case 'h': // Horizontal LineTo
-            Value = read_numseq(Value, &path.X, TAGEND);
+            path.Y = 0; // Needs to be zero to satisfy any curve instructions that might follow
+            Value = read_numseq_zero(Value, &path.X, TAGEND);
             if (cmd IS 'H') path.Type = PE::HLine;
             else path.Type = PE::LineRel;
-            path.Curved = FALSE;
             break;
 
          case 'Q': case 'q': // Quadratic Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
             if (cmd IS 'Q') path.Type = PE::QuadCurve;
             else path.Type = PE::QuadCurveRel;
-            path.Curved = TRUE;
             break;
 
          case 'T': case 't': // Quadratic Smooth Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
             if (cmd IS 'T') path.Type = PE::QuadSmooth;
             else path.Type = PE::QuadSmoothRel;
-            path.Curved = TRUE;
            break;
 
          case 'C': case 'c': // Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X2, &path.Y2, &path.X3, &path.Y3, &path.X, &path.Y, TAGEND);
             if (cmd IS 'C') path.Type = PE::Curve;
             else path.Type = PE::CurveRel;
-            path.Curved = TRUE;
             break;
 
          case 'S': case 's': // Smooth Curve To
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X2, &path.Y2, &path.X, &path.Y, TAGEND);
             if (cmd IS 'S') path.Type = PE::Smooth;
             else path.Type = PE::SmoothRel;
-            path.Curved = TRUE;
             break;
 
          case 'A': case 'a': { // Arc
             DOUBLE largearc, sweep;
-            Value = read_numseq(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
+            Value = read_numseq_zero(Value, &path.X2, &path.Y2, &path.Angle, &largearc, &sweep, &path.X, &path.Y, TAGEND);
             path.LargeArc = F2T(largearc);
             path.Sweep = F2T(sweep);
             if (cmd IS 'A') path.Type = PE::Arc;
             else path.Type = PE::ArcRel;
-            path.Curved = TRUE;
             break;
          }
 
@@ -184,7 +175,6 @@ ERROR read_path(std::vector<PathCommand> &Path, CSTRING Value)
 
          case 'Z': case 'z': { // Close Path
             path.Type = PE::ClosePath;
-            path.Curved = FALSE;
             break;
          }
 
@@ -413,8 +403,10 @@ DOUBLE read_unit(CSTRING Value, bool &Percent)
 }
 
 //********************************************************************************************************************
-// The parser will break once the string value terminates, or an invalid character is encountered.  All unparseable
-// result values will be set to zero.
+// The parser will break once the string value terminates, or an invalid character is encountered.
+// 
+// There are two variants - the first aborts if an unparseable value is encountered.  The second will set all
+// unparseable result values to zero.
 //
 // Parsed characters include: 0 - 9 , ( ) - + SPACE
 
@@ -440,6 +432,33 @@ CSTRING read_numseq(CSTRING Value, ...)
 
       *result = num;
       Value = next;
+   }
+
+   va_end(list);
+   return Value;
+}
+
+CSTRING read_numseq_zero(CSTRING Value, ...)
+{
+   va_list list;
+   DOUBLE *result;
+
+   if ((!Value) or (!Value[0])) return Value;
+
+   va_start(list, Value);
+
+   while ((result = va_arg(list, DOUBLE *))) {
+      if (Value) {
+         while ((*Value) and ((*Value <= 0x20) or (*Value IS ',') or (*Value IS '(') or (*Value IS ')'))) Value++;
+         if (Value[0]) {
+            STRING next = NULL;
+            DOUBLE num = strtod(Value, &next);
+            *result = num;
+            Value = next; // Can be NULL if strtod() failed
+         }
+         else *result = 0;
+      }
+      else *result = 0;
    }
 
    va_end(list);

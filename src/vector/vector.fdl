@@ -306,7 +306,6 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 
   struct("PathCommand", { comment="Base structure for path commands." }, [[
     int(PE) Type         # The command type (PE value)
-    uchar   Curved       # Private
     uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
     uchar   Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
     uchar   Pad1         # Private
