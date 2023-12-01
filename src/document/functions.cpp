@@ -1403,9 +1403,9 @@ static void process_parameters(extDocument *Self, const std::string &String)
                while ((pos < String.size()) and (String[pos] != '#') and (String[pos] != '&') and (String[pos] != ';')) {
                   uri_char(value);
                }
-               Self->Params[arg] = value;
+               Self->Params.emplace(arg, value);
             }
-            else Self->Params[arg] = "1";
+            else Self->Params.emplace(arg, "1");
 
             while ((String[pos]) and (String[pos] != '#') and (String[pos] != '&') and (String[pos] != ';')) pos++;
             if ((String[pos] != '&') and (String[pos] != ';')) break;

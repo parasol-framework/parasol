@@ -437,7 +437,7 @@ class init_template {
 
 //********************************************************************************************************************
 
-ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
+static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
@@ -458,7 +458,7 @@ ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return add_document_class();
 }
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    glFonts.clear();
 
@@ -567,5 +567,4 @@ static ERROR add_document_class(void)
 //********************************************************************************************************************
 
 PARASOL_MOD(CMDInit, NULL, NULL, CMDExpunge, MOD_IDL, NULL)
-
 extern "C" struct ModHeader * register_document_module() { return &ModHeader; }
