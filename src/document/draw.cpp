@@ -257,10 +257,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                table->path = objVectorPath::create::global({ fl::Owner(Viewport->UID) });
 
                if ((!table->fill.empty()) or (!table->stroke.empty())) {
-                  char path[120];
-                  snprintf(path, sizeof(path), "M0,0 H%g V%g H0 Z", table->width, table->height);
-
-                  table->path->set(FID_Sequence, path);
+                  table->seq.push_back({ .Type = PE::Move, .X = 0, .Y = 0 });
+                  table->seq.push_back({ .Type = PE::HLineRel, .X = table->width, });
+                  table->seq.push_back({ .Type = PE::VLineRel, .Y = table->height });
+                  table->seq.push_back({ .Type = PE::HLineRel, .X = -table->width, });
+                  table->seq.push_back({ .Type = PE::ClosePath });
 
                   if (!table->fill.empty()) table->path->set(FID_Fill, table->fill);
 
@@ -272,12 +273,18 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                break;
             }
 
-            case SCODE::TABLE_END:
+            case SCODE::TABLE_END: {
+               auto &table = stack_table.top();
+               vpSetCommand(table->path, table->seq.size(), table->seq.data(),
+                  table->seq.size() * sizeof(PathCommand));
+               table->seq.clear();
+
                Viewport = stack_vp.top();
                stack_vp.pop();
 
                stack_table.pop();
                break;
+            }
 
             case SCODE::ROW: {
                stack_row.push(&stream_data<bc_row>(Self, cursor));
@@ -313,17 +320,61 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                      fl::Width(cell.width), fl::Height(cell.height)
                   });
 
-                  auto rect = objVectorRectangle::create::global({
-                     fl::Owner(Viewport->UID),
-                     fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%")
-                  });
+                  // If a cell defines fill/stroke values then it gets an independent rectangle to achieve that.  
+                  // 
+                  // If it defines a border then it can instead make use of the table's VectorPath object, which is 
+                  // more efficient and creates consistent looking output.
 
-                  if (!cell.stroke.empty()) {
-                     rect->set(FID_Stroke, cell.stroke);
-                     rect->set(FID_StrokeWidth, 1);
+                  if ((!cell.stroke.empty()) or (!cell.fill.empty())) {
+                     auto rect = objVectorRectangle::create::global({
+                        fl::Owner(Viewport->UID),
+                        fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%")
+                     });
+
+                     if (!cell.stroke.empty()) {
+                        rect->set(FID_Stroke, cell.stroke);
+                        rect->set(FID_StrokeWidth, cell.strokeWidth);
+                     }
+
+                     if (!cell.fill.empty()) rect->set(FID_Fill, cell.fill);
                   }
 
-                  if (!cell.fill.empty()) rect->set(FID_Fill, cell.fill);
+                  if ((cell.border != CB::NIL) and (cell.stroke.empty())) {
+                     // When a cell defines a border value, it piggy-backs the table's stroke definition
+                     auto &table = stack_table.top();
+                     if (cell.border IS CB::ALL) {
+                        table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
+                        table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
+                        table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
+                        table->seq.push_back({ .Type = PE::HLineRel, .X = -cell.width });
+                        table->seq.push_back({ .Type = PE::ClosePath });
+                     }
+                     else {
+                        if ((cell.border & CB::LEFT) != CB::NIL) {
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
+                           table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
+                           table->seq.push_back({ .Type = PE::ClosePath });
+                        }
+
+                        if ((cell.border & CB::TOP) != CB::NIL) {
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
+                           table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
+                           table->seq.push_back({ .Type = PE::ClosePath });
+                        }
+
+                        if ((cell.border & CB::RIGHT) != CB::NIL) {
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x + cell.width, .Y = cell.y - table->y });
+                           table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
+                           table->seq.push_back({ .Type = PE::ClosePath });
+                        }
+
+                        if ((cell.border & CB::BOTTOM) != CB::NIL) {
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y + cell.height });
+                           table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
+                           table->seq.push_back({ .Type = PE::ClosePath });
+                        }
+                     }
+                  }
                }
 
                break;

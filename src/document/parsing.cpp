@@ -2822,6 +2822,21 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    bool select = false;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
+         case HASH_border: {
+            std::vector<std::string> list;
+            pf::split(Tag.Attribs[i].Value, std::back_inserter(list));
+
+            for (auto &v : list) {
+               if (!StrMatch("all", v)) cell.border = CB::ALL;
+               else if (!StrMatch("top", v)) cell.border |= CB::TOP;
+               else if (!StrMatch("left", v)) cell.border |= CB::LEFT;
+               else if (!StrMatch("bottom", v)) cell.border |= CB::BOTTOM;
+               else if (!StrMatch("right", v)) cell.border |= CB::RIGHT;
+            }
+
+            break;
+         }
+
          case HASH_colspan:
             cell.col_span = StrToInt(Tag.Attribs[i].Value);
             if (cell.col_span < 1) cell.col_span = 1;
@@ -2854,7 +2869,17 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          case HASH_fill: cell.fill = Tag.Attribs[i].Value; break;
 
-         case HASH_stroke: cell.stroke = Tag.Attribs[i].Value; break;
+         case HASH_stroke: 
+            cell.stroke = Tag.Attribs[i].Value; 
+            if (!cell.strokeWidth) {
+               cell.strokeWidth = Self->Style.table->table->strokeWidth;
+               if (!cell.strokeWidth) cell.strokeWidth = 1;
+            }
+            break;
+
+         case HASH_strokeWidth: 
+            cell.strokeWidth = StrToFloat(Tag.Attribs[i].Value); 
+            break;
 
          case HASH_nowrap:
             Self->Style.style_change = true;

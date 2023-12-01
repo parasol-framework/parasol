@@ -11,6 +11,17 @@ enum class TE : char {
    EXTEND_PAGE
 };
 
+enum class CB : UBYTE { // Cell border options
+   NIL    = 0x00,
+   TOP    = 0x01,
+   BOTTOM = 0x02,
+   LEFT   = 0x04,
+   RIGHT  = 0x08,
+   ALL    = 0X0f
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CB)
+
 enum class RTD : UBYTE {
    NIL=0,
    OBJECT_TEMP,         // The object can be removed after parsing has finished
@@ -660,6 +671,7 @@ struct bc_xml : public base_code {
 struct bc_table : public base_code {
    struct bc_table *stack = NULL;
    objVectorPath *path = NULL;
+   std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
    DOUBLE cell_vspacing = 0, cell_hspacing = 0; // Spacing between each cell
@@ -768,8 +780,10 @@ struct bc_cell : public base_code {
    LONG column = 0;               // Column number that the cell starts in
    LONG col_span = 0;             // Number of columns spanned by this cell (normally set to 1)
    LONG row_span = 0;             // Number of rows spanned by this cell
+   CB border = CB::NIL;           // Border options
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
    DOUBLE width = 0, height = 0;  // width and height of the cell
+   DOUBLE strokeWidth = 0;
    std::string onclick;           // name of an onclick function
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> args;

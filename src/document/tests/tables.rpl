@@ -27,12 +27,12 @@
   <p>The following two tables must appear side-by-side and use the minimum possible width for each.  If the width of the page is reduced then the second table should wrap to a new line.</p>
 
   <table stroke="rgb(0,0,0)" margins="4" spacing="4" strokeWidth="1" fill="url(#Honeycomb)">
-    <row fill="rgb(0,0,0,30)"><cell><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
-    <row><cell fill="url(#Gradient)">Hello</cell><cell>World</cell></row>
+    <row fill="rgb(0,0,0,30)"><cell border="all"><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
+    <row><cell border="all" fill="url(#Gradient)">Hello</cell><cell>World</cell></row>
     <row>
       <cell>Praesent varius facilisis tortor in volutpat.</cell>
-      <cell><p>single_word_<image src="url(#cancel)"/>_containing_image</p></cell>
       <cell>The quick <a href="paragraphs.rpl">brown</a> fox jumped over the lazy dog.</cell>
+      <cell border="top,bottom"><p>single_word_<image src="url(#cancel)"/>_containing_image</p></cell>
     </row>
   </table>
 

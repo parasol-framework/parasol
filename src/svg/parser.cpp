@@ -1941,9 +1941,8 @@ static void xtag_symbol(extSVG *Self, objXML *XML, const XMLTag &Tag)
    log.warning("No id attribute specified in <symbol> at line %d.", Tag.LineNo);
 }
 
-/*********************************************************************************************************************
-** Most vector shapes can be morphed to the path of another vector.
-*/
+//********************************************************************************************************************
+// Most vector shapes can be morphed to the path of another vector.
 
 static void xtag_morph(extSVG *Self, objXML *XML, const XMLTag &Tag, OBJECTPTR Parent)
 {
