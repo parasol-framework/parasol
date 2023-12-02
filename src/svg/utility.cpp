@@ -467,19 +467,21 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          // Set a new working path based on the path
 
-         char folder[512];
-         WORD last = 0;
-         for (LONG i=0; (Path[i]) and ((size_t)i < sizeof(folder)-1); i++) {
-            folder[i] = Path[i];
+         auto last = std::string::npos;
+         for (LONG i=0; Path[i]; i++) {
             if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
-         folder[last] = 0;
-         if (last) task->setPath(folder);
+         if (last != std::string::npos) {
+            auto folder = std::string(Path, last);
+            task->setPath(folder);
+         }
       }
       else if (Buffer) xml->setStatement(Buffer);
 
       if (!InitObject(xml)) {
          Self->SVGVersion = 1.0;
+
+         Self->XML = xml;
 
          convert_styles(xml->Tags);
 
@@ -487,8 +489,8 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          for (auto &scan : xml->Tags) {
             if (!StrMatch("svg", scan.name())) {
                svgState state;
-               if (Self->Target) xtag_svg(Self, xml, state, scan, Self->Target, &sibling);
-               else xtag_svg(Self, xml, state, scan, Self->Scene, &sibling);
+               if (Self->Target) xtag_svg(Self, state, scan, Self->Target, &sibling);
+               else xtag_svg(Self, state, scan, Self->Scene, &sibling);
             }
          }
 
@@ -509,6 +511,8 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
             while ((view) and (view->Class->ClassID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
             if (view) view->setFields(fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)));
          }
+
+         Self->XML = NULL;
       }
       else error = ERR_Init;
 

@@ -140,6 +140,7 @@
 #define HASH_trim 0x7c9e9e61UL
 #define HASH_u 0x0002b61aUL
 #define HASH_unicode 0x3a5912acUL
+#define HASH_use 0x0b88b3d2UL
 #define HASH_UserClick 0xc0715faaUL
 #define HASH_UserClickRelease 0x43eb566bUL
 #define HASH_UserMovement 0x2b4154afUL

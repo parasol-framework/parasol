@@ -238,6 +238,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                stack_para.pop();
                break;
 
+            // TODO: It would be preferable to preprocess 'use' instructions in advance.
+            case SCODE::USE: {
+               auto &use = stream_data<bc_use>(Self, cursor);
+               svgParseSymbol(Self->SVG, use.id.c_str(), Viewport);
+               break;
+            }
+
             case SCODE::TABLE_START: {
                stack_table.push(&stream_data<bc_table>(Self, cursor));
                auto table = stack_table.top();

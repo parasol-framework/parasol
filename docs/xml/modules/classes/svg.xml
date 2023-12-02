@@ -61,6 +61,20 @@
 
   <methods>
     <method>
+      <name>ParseSymbol</name>
+      <comment>Generate a vector scene graph from an SVG symbol, targeting a viewport.</comment>
+      <prototype>ERROR svgParseSymbol(OBJECTPTR Object, CSTRING ID, objVectorViewport * Viewport)</prototype>
+      <input>
+        <param type="CSTRING" name="ID">Name of the symbol to parse.</param>
+        <param type="objVectorViewport *" name="Viewport">The target viewport.</param>
+      </input>
+      <description>
+<p>ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for utilising symbols in a way that is akin to running macros as required by the program.</p>
+<p>The Name must refer to a symbol that has been declared in the loaded document.  A <class name="VectorViewport">VectorViewport</class> must be provided for the symbol's generated content to target.</p>
+      </description>
+    </method>
+
+    <method>
       <name>Render</name>
       <comment>Render the scene to a target Bitamp.</comment>
       <prototype>ERROR svgRender(OBJECTPTR Object, objBitmap * Bitmap, LONG X, LONG Y, LONG Width, LONG Height)</prototype>

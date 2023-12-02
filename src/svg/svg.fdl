@@ -6,7 +6,8 @@ module({ name="SVG", copyright="Paul Manias © 2010-2023", version=1.0 }, functi
     "ALPHA: Generate an alpha channel in the rendered image.")
 
   methods("svg", "Svg", {
-    { id=1, name="Render" }
+    { id=1, name="Render" },
+    { id=2, name="ParseSymbol" }
   })
 
   class("SVG", { src="class_svg.cpp", output="class_svg_def.c" }, [[

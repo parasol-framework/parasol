@@ -162,7 +162,7 @@ static ERROR CMDInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    return add_xml_class();
 }
 
-ERROR CMDExpunge(void)
+static ERROR CMDExpunge(void)
 {
    if (clXML) { FreeResource(clXML); clXML = NULL; }
    return ERR_Okay;

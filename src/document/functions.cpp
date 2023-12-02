@@ -603,6 +603,8 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 
    if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->Vars.clear();
 
+   if (Self->SVG) { FreeResource(Self->SVG); Self->SVG = NULL; }
+
    if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = NULL; }
    if (Self->Author)      { FreeResource(Self->Author); Self->Author = NULL; }
    if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = NULL; }

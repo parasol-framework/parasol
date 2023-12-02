@@ -1,8 +1,7 @@
 /*********************************************************************************************************************
 
-The source code of the Parasol project is made publicly available under the
-terms described in the LICENSE.TXT file that is distributed with this package.
-Please refer to it for further information on licensing.
+The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
+that is distributed with this package.  Please refer to it for further information on licensing.
 
 **********************************************************************************************************************
 
@@ -25,6 +24,7 @@ https://www.w3.org/Graphics/SVG/Test/Overview.html
 #include <parasol/modules/xml.h>
 #include <parasol/modules/vector.h>
 #include <parasol/modules/display.h>
+#include <parasol/strings.hpp>
 #include "svg_def.c"
 #include "animation.h"
 #include <katana.h>
@@ -82,6 +82,7 @@ class extSVG : public objSVG {
    std::unordered_map<std::string, XMLTag> IDs;
    std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
+   objXML *XML;
    objVectorScene *Scene;
    STRING    Folder;
    OBJECTPTR Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
@@ -98,25 +99,26 @@ static ERROR animation_timer(extSVG *, LARGE, LARGE);
 static void  convert_styles(objXML::TAGS &);
 static ERROR init_svg(void);
 static ERROR init_rsvg(void);
-static void  process_attrib(extSVG *, objXML *, const XMLTag &, objVector *);
-static void  process_rule(extSVG *, objXML *, objXML::TAGS &, KatanaRule *);
-static ERROR process_shape(extSVG *, CLASSID, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static void  process_attrib(extSVG *, const XMLTag &, objVector *);
+static void  process_children(extSVG *, svgState &, const XMLTag &, OBJECTPTR);
+static void  process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
+static ERROR process_shape(extSVG *, CLASSID, svgState &, const XMLTag &, OBJECTPTR, objVector **);
 static ERROR save_svg_scan(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
 static ERROR save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
 static ERROR save_svg_transform(VectorMatrix *, std::stringstream &);
-static ERROR set_property(extSVG *, objVector *, ULONG, objXML *, const XMLTag &, std::string);
-static ERROR xtag_animatemotion(extSVG *, objXML *, const XMLTag &, OBJECTPTR Parent);
-static ERROR xtag_animatetransform(extSVG *, objXML *, const XMLTag &, OBJECTPTR);
-static ERROR xtag_default(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
-static ERROR xtag_defs(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR);
-static void  xtag_group(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
-static ERROR xtag_image(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
-static void  xtag_morph(extSVG *, objXML *, const XMLTag &, OBJECTPTR Parent);
-static void  xtag_svg(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
-static void  xtag_use(extSVG *, objXML *, svgState &, const XMLTag &, OBJECTPTR);
-static ERROR xtag_style(extSVG *, objXML *, const XMLTag &);
-static void  xtag_symbol(extSVG *, objXML *, const XMLTag &);
+static ERROR set_property(extSVG *, objVector *, ULONG, const XMLTag &, std::string);
+static ERROR xtag_animatemotion(extSVG *, const XMLTag &, OBJECTPTR Parent);
+static ERROR xtag_animatetransform(extSVG *, const XMLTag &, OBJECTPTR);
+static ERROR xtag_default(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static ERROR xtag_defs(extSVG *, svgState &, const XMLTag &, OBJECTPTR);
+static void  xtag_group(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static ERROR xtag_image(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static void  xtag_morph(extSVG *, const XMLTag &, OBJECTPTR Parent);
+static void  xtag_svg(extSVG *, svgState &, const XMLTag &, OBJECTPTR, objVector **);
+static void  xtag_use(extSVG *, svgState &, const XMLTag &, OBJECTPTR);
+static ERROR xtag_style(extSVG *, const XMLTag &);
+static void  xtag_symbol(extSVG *, const XMLTag &);
 
 //********************************************************************************************************************
 

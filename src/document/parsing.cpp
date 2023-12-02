@@ -791,16 +791,53 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 }
 
 //********************************************************************************************************************
-// Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will be applied to the
+// Declaring <svg> anywhere can execute an SVG statement of any kind, with the caveat that it will target the
 // Page viewport.  This feature should only be used for the creation of resources that can then be referred to in the
-// document as named patterns.
+// document as named patterns, or via the 'use' option for symbols.
+//
+// This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing 
+// SVG object via data feeds.
 
 static void tag_svg(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {
-   STRING def_statement;
-   auto err = xmlGetString(XML, Tag.ID, XMF::NIL, &def_statement);
+   pf::Log log(__FUNCTION__);
+
+   if (Self->SVG) {
+      Self->Error = ERR_Failed;
+      log.warning("Illegal attempt to declare <svg/> more than once.");
+      return;
+   }
+   
+   STRING xml_svg;
+   auto err = xmlGetString(XML, Tag.ID, XMF::NIL, &xml_svg);
    if (!err) {
-      objSVG::create svg = { fl::Statement(def_statement), fl::Target(Self->Page) };
+      if ((Self->SVG = objSVG::create::integral({ fl::Statement(xml_svg), fl::Target(Self->Page) }))) {
+
+      }
+      else Self->Error = ERR_CreateObject;
+   }
+}
+
+//********************************************************************************************************************
+// The <use> tag allows SVG <symbol> declarations to be injected into the parent viewport (e.g. table cells).
+// SVG objects that are created in this way are treated as dynamically rendered background graphics.  All text will
+// be laid on top with no clipping considerations.
+//
+// If more sophisticated inline or float embedding is required, the <image> tag is probably more applicable to the 
+// client.
+
+static void tag_use(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
+{
+   std::string id;
+   for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
+      if (!StrMatch("href", Tag.Attribs[i].Name)) {
+         id = Tag.Attribs[i].Value;
+      }
+   }
+
+   if (!id.empty()) {
+      auto &use = Self->reserve_code<bc_use>(Index);
+      use.id = id;
    }
 }
 

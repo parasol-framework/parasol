@@ -7,9 +7,11 @@ static const struct FieldDef clSVGFlags[] = {
 };
 
 FDEF maRender[] = { { "Bitmap", FD_OBJECTPTR }, { "X", FD_LONG }, { "Y", FD_LONG }, { "Width", FD_LONG }, { "Height", FD_LONG }, { 0, 0 } };
+FDEF maParseSymbol[] = { { "ID", FD_STR }, { "Viewport", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clSVGMethods[] = {
    { -1, (APTR)SVG_Render, "Render", maRender, sizeof(struct svgRender) },
+   { -2, (APTR)SVG_ParseSymbol, "ParseSymbol", maParseSymbol, sizeof(struct svgParseSymbol) },
    { 0, 0, 0, 0, 0 }
 };
 

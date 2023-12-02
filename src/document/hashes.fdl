@@ -139,6 +139,7 @@ header({ copyright="Paul Manias © 2023" }, function()
     "trim",
     "u",
     "unicode",
+    "use",
     "UserClick",
     "UserClickRelease",
     "UserMovement",

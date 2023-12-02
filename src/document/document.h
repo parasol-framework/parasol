@@ -96,6 +96,7 @@ enum class SCODE : char {
    INDEX_END,
    XML,
    IMAGE,
+   USE,
    // End of list - NB: PLEASE UPDATE byte_code() IF YOU ADD NEW CODES
    END
 };
@@ -563,6 +564,13 @@ struct bc_advance : public base_code {
    bc_advance() : x(0), y(0) { code = SCODE::ADVANCE; }
 };
 
+struct bc_use : public base_code {
+   std::string id; // Reference to a symbol registered in the Document's SVG object
+
+   bc_use() { code = SCODE::USE; }
+   bc_use(std::string pID) : id(pID) { code = SCODE::USE; }
+};
+
 struct bc_index : public base_code {
    ULONG  name_hash = 0;          // The name of the index is held here as a hash
    LONG   id = 0;                 // UID for matching to the correct bc_index_end
@@ -824,7 +832,7 @@ class extDocument : public objDocument {
    std::unordered_map<std::string, doc_edit> EditDefs;
    std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_vector, bc_set_margins, bc_xml, bc_image>> Codes;
+      bc_font, bc_vector, bc_set_margins, bc_xml, bc_image, bc_use>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
@@ -837,6 +845,7 @@ class extDocument : public objDocument {
    objXML *Templates;          // All templates for the current document are stored here
    objXML *InjectXML;
    objXML::TAGS *InjectTag, *HeaderTag, *FooterTag, *BodyTag;
+   objSVG *SVG;
    XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
    objTime *Time;
    OBJECTPTR CurrentObject;

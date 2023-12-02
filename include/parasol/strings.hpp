@@ -23,19 +23,19 @@ void split(InType Input, OutIt Output)
    *Output++ = std::string(current, begin);
 }
 
-inline void ltrim(std::string &String, const std::string &Whitespace = " \t")
+inline void ltrim(std::string &String, const std::string &Whitespace = " \n\r\t")
 {
    const auto start = String.find_first_not_of(Whitespace);
    if ((start != std::string::npos) and (start != 0)) String.erase(0, start);
 }
 
-inline void rtrim(std::string &String, const std::string &Whitespace = " \t")
+inline void rtrim(std::string &String, const std::string &Whitespace = " \n\r\t")
 {
    const auto end = String.find_last_not_of(Whitespace);
    if ((end != std::string::npos) and (end != String.size()-1)) String.erase(end+1, String.size()-end);
 }
 
-inline void trim(std::string &String, const std::string &Whitespace = " \t")
+inline void trim(std::string &String, const std::string &Whitespace = " \n\r\t")
 {
    const auto start = String.find_first_not_of(Whitespace);
    if ((start != std::string::npos) and (start != 0)) String.erase(0, start);

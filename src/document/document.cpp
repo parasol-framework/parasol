@@ -303,7 +303,7 @@ static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_c
 static TAGROUTINE tag_debug, tag_div, tag_editdef, tag_focus, tag_font, tag_footer, tag_head, tag_header, tag_image;
 static TAGROUTINE tag_include, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
 static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_restorestyle, tag_row, tag_savestyle;
-static TAGROUTINE tag_script, tag_set, tag_setfont, tag_setmargins, tag_svg, tag_table, tag_template, tag_trigger;
+static TAGROUTINE tag_script, tag_set, tag_setfont, tag_setmargins, tag_svg, tag_use, tag_table, tag_template, tag_trigger;
 static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
 
 //********************************************************************************************************************
@@ -356,6 +356,7 @@ static std::map<ULONG, tagroutine> glTags = {
    { HASH_table,         { tag_table,        TAG::CHILDREN } },
    { HASH_td,            { tag_cell,         TAG::CHILDREN|TAG::FILTER_ROW } },
    { HASH_tr,            { tag_row,          TAG::CHILDREN } },
+   { HASH_use,           { tag_use,          TAG::NIL } },
    { HASH_body,          { tag_body,         TAG::NIL } },
    { HASH_index,         { tag_index,        TAG::NIL } },
    { HASH_setmargins,    { tag_setmargins,   TAG::OBJECTOK } },

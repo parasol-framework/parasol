@@ -141,6 +141,45 @@ static ERROR SVG_NewObject(extSVG *Self, APTR Void)
 /*********************************************************************************************************************
 
 -METHOD-
+ParseSymbol: Generate a vector scene graph from an SVG symbol, targeting a viewport.
+
+ParseSymbol() allows the symbols of a loaded SVG document to be processed post-initialisation.  This is useful for
+utilising symbols in a way that is akin to running macros as required by the program.
+
+The Name must refer to a symbol that has been declared in the loaded document.  A @VectorViewport must be provided
+for the symbol's generated content to target.
+
+-INPUT-
+cstr ID: Name of the symbol to parse.
+obj(VectorViewport) Viewport: The target viewport.
+
+-RESULT-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR SVG_ParseSymbol(extSVG *Self, struct svgParseSymbol *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->ID) or (!Args->Viewport)) return log.warning(ERR_NullArgs);
+
+   if (auto tagref = find_href_tag(Self, Args->ID)) {
+      svgState state;
+      process_children(Self, state, *tagref, Args->Viewport);
+      return ERR_Okay;
+   }
+   else {
+      log.warning("Symbol '%s' not found.", Args->ID);
+      return ERR_NotFound;
+   }
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 Render: Render the scene to a target Bitamp.
 
 This method will render the vector scene directly to a target bitmap at coordinates (X,Y) and scaled to the desired
@@ -261,6 +300,8 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       objXML::create xml = { fl::Flags(XMF::NEW|XMF::READABLE) };
 
       if (xml.ok()) {
+         Self->XML = *xml;
+
          ERROR error = xmlInsertXML(*xml, 0, XMI::NIL, header, NULL);
          LONG index = xml->Tags.back().ID;
 
@@ -316,6 +357,8 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                   }
                }
             }
+
+            Self->XML = NULL;
          }
 
          return error;
@@ -451,7 +494,7 @@ Alternatively the #DataFeed() action can be used to parse data on-the-fly after 
 static ERROR SET_Statement(extSVG *Self, CSTRING Value)
 {
    if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
-   
+
    if ((Value) and (*Value)) {
       if (!(Self->Statement = StrClone(Value))) return ERR_AllocMemory;
    }

@@ -10,6 +10,7 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <sstream>
 #endif
 
 class objXML;
@@ -112,6 +113,17 @@ typedef struct XMLTag {
          if (!StrMatch(Attribs[a].Name, Name)) return &Attribs[a].Value;
       }
       return NULL;
+   }
+
+   inline std::string getContent() const {
+      if (Children.empty()) return std::string("");
+
+      std::ostringstream str;
+      for (auto &scan : Children) {
+         if (scan.Attribs.empty()) continue; // Sanity check
+         if (scan.Attribs[0].isContent()) str << scan.Attribs[0].Value;
+      }
+      return str.str();
    }
 } XMLTAG;
 

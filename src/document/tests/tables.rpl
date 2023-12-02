@@ -4,9 +4,11 @@
   <defs>
     <image id="cancel" xlink:href="icons:items/cancel" width="32" height="32"/>
 
+    <image id="chain" xlink:href="../../svg/tests/brushes/chain.png"/>
+
     <linearGradient id="Gradient" gradientUnits="objectBoundingBox">
       <stop offset="0" stop-color="rgb(255,255,255,192)"/>
-      <stop offset="1" stop-color="rgb(255,255,255,128)"/>
+      <stop offset="1" stop-color="rgb(255,255,255,90)"/>
     </linearGradient>
 
     <pattern id="Honeycomb" x="0" y="0" width="56" height="100" patternUnits="userSpaceOnUse">
@@ -15,6 +17,13 @@
       <path d="M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34" fill="none" stroke="#ffe503" stroke-width="2"/>
     </pattern>
   </defs>
+
+  <symbol id="cellBorder">
+    <rect x="0" y="0" width="100%" height="100%" rx="10" ry="10" fill="url(#Gradient)" stroke="rgb(0,64,0)" stroke-width="1" stroke-dasharray="1 3 1 3"/>
+  </symbol>
+
+  <!-- This does not work because the document removes all child objects from the page prior to performing a layout -->
+  <rect x="0" y="0" width="100%" height="100%" stroke="rgb(0,120,0)" stroke-width="6"/>
 </svg>
 
 <body margins="30"/>
@@ -26,13 +35,13 @@
 
   <p>The following two tables must appear side-by-side and use the minimum possible width for each.  If the width of the page is reduced then the second table should wrap to a new line.</p>
 
-  <table stroke="rgb(0,0,0)" margins="4" spacing="4" strokeWidth="1" fill="url(#Honeycomb)">
+  <table stroke="rgb(128,0,0)" margins="4" spacing="4" strokeWidth="1" fill="url(#Honeycomb)">
     <row fill="rgb(0,0,0,30)"><cell border="all"><b>Bold_Header</b></cell><cell><b>Donec ut lectus nisl</b></cell></row>
     <row><cell border="all" fill="url(#Gradient)">Hello</cell><cell>World</cell></row>
     <row>
-      <cell>Praesent varius facilisis tortor in volutpat.</cell>
-      <cell>The quick <a href="paragraphs.rpl">brown</a> fox jumped over the lazy dog.</cell>
+      <cell border="left,right" stroke="rgb(65,65,65)" strokeWidth="4">Praesent varius facilisis tortor in volutpat.</cell>
       <cell border="top,bottom"><p>single_word_<image src="url(#cancel)"/>_containing_image</p></cell>
+      <cell><use href="#cellBorder"/>The quick <a href="paragraphs.rpl">brown</a> fox jumped over the lazy dog.</cell>
     </row>
   </table>
 
