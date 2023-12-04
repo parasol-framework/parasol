@@ -1489,25 +1489,26 @@ void bc_link::exec(extDocument *Self)
    Self->Processing++;
 
    if ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL) {
-      link_activated params;
+      KEYVALUE params; // Parameters utilise XMLAttrib for named value pairs.  This aids compatibility with Fluid
 
       if (type IS LINK::FUNCTION) {
          std::string function_name, args;
          if (!extract_script(Self, ref, NULL, function_name, args)) {
-            params.Values["onclick"] = function_name;
+            params.emplace("onclick", function_name);
          }
       }
       else if (type IS LINK::HREF) {
-         params.Values["href"] = ref;
+         params.emplace("href", ref);
       }
 
-      if (!args.empty()) {
-         for (unsigned i=0; i < args.size(); i++) {
-            params.Values[args[i].first] = args[i].second;
+      for (unsigned i=0; i < args.size(); i++) {
+         if ((args[i].first[0] IS '@') or (args[i].first[0] IS '$')) {
+            params.emplace(args[i].first.c_str()+1, args[i].second);
          }
+         else params.emplace(args[i].first, args[i].second);
       }
 
-      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &params, "Parameters:link_activated");
+      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &params);
       if (result IS ERR_Skip) goto end;
    }
 
@@ -1608,7 +1609,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
 
 //********************************************************************************************************************
 
-static ERROR report_event(extDocument *Self, DEF Event, APTR EventData, CSTRING StructName)
+static ERROR report_event(extDocument *Self, DEF Event, KEYVALUE *EventData)
 {
    pf::Log log(__FUNCTION__);
    ERROR result = ERR_Okay;
@@ -1617,17 +1618,17 @@ static ERROR report_event(extDocument *Self, DEF Event, APTR EventData, CSTRING 
       log.branch("Reporting event $%.8x", LONG(Event));
 
       if (Self->EventCallback.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extDocument *, LARGE, APTR))Self->EventCallback.StdC.Routine;
+         auto routine = (ERROR (*)(extDocument *, LARGE, KEYVALUE *))Self->EventCallback.StdC.Routine;
          pf::SwitchContext context(Self->EventCallback.StdC.Context);
          result = routine(Self, LARGE(Event), EventData);
       }
       else if (Self->EventCallback.Type IS CALL_SCRIPT) {
          if (auto script = Self->EventCallback.Script.Script) {
-            if ((EventData) and (StructName)) {
+            if (EventData) {
                ScriptArg args[3] = {
                   ScriptArg("Document", Self, FD_OBJECTPTR),
                   ScriptArg("EventMask", LARGE(Event)),
-                  ScriptArg(StructName, EventData, FD_STRUCT)
+                  ScriptArg("KeyValue:Parameters", EventData, FD_STRUCT)
                };
                scCallback(script, Self->EventCallback.Script.ProcedureID, args, 3, &result);
             }

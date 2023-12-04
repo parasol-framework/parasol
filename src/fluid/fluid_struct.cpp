@@ -67,12 +67,39 @@ ERROR named_struct_to_table(lua_State *Lua, const std::string StructName, CPTR A
       std::vector<lua_ref> ref;
       return struct_to_table(Lua, ref, def->second, Address);
    }
+   else if (StructName.starts_with("KeyValue")) {
+      // A struct name of 'KeyValue' allows the KEYVALUE type to be used for building structures dynamically.
+      // std::map<std::string, std::string>
+
+      return keyvalue_to_table(Lua, (const KEYVALUE *)Address);
+   }
    else {
       pf::Log log(__FUNCTION__);
       log.warning("Unknown struct name '%s'", StructName.c_str());
       return ERR_Search;
    }
 }
+
+//********************************************************************************************************************
+
+ERROR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
+{
+   if (!Map) { lua_pushnil(Lua); return ERR_Okay; }
+
+   lua_createtable(Lua, 0, Map->size()); // Create a new table on the stack.
+
+   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
+
+   for (auto & [ key, val ] : *Map) {
+      lua_pushlstring(Lua, key.c_str(), key.size());
+      lua_pushlstring(Lua, val.c_str(), val.size());
+      lua_settable(Lua, -3);
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 
 ERROR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_record &StructDef, CPTR Address)
 {

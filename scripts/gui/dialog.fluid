@@ -141,7 +141,7 @@ gui.dialog.message = function(Options)
    local function docEvent(Document, EventFlag, Parameters)
       if bit.band(EventFlag, DEF_LINK_ACTIVATED) != 0 then
          if self.feedback then
-            local responseIndex = tonumber(mSys.VarGetString(Parameters.parameters, 'response'))
+            local responseIndex = tonumber(Parameters.response)
             local response = self.options[responseIndex]
             local state = { }
 
@@ -172,7 +172,7 @@ gui.dialog.message = function(Options)
 
    local function buildDocument()
       local option_icons = ''
-      
+
       // At minimum, there must be an OK option.
 
       if not ((type(self.options) == 'table') and (#self.options > 0)) then

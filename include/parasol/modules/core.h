@@ -1490,6 +1490,7 @@ struct Edges {
 #endif
 
 typedef const std::vector<std::pair<std::string, ULONG>> STRUCTS;
+typedef std::map<std::string, std::string> KEYVALUE;
 
 #ifndef STRINGIFY
 #define STRINGIFY(x) #x
@@ -2443,7 +2444,7 @@ template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, std::v
 }
 #endif
 
-typedef std::map<std::string, std::string> ConfigKeys;
+typedef KEYVALUE ConfigKeys;
 typedef std::pair<std::string, ConfigKeys> ConfigGroup;
 typedef std::vector<ConfigGroup> ConfigGroups;
 
@@ -3848,7 +3849,7 @@ class objScript : public BaseClass {
 
 #ifdef PRV_SCRIPT
    LARGE    ProcedureID;          // For callbacks
-   std::map<std::string, std::string> Vars; // Global parameters
+   KEYVALUE Vars; // Global parameters
    STRING   *Results;
    char     Language[4];          // 3-character language code, null-terminated
    const ScriptArg *ProcArgs;     // Procedure args - applies during Exec

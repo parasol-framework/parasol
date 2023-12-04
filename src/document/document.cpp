@@ -240,7 +240,7 @@ static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
 static void  redraw(extDocument *, bool);
-static ERROR report_event(extDocument *, DEF, APTR, CSTRING);
+static ERROR report_event(extDocument *, DEF, KEYVALUE *);
 static void  reset_cursor(extDocument *);
 static ERROR resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
 static ERROR resolve_font_pos(extDocument *, doc_segment &, DOUBLE, DOUBLE &, stream_char &);
