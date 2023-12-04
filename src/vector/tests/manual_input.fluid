@@ -67,9 +67,9 @@
       vector.opacity = 0.3
       vector.mtInputSubscription(bit.bor(JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Vector, Msg)
          while (Msg) do
-            if Msg.type == JET_ENTERED_SURFACE then
+            if Msg.type == JET_ENTERED_AREA then
                Vector.opacity = 1.0
-            elseif Msg.type == JET_LEFT_SURFACE then
+            elseif Msg.type == JET_LEFT_AREA then
                Vector.opacity = 0.2
             end
             Msg = Msg.next

@@ -497,7 +497,7 @@ gui.menu = function(Options)
       end
    end)
 
-   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON), function(Viewport, Events)
+   self.viewport.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_FEEDBACK), function(Viewport, Events)
       local ev = Events
       while ev do
          if (ev.type == JET_BUTTON_1) then

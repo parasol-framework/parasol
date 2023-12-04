@@ -65,13 +65,13 @@ ERROR consume_input_events(const InputEvent *Events, LONG Handle)
 
 All processable events are referenced in the InputEvent structure in the Events parameter.
 
-JET constants are as follows and take note of `ENTERED_SURFACE` and `LEFT_SURFACE` which are software generated and not
+JET constants are as follows and take note of `ENTERED_AREA` and `LEFT_AREA` which are software generated and not
 a device event:
 
 <types lookup="JET"/>
 
-The JTYPE values for the Flags field are as follows.  Note that these flags also serve as input masks for the
-SubscribeInput() function, so to receive a message of the given type the appropriate JTYPE flag must have been set in the
+The `JTYPE` values for the Flags field are as follows.  Note that these flags also serve as input masks for the
+SubscribeInput() function, so to receive a message of the given type the appropriate `JTYPE` flag must have been set in the
 original subscription call.
 
 <types lookup="JTYPE"/>

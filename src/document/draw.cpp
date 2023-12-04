@@ -57,6 +57,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
    std::stack<bc_row *> stack_row;
    std::stack<bc_paragraph *> stack_para;
    std::stack<bc_table *> stack_table;
+   std::stack<bc_link *> stack_link;
    std::stack<objVectorViewport *> stack_vp;
    std::string link_save_rgb;
    bool tabfocus = false;
@@ -112,6 +113,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
          else if (segment.area.Y + segment.area.Height < clip.Y) oob = true;
          else if (segment.area.X + segment.area.Width < clip.X) oob = true;
          else if (segment.area.X >= clip.Width) oob = true;
+      }
+
+      if (!stack_link.empty()) {
+         stack_link.top()->area = segment.area;
       }
 
       // Highlighting of selected text
@@ -238,7 +243,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                stack_para.pop();
                break;
 
-            // TODO: It would be preferable to preprocess 'use' instructions in advance.
+            // TODO: It would be preferable to pre-process 'use' instructions in advance.
             case SCODE::USE: {
                auto &use = stream_data<bc_use>(Self, cursor);
                svgParseSymbol(Self->SVG, use.id.c_str(), Viewport);
@@ -406,15 +411,47 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                   }
                }
 
+               // Create a VectorPath that represents the clickable area.  From this point, each segment
+               // that is encountered will have its area added to the VectorPath.  When LINK_END is reached,
+               // the VectorPath is finalised.
+
+               if ((esclink->vector_path = objVectorPath::create::global({
+                     fl::Owner(Viewport->UID),
+                     fl::Name("link_vp"),
+                     fl::Cursor(PTC::HAND)
+                     #ifdef GUIDELINES
+                     , fl::Stroke("rgb(255,0,0)"), fl::StrokeWidth(1)
+                     #endif
+                  }))) {
+                  
+                  auto callback = make_function_stdc(link_callback);
+                  vecSubscribeInput(esclink->vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+               }
+
+               esclink->area = { 
+                  x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height 
+               };
+               stack_link.push(esclink);
                break;
             }
 
-            case SCODE::LINK_END:
+            case SCODE::LINK_END: {
+               auto &link = stack_link.top();
+               link->area.Width = x_offset - link->area.X;
+               if (link->area.Width >= 1) link->append_link();
+
+               vpSetCommand(link->vector_path, link->path.size(), link->path.data(),
+                  link->path.size() * sizeof(PathCommand));
+               link->path.clear();
+
+               stack_link.pop();
+               
                if (tabfocus) {
                   font_fill = link_save_rgb;
                   tabfocus = false;
                }
                break;
+            }
 
             case SCODE::IMAGE: {
                if (oob) break;
@@ -484,7 +521,14 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             default: break;
-         }
+         } // switch()
+      } // for cursor
+
+      if (!stack_link.empty()) {
+         auto &link = stack_link.top();
+         link->area.Width = x_offset - link->area.X;
+         if (link->area.Width >= 1) link->append_link();
       }
-   } // for loop
+
+   } // for segment
 }

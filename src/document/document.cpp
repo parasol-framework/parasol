@@ -6,44 +6,10 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -MODULE-
-Document: Provides document display and editing facilities.
+Document: Provides document display and editing functionality.
 
 The Document module exports a small number of functions in support of the @Document class.
 -END-
-
-THE BYTE CODE
--------------
-The document stream consists of byte codes represented by the base_code class.  Each type of code is represented by a
-C++ class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph,
-hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
-
-LAYOUT MANAGEMENT
------------------
-Drawing the document starts with a layout process that reads the document stream and generates line segments
-that declare locations for content.  These segments have a dual purpose in that they are also used for user
-interaction.
-
-TABLES
-------
-Internally, the layout of tables is managed as follows:
-
-Border-Thickness, Cell-Spacing, Cell-Padding, Content, Cell-Padding, Cell-Spacing, ..., Border-Thickness
-
-Table attributes are:
-
-Columns:      The minimum width of each column in the table.
-Width/Height: Minimum width and height of the table.
-Fill:         Background fill for the table.
-Thickness:    Size of the Stroke pattern.
-Stroke        Stroke pattern for border.
-Padding:      Padding inside each cell (syn. Margins)
-Spacing:      Spacing between cells.
-
-For complex tables with different coloured borders between cells, allocate single-pixel sized cells with the background
-colour set to the desired value in order to create the illusion of multi-coloured cell borders.
-
-The page area owned by a table is given a clipping zone by the page layout engine, in the same way that objects are
-given clipping zones.  This allows text to be laid out around the table with no effort on the part of the developer.
 
 *********************************************************************************************************************/
 

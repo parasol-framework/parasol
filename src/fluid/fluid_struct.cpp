@@ -62,7 +62,7 @@ ERROR named_struct_to_table(lua_State *Lua, const std::string StructName, CPTR A
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   auto def = prv->Structs.find(StructName);
+   auto def = prv->Structs.find(StructName); // NB: Custom comparator will stop if a colon is encountered in StructName
    if (def != prv->Structs.end()) {
       std::vector<lua_ref> ref;
       return struct_to_table(Lua, ref, def->second, Address);

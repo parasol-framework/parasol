@@ -214,13 +214,12 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
    return false;
 }
 
-/*********************************************************************************************************************
-** Processes an XML tag and passes it to parse_tag().
-**
-** IXF::HOLD_STYLE:  The font style will not be cleared.
-** IXF::RESET_STYLE: Current font style will be reset rather than defaulting to the most recent style at the insertion point.
-** IXF::SIBLINGS:    Sibling tags will be parsed.
-*/
+//********************************************************************************************************************
+// Processes an XML tag and passes it to parse_tag().
+//
+// IXF::HOLD_STYLE:  The font style will not be cleared.
+// IXF::RESET_STYLE: Current font style will be reset rather than defaulting to the most recent style at the insertion point.
+// IXF::SIBLINGS:    Sibling tags will be parsed.
 
 static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, IXF Flags)
 {
@@ -433,6 +432,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       Self->TemplateArgs.clear();
       Self->SelectStart.reset();
       Self->SelectEnd.reset();
+      Self->Links.clear();
 
       Self->XPosition      = 0;
       Self->YPosition      = 0;
@@ -582,11 +582,6 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    if (Self->ActiveEditDef) deactivate_edit(Self, false);
 
    Self->Links.clear();
-
-   if (Self->LinkIndex != -1) {
-      Self->LinkIndex = -1;
-      gfxRestoreCursor(PTC::DEFAULT, Self->UID);
-   }
 
    Self->FontFace = "Open Sans";
    Self->PageTag = NULL;
@@ -1481,133 +1476,111 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
 
 //********************************************************************************************************************
 
-void doc_link::exec(extDocument *Self)
+void bc_link::exec(extDocument *Self)
 {
+   OBJECTPTR script;
+   std::string function_name, fargs;
+   CLASSID class_id, subclass_id;
+
    pf::Log log(__FUNCTION__);
 
    log.branch("");
 
    Self->Processing++;
 
-   if ((base_code IS SCODE::LINK) and ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL)) {
+   if ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL) {
       link_activated params;
-      auto link = as_link();
 
-      if (link->type IS LINK::FUNCTION) {
+      if (type IS LINK::FUNCTION) {
          std::string function_name, args;
-         if (!extract_script(Self, link->ref, NULL, function_name, args)) {
+         if (!extract_script(Self, ref, NULL, function_name, args)) {
             params.Values["onclick"] = function_name;
          }
       }
-      else if (link->type IS LINK::HREF) {
-         params.Values["href"] = link->ref;
+      else if (type IS LINK::HREF) {
+         params.Values["href"] = ref;
       }
 
-      if (!link->args.empty()) {
-         for (unsigned i=0; i < link->args.size(); i++) {
-            params.Values[link->args[i].first] = link->args[i].second;
+      if (!args.empty()) {
+         for (unsigned i=0; i < args.size(); i++) {
+            params.Values[args[i].first] = args[i].second;
          }
       }
 
-      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &params, "link_activated:Parameters");
+      ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &params, "Parameters:link_activated");
       if (result IS ERR_Skip) goto end;
    }
 
-   if (base_code IS SCODE::LINK) {
-      OBJECTPTR script;
-      std::string function_name, fargs;
-      CLASSID class_id, subclass_id;
+   if (type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
+      if (!extract_script(Self, ref, &script, function_name, fargs)) {
+         std::vector<ScriptArg> sa;
 
-      auto link = as_link();
-      if (link->type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
-         if (!extract_script(Self, link->ref, &script, function_name, fargs)) {
-            std::vector<ScriptArg> args;
-
-            if (!link->args.empty()) {
-               for (auto &arg : link->args) {
-                  if (arg.first.starts_with('_')) { // Global variable setting
-                     acSetVar(script, arg.first.c_str()+1, arg.second.c_str());
-                  }
-                  else args.emplace_back("", arg.second.data());
+         if (!args.empty()) {
+            for (auto &arg : args) {
+               if (arg.first.starts_with('_')) { // Global variable setting
+                  acSetVar(script, arg.first.c_str()+1, arg.second.c_str());
                }
+               else sa.emplace_back("", arg.second.data());
             }
-
-            scExec(script, function_name.c_str(), args.data(), args.size());
          }
+
+         scExec(script, function_name.c_str(), sa.data(), sa.size());
       }
-      else if (link->type IS LINK::HREF) {
-         if (link->ref[0] IS ':') {
-            Self->Bookmark = link->ref.substr(1);
-            show_bookmark(Self, Self->Bookmark);
+   }
+   else if (type IS LINK::HREF) {
+      if (ref[0] IS ':') {
+         Self->Bookmark = ref.substr(1);
+         show_bookmark(Self, Self->Bookmark);
+      }
+      else {
+         if ((ref[0] IS '#') or (ref[0] IS '?')) {
+            log.trace("Switching to page '%s'", ref.c_str());
+
+            if (!Self->Path.empty()) {
+               LONG end;
+               for (end=0; Self->Path[end]; end++) {
+                  if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
+               }
+               auto path = std::string(Self->Path, end) + ref;
+               Self->set(FID_Path, path);
+            }
+            else Self->set(FID_Path, ref);
+
+            if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);
          }
          else {
-            if ((link->ref[0] IS '#') or (link->ref[0] IS '?')) {
-               log.trace("Switching to page '%s'", link->ref.c_str());
+            log.trace("Link is a file reference.");
 
-               if (!Self->Path.empty()) {
-                  LONG end;
-                  for (end=0; Self->Path[end]; end++) {
-                     if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
+            std::string path;
+
+            if (!Self->Path.empty()) {
+               auto j = ref.find_first_of("/\\:");
+               if ((j IS std::string::npos) or (ref[j] != ':')) { // Path is relative
+                  auto end = Self->Path.find_first_of("&#?");
+                  if (end IS std::string::npos) {
+                     path.assign(Self->Path, 0, Self->Path.find_last_of("/\\") + 1);
                   }
-                  auto path = std::string(Self->Path, end) + link->ref;
-                  Self->set(FID_Path, path);
+                  else path.assign(Self->Path, 0, Self->Path.find_last_of("/\\", end) + 1);
                }
-               else Self->set(FID_Path, link->ref);
+            }
 
-               if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);
+            auto lk = path + ref;
+            auto end = lk.find_first_of("?#&");
+            if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
+               if (class_id IS ID_DOCUMENT) {
+                  Self->set(FID_Path, lk);
+
+                  if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);
+                  else log.msg("No bookmark was preset.");
+               }
             }
             else {
-               log.trace("Link is a file reference.");
-
-               std::string path;
-
-               if (!Self->Path.empty()) {
-                  auto j = link->ref.find_first_of("/\\:");
-                  if ((j IS std::string::npos) or (link->ref[j] != ':')) {
-                     auto end = Self->Path.find_first_of("&#?");
-                     if (end IS std::string::npos) path.assign(Self->Path);
-                     else path.assign(Self->Path, 0, Self->Path.find_last_of("/\\", end) + 1);
-                  }
-               }
-
-               auto lk = path + link->ref;
-               auto end = lk.find_first_of("?#&");
-               if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
-                  if (class_id IS ID_DOCUMENT) {
-                     Self->set(FID_Path, lk);
-
-                     if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);
-                     else log.msg("No bookmark was preset.");
-                  }
-               }
-               else {
-                  auto msg = std::string("It is not possible to follow this link as the type of file is not recognised.  The referenced link is:\n\n") + lk;
-                  error_dialog("Action Cancelled", msg);
-               }
+               auto msg = std::string("It is not possible to follow this link because the type of file is not recognised.  The referenced link is:\n\n") + lk;
+               error_dialog("Action Cancelled", msg);
             }
          }
       }
    }
-   else if (base_code IS SCODE::CELL) {
-      OBJECTPTR script;
-      std::string function_name, script_args;
-
-      auto cell = as_cell();
-      if (!extract_script(Self, cell->onclick, &script, function_name, script_args)) {
-         std::vector<ScriptArg> args;
-         if (!cell->args.empty()) {
-            for (auto &cell_arg : cell->args) {
-               if (cell_arg.first.starts_with('_')) { // Global variable setting
-                  acSetVar(script, cell_arg.first.c_str()+1, cell_arg.second.c_str());
-               }
-               else args.emplace_back("", cell_arg.second);
-            }
-         }
-
-         scExec(script, function_name.c_str(), args.data(), args.size());
-      }
-   }
-   else log.trace("Link index does not refer to a supported link type.");
 
 end:
    Self->Processing--;

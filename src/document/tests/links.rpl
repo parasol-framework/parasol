@@ -17,9 +17,9 @@
 
 <p>The following <a href="layout.rpl">is a very long hyperlink that can be used to test the word wrapping of hyperlinked text.  Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet.</a>.</p>
 
-<p>This paragraph contains a link with an embedded paragraph, so will be split into three lines.  <a href="paragraphs.rpl">The link starts here.  <p>This embedded paragraph must appear on its own line and behave as a link.</p>  The entirety of the link needs to remain interactive up to the end of this sentence.</a></p>
+<p>This paragraph contains a link with an embedded paragraph, so will be split into three lines.  <a href="lists.rpl">The link starts here.  <p>This embedded paragraph must appear on its own line and behave as a link.</p>  The entirety of the link needs to remain interactive up to the end of this sentence.</a></p>
 
-<p>This paragraph contains a link within a link <a href="paragraphs.rpl">starting here.  <a href="links.rpl">This is an internal link.</a>.  Interactivity with the internal link must differ to the outer link.</a></p>
+<p>This paragraph contains a link within a link <a href="images.rpl">starting here.  <a href="links.rpl">This is an internal link.</a>.  Interactivity with the internal link must differ to the outer link.</a></p>
 
 <p>Morbi sit amet pretium est, id lobortis turpis. Integer mollis dapibus porttitor. Pellentesque aliquet ornare neque, non auctor quam pretium eget. Cras eget egestas leo. Praesent interdum est vel nunc vehicula dignissim. Aenean sed massa sem. Morbi ipsum metus, hendrerit a tortor et, finibus ultrices dolor. Fusce placerat aliquam lorem sit amet hendrerit. Mauris ultricies tincidunt volutpat. Vestibulum erat tellus, sodales in neque sit amet, fringilla luctus metus. In mattis risus et mi molestie rutrum. Praesent vulputate scelerisque enim eu fringilla. Integer scelerisque diam non purus finibus, in euismod ligula iaculis.</p>
 

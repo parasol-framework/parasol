@@ -565,11 +565,11 @@ gui.initView = function(Options, BuildUI, NewItems)
    vw.page.mtSubscribeInput(bit.bor(JTYPE_MOVEMENT, JTYPE_BUTTON, JTYPE_FEEDBACK, JTYPE_EXT_MOVEMENT), function(Viewport, Events)
       local ev = Events
       while (ev) do
-         if (ev.type == JET_ENTERED_SURFACE) then
+         if (ev.type == JET_ENTERED_AREA) then
             vw.cursorX = ev.x
             vw.cursorY = ev.y
             checkCursorImage(vw)
-         elseif (ev.type == JET_LEFT_SURFACE) then
+         elseif (ev.type == JET_LEFT_AREA) then
             vw.cursorX = nil
             vw.cursorY = nil
             checkCursorImage(vw)

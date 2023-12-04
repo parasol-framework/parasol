@@ -140,7 +140,7 @@ end
          activate = function(Widget)
             gui.dialog.message({
                modal         = true,
-               image         = 'icons:items/warning',
+               image         = 'items/warning',
                title         = 'Hamlet has a question',
                message       = 'To be or not to be?',
                userInput     = 'That is the question',

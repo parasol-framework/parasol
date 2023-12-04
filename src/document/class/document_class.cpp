@@ -65,11 +65,9 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].type IS TT_LINK) {
          for (auto &link : Self->Links) {
-            if (link.base_code IS SCODE::LINK) {
-               if (link.as_link()->id IS Self->Tabs[Self->FocusIndex].ref) {
-                  Self->Page->draw();
-                  break;
-               }
+            if (link->id IS Self->Tabs[Self->FocusIndex].ref) {
+               Self->Page->draw();
+               break;
             }
          }
       }

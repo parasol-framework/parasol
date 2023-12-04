@@ -1126,7 +1126,7 @@ static bool get_over_object(extPointer *Self)
          .X           = Self->X - li_left,
          .Y           = Self->Y - li_top,
          .DeviceID    = Self->UID,
-         .Type        = JET::LEFT_SURFACE,
+         .Type        = JET::LEFT_AREA,
          .Flags       = JTYPE::FEEDBACK,
          .Mask        = JTYPE::FEEDBACK
       };
@@ -1134,7 +1134,7 @@ static bool get_over_object(extPointer *Self)
       const std::lock_guard<std::recursive_mutex> lock(glInputLock);
       glInputEvents.push_back(input);
 
-      input.Type        = JET::ENTERED_SURFACE;
+      input.Type        = JET::ENTERED_AREA;
       input.Value       = li_objectid;
       input.RecipientID = li_objectid; // Recipient is the surface we are entering
       glInputEvents.push_back(input);

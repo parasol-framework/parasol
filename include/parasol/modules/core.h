@@ -382,10 +382,8 @@ enum class JET : LONG {
    PEN_TILT_HORIZONTAL = 30,
    ABS_X = 31,
    ABS_Y = 32,
-   ENTERED_SURFACE = 33,
-   ENTERED = 33,
-   LEFT_SURFACE = 34,
-   LEFT = 34,
+   ENTERED_AREA = 33,
+   LEFT_AREA = 34,
    PRESSURE = 35,
    DEVICE_TILT_X = 36,
    DEVICE_TILT_Y = 37,
@@ -1599,7 +1597,7 @@ struct OpenInfo {
    CSTRING SystemPath;      // OPF::SYSTEM_PATH
    CSTRING ModulePath;      // OPF::MODULE_PATH
    CSTRING RootPath;        // OPF::ROOT_PATH
-   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OpenTag *Options;        // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
    OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
    LONG    MaxDepth;        // OPF::MAX_DEPTH
    LONG    Detail;          // OPF::DETAIL

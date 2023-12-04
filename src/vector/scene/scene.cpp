@@ -954,7 +954,7 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET::ENTERED_SURFACE,
+      .Type        = JET::ENTERED_AREA,
       .Flags       = JTYPE::FEEDBACK,
       .Mask        = JTYPE::FEEDBACK
    };
@@ -976,7 +976,7 @@ static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X
       .X           = Event->X - X,
       .Y           = Event->Y - Y,
       .DeviceID    = Event->DeviceID,
-      .Type        = JET::LEFT_SURFACE,
+      .Type        = JET::LEFT_AREA,
       .Flags       = JTYPE::FEEDBACK,
       .Mask        = JTYPE::FEEDBACK
    };
@@ -1042,13 +1042,13 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) send_wheel_event(Self, lock.obj, input);
          }
       }
-      else if (input->Type IS JET::LEFT_SURFACE) {
+      else if (input->Type IS JET::LEFT_AREA) {
          if (Self->ActiveVector) {
             pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else if (input->Type IS JET::ENTERED_SURFACE);
+      else if (input->Type IS JET::ENTERED_AREA);
       else if ((input->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
          OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 

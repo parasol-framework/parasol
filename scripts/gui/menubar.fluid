@@ -340,9 +340,9 @@ gui.menubar = function(HostVP, Options)
       self.viewport.mtSubscribeInput(bit.bor(JTYPE_BUTTON, JTYPE_MOVEMENT, JTYPE_FEEDBACK), function(Viewport, Events)
          local ev = Events
          while ev do
-            if (ev.type == JET_ENTERED_SURFACE) then
+            if (ev.type == JET_ENTERED_AREA) then
 
-            elseif (ev.type == JET_LEFT_SURFACE) then
+            elseif (ev.type == JET_LEFT_AREA) then
                if self._currentItem then
                   hoverUpdate(nil)
                end

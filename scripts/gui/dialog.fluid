@@ -86,10 +86,10 @@ local function defaultIcon(self)
          info      = 'info'
       }
       for k,v in pairs(icons) do
-         if self.type == k then return 'icons:items/' .. v end
+         if self.type == k then return 'items/' .. v end
       end
    end
-   return 'icons:items/question'
+   return 'items/question'
 end
 
 gui.dialog.message = function(Options)
@@ -100,7 +100,7 @@ gui.dialog.message = function(Options)
       feedback = Options.feedback,
       inputRequired = Options.inputRequired,
       message    = Options.message,
-      fmtMessage = nz(Options.message, Options.fmtMessage)
+      fmtMessage = Options.fmtMessage
    }
 
    -- Change the message in the dialog
@@ -171,9 +171,32 @@ gui.dialog.message = function(Options)
    end
 
    local function buildDocument()
+      local option_icons = ''
+      
+      // At minimum, there must be an OK option.
+
+      if not ((type(self.options) == 'table') and (#self.options > 0)) then
+         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
+      end
+
+      for i, option in ipairs(self.options) do
+         if option['icon'] then
+            if nz(option_icons) then option_icons = option_icons .. '\n' end
+            option_icons = option_icons .. '    <image id="' .. option.icon .. '" xlink:href="icons:' .. option.icon .. '" width="16" height="16"/>\n'
+         end
+      end
+
       local doc = [[
 <?xml version="1.0"?>
-<body leftmargin="10" topmargin="10" bottommargin="18" rightmargin="10" face="Open Sans" fontsize="10" link="rgb(.27,.27,.48)"
+
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="icon" xlink:href="icons:]] .. nz(Options.image, defaultIcon(self)) .. [[" width="48" height="48"/>
+]] .. option_icons .. [[
+  </defs>
+</svg>
+
+<body margins="10 10 18 10" link="rgb(.27,.27,.48)"
   colour="rgb(.94,.94,.98)" fontcolour="rgb(0,0,0)" selectcolour="rgb(.31,.62,.31)"/>
 ]]
 
@@ -190,16 +213,21 @@ gui.dialog.message = function(Options)
 
       icon = nz(Options.image, defaultIcon(self))
       icon = icon:gsub('^(%w+)/(%w+)', '%1/%2')
+      local msg = self.fmtMessage
+      if not nz(msg) then
+         msg = string.escXML(nz(self.message, ''))
+         msg = string.gsub(msg, '\n', '<br/>')
+      end
 
       doc = doc .. [[
 <page name="Index">
   <table columns="48,0" width="100%">
     <row>
       <cell>
-        <image icon="]] .. icon .. [[" align="left" width="48" height="48" eastgap="18"/>
+        <image src="url(#icon)" width="48" height="48" padding="0 8 18 0"/>
       </cell>
       <cell>
-        <p>]] .. nz(self.fmtMessage, string.escXML(nz(self.message,''))) .. [[</p>
+        <p>]] .. msg .. [[</p>
 ]]
 
       if Options.userInput then
@@ -228,17 +256,11 @@ gui.dialog.message = function(Options)
          doc = doc .. Options.inject
       end
 
-      // Build the clickable options/buttons.  At minimum, there must be an OK option.
-
-      if not ((type(self.options) == 'table') and (#self.options > 0)) then
-         self.options = { { id=1, text='Close Dialog', icon='items/cancel' } }
-      end
-
-      doc = doc .. '<p><box height="1" colour="rgb(0,0,0,0.2)"/></p>\n<p nowrap>'
+      doc = doc .. '<p><rect height="1" colour="rgb(0,0,0,0.2)"/></p>\n<p nowrap>'
 
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc = doc .. '<image icon="' .. option.icon .. '" width="16" height="16" eastgap="4"/>\n'
+            doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" margins="0 0 4 0"/>\n'
          end
 
          doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'

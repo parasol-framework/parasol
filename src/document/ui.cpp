@@ -231,8 +231,8 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
             if ((Self->Tabs[tab].type IS TT_LINK) and (Self->Tabs[tab].active)) {
                for (auto &link : Self->Links) {
-                  if ((link.base_code IS SCODE::LINK) and (link.as_link()->id IS Self->Tabs[tab].ref)) {
-                     link.exec(Self);
+                  if (link->id IS Self->Tabs[tab].ref) {
+                     link->exec(Self);
                      break;
                   }
                }
@@ -650,10 +650,6 @@ static void check_mouse_release(extDocument *Self, DOUBLE X, DOUBLE Y)
       log.trace("User click cancelled due to mouse shift.");
       return;
    }
-
-   if ((Self->LinkIndex >= 0) and (Self->LinkIndex < LONG(Self->Links.size()))) {
-      Self->Links[Self->LinkIndex].exec(Self);
-   }
 }
 
 //********************************************************************************************************************
@@ -742,47 +738,6 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
          }
       }
    }
-
-   // Check if the user moved onto a link
-
-   if ((Self->MouseInPage) and (!Self->LMB)) {
-      for (auto i = LONG(Self->Links.size())-1; i >= 0; i--) { // Search from front to back
-         if ((X >= Self->Links[i].x) and (Y >= Self->Links[i].y) and
-             (X < Self->Links[i].x + Self->Links[i].width) and
-             (Y < Self->Links[i].y + Self->Links[i].height)) {
-
-            // The mouse pointer is inside a link or table cell.
-            if (Self->LinkIndex IS -1) {
-               gfxSetCursor(0, CRF::BUFFER, PTC::HAND, 0, Self->UID);
-               Self->CursorSet = true;
-            }
-
-            if ((Self->Links[i].base_code IS SCODE::LINK) and (!Self->Links[i].as_link()->pointer_motion.empty())) {
-               auto mo = Self->MouseOverChain.emplace(Self->MouseOverChain.begin(),
-                  Self->Links[i].as_link()->pointer_motion,
-                  Self->Links[i].y,
-                  Self->Links[i].x,
-                  Self->Links[i].y + Self->Links[i].height,
-                  Self->Links[i].x + Self->Links[i].width,
-                  Self->Links[i].as_link()->id);
-
-               OBJECTPTR script;
-               std::string argstring, func_name;
-               if (!extract_script(Self, Self->Links[i].as_link()->pointer_motion, &script, func_name, argstring)) {
-                  const ScriptArg args[] = { { "Element", mo->element_id }, { "Status", 1 }, { "Args", argstring } };
-                  scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
-               }
-            }
-
-            Self->LinkIndex = i;
-            return;
-         }
-      }
-   }
-
-   // The mouse pointer is not inside a link
-
-   if (Self->LinkIndex != -1) Self->LinkIndex = -1;
 
    // Check if the user moved onto text content
 
@@ -882,6 +837,64 @@ static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 }
 
 //********************************************************************************************************************
+// Input events received for hyperlinks.
+
+static ERROR link_callback(objVector *Vector, InputEvent *Event)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto Self = (extDocument *)CurrentContext();
+
+   bc_link *link = NULL;
+
+   for (unsigned i=0; i < Self->Links.size(); i++) {
+      if (Self->Links[i]->vector_path IS Vector) {
+         link = Self->Links[i];
+         break;
+      }
+   }
+
+   if (!link) {
+      log.warning("Failed to relate vector #%d to a hyperlink.", Vector->UID);
+      return ERR_Okay;
+   }
+   
+   OBJECTPTR script;
+   std::string argstring, func_name;
+
+   if ((Event->Flags & JTYPE::MOVEMENT) != JTYPE::NIL) {
+      if (!link->pointer_motion.empty()) {
+         if (!extract_script(Self, link->pointer_motion, &script, func_name, argstring)) {
+            const ScriptArg args[] = { { "Element", link->id }, { "Status", 1 }, { "Args", argstring } };
+            scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+         }
+      }
+   }
+   else if (Event->Type IS JET::ENTERED_AREA) {
+      if (!link->pointer_motion.empty()) {
+         if (!extract_script(Self, link->pointer_motion, &script, func_name, argstring)) {
+            const ScriptArg args[] = { { "Element", link->id }, { "Status", 1 }, { "Args", argstring } };
+            scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+         }
+      }
+   }
+   else if (Event->Type IS JET::LEFT_AREA) {
+      if (!link->pointer_motion.empty()) {
+         if (!extract_script(Self, link->pointer_motion, &script, func_name, argstring)) {
+            const ScriptArg args[] = { { "Element", link->id }, { "Status", 1 }, { "Args", argstring } };
+            scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
+         }
+      }
+   }
+   else if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+      if (Event->Value IS 0) link->exec(Self);
+   }
+   else log.warning("Unknown event type %d for input vector %d", LONG(Event->Type), Vector->UID);
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Changes the focus to an object or link in the document.  The new index is stored in the FocusIndex field.  If the
 // Index is set to -1, set_focus() will focus on the first element, but only if it is an object.
 
@@ -945,20 +958,16 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
    else if (Self->Tabs[Index].type IS TT_LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          for (unsigned i=0; i < Self->Links.size(); i++) {
-            if ((Self->Links[i].base_code IS SCODE::LINK) and (Self->Links[i].as_link()->id IS Self->Tabs[Index].ref)) {
-               auto link_x = Self->Links[i].x;
-               auto link_y = Self->Links[i].y;
-               auto link_bottom = link_y + Self->Links[i].height;
-               auto link_right  = link_x + Self->Links[i].width;
-
+            auto &link = Self->Links[i];
+            if (link->id IS Self->Tabs[Index].ref) {
+               DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
-                  if (Self->Links[i].as_link()->id IS Self->Tabs[Index].ref) {
-                     if (Self->Links[i].y + Self->Links[i].height > link_bottom) link_bottom = Self->Links[i].y + Self->Links[i].height;
-                     if (Self->Links[i].x + Self->Links[i].width > link_right) link_right = Self->Links[i].x + Self->Links[i].width;
+                  if (link->id IS Self->Tabs[Index].ref) {                   
+                     vecGetBoundary(link->vector_path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
                   }
                }
 
-               view_area(Self, link_x, link_y, link_right, link_bottom);
+               view_area(Self, link_x, link_y, link_x + link_width, link_y + link_height);
                break;
             }
          }

@@ -504,29 +504,6 @@ struct doc_edit {
 struct bc_link;
 struct bc_cell;
 
-// doc_link describes an area on the page that can be interacted with as a link or table cell.
-// The link will be associated with a segment and an originating stream code.
-//
-// TODO: We'll need to swap the x/y/width/height variables for a vector path that represents the link
-// area.  This will allow us to support transforms correctly, as well as links that need to accurately
-// map to vector shapes.
-
-struct doc_link {
-   std::variant<bc_link *, bc_cell *> ref;
-   DOUBLE x, y, width, height;
-   SEGINDEX segment;
-   SCODE  base_code;
-
-   doc_link(SCODE pCode, std::variant<bc_link *, bc_cell *> pRef, SEGINDEX pSegment, LONG pX, LONG pY, LONG pWidth, LONG pHeight) :
-       ref(pRef), x(pX), y(pY), width(pWidth), height(pHeight), segment(pSegment), base_code(pCode) { }
-
-   doc_link() : x(0), y(0), width(0), height(0), segment(0), base_code(SCODE::NIL) { }
-
-   bc_link * as_link() { return std::get<bc_link *>(ref); }
-   bc_cell * as_cell() { return std::get<bc_cell *>(ref); }
-   void exec(extDocument *);
-};
-
 struct mouse_over {
    std::string function; // name of function to call.
    DOUBLE top, left, bottom, right;
@@ -593,11 +570,24 @@ struct bc_link : public base_code {
    LINK  type;    // Link type (either a function or hyperlink)
    UWORD id;
    FSO   align;
-   std::string pointer_motion; // function to call for pointer motion events
-   std::string ref; // function name or a path, depending on Type
+   FloatRect area;
+   objVectorPath *vector_path;
+   std::vector<PathCommand> path;
+   std::string pointer_motion;    // Function to call for pointer motion events
+   std::string ref;               // Function name or a path, depending on the Type
    std::vector<std::pair<std::string,std::string>> args;
 
    bc_link() : type(LINK::NIL), id(0), align(FSO::NIL) { code = SCODE::LINK; }
+
+   void exec(extDocument *);
+
+   void append_link() {
+      path.push_back({ .Type = PE::Move, .X = area.X, .Y = area.Y });
+      path.push_back({ .Type = PE::HLineRel, .X = area.Width, });
+      path.push_back({ .Type = PE::VLineRel, .Y = area.Height });
+      path.push_back({ .Type = PE::HLineRel, .X = -area.Width, });
+      path.push_back({ .Type = PE::ClosePath });
+   }
 };
 
 struct bc_link_end : public base_code {
@@ -824,7 +814,7 @@ class extDocument : public objDocument {
    std::map<ULONG, XMLTag *> TemplateIndex;
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
-   std::vector<doc_link>       Links;
+   std::vector<bc_link *>      Links;
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
@@ -867,7 +857,6 @@ class extDocument : public objDocument {
    DOUBLE CursorCharX;        // The x coordinate of the CursorIndex character
    DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
    LONG   UniqueID;           // Use for generating unique/incrementing ID's, e.g. cell ID
-   LONG   LinkIndex;          // Currently selected link (mouse over)
    LONG   LoopIndex;
    LONG   ElementCounter;     // Counter for element ID's
    LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.

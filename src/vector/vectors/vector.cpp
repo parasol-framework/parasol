@@ -701,13 +701,15 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       // Quick check to see if (X,Y) is within the path's boundary, then follow-up with a hit test.
 
       auto simple_path = basic_path(Self->BX1, Self->BY1, Self->BX2, Self->BY2);
-      agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(simple_path, Self->Transform);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> tb_path(simple_path, Self->Transform);
       DOUBLE bx1, by1, bx2, by2;
-      bounding_rect_single(t_path, 0, &bx1, &by1, &bx2, &by2);
+      bounding_rect_single(tb_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
          if (Self->DisableHitTesting) return ERR_Okay;
          else {
-            // Do the hit testing.  TODO: There is potential for more sophisticated & optimal hit testing methods.
+            // Full hit testing.  TODO: Find out if there are more optimal hit testing methods.
+
+            agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
             agg::rasterizer_scanline_aa<> raster;
             raster.add_path(t_path);
             if (raster.hit_test(Args->X, Args->Y)) return ERR_Okay;
@@ -857,7 +859,7 @@ SubscribeInput: Create a subscription for input events that relate to the vector
 
 The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target
 vector.  The original events are transferred with some modifications - `X`, `Y`, `AbsX` and `AbsY` are converted to
-the vector's coordinate system, and `ENTERED_SURFACE` and `LEFT_SURFACE` events are triggered during passage through
+the vector's coordinate system, and `ENTERED_AREA` and `LEFT_AREA` events are triggered during passage through
 the clipping area.
 
 It is a pre-requisite that the associated @VectorScene has been linked to a @Surface.
@@ -901,7 +903,6 @@ static ERROR VECTOR_SubscribeInput(extVector *Self, struct vecSubscribeInput *Ar
       }
 
       auto mask = Args->Mask;
-      if ((mask & JTYPE::FEEDBACK) != JTYPE::NIL) mask |= JTYPE::MOVEMENT;
 
       Self->InputMask |= mask;
       ((extVectorScene *)Self->Scene)->InputSubscriptions[Self] = Self->InputMask;
@@ -1878,7 +1879,7 @@ static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
    if (Value) {
       Self->ResizeSubscription = true;
       if ((Self->Scene) and (Self->ParentView)) {
-         auto scene = (extVectorScene *)Self->Scene; 
+         auto scene = (extVectorScene *)Self->Scene;
          scene->ResizeSubscriptions[Self->ParentView][Self] = *Value;
 
          auto callback = make_function_stdc(notify_free_resize_event);
@@ -1892,7 +1893,7 @@ static ERROR VECTOR_SET_ResizeEvent(extVector *Self, FUNCTION *Value)
    else if (Self->ResizeSubscription) {
       Self->ResizeSubscription = false;
       if ((Self->Scene) and (Self->ParentView)) {
-         auto scene = (extVectorScene *)Self->Scene; 
+         auto scene = (extVectorScene *)Self->Scene;
          auto it = scene->ResizeSubscriptions.find(Self->ParentView);
          if (it != scene->ResizeSubscriptions.end()) {
             it->second.erase(Self);

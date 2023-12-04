@@ -1,3 +1,14 @@
+/*
+
+The parsing code converts XML RIPL data to a serial byte stream, after which the XML data can be discarded.  A DOM
+of the original XML content is not maintained.  After parsing, the stream will be ready for presentation via the
+layout code elsewhere in this code base.
+
+The stream consists of byte codes represented by the base_code class.  Each type of code is represented by a C++ 
+class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph, 
+hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
+
+*/
 
 static void check_para_attrib(extDocument *, const std::string &, const std::string &, bc_paragraph *);
 
@@ -66,7 +77,7 @@ static bool eval_condition(const std::string &String)
       else return false;
    }
 
-   LONG cpos = i;
+   auto cpos = i;
 
    // Extract Test value
 
@@ -367,6 +378,7 @@ static TRF parse_tag(extDocument *Self, objXML *XML, XMLTag &Tag, stream_char &I
 }
 
 //********************************************************************************************************************
+// See also process_page(), insert_xml()
 
 static TRF parse_tags(extDocument *Self, objXML *XML, objXML::TAGS &Tags, stream_char &Index, IPF Flags)
 {
@@ -475,16 +487,15 @@ static void trim_preformat(extDocument *Self, stream_char &Index)
    }
 }
 
-/*********************************************************************************************************************
-** This function is used to manage hierarchical styling:
-**
-** + Save font Style
-**   + Execute child tags
-** + Restore font Style
-**
-** If the last style that comes out of parse_tag() does not match the style stored in SaveStatus, we need to record a
-** style change.
-*/
+//********************************************************************************************************************
+// This function is used to manage hierarchical styling:
+//
+// + Save font Style
+//   + Execute child tags
+// + Restore font Style
+//
+// If the last style that comes out of parse_tag() does not match the style stored in SaveStatus, we need to record a
+// style change.
 
 static void saved_style_check(extDocument *Self, style_status &SavedStatus)
 {
@@ -556,38 +567,38 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
             Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
 
-         case HASH_leftmargin:
-            Self->LeftMargin = StrToInt(Tag.Attribs[i].Value);
+         // This subroutine support "N" for setting all margins to "N" and "L T R B" for setting individual
+         // margins clockwise
+
+         case HASH_margins: {
+            bool rel;
+            auto str = Tag.Attribs[i].Value.c_str();
+
+            str = read_unit(str, Self->LeftMargin, rel);
+
+            if (!*str) str = read_unit(str, Self->TopMargin, rel);
+            else Self->TopMargin = Self->LeftMargin;
+
+            if (!*str) str = read_unit(str, Self->RightMargin, rel);
+            else Self->RightMargin = Self->TopMargin;
+
+            if (!*str) str = read_unit(str, Self->BottomMargin, rel);
+            else Self->BottomMargin = Self->RightMargin;
+
             if (Self->LeftMargin < 0) Self->LeftMargin = 0;
             else if (Self->LeftMargin > MAX_BODY_MARGIN) Self->LeftMargin = MAX_BODY_MARGIN;
-            break;
-
-         case HASH_rightmargin:
-            Self->RightMargin = StrToInt(Tag.Attribs[i].Value);
-            if (Self->RightMargin < 0) Self->RightMargin = 0;
-            else if (Self->RightMargin > MAX_BODY_MARGIN) Self->RightMargin = MAX_BODY_MARGIN;
-            break;
-
-         case HASH_topmargin:
-            Self->TopMargin = StrToInt(Tag.Attribs[i].Value);
+            
             if (Self->TopMargin < 0) Self->TopMargin = 0;
             else if (Self->TopMargin > MAX_BODY_MARGIN) Self->TopMargin = MAX_BODY_MARGIN;
-            break;
 
-         case HASH_bottommargin:
-            Self->BottomMargin = StrToInt(Tag.Attribs[i].Value);
+            if (Self->RightMargin < 0) Self->RightMargin = 0;
+            else if (Self->RightMargin > MAX_BODY_MARGIN) Self->RightMargin = MAX_BODY_MARGIN;
+
             if (Self->BottomMargin < 0) Self->BottomMargin = 0;
             else if (Self->BottomMargin > MAX_BODY_MARGIN) Self->BottomMargin = MAX_BODY_MARGIN;
-            break;
 
-         case HASH_margins:
-            Self->LeftMargin = StrToInt(Tag.Attribs[i].Value);
-            if (Self->LeftMargin < 0) Self->LeftMargin = 0;
-            else if (Self->LeftMargin > MAX_BODY_MARGIN) Self->LeftMargin = MAX_BODY_MARGIN;
-            Self->RightMargin  = Self->LeftMargin;
-            Self->TopMargin    = Self->LeftMargin;
-            Self->BottomMargin = Self->LeftMargin;
             break;
+         }
 
          case HASH_lineheight:
             Self->LineHeight = StrToInt(Tag.Attribs[i].Value);
@@ -1249,7 +1260,8 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
          buffer << pointermotion << '\0';
       }
 
-      Self->insert_code(Index, link);
+      auto &new_link = Self->insert_code(Index, link);
+      Self->Links.push_back(&new_link);
 
       auto savestatus = Self->Style;
 
@@ -3017,9 +3029,8 @@ static void tag_page(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
    }
 }
 
-/*********************************************************************************************************************
-** Usage: <trigger event="resize" function="script.function"/>
-*/
+//********************************************************************************************************************
+// Usage: <trigger event="resize" function="script.function"/>
 
 static void tag_trigger(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
 {

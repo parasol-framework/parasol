@@ -634,7 +634,7 @@ struct OpenInfo {
    CSTRING SystemPath;      // OPF::SYSTEM_PATH
    CSTRING ModulePath;      // OPF::MODULE_PATH
    CSTRING RootPath;        // OPF::ROOT_PATH
-   struct OpenTag *Options; // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
+   OpenTag *Options;        // OPF::OPTIONS Typecast to va_list (defined in stdarg.h)
    OPF     Flags;           // OPF::flags need to be set for fields that have been defined in this structure.
    LONG    MaxDepth;        // OPF::MAX_DEPTH
    LONG    Detail;          // OPF::DETAIL

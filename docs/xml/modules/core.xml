@@ -2677,10 +2677,10 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="DIGITAL_X">Horizontal digital movement from a relative location.  Value is +/- n, where n is the number of units moved horizontally.  Mouse movement will normally exceed a value of 1, whereas gamepad movement is limited to a value of +/- 1 except in the case of successive presses.</const>
       <const name="DIGITAL_Y">Vertical digital movement from a relative location.</const>
       <const name="DISPLAY_EDGE">Recently supplied input occurred at the edge of the display.</const>
-      <const name="ENTERED_SURFACE">This message is sent by the input system when the mouse pointer enters a surface for the first time.  The message value refers to the surface ID, which will be the same as the recipient.</const>
+      <const name="ENTERED_AREA">This message is sent by the input system when the mouse pointer enters an area for the first time.  The message value refers to the object ID of the container being monitored for movement.</const>
+      <const name="LEFT_AREA">This message is sent by the input system when the mouse pointer leaves an area.  The message value refers to the object ID of the container being monitored for movement.</const>
       <const name="LEFT_BUMPER_1">Gamepad left-hand bumper 1 (top) - pressure sensitive value from 0 - 1.0.</const>
       <const name="LEFT_BUMPER_2">Gamepad left-hand bumper 2 (lower) - pressure sensitive value from 0 - 1.0.</const>
-      <const name="LEFT_SURFACE">This message is sent by the input system when the mouse pointer leaves a surface.  The message value refers to the ID of the surface that has been left, which will be the same as the recipient.</const>
       <const name="PEN_TILT_HORIZONTAL">For pen-based input, this type indicates the horizontal tilt of the pen device.</const>
       <const name="PEN_TILT_VERTICAL">For pen-based input, this type indicates the vertical tilt of the pen device.  A value of 0 indicates that the pen is laid flat with nib at the bottom, 0.5 is 90 degrees, 1.0 is laid flat with nib at the top.</const>
       <const name="PRESSURE">Amount of pressure applied, ranges from 0 (none) to 1.0 (normal) and possibly higher if user presses hard enough</const>
@@ -2701,7 +2701,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="DRAGGED">Set if sufficient movement occurred between the original click and its point of release (usually requires a 3 or more pixel difference).</const>
       <const name="DRAG_ITEM">This special flag is set by the input system if the pointer is click-dragging an object at the time of the event.</const>
       <const name="EXT_MOVEMENT">Extended movement information.  This covers all types of movement that are unconnected to coordinate positioning -  mouse wheel movement and pen tilt are two such examples.</const>
-      <const name="FEEDBACK">Device feedback - e.g. vibration, tilt</const>
+      <const name="FEEDBACK">Interface feedback such as enter and leave events.</const>
       <const name="MOVEMENT">X/Y coordinate movement only. Movement such as the wheel mouse spinning is not covered by this type as it does not influence the coordinate system.</const>
       <const name="REPEATED">Input is a repeated entry (i.e. user is holding down a button and a repetition timer is being triggered)</const>
       <const name="SECONDARY">Indicates to the receiver of this message that it is not the primary/original recipient</const>

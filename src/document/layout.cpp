@@ -1,3 +1,34 @@
+/*
+
+The layout process involves reading the serialised document stream and generating line segments that declare 
+regions for graphics content.  These segments have a dual purpose in that they can also be used for user 
+interaction.
+
+The trickiest parts of the layout process are state management, word wrapping and page width extension.
+
+TABLES
+------
+Internally, the layout of tables is managed as follows:
+
+Border-Thickness, Cell-Spacing, Cell-Padding, Content, Cell-Padding, Cell-Spacing, ..., Border-Thickness
+
+Table attributes are:
+
+Columns:      The minimum width of each column in the table.
+Width/Height: Minimum width and height of the table.
+Fill:         Background fill for the table.
+Thickness:    Size of the Stroke pattern.
+Stroke        Stroke pattern for border.
+Padding:      Padding inside each cell (syn. Margins)
+Spacing:      Spacing between cells.
+
+For complex tables with different coloured borders between cells, allocate single-pixel sized cells with the background
+colour set to the desired value in order to create the illusion of multi-coloured cell borders.
+
+The page area owned by a table is given a clipping zone by the page layout engine, in the same way that objects are
+given clipping zones.  This allows text to be laid out around the table with no effort on the part of the developer.
+
+*/
 
 // State machine for the layout process.  This information is discarded post-layout.
 
@@ -14,37 +45,33 @@ struct layout {
    std::stack<bc_list *>      stack_list;
    std::stack<bc_row *>       stack_row;
    std::stack<bc_paragraph *> stack_para;
-   std::stack<bc_link *>      stack_link; // Set by procLink() and remains until procLinkend()
-   std::stack<link_marker>    stack_mklink; // Maintains link placement information.  Stack matches that of stack_link.
 
-   std::vector<doc_link>    m_links;
    std::vector<doc_clip>    m_clips;
    std::vector<doc_segment> m_segments;
    std::vector<edit_cell>   m_ecells;
 
    extDocument *Self;
-   objFont *m_font;
+   objFont *m_font = NULL;
 
-   DOUBLE m_cursor_x, m_cursor_y; // Insertion point of the next text character or vector object
-   DOUBLE m_page_width;
+   DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
+   DOUBLE m_page_width = 0;
 
-   INDEX idx;                // Current seek position for processing of the stream
-   stream_char m_word_index; // Position of the word currently being operated on
-   LONG m_align_flags;       // Current alignment settings according to the font style
-   LONG m_align_width;       // Horizontal alignment will be calculated relative to this value
-   LONG m_kernchar;          // Previous character of the word being operated on
-   LONG m_left_margin, m_right_margin; // Margins control whitespace for paragraphs and table cells
-   LONG m_paragraph_bottom; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
-   LONG m_paragraph_y;      // The vertical position of the current paragraph
-   LONG m_split_start;      // Set to the previous line index if the line is segmented.  Used for ensuring that all distinct entries on the line use the same line height
-   LONG m_word_width;       // Pixel width of the current word
-   LONG m_wrap_edge;        // Marks the boundary at which graphics and text will need to wrap.
-   WORD m_space_width;      // Caches the pixel width of a single space in the current font.
-   WORD m_terminate_link;   // Incremented whenever a link in stack_link requires termination.
-   bool m_inline;           // Set to true when graphics (vectors, images) must be inline.
-   bool m_no_wrap;          // Set to true when word-wrap is disabled.
-   bool m_text_content;     // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
-   bool m_cursor_drawn;     // Set to true when the cursor has been drawn during scene graph creation.
+   INDEX idx = 0;               // Current seek position for processing of the stream
+   stream_char m_word_index;    // Position of the word currently being operated on
+   LONG m_align_flags = 0;      // Current alignment settings according to the font style
+   LONG m_align_width = 0;      // Horizontal alignment will be calculated relative to this value
+   LONG m_kernchar = 0;         // Previous character of the word being operated on
+   LONG m_left_margin = 0, m_right_margin = 0; // Margins control whitespace for paragraphs and table cells
+   LONG m_paragraph_bottom = 0; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
+   LONG m_paragraph_y = 0;      // The vertical position of the current paragraph
+   LONG m_split_start = 0;      // Set to the previous line index if the line is segmented.  Used for ensuring that all distinct entries on the line use the same line height
+   LONG m_word_width = 0;       // Pixel width of the current word
+   LONG m_wrap_edge = 0;        // Marks the boundary at which graphics and text will need to wrap.
+   WORD m_space_width = 0;      // Caches the pixel width of a single space in the current font.
+   bool m_inline = false;       // Set to true when graphics (vectors, images) must be inline.
+   bool m_no_wrap = false;      // Set to true when word-wrap is disabled.
+   bool m_text_content = false; // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
+   bool m_cursor_drawn = false; // Set to true when the cursor has been drawn during scene graph creation.
 
    struct {
       stream_char index;   // Stream position for the line's content.
@@ -68,22 +95,17 @@ struct layout {
          if (word_height > height) height = word_height;
          word_height = 0;
       }
-
    } m_line;
 
    void reset() {
       m_clips.clear();
       m_ecells.clear();
       m_segments.clear();
-      m_links.clear();
 
       stack_list   = {};
       stack_para   = {};
       stack_row    = {};
-      stack_link   = {};
-      stack_mklink = {};
 
-      m_terminate_link   = 0;
       m_align_flags      = 0;
       m_paragraph_y      = 0;
       m_paragraph_bottom = 0;
@@ -170,8 +192,6 @@ struct layout {
    void gen_scene_graph(objVectorViewport *, RSTREAM &, SEGINDEX, SEGINDEX);
 
    void procSetMargins(LONG &);
-   void procLink();
-   void procLinkEnd();
    void procIndexStart();
    void procFont();
    WRAP procVector(LONG, LONG, bool &, bool &);
@@ -185,8 +205,6 @@ struct layout {
    WRAP procText();
    WRAP procImage();
 
-   void terminate_link();
-   void add_link(SCODE, std::variant<bc_link *, bc_cell *>, DOUBLE, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void new_segment(stream_char, stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void end_line(NL, DOUBLE, stream_char, const std::string &);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
@@ -348,17 +366,6 @@ WRAP layout::procText()
    auto &str = text.text;
    for (unsigned i=0; i < str.size(); ) {
       if (str[i] IS '\n') { // The use of '\n' in a string forces a line break
-#if 0
-      // This link code is likely going to be needed for a case such as :
-      //   <a href="">blah blah <br/> blah </a>
-      // But we haven't tested it in a document yet.
-
-      if ((!stack_link.empty()) and (m_link.open IS false)) {
-         // A link is due to be closed
-         add_link(SCODE::LINK, link, link_x, m_cursor_y, m_cursor_x + m_word_width - link_x, m_line.height, "<br/>");
-         stack_link.pop();
-      }
-#endif
          check_line_height();
          wrap_result = check_wordwrap("Text", m_page_width, m_word_index, m_cursor_x, m_cursor_y, m_word_width,
             (m_line.height < 1) ? 1 : m_line.height);
@@ -418,53 +425,6 @@ WRAP layout::procText()
    }
 
    return wrap_result;
-}
-
-//********************************************************************************************************************
-
-void layout::terminate_link()
-{
-   m_terminate_link--;
-   if (stack_link.empty()) return;
-
-   add_link(SCODE::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y,
-      m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x,
-      m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
-   stack_link.pop();
-   stack_mklink.pop();
-
-   if (!stack_link.empty()) { // Nested link detected, reset the x starting point
-      stack_mklink.top().x = m_cursor_x + stack_mklink.top().word_width;
-   }
-}
-
-void layout::procLink()
-{
-   if (!stack_link.empty()) {
-      // Nested link detected.  Close the current link.  Use of the stack means it will be reopened when
-      // the nested link is closed.
-
-      add_link(SCODE::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y,
-         m_cursor_x + stack_mklink.top().word_width - stack_mklink.top().x,
-         m_line.height ? m_line.height : m_font->LineSpacing, "link_start");
-   }
-
-   stack_link.push(&stream_data<::bc_link>(Self, idx));
-
-   stack_mklink.emplace(m_cursor_x + m_word_width, idx, m_font->Align);
-}
-
-void layout::procLinkEnd()
-{
-   if (stack_link.empty()) return;
-
-   // We can't terminate links here due to word-wrapping concerns, so instead we increment a counter to indicate that
-   // a link is due for termination.  Search for m_terminate_link to see where link termination actually occurs.
-
-   // The current m_word_width value is saved here because links can end in the middle of words.
-
-   stack_mklink.top().word_width = m_word_width;
-   m_terminate_link++;
 }
 
 //********************************************************************************************************************
@@ -533,10 +493,6 @@ void layout::procCellEnd(bc_cell *esccell)
 {
    // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
    // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
-
-   if ((esccell) and (!esccell->onclick.empty())) {
-      add_link(SCODE::CELL, esccell, esccell->x, esccell->y, esccell->width, esccell->height, "esc_cell_end");
-   }
 
    if ((esccell) and (!esccell->edit_def.empty())) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
@@ -1814,28 +1770,6 @@ static void layout_doc(extDocument *Self)
       }
    } while (restart);
 
-   // Look for clickable links that need to be aligned and adjust them (links cannot be aligned until the entire
-   // width of their line is known, hence it's easier to make a final adjustment for all links post-layout).
-
-   if (!Self->Error) {
-      Self->Links = l.m_links;
-      for (auto &link : Self->Links) {
-         if (link.base_code != SCODE::LINK) continue;
-
-         auto esclink = std::get<bc_link *>(link.ref);
-         if ((esclink->align & (FSO::ALIGN_RIGHT|FSO::ALIGN_CENTER)) != FSO::NIL) {
-            auto &segment = l.m_segments[link.segment];
-            if ((esclink->align & FSO::ALIGN_RIGHT) != FSO::NIL) {
-               link.x = segment.area.X + segment.align_width - link.width;
-            }
-            else if ((esclink->align & FSO::ALIGN_CENTER) != FSO::NIL) {
-               link.x = link.x + ((segment.align_width - link.width) / 2);
-            }
-         }
-      }
-   }
-   else Self->Links.clear();
-
    if (!Self->Error) {
       Self->EditCells = l.m_ecells;
    }
@@ -2049,8 +1983,8 @@ extend_page:
          case SCODE::FONT:            procFont(); break;
          case SCODE::INDEX_START:     procIndexStart(); break;
          case SCODE::SET_MARGINS:     procSetMargins(Margins.Bottom); break;
-         case SCODE::LINK:            procLink(); break;
-         case SCODE::LINK_END:        procLinkEnd(); break;
+         case SCODE::LINK:            break;
+         case SCODE::LINK_END:        break;
          case SCODE::CELL_END:        procCellEnd(esccell); break;
          case SCODE::PARAGRAPH_START: procParagraphStart(); break;
          case SCODE::PARAGRAPH_END:   procParagraphEnd(); break;
@@ -2405,9 +2339,6 @@ exit:
 
    Self->Depth--;
 
-   if (!stack_link.empty()) log.warning("Sanity check for stack_link failed at end of layout.");
-   if (!stack_mklink.empty()) log.warning("Sanity check for stack_mklink failed at end of layout.");
-
    return Self->Error;
 }
 
@@ -2422,16 +2353,6 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
       // If this is a one-word line, the line height will not have been defined yet
       m_line.height = m_font->LineSpacing;
       m_line.gutter = m_font->LineSpacing - m_font->Ascent;
-   }
-
-   if (m_terminate_link) terminate_link();
-   else if ((!stack_link.empty()) and (m_cursor_x + m_word_width > stack_mklink.top().x)) {
-      // A link is active and will continue to the next line.
-
-      add_link(SCODE::LINK, stack_link.top(), stack_mklink.top().x, m_cursor_y,
-         m_cursor_x + m_word_width - stack_mklink.top().x,
-         m_line.height ? m_line.height : m_font->LineSpacing, "link_end");
-      stack_mklink.top().x = m_left_margin;
    }
 
 #ifdef DBG_LAYOUT
@@ -2541,10 +2462,6 @@ restart:
          m_line.gutter = 0;
       }
 
-      if ((!stack_link.empty()) and (stack_mklink.top().x != X)) {
-         add_link(SCODE::LINK, stack_link.top(), stack_mklink.top().x, Y, X - stack_mklink.top().x, m_line.height, "check_wrap");
-      }
-
       // Set the line segment up to the cursor.  The line.index is updated so that this process only occurs
       // in the first iteration.
 
@@ -2565,18 +2482,12 @@ restart:
 
       m_line.reset(m_left_margin);
 
-      if (!stack_mklink.empty()) stack_mklink.top().x = m_left_margin;
-
       result = WRAP::WRAPPED;
       if (--breakloop > 0) goto restart; // Go back and check the clip boundaries again
       else {
          log.traceWarning("Breaking out of continuous loop.");
          Self->Error = ERR_Loop;
       }
-   }
-
-   if (m_terminate_link) { // Check if a link termination is pending for this word
-      terminate_link();
    }
 
    #ifdef DBG_WORDWRAP
@@ -2612,21 +2523,6 @@ restart:
       // Set the line segment up to the encountered boundary and continue checking the vector position against the
       // clipping boundaries.
 
-      bool reset_link;
-      if ((!stack_link.empty()) and (clip.index < stack_mklink.top().index)) {
-         // An open link intersects with a clipping region that was created prior to the opening of the link.  We do
-         // not want to include this vector as a clickable part of the link - we will wrap over or around it, so
-         // set a partial link now and ensure the link is reopened after the clipping region.
-
-         DWRAP("Setting hyperlink now to cross a clipping boundary.");
-
-         auto height = m_line.height ? m_line.height : m_font->LineSpacing;
-         add_link(SCODE::LINK, stack_link.top(), stack_mklink.top().x, Y, X + Width - stack_mklink.top().x, height, "clip_intersect");
-
-         reset_link = true;
-      }
-      else reset_link = false;
-
       // Advance the position.  We break if a wordwrap is required - the code outside of this loop will detect
       // the need for a wordwrap and then restart the wordwrapping process.
 
@@ -2648,28 +2544,9 @@ restart:
 
       m_line.index = WordIndex;
       m_line.x = X;
-      if ((reset_link) and (!stack_link.empty())) stack_mklink.top().x = X;
 
       goto restart; // Check all the clips from the beginning
    }
-}
-
-//********************************************************************************************************************
-// Record a clickable link, cell, or other form of clickable area.
-
-void layout::add_link(SCODE base_code, std::variant<bc_link *, bc_cell *> Escape,
-   DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, const std::string &Caller)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((Width < 0.01) or (Height < 0.01)) {
-      log.traceWarning("Illegal link dimensions of (%gx%g, %gx%g) [%s]", X, Y, Width, Height, Caller.c_str());
-      return;
-   }
-
-   DLAYOUT("#%d (%gx%g, %gx%g), %s", LONG(m_links.size()), X, Y, Width, Height, Caller.c_str());
-
-   m_links.emplace_back(base_code, Escape, m_segments.size(), X, Y, Width, Height);
 }
 
 //********************************************************************************************************************
