@@ -738,32 +738,6 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
          }
       }
    }
-
-   // Check if the user moved onto text content
-
-   if (Self->MouseOverSegment != -1) {
-      if ((Self->Segments[Self->MouseOverSegment].text_content) or (Self->Segments[Self->MouseOverSegment].edit)) {
-         gfxSetCursor(0, CRF::BUFFER, PTC::TEXT, 0, Self->UID);
-         Self->CursorSet = true;
-      }
-      return;
-   }
-
-   for (unsigned i=0; i < Self->EditCells.size(); i++) {
-      if ((X >= Self->EditCells[i].x) and (X < Self->EditCells[i].x + Self->EditCells[i].width) and
-          (Y >= Self->EditCells[i].y) and (Y < Self->EditCells[i].y + Self->EditCells[i].height)) {
-         gfxSetCursor(0, CRF::BUFFER, PTC::TEXT, 0, Self->UID);
-         Self->CursorSet = true;
-         return;
-      }
-   }
-
-   // Reset the cursor to the default
-
-   if (Self->CursorSet) {
-      Self->CursorSet = false;
-      gfxRestoreCursor(PTC::DEFAULT, Self->UID);
-   }
 }
 
 //********************************************************************************************************************

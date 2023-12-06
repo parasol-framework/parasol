@@ -885,7 +885,6 @@ class extDocument : public objDocument {
    bool   PageProcessed;    // True if the parsing of page content has been completed
    bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
    bool   HasFocus;         // True if the main viewport has the focus
-   bool   CursorSet;        // True if the mouse cursor image has been altered from the default
    bool   LMB;              // True if the LMB is depressed.
    bool   EditMode;
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor

@@ -576,13 +576,13 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
             str = read_unit(str, Self->LeftMargin, rel);
 
-            if (!*str) str = read_unit(str, Self->TopMargin, rel);
+            if (*str) str = read_unit(str, Self->TopMargin, rel);
             else Self->TopMargin = Self->LeftMargin;
 
-            if (!*str) str = read_unit(str, Self->RightMargin, rel);
+            if (*str) str = read_unit(str, Self->RightMargin, rel);
             else Self->RightMargin = Self->TopMargin;
 
-            if (!*str) str = read_unit(str, Self->BottomMargin, rel);
+            if (*str) str = read_unit(str, Self->BottomMargin, rel);
             else Self->BottomMargin = Self->RightMargin;
 
             if (Self->LeftMargin < 0) Self->LeftMargin = 0;

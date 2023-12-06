@@ -342,7 +342,7 @@ class extVectorScene : public objVectorScene {
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
    std::unordered_map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
-   std::vector<InputBoundary> InputBoundaries;
+   std::vector<InputBoundary> InputBoundaries; // Defined on the fly each time that the scene is rendered.  Used to manage input events and cursor changes.
    std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.

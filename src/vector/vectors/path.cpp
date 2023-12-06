@@ -404,8 +404,12 @@ static ERROR VECTORPATH_SetCommandList(extVectorPath *Self, struct vpSetCommandL
 -FIELD-
 Commands: Direct pointer to the PathCommand array.
 
-Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the path to be modified
-directly.  After making changes to the path, call #Flush() to register the changes for the next redraw.
+Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the control points of
+the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call 
+#Flush() to register the changes for the next redraw.
+
+This field can also be written at any time with a new array of PathCommand structures.  Doing so will clear the 
+existing path, if any.
 
 *********************************************************************************************************************/
 
@@ -413,6 +417,20 @@ static ERROR VECTORPATH_GET_Commands(extVectorPath *Self, PathCommand **Value, L
 {
    *Value = Self->Commands.data();
    *Elements = Self->Commands.size();
+   return ERR_Okay;
+}
+
+static ERROR VECTORPATH_SET_Commands(extVectorPath *Self, PathCommand *Value, LONG Elements)
+{
+   if (!Value) return ERR_NullArgs;
+   if ((Elements < 0) or (Elements > 1000000)) return ERR_Args;
+
+   Self->Commands.clear();
+   for (LONG i=0; i < Elements; i++) {
+      Self->Commands.push_back(Value[i]);
+   }
+
+   if (Self->initialised()) reset_path(Self);
    return ERR_Okay;
 }
 
@@ -512,7 +530,7 @@ static const FieldArray clPathFields[] = {
    { "Sequence",      FDF_VIRTUAL|FDF_STRING|FDF_RW, VECTOR_GET_Sequence, VECTORPATH_SET_Sequence },
    { "TotalCommands", FDF_VIRTUAL|FDF_LONG|FDF_RW,   VECTORPATH_GET_TotalCommands, VECTORPATH_SET_TotalCommands },
    { "PathLength",    FDF_VIRTUAL|FDF_LONG|FDF_RW,   VECTORPATH_GET_PathLength, VECTORPATH_SET_PathLength },
-   { "Commands",      FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_R, VECTORPATH_GET_Commands, NULL, "PathCommand" },
+   { "Commands",      FDF_VIRTUAL|FDF_ARRAY|FDF_STRUCT|FDF_RW, VECTORPATH_GET_Commands, VECTORPATH_SET_Commands, "PathCommand" },
    END_FIELD
 };
 

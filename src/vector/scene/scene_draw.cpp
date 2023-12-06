@@ -1228,7 +1228,7 @@ private:
                   auto saved_viewport = mView;  // Save current viewport state and switch to the new viewport state
                   mView = view;
 
-                  // For vectors that read user input, we record the collision box for the cursor.
+                  // For viewports that read user input, we record the collision box for the cursor.
 
                   if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
                      if (view->vpBX1 > x1) x1 = view->vpBX1;
@@ -1345,7 +1345,7 @@ private:
                   else render_stroke(state, *shape, *shape->StrokeRaster);
                }
 
-               if (shape->InputSubscriptions) {
+               if ((shape->InputSubscriptions) or ((shape->Cursor != PTC::NIL) and (shape->Cursor != PTC::DEFAULT))) {
                   // If the vector receives user input events then we record the collision box for the mouse cursor.
                   DOUBLE xmin = mRenderBase.xmin(), xmax = mRenderBase.xmax();
                   DOUBLE ymin = mRenderBase.ymin(), ymax = mRenderBase.ymax();

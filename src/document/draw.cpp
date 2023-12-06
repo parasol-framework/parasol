@@ -399,11 +399,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::LINK: {
-               auto esclink = &stream_data<bc_link>(Self, cursor);
+               auto link = &stream_data<bc_link>(Self, cursor);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and
-                      (Self->Tabs[Self->FocusIndex].ref IS esclink->id) and
+                      (Self->Tabs[Self->FocusIndex].ref IS link->id) and
                       (Self->Tabs[Self->FocusIndex].active)) {
                      link_save_rgb = font_fill;
                      font_fill = Self->LinkSelectFill;
@@ -411,27 +411,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                   }
                }
 
-               // Create a VectorPath that represents the clickable area.  From this point, each segment
-               // that is encountered will have its area added to the VectorPath.  When LINK_END is reached,
-               // the VectorPath is finalised.
-
-               if ((esclink->vector_path = objVectorPath::create::global({
-                     fl::Owner(Viewport->UID),
-                     fl::Name("link_vp"),
-                     fl::Cursor(PTC::HAND)
-                     #ifdef GUIDELINES
-                     , fl::Stroke("rgb(255,0,0)"), fl::StrokeWidth(1)
-                     #endif
-                  }))) {
-                  
-                  auto callback = make_function_stdc(link_callback);
-                  vecSubscribeInput(esclink->vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
-               }
-
-               esclink->area = { 
+               link->area = { 
                   x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height 
                };
-               stack_link.push(esclink);
+               stack_link.push(link);
                break;
             }
 
@@ -439,9 +422,24 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                auto &link = stack_link.top();
                link->area.Width = x_offset - link->area.X;
                if (link->area.Width >= 1) link->append_link();
+               
+               // Create a VectorPath that represents the clickable area.  Doing this at the end of the
+               // link ensures that our path has input priority over existing text.
 
-               vpSetCommand(link->vector_path, link->path.size(), link->path.data(),
-                  link->path.size() * sizeof(PathCommand));
+               if ((link->vector_path = objVectorPath::create::global({
+                     fl::Owner(Viewport->UID), fl::Name("link_vp"), fl::Cursor(PTC::HAND)
+                     #ifdef GUIDELINES
+                     , fl::Stroke("rgb(255,0,0)"), fl::StrokeWidth(1)
+                     #endif
+                  }))) {
+                  
+                  vpSetCommand(link->vector_path, link->path.size(), link->path.data(),
+                     link->path.size() * sizeof(PathCommand));
+
+                  auto callback = make_function_stdc(link_callback);
+                  vecSubscribeInput(link->vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+               }
+
                link->path.clear();
 
                stack_link.pop();
@@ -509,6 +507,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                      fl::Owner(Viewport->UID),
                      fl::X(x), fl::Y(y),
                      fl::String(str),
+                     fl::Cursor(PTC::TEXT),
                      fl::Font(font),
                      fl::Fill(font_fill)
                   });

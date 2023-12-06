@@ -1601,6 +1601,13 @@ static void raster_text_to_bitmap(extVectorText *Vector)
          else y += Vector->txFont->LineSpacing;
       }
    }
+
+   // Text paths are always oriented around (0,0) and are transformed later
+   
+   Vector->BX1 = 0;
+   Vector->BY1 = 0;
+   Vector->BX2 = Vector->txWidth;
+   Vector->BY2 = dy;
 }
 
 //********************************************************************************************************************
