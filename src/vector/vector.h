@@ -274,7 +274,7 @@ class extVector : public objVector {
    using create = pf::Create<extVector>;
 
    DOUBLE FinalX, FinalY;
-   DOUBLE BX1, BY1, BX2, BY2;
+   DOUBLE BX1, BY1, BX2, BY2; // Must be calculated by GeneratePath() and called from calc_full_boundary()
    DOUBLE FillGradientAlpha, StrokeGradientAlpha;
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;

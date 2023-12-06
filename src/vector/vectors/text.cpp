@@ -365,10 +365,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->txFontSize   = 10 * (4.0 / 3.0);
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
-   Self->FillColour.Red   = 1;
-   Self->FillColour.Green = 1;
-   Self->FillColour.Blue  = 1;
-   Self->FillColour.Alpha = 1;
+   Self->FillColour   = FRGB(1, 1, 1, 1);
    Self->DisableHitTesting = true;
    return ERR_Okay;
 }
@@ -1061,7 +1058,10 @@ static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
 
 /*********************************************************************************************************************
 -FIELD-
-TextWidth: The raw pixel width of the widest line in the #String value.
+TextWidth: The raw pixel width of the widest line in the #String field.
+
+This field will return the pixel width of the widest line in the #String field.  The result is not modified by 
+transforms.
 
 *********************************************************************************************************************/
 
@@ -1444,6 +1444,18 @@ static void generate_text(extVectorText *Vector)
    if (Vector->txCursor.vector) {
       Vector->txCursor.resetVector(Vector);
    }
+
+   // Text paths are always oriented around (0,0) and are transformed later
+   
+   Vector->BX1 = 0;
+   Vector->BY1 = -Vector->txFont->Ascent;
+   Vector->BX2 = Vector->txWidth;
+   Vector->BY2 = 1;
+   if (Vector->txLines.size() > 1) Vector->BY2 += (Vector->txLines.size() - 1) * Vector->txFont->LineSpacing;
+
+   // If debugging the above boundary calculation, use this for verification of the true values (bear in
+   // mind it will provide tighter numbers, which is normal).
+   //bounding_rect_single(Vector->BasePath, 0, &Vector->BX1, &Vector->BY1, &Vector->BX2, &Vector->BY2);
 }
 
 //********************************************************************************************************************

@@ -53,10 +53,10 @@ If a document declares copyright information under a head tag, the copyright str
 This field is always NULL if a document does not declare a copyright string.
 
 -FIELD-
-CursorStroke: The colour used for the document cursor.
+CursorStroke: The colour or brush stroke to use for the document cursor.
 
-The colour used for the document cursor may be changed by setting this field.  This is relevant only when a document is
-in edit mode.
+The colour or brush stroke used for the document cursor may be changed by setting this field.  Formatting is
+equivalent to the SVG stroke property.  This is relevant only when a document is in edit mode.
 
 *********************************************************************************************************************/
 

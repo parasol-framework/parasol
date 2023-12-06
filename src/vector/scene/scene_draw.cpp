@@ -978,11 +978,6 @@ public:
 
          VectorState state;
          draw_vectors((extVector *)Scene->Viewport, state);
-
-         // Visually debug input boundaries
-         //for (auto const &bounds : Scene->InputBoundaries) {
-         //   gfxDrawRectangle(Bitmap, bounds.BX1, bounds.BY1, bounds.BX2-bounds.BX1, bounds.BY2-bounds.BY1, 0xff00ff, BAF::NIL);
-         //}
       }
    }
 

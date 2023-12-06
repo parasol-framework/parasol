@@ -423,7 +423,7 @@ static ERROR VECTOR_GetBoundary(extVector *Self, struct vecGetBoundary *Args)
 
    if (!Self->Scene) return log.warning(ERR_NotInitialised);
 
-   if (Self->GeneratePath) { // Path generation must be supported by the vector.
+   if (Self->GeneratePath) { // Path generation must be supported by the vector so that BX/BY etc are defined.
       if (Self->dirty()) gen_vector_tree(Self);
 
       if (!Self->BasePath.total_vertices()) return ERR_NoData;
@@ -682,13 +682,13 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
    }
    else if (Self->Class->ClassID IS ID_VECTORRECTANGLE) {
       agg::vertex_d w, x, y, z;
-      agg::conv_transform<agg::path_storage, agg::trans_affine> base_path(Self->BasePath, Self->Transform);
+      agg::conv_transform<agg::path_storage, agg::trans_affine> t_path(Self->BasePath, Self->Transform);
 
-      base_path.rewind(0);
-      base_path.vertex(&x.x, &x.y);
-      base_path.vertex(&y.x, &y.y);
-      base_path.vertex(&z.x, &z.y);
-      base_path.vertex(&w.x, &w.y);
+      t_path.rewind(0);
+      t_path.vertex(&x.x, &x.y);
+      t_path.vertex(&y.x, &y.y);
+      t_path.vertex(&z.x, &z.y);
+      t_path.vertex(&w.x, &w.y);
 
       agg::vertex_d pt = agg::vertex_d(Args->X, Args->Y, 0);
 
@@ -705,7 +705,7 @@ static ERROR VECTOR_PointInPath(extVector *Self, struct vecPointInPath *Args)
       DOUBLE bx1, by1, bx2, by2;
       bounding_rect_single(tb_path, 0, &bx1, &by1, &bx2, &by2);
       if ((Args->X >= bx1) and (Args->Y >= by1) and (Args->X < bx2) and (Args->Y < by2)) {
-         if (Self->DisableHitTesting) return ERR_Okay;
+         if ((Self->DisableHitTesting) or (Self->Class->ClassID IS ID_VECTORTEXT)) return ERR_Okay;
          else {
             // Full hit testing.  TODO: Find out if there are more optimal hit testing methods.
 

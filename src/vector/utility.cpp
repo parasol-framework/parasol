@@ -262,6 +262,8 @@ void calc_aspectratio(CSTRING Caller, ARF AspectRatio,
 // Calculate the boundaries for a branch of the tree, including transforms, and return the combined maximum bound
 // values.  NOTE: This function performs a full traversal (siblings and children) and this may extend beyond the
 // viewport's visible boundary.
+//
+// See also VECTOR_GetBoundary(), for which this function is intended, and set_clip_region() for filters.
 
 void calc_full_boundary(extVector *Vector, std::array<DOUBLE, 4> &Bounds, bool IncludeSiblings, bool IncludeTransforms)
 {
