@@ -984,6 +984,7 @@ header({ path="system/fields", copyright="Paul Manias © 1996-2023" }, function(
     "Created",
     "Numeric",
     "ResizeEvent",
-    "TabOrder"
+    "TabOrder",
+    "TextFlags"
     )
 end)

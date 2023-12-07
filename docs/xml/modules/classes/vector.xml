@@ -202,7 +202,7 @@
         <param type="FUNCTION *" name="Callback">Reference to a function that will receive input messages.</param>
       </input>
       <description>
-<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>ENTERED_SURFACE</code> and <code>LEFT_SURFACE</code> events are triggered during passage through the clipping area.</p>
+<p>The SubscribeInput method filters events from gfxSubscribeInput() by limiting their relevance to that of the target vector.  The original events are transferred with some modifications - <code>X</code>, <code>Y</code>, <code>AbsX</code> and <code>AbsY</code> are converted to the vector's coordinate system, and <code>ENTERED_AREA</code> and <code>LEFT_AREA</code> events are triggered during passage through the clipping area.</p>
 <p>It is a pre-requisite that the associated <class name="VectorScene">VectorScene</class> has been linked to a <class name="Surface">Surface</class>.</p>
 <p>To remove an existing subscription, call this method again with the same Callback and an empty Mask. Alternatively have the function return <code>ERR_Terminate</code>.</p>
 <p>Please refer to gfxSubscribeInput() for further information on event management and message handling.</p>

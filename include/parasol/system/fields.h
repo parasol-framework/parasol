@@ -978,4 +978,5 @@
 #define FID_Numeric 0x301f0df8LL
 #define FID_ResizeEvent 0xc404ebf9LL
 #define FID_TabOrder 0xa10b2cb8LL
+#define FID_TextFlags 0x1bce45f7LL
 

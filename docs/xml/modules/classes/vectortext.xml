@@ -266,9 +266,12 @@
 
     <field>
       <name>TextWidth</name>
-      <comment>The raw pixel width of the widest line in the <field>String</field> value.</comment>
+      <comment>The raw pixel width of the widest line in the <field>String</field> field.</comment>
       <access read="G">Get</access>
       <type>INT</type>
+      <description>
+<p>This field will return the pixel width of the widest line in the <field>String</field> field.  The result is not modified by transforms.</p>
+      </description>
     </field>
 
     <field>

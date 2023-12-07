@@ -249,10 +249,9 @@ static ERROR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
 
-      objSurface *surface;
-      if (!AccessObject(Self->Scene->SurfaceID, 1000, &surface)) {
-         Action(MT_DrwScheduleRedraw, surface, NULL);
-         ReleaseObject(surface);
+      pf::ScopedObjectLock surface(Self->Scene->SurfaceID);
+      if (surface.granted()) {
+         Action(MT_DrwScheduleRedraw, *surface, NULL);
          return ERR_Okay;
       }
       else return ERR_AccessObject;

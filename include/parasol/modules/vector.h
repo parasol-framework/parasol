@@ -2565,3 +2565,8 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_EXTRA_EXPANDED 0x8c599b5f
 #define SVF_ULTRA_EXPANDED 0x87e8c363
 
+namespace fl {
+   using namespace pf;
+constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
+}
+

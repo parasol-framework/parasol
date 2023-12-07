@@ -108,10 +108,11 @@
     <field>
       <name>Commands</name>
       <comment>Direct pointer to the PathCommand array.</comment>
-      <access read="G">Get</access>
+      <access read="G" write="S">Get/Set</access>
       <type>STRUCT []</type>
       <description>
-<p>Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the path to be modified directly.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
+<p>Read the Commands field to obtain a direct pointer to the PathCommand array.  This will allow the control points of the path to be modified directly, but it is not possible to resize the path.  After making changes to the path, call <action>Flush</action> to register the changes for the next redraw.</p>
+<p>This field can also be written at any time with a new array of PathCommand structures.  Doing so will clear the existing path, if any.</p>
       </description>
     </field>
 

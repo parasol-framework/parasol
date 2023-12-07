@@ -291,15 +291,15 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
 //********************************************************************************************************************
 
-static bool detect_recursive_dialog = false;
-
 static void error_dialog(const std::string Title, const std::string Message)
 {
    pf::Log log(__FUNCTION__);
-   static OBJECTID dialog_id = 0;
 
    log.warning("%s", Message.c_str());
+
 #if !(defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
+   static bool detect_recursive_dialog = false;
+   static OBJECTID dialog_id = 0;
    if ((dialog_id) and (CheckObjectExists(dialog_id) IS ERR_True)) return;
    if (detect_recursive_dialog) return;
    detect_recursive_dialog = true;
