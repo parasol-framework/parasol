@@ -170,7 +170,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
       #endif
 
       auto x_offset = segment.area.X;
-      for (auto cursor = segment.start; cursor < segment.stop; cursor.nextCode()) {
+      for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {
          switch (Stream[cursor.index].code) {
             case SCODE::FONT: {
                auto &style = stream_data<bc_font>(Self, cursor);

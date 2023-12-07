@@ -14,7 +14,7 @@ static std::string printable(extDocument *Self, stream_char Start, ULONG Length)
          result += text.text.substr(i.offset, result.capacity() - result.size());
       }
       else result += '%';
-      i.nextCode();
+      i.next_code();
    }
    return result;
 }
@@ -137,7 +137,7 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
             out << "[E:PE]\n";
          }
          else out << "[E:" <<  byteCode(code) << "]";
-         i.nextCode();
+         i.next_code();
       }
 
       out << "\"";

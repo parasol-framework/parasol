@@ -1552,7 +1552,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
    bool floating_vectors = false;
    bool allow_merge      = true; // If true, this segment can be merged with prior segment(s) on the line
 
-   for (auto i=Start; i < Stop; i.nextCode()) {
+   for (auto i=Start; i < Stop; i.next_code()) {
       switch (Self->Stream[i.index].code) {
          case SCODE::VECTOR:
             floating_vectors = true;

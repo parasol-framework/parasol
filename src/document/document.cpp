@@ -157,7 +157,7 @@ template <class T> T & extDocument::insert_code(stream_char &Cursor, T &Code)
       const stream_code insert(Code.code, Code.uid);
       Stream.insert(Stream.begin() + Cursor.index, insert);
    }
-   Cursor.nextCode();
+   Cursor.next_code();
    return std::get<T>(Codes[Code.uid]);
 }
 
@@ -174,7 +174,7 @@ template <class T> T & extDocument::reserve_code(stream_char &Cursor)
       const stream_code insert(result.code, result.uid);
       Stream.insert(Stream.begin() + Cursor.index, insert);
    }
-   Cursor.nextCode();
+   Cursor.next_code();
    return result;
 }
 

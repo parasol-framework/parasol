@@ -366,7 +366,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
             SCODE::CELL_END, SCODE::TABLE_START, SCODE::VECTOR, SCODE::LINK_END, SCODE::PARAGRAPH_END, SCODE::TEXT
          };
          if (std::find(std::begin(content), std::end(content), stream[CursorIndex.index].code) != std::end(content)) break;
-         CursorIndex.nextCode();
+         CursorIndex.next_code();
       }
    }
 
@@ -623,7 +623,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
             // If the segment is editable, we'll have to turn on edit mode so
             // that the cursor flashes.  Work backwards to find the edit cell.
 
-            for (auto cellindex = Self->Segments[segment].start; cellindex.valid(); cellindex.prevCode()) {
+            for (auto cellindex = Self->Segments[segment].start; cellindex.valid(); cellindex.prev_code()) {
                if (Self->Stream[cellindex.index].code IS SCODE::CELL) {
                   auto &cell = stream_data<bc_cell>(Self, cellindex);
                   if (!cell.edit_def.empty()) {

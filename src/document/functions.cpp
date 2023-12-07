@@ -56,7 +56,7 @@ static std::string stream_to_string(extDocument *Self, stream_char Start, stream
 
    std::ostringstream str;
    auto cs = Start;
-   for (; (cs.index <= End.index) and (cs.index < INDEX(Self->Stream.size())); cs.nextCode()) {
+   for (; (cs.index <= End.index) and (cs.index < INDEX(Self->Stream.size())); cs.next_code()) {
       if (Self->Stream[cs.index].code IS SCODE::TEXT) {
          auto &text = stream_data<bc_text>(Self, cs);
          if (cs.index < End.index) {
@@ -547,8 +547,8 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    Self->CursorStroke = StrClone("rgb(102,102,204,255)");
 
    Self->FontFill       = "rgb(0,0,0)";
-   Self->LinkFill       = "rgb(0,0,255,255)";
-   Self->LinkSelectFill = "rgb(255,0,0,255)";
+   Self->LinkFill       = "rgb(0,0,255)";
+   Self->LinkSelectFill = "rgb(255,0,0)";
 
    if (Self->Background) FreeResource(Self->Background);
    Self->Background   = StrClone("rgb(255,255,255,255)");
@@ -1291,7 +1291,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE 
             CharX = fntStringWidth(font, stream_data<bc_text>(Self, i).text.c_str(), -1);
             return ERR_Okay;
          }
-         i.nextCode();
+         i.next_code();
       }
    }
 

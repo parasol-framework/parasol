@@ -276,14 +276,14 @@ struct stream_char {
       offset = pOffset;
    }
 
-   inline INDEX prevCode() {
+   inline INDEX prev_code() {
       index--;
       if (index < 0) { index = -1; offset = -1; }
       else offset = 0;
       return index;
    }
 
-   inline INDEX nextCode() {
+   inline INDEX next_code() {
       offset = 0;
       index++;
       return index;
