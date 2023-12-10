@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <image id="add" xlink:href="icons:items/add" width="32" height="32"/>
+  </defs>
+</svg>
+
 <page name="Index">
 <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat.</p>
 
@@ -10,7 +16,7 @@
 
 <p align="center">Making changes to the <font face="courier" size="20">selected font must not</font> result in poor alignment.</p>
 
-<p align="center">This centered line contains <image icon="items/cancel"/> an embedded image.</p>
+<p align="center">This centered line contains <image src="url(#add)"/> an embedded image.</p>
 
 <p align="center">
 <list type="ordered">

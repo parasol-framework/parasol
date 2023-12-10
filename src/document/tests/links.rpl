@@ -13,7 +13,7 @@
 
 <p><a href="logic.rpl">one_word_partial_hyperlink</a>_not_this_part</p>
 
-<p>The following <a href="paragraphs.rpl">hyperlink</a> consists of one word.</p>
+<p>The following <a href="paragraphs.rpl" fill="rgb(200,100,200)">hyperlink</a> consists of one word and is coloured purple.</p>
 
 <p>The following <a href="layout.rpl">is a very long hyperlink that can be used to test the word wrapping of hyperlinked text.  Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet.</a>.</p>
 

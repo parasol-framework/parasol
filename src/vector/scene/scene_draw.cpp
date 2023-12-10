@@ -1001,8 +1001,10 @@ private:
 
       if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
       else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
+      
+      // Solid colour.  Bitmap fonts will set DisableFillColour to ensure texture maps are used instead
 
-      if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) { // Solid colour
+      if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) {
          auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
 
          if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {

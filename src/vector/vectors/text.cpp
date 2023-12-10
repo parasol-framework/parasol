@@ -671,6 +671,30 @@ static ERROR TEXT_SET_LetterSpacing(extVectorText *Self, DOUBLE Value)
    return ERR_Okay;
 }
 
+//********************************************************************************************************************
+// Override the existing Vector Fill field - this is required for bitmap fonts as they need a path reset to be 
+// triggered when decorative changes occur.
+
+static ERROR TEXT_GET_Fill(extVectorText *Self, CSTRING *Value)
+{
+   *Value = Self->FillString;
+   return ERR_Okay;
+}
+
+static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
+{
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+   Self->FillString = StrClone(Value);
+
+   vecReadPainter(Self->Scene, Value, &Self->FillColour, (objVectorGradient **)&Self->FillGradient, &Self->FillImage, (objVectorPattern **)&Self->FillPattern);
+
+   // Bitmap font reset
+   if ((Self->txFont) and ((Self->txFont->Flags & FTF::SCALABLE) IS FTF::NIL)) reset_path(Self);
+   else if ((Self->txFlags & VTXF::RASTER) != VTXF::NIL) reset_path(Self);
+
+   return ERR_Okay;
+}
+
 /*********************************************************************************************************************
 -FIELD-
 FontSize: Defines the vertical size of the font.
@@ -2418,6 +2442,7 @@ static const FieldArray clTextFields[] = {
    { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
    { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Align, TEXT_SET_Align, &clTextAlign },
    { "Face",          FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_Face, TEXT_SET_Face },
+   { "Fill",          FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_Fill, TEXT_SET_Fill },
    { "FontSize",      FDF_VIRTUAL|FDF_ALLOC|FDF_STRING|FDF_RW, TEXT_GET_FontSize, TEXT_SET_FontSize },
    { "FontStyle",     FDF_VIRTUAL|FDF_STRING|FDF_RI, TEXT_GET_FontStyle, TEXT_SET_FontStyle },
    { "DX",            FDF_VIRTUAL|FDF_ARRAY|FDF_DOUBLE|FDF_RW, TEXT_GET_DX, TEXT_SET_DX },

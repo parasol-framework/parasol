@@ -3,8 +3,29 @@
 -CLASS-
 Document: Provides document display and editing facilities.
 
-The Document class is a complete Page Layout Engine, providing rich text display
-features for creating complex documents and manuals.
+The Document class offers a complete page layout engine, providing rich text display features for creating complex 
+documents and text-based interfaces.  Internally, document data is maintained as a serial byte stream and all 
+object model information from the source is discarded.  This simplification of the data makes it possible to
+edit the document in-place, much the same as any word processor.  Alternatively it can be used for presentation
+purposes only, similarly to PDF or HTML formats.  Presentation is achieved by building a vector scene graph in 
+conjunction with the @Vector module.  This means that the output is compatible with SVG and can be manipulated in 
+detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
+and seamlessly inherits SVG functionality such as filling and stroking commands.
+
+<header>Safety</>
+
+The Document class is intended to be safe to use when loading content from an unknown source.  Processing will be
+aborted if a problem is found or the document appears to be unrenderable.  It is however, not guaranteed that
+exploits are impossible.  Consideration should also be given to the possibility of exploits that target third party
+libraries such as libpng and libjpeg for instance.
+
+By default, script execution is not enabled when parsing a document source.  If support for scripts is enabled,
+there is no meaningful level of safety on offer when the document is processed.  This feature should not be
+used unless the source document has been written by the client, or has otherwise been received from a trusted source.
+
+To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop 
+the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation
+https://github.com/microsoft/win32-app-isolation is one potential way of doing this.
 
 -END-
 
@@ -908,7 +929,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 
       Self->ParagraphDepth++; // We have to override the paragraph-content sanity check since we're inserting content on post-processing of the original XML
 
-      if (!(error = insert_xml(Self, Self->InsertXML, Self->InsertXML->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::SIBLINGS|IXF::CLOSE_STYLE))) {
+      if (!(error = insert_xml(Self, Self->InsertXML, Self->InsertXML->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE))) {
 
       }
       else log.warning("Insert failed for: %s", Args->XML);
@@ -964,9 +985,9 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 
    Self->Style = style_status();
 
-   // Find the most recent style at the insertion point
+   // Extract the most recent style at the insertion point so that we don't cause a style change
 
-   for (INDEX i = Args->Index - 1; i > 0; i--) {
+   for (INDEX i = Args->Index - 1; i >= 0; i--) {
       if (Self->Stream[i].code IS SCODE::FONT) {
          Self->Style.font_style = stream_data<bc_font>(Self, i);
          log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.font_style.font_index, Self->Style.font_style.options);
@@ -984,7 +1005,6 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
       }
 
       Self->Style.font_style.fill = Self->FontFill;
-      Self->Style.face_change = true;
    }
 
    if (auto font = Self->Style.font_style.get_font()) {

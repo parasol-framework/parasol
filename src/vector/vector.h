@@ -308,7 +308,7 @@ class extVector : public objVector {
    RC     Dirty;
    UBYTE  TabOrder;
    UBYTE  EnableBkgd:1;
-   UBYTE  DisableFillColour:1;
+   UBYTE  DisableFillColour:1;  // Bitmap fonts set this to true in order to disable colour fills
    UBYTE  ButtonLock:1;
    UBYTE  RelativeStrokeWidth:1;
    UBYTE  DisableHitTesting:1;

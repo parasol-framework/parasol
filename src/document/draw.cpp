@@ -39,28 +39,18 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
    if (Self->UpdatingLayout) return; // Drawing is disabled if the layout is being updated
 
-   if (glFonts.empty()) {
-      log.traceWarning("No default font defined.");
+   if (glFonts.empty()) { // Sanity check
+      log.traceWarning("Failed to load a default font.");
       return;
    }
-
-   auto font = glFonts[0].font;
-
-   #ifdef _DEBUG
-   if (Stream.empty()) {
-      log.traceWarning("No content in stream or no segments.");
-      return;
-   }
-   #endif
 
    std::stack<bc_list *> stack_list;
    std::stack<bc_row *> stack_row;
    std::stack<bc_paragraph *> stack_para;
    std::stack<bc_table *> stack_table;
    std::stack<bc_link *> stack_link;
+   std::stack<bc_font *> stack_style;
    std::stack<objVectorViewport *> stack_vp;
-   std::string link_save_rgb;
-   bool tabfocus = false;
 
    #ifdef GUIDELINES // Make clip regions visible
       for (unsigned i=0; i < m_clips.size(); i++) {
@@ -99,9 +89,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
    FloatRect clip(0, 0, Self->VPWidth, Self->VPHeight);
 
-   std::string font_fill = "rgb(0,0,0,255)";
-   auto font_align = ALIGN::NIL;
-   //DOUBLE alpha = 1.0;
    for (SEGINDEX seg=Start; seg < Stop; seg++) {
       auto &segment = m_segments[seg];
 
@@ -174,25 +161,12 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
          switch (Stream[cursor.index].code) {
             case SCODE::FONT: {
                auto &style = stream_data<bc_font>(Self, cursor);
-               if (auto new_font = style.get_font()) {
-                  if (tabfocus IS false) font_fill = style.fill;
-                  else font_fill = Self->LinkSelectFill;
+               stack_style.push(&style);
+               break;
+            }
 
-                  if ((style.options & FSO::ALIGN_RIGHT) != FSO::NIL) font_align = ALIGN::RIGHT;
-                  else if ((style.options & FSO::ALIGN_CENTER) != FSO::NIL) font_align = ALIGN::HORIZONTAL;
-                  else font_align = ALIGN::NIL;
-
-                  if (style.valign != ALIGN::NIL) {
-                     if ((style.valign & ALIGN::TOP) != ALIGN::NIL) font_align |= ALIGN::TOP;
-                     else if ((style.valign & ALIGN::VERTICAL) != ALIGN::NIL) font_align |= ALIGN::VERTICAL;
-                     else font_align |= ALIGN::BOTTOM;
-                  }
-
-                  if ((style.options & FSO::UNDERLINE) != FSO::NIL) new_font->Underline = new_font->Colour;
-                  else new_font->Underline.Alpha = 0;
-
-                  font = new_font;
-               }
+            case SCODE::FONT_END: {
+               stack_style.pop();
                break;
             }
 
@@ -207,6 +181,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             case SCODE::PARAGRAPH_START:
                stack_para.push(&stream_data<bc_paragraph>(Self, cursor));
 
+               if (stack_style.empty()) { // Sanity check - there must always be at least one font style on the stack.
+                  log.warning("The byte stream is missing a font style code.");
+                  return;
+               }
+
                if ((!stack_list.empty()) and (stack_para.top()->list_item)) {
                   // Handling for paragraphs that form part of a list
 
@@ -220,7 +199,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                            fl::Owner(Viewport->UID),
                            fl::X(ix), fl::Y(iy),
                            fl::String(stack_para.top()->value),
-                           fl::Font(font),
+                           fl::Font(stack_style.top()->get_font()),
                            fl::Fill(stack_list.top()->fill)
                         });
                      }
@@ -332,9 +311,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                      fl::Width(cell.width), fl::Height(cell.height)
                   });
 
-                  // If a cell defines fill/stroke values then it gets an independent rectangle to achieve that.  
-                  // 
-                  // If it defines a border then it can instead make use of the table's VectorPath object, which is 
+                  // If a cell defines fill/stroke values then it gets an independent rectangle to achieve that.
+                  //
+                  // If it defines a border then it can instead make use of the table's VectorPath object, which is
                   // more efficient and creates consistent looking output.
 
                   if ((!cell.stroke.empty()) or (!cell.fill.empty())) {
@@ -400,29 +379,36 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
             case SCODE::LINK: {
                auto link = &stream_data<bc_link>(Self, cursor);
+
+               link->cursor_start = cursor;
+               link->area = { x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height };
+               stack_link.push(link);
+
+               // Font management
+
+               link->font.fill = link->fill; // Reset the fill instruction to the default
+               stack_style.push(&link->font);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
                   if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and
-                      (Self->Tabs[Self->FocusIndex].ref IS link->id) and
-                      (Self->Tabs[Self->FocusIndex].active)) {
-                     link_save_rgb = font_fill;
-                     font_fill = Self->LinkSelectFill;
-                     tabfocus = true;
+                        (Self->Tabs[Self->FocusIndex].ref IS link->id) and
+                        (Self->Tabs[Self->FocusIndex].active)) {
+                     link->font.fill = Self->LinkSelectFill;
+                  }
+                  else if (link->hover) {
+                     link->font.fill = Self->LinkSelectFill;
                   }
                }
 
-               link->area = { 
-                  x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height 
-               };
-               stack_link.push(link);
                break;
             }
 
             case SCODE::LINK_END: {
                auto &link = stack_link.top();
+               link->cursor_end = cursor;
                link->area.Width = x_offset - link->area.X;
                if (link->area.Width >= 1) link->append_link();
-               
+
                // Create a VectorPath that represents the clickable area.  Doing this at the end of the
                // link ensures that our path has input priority over existing text.
 
@@ -432,7 +418,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                      , fl::Stroke("rgb(255,0,0)"), fl::StrokeWidth(1)
                      #endif
                   }))) {
-                  
+
                   vpSetCommand(link->vector_path, link->path.size(), link->path.data(),
                      link->path.size() * sizeof(PathCommand));
 
@@ -443,11 +429,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                link->path.clear();
 
                stack_link.pop();
-               
-               if (tabfocus) {
-                  font_fill = link_save_rgb;
-                  tabfocus = false;
-               }
+               stack_style.pop();
                break;
             }
 
@@ -462,8 +444,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                DOUBLE x;
                if (img.floating()) x = img.x + img.final_pad.left;
                else {
-                  if ((font_align & ALIGN::HORIZONTAL) != ALIGN::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
-                  else if ((font_align & ALIGN::RIGHT) != ALIGN::NIL) x = x_offset + segment.align_width - segment.area.Width;
+                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
+                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
                   else x = x_offset;
                }
                DOUBLE y = segment.area.Y + img.final_pad.top;
@@ -484,36 +466,40 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                if (oob) break;
 
                auto &txt = stream_data<bc_text>(Self, cursor);
+               auto font = stack_style.top()->get_font();
 
                std::string str;
                if (cursor.index < segment.trim_stop.index) str.append(txt.text, cursor.offset, std::string::npos);
                else str.append(txt.text, cursor.offset, segment.trim_stop.offset - cursor.offset);
 
                DOUBLE y = segment.area.Y;
-               if ((font_align & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
-               else if ((font_align & ALIGN::VERTICAL) != ALIGN::NIL) {
+               if ((stack_style.top()->valign & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
+               else if ((stack_style.top()->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
                   DOUBLE avail_space = segment.area.Height - segment.gutter;
                   y += avail_space - ((avail_space - font->Ascent) * 0.5);
                }
                else y += segment.area.Height - segment.gutter;
 
                DOUBLE x;
-               if ((font_align & ALIGN::HORIZONTAL) != ALIGN::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
-               else if ((font_align & ALIGN::RIGHT) != ALIGN::NIL) x = x_offset + segment.align_width - segment.area.Width;
+               if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
+               else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
                else x = x_offset;
 
                if (!str.empty()) {
-                  auto text = objVectorText::create::global({
+                  auto vt  = objVectorText::create::global({
                      fl::Owner(Viewport->UID),
                      fl::X(x), fl::Y(y),
                      fl::String(str),
                      fl::Cursor(PTC::TEXT),
                      fl::Font(font),
-                     fl::Fill(font_fill)
+                     fl::Fill(stack_style.top()->fill),
+                     fl::TextFlags(((stack_style.top()->options & FSO::UNDERLINE) != FSO::NIL) ? VTXF::UNDERLINE : VTXF::NIL)
                   });
 
+                  txt.vector_text.push_back(vt);
+
                   DOUBLE twidth;
-                  text->get(FID_TextWidth, &twidth);
+                  vt->get(FID_TextWidth, &twidth);
                   x_offset += twidth;
                }
                break;

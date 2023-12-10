@@ -182,9 +182,9 @@ template <class T> T & extDocument::reserve_code(stream_char &Cursor)
 
 static const std::string & byte_code(SCODE Code) {
    static const std::string strCodes[] = {
-      "?", "Text", "Font", "FontCol", "Uline", "Bkgd", "Inv", "Vector", "Link", "TabDef", "PE",
+      "?", "Text", "Font", "FontEnd", "Vector", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
-      "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image"
+      "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use"
    };
 
    if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];
@@ -234,6 +234,7 @@ static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 static TRF   parse_tag(extDocument *, objXML *, XMLTag &, stream_char &, IPF &);
 static TRF   parse_tags(extDocument *, objXML *, objXML::TAGS &, stream_char &, IPF = IPF::NIL);
+static TRF   parse_tags_with_style(extDocument *, objXML *, objXML::TAGS &, stream_char &, style_status &, IPF = IPF::NIL);
 static void  print_xmltree(objXML::TAGS &, LONG &);
 static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
@@ -248,7 +249,6 @@ static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(extDocument *, stream_char, stream_char);
-static void  style_check(extDocument *, stream_char &);
 static void  tag_xml_content(extDocument *, objXML *, XMLTag &, PXF);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
@@ -268,8 +268,8 @@ inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
 static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_cache, tag_call, tag_cell;
 static TAGROUTINE tag_debug, tag_div, tag_editdef, tag_focus, tag_font, tag_footer, tag_head, tag_header, tag_image;
 static TAGROUTINE tag_include, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
-static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_restorestyle, tag_row, tag_savestyle;
-static TAGROUTINE tag_script, tag_set, tag_setfont, tag_setmargins, tag_svg, tag_use, tag_table, tag_template, tag_trigger;
+static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_row;
+static TAGROUTINE tag_script, tag_set, tag_setmargins, tag_svg, tag_use, tag_table, tag_template, tag_trigger;
 static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
 
 //********************************************************************************************************************
@@ -326,9 +326,6 @@ static std::map<ULONG, tagroutine> glTags = {
    { HASH_body,          { tag_body,         TAG::NIL } },
    { HASH_index,         { tag_index,        TAG::NIL } },
    { HASH_setmargins,    { tag_setmargins,   TAG::OBJECTOK } },
-   { HASH_setfont,       { tag_setfont,      TAG::OBJECTOK } },
-   { HASH_restorestyle,  { tag_restorestyle, TAG::OBJECTOK } },
-   { HASH_savestyle,     { tag_savestyle,    TAG::OBJECTOK } },
    { HASH_script,        { tag_script,       TAG::NIL } },
    { HASH_template,      { tag_template,     TAG::NIL } },
    { HASH_xml,           { tag_xml,          TAG::OBJECTOK } },

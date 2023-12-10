@@ -52,6 +52,7 @@ header({ copyright="Paul Manias © 2023" }, function()
     "font",
     "fontcolour",
     "fontface",
+    "fontfill",
     "fontsize",
     "footer",
     "function",

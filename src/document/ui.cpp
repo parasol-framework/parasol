@@ -832,7 +832,7 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
       log.warning("Failed to relate vector #%d to a hyperlink.", Vector->UID);
       return ERR_Okay;
    }
-   
+
    OBJECTPTR script;
    std::string argstring, func_name;
 
@@ -845,20 +845,40 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
       }
    }
    else if (Event->Type IS JET::ENTERED_AREA) {
+      link->hover = true;
       if (!link->pointer_motion.empty()) {
          if (!extract_script(Self, link->pointer_motion, &script, func_name, argstring)) {
             const ScriptArg args[] = { { "Element", link->id }, { "Status", 1 }, { "Args", argstring } };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
+
+      for (auto cursor=link->cursor_start; cursor < link->cursor_end; cursor.next_code()) {
+         if (Self->Stream[cursor.index].code IS SCODE::TEXT) {
+            auto &txt = stream_data<bc_text>(Self, cursor);
+            for (auto vt : txt.vector_text) vt->setFill(Self->LinkSelectFill);
+         }
+      }
+
+      Self->Viewport->draw();
    }
    else if (Event->Type IS JET::LEFT_AREA) {
+      link->hover = false;
       if (!link->pointer_motion.empty()) {
          if (!extract_script(Self, link->pointer_motion, &script, func_name, argstring)) {
             const ScriptArg args[] = { { "Element", link->id }, { "Status", 1 }, { "Args", argstring } };
             scExec(script, func_name.c_str(), args, ARRAYSIZE(args));
          }
       }
+
+      for (auto cursor=link->cursor_start; cursor < link->cursor_end; cursor.next_code()) {
+         if (Self->Stream[cursor.index].code IS SCODE::TEXT) {
+            auto &txt = stream_data<bc_text>(Self, cursor);
+            for (auto vt : txt.vector_text) vt->setFill(link->fill);
+         }
+      }
+
+      Self->Viewport->draw();
    }
    else if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
       if (Event->Value IS 0) link->exec(Self);
@@ -936,7 +956,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
             if (link->id IS Self->Tabs[Index].ref) {
                DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
-                  if (link->id IS Self->Tabs[Index].ref) {                   
+                  if (link->id IS Self->Tabs[Index].ref) {
                      vecGetBoundary(link->vector_path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
                   }
                }

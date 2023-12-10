@@ -45,6 +45,7 @@ struct layout {
    std::stack<bc_list *>      stack_list;
    std::stack<bc_row *>       stack_row;
    std::stack<bc_paragraph *> stack_para;
+   std::stack<bc_font *>      stack_font;
 
    std::vector<doc_clip>    m_clips;
    std::vector<doc_segment> m_segments;
@@ -105,6 +106,7 @@ struct layout {
       stack_list   = {};
       stack_para   = {};
       stack_row    = {};
+      stack_font   = {};
 
       m_align_flags      = 0;
       m_paragraph_y      = 0;
@@ -194,6 +196,7 @@ struct layout {
    void procSetMargins(LONG &);
    void procIndexStart();
    void procFont();
+   void procFontEnd();
    WRAP procVector(LONG, LONG, bool &, bool &);
    void procParagraphStart();
    void procParagraphEnd();
@@ -349,6 +352,14 @@ void layout::procFont()
       if (!m_word_width) m_word_index.set(idx, 0);
    }
    else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->font_index);
+
+   stack_font.push(&stream_data<bc_font>(Self, idx));
+}
+
+void layout::procFontEnd()
+{
+   stack_font.pop();
+   if (!stack_font.empty()) m_font = stack_font.top()->get_font();
 }
 
 //********************************************************************************************************************
@@ -364,6 +375,7 @@ WRAP layout::procText()
    auto ascent = m_font->Ascent;
    auto &text = stream_data<bc_text>(Self, idx);
    auto &str = text.text;
+   text.vector_text.clear();
    for (unsigned i=0; i < str.size(); ) {
       if (str[i] IS '\n') { // The use of '\n' in a string forces a line break
          check_line_height();
@@ -1981,6 +1993,7 @@ extend_page:
          }
          case SCODE::ADVANCE:         procAdvance(); break;
          case SCODE::FONT:            procFont(); break;
+         case SCODE::FONT_END:        procFontEnd(); break;
          case SCODE::INDEX_START:     procIndexStart(); break;
          case SCODE::SET_MARGINS:     procSetMargins(Margins.Bottom); break;
          case SCODE::LINK:            break;

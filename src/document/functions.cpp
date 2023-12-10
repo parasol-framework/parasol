@@ -215,11 +215,10 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 }
 
 //********************************************************************************************************************
-// Processes an XML tag and passes it to parse_tag().
+// Process an XML tree by setting correct style information and then calling parse_tags().
 //
 // IXF::HOLD_STYLE:  The font style will not be cleared.
 // IXF::RESET_STYLE: Current font style will be reset rather than defaulting to the most recent style at the insertion point.
-// IXF::SIBLINGS:    Sibling tags will be parsed.
 
 static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, IXF Flags)
 {
@@ -228,63 +227,53 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
    if (TargetIndex < 0) TargetIndex = Self->Stream.size();
 
    log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(Flags), Tag[0].Attribs[0].Name.c_str());
+   
+   stream_char inserted_at(Self->Stream.size());
+   stream_char insert_index(Self->Stream.size());
 
-   // Retrieve the most recent font definition and use that as the style that we're going to start with.
-
-   if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) {
-      // Do nothing to change the style
+   if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) { // Do nothing to change the style
+      // Parse content and insert it at the end of the stream (we'll move it to the insertion point afterwards).
+      parse_tags(Self, XML, Tag, insert_index);
    }
    else {
       Self->Style = style_status();
+      auto style = style_status();
 
       if ((Flags & IXF::RESET_STYLE) != IXF::NIL) {
-         // Do not search for the most recent font style
+         // Do not search for the most recent font style (force a reset)
       }
       else {
-         for (auto i = TargetIndex - 1; i > 0; i--) {
+         for (auto i = TargetIndex - 1; i >= 0; i--) {
             if (Self->Stream[i].code IS SCODE::FONT) {
-               Self->Style.font_style = stream_data<bc_font>(Self, i);
-               log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.font_style.font_index, Self->Style.font_style.options);
+               style.font_style = stream_data<bc_font>(Self, i);
+               log.trace("Found existing font style, font index %d, flags $%.8x.", style.font_style.font_index, Self->Style.font_style.options);
                break;
             }
          }
       }
 
-      // If no style is available, we need to create a default font style and insert it at the start of the stream.
+      // Revert to the default style if none is available.
 
-      if (Self->Style.font_style.font_index IS -1) {
-         if ((Self->Style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-            if ((Self->Style.font_style.font_index = create_font("Open Sans", "Regular", 10)) IS -1) {
+      if (style.font_style.font_index IS -1) {
+         if ((style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
+            if ((style.font_style.font_index = create_font("Open Sans", "Regular", 10)) IS -1) {
                return ERR_Failed;
             }
          }
 
-         Self->Style.font_style.fill = Self->FontFill;
-         Self->Style.face_change = true;
+         style.font_style.fill = Self->FontFill;
       }
 
-      if (auto font = Self->Style.font_style.get_font()) {
-         Self->Style.face  = font->Face;
-         Self->Style.point = font->Point;
+      if (auto font = style.font_style.get_font()) {
+         style.face  = font->Face;
+         style.point = font->Point;
       }
-   }
 
-   // Parse content and insert it at the end of the stream (we will move it to the insertion point afterwards).
-
-   stream_char inserted_at(Self->Stream.size());
-   stream_char insert_index(Self->Stream.size());
-   if ((Flags & IXF::SIBLINGS) != IXF::NIL) { // Siblings of Tag are included
-      parse_tags(Self, XML, Tag, insert_index);
+      parse_tags_with_style(Self, XML, Tag, insert_index, style);
    }
-   else { // Siblings of Tag are not included
-      auto parse_flags = IPF::NIL;
-      parse_tag(Self, XML, Tag[0], insert_index, parse_flags);
-   }
-
-   if ((Flags & IXF::CLOSE_STYLE) != IXF::NIL) style_check(Self, insert_index);
 
    if (INDEX(Self->Stream.size()) <= inserted_at.index) {
-      log.trace("parse_tag() did not insert any content into the stream.");
+      log.trace("parse_tags() did not insert any content into the stream.");
       return ERR_NothingDone;
    }
 
@@ -320,8 +309,6 @@ static ERROR insert_text(extDocument *Self, stream_char &Index, const std::strin
       for (i=0; i < Text.size(); i++) if (Text[i] > 0x20) break;
       if (i IS Text.size()) return ERR_Okay;
    }
-
-   style_check(Self, Index);
 
    if (Preformat) {
       bc_text et(Text, true);
@@ -446,7 +433,7 @@ static ERROR process_page(extDocument *Self, objXML *xml)
       parse_tags(Self, xml, xml->Tags, insert_index, IPF::NO_CONTENT);
 
       if ((Self->HeaderTag) and (!no_header)) {
-         insert_xml(Self, xml, Self->HeaderTag[0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESET_STYLE);
+         insert_xml(Self, xml, Self->HeaderTag[0], Self->Stream.size(), IXF::RESET_STYLE);
       }
 
       if (Self->BodyTag) {
@@ -454,17 +441,17 @@ static ERROR process_page(extDocument *Self, objXML *xml)
          log.traceBranch("Processing this page through the body tag.");
 
          init_template block(Self, page->Children, xml);
-         insert_xml(Self, xml, Self->BodyTag[0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESET_STYLE);
+         insert_xml(Self, xml, Self->BodyTag[0], Self->Stream.size(), IXF::RESET_STYLE);
       }
       else {
          pf::Log log(__FUNCTION__);
          auto page_name = page->attrib("name");
          log.traceBranch("Processing page '%s'.", page_name ? page_name->c_str() : "");
-         insert_xml(Self, xml, page->Children, Self->Stream.size(), IXF::SIBLINGS|IXF::RESET_STYLE);
+         insert_xml(Self, xml, page->Children, Self->Stream.size(), IXF::RESET_STYLE);
       }
 
       if ((Self->FooterTag) and (!no_footer)) {
-         insert_xml(Self, xml, Self->FooterTag[0], Self->Stream.size(), IXF::SIBLINGS|IXF::RESET_STYLE);
+         insert_xml(Self, xml, Self->FooterTag[0], Self->Stream.size(), IXF::RESET_STYLE);
       }
 
       #ifdef DBG_STREAM

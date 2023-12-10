@@ -35,10 +35,9 @@ DEFINE_ENUM_FLAG_OPERATORS(RTD)
 
 enum class IXF : UBYTE {
    NIL         = 0x00,
-   SIBLINGS    = 0x01,
-   HOLD_STYLE  = 0x02,
-   RESET_STYLE = 0x04,
-   CLOSE_STYLE = 0x08
+   HOLD_STYLE  = 0x01,
+   RESET_STYLE = 0x02,
+   CLOSE_STYLE = 0x04
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(IXF)
@@ -72,24 +71,21 @@ enum class SCODE : char {
    NIL = 0,
    TEXT,
    FONT,
-   FONTCOLOUR,
-   UNDERLINE,
-   BACKGROUND,
-   INVERSE,
+   FONT_END,
    VECTOR,
    LINK,
    TABDEF,
-   PARAGRAPH_END,   // 10
+   PARAGRAPH_END,
    PARAGRAPH_START,
    LINK_END,
    ADVANCE,
    LIST_START,
-   LIST_END,        // 15
+   LIST_END,
    TABLE_START,
    TABLE_END,
    ROW,
    CELL,
-   CELL_END,        // 20
+   CELL_END,
    ROW_END,
    SET_MARGINS,
    INDEX_START,
@@ -430,14 +426,18 @@ struct font_entry {
 //********************************************************************************************************************
 
 struct bc_font : public base_code {
-   WORD font_index;      // font lookup
-   FSO  options;
-   std::string fill;    // font fill
+   WORD font_index;     // Font lookup (reflects the font face, point size, style)
+   FSO  options;        // Style options, like underline and italics
+   std::string fill;    // Font fill instruction
    ALIGN valign;        // Vertical alignment of text within the available line height
 
    bc_font(): font_index(-1), options(FSO::NIL), fill("rgb(0,0,0)"), valign(ALIGN::BOTTOM) { code = SCODE::FONT; }
 
    objFont * get_font();
+};
+
+struct bc_font_end : public base_code {
+   bc_font_end() : base_code(SCODE::FONT_END) { }
 };
 
 struct style_status {
@@ -446,10 +446,8 @@ struct style_status {
    struct bc_list *list;
    std::string face;
    DOUBLE point;
-   bool face_change;      // A major font change has occurred (e.g. face, point size)
-   bool style_change;     // A minor style change has occurred (e.g. font colour)
 
-   style_status() : table(NULL), list(NULL), face(""), point(0), face_change(false), style_change(false) { }
+   style_status() : table(NULL), list(NULL), face(""), point(0) { }
 };
 
 //********************************************************************************************************************
@@ -527,6 +525,7 @@ struct tablecol {
 
 struct bc_text : public base_code {
    std::string text;
+   std::vector<objVectorText *> vector_text;
    bool formatted = false;
    SEGINDEX segment = -1; // Reference to the first segment that manages this text string.
 
@@ -569,15 +568,19 @@ struct bc_index_end : public base_code {
 struct bc_link : public base_code {
    LINK  type;    // Link type (either a function or hyperlink)
    UWORD id;
-   FSO   align;
    FloatRect area;
    objVectorPath *vector_path;
+   stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
    std::vector<PathCommand> path;
    std::string pointer_motion;    // Function to call for pointer motion events
    std::string ref;               // Function name or a path, depending on the Type
    std::vector<std::pair<std::string,std::string>> args;
+   std::string fill;              // Fill instruction from the client
+   bool hover;                    // True if the mouse pointer is hovering over the link
+   bc_font font;                  // Font style for the link
 
-   bc_link() : type(LINK::NIL), id(0), align(FSO::NIL) { code = SCODE::LINK; }
+   bc_link() : type(LINK::NIL), id(0), vector_path(NULL), hover(false)
+      { code = SCODE::LINK; }
 
    void exec(extDocument *);
 
@@ -822,7 +825,7 @@ class extDocument : public objDocument {
    std::unordered_map<std::string, doc_edit> EditDefs;
    std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_vector, bc_set_margins, bc_xml, bc_image, bc_use>> Codes;
+      bc_font, bc_font_end, bc_vector, bc_set_margins, bc_xml, bc_image, bc_use>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
