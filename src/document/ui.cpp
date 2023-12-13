@@ -353,7 +353,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
 
    auto &cell = stream_data<bc_cell>(Self, CellIndex);
    if (CursorIndex.index <= CellIndex) { // Go to the start of the cell content
-      CursorIndex.set(CellIndex + 1, 0);
+      CursorIndex.set(CellIndex + 1);
    }
 
    if (stream[CursorIndex.index].code != SCODE::TEXT) {
@@ -695,7 +695,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
                   if (cursor_index.index < i) {
                      // If the cursor index precedes the start of the editing area, reset it
 
-                     cursor_index.set(i, 0);
+                     cursor_index.set(i);
                      if (!resolve_fontx_by_index(Self, cursor_index, cursor_x)) {
 
                      }

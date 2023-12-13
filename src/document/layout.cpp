@@ -124,7 +124,7 @@ struct layout {
    void reset_segment(INDEX Index, LONG X) {
       m_word_index.reset();
 
-      m_line.index.set(Index, 0);
+      m_line.index.set(Index);
       m_line.x       = X;
       m_kernchar     = 0;
       m_word_width   = 0;
@@ -304,7 +304,7 @@ WRAP layout::procImage()
          idx, false, "Image");
    }
    else { // Image is inline and must be treated like a text character.
-      if (!m_word_width) m_word_index.set(idx, idx); // Save the index of the new word
+      if (!m_word_width) m_word_index.set(idx); // Save the index of the new word
 
       // Checking for wordwrap here is optimal, BUT bear in mind that if characters immediately follow the
       // image then it is also possible for word-wrapping to occur later.  Note that the line height isn't
@@ -349,7 +349,7 @@ void layout::procFont()
       // Treat the font as if it is a text character by setting the m_word_index.
       // This ensures it is included in the drawing process.
 
-      if (!m_word_width) m_word_index.set(idx, 0);
+      if (!m_word_width) m_word_index.set(idx);
    }
    else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->font_index);
 
@@ -487,7 +487,7 @@ void layout::procIndexStart()
 
             // Do some cleanup to complete the content skip.
 
-            m_line.index.set(end, 0);
+            m_line.index.set(end);
             idx = end;
             return;
          }
@@ -1717,9 +1717,9 @@ static void layout_doc(extDocument *Self)
    Self->BreakLoop = MAXLOOP;
 
    layout l(Self);
-   bool restart;
-   do {
-      restart = false;
+   bool repeat = true;
+   while (repeat) {
+      repeat = false;
       Self->BreakLoop--;
 
       DOUBLE page_width;
@@ -1768,7 +1768,7 @@ static void layout_doc(extDocument *Self)
                DLAYOUT("Vertical scrollbar visibility needs to be enabled, restarting...");
                Self->VScrollVisible = true;
                Self->BreakLoop = MAXLOOP;
-               restart = true;
+               repeat = true;
             }
          }
          else { // Page height is smaller than the viewport, so the scrollbar needs to be invisible.
@@ -1776,18 +1776,14 @@ static void layout_doc(extDocument *Self)
                DLAYOUT("Vertical scrollbar needs to be invisible, restarting...");
                Self->VScrollVisible = false;
                Self->BreakLoop = MAXLOOP;
-               restart = true;
+               repeat = true;
             }
          }
       }
-   } while (restart);
+   };
 
-   if (!Self->Error) {
-      Self->EditCells = l.m_ecells;
-   }
-   else {
-      Self->EditCells.clear();
-   }
+   if (!Self->Error) Self->EditCells = l.m_ecells;
+   else Self->EditCells.clear();
 
    if ((!Self->Error) and (!l.m_segments.empty())) Self->Segments = l.m_segments;
    else Self->Segments.clear();
@@ -1927,7 +1923,7 @@ extend_page:
    m_space_width  = fntCharWidth(m_font, ' ', 0, NULL);
 
    m_word_index.reset();
-   m_line.index.set(Offset, 0);    // The starting index of the line we are operating on
+   m_line.index.set(Offset);    // The starting index of the line we are operating on
    m_line.full_reset(Margins.Left);
 
    for (idx = Offset; idx < End; idx++) {

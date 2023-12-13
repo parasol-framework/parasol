@@ -103,6 +103,8 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
 
+   if ((Self->VPWidth IS Width) and (Self->VPHeight IS Height)) return;
+
    log.traceBranch("Redimension: %gx%g -> %gx%g", Self->VPWidth, Self->VPHeight, Width, Height);
 
    Self->VPWidth = Width;

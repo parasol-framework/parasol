@@ -267,7 +267,7 @@ struct stream_char {
    inline bool valid() { return index != -1; }
    inline bool valid(const RSTREAM &Stream) { return (index != -1) and (index < INDEX(Stream.size())); }
 
-   inline void set(INDEX pIndex, ULONG pOffset) {
+   inline void set(INDEX pIndex, ULONG pOffset = 0) {
       index  = pIndex;
       offset = pOffset;
    }
