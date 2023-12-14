@@ -1015,7 +1015,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    auto Self = (extVectorScene *)CurrentContext();
    if (!Self->SurfaceID) return ERR_Okay;
 
-   auto cursor = PTC(-1);
+   auto cursor = PTC::NIL;
 
    // Distribute input events to any vectors that have subscribed.
    // Be mindful that client code can potentially destroy the scene's surface at any time.
@@ -1053,8 +1053,8 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
          OBJECTID target = Self->ButtonLock ? Self->ButtonLock : Self->ActiveVector;
 
          if (target) {
-            pf::ScopedObjectLock<extVector> lock(target);
-            if (lock.granted()) {
+            pf::ScopedObjectLock<extVector> lk_vector(target);
+            if (lk_vector.granted()) {
                InputEvent event = *input;
                event.Next = NULL;
                event.OverID = Self->ActiveVector;
@@ -1062,16 +1062,74 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                event.AbsY = input->Y;
                event.X    = Self->ActiveVectorX;
                event.Y    = Self->ActiveVectorY;
-               send_input_events(lock.obj, &event);
+               send_input_events(lk_vector.obj, &event);
 
                if ((input->Type IS JET::LMB) and ((input->Flags & JTYPE::REPEATED) IS JTYPE::NIL)) {
                   Self->ButtonLock = input->Value ? target : 0;
                }
             }
+
+            if (!Self->ButtonLock) {
+               // If the button has been released then we need to compute the correct cursor and check if
+               // an enter event is required.  This code has been pulled from the JTYPE::MOVEMENT handler 
+               // and reduced appropriately.
+               
+               if (cursor IS PTC::NIL) cursor = PTC::DEFAULT;
+               bool processed = false;
+               for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
+                  auto &bounds = *it;
+
+                  if ((processed) and (bounds.Cursor IS PTC::NIL)) continue;
+
+                  if (!((input->X >= bounds.BX1) and (input->Y >= bounds.BY1) and
+                      (input->X < bounds.BX2) and (input->Y < bounds.BY2))) continue;
+
+                  pf::ScopedObjectLock<extVector> lock(bounds.VectorID);
+                  if (!lock.granted()) continue;
+                  auto vector = lock.obj;
+
+                  if (vecPointInPath(vector, input->X, input->Y) != ERR_Okay) continue;
+
+                  if (Self->ActiveVector != bounds.VectorID) {
+                     send_enter_event(vector, input, bounds.X, bounds.Y);
+                  }
+
+                  if ((!Self->ButtonLock) and (vector->Cursor != PTC::NIL)) cursor = vector->Cursor;
+
+                  if (!processed) { 
+                     DOUBLE tx = input->X, ty = input->Y; // Invert the coordinates to pass localised coords to the vector.
+                     auto invert = ~vector->Transform; // Presume that prior path generation has configured the transform.
+                     invert.transform(&tx, &ty);
+
+                     if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
+                        pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+                        if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+                     }
+
+                     Self->ActiveVector  = vector->UID;
+                     Self->ActiveVectorX = tx;
+                     Self->ActiveVectorY = ty;
+
+                     processed = true;
+                  }
+
+                  if (cursor IS PTC::DEFAULT) continue; // Keep scanning in case an input boundary defines a cursor.
+                  else break; // Input consumed and cursor image identified.
+               }
+
+               // If no vectors received a hit for a movement message, we may need to inform the last active vector that the
+               // cursor left its area.
+
+               if ((Self->ActiveVector) and (!processed)) {
+                  pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+                  Self->ActiveVector = 0;
+                  if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
+               }
+            }
          }
       }
       else if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
-         if (cursor IS PTC(-1)) cursor = PTC::DEFAULT;
+         if (cursor IS PTC::NIL) cursor = PTC::DEFAULT;
          bool processed = false;
          for (auto it = Self->InputBoundaries.rbegin(); it != Self->InputBoundaries.rend(); it++) {
             auto &bounds = *it;
@@ -1120,16 +1178,14 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
                event.Y    = ty;
                send_input_events(vector, &event);
 
-               if ((input->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
-                  if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
-                     pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
-                     if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
-                  }
-
-                  Self->ActiveVector  = vector->UID;
-                  Self->ActiveVectorX = tx;
-                  Self->ActiveVectorY = ty;
+               if ((Self->ActiveVector) and (Self->ActiveVector != vector->UID)) {
+                  pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
+                  if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
                }
+
+               Self->ActiveVector  = vector->UID;
+               Self->ActiveVectorX = tx;
+               Self->ActiveVectorY = ty;
 
                processed = true;
             }
@@ -1150,11 +1206,15 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       else log.warning("Unrecognised movement type %d", LONG(input->Type));
    }
 
-   if ((cursor != PTC(-1)) and (!Self->ButtonLock) and (Self->SurfaceID)) {
-      Self->Cursor = cursor;
-      pf::ScopedObjectLock<objSurface> lock(Self->SurfaceID);
-      if (lock.granted() and (lock.obj->Cursor != Self->Cursor)) {
-         lock.obj->setCursor(cursor);
+   if ((Self->SurfaceID) and (!Self->ButtonLock)) {
+      if (cursor IS PTC::NIL) cursor = PTC::DEFAULT; // Revert the cursor to the default if nothing is defined
+
+      if (Self->Cursor != cursor) {
+         Self->Cursor = cursor;
+         pf::ScopedObjectLock<objSurface> surface(Self->SurfaceID);
+         if (surface.granted() and (surface.obj->Cursor != Self->Cursor)) {
+            surface.obj->setCursor(cursor);
+         }
       }
    }
 

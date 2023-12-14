@@ -526,8 +526,6 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
       print_stream(Self);
    #endif
 
-   log.trace("Resetting variables.");
-
    Self->Highlight = glHighlight;
 
    if (Self->CursorStroke) FreeResource(Self->CursorStroke);

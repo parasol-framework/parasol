@@ -308,6 +308,15 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
       }
       scene->InputSubscriptions.erase(Self);
       scene->KeyboardSubscriptions.erase(Self);
+
+      if (scene->ActiveVector IS Self->UID) {
+         if (scene->Cursor != PTC::DEFAULT) {
+            pf::ScopedObjectLock<objSurface> surface(scene->SurfaceID);
+            if ((surface.granted()) and (surface.obj->Cursor != PTC::DEFAULT)) {
+               surface.obj->setCursor(PTC::DEFAULT);
+            }
+         }
+      }
    }
 
    {
