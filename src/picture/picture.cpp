@@ -1170,7 +1170,7 @@ static void png_error_hook(png_structp png_ptr, png_const_charp message)
 static void png_warning_hook(png_structp png_ptr, png_const_charp message)
 {
    pf::Log log;
-   log.warning("Warning: %s", message);
+   log.msg("libpng: %s", message); // PNG warnings aren't serious enough to warrant logging beyond the info level
 }
 
 ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
