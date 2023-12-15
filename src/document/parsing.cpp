@@ -4,8 +4,8 @@ The parsing code converts XML RIPL data to a serial byte stream, after which the
 of the original XML content is not maintained.  After parsing, the stream will be ready for presentation via the
 layout code elsewhere in this code base.
 
-The stream consists of byte codes represented by the base_code class.  Each type of code is represented by a C++ 
-class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph, 
+The stream consists of byte codes represented by the base_code class.  Each type of code is represented by a C++
+class prefixed with 'bc'.  Each code type has a specific purpose such as defining a new font style, paragraph,
 hyperlink etc.  When a type is instantiated it will be assigned a UID and stored in the Codes hashmap.
 
 */
@@ -587,7 +587,7 @@ static void tag_body(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
             if (Self->LeftMargin < 0) Self->LeftMargin = 0;
             else if (Self->LeftMargin > MAX_BODY_MARGIN) Self->LeftMargin = MAX_BODY_MARGIN;
-            
+
             if (Self->TopMargin < 0) Self->TopMargin = 0;
             else if (Self->TopMargin > MAX_BODY_MARGIN) Self->TopMargin = MAX_BODY_MARGIN;
 
@@ -805,7 +805,7 @@ static void tag_debug(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS 
 // Page viewport.  This feature should only be used for the creation of resources that can then be referred to in the
 // document as named patterns, or via the 'use' option for symbols.
 //
-// This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing 
+// This tag can only be used ONCE per document.  Potentially we could improve this by appending to the existing
 // SVG object via data feeds.
 
 static void tag_svg(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
@@ -817,7 +817,7 @@ static void tag_svg(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
       log.warning("Illegal attempt to declare <svg/> more than once.");
       return;
    }
-   
+
    STRING xml_svg;
    auto err = xmlGetString(XML, Tag.ID, XMF::NIL, &xml_svg);
    if (!err) {
@@ -833,7 +833,7 @@ static void tag_svg(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &C
 // SVG objects that are created in this way are treated as dynamically rendered background graphics.  All text will
 // be laid on top with no clipping considerations.
 //
-// If more sophisticated inline or float embedding is required, the <image> tag is probably more applicable to the 
+// If more sophisticated inline or float embedding is required, the <image> tag is probably more applicable to the
 // client.
 
 static void tag_use(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &Children, stream_char &Index, IPF Flags)
@@ -1256,7 +1256,7 @@ static void tag_link(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
       link.font = Self->Style.font_style;
       link.font.options |= FSO::UNDERLINE;
       link.font.fill = link.fill;
-      
+
       auto &new_link = Self->insert_code(Index, link);
       Self->Links.push_back(&new_link);
 
@@ -2798,16 +2798,16 @@ static void tag_cell(extDocument *Self, objXML *XML, XMLTag &Tag, objXML::TAGS &
 
          case HASH_fill: cell.fill = Tag.Attribs[i].Value; break;
 
-         case HASH_stroke: 
-            cell.stroke = Tag.Attribs[i].Value; 
+         case HASH_stroke:
+            cell.stroke = Tag.Attribs[i].Value;
             if (!cell.strokeWidth) {
                cell.strokeWidth = Self->Style.table->table->strokeWidth;
                if (!cell.strokeWidth) cell.strokeWidth = 1;
             }
             break;
 
-         case HASH_strokeWidth: 
-            cell.strokeWidth = StrToFloat(Tag.Attribs[i].Value); 
+         case HASH_strokeWidth:
+            cell.strokeWidth = StrToFloat(Tag.Attribs[i].Value);
             break;
 
          case HASH_nowrap:

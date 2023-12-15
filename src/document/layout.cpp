@@ -1,7 +1,7 @@
 /*
 
-The layout process involves reading the serialised document stream and generating line segments that declare 
-regions for graphics content.  These segments have a dual purpose in that they can also be used for user 
+The layout process involves reading the serialised document stream and generating line segments that declare
+regions for graphics content.  These segments have a dual purpose in that they can also be used for user
 interaction.
 
 The trickiest parts of the layout process are state management, word wrapping and page width extension.

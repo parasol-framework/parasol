@@ -227,7 +227,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
    if (TargetIndex < 0) TargetIndex = Self->Stream.size();
 
    log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(Flags), Tag[0].Attribs[0].Name.c_str());
-   
+
    stream_char inserted_at(Self->Stream.size());
    stream_char insert_index(Self->Stream.size());
 

@@ -297,7 +297,15 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
       if (Self->Parent->Class->ClassID IS ID_VECTORSCENE) ((objVectorScene *)Self->Parent)->Viewport = (objVectorViewport *)Self->Next;
       else ((extVector *)Self->Parent)->Child = Self->Next;
    }
-   if (Self->Child) Self->Child->Parent = NULL;
+
+   if (Self->Child) { 
+      // Clear the parent reference for all children of the vector (essential for maintaining pointer integrity).
+      auto &scan = Self->Child;
+      while (scan) {
+         scan->Parent = NULL;
+         scan = scan->Next;
+      }
+   }
 
    if ((Self->Scene) and (!Self->Scene->collecting())) {
       auto scene = (extVectorScene *)Self->Scene;
