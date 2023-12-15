@@ -82,8 +82,9 @@ static ERROR object_free(BaseClass *Object)
       log.trace("Object %p #%d is missing its class pointer.", Object, Object->UID);
       return ERR_Okay;
    }
-
-   // Return if the object is currently in the process of being freed (i.e. avoid recursion)
+   
+   // If the object is locked then we mark it for collection and return.
+   // Collection is achieved via the message queue for maximum safety.
 
    if (Object->Locked) {
       log.debug("Object #%d locked; marking for deletion.", Object->UID);
@@ -91,11 +92,8 @@ static ERROR object_free(BaseClass *Object)
       return ERR_InUse;
    }
 
-   // If the object is locked from LockObject() then we mark it for collection and return.
-   // Collection is achieved via the message queue as the safest and predictable option.
-
    if (Object->terminating()) {
-      log.trace("Object already marked for termination.");
+      log.trace("Object already being terminated.");
       return ERR_InUse;
    }
 

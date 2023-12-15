@@ -1566,7 +1566,7 @@ struct BaseClass { // Must be 64-bit aligned
    CSTRING className();
 
    inline bool collecting() { // Is object being freed or marked for collection?
-      return (Flags & (NF::FREE|NF::COLLECT)) != NF::NIL;
+      return (Flags & (NF::FREE|NF::COLLECT|NF::FREE_ON_UNLOCK)) != NF::NIL;
    }
 
    inline bool terminating() { // Is object currently being freed?
