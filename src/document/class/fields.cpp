@@ -298,7 +298,8 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
       if (Self->initialised()) {
          if ((Self->XML) and (!reload)) {
             process_parameters(Self, Self->Path);
-            process_page(Self, Self->XML);
+            parser parse(Self, Self->XML);
+            parse.process_page();
          }
          else {
             load_doc(Self, Self->Path, false, ULD::NIL);

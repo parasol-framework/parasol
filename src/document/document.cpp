@@ -3,14 +3,6 @@
 The source code of the Parasol project is made publicly available under the terms described in the LICENSE.TXT file
 that is distributed with this package.  Please refer to it for further information on licensing.
 
-**********************************************************************************************************************
-
--MODULE-
-Document: Provides document display and editing functionality.
-
-The Document module exports a small number of functions in support of the @Document class.
--END-
-
 *********************************************************************************************************************/
 
 //#define _DEBUG
@@ -207,7 +199,6 @@ static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
 static void  check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
 static ERROR consume_input_events(objVector *, const InputEvent *);
 static void  translate_args(extDocument *, const std::string &, std::string &);
-static void  translate_attrib_args(extDocument *, pf::vector<XMLAttrib> &);
 static LONG  create_font(const std::string &, const std::string &, LONG);
 static void  deactivate_edit(extDocument *, bool);
 static void  deselect_text(extDocument *);
@@ -232,11 +223,7 @@ static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-static TRF   parse_tag(extDocument *, objXML *, XMLTag &, stream_char &, IPF &);
-static TRF   parse_tags(extDocument *, objXML *, objXML::TAGS &, stream_char &, IPF = IPF::NIL);
-static TRF   parse_tags_with_style(extDocument *, objXML *, objXML::TAGS &, stream_char &, style_status &, IPF = IPF::NIL);
 static void  print_xmltree(objXML::TAGS &, LONG &);
-static ERROR process_page(extDocument *, objXML *);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
@@ -249,12 +236,13 @@ static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(extDocument *, stream_char, stream_char);
-static void  tag_xml_content(extDocument *, objXML *, XMLTag &, PXF);
 static ERROR unload_doc(extDocument *, ULD);
 static bool  valid_object(extDocument *, OBJECTPTR);
 static bool  valid_objectid(extDocument *, OBJECTID);
 static BYTE  view_area(extDocument *, LONG, LONG, LONG, LONG);
 static std::string write_calc(DOUBLE, WORD);
+
+static ERROR GET_WorkingPath(extDocument *, CSTRING *);
 
 inline void print_xmltree(objXML::TAGS &Tags) {
    LONG indent = 0;
@@ -264,74 +252,6 @@ inline void print_xmltree(objXML::TAGS &Tags) {
 inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
    return read_rgb8(Value.c_str(), RGB);
 }
-
-static TAGROUTINE tag_advance, tag_background, tag_body, tag_bold, tag_br, tag_cache, tag_call, tag_cell;
-static TAGROUTINE tag_debug, tag_div, tag_editdef, tag_focus, tag_font, tag_footer, tag_head, tag_header, tag_image;
-static TAGROUTINE tag_include, tag_index, tag_inject, tag_italic, tag_li, tag_link, tag_list, tag_page;
-static TAGROUTINE tag_paragraph, tag_parse, tag_pre, tag_print, tag_repeat, tag_row;
-static TAGROUTINE tag_script, tag_set, tag_setmargins, tag_svg, tag_use, tag_table, tag_template, tag_trigger;
-static TAGROUTINE tag_underline, tag_xml, tag_xmlraw, tag_xmltranslate;
-
-//********************************************************************************************************************
-// TAG::OBJECTOK: Indicates that the tag can be used inside an object element, e.g. <image>.<this_tag_ok/>..</image>
-// TAG::CHILDREN: The tag requires child content/tags in order to be valid.
-// FILTER_TABLE:  The tag is restricted to use within <table> sections.
-// FILTER_ROW:    The tag is restricted to use within <row> sections.
-
-static std::map<ULONG, tagroutine> glTags = {
-   // Content tags (tags that affect text, the page layout etc)
-   { HASH_a,             { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_link,          { tag_link,         TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_b,             { tag_bold,         TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_div,           { tag_div,          TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { HASH_p,             { tag_paragraph,    TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { HASH_font,          { tag_font,         TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_i,             { tag_italic,       TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_li,            { tag_li,           TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_pre,           { tag_pre,          TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_u,             { tag_underline,    TAG::CHILDREN|TAG::CONTENT } },
-   { HASH_list,          { tag_list,         TAG::CHILDREN|TAG::CONTENT|TAG::PARAGRAPH } },
-   { HASH_advance,       { tag_advance,      TAG::CONTENT } },
-   { HASH_br,            { tag_br,           TAG::CONTENT } },
-   { HASH_image,         { tag_image,        TAG::CONTENT } },
-   // Conditional command tags
-   { HASH_repeat,        { tag_repeat,       TAG::CHILDREN|TAG::CONDITIONAL } },
-   // Special instructions
-   { HASH_cache,         { tag_cache,        TAG::INSTRUCTION } },
-   { HASH_call,          { tag_call,         TAG::INSTRUCTION } },
-   { HASH_debug,         { tag_debug,        TAG::INSTRUCTION } },
-   { HASH_focus,         { tag_focus,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { HASH_include,       { tag_include,      TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { HASH_print,         { tag_print,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { HASH_parse,         { tag_parse,        TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { HASH_set,           { tag_set,          TAG::INSTRUCTION|TAG::OBJECTOK } },
-   { HASH_trigger,       { tag_trigger,      TAG::INSTRUCTION } },
-   // Root level tags
-   { HASH_page,          { tag_page,         TAG::CHILDREN | TAG::ROOT } },
-   { HASH_svg,           { tag_svg,          TAG::CHILDREN | TAG::ROOT } },
-   // Others
-   { HASH_background,    { tag_background,   TAG::NIL } },
-   { HASH_data,          { NULL,             TAG::NIL } },
-   { HASH_editdef,       { tag_editdef,      TAG::NIL } },
-   { HASH_footer,        { tag_footer,       TAG::CHILDREN } },
-   { HASH_header,        { tag_header,       TAG::CHILDREN } },
-   { HASH_info,          { tag_head,         TAG::NIL } },
-   { HASH_inject,        { tag_inject,       TAG::OBJECTOK } },
-   { HASH_row,           { tag_row,          TAG::CHILDREN|TAG::FILTER_TABLE } },
-   { HASH_cell,          { tag_cell,         TAG::PARAGRAPH|TAG::FILTER_ROW } },
-   { HASH_table,         { tag_table,        TAG::CHILDREN } },
-   { HASH_td,            { tag_cell,         TAG::CHILDREN|TAG::FILTER_ROW } },
-   { HASH_tr,            { tag_row,          TAG::CHILDREN } },
-   { HASH_use,           { tag_use,          TAG::NIL } },
-   { HASH_body,          { tag_body,         TAG::NIL } },
-   { HASH_index,         { tag_index,        TAG::NIL } },
-   { HASH_setmargins,    { tag_setmargins,   TAG::OBJECTOK } },
-   { HASH_script,        { tag_script,       TAG::NIL } },
-   { HASH_template,      { tag_template,     TAG::NIL } },
-   { HASH_xml,           { tag_xml,          TAG::OBJECTOK } },
-   { HASH_xml_raw,       { tag_xmlraw,       TAG::OBJECTOK } },
-   { HASH_xml_translate, { tag_xmltranslate, TAG::OBJECTOK } }
-};
 
 #ifdef DBG_STREAM
 static void print_stream(extDocument *, const RSTREAM &);
@@ -371,33 +291,6 @@ template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 template <class T> inline const std::string & BC_NAME(RSTREAM &Stream, T Index) {
    return byte_code(Stream[Index].code);
 }
-
-//********************************************************************************************************************
-// Convenience class for entering and leaving a template region.  This is achieved by setting InjectXML and InjectTag
-// with references to the content that will be injected to the template.  Injection typically occurs when the client
-// uses the <inject/> tag.
-
-class init_template {
-   extDocument  *self;
-   objXML::TAGS *tags;
-   objXML       *xml;
-
-   public:
-   init_template(extDocument *pSelf, objXML::TAGS &pTag, objXML *pXML) {
-      self = pSelf;
-      tags = pSelf->InjectTag;
-      xml  = pSelf->InjectXML;
-      pSelf->InjectTag = &pTag;
-      pSelf->InjectXML = pXML;
-      pSelf->InTemplate++;
-   }
-
-   ~init_template() {
-      self->InTemplate--;
-      self->InjectTag = tags;
-      self->InjectXML = xml;
-   }
-};
 
 //********************************************************************************************************************
 

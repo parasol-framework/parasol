@@ -212,7 +212,7 @@ class objDocument : public BaseClass {
    STRING   Copyright;              // Copyright information for the document.
    STRING   Keywords;               // Includes keywords declared by the source document.
    STRING   Background;             // Optional background colour for the document.
-   STRING   CursorStroke;           // The colour used for the document cursor.
+   STRING   CursorStroke;           // The colour or brush stroke to use for the document cursor.
    STRING   BorderStroke;           // The stroke to use for drawing a border around the document window.
    objVectorViewport * Viewport;    // A target viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.

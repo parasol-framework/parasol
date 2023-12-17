@@ -782,7 +782,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       log.trace("XML data already loaded.");
       if (!Self->Path.empty()) process_parameters(Self, Self->Path);
       pf::LogLevel level(2);
-      process_page(Self, Self->XML);
+      parser parse(Self, Self->XML);
+      parse.process_page();
    }
    else if (!Self->Path.empty()) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
@@ -1151,7 +1152,8 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
       {
          pf::LogLevel level(2);
          unload_doc(Self, ULD::REFRESH);
-         process_page(Self, Self->XML);
+         parser parse(Self, Self->XML);
+         parse.process_page();
       }
 
       if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");

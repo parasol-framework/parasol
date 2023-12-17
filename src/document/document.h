@@ -132,33 +132,13 @@ enum {
 
 enum class IPF : ULONG {
    NIL = 0,
-   NO_CONTENT  = 0x0001,
-   STRIP_FEEDS = 0x0002,
-   CHECK_ELSE  = 0x0004,
-   // These flag values are in the upper word so that we can or them with IPF and TAG constants.
-   FILTER_TABLE = 0x80000000, // The tag is restricted to use within <table> sections.
-   FILTER_ROW   = 0X40000000, // The tag is restricted to use within <row> sections.
-   FILTER_ALL   = 0xffff0000
+   NO_CONTENT   = 0x0001, // XML content data will be ignored
+   FILTER_TABLE = 0x0008, // The tag is restricted to use within <table> sections.
+   FILTER_ROW   = 0X0010, // The tag is restricted to use within <row> sections.
+   FILTER_ALL   = (FILTER_TABLE|FILTER_ROW)
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(IPF)
-
-enum class TAG : ULONG {
-   NIL = 0,
-   CHILDREN     = 0x00000001, // Children are compulsory for the tag to have an effect
-   CONTENT      = 0x00000002, // Tag has a direct impact on text content or the page layout
-   CONDITIONAL  = 0x00000004, // Tag is a conditional statement
-   INSTRUCTION  = 0x00000008, // Tag is an executable instruction
-   ROOT         = 0x00000010, // Tag is limited to use at the root of the document
-   PARAGRAPH    = 0x00000020, // Tag results in paragraph formatting (will force some type of line break)
-   OBJECTOK     = 0x00000040, // It is OK for this tag to be used within any object
-   // These flag values are in the upper word so that we can or them with IPF and TAG constants.
-   FILTER_TABLE = 0x80000000, // The tag is restricted to use within <table> sections.
-   FILTER_ROW   = 0X40000000, // The tag is restricted to use within <row> sections.
-   FILTER_ALL   = 0xffff0000
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(TAG)
 
 enum class TRF : ULONG {
    NIL      = 0,
@@ -356,14 +336,6 @@ public:
 };
 
 //********************************************************************************************************************
-
-typedef void TAGROUTINE (extDocument *, objXML *, XMLTag &, objXML::TAGS &, stream_char &, IPF);
-
-class tagroutine {
-public:
-   TAGROUTINE *routine;
-   TAG flags;
-};
 
 struct process_table {
    struct bc_table *table;
@@ -814,7 +786,7 @@ class extDocument : public objDocument {
    RSTREAM Stream;                 // Internal stream buffer
    style_status Style;
    style_status RestoreStyle;
-   std::map<ULONG, XMLTag *> TemplateIndex;
+   std::map<ULONG, XMLTag *>   TemplateIndex;
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<bc_link *>      Links;
@@ -836,9 +808,7 @@ class extDocument : public objDocument {
    objXML *XML;                // Source XML document
    objXML *InsertXML;          // For temporary XML parsing by the InsertXML method
    objXML *Templates;          // All templates for the current document are stored here
-   objXML *InjectXML;
-   objXML::TAGS *InjectTag, *HeaderTag, *FooterTag, *BodyTag;
-   objSVG *SVG;
+   objSVG *SVG;                // Allocated by the <svg> tag
    XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
    objTime *Time;
    OBJECTPTR CurrentObject;
@@ -877,7 +847,6 @@ class extDocument : public objDocument {
    WORD   FocusIndex;         // Tab focus index
    WORD   Invisible;          // Incremented for sections within a hidden index
    UBYTE  Processing;         // If > 0, the page layout is being altered
-   UBYTE  InTemplate;
    UBYTE  BkgdGfx;
    UBYTE  State:3;
    bool   RefreshTemplates; // True if the template index requires refreshing.
