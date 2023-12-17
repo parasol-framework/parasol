@@ -1,6 +1,6 @@
 /*
 
-The parsing code converts XML RIPL data to a serial byte stream, after which the XML data can be discarded.  A DOM
+The parsing code converts XML data to a serial byte stream, after which the XML data can be discarded.  A DOM
 of the original XML content is not maintained.  After parsing, the stream will be ready for presentation via the
 layout code elsewhere in this code base.
 
@@ -66,7 +66,6 @@ struct parser {
    inline void tag_print(XMLTag &);
    inline void tag_repeat(XMLTag &);
    inline void tag_row(XMLTag &);
-   inline void tag_set(XMLTag &);
    inline void tag_setmargins(XMLTag &);
    inline void tag_script(XMLTag &);
    inline void tag_svg(XMLTag &);
@@ -900,13 +899,9 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          if (!Tag.Children.empty()) tag_pre(Tag.Children);
          break;
 
-      case HASH_u:
-         if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::UNDERLINE);
-         break;
+      case HASH_u: if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::UNDERLINE); break;
 
-      case HASH_list:
-         if (!Tag.Children.empty()) tag_list(Tag, Tag.Children);
-         break;
+      case HASH_list: if (!Tag.Children.empty()) tag_list(Tag, Tag.Children); break;
 
       case HASH_advance: tag_advance(Tag); break;
 
@@ -919,9 +914,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       // Conditional command tags
 
-      case HASH_repeat:
-         if (!Tag.Children.empty()) tag_repeat(Tag);
-         break;
+      case HASH_repeat: if (!Tag.Children.empty()) tag_repeat(Tag); break;
 
       case HASH_break:
          // Breaking stops executing all tags (within this section) beyond the breakpoint.  If in a loop, the loop
@@ -991,7 +984,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_debug: tag_debug(Tag); break;
 
-      // Simple tag to tell the parser that the object or link that immediately follows the focus element should
+      // <focus> indicates that the interactable thing (e.g. hyperlink) that immediately follows it should
       // have the initial focus when the user interacts with the document.  Commonly used for things such as input boxes.
       //
       // If the focus tag encapsulates any content, it will be processed in the same way as if it were to immediately follow
@@ -999,37 +992,21 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       //
       // Note that for hyperlinks, the 'select' attribute can also be used as a convenient means to assign focus.
 
-      case HASH_focus:
-         Self->FocusIndex = Self->Tabs.size();
-         break;
+      case HASH_focus: Self->FocusIndex = Self->Tabs.size(); break;
 
-      case HASH_include:
-         tag_include(Tag);
-         break;
+      case HASH_include: tag_include(Tag); break;
 
-      case HASH_print:
-         tag_print(Tag);
-         break;
+      case HASH_print: tag_print(Tag); break;
 
-      case HASH_parse:
-         tag_parse(Tag);
-         break;
-
-      case HASH_set: // DEPRECATED?  Sets the field of an object
-         tag_set(Tag);
-         break;
+      case HASH_parse: tag_parse(Tag); break;
 
       case HASH_trigger: tag_trigger(Tag); break;
 
       // Root level instructions
 
-      case HASH_page:
-         if (!Tag.Children.empty()) tag_page(Tag);
-         break;
+      case HASH_page: if (!Tag.Children.empty()) tag_page(Tag); break;
 
-      case HASH_svg:
-         if (!Tag.Children.empty()) tag_svg(Tag);
-         break;
+      case HASH_svg: if (!Tag.Children.empty()) tag_svg(Tag); break;
 
       // Table layout instructions
 
@@ -1050,13 +1027,9 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          else if (!Tag.Children.empty()) tag_cell(Tag);
          break;
 
-      case HASH_table:
-         if (!Tag.Children.empty()) tag_table(Tag);
-         break;
+      case HASH_table: if (!Tag.Children.empty()) tag_table(Tag); break;
 
-      case HASH_tr:
-         if (!Tag.Children.empty()) tag_row(Tag);
-         break;
+      case HASH_tr: if (!Tag.Children.empty()) tag_row(Tag); break;
 
       // Others
 
@@ -1097,13 +1070,9 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_index: tag_index(Tag); break;
 
-      case HASH_setmargins:
-         tag_setmargins(Tag);
-         break;
+      case HASH_setmargins: tag_setmargins(Tag); break;
 
-      case HASH_script:
-         tag_script(Tag);
-         break;
+      case HASH_script: tag_script(Tag); break;
 
       case HASH_template: tag_template(Tag); break;
 
@@ -2105,51 +2074,6 @@ void parser::tag_print(XMLTag &Tag)
             }
          }
          else log.warning("Cannot <print src.../> unless in unrestricted mode.");
-      }
-   }
-}
-
-//********************************************************************************************************************
-// Sets the attributes of an object.  NOTE: For security reasons, this feature is limited to objects that are children
-// of the document object.
-//
-//   <set object="" fields .../>
-//
-//   <set arg=value .../>
-//
-// Note: XML validity could be improved restricting the set tag so that args were set as <set arg="argname"
-// value="value"/>, however apart from being more convoluted, this would also result in more syntactic cruft as each
-// arg setting would require its own set element.
-
-void parser::tag_set(XMLTag &Tag)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Tag.Attribs.size() > 1) {
-      if (!StrMatch("object", Tag.Attribs[1].Name)) {
-         OBJECTID objectid;
-         if (!FindObject(Tag.Attribs[1].Value.c_str(), 0, FOF::SMART_NAMES, &objectid)) {
-            if (valid_objectid(Self, objectid)) {
-               pf::ScopedObjectLock object(objectid, 3000);
-               if (object.granted()) {
-                  for (unsigned i=2; i < Tag.Attribs.size(); i++) {
-                     log.trace("tag_set:","#%d %s = '%s'", objectid, Tag.Attribs[i].Name, Tag.Attribs[i].Value);
-
-                     auto fid = StrHash(Tag.Attribs[i].Name[0] IS '@' ? Tag.Attribs[i].Name.c_str()+1 : Tag.Attribs[i].Name.c_str());
-                     object->set(fid, Tag.Attribs[i].Value);
-                  }
-               }
-            }
-         }
-      }
-      else {
-         // Set document arguments
-         for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-            if (Tag.Attribs[i].Name[0] IS '@') {
-               acSetVar(Self, Tag.Attribs[i].Name.c_str()+1, Tag.Attribs[i].Value.c_str());
-            }
-            else acSetVar(Self, Tag.Attribs[i].Name.c_str(), Tag.Attribs[i].Value.c_str());
-         }
       }
    }
 }
