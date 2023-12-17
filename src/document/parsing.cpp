@@ -22,15 +22,15 @@ struct parser {
    stream_char m_index;
 
    ERROR process_page();
-   TRF parse_tag(XMLTag &, IPF &);
-   TRF parse_tags(objXML::TAGS &, IPF = IPF::NIL);
-   TRF parse_tags_with_style(objXML::TAGS &, style_status &, IPF = IPF::NIL);
-   void tag_xml_content(XMLTag &, PXF);
-   void translate_attrib_args(pf::vector<XMLAttrib> &);
-   void translate_args(const std::string &, std::string &);
+   TRF   parse_tag(XMLTag &, IPF &);
+   TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
+   TRF   parse_tags_with_style(objXML::TAGS &, style_status &, IPF = IPF::NIL);
+   void  tag_xml_content(XMLTag &, PXF);
+   void  translate_attrib_args(pf::vector<XMLAttrib> &);
+   void  translate_args(const std::string &, std::string &);
    ERROR calc(const std::string &, DOUBLE *, std::string &);
    ERROR tag_xml_content_eval(std::string &);
-   void trim_preformat(extDocument *);
+   void  trim_preformat(extDocument *);
 
    parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML) {
       m_index = stream_char(Self->Stream.size());
@@ -540,17 +540,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
 
             OBJECTID objectid = 0;
             if (!name.empty()) {
-               if (name == "self") {
-                  // [self] can't be used in RIPL, because arguments are parsed prior to object
-                  // creation.  We print a message to remind the developer of this rather than
-                  // failing quietly.
-
-                  log.warning("Self references are not permitted in RIPL.");
-               }
-               else if (name == "owner") {
-                  if (Self->CurrentObject) objectid = Self->CurrentObject->UID;
-               }
-               else if (!FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid)) {
+               if (!FindObject(name.c_str(), 0, FOF::SMART_NAMES, &objectid)) {
                   if ((Self->Flags & DCF::UNRESTRICTED) IS DCF::NIL) {
                      // Only consider objects that are children of the document
                      bool valid = false;
@@ -787,17 +777,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
    if (Tag.isContent()) {
       if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
          if (m_strip_feeds) {
-            if (Self->CurrentObject) {
-               // Objects do not normally accept document content (user should use <xml>)
-               // An exception is made for content that is injected within an object tag.
-
-               if (m_xml IS m_inject_xml) {
-                  unsigned i = 0;
-                  while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
-                  acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str() + i);
-               }
-            }
-            else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
+            if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
                unsigned i = 0;
                while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
                if (i > 0) {
@@ -807,9 +787,6 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
                else insert_text(Self, m_index, Tag.Attribs[0].Value, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
             }
             m_strip_feeds = false;
-         }
-         else if (Self->CurrentObject) {
-            if (m_xml IS m_inject_xml) acDataContent(Self->CurrentObject, Tag.Attribs[0].Value.c_str());
          }
          else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
             insert_text(Self, m_index, Tag.Attribs[0].Value, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
@@ -943,10 +920,6 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       // Conditional command tags
 
       case HASH_repeat:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of tag %s within object of class '%s'.", tagname.c_str(), Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
          if (!Tag.Children.empty()) tag_repeat(Tag);
          break;
 
@@ -1027,43 +1000,23 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       // Note that for hyperlinks, the 'select' attribute can also be used as a convenient means to assign focus.
 
       case HASH_focus:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <focus> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else Self->FocusIndex = Self->Tabs.size();
+         Self->FocusIndex = Self->Tabs.size();
          break;
 
       case HASH_include:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <include> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_include(Tag);
+         tag_include(Tag);
          break;
 
       case HASH_print:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <print> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_print(Tag);
+         tag_print(Tag);
          break;
 
       case HASH_parse:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <parse> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_parse(Tag);
+         tag_parse(Tag);
          break;
 
       case HASH_set: // DEPRECATED?  Sets the field of an object
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <set> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_set(Tag);
+         tag_set(Tag);
          break;
 
       case HASH_trigger: tag_trigger(Tag); break;
@@ -1128,11 +1081,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_info: tag_head(Tag); break;
 
       case HASH_inject: // This instruction can only be used from within a template.
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <inject> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else if (m_in_template) {
+         if (m_in_template) {
             if (m_inject_tag) {
                auto old_xml = change_xml(m_inject_xml);
                parse_tags(m_inject_tag[0], Flags);
@@ -1149,51 +1098,14 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_index: tag_index(Tag); break;
 
       case HASH_setmargins:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <setmargins> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_setmargins(Tag);
+         tag_setmargins(Tag);
          break;
 
       case HASH_script:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <script> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_script(Tag);
+         tag_script(Tag);
          break;
 
       case HASH_template: tag_template(Tag); break;
-
-      // Support for sending XML data to embedded objects (deprecated?)
-      //
-      // NOTE: If no child tags or content is inside the XML string, or if attributes are attached to the XML tag, then the
-      // user is trying to create a new XML object (under the Data category), not the XML reserved word.
-
-      case HASH_xml:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <xml> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_xml_content(Tag, PXF::ARGS);
-         break;
-
-      case HASH_xml_raw:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <xml> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_xml_content(Tag, PXF::NIL);
-         break;
-
-      case HASH_xml_translate:
-         if (Self->CurrentObject) {
-            log.warning("Illegal use of <xml> within object of class '%s'.", Self->CurrentObject->Class->ClassName);
-            result = TRF::BREAK;
-         }
-         else tag_xml_content(Tag, PXF::TRANSLATE|PXF::ARGS);
-         break;
 
       default:
          if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
@@ -2181,12 +2093,7 @@ void parser::tag_print(XMLTag &Tag)
       if (*tagname IS '$') tagname++;
 
       if (!StrMatch("value", tagname)) {
-         if (Self->CurrentObject) {
-            acDataText(Self->CurrentObject, Tag.Attribs[1].Value.c_str());
-         }
-         else {
-            insert_text(Self, m_index, Tag.Attribs[1].Value, (Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
-         }
+         insert_text(Self, m_index, Tag.Attribs[1].Value, (Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
       }
       else if (!StrMatch("src", Tag.Attribs[1].Name)) {
          // This option is only supported in unrestricted mode
@@ -2281,51 +2188,6 @@ void parser::tag_template(XMLTag &Tag)
       FreeResource(strxml);
    }
    else log.warning("Failed to convert template %d to an XML string.", Tag.ID);
-}
-
-//********************************************************************************************************************
-// For use the by tag_xml*() range of functions only.  Forwards <xml> data sections to a target object via XML data
-// channels.  Content will be translated only if requested by the caller.
-
-void parser::tag_xml_content(XMLTag &Tag, PXF Flags)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Tag.Children.empty()) return;
-
-   OBJECTPTR target = Self->CurrentObject;
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("object", Tag.Attribs[i].Name)) {
-         OBJECTID id;
-         if (!FindObject(Tag.Attribs[i].Value.c_str(), 0, FOF::NIL, &id)) {
-            target = GetObjectPtr(id);
-            if (!valid_object(Self, target)) return;
-         }
-         else return;
-      }
-   }
-
-   DLAYOUT("XML: %d, Tag: %d, Target: %d", m_xml->UID, Tag.ID, target->UID);
-
-   if (!target) {
-      log.warning("<xml> used without a valid object reference to receive the XML.");
-      return;
-   }
-
-   STRING xmlstr;
-   if (!xmlGetString(m_xml, Tag.ID, XMF::INCLUDE_SIBLINGS, &xmlstr)) {
-      if ((Flags & (PXF::ARGS|PXF::TRANSLATE)) != PXF::NIL) {
-         std::string str(xmlstr);
-         translate_args(str, str);
-
-         if ((Flags & PXF::TRANSLATE) != PXF::NIL) tag_xml_content_eval(str);
-
-         acDataXML(target, str.c_str());
-      }
-      else acDataXML(target, xmlstr);
-
-      FreeResource(xmlstr);
-   }
 }
 
 //********************************************************************************************************************

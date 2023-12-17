@@ -205,7 +205,7 @@ static void  deselect_text(extDocument *);
 static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
-static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source);
+static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
 static ERROR tag_xml_content_eval(extDocument *, std::string &);
 static SEGINDEX find_segment(extDocument *, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);

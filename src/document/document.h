@@ -811,7 +811,6 @@ class extDocument : public objDocument {
    objSVG *SVG;                // Allocated by the <svg> tag
    XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
    objTime *Time;
-   OBJECTPTR CurrentObject;
    OBJECTPTR UserDefaultScript;    // Allows the developer to define a custom default script.
    OBJECTPTR DefaultScript;
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
