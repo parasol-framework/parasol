@@ -591,7 +591,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    Self->Page = NULL; // Page and View are freed by their parent Viewport.
    Self->View = NULL;
 
-   if (Self->InsertXML)    { FreeResource(Self->InsertXML);    Self->InsertXML      = NULL; }
    if (Self->Background)   { FreeResource(Self->Background);   Self->Background     = NULL; }
    if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke   = NULL; }
    if (Self->BorderStroke) { FreeResource(Self->BorderStroke); Self->BorderStroke   = NULL; }
@@ -890,6 +889,9 @@ int Index: The byte position at which to insert the new content.
 -ERRORS-
 Okay
 NullArgs
+NoData
+CreateObject
+OutOfRange
 -END-
 
 *********************************************************************************************************************/
@@ -903,28 +905,20 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 
    if (Self->Stream.empty()) return ERR_NoData;
 
-   ERROR error = ERR_Okay;
-   if (!Self->InsertXML) {
-      if (!(Self->InsertXML = objXML::create::integral(fl::Statement(Args->XML)))) error = ERR_CreateObject;
-   }
-   else error = Self->InsertXML->setStatement(Args->XML);
+   objXML::create xml = { fl::Statement(Args->XML) };
 
-   if (!error) {
+   if (!xml.ok()) {
       Self->UpdatingLayout = true;
 
       Self->ParagraphDepth++; // We have to override the paragraph-content sanity check since we're inserting content on post-processing of the original XML
 
-      if (!(error = insert_xml(Self, Self->InsertXML, Self->InsertXML->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE))) {
-
-      }
-      else log.warning("Insert failed for: %s", Args->XML);
+      ERROR error = insert_xml(Self, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE);
+      if (error) log.warning("Insert failed for: %s", Args->XML);
 
       Self->ParagraphDepth--;
-
-      acClear(Self->InsertXML); // Reduce memory usage
+      return ERR_Okay;
    }
-
-   return error;
+   else return ERR_CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -950,6 +944,8 @@ int Preformat: If TRUE, the text will be treated as pre-formatted (all whitespac
 -ERRORS-
 Okay
 NullArgs
+OutOfRange
+Failed
 -END-
 
 *********************************************************************************************************************/
