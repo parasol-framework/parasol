@@ -165,7 +165,7 @@ ERROR parser::process_page()
       // If an error occurred then we have to kill the document as the stream may contain unsynchronised
       // byte codes (e.g. an unterminated SCODE::TABLE sequence).
 
-      if (Self->Error) unload_doc(Self, ULD::NIL);
+      if (Self->Error) unload_doc(Self);
 
       Self->UpdatingLayout = true;
       if (Self->initialised()) redraw(Self, true);

@@ -186,25 +186,22 @@ LineHeight: Default line height (taken as an average) for all text on the page.
 -FIELD-
 Path: Identifies the location of a document file to load.
 
-To load a document file into a document object, set the Path field.  If this field is set after initialisation, the
-object will automatically clear its content and reload data from the location that you specify.  It is also possible to
-change the current page and parameters by setting the Path.
+To load a document file into a document object, set the Path field.  Valid string formats for setting the path are:
 
-The string format for setting the path is `volume:folder/filename.rpl#Page?param1&param2=value`.
+`volume:folder/filename.rpl`
 
-This example changes the current document by loading from a new file source: `documents:index.rpl`.
+`#Page?param1&param2=value`
 
-This example changes the current page if a document is already loaded (note: if the page does not exist in the
-currently loaded document, a message is displayed to bring the error to the user's attention): `#introduction`.
+`volume:folder/filename.rpl#Page?param1&param2=value`
 
-This example changes the page and passes it new parameters: `#introduction?username=Paul`.
+Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a 
+change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document,
+a dialog is displayed to bring the error to the user's attention).
 
 To leap to a bookmark in the page that has been specified with the &lt;index&gt; element, use the colon as a separator
 after the pagename, i.e. `#pagename:bookmark`.
 
-Other means of opening a document include loading the data manually and feeding it through with the #DataFeed() action.
-
-The new document layout will be displayed when incoming messages are next processed by the running task.
+Other means of opening a document include loading the data manually and passing it via the #DataFeed() action.
 -END-
 
 *********************************************************************************************************************/
@@ -227,10 +224,7 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
    Self->Error = ERR_Okay;
 
    std::string newpath;
-   bool reload = true;
    if ((Value[0] IS '#') or (Value[0] IS '?')) {
-      reload = false;
-
       if (!Self->Path.empty()) {
          unsigned i;
          if (Value[0] IS '?') for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '?'); i++);
@@ -241,29 +235,9 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
       }
       else newpath.assign(Value);
    }
-   else if (!Self->Path.empty()) {
-      // Work out if the location has actually been changed
-
-      unsigned len;
-      for (len=0; (Value[len]) and (Value[len] != '#') and (Value[len] != '?'); len++);
-
-      unsigned i;
-      for (i=0; (i < Self->Path.size()) and (Self->Path[i] != '#') and (Self->Path[i] != '?'); i++);
-
-      if ((i IS len) and ((!i) or (!StrCompare(Value, Self->Path, len)))) {
-         // The location remains unchanged.  A complete reload shouldn't be necessary.
-
-         reload = false;
-         //if ((Self->Path[i] IS '?') or (Value[len] IS '?')) {
-         //   reload = true;
-         //}
-      }
-
-      newpath = Value;
-   }
    else newpath = Value;
 
-   log.branch("%s (vs %s) Reload: %d", newpath.c_str(), Self->Path.c_str(), reload);
+   log.branch("%s (vs %s)", newpath.c_str(), Self->Path.c_str());
 
    // Signal that we are leaving the current page
 
@@ -293,18 +267,10 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
       Self->Path = newpath;
 
       recursion++;
-      unload_doc(Self, (!reload) ? ULD::REFRESH : ULD::NIL);
 
       if (Self->initialised()) {
-         if ((Self->XML) and (!reload)) {
-            process_parameters(Self, Self->Path);
-            parser parse(Self, Self->XML);
-            parse.process_page();
-         }
-         else {
-            load_doc(Self, Self->Path, false, ULD::NIL);
-            Self->Viewport->draw();
-         }
+         load_doc(Self, Self->Path, true);
+         Self->Viewport->draw();
       }
       recursion--;
 
@@ -314,8 +280,6 @@ static ERROR SET_Path(extDocument *Self, CSTRING Value)
          Self->Path.clear();
          Self->PageName.clear();
          Self->Bookmark.clear();
-         if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
-
          Self->Viewport->draw();
       }
    }

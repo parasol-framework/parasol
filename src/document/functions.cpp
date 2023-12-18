@@ -358,15 +358,14 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
       auto task = CurrentTask();
       task->setPath(Path);
 
-      if (auto xml = objXML::create::integral(
+      objXML::create xml = {
          fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
-         fl::Path(Path), fl::ReadOnly(true))) {
-
-         if (Self->XML) FreeResource(Self->XML);
-         Self->XML = xml;
-
+         fl::Path(Path), fl::ReadOnly(true)
+      };
+      
+      if (xml.ok()) {
          pf::LogLevel level(3);
-         parser parse(Self, xml);
+         parser parse(Self, *xml);
          Self->Error = parse.process_page();
 
          return Self->Error;

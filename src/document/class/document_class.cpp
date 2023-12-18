@@ -269,8 +269,7 @@ static ERROR DOCUMENT_Clear(extDocument *Self, APTR Void)
    pf::Log log;
 
    log.branch();
-   unload_doc(Self, ULD::NIL);
-   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
+   unload_doc(Self);
    redraw(Self, false);
    return ERR_Okay;
 }
@@ -380,28 +379,19 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       //
       // Note that in the case of incoming text identified by DATA::TEXT, it is assumed to be in XML format.
 
+      if (!Self->initialised()) return log.warning(ERR_NotInitialised);
       if (Self->Processing) return log.warning(ERR_Recursion);
 
-      if (!Self->XML) {
-         if (!(Self->XML = objXML::create::integral(fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS)))) {
-            return log.warning(ERR_CreateObject);
-         }
-      }
+      objXML::create xml = { fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS) };
 
-      log.trace("Appending data to XML #%d", Self->XML->UID);
+      if (!xml.ok()) return log.warning(ERR_CreateObject);
 
-      if (acDataXML(Self->XML, Args->Buffer) != ERR_Okay) return log.warning(ERR_SetField);
+      log.trace("Appending data to XML #%d", xml->UID);
 
-      if (Self->initialised()) {
-         // Document is initialised.  Refresh the document from the XML source.
+      if (acDataXML(*xml, Args->Buffer) != ERR_Okay) return log.warning(ERR_SetField);
 
-         acRefresh(Self);
-      }
-      else {
-         // Document is not yet initialised.  Processing of the XML will be handled in Init() as required.
-
-      }
-
+      acRefresh(Self);
+      
       return ERR_Okay;
    }
    else {
@@ -618,7 +608,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    unload_doc(Self, ULD::TERMINATE);
 
-   if (Self->XML)       { FreeResource(Self->XML); Self->XML = NULL; }
    if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
 
    Self->~extDocument();
@@ -778,16 +767,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    // Load a document file into the line array if required
 
    Self->UpdatingLayout = true;
-   if (Self->XML) { // If XML data is already present, it's probably come in through the data channels.
-      log.trace("XML data already loaded.");
-      if (!Self->Path.empty()) process_parameters(Self, Self->Path);
-      pf::LogLevel level(2);
-      parser parse(Self, Self->XML);
-      parse.process_page();
-   }
-   else if (!Self->Path.empty()) {
+   if (!Self->Path.empty()) {
       if ((Self->Path[0] != '#') and (Self->Path[0] != '?')) {
-         if (auto error = load_doc(Self, Self->Path, false, ULD::NIL)) {
+         if (auto error = load_doc(Self, Self->Path, false)) {
             return error;
          }
       }
@@ -1031,7 +1013,7 @@ static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
    new (Self) extDocument;
    Self->UniqueID = 1000;
-   unload_doc(Self, ULD::NIL);
+   unload_doc(Self);
    return ERR_Okay;
 }
 
@@ -1146,19 +1128,7 @@ static ERROR DOCUMENT_Refresh(extDocument *Self, APTR Void)
       log.branch("Refreshing from path '%s'", Self->Path.c_str());
       error = load_doc(Self, Self->Path, true, ULD::REFRESH);
    }
-   else if (Self->XML) {
-      log.branch("Refreshing from preloaded XML data.");
-
-      {
-         pf::LogLevel level(2);
-         unload_doc(Self, ULD::REFRESH);
-         parser parse(Self, Self->XML);
-         parse.process_page();
-      }
-
-      if (Self->FocusIndex != -1) set_focus(Self, Self->FocusIndex, "Refresh-XML");
-   }
-   else log.msg("No location or XML data is present in the document.");
+   else log.msg("No source Path defined in the document.");
 
    Self->Processing--;
 

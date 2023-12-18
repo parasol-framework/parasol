@@ -805,7 +805,6 @@ class extDocument : public objDocument {
    stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
    stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    stream_char SelectIndex;    // The end of the selected text area, if text is selected.
-   objXML *XML;                // Source XML document
    objXML *InsertXML;          // For temporary XML parsing by the InsertXML method
    objXML *Templates;          // All templates for the current document are stored here
    objSVG *SVG;                // Allocated by the <svg> tag

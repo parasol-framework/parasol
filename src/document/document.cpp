@@ -216,7 +216,7 @@ static ERROR insert_text(extDocument *, stream_char &, const std::string &, bool
 static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, IXF);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
-static ERROR load_doc(extDocument *, std::string, bool, ULD);
+static ERROR load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
 static void  notify_disable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_enable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
@@ -236,7 +236,7 @@ static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(extDocument *, stream_char, stream_char);
-static ERROR unload_doc(extDocument *, ULD);
+static ERROR unload_doc(extDocument *, ULD = ULD::NIL);
 static bool  valid_object(extDocument *, OBJECTPTR);
 static bool  valid_objectid(extDocument *, OBJECTID);
 static BYTE  view_area(extDocument *, LONG, LONG, LONG, LONG);
