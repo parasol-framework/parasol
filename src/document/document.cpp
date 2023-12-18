@@ -63,6 +63,8 @@ static const DOUBLE MIN_VSPACING   = 0.001;
 static const DOUBLE MIN_LEADING    = 0.001;
 
 static ULONG glByteCodeID = 1;
+static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
+static UWORD glLinkID = 1; // Unique counter for links
 
 using namespace pf;
 

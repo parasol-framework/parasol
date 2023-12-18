@@ -784,8 +784,6 @@ class extDocument : public objDocument {
    std::string WorkingPath;        // String storage for the WorkingPath field
    std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    RSTREAM Stream;                 // Internal stream buffer
-   style_status Style;
-   style_status RestoreStyle;
    std::map<ULONG, XMLTag *>   TemplateIndex;
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
@@ -808,7 +806,6 @@ class extDocument : public objDocument {
    objXML *Templates;          // All templates for the current document are stored here
    objSVG *SVG;                // Allocated by the <svg> tag
    XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
-   objTime *Time;
    OBJECTPTR UserDefaultScript;    // Allows the developer to define a custom default script.
    OBJECTPTR DefaultScript;
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
@@ -826,25 +823,15 @@ class extDocument : public objDocument {
    DOUBLE SelectCharX;        // The x coordinate of the SelectIndex character
    DOUBLE CursorCharX;        // The x coordinate of the CursorIndex character
    DOUBLE PointerX, PointerY; // Current pointer coordinates on the document surface
-   LONG   UniqueID;           // Use for generating unique/incrementing ID's, e.g. cell ID
-   LONG   LoopIndex;
-   LONG   ElementCounter;     // Counter for element ID's
-   LONG   ObjectCache;        // If counter > 0, data objects are persistent between document refreshes.
    LONG   TemplatesModified;  // For tracking modifications to Self->Templates (compared to Self->Templates->Modified)
-   LONG   BreakLoop;
-   LONG   GeneratedID;        // Unique ID that is regenerated on each load/refresh
    SEGINDEX ClickSegment;     // The index of the segment that the user clicked on
    SEGINDEX MouseOverSegment; // The index of the segment that the mouse is currently positioned over
    TIMER  FlashTimer;         // For flashing the cursor
    LONG   ActiveEditCellID;   // If editing is active, this refers to the ID of the cell being edited
    ULONG  ActiveEditCRC;      // CRC for cell editing area, used for managing onchange notifications
-   UWORD  Depth;              // Section depth - increases when do_layout() recurses, e.g. into tables
-   UWORD  ParagraphDepth;     // Incremented when inside <p> tags
-   UWORD  LinkID;             // Unique counter for links
    WORD   FocusIndex;         // Tab focus index
    WORD   Invisible;          // Incremented for sections within a hidden index
    UBYTE  Processing;         // If > 0, the page layout is being altered
-   UBYTE  BkgdGfx;
    UBYTE  State:3;
    bool   RefreshTemplates; // True if the template index requires refreshing.
    bool   RelPageWidth;     // Relative page width

@@ -594,7 +594,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->Background)   { FreeResource(Self->Background);   Self->Background     = NULL; }
    if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke   = NULL; }
    if (Self->BorderStroke) { FreeResource(Self->BorderStroke); Self->BorderStroke   = NULL; }
-   if (Self->Time)         { FreeResource(Self->Time);         Self->Time = NULL; }
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 
@@ -910,12 +909,9 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!xml.ok()) {
       Self->UpdatingLayout = true;
 
-      Self->ParagraphDepth++; // We have to override the paragraph-content sanity check since we're inserting content on post-processing of the original XML
-
       ERROR error = insert_xml(Self, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE);
       if (error) log.warning("Insert failed for: %s", Args->XML);
 
-      Self->ParagraphDepth--;
       return ERR_Okay;
    }
    else return ERR_CreateObject;
@@ -964,35 +960,6 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    INDEX index = Args->Index;
    if (index < 0) index = Self->Stream.size();
 
-   Self->Style = style_status();
-
-   // Extract the most recent style at the insertion point so that we don't cause a style change
-
-   for (INDEX i = Args->Index - 1; i >= 0; i--) {
-      if (Self->Stream[i].code IS SCODE::FONT) {
-         Self->Style.font_style = stream_data<bc_font>(Self, i);
-         log.trace("Found existing font style, font index %d, flags $%.8x.", Self->Style.font_style.font_index, Self->Style.font_style.options);
-         break;
-      }
-   }
-
-   // If no style is available, we need to create a default font style and insert it at the start of the stream.
-
-   if (Self->Style.font_style.font_index IS -1) {
-      if ((Self->Style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-         if ((Self->Style.font_style.font_index = create_font("Open Sans", "Regular", 12)) IS -1) {
-            return ERR_Failed;
-         }
-      }
-
-      Self->Style.font_style.fill = Self->FontFill;
-   }
-
-   if (auto font = Self->Style.font_style.get_font()) {
-      Self->Style.face  = font->Face;
-      Self->Style.point = font->Point;
-   }
-
    stream_char sc(index, 0);
    ERROR error = insert_text(Self, sc, std::string(Args->Text), Args->Preformat);
 
@@ -1008,7 +975,6 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
 static ERROR DOCUMENT_NewObject(extDocument *Self, APTR Void)
 {
    new (Self) extDocument;
-   Self->UniqueID = 1000;
    unload_doc(Self);
    return ERR_Okay;
 }

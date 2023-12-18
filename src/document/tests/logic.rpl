@@ -8,35 +8,35 @@
 <p>There should be five successful tests following this paragraph.</p>
 
 <if statement="1 > 0">
-  <p>If statement satisfied.</p>
+  <p>1. If statement satisfied.</p>
 </if>
 <else>
-  <p>If statement failed.</p>
+  <p>1. If statement failed.</p>
 </else>
 
 <if statement="1 < 0">
-  <p>If statement failed.</p>
+  <p>2. If statement failed.</p>
 </if>
 <else>
-  <p>Else condition satisfied.</p>
+  <p>2. Else condition satisfied.</p>
 </else>
 
 <if statement="1 < 0">
-  <p>If statement failed.</p>
+  <p>3. If statement failed.</p>
 </if>
 <elseif statement="1 > 0">
-  <p>Else-If statement satisfied.</p>
+  <p>3. Else-If statement satisfied.</p>
 </elseif>
 <else>
-  <p>If statement failed.</p>
+  <p>3. If statement failed.</p>
 </else>
 
 <if notnull="true">
-  <p>If-NotNull satisfied.</p>
+  <p>4. If-NotNull satisfied.</p>
 </if>
 
 <if null="0">
-  <p>If-Null conditional satisfied.</p>
+  <p>5. If-Null conditional satisfied.</p>
 </if>
 
 <h2>Repeat Tests</h2>

@@ -68,7 +68,9 @@ struct layout {
    LONG m_split_start = 0;      // Set to the previous line index if the line is segmented.  Used for ensuring that all distinct entries on the line use the same line height
    LONG m_word_width = 0;       // Pixel width of the current word
    LONG m_wrap_edge = 0;        // Marks the boundary at which graphics and text will need to wrap.
+   LONG m_break_loop = MAXLOOP;
    WORD m_space_width = 0;      // Caches the pixel width of a single space in the current font.
+   UWORD m_depth = 0;           // Section depth - increases when do_layout() recurses, e.g. into tables
    bool m_inline = false;       // Set to true when graphics (vectors, images) must be inline.
    bool m_no_wrap = false;      // Set to true when word-wrap is disabled.
    bool m_text_content = false; // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
@@ -1656,7 +1658,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
 
    if ((m_split_start != NOT_SPLIT) and (height > 0)) {
       for (i=m_split_start; i < offset; i++) {
-         if (m_segments[i].depth != Self->Depth) continue;
+         if (m_segments[i].depth != m_depth) continue;
          if (m_segments[i].height > height) {
             log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, m_segments[i].height, height);
             BaseLine = m_segments[i].BaseLine;
@@ -1671,7 +1673,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
    segment.trim_stop        = trim_stop;
    segment.area             = { x, Y, Width, line_height };
    segment.gutter           = gutter;
-   segment.depth            = Self->Depth;
+   segment.depth            = m_depth;
    segment.align_width      = AlignWidth;
    segment.text_content     = text_content;
    segment.floating_vectors = floating_vectors;
@@ -1685,7 +1687,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
       if (LONG(m_segments.size()) != m_split_start) {
          DLAYOUT("Resetting height (%g) & gutter (%g) of segments index %d-%d.", line_height, gutter, segment.start.index, m_split_start);
          for (unsigned i=m_split_start; i < m_segments.size(); i++) {
-            if (m_segments[i].depth != Self->Depth) continue;
+            if (m_segments[i].depth != m_depth) continue;
             m_segments[i].area.Height = line_height;
             m_segments[i].gutter      = gutter;
          }
@@ -1714,13 +1716,11 @@ static void layout_doc(extDocument *Self)
       log.branch("Area: %gx%g,%gx%g Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
    #endif
 
-   Self->BreakLoop = MAXLOOP;
-
    layout l(Self);
    bool repeat = true;
    while (repeat) {
       repeat = false;
-      Self->BreakLoop--;
+      l.m_break_loop--;
 
       DOUBLE page_width;
 
@@ -1737,7 +1737,7 @@ static void layout_doc(extDocument *Self)
 
       Self->PageProcessed = false;
       Self->Error = ERR_Okay;
-      Self->Depth = 0;
+      l.m_depth = 0;
 
       if (glFonts.empty()) return;
       auto font = glFonts[0].font;
@@ -1760,14 +1760,14 @@ static void layout_doc(extDocument *Self)
 
       // Recalculation may be required if visibility of the scrollbar needs to change.
 
-      if ((Self->BreakLoop > 0) and (!Self->Error)) {
+      if ((l.m_break_loop > 0) and (!Self->Error)) {
          if (Self->PageHeight > Self->Area.Height) {
             // Page height is bigger than the viewport, so the scrollbar needs to be visible.
 
             if (!Self->VScrollVisible) {
                DLAYOUT("Vertical scrollbar visibility needs to be enabled, restarting...");
                Self->VScrollVisible = true;
-               Self->BreakLoop = MAXLOOP;
+               l.m_break_loop = MAXLOOP;
                repeat = true;
             }
          }
@@ -1775,7 +1775,7 @@ static void layout_doc(extDocument *Self)
             if (Self->VScrollVisible) {
                DLAYOUT("Vertical scrollbar needs to be invisible, restarting...");
                Self->VScrollVisible = false;
-               Self->BreakLoop = MAXLOOP;
+               l.m_break_loop = MAXLOOP;
                repeat = true;
             }
          }
@@ -1857,7 +1857,7 @@ ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, 
       return ERR_NothingDone;
    }
 
-   if (Self->Depth >= MAX_DEPTH) {
+   if (m_depth >= MAX_DEPTH) {
       log.traceBranch("Depth limit exceeded (too many tables-within-tables).");
       return ERR_Recursion;
    }
@@ -1877,7 +1877,7 @@ ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, 
       Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
 
-   Self->Depth++;
+   m_depth++;
 
    layout tablestate(Self), rowstate(Self), liststate(Self);
    bc_cell *esccell;
@@ -1890,19 +1890,19 @@ extend_page:
    if (m_page_width > WIDTH_LIMIT) {
       DLAYOUT("Restricting page width from %g to %d", m_page_width, WIDTH_LIMIT);
       m_page_width = WIDTH_LIMIT;
-      if (Self->BreakLoop > 4) Self->BreakLoop = 4; // Very large page widths normally means that there's a parsing problem
+      if (m_break_loop > 4) m_break_loop = 4; // Very large page widths normally means that there's a parsing problem
    }
 
    if (Self->Error) {
-      Self->Depth--;
+      m_depth--;
       return Self->Error;
    }
-   else if (!Self->BreakLoop) {
+   else if (!m_break_loop) {
       Self->Error = ERR_Loop;
-      Self->Depth--;
+      m_depth--;
       return Self->Error;
    }
-   Self->BreakLoop--;
+   m_break_loop--;
 
    reset();
 
@@ -2077,7 +2077,7 @@ wrap_table_start:
             if (width > WIDTH_LIMIT - m_cursor_x - m_right_margin) {
                log.traceWarning("Table width in excess of allowable limits.");
                width = WIDTH_LIMIT - m_cursor_x - m_right_margin;
-               if (Self->BreakLoop > 4) Self->BreakLoop = 4;
+               if (m_break_loop > 4) m_break_loop = 4;
             }
 
             if ((esctable->compute_columns) and (esctable->width >= width)) esctable->compute_columns = 0;
@@ -2346,7 +2346,7 @@ exit:
    if (m_page_width > Width) Width = m_page_width;
    if (page_height > Height) Height = page_height;
 
-   Self->Depth--;
+   m_depth--;
 
    return Self->Error;
 }
@@ -2430,7 +2430,7 @@ WRAP layout::check_wordwrap(const std::string &Type, DOUBLE &PageWidth, stream_c
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Self->BreakLoop) return WRAP::DO_NOTHING;
+   if (!m_break_loop) return WRAP::DO_NOTHING;
    if (Width < 1) Width = 1;
 
    if ((X > MAX_PAGE_WIDTH) or (Y > MAX_PAGE_HEIGHT) or (PageWidth > MAX_PAGE_WIDTH)) {

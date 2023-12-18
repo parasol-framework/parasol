@@ -15,11 +15,18 @@ hyperlink etc.  When a type is instantiated it will be assigned a UID and stored
 struct parser {
    extDocument *Self;
    objXML *m_xml;
+
    objXML *m_inject_xml = NULL;
    objXML::TAGS *m_inject_tag = NULL, *m_header_tag = NULL, *m_footer_tag = NULL, *m_body_tag = NULL;
-   char m_in_template = 0;
-   bool m_strip_feeds = false;
-   stream_char m_index;
+   objTime *m_time = NULL;
+   LONG  m_loop_index = 0;
+   UWORD m_paragraph_depth = 0;     // Incremented when inside <p> tags
+   UWORD m_bkgd_gfx = 0;
+   char  m_in_template = 0;
+   bool  m_strip_feeds = false;
+   bool  m_check_else = false;
+   stream_char  m_index;
+   style_status m_style;
 
    ERROR process_page();
    TRF   parse_tag(XMLTag &, IPF &);
@@ -44,7 +51,6 @@ struct parser {
 
    inline void tag_advance(XMLTag &);
    inline void tag_body(XMLTag &);
-   inline void tag_cache(objXML::TAGS &);
    inline void tag_call(XMLTag &);
    inline void tag_cell(XMLTag &);
    inline void tag_debug(XMLTag &);
@@ -74,6 +80,10 @@ struct parser {
    inline void tag_trigger(XMLTag &);
    inline void tag_use(XMLTag &);
    inline void tag_vector(XMLTag &);
+
+   ~parser() {
+      if (m_time) FreeResource(m_time);
+   }
 };
 
 static void check_para_attrib(extDocument *, const std::string &, const std::string &, bc_paragraph *, style_status &);
@@ -322,10 +332,10 @@ void parser::translate_args(const std::string &Input, std::string &Output)
             // Check against reserved keywords
 
             if (!Output.compare(pos, sizeof("[%index]")-1, "[%index]")) {
-               Output.replace(pos, sizeof("[%index]")-1, std::to_string(Self->LoopIndex));
+               Output.replace(pos, sizeof("[%index]")-1, std::to_string(m_loop_index));
             }
             else if (!Output.compare(pos, sizeof("[%id]")-1, "[%id]")) {
-               Output.replace(pos, sizeof("[%id]")-1, std::to_string(Self->GeneratedID));
+               Output.replace(pos, sizeof("[%id]")-1, std::to_string(Self->UID));
             }
             else if (!Output.compare(pos, sizeof("[%self]")-1, "[%self]")) {
                Output.replace(pos, sizeof("[%self]")-1, std::to_string(Self->UID));
@@ -383,26 +393,26 @@ void parser::translate_args(const std::string &Input, std::string &Output)
                Output.replace(pos, sizeof("[%title]")-1, Self->Title);
             }
             else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
-               if (auto font = Self->Style.font_style.get_font()) {
+               if (auto font = m_style.font_style.get_font()) {
                   char buffer[60];
                   snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->Face, font->Point, font->Style);
                   Output.replace(pos, sizeof("[%font]")-1, buffer);
                }
             }
             else if (!Output.compare(pos, sizeof("[%font-face]")-1, "[%font-face]")) {
-               if (auto font = Self->Style.font_style.get_font()) {
+               if (auto font = m_style.font_style.get_font()) {
                   Output.replace(pos, sizeof("[%font-face]")-1, font->Face);
                }
             }
             else if (!Output.compare(pos, sizeof("[%font-colour]")-1, "[%font-colour]")) {
-               if (auto font = Self->Style.font_style.get_font()) {
+               if (auto font = m_style.font_style.get_font()) {
                   char colour[28];
                   snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
                   Output.replace(pos, sizeof("[%font-colour]")-1, colour);
                }
             }
             else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
-               if (auto font = Self->Style.font_style.get_font()) {
+               if (auto font = m_style.font_style.get_font()) {
                   char buffer[28];
                   snprintf(buffer, sizeof(buffer), "%g", font->Point);
                   Output.replace(pos, sizeof("[%font-size]")-1, buffer);
@@ -424,34 +434,34 @@ void parser::translate_args(const std::string &Input, std::string &Output)
                }
             }
             else if (!Output.compare(pos, sizeof("[%tm-day]")-1, "[%tm-day]")) {
-               if (!Self->Time) Self->Time = objTime::create::integral();
-               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(Self->Time->Day));
+               if (!m_time) m_time = objTime::create::integral();
+               if (!time_queried) { acQuery(m_time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(m_time->Day));
             }
             else if (!Output.compare(pos, sizeof("[%tm-month]")-1, "[%tm-month]")) {
-               if (!Self->Time) Self->Time = objTime::create::integral();
-               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(Self->Time->Month));
+               if (!m_time) m_time = objTime::create::integral();
+               if (!time_queried) { acQuery(m_time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(m_time->Month));
             }
             else if (!Output.compare(pos, sizeof("[%tm-year]")-1, "[%tm-year]")) {
-               if (!Self->Time) Self->Time = objTime::create::integral();
-               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(Self->Time->Year));
+               if (!m_time) m_time = objTime::create::integral();
+               if (!time_queried) { acQuery(m_time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(m_time->Year));
             }
             else if (!Output.compare(pos, sizeof("[%tm-hour]")-1, "[%tm-hour]")) {
-               if (!Self->Time) Self->Time = objTime::create::integral();
-               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(Self->Time->Hour));
+               if (!m_time) m_time = objTime::create::integral();
+               if (!time_queried) { acQuery(m_time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(m_time->Hour));
             }
             else if (!Output.compare(pos, sizeof("[%tm-minute]")-1, "[%tm-minute]")) {
-               if (!Self->Time) Self->Time = objTime::create::integral();
-               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(Self->Time->Minute));
+               if (!m_time) m_time = objTime::create::integral();
+               if (!time_queried) { acQuery(m_time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(m_time->Minute));
             }
             else if (!Output.compare(pos, sizeof("[%tm-second]")-1, "[%tm-second]")) {
-               if (!Self->Time) Self->Time = objTime::create::integral();
-               if (!time_queried) { acQuery(Self->Time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(Self->Time->Second));
+               if (!m_time) m_time = objTime::create::integral();
+               if (!time_queried) { acQuery(m_time); time_queried = true; }
+               Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(m_time->Second));
             }
             else if (!Output.compare(pos, sizeof("[%version]")-1, "[%version]")) {
                Output.replace(pos, sizeof("[%version]")-1, RIPL_VERSION);
@@ -770,25 +780,24 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
    if (tagname.starts_with('$')) tagname.erase(0, 1);
    auto tag_hash = StrHash(tagname);
    object_template = NULL;
-   bool check_else = false;
 
    TRF result = TRF::NIL;
    if (Tag.isContent()) {
       if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
          if (m_strip_feeds) {
-            if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
+            if (m_paragraph_depth) { // We must be in a paragraph to accept content as text
                unsigned i = 0;
                while ((Tag.Attribs[0].Value[i] IS '\n') or (Tag.Attribs[0].Value[i] IS '\r')) i++;
                if (i > 0) {
                   auto content = Tag.Attribs[0].Value.substr(i);
-                  insert_text(Self, m_index, content, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
+                  insert_text(Self, m_index, content, ((m_style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
                }
-               else insert_text(Self, m_index, Tag.Attribs[0].Value, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
+               else insert_text(Self, m_index, Tag.Attribs[0].Value, ((m_style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
             }
             m_strip_feeds = false;
          }
-         else if (Self->ParagraphDepth) { // We must be in a paragraph to accept content as text
-            insert_text(Self, m_index, Tag.Attribs[0].Value, ((Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
+         else if (m_paragraph_depth) { // We must be in a paragraph to accept content as text
+            insert_text(Self, m_index, Tag.Attribs[0].Value, ((m_style.font_style.options & FSO::PREFORMAT) != FSO::NIL));
          }
       }
       Tag.Attribs = saved_attribs;
@@ -931,31 +940,31 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_if:
          if (check_tag_conditions(Self, Tag)) { // Statement is true
-            check_else = false;
+            m_check_else = false;
             result = parse_tags(Tag.Children, Flags);
          }
-         else check_else = true;
+         else m_check_else = true;
          break;
 
       case HASH_elseif:
-         if (check_else) {
+         if (m_check_else) {
             if (check_tag_conditions(Self, Tag)) { // Statement is true
-               check_else = false;
+               m_check_else = false;
                result = parse_tags(Tag.Children, Flags);
             }
          }
          break;
 
       case HASH_else:
-         if (check_else) {
-            check_else = false;
+         if (m_check_else) {
+            m_check_else = false;
             result = parse_tags(Tag.Children, Flags);
          }
          break;
 
       case HASH_while: {
-         auto saveindex = Self->LoopIndex;
-         Self->LoopIndex = 0;
+         auto saveindex = m_loop_index;
+         m_loop_index = 0;
 
          if ((!Tag.Children.empty()) and (check_tag_conditions(Self, Tag))) {
             // Save/restore the statement string on each cycle to fully evaluate the condition each time.
@@ -968,17 +977,15 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
                if ((state) and ((parse_tags(Tag.Children, Flags) & TRF::BREAK) != TRF::NIL)) break;
 
-               Self->LoopIndex++;
+               m_loop_index++;
             }
          }
 
-         Self->LoopIndex = saveindex;
+         m_loop_index = saveindex;
          break;
       }
 
       // Special instructions
-
-      case HASH_cache: tag_cache(Tag.Children);  break;
 
       case HASH_call: tag_call(Tag); break;
 
@@ -1034,9 +1041,9 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       // Others
 
       case HASH_background: // In background mode, all vectors will target the View rather than the Page.
-         Self->BkgdGfx++;
+         m_bkgd_gfx++;
          parse_tags(Tag.Children);
-         Self->BkgdGfx--;
+         m_bkgd_gfx--;
          break;
 
       case HASH_data: break; // Intentionally does nothing
@@ -1110,48 +1117,48 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, style_status &Style, IPF F
 {
    bool face_change = false, style_change = false;
 
-   if ((Style.font_style.options & (FSO::BOLD|FSO::ITALIC)) != (Self->Style.font_style.options & (FSO::BOLD|FSO::ITALIC))) {
+   if ((Style.font_style.options & (FSO::BOLD|FSO::ITALIC)) != (m_style.font_style.options & (FSO::BOLD|FSO::ITALIC))) {
       face_change = true;
    }
-   else if ((Style.face != Self->Style.face) or (Style.point != Self->Style.point)) {
+   else if ((Style.face != m_style.face) or (Style.point != m_style.point)) {
       face_change = true;
    }
-   else if ((Style.font_style.fill != Self->Style.font_style.fill)) {
+   else if ((Style.font_style.fill != m_style.font_style.fill)) {
       style_change = true;
    }
-   else if ((Style.font_style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != (Self->Style.font_style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
+   else if ((Style.font_style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != (m_style.font_style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
       style_change= true;
    }
-   else if ((Style.font_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (Self->Style.font_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
+   else if ((Style.font_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (m_style.font_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
       style_change = true;
    }
 
    TRF result = TRF::NIL;
    if (face_change) { // Create a new font object for the current style
-      auto save_status = Self->Style;
-      Self->Style = Style;
-      auto style_name = get_font_style(Self->Style.font_style.options);
-      Self->Style.font_style.font_index = create_font(Self->Style.face, style_name, Self->Style.point);
-      //log.trace("Changed font to index %d, face %s, style %s, size %d.", Self->Style.font_style.index, Self->Style.Face, style_name, Self->Style.point);
-      Self->Style.font_style.uid = glByteCodeID++;
-      Self->insert_code(m_index, Self->Style.font_style);
+      auto save_status = m_style;
+      m_style = Style;
+      auto style_name = get_font_style(m_style.font_style.options);
+      m_style.font_style.font_index = create_font(m_style.face, style_name, m_style.point);
+      //log.trace("Changed font to index %d, face %s, style %s, size %d.", m_style.font_style.index, m_style.Face, style_name, m_style.point);
+      m_style.font_style.uid = glByteCodeID++;
+      Self->insert_code(m_index, m_style.font_style);
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
          if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
-      Self->Style = save_status;
+      m_style = save_status;
       Self->reserve_code<bc_font_end>(m_index);
    }
    else if (style_change) { // Insert a minor font change into the text stream
-      auto save_status = Self->Style;
-      Self->Style = Style;
-      Self->Style.font_style.uid = glByteCodeID++;
-      Self->insert_code(m_index, Self->Style.font_style);
+      auto save_status = m_style;
+      m_style = Style;
+      m_style.font_style.uid = glByteCodeID++;
+      Self->insert_code(m_index, m_style.font_style);
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
          if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
-      Self->Style = save_status;
+      m_style = save_status;
       Self->reserve_code<bc_font_end>(m_index);
    }
    else {
@@ -1381,34 +1388,13 @@ void parser::tag_body(XMLTag &Tag)
 
    // Overwrite the default Style attributes with the client's choices
 
-   Self->Style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize);
-   Self->Style.font_style.options   = FSO::NIL;
-   Self->Style.font_style.fill      = Self->FontFill;
-   Self->Style.face  = Self->FontFace;
-   Self->Style.point = Self->FontSize;
+   m_style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize);
+   m_style.font_style.options   = FSO::NIL;
+   m_style.font_style.fill      = Self->FontFill;
+   m_style.face  = Self->FontFace;
+   m_style.point = Self->FontSize;
 
    if (!Tag.Children.empty()) m_body_tag = &Tag.Children;
-}
-
-//********************************************************************************************************************
-// Use caching to create objects that will persist between document refreshes and page changes (so long as said page
-// resides within the same document source).  The following code illustrates how to create a persistent XML object:
-//
-// <if not exists="[xml192]">
-//   <cache>
-//     <xml name="xml192"/>
-//   </cache>
-// </if>
-//
-// The object is removed when the document object is destroyed, or the document source is changed.
-//
-// NOTE: Another valid method of caching an object is to use a persistent script.
-
-void parser::tag_cache(objXML::TAGS &Children)
-{
-   Self->ObjectCache++;
-   parse_tags(Children);
-   Self->ObjectCache--;
 }
 
 //********************************************************************************************************************
@@ -1567,7 +1553,7 @@ void parser::tag_div(XMLTag &Tag, objXML::TAGS &Children)
 {
    pf::Log log(__FUNCTION__);
 
-   auto new_style = Self->Style;
+   auto new_style = m_style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("align", Tag.Attribs[i].Name)) {
          if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
@@ -1843,7 +1829,7 @@ void parser::tag_index(XMLTag &Tag)
    }
 
    if (name) {
-      bc_index esc(name, Self->UniqueID++, 0, visible, Self->Invisible ? false : true);
+      bc_index esc(name, glUID++, 0, visible, Self->Invisible ? false : true);
 
       Self->insert_code(m_index, esc);
 
@@ -1923,7 +1909,7 @@ void parser::tag_link(XMLTag &Tag)
    std::ostringstream buffer;
 
    if ((link.type != LINK::NIL) or (!Tag.Children.empty())) {
-      link.id = ++Self->LinkID;
+      link.id = glLinkID++;
 
       auto pos = sizeof(link);
       if (link.type IS LINK::FUNCTION) buffer << link.ref << '\0';
@@ -1937,7 +1923,7 @@ void parser::tag_link(XMLTag &Tag)
       // Font modifications are saved with the link as opposed to inserting a new bc_font as it's a lot cleaner
       // this way - especially for run-time modifications.
 
-      link.font = Self->Style.font_style;
+      link.font = m_style.font_style;
       link.font.options |= FSO::UNDERLINE;
       link.font.fill = link.fill;
 
@@ -1963,7 +1949,7 @@ void parser::tag_list(XMLTag &Tag, objXML::TAGS &Children)
    pf::Log log(__FUNCTION__);
    bc_list esc, *savelist;
 
-   esc.fill    = Self->Style.font_style.fill; // Default fill matches the current font colour
+   esc.fill    = m_style.font_style.fill; // Default fill matches the current font colour
    esc.item_num = esc.start;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -1998,12 +1984,12 @@ void parser::tag_list(XMLTag &Tag, objXML::TAGS &Children)
 
    Self->insert_code(m_index, esc);
 
-   savelist = Self->Style.list;
-   Self->Style.list = &esc;
+   savelist = m_style.list;
+   m_style.list = &esc;
 
       if (!Children.empty()) parse_tags(Children);
 
-   Self->Style.list = savelist;
+   m_style.list = savelist;
 
    Self->reserve_code<bc_list_end>(m_index);
 
@@ -2017,12 +2003,12 @@ void parser::tag_paragraph(XMLTag &Tag, objXML::TAGS &Children)
 {
    pf::Log log(__FUNCTION__);
 
-   Self->ParagraphDepth++;
+   m_paragraph_depth++;
 
    bc_paragraph esc;
    esc.leading_ratio = 0;
 
-   auto new_style = Self->Style;
+   auto new_style = m_style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("align", Tag.Attribs[i].Name)) {
          if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
@@ -2045,7 +2031,7 @@ void parser::tag_paragraph(XMLTag &Tag, objXML::TAGS &Children)
    bc_paragraph_end end;
    Self->insert_code(m_index, end);
    Self->NoWhitespace = true;
-   Self->ParagraphDepth--;
+   m_paragraph_depth--;
 }
 
 //********************************************************************************************************************
@@ -2062,14 +2048,14 @@ void parser::tag_print(XMLTag &Tag)
       if (*tagname IS '$') tagname++;
 
       if (!StrMatch("value", tagname)) {
-         insert_text(Self, m_index, Tag.Attribs[1].Value, (Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
+         insert_text(Self, m_index, Tag.Attribs[1].Value, (m_style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
       }
       else if (!StrMatch("src", Tag.Attribs[1].Name)) {
          // This option is only supported in unrestricted mode
          if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) {
             CacheFile *cache;
             if (!LoadFile(Tag.Attribs[1].Value.c_str(), LDF::NIL, &cache)) {
-               insert_text(Self, m_index, std::string((CSTRING)cache->Data), (Self->Style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
+               insert_text(Self, m_index, std::string((CSTRING)cache->Data), (m_style.font_style.options & FSO::PREFORMAT) != FSO::NIL);
                UnloadFile(cache);
             }
          }
@@ -2419,7 +2405,7 @@ void parser::tag_font(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   auto new_style = Self->Style;
+   auto new_style = m_style;
    bool preformat = false;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -2716,8 +2702,8 @@ void parser::tag_pre(objXML::TAGS &Children)
    auto save = m_strip_feeds;
    m_strip_feeds = true;
 
-   if ((Self->Style.font_style.options & FSO::PREFORMAT) IS FSO::NIL) {
-      auto new_style = Self->Style;
+   if ((m_style.font_style.options & FSO::PREFORMAT) IS FSO::NIL) {
+      auto new_style = m_style;
       new_style.font_style.options |= FSO::PREFORMAT;
       parse_tags_with_style(Children, new_style);
    }
@@ -2953,8 +2939,8 @@ void parser::tag_setmargins(XMLTag &Tag)
 
 void parser::tag_font_style(objXML::TAGS &Children, FSO StyleFlag)
 {
-   if ((Self->Style.font_style.options & StyleFlag) IS FSO::NIL) {
-      auto new_status = Self->Style;
+   if ((m_style.font_style.options & StyleFlag) IS FSO::NIL) {
+      auto new_status = m_style;
       new_status.font_style.options |= StyleFlag;
       parse_tags_with_style(Children, new_status);
    }
@@ -2968,7 +2954,7 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Self->Style.list) {
+   if (!m_style.list) {
       log.warning("<li> not used inside a <list> tag.");
       return;
    }
@@ -2977,7 +2963,7 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
 
    para.list_item    = true;
    para.leading_ratio = 0;
-   para.applyStyle(Self->Style);
+   para.applyStyle(m_style);
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto tagname = Tag.Attribs[i].Name.c_str();
@@ -3002,26 +2988,26 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
       }
    }
 
-   Self->ParagraphDepth++;
+   m_paragraph_depth++;
 
-   if ((Self->Style.list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
+   if ((m_style.list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
       Self->insert_code(m_index, para);
 
          parse_tags(Children);
 
       Self->reserve_code<bc_paragraph_end>(m_index);
    }
-   else if (Self->Style.list->type IS bc_list::ORDERED) {
-      auto list_size = Self->Style.list->buffer.size();
-      Self->Style.list->buffer.push_back(std::to_string(Self->Style.list->item_num) + ".");
+   else if (m_style.list->type IS bc_list::ORDERED) {
+      auto list_size = m_style.list->buffer.size();
+      m_style.list->buffer.push_back(std::to_string(m_style.list->item_num) + ".");
 
       // ItemNum is reset because a child list could be created
 
-      auto save_item = Self->Style.list->item_num;
-      Self->Style.list->item_num = 1;
+      auto save_item = m_style.list->item_num;
+      m_style.list->item_num = 1;
 
-      if (para.aggregate) for (auto &p : Self->Style.list->buffer) para.value += p;
-      else para.value = Self->Style.list->buffer.back();
+      if (para.aggregate) for (auto &p : m_style.list->buffer) para.value += p;
+      else para.value = m_style.list->buffer.back();
 
       Self->insert_code(m_index, para);
 
@@ -3029,10 +3015,10 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
 
       Self->reserve_code<bc_paragraph_end>(m_index);
 
-      Self->Style.list->item_num = save_item;
-      Self->Style.list->buffer.resize(list_size);
+      m_style.list->item_num = save_item;
+      m_style.list->buffer.resize(list_size);
 
-      Self->Style.list->item_num++;
+      m_style.list->item_num++;
    }
    else { // BULLET
       Self->insert_code(m_index, para);
@@ -3043,7 +3029,7 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
       Self->NoWhitespace = true;
    }
 
-   Self->ParagraphDepth--;
+   m_paragraph_depth--;
 }
 
 //********************************************************************************************************************
@@ -3100,17 +3086,17 @@ void parser::tag_repeat(XMLTag &Tag)
 
    log.traceBranch("Performing a repeat loop (start: %d, end: %d, step: %d).", loop_start, loop_end, step);
 
-   auto save_index = Self->LoopIndex;
+   auto save_index = m_loop_index;
 
    while (loop_start < loop_end) {
-      if (index_name.empty()) Self->LoopIndex = loop_start;
+      if (index_name.empty()) m_loop_index = loop_start;
       else SetVar(Self, index_name.c_str(), std::to_string(loop_start).c_str());
 
       parse_tags(Tag.Children);
       loop_start += step;
    }
 
-   if (index_name.empty()) Self->LoopIndex = save_index;
+   if (index_name.empty()) m_loop_index = save_index;
 
    log.trace("insert_child:","Repeat loop ends.");
 }
@@ -3214,14 +3200,14 @@ void parser::tag_table(XMLTag &Tag)
       }
    }
 
-   auto savevar = Self->Style.table;
+   auto savevar = m_style.table;
    process_table var;
-   Self->Style.table = &var;
-   Self->Style.table->table = &start;
+   m_style.table = &var;
+   m_style.table->table = &start;
 
       parse_tags(Tag.Children, IPF::NO_CONTENT|IPF::FILTER_TABLE);
 
-   Self->Style.table = savevar;
+   m_style.table = savevar;
 
    if (!columns.empty()) { // The columns value, if supplied is arranged as a CSV list of column widths
       std::vector<std::string> list;
@@ -3255,7 +3241,7 @@ void parser::tag_row(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!Self->Style.table) {
+   if (!m_style.table) {
       log.warning("<row> not defined inside <table> section.");
       Self->Error = ERR_InvalidData;
       return;
@@ -3274,8 +3260,8 @@ void parser::tag_row(XMLTag &Tag)
    }
 
    Self->insert_code(m_index, escrow);
-   Self->Style.table->table->rows++;
-   Self->Style.table->row_col = 0;
+   m_style.table->table->rows++;
+   m_style.table->row_col = 0;
 
    if (!Tag.Children.empty()) {
       parse_tags(Tag.Children, IPF::NO_CONTENT|IPF::FILTER_ROW);
@@ -3284,8 +3270,8 @@ void parser::tag_row(XMLTag &Tag)
    bc_row_end end;
    Self->insert_code(m_index, end);
 
-   if (Self->Style.table->row_col > LONG(Self->Style.table->table->columns.size())) {
-      Self->Style.table->table->columns.resize(Self->Style.table->row_col);
+   if (m_style.table->row_col > LONG(m_style.table->table->columns.size())) {
+      m_style.table->table->columns.resize(m_style.table->row_col);
    }
 }
 
@@ -3294,16 +3280,16 @@ void parser::tag_row(XMLTag &Tag)
 void parser::tag_cell(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
-   auto new_style = Self->Style;
+   auto new_style = m_style;
    static UBYTE edit_recurse = 0;
 
-   if (!Self->Style.table) {
+   if (!m_style.table) {
       log.warning("<cell> not defined inside <table> section.");
       Self->Error = ERR_InvalidData;
       return;
    }
 
-   bc_cell cell(Self->UniqueID++, Self->Style.table->row_col);
+   bc_cell cell(glUID++, m_style.table->row_col);
    bool select = false;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -3357,7 +3343,7 @@ void parser::tag_cell(XMLTag &Tag)
          case HASH_stroke:
             cell.stroke = Tag.Attribs[i].Value;
             if (!cell.strokeWidth) {
-               cell.strokeWidth = Self->Style.table->table->strokeWidth;
+               cell.strokeWidth = m_style.table->table->strokeWidth;
                if (!cell.strokeWidth) cell.strokeWidth = 1;
             }
             break;
@@ -3384,7 +3370,7 @@ void parser::tag_cell(XMLTag &Tag)
       }
    }
 
-   Self->ParagraphDepth++;
+   m_paragraph_depth++;
 
    if (!cell.edit_def.empty()) edit_recurse++;
 
@@ -3398,14 +3384,14 @@ void parser::tag_cell(XMLTag &Tag)
    if (!Tag.Children.empty()) {
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
-      if ((!cell.edit_def.empty()) and ((Self->Style.font_style.options & FSO::PREFORMAT) IS FSO::NIL)) {
+      if ((!cell.edit_def.empty()) and ((m_style.font_style.options & FSO::PREFORMAT) IS FSO::NIL)) {
          new_style.font_style.options |= FSO::PREFORMAT;
          parse_tags_with_style(Tag.Children, new_style);
       }
       else parse_tags_with_style(Tag.Children, new_style);
    }
 
-   Self->Style.table->row_col += cell.col_span;
+   m_style.table->row_col += cell.col_span;
 
    bc_cell_end esccell_end;
    esccell_end.cell_id = cell.cell_id;
@@ -3420,7 +3406,7 @@ void parser::tag_cell(XMLTag &Tag)
 
    if (!cell.edit_def.empty()) edit_recurse--;
 
-   Self->ParagraphDepth--;
+   m_paragraph_depth--;
 }
 
 //********************************************************************************************************************

@@ -230,14 +230,22 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 
    stream_char inserted_at(Self->Stream.size());
 
-   if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) { // Do nothing to change the style
+   if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) { // 'Hold Style' - Do nothing to change it
       // Parse content and insert it at the end of the stream (we'll move it to the insertion point afterwards).
       parser parse(Self, XML);
-      parse.parse_tags(Tag);
+      
+      if (Self->Stream.empty()) {
+         parse.parse_tags(Tag);
+      }
+      else {
+          // Override the paragraph-content sanity check when inserting content in an existing document
+         parse.m_paragraph_depth++;
+         parse.parse_tags(Tag);
+         parse.m_paragraph_depth--;
+      }
    }
    else {
-      Self->Style = style_status();
-      auto style = style_status();
+      style_status style;
 
       if ((Flags & IXF::RESET_STYLE) != IXF::NIL) {
          // Do not search for the most recent font style (force a reset)
@@ -246,7 +254,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
          for (auto i = TargetIndex - 1; i >= 0; i--) {
             if (Self->Stream[i].code IS SCODE::FONT) {
                style.font_style = stream_data<bc_font>(Self, i);
-               log.trace("Found existing font style, font index %d, flags $%.8x.", style.font_style.font_index, Self->Style.font_style.options);
+               log.trace("Found existing font style, font index %d, flags $%.8x.", style.font_style.font_index, style.font_style.options);
                break;
             }
          }
@@ -270,7 +278,14 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       }
 
       parser parse(Self, XML);
-      parse.parse_tags_with_style(Tag, style);
+      if (Self->Stream.empty()) {
+         parse.parse_tags_with_style(Tag, style);
+      }
+      else {
+         parse.m_paragraph_depth++;
+         parse.parse_tags_with_style(Tag, style);
+         parse.m_paragraph_depth--;
+      }
    }
 
    if (INDEX(Self->Stream.size()) <= inserted_at.index) {
@@ -424,7 +439,6 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    Self->RelPageWidth  = false;
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
    Self->DefaultScript = NULL;
-   Self->BkgdGfx       = 0;
    Self->FontSize      = DEFAULT_FONTSIZE;
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
@@ -503,7 +517,6 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
 
    Self->NoWhitespace   = true;
    Self->UpdatingLayout = true;
-   Self->GeneratedID    = AllocateID(IDTYPE::GLOBAL);
 
    if ((Flags & ULD::REDRAW) != ULD::NIL) {
       Self->Viewport->draw();
