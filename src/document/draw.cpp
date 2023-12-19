@@ -472,20 +472,22 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                if (cursor.index < segment.trim_stop.index) str.append(txt.text, cursor.offset, std::string::npos);
                else str.append(txt.text, cursor.offset, segment.trim_stop.offset - cursor.offset);
 
-               DOUBLE y = segment.area.Y;
-               if ((stack_style.top()->valign & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
-               else if ((stack_style.top()->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
-                  DOUBLE avail_space = segment.area.Height - segment.gutter;
-                  y += avail_space - ((avail_space - font->Ascent) * 0.5);
-               }
-               else y += segment.area.Height - segment.gutter;
-
-               DOUBLE x;
-               if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
-               else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
-               else x = x_offset;
-
                if (!str.empty()) {
+                  DOUBLE y = segment.area.Y;
+                  if ((stack_style.top()->valign & ALIGN::TOP) != ALIGN::NIL) y += font->Ascent;
+                  else if ((stack_style.top()->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
+                     DOUBLE avail_space = segment.area.Height - segment.gutter;
+                     y += avail_space - ((avail_space - font->Ascent) * 0.5);
+                  }
+                  else y += segment.area.Height - segment.gutter;
+
+                  DOUBLE x;
+                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
+                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
+                  else x = x_offset;
+
+                  log.warning("%g %g %s", x, y, str.c_str());
+
                   auto vt  = objVectorText::create::global({
                      fl::Owner(Viewport->UID),
                      fl::X(x), fl::Y(y),

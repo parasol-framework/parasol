@@ -22,6 +22,13 @@ enum class CB : UBYTE { // Cell border options
 
 DEFINE_ENUM_FLAG_OPERATORS(CB)
 
+enum class CELL : UBYTE {
+   NIL = 0,
+   ABORT,
+   WRAP_TABLE_CELL,
+   REPASS_ROW_HEIGHT
+};
+
 enum class RTD : UBYTE {
    NIL=0,
    OBJECT_TEMP,         // The object can be removed after parsing has finished
@@ -745,6 +752,7 @@ struct bc_row_end : public base_code {
 
 struct bc_cell_end : public base_code {
    LONG cell_id = 0;    // Matching identifier from bc_cell
+   bc_cell *cell_start; // Temporary pointer managed during layout
    bc_cell_end() : base_code(SCODE::CELL_END) { }
 };
 

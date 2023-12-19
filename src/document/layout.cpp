@@ -192,29 +192,29 @@ struct layout {
 
    ERROR do_layout(INDEX, INDEX, objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
 
-   void gen_scene_init(objVectorViewport *);
-   void gen_scene_graph(objVectorViewport *, RSTREAM &, SEGINDEX, SEGINDEX);
-
-   void procSetMargins(LONG &);
-   void procIndexStart();
+   void procAdvance();
+   CELL procCell(bc_table *);
+   void procCellEnd();
    void procFont();
    void procFontEnd();
-   WRAP procVector(LONG, LONG, bool &, bool &);
-   void procParagraphStart();
-   void procParagraphEnd();
-   TE procTableEnd(bc_table *, LONG, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
-   void procCellEnd(bc_cell *);
-   void procRowEnd(bc_table *);
-   void procAdvance();
-   bool procListEnd();
-   WRAP procText();
    WRAP procImage();
-
-   void new_segment(stream_char, stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
-   void end_line(NL, DOUBLE, stream_char, const std::string &);
-   WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
-   void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
+   void procIndexStart();
+   bool procListEnd();
+   void procParagraphEnd();
+   void procParagraphStart();
+   void procRowEnd(bc_table *);
+   void procSetMargins(LONG &);
+   TE   procTableEnd(bc_table *, LONG, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
+   WRAP procText();
+   WRAP procVector(LONG, LONG, bool &, bool &);
+   
    DOUBLE calc_page_height(DOUBLE);
+   WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
+   void end_line(NL, DOUBLE, stream_char, const std::string &);
+   void gen_scene_graph(objVectorViewport *, RSTREAM &, SEGINDEX, SEGINDEX);
+   void gen_scene_init(objVectorViewport *);
+   void new_segment(stream_char, stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
+   void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
 };
 
 //********************************************************************************************************************
@@ -225,6 +225,183 @@ void layout::procAdvance()
    m_cursor_x += adv->x;
    m_cursor_y += adv->y;
    if (adv->x) reset_segment();
+}
+
+//********************************************************************************************************************
+// In the first pass, the size of each cell is calculated with respect to its content.  When
+// SCODE::TABLE_END is reached, the max height and width for each row/column will be calculated
+// and a subsequent pass will be made to fill out the cells.
+//
+// If the width of a cell increases, there is a chance that the height of all cells in that
+// column will decrease, subsequently lowering the row height of all rows in the table, not just the
+// current row.  Therefore on the second pass the row heights need to be recalculated from scratch.
+
+CELL layout::procCell(bc_table *Table)
+{
+   pf::Log log(__FUNCTION__);
+
+   bool vertical_repass = false;
+
+   auto &cell = stream_data<bc_cell>(Self, idx);
+
+   if (!Table) {
+      log.warning("Table not defined for cell @ index %d - document byte code is corrupt.", idx);
+      return CELL::ABORT;
+   }
+
+   if (cell.column >= LONG(Table->columns.size())) {
+      DLAYOUT("Cell %d exceeds total table column limit of %d.", cell.column, LONG(Table->columns.size()));
+      return CELL::NIL;
+   }
+
+   // Creating a segment ensures that the table graphics will be accounted for when drawing.
+
+   stream_char start(idx, 0);
+   stream_char stop(idx + 1, 0);
+   new_segment(start, stop, m_cursor_y, 0, 0, "Cell");
+
+   // Set the absolute coordinates of the cell within the viewport.
+
+   cell.x = m_cursor_x;
+   cell.y = m_cursor_y;
+
+   if (Table->collapsed) {
+      //if (cell.column IS 0);
+      //else cell.AbsX += Table->cell_hspacing;
+   }
+   else cell.x += Table->cell_hspacing;
+
+   if (cell.column IS 0) cell.x += Table->strokeWidth;
+
+   cell.width  = Table->columns[cell.column].width; // Minimum width for the cell's column
+   cell.height = stack_row.top()->row_height;
+   //DLAYOUT("%d / %d", escrow->min_height, escrow->row_height);
+
+   DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
+      idx, m_cursor_x, m_cursor_y, cell.width, cell.height, cell.column);
+
+   // Find the matching CELL_END
+
+   auto cell_end_idx = cell.find_cell_end(Self, Self->Stream, idx);
+
+   if (cell_end_idx IS -1) {
+      log.warning("Failed to find matching cell-end.  Document stream is corrupt.");
+      return CELL::ABORT;
+   }
+   
+   auto cell_end = &stream_data<bc_cell_end>(Self, cell_end_idx);
+   cell_end->cell_start = &cell;
+
+   idx++; // Go to start of cell content
+
+   if (idx < cell_end_idx) {
+      auto segcount = m_segments.size();
+
+      Self->EditMode = (!cell.edit_def.empty()) ? true : false;
+
+      layout sl(Self);
+      sl.do_layout(idx, cell_end_idx, &m_font, cell.width, cell.height,
+         ClipRectangle(Table->cell_padding), vertical_repass);
+
+      // The main product of do_layout() are the produced segments, so append them here.
+
+      m_segments.insert(m_segments.end(), sl.m_segments.begin(), sl.m_segments.end());
+
+      idx = cell_end_idx - 1; // -1 to make up for the loop's ++
+
+      if (!cell.edit_def.empty()) Self->EditMode = false;
+
+      if (!cell.edit_def.empty()) {
+         // Edit cells have a minimum width/height so that the user can still interact with them when empty.
+
+         if (m_segments.size() IS segcount) {
+            // No content segments were created, which means that there's nothing for the editing cursor to attach
+            // itself too.
+
+            // Do we really want to do something here?
+            // I'd suggest that we instead break up the segments a bit more???  Another possibility - create an SCODE::NULL
+            // type that gets placed at the start of the edit cell.  If there's no genuine content, then we at least have the SCODE::NULL
+            // type for the cursor to be attached to?  SCODE::NULL does absolutely nothing except act as faux content.
+
+
+            // TODO Work on this problem
+         }
+
+         if (cell.width < 16) cell.width = 16;
+         if (cell.height < m_font->LineSpacing) cell.height = m_font->LineSpacing;
+      }
+   }
+
+   DLAYOUT("Cell (%d:%d) is size %gx%g (min width %g)", Table->row_index, cell.column,
+      cell.width, cell.height, Table->columns[cell.column].width);
+
+   // Increase the overall width for the entire column if this cell has increased the column width.
+   // This will affect the entire table, so a restart from TABLE_START is required.
+
+   if (Table->columns[cell.column].width < cell.width) {
+      DLAYOUT("Increasing column width of cell (%d:%d) from %g to %g (table_start repass required).", Table->row_index, cell.column, Table->columns[cell.column].width, cell.width);
+      Table->columns[cell.column].width = cell.width; // This has the effect of increasing the minimum column width for all cells in the column
+
+      // Percentage based and zero columns need to be recalculated.  The easiest thing to do
+      // would be for a complete recompute (ComputeColumns = true) with the new minwidth.  The
+      // problem with ComputeColumns is that it does it all from scratch - we need to adjust it
+      // so that it can operate in a second style of mode where it recognises temporary width values.
+
+      Table->columns[cell.column].min_width = cell.width; // Column must be at least this size
+      Table->compute_columns = 2;
+      Table->reset_row_height = true; // Row heights need to be reset due to the width increase
+      return CELL::WRAP_TABLE_CELL;
+   }
+
+   // Advance the width of the entire row and adjust the row height
+
+   Table->row_width += Table->columns[cell.column].width;
+
+   if (!Table->collapsed) Table->row_width += Table->cell_hspacing;
+   else if ((cell.column + cell.col_span) < LONG(Table->columns.size())-1) Table->row_width += Table->cell_hspacing;
+
+   if ((cell.height > stack_row.top()->row_height) or (stack_row.top()->vertical_repass)) {
+      // A repass will be required if the row height has increased and vectors or tables have been used
+      // in earlier cells, because vectors need to know the final dimensions of their table cell (viewport).
+
+      if (cell.column IS LONG(Table->columns.size())-1) {
+         DLAYOUT("Extending row height from %g to %g (row repass required)", stack_row.top()->row_height, cell.height);
+      }
+
+      stack_row.top()->row_height = cell.height;
+      if ((cell.column + cell.col_span) >= LONG(Table->columns.size())) {
+         return CELL::REPASS_ROW_HEIGHT;
+      }
+      else stack_row.top()->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed
+   }
+
+   m_cursor_x += Table->columns[cell.column].width;
+
+   if (!Table->collapsed) m_cursor_x += Table->cell_hspacing;
+   else if ((cell.column + cell.col_span) < LONG(Table->columns.size())) m_cursor_x += Table->cell_hspacing;
+
+   if (cell.column IS 0) m_cursor_x += Table->strokeWidth;
+
+   return CELL::NIL;
+}
+
+//********************************************************************************************************************
+
+void layout::procCellEnd()
+{
+   auto cell_end = &stream_data<bc_cell_end>(Self, idx);
+
+   if ((cell_end->cell_start) and (!cell_end->cell_start->edit_def.empty())) {
+      // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
+
+      auto cs = cell_end->cell_start;
+      m_ecells.emplace_back(cell_end->cell_id, cs->x, cs->y, cs->width, cs->height);
+   }
+
+   // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
+   // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
+
+   add_esc_segment();
 }
 
 //********************************************************************************************************************
@@ -499,22 +676,6 @@ void layout::procIndexStart()
 
       log.warning("Failed to find matching index-end.  Document stream is corrupt.");
    }
-}
-
-//********************************************************************************************************************
-
-void layout::procCellEnd(bc_cell *esccell)
-{
-   // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
-   // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
-
-   if ((esccell) and (!esccell->edit_def.empty())) {
-      // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
-
-      m_ecells.emplace_back(esccell->cell_id, esccell->x, esccell->y, esccell->width, esccell->height);
-   }
-
-   add_esc_segment();
 }
 
 //********************************************************************************************************************
@@ -1880,7 +2041,6 @@ ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, 
    m_depth++;
 
    layout tablestate(Self), rowstate(Self), liststate(Self);
-   bc_cell *esccell;
    bc_table *esctable;
    DOUBLE last_height;
    LONG edit_segment;
@@ -1908,7 +2068,6 @@ extend_page:
 
    last_height  = page_height;
    esctable     = NULL;
-   esccell      = NULL;
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
@@ -1994,7 +2153,6 @@ extend_page:
          case SCODE::SET_MARGINS:     procSetMargins(Margins.Bottom); break;
          case SCODE::LINK:            break;
          case SCODE::LINK_END:        break;
-         case SCODE::CELL_END:        procCellEnd(esccell); break;
          case SCODE::PARAGRAPH_START: procParagraphStart(); break;
          case SCODE::PARAGRAPH_END:   procParagraphEnd(); break;
 
@@ -2130,7 +2288,7 @@ wrap_table_cell:
                *this = tablestate;
                m_page_width = req_width;
                if (action IS TE::WRAP_TABLE) goto wrap_table_end;
-               else if (action IS TE::REPASS_ROW_HEIGHT) goto repass_row_height_ext;
+               else if (action IS TE::REPASS_ROW_HEIGHT) goto repass_row_height;
                else if (action IS TE::EXTEND_PAGE) goto extend_page;
             }
             break;
@@ -2142,7 +2300,7 @@ wrap_table_cell:
 
             if (esctable->reset_row_height) stack_row.top()->row_height = stack_row.top()->min_height;
 
-repass_row_height_ext:
+repass_row_height:
             stack_row.top()->vertical_repass = false;
             stack_row.top()->y = m_cursor_y;
             esctable->row_width = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
@@ -2150,162 +2308,29 @@ repass_row_height_ext:
             add_esc_segment();
             break;
 
-         case SCODE::ROW_END: procRowEnd(esctable); break;
+         case SCODE::ROW_END: 
+            procRowEnd(esctable); 
+            break;
 
          case SCODE::CELL: {
-            // In the first pass, the size of each cell is calculated with respect to its content.  When
-            // SCODE::TABLE_END is reached, the max height and width for each row/column will be calculated
-            // and a subsequent pass will be made to fill out the cells.
-            //
-            // If the width of a cell increases, there is a chance that the height of all cells in that
-            // column will decrease, subsequently lowering the row height of all rows in the table, not just the
-            // current row.  Therefore on the second pass the row heights need to be recalculated from scratch.
+            switch(procCell(esctable)) {
+               case CELL::ABORT:
+                  goto exit;
 
-            bool vertical_repass = false;
-
-            esccell = &stream_data<bc_cell>(Self, idx);
-
-            if (!esctable) {
-               log.warning("bc_table variable not defined for cell @ index %d - document byte code is corrupt.", idx);
-               goto exit;
+               case CELL::WRAP_TABLE_CELL:  
+                  *this = tablestate; 
+                  goto wrap_table_cell;
+         
+               case CELL::REPASS_ROW_HEIGHT: 
+                  *this = rowstate; 
+                  goto repass_row_height;
             }
-
-            if (esccell->column >= LONG(esctable->columns.size())) {
-               DLAYOUT("Cell %d exceeds total table column limit of %d.", esccell->column, LONG(esctable->columns.size()));
-               break;
-            }
-
-            // Setting the line is the only way to ensure that the table graphics will be accounted for when drawing.
-
-            stream_char start(idx, 0);
-            stream_char stop(idx + 1, 0);
-            new_segment(start, stop, m_cursor_y, 0, 0, "Cell");
-
-            // Set the absolute coordinates of the cell within the viewport.
-
-            esccell->x = m_cursor_x;
-            esccell->y = m_cursor_y;
-
-            if (esctable->collapsed) {
-               //if (esccell->column IS 0);
-               //else esccell->AbsX += esctable->cell_hspacing;
-            }
-            else esccell->x += esctable->cell_hspacing;
-
-            if (esccell->column IS 0) esccell->x += esctable->strokeWidth;
-
-            esccell->width  = esctable->columns[esccell->column].width; // Minimum width for the cell's column
-            esccell->height = stack_row.top()->row_height;
-            //DLAYOUT("%d / %d", escrow->min_height, escrow->row_height);
-
-            DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
-               idx, m_cursor_x, m_cursor_y, esccell->width, esccell->height, esccell->column);
-
-            // Find the matching CELL_END
-
-            auto cell_end = esccell->find_cell_end(Self, Self->Stream, idx);
-
-            if (cell_end IS -1) {
-               log.warning("Failed to find matching cell-end.  Document stream is corrupt.");
-               goto exit;
-            }
-
-            idx++; // Go to start of cell content
-
-            if (idx < cell_end) {
-               auto segcount = m_segments.size();
-
-               Self->EditMode = (!esccell->edit_def.empty()) ? true : false;
-
-               layout sl(Self);
-               sl.do_layout(idx, cell_end, &m_font, esccell->width, esccell->height,
-                  ClipRectangle(esctable->cell_padding), vertical_repass);
-
-               // The main product of do_layout() are the produced segments, so append them here.
-
-               m_segments.insert(m_segments.end(), sl.m_segments.begin(), sl.m_segments.end());
-
-               idx = cell_end - 1; // -1 to make up for the loop's ++
-
-               if (!esccell->edit_def.empty()) Self->EditMode = false;
-
-               if (!esccell->edit_def.empty()) {
-                  // Edit cells have a minimum width/height so that the user can still interact with them when empty.
-
-                  if (m_segments.size() IS segcount) {
-                     // No content segments were created, which means that there's nothing for the editing cursor to attach
-                     // itself too.
-
-                     // Do we really want to do something here?
-                     // I'd suggest that we instead break up the segments a bit more???  Another possibility - create an SCODE::NULL
-                     // type that gets placed at the start of the edit cell.  If there's no genuine content, then we at least have the SCODE::NULL
-                     // type for the cursor to be attached to?  SCODE::NULL does absolutely nothing except act as faux content.
-
-
-                     // TODO Work on this problem next
-                  }
-
-                  if (esccell->width < 16) esccell->width = 16;
-                  if (esccell->height < m_font->LineSpacing) esccell->height = m_font->LineSpacing;
-               }
-            }
-
-            if (!idx) goto exit;
-
-            DLAYOUT("Cell (%d:%d) is size %gx%g (min width %g)", esctable->row_index, esccell->column,
-               esccell->width, esccell->height, esctable->columns[esccell->column].width);
-
-            // Increase the overall width for the entire column if this cell has increased the column width.
-            // This will affect the entire table, so a restart from TABLE_START is required.
-
-            if (esctable->columns[esccell->column].width < esccell->width) {
-               DLAYOUT("Increasing column width of cell (%d:%d) from %g to %g (table_start repass required).", esctable->row_index, esccell->column, esctable->columns[esccell->column].width, esccell->width);
-               esctable->columns[esccell->column].width = esccell->width; // This has the effect of increasing the minimum column width for all cells in the column
-
-               // Percentage based and zero columns need to be recalculated.  The easiest thing to do
-               // would be for a complete recompute (ComputeColumns = true) with the new minwidth.  The
-               // problem with ComputeColumns is that it does it all from scratch - we need to adjust it
-               // so that it can operate in a second style of mode where it recognises temporary width values.
-
-               esctable->columns[esccell->column].min_width = esccell->width; // Column must be at least this size
-               esctable->compute_columns = 2;
-
-               esctable->reset_row_height = true; // Row heights need to be reset due to the width increase
-               *this = tablestate;
-               goto wrap_table_cell;
-            }
-
-            // Advance the width of the entire row and adjust the row height
-
-            esctable->row_width += esctable->columns[esccell->column].width;
-
-            if (!esctable->collapsed) esctable->row_width += esctable->cell_hspacing;
-            else if ((esccell->column + esccell->col_span) < LONG(esctable->columns.size())-1) esctable->row_width += esctable->cell_hspacing;
-
-            if ((esccell->height > stack_row.top()->row_height) or (stack_row.top()->vertical_repass)) {
-               // A repass will be required if the row height has increased and vectors or tables have been used
-               // in earlier cells, because vectors need to know the final dimensions of their table cell.
-
-               if (esccell->column IS LONG(esctable->columns.size())-1) {
-                  DLAYOUT("Extending row height from %g to %g (row repass required)", stack_row.top()->row_height, esccell->height);
-               }
-
-               stack_row.top()->row_height = esccell->height;
-               if ((esccell->column + esccell->col_span) >= LONG(esctable->columns.size())) {
-                  *this = rowstate;
-                  goto repass_row_height_ext;
-               }
-               else stack_row.top()->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed
-            }
-
-            m_cursor_x += esctable->columns[esccell->column].width;
-
-            if (!esctable->collapsed) m_cursor_x += esctable->cell_hspacing;
-            else if ((esccell->column + esccell->col_span) < LONG(esctable->columns.size())) m_cursor_x += esctable->cell_hspacing;
-
-            if (esccell->column IS 0) m_cursor_x += esctable->strokeWidth;
             break;
          }
+
+         case SCODE::CELL_END: 
+            procCellEnd(); 
+            break;
 
          default: break;
       }

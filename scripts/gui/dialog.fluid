@@ -196,8 +196,7 @@ gui.dialog.message = function(Options)
   </defs>
 </svg>
 
-<body margins="10 10 18 10" link="rgb(.27,.27,.48)"
-  colour="rgb(.94,.94,.98)" fontcolour="rgb(0,0,0)" selectcolour="rgb(.31,.62,.31)"/>
+<body margins="10 10 18 10" link="rgb(.27,.27,.48)" colour="rgb(.94,.94,.98)" selectcolour="rgb(.31,.62,.31)"/>
 ]]
 
       if Options.envTemplate then
@@ -260,7 +259,7 @@ gui.dialog.message = function(Options)
 
       for i, option in ipairs(self.options) do
          if option['icon'] then
-            doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" margins="0 0 4 0"/>\n'
+            doc = doc .. '<image src="url(#' .. option.icon .. ')" width="16" height="16" padding="0 0 4 0"/>\n'
          end
 
          doc = doc .. '<a @response="' .. i .. '">' .. option.text .. '</a>\n'

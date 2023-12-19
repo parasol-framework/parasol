@@ -259,8 +259,8 @@ static ERROR DOCUMENT_CallFunction(extDocument *Self, struct docCallFunction *Ar
 -ACTION-
 Clear: Clears all content from the object.
 
-You can delete all of the document information from a document object by calling the Clear action.  All of the document
-data will be deleted from the object and the graphics will be automatically updated as a result of calling this action.
+Using the Clear() action will delete all of the document's content.  The UI will be updated to reflect a clear
+document.
 
 *********************************************************************************************************************/
 
