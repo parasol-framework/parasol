@@ -234,6 +234,8 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="Failed">General failure.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -253,6 +255,9 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="NoData">No data is available for use.</error>
+        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="CreateObject">A call to CreateObject() failed.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -546,14 +551,16 @@
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
-<p>To load a document file into a document object, set the Path field.  If this field is set after initialisation, the object will automatically clear its content and reload data from the location that you specify.  It is also possible to change the current page and parameters by setting the Path.</p>
-<p>The string format for setting the path is <code>volume:folder/filename.rpl#Page?param1&amp;param2=value</code>.</p>
-<p>This example changes the current document by loading from a new file source: <code>documents:index.rpl</code>.</p>
-<p>This example changes the current page if a document is already loaded (note: if the page does not exist in the currently loaded document, a message is displayed to bring the error to the user's attention): <code>#introduction</code>.</p>
-<p>This example changes the page and passes it new parameters: <code>#introduction?username=Paul</code>.</p>
+<p>To load a document file into a document object, set the Path field.  Valid string formats for setting the path are:</p>
+<p>
+<code>volume:folder/filename.rpl</code></p>
+<p>
+<code>#Page?param1&amp;param2=value</code></p>
+<p>
+<code>volume:folder/filename.rpl#Page?param1&amp;param2=value</code></p>
+<p>Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document, a dialog is displayed to bring the error to the user's attention).</p>
 <p>To leap to a bookmark in the page that has been specified with the &lt;index&gt; element, use the colon as a separator after the pagename, i.e. <code>#pagename:bookmark</code>.</p>
-<p>Other means of opening a document include loading the data manually and feeding it through with the <action>DataFeed</action> action.</p>
-<p>The new document layout will be displayed when incoming messages are next processed by the running task.</p>
+<p>Other means of opening a document include loading the data manually and passing it via the <action>DataFeed</action> action.</p>
       </description>
     </field>
 
@@ -579,11 +586,11 @@
 
     <field>
       <name>Viewport</name>
-      <comment>A target viewport that will host the document graphics.</comment>
+      <comment>A client-specific viewport that will host the document graphics.</comment>
       <access read="R" write="S">Read/Set</access>
       <type class="VectorViewport">*VectorViewport</type>
       <description>
-<p>The Viewport field must refer to a <class name="VectorViewport">VectorViewport</class> that will host the document graphics.  If not initialised, the nearest viewport container will be determined based on object ownership.</p>
+<p>The Viewport field must refer to a <class name="VectorViewport">VectorViewport</class> that will host the document graphics.  If undefined by the client, the nearest viewport container will be determined based on object ownership.</p>
       </description>
     </field>
 
@@ -627,7 +634,6 @@
       <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
       <const name="EDIT">Allow direct keyboard input and document editing.</const>
       <const name="NO_LAYOUT_MSG">Turn off debug output produced during document layout and processing - useful on refresh for example.</const>
-      <const name="NO_SCROLLBARS">Do not display scrollbars if the page exceeds the size of the view.</const>
       <const name="NO_SYS_KEYS">System-keys provide standard key support for Ctrl-C, Ctrl-X etc.  Set this flag to turn them off.</const>
       <const name="OVERWRITE">This flag forces overwrite mode when the user enters information through the keyboard.  If the flag is not set, then insert mode is used.</const>
       <const name="UNRESTRICTED">Turn off all security measures - may only be set prior to initialisation.</const>

@@ -58,9 +58,8 @@ enum class DCF : ULONG {
    OVERWRITE = 0x00000002,
    NO_SYS_KEYS = 0x00000004,
    DISABLED = 0x00000008,
-   NO_SCROLLBARS = 0x00000010,
-   NO_LAYOUT_MSG = 0x00000020,
-   UNRESTRICTED = 0x00000040,
+   NO_LAYOUT_MSG = 0x00000010,
+   UNRESTRICTED = 0x00000020,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(DCF)
@@ -214,7 +213,7 @@ class objDocument : public BaseClass {
    STRING   Background;             // Optional background colour for the document.
    STRING   CursorStroke;           // The colour or brush stroke to use for the document cursor.
    STRING   BorderStroke;           // The stroke to use for drawing a border around the document window.
-   objVectorViewport * Viewport;    // A target viewport that will host the document graphics.
+   objVectorViewport * Viewport;    // A client-specific viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
    OBJECTID TabFocusID;             // Allows the user to hit the tab key to focus on other GUI objects.
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.

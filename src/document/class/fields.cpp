@@ -157,7 +157,7 @@ Flags: Optional flags that affect object behaviour.
 static ERROR SET_Flags(extDocument *Self, DCF Value)
 {
    if (Self->initialised()) {
-      Self->Flags = Value & (~(DCF::NO_SCROLLBARS|DCF::UNRESTRICTED|DCF::DISABLED));
+      Self->Flags = Value & (~(DCF::UNRESTRICTED|DCF::DISABLED));
    }
    else Self->Flags = Value & (~(DCF::DISABLED));
    return ERR_Okay;
@@ -375,9 +375,9 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Viewport: A target viewport that will host the document graphics.
+Viewport: A client-specific viewport that will host the document graphics.
 
-The Viewport field must refer to a @VectorViewport that will host the document graphics.  If not initialised,
+The Viewport field must refer to a @VectorViewport that will host the document graphics.  If undefined by the client,
 the nearest viewport container will be determined based on object ownership.
 
 *********************************************************************************************************************/

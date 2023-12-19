@@ -28,7 +28,7 @@ struct parser {
    stream_char  m_index;
    style_status m_style;
 
-   ERROR process_page();
+   void  process_page();
    TRF   parse_tag(XMLTag &, IPF &);
    TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
    TRF   parse_tags_with_style(objXML::TAGS &, style_status &, IPF = IPF::NIL);
@@ -95,9 +95,9 @@ static void check_para_attrib(extDocument *, const std::string &, const std::str
 //
 // This function does not clear existing data, so you can use it to append new content to existing document content.
 
-ERROR parser::process_page()
+void parser::process_page()
 {
-   if (!m_xml) return ERR_NoData;
+   if (!m_xml) { Self->Error = ERR_NoData; return; }
 
    pf::Log log(__FUNCTION__);
 
@@ -218,7 +218,6 @@ ERROR parser::process_page()
    }
 
    Self->PageProcessed = true;
-   return Self->Error;
 }
 
 //********************************************************************************************************************

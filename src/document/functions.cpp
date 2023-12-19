@@ -375,14 +375,14 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
 
       objXML::create xml = {
          fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
-         fl::Path(Path), fl::ReadOnly(true)
+         fl::Path(Path), 
+         fl::ReadOnly(true)
       };
       
       if (xml.ok()) {
          pf::LogLevel level(3);
          parser parse(Self, *xml);
-         Self->Error = parse.process_page();
-
+         parse.process_page();
          return Self->Error;
       }
       else {

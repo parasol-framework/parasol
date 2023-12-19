@@ -11,9 +11,8 @@ static const struct FieldDef clDocumentFlags[] = {
    { "Overwrite", 0x00000002 },
    { "NoSysKeys", 0x00000004 },
    { "Disabled", 0x00000008 },
-   { "NoScrollbars", 0x00000010 },
-   { "NoLayoutMsg", 0x00000020 },
-   { "Unrestricted", 0x00000040 },
+   { "NoLayoutMsg", 0x00000010 },
+   { "Unrestricted", 0x00000020 },
    { NULL, 0 }
 };
 

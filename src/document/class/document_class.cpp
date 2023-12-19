@@ -377,27 +377,34 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       // Incoming data is translated on the fly and added to the end of the current document page.  The original XML
       // information is retained in case of refresh.
       //
-      // Note that in the case of incoming text identified by DATA::TEXT, it is assumed to be in XML format.
+      // NOTE: Content identified by DATA::TEXT is assumed to be in a serialised XML format.
 
       if (!Self->initialised()) return log.warning(ERR_NotInitialised);
       if (Self->Processing) return log.warning(ERR_Recursion);
 
-      objXML::create xml = { fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS) };
+      objXML::create xml = { 
+         fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED), 
+         fl::Statement(CSTRING(Args->Buffer)),
+         fl::ReadOnly(true)
+      };
 
-      if (!xml.ok()) return log.warning(ERR_CreateObject);
-
-      log.trace("Appending data to XML #%d", xml->UID);
-
-      if (acDataXML(*xml, Args->Buffer) != ERR_Okay) return log.warning(ERR_SetField);
-
-      acRefresh(Self);
-      
-      return ERR_Okay;
+      if (xml.ok()) {
+         if (Self->Stream.empty()) {
+            // If the document is empty then we use the same process as load_doc()
+            Self->UpdatingLayout = true;
+            parser parse(Self, *xml);
+            parse.process_page();
+         }
+         else { // UNTESTED
+            log.trace("Appending data to XML #%d", xml->UID);
+            Self->Error = insert_xml(Self, *xml, xml->Tags, Self->Stream.size(), IXF::CLOSE_STYLE);
+            //acRefresh(Self);
+         }
+         return Self->Error;
+      }
+      else return log.warning(ERR_CreateObject);
    }
-   else {
-      log.msg("Datatype %d not supported.", LONG(Args->Datatype));
-      return ERR_Mismatch;
-   }
+   else return log.warning(ERR_Mismatch);
 }
 
 /*********************************************************************************************************************
@@ -748,13 +755,6 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       fl::StrokeWidth(3)});
 #endif
 
-   // TODO: Create a scrollbar with references to our Target, Page and View viewports
-
-   if ((Self->Flags & DCF::NO_SCROLLBARS) IS DCF::NIL) {
-
-
-   }
-
    // Flash the cursor via the timer
 
    if ((Self->Flags & DCF::EDIT) != DCF::NIL) {
@@ -904,7 +904,10 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 
    if (Self->Stream.empty()) return ERR_NoData;
 
-   objXML::create xml = { fl::Statement(Args->XML) };
+   objXML::create xml = { 
+      fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS), 
+      fl::Statement(Args->XML) 
+   };
 
    if (!xml.ok()) {
       Self->UpdatingLayout = true;
@@ -912,7 +915,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
       ERROR error = insert_xml(Self, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE);
       if (error) log.warning("Insert failed for: %s", Args->XML);
 
-      return ERR_Okay;
+      return error;
    }
    else return ERR_CreateObject;
 }

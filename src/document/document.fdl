@@ -37,7 +37,6 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     "OVERWRITE: This flag forces overwrite mode when the user enters information through the keyboard.  If the flag is not set, then insert mode is used.",
     "NO_SYS_KEYS: System-keys provide standard key support for Ctrl-C, Ctrl-X etc.  Set this flag to turn them off.",
     "DISABLED: This read-only flag is set if the object has been disabled through the Disable action.",
-    "NO_SCROLLBARS: Do not display scrollbars if the page exceeds the size of the view.",
     "NO_LAYOUT_MSG: Turn off debug output produced during document layout and processing - useful on refresh for example.",
     "UNRESTRICTED: Turn off all security measures - may only be set prior to initialisation.")
 
