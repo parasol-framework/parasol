@@ -25,6 +25,8 @@ static void redraw(extDocument *Self, bool Focus)
 
 void layout::gen_scene_init(objVectorViewport *Viewport)
 {
+   // Remove former objects from the viewport
+
    pf::vector<ChildEntry> list;
    if (!ListChildren(Viewport->UID, &list)) {
       for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
@@ -87,20 +89,12 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
       }
    }
 
-   FloatRect clip(0, 0, Self->VPWidth, Self->VPHeight);
-
    for (SEGINDEX seg=Start; seg < Stop; seg++) {
       auto &segment = m_segments[seg];
 
-      // Don't process segments that are out of bounds.  Be mindful of floating vectors as they can be placed at any coordinate.
+      // Don't process codes that are out of bounds.  Be mindful of floating vectors as they can be placed at any coordinate.
 
-      bool oob = false;
-      if (!segment.floating_vectors) {
-         if (segment.area.Y >= clip.Height) oob = true;
-         else if (segment.area.Y + segment.area.Height < clip.Y) oob = true;
-         else if (segment.area.X + segment.area.Width < clip.X) oob = true;
-         else if (segment.area.X >= clip.Width) oob = true;
-      }
+      bool oob = segment.oob(0, 0, Self->VPWidth, Self->VPHeight);
 
       if (!stack_link.empty()) {
          stack_link.top()->area = segment.area;

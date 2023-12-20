@@ -446,6 +446,28 @@ struct doc_segment {
    bool  text_content;      // true if there is TEXT in this segment
    bool  floating_vectors;  // true if there are user defined vectors in this segment with independent x,y coordinates
    bool  allow_merge;       // true if this segment can be merged with siblings that have allow_merge set to true
+
+   // Return true if a given region is out of the bounds of a segment's area
+
+   inline constexpr bool oob(const DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) const {
+      if (!floating_vectors) {
+         if (area.Y >= Height) return true;
+         else if (area.Y + area.Height < Y) return true;
+         else if (area.X + area.Width < X) return true;
+         else if (area.X >= Width) return true;
+      }
+      return false;
+   }
+
+   inline constexpr bool oob(const FloatRect &Region) const {
+      if (!floating_vectors) {
+         if (area.Y >= Region.Height) return true;
+         else if (area.Y + area.Height < Region.Y) return true;
+         else if (area.X + area.Width < Region.X) return true;
+         else if (area.X >= Region.Width) return true;
+      }
+      return false;
+   }
 };
 
 struct doc_clip {
