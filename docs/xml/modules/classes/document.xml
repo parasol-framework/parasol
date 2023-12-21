@@ -39,7 +39,7 @@
       <name>Clear</name>
       <comment>Clears all content from the object.</comment>
       <description>
-<p>You can delete all of the document information from a document object by calling the Clear action.  All of the document data will be deleted from the object and the graphics will be automatically updated as a result of calling this action.</p>
+<p>Using the Clear() action will delete all of the document's content.  The UI will be updated to reflect a clear document.</p>
       </description>
     </action>
 

@@ -48,7 +48,7 @@ that is distributed with this package.  Please refer to it for further informati
 static const LONG MAX_PAGE_WIDTH   = 30000;
 static const LONG MAX_PAGE_HEIGHT  = 100000;
 static const LONG MIN_PAGE_WIDTH   = 20;
-static const LONG MAX_DEPTH        = 1000;  // Limits the number of tables-within-tables
+static const LONG MAX_DEPTH        = 50;    // Limits the number of tables-within-tables
 static const LONG BULLET_INDENT    = 14;    // Minimum indentation for bullet point lists
 static const LONG BORDER_SIZE      = 1;
 static const LONG WIDTH_LIMIT      = 4000;
@@ -57,7 +57,6 @@ static const LONG DEFAULT_INDENT   = 30;
 static const LONG DEFAULT_FONTSIZE = 10;
 static const LONG MAX_VSPACING     = 20;
 static const LONG MAX_LEADING      = 20;
-static const LONG NOT_SPLIT        = -1;
 static const DOUBLE MIN_LINEHEIGHT = 0.001;
 static const DOUBLE MIN_VSPACING   = 0.001;
 static const DOUBLE MIN_LEADING    = 0.001;

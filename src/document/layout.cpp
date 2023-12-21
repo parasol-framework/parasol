@@ -19,7 +19,7 @@ Width/Height: Minimum width and height of the table.
 Fill:         Background fill for the table.
 Thickness:    Size of the Stroke pattern.
 Stroke        Stroke pattern for border.
-Padding:      Padding inside each cell (syn. Margins)
+Padding:      Padding inside each cell (margins)
 Spacing:      Spacing between cells.
 
 For complex tables with different coloured borders between cells, allocate single-pixel sized cells with the background
@@ -33,6 +33,14 @@ given clipping zones.  This allows text to be laid out around the table with no 
 // State machine for the layout process.  This information is discarded post-layout.
 
 struct layout {
+   extDocument *Self;
+   LONG  m_break_loop = MAXLOOP;
+   UWORD m_depth = 0;     // Section depth - increases when do_layout() recurses, e.g. into tables
+
+   std::vector<doc_segment> m_segments;
+   std::vector<edit_cell>   m_ecells;
+
+private:
    struct link_marker {
       DOUBLE x;           // Starting coordinate of the link.  Can change if the link is split across multiple lines.
       DOUBLE word_width;  // Reflects the m_word_width value at the moment of a link's termination.
@@ -48,10 +56,7 @@ struct layout {
    std::stack<bc_font *>      stack_font;
 
    std::vector<doc_clip>    m_clips;
-   std::vector<doc_segment> m_segments;
-   std::vector<edit_cell>   m_ecells;
 
-   extDocument *Self;
    objFont *m_font = NULL;
 
    DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
@@ -64,12 +69,10 @@ struct layout {
    LONG m_left_margin = 0, m_right_margin = 0; // Margins control whitespace for paragraphs and table cells
    LONG m_paragraph_bottom = 0; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
    LONG m_paragraph_y  = 0;     // The vertical position of the current paragraph
-   LONG m_split_start  = 0;     // Set to the previous line index if the line is segmented.  Used for ensuring that all distinct entries on the line use the same line height
+   LONG m_line_seg_start = 0;   // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
    LONG m_word_width   = 0;     // Pixel width of the current word
    LONG m_wrap_edge    = 0;     // Marks the boundary at which graphics and text will need to wrap.
-   LONG m_break_loop   = MAXLOOP;
    WORD m_space_width  = 0;      // Caches the pixel width of a single space in the current font.
-   UWORD m_depth       = 0;     // Section depth - increases when do_layout() recurses, e.g. into tables
    bool m_inline       = false; // Set to true when graphics (vectors, images) must be inline.
    bool m_no_wrap      = false; // Set to true when word-wrap is disabled.
    bool m_text_content = false; // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
@@ -99,7 +102,7 @@ struct layout {
       }
    } m_line;
 
-   void reset() {
+   inline void reset() {
       m_clips.clear();
       m_ecells.clear();
       m_segments.clear();
@@ -122,7 +125,7 @@ struct layout {
    // Resets the string management variables, usually done when a string
    // has been broken up on the current line due to a vector or table graphic for example.
 
-   void reset_segment(INDEX Index, LONG X) {
+   inline void reset_segment(INDEX Index, LONG X) {
       m_word_index.reset();
 
       m_line.index.set(Index);
@@ -132,19 +135,39 @@ struct layout {
       m_text_content = false;
    }
 
-   void reset_segment() { reset_segment(idx, m_cursor_x); }
+   inline void reset_segment() { reset_segment(idx, m_cursor_x); }
 
    // Add a segment for a single byte code at position idx.  This will not include support for text glyphs,
    // so extended information is not required.
 
-   void add_code_segment() {
+   inline void add_code_segment() {
       new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, BC_NAME(Self->Stream, idx));
       reset_segment(idx+1, m_cursor_x);
    }
 
+   // When lines are segmented, the last segment will store the final height of the line whilst the earlier segments
+   // will have the wrong height.  This function ensures that all segments for a line have the same height and gutter
+   // values.
+
+   inline void sanitise_line_height() {
+      auto end = m_segments.size();
+      if (end > m_line_seg_start) {
+         auto final_height = m_segments[end-1].area.Height;
+         auto final_gutter = m_segments[end-1].gutter;
+
+         if (final_height) {
+            for (auto i=m_line_seg_start; i < end; i++) {
+               if (m_segments[i].depth != m_depth) continue;
+               m_segments[i].area.Height = final_height;
+               m_segments[i].gutter      = final_gutter;
+            }
+         }
+      }
+   }
+
    // Return true if an escape code is capable of breaking a word.
 
-   bool breakable_word() {
+   inline bool breakable_word() {
       switch (Self->Stream[idx].code) {
          case SCODE::ADVANCE:
          case SCODE::TABLE_START:
@@ -178,14 +201,12 @@ struct layout {
    // Note that we use >= because we want to correct the base line in case there is a vector already set on the
    // line that matches the font's line spacing.
 
-   void check_line_height() {
+   inline void check_line_height() {
       if (m_font->LineSpacing >= m_line.height) {
          m_line.height = m_font->LineSpacing;
          m_line.gutter = m_font->LineSpacing - m_font->Ascent;
       }
    }
-
-   layout(extDocument *pSelf) : Self(pSelf) { }
 
    CELL lay_cell(bc_table *);
    void lay_cell_end();
@@ -201,25 +222,29 @@ struct layout {
    TE   lay_table_end(bc_table *, LONG, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
    WRAP lay_text();
    WRAP lay_vector(LONG, LONG, bool &, bool &);
-   
+
    DOUBLE calc_page_height(DOUBLE);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
-   ERROR do_layout(INDEX, INDEX, objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
    void end_line(NL, DOUBLE, stream_char, const std::string &);
+   void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
+   void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
+
+public:
+   layout(extDocument *pSelf) : Self(pSelf) { }
+
+   ERROR do_layout(INDEX, INDEX, objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
    void gen_scene_graph(objVectorViewport *, RSTREAM &, SEGINDEX, SEGINDEX);
    void gen_scene_init(objVectorViewport *);
-   void new_segment(stream_char, stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
-   void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
 };
 
 //********************************************************************************************************************
-// In the first pass, the size of each cell is calculated with respect to its content.  When
-// SCODE::TABLE_END is reached, the max height and width for each row/column will be calculated
-// and a subsequent pass will be made to fill out the cells.
+// In the first pass, the size of each cell is calculated with respect to its content.  When SCODE::TABLE_END is
+// reached, the max height and width for each row/column will be calculated and a subsequent pass will be made to
+// fill out the cells.
 //
-// If the width of a cell increases, there is a chance that the height of all cells in that
-// column will decrease, subsequently lowering the row height of all rows in the table, not just the
-// current row.  Therefore on the second pass the row heights need to be recalculated from scratch.
+// If the width of a cell increases, there is a chance that the height of all cells in that column will decrease,
+// subsequently lowering the row height of all rows in the table, not just the current row.  Therefore on the second
+// pass the row heights need to be recalculated from scratch.
 
 CELL layout::lay_cell(bc_table *Table)
 {
@@ -271,18 +296,17 @@ CELL layout::lay_cell(bc_table *Table)
       log.warning("Failed to find matching cell-end.  Document stream is corrupt.");
       return CELL::ABORT;
    }
-   
+
    auto cell_end = &stream_data<bc_cell_end>(Self, cell_end_idx);
    cell_end->cell_start = &cell;
 
    idx++; // Go to start of cell content
 
    if (idx < cell_end_idx) {
-      auto segcount = m_segments.size();
-
       Self->EditMode = (!cell.edit_def.empty()) ? true : false;
 
       layout sl(Self);
+      sl.m_depth = m_depth;
       sl.do_layout(idx, cell_end_idx, &m_font, cell.width, cell.height,
          ClipRectangle(Table->cell_padding), vertical_repass);
 
@@ -297,17 +321,12 @@ CELL layout::lay_cell(bc_table *Table)
 
          // Edit cells have a minimum width/height so that the user can still interact with them when empty.
 
-         if (m_segments.size() IS segcount) {
+         if (sl.m_segments.empty()) {
             // No content segments were created, which means that there's nothing for the editing cursor to attach
             // itself too.
 
-            // Do we really want to do something here?
-            // I'd suggest that we instead break up the segments a bit more???  Another possibility - create an SCODE::NULL
-            // type that gets placed at the start of the edit cell.  If there's no genuine content, then we at least have the SCODE::NULL
-            // type for the cursor to be attached to?  SCODE::NULL does absolutely nothing except act as faux content.
-
-
-            // TODO Work on this problem
+            // TODO: Maybe ceate an SCODE::NOP type that gets placed at the start of the edit cell.  If there's no genuine
+            // content, then we at least have the SCODE::NOP type for the cursor to be attached to?
          }
 
          if (cell.width < 16) cell.width = 16;
@@ -1616,7 +1635,8 @@ void layout::lay_set_margins(LONG &BottomMargin)
 // This function creates segments, which are used during the drawing process as well as user interactivity, e.g. to
 // determine the character that the mouse is positioned over.
 
-void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth, const std::string &Debug)
+void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth,
+   const std::string &Debug)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1709,6 +1729,7 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
    doc_segment segment;
 
    // Is the new segment a continuation of the previous one, and does the previous segment contain content?
+
    if ((allow_merge) and (!m_segments.empty()) and (m_segments.back().stop IS Start) and
        (m_segments.back().allow_merge)) {
       // We are going to extend the previous segment rather than add a new one, as the two
@@ -1717,57 +1738,28 @@ void layout::new_segment(stream_char Start, stream_char Stop, DOUBLE Y, DOUBLE W
       segment = m_segments.back();
       m_segments.pop_back();
 
-      Start  = segment.start;
-      x      = segment.area.X;
-      Width += segment.area.Width;
-      AlignWidth += segment.align_width;
-      if (segment.area.Height > line_height) {
-         line_height = segment.area.Height;
-         gutter      = segment.gutter;
+      if (line_height > segment.area.Height) {
+         segment.area.Height = line_height;
+         segment.gutter = gutter;
       }
+
+      segment.area.Width  += Width;
+      segment.align_width += AlignWidth;
+   }
+   else {
+      segment.start       = Start;
+      segment.area        = { x, Y, Width, line_height };
+      segment.align_width = AlignWidth;
+      segment.gutter      = gutter;
    }
 
-#ifdef _DEBUG
-   // If this is a segmented line, check if any previous entries have greater
-   // heights.  If so, this is considered an internal programming error.
-
-   if ((m_split_start != NOT_SPLIT) and (height > 0)) {
-      for (i=m_split_start; i < offset; i++) {
-         if (m_segments[i].depth != m_depth) continue;
-         if (m_segments[i].height > height) {
-            log.warning("A previous entry in segment %d has a height larger than the new one (%d > %d)", i, m_segments[i].height, height);
-            BaseLine = m_segments[i].BaseLine;
-            height = m_segments[i].height;
-         }
-      }
-   }
-#endif
-
-   segment.start            = Start;
    segment.stop             = Stop;
    segment.trim_stop        = trim_stop;
-   segment.area             = { x, Y, Width, line_height };
-   segment.gutter           = gutter;
    segment.depth            = m_depth;
-   segment.align_width      = AlignWidth;
    segment.text_content     = text_content;
    segment.floating_vectors = floating_vectors;
    segment.allow_merge      = allow_merge;
    segment.edit             = Self->EditMode;
-
-   // If a line is segmented, we need to check for earlier line segments and ensure that their height and gutter
-   // is matched to that of the last line (which always contains the maximum height and gutter values).
-
-   if ((m_split_start != NOT_SPLIT) and (line_height)) {
-      if (LONG(m_segments.size()) != m_split_start) {
-         DLAYOUT("Resetting height (%g) & gutter (%g) of segments index %d-%d.", line_height, gutter, segment.start.index, m_split_start);
-         for (unsigned i=m_split_start; i < m_segments.size(); i++) {
-            if (m_segments[i].depth != m_depth) continue;
-            m_segments[i].area.Height = line_height;
-            m_segments[i].gutter      = gutter;
-         }
-      }
-   }
 
    m_segments.emplace_back(segment);
 }
@@ -1991,7 +1983,7 @@ extend_page:
    m_align_width  = m_wrap_edge;
    m_cursor_x     = Margins.Left;
    m_cursor_y     = Margins.Top;
-   m_split_start  = m_segments.size();
+   m_line_seg_start = m_segments.size();
    m_font         = *Font;
    m_space_width  = fntCharWidth(m_font, ' ', 0, NULL);
 
@@ -2229,8 +2221,8 @@ repass_row_height:
             add_code_segment();
             break;
 
-         case SCODE::ROW_END: 
-            lay_row_end(esctable); 
+         case SCODE::ROW_END:
+            lay_row_end(esctable);
             break;
 
          case SCODE::CELL: {
@@ -2238,19 +2230,19 @@ repass_row_height:
                case CELL::ABORT:
                   goto exit;
 
-               case CELL::WRAP_TABLE_CELL:  
-                  *this = tablestate; 
+               case CELL::WRAP_TABLE_CELL:
+                  *this = tablestate;
                   goto wrap_table_cell;
-         
-               case CELL::REPASS_ROW_HEIGHT: 
-                  *this = rowstate; 
+
+               case CELL::REPASS_ROW_HEIGHT:
+                  *this = rowstate;
                   goto repass_row_height;
             }
             break;
          }
 
-         case SCODE::CELL_END: 
-            lay_cell_end(); 
+         case SCODE::CELL_END:
+            lay_cell_end();
             break;
 
          default: break;
@@ -2351,10 +2343,12 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
 
    // Reset line management variables for a new line starting from the left margin.
 
+   sanitise_line_height();
+
    m_line.full_reset(m_left_margin);
    m_line.index       = Next;
    m_cursor_x         = m_left_margin;
-   m_split_start      = m_segments.size();
+   m_line_seg_start   = m_segments.size();
    m_word_index       = m_line.index;
    m_kernchar         = 0;
    m_word_width       = 0;
@@ -2426,13 +2420,15 @@ restart:
 
       // Reset the line management variables so that the next line starts at the left margin.
 
+      sanitise_line_height();
+
       X  = m_left_margin;
       Y += m_line.height;
 
-      m_cursor_x    = X;
-      m_cursor_y    = Y;
-      m_split_start = m_segments.size();
-      m_kernchar    = 0;
+      m_cursor_x = X;
+      m_cursor_y = Y;
+      m_kernchar = 0;
+      m_line_seg_start = m_segments.size();
 
       m_line.reset(m_left_margin);
 

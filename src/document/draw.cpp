@@ -480,8 +480,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                   else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
                   else x = x_offset;
 
-                  log.warning("%g %g %s", x, y, str.c_str());
-
                   auto vt  = objVectorText::create::global({
                      fl::Owner(Viewport->UID),
                      fl::X(x), fl::Y(y),
