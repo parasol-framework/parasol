@@ -678,6 +678,8 @@ retrydir:
    if ((Self->Flags & FL::NEW) != FL::NIL) resolveflags |= RSF::NO_FILE_CHECK;
    if ((Self->Flags & FL::APPROXIMATE) != FL::NIL) resolveflags |= RSF::APPROXIMATE;
 
+   if (Self->prvResolvedPath) { FreeResource(Self->prvResolvedPath); Self->prvResolvedPath = NULL; }
+
    if ((error = ResolvePath(Self->Path, resolveflags|RSF::CHECK_VIRTUAL, &Self->prvResolvedPath)) != ERR_Okay) {
       if (error IS ERR_VirtualVolume) {
          // For virtual volumes, update the path to ensure that the volume name is referenced in the path string.

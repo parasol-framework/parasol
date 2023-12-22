@@ -25,7 +25,8 @@
 <a @response="1">To be</a>
 <advance x="30"/><image src="url(#cancel)" width="16" height="16" padding="0 0 4 0"/>
 <a @response="2">Not to be</a>
-</p>      </cell>
+</p>
+      </cell>
     </row>
   </table>
   <advance y="20"/>

@@ -88,8 +88,6 @@ ERROR keyvalue_to_table(lua_State *Lua, const KEYVALUE *Map)
 
    lua_createtable(Lua, 0, Map->size()); // Create a new table on the stack.
 
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-
    for (auto & [ key, val ] : *Map) {
       lua_pushlstring(Lua, key.c_str(), key.size());
       lua_pushlstring(Lua, val.c_str(), val.size());
