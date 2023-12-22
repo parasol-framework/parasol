@@ -53,13 +53,15 @@
 
 <font face="courier">
 <p>Current font: <print value="[%font]; Face: [%font-face]; Size: [%font-size]; Colour: [%font-colour]"/></p>
+<!-- The following features can't appear in the test suite because they'll cause a hash mismatch between runs
 <p>Date: <print value="[%tm-day]-[%tm-month]-[%tm-year]"/></p>
 <p>Time: <print value="[%tm-hour]:[%tm-minute]:[%tm-second]"/></p>
-<p>Line Number: <print value="[%line-no]"/></p>
-<p>Page Name: <print value="[%current-page]"/></p>
 <p>Random Digits: <print value="[%random]"/></p>
 <p>Path: <print value="[%path]"/></p>
 <p>Platform: <print value="[%platform]"/></p>
+-->
+<p>Line Number: <print value="[%line-no]"/></p>
+<p>Page Name: <print value="[%current-page]"/></p>
 <p>Viewport size: <print value="[%view-width] x [%view-height]"/></p>
 </font>
 

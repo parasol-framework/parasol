@@ -69,7 +69,7 @@ private:
    LONG m_left_margin = 0, m_right_margin = 0; // Margins control whitespace for paragraphs and table cells
    LONG m_paragraph_bottom = 0; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
    LONG m_paragraph_y  = 0;     // The vertical position of the current paragraph
-   LONG m_line_seg_start = 0;   // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
+   SEGINDEX m_line_seg_start = 0; // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
    LONG m_word_width   = 0;     // Pixel width of the current word
    LONG m_wrap_edge    = 0;     // Marks the boundary at which graphics and text will need to wrap.
    WORD m_space_width  = 0;      // Caches the pixel width of a single space in the current font.
@@ -150,7 +150,7 @@ private:
    // values.
 
    inline void sanitise_line_height() {
-      auto end = m_segments.size();
+      auto end = SEGINDEX(m_segments.size());
       if (end > m_line_seg_start) {
          auto final_height = m_segments[end-1].area.Height;
          auto final_gutter = m_segments[end-1].gutter;
@@ -2237,6 +2237,9 @@ repass_row_height:
                case CELL::REPASS_ROW_HEIGHT:
                   *this = rowstate;
                   goto repass_row_height;
+
+               default:
+                  break;
             }
             break;
          }

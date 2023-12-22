@@ -664,26 +664,28 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    if ((Self->Focus->Flags & VF::HAS_FOCUS) != VF::NIL) Self->HasFocus = true;
 
-   auto call = make_function_stdc(key_event);
-   vecSubscribeKeyboard(Self->Viewport, &call);
+   if (Self->Viewport->Scene->SurfaceID) { // Make UI subscriptions as long as we're not headless
+      auto call = make_function_stdc(key_event);
+      vecSubscribeKeyboard(Self->Viewport, &call);
 
-   call = make_function_stdc(notify_focus_viewport);
-   SubscribeAction(Self->Focus, AC_Focus, &call);
+      call = make_function_stdc(notify_focus_viewport);
+      SubscribeAction(Self->Focus, AC_Focus, &call);
 
-   call = make_function_stdc(notify_lostfocus_viewport);
-   SubscribeAction(Self->Focus, AC_LostFocus, &call);
+      call = make_function_stdc(notify_lostfocus_viewport);
+      SubscribeAction(Self->Focus, AC_LostFocus, &call);
 
-   call = make_function_stdc(notify_disable_viewport);
-   SubscribeAction(Self->Viewport, AC_Disable, &call);
+      call = make_function_stdc(notify_disable_viewport);
+      SubscribeAction(Self->Viewport, AC_Disable, &call);
 
-   call = make_function_stdc(notify_enable_viewport);
-   SubscribeAction(Self->Viewport, AC_Enable, &call);
+      call = make_function_stdc(notify_enable_viewport);
+      SubscribeAction(Self->Viewport, AC_Enable, &call);
+      
+      call = make_function_stdc(notify_redimension_viewport);
+      Self->Viewport->setResizeEvent(call);
+   }
 
-   call = make_function_stdc(notify_free_viewport);
+   auto call = make_function_stdc(notify_free_viewport);
    SubscribeAction(Self->Viewport, AC_Free, &call);
-
-   call = make_function_stdc(notify_redimension_viewport);
-   Self->Viewport->setResizeEvent(call);
 
    Self->Viewport->get(FID_Width, &Self->VPWidth);
    Self->Viewport->get(FID_Height, &Self->VPHeight);
@@ -714,7 +716,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    Self->Scene = Self->Viewport->Scene;
 
-   if ((Self->View = objVectorViewport::create::integral(
+   if ((Self->View = objVectorViewport::create::global(
          fl::Name("docView"),
          fl::Owner(Self->Viewport->UID),
          fl::X(Self->Area.X), fl::Y(Self->Area.Y),
@@ -722,14 +724,16 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    }
    else return ERR_CreateObject;
 
-   if ((Self->Page = objVectorViewport::create::integral(
+   if ((Self->Page = objVectorViewport::create::global(
          fl::Name("docPage"),
          fl::Owner(Self->View->UID),
          fl::X(0), fl::Y(0),
          fl::Width(MAX_PAGE_WIDTH), fl::Height(MAX_PAGE_HEIGHT)))) {
 
-      auto callback = make_function_stdc(consume_input_events);
-      vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
+      if (Self->Page->Scene->SurfaceID) {
+         auto callback = make_function_stdc(consume_input_events);
+         vecSubscribeInput(Self->Page,  JTYPE::MOVEMENT|JTYPE::BUTTON, &callback);
+      }
    }
    else return ERR_CreateObject;
 

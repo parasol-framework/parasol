@@ -13,7 +13,7 @@ static void redraw(extDocument *Self, bool Focus)
       layout_doc(Self); // Does nothing if UpdatingLayout is false
    }
 
-   Self->Viewport->draw();
+   if (Self->Viewport->Scene->SurfaceID) Self->Viewport->draw();
 
    if ((Focus) and (Self->FocusIndex != -1)) set_focus(Self, -1, "redraw()");
 }
@@ -416,8 +416,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                   vpSetCommand(link->vector_path, link->path.size(), link->path.data(),
                      link->path.size() * sizeof(PathCommand));
 
-                  auto callback = make_function_stdc(link_callback);
-                  vecSubscribeInput(link->vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+                  if (link->vector_path->Scene->SurfaceID) {
+                     auto callback = make_function_stdc(link_callback);
+                     vecSubscribeInput(link->vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+                  }
                }
 
                link->path.clear();

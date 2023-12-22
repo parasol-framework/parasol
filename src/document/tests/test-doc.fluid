@@ -1,0 +1,78 @@
+-- $FLUID
+-- Flute tests for the Document class.
+--
+-- This technique uses pre-computed checksums from the Document's bitmap output, captured from a 'good' state.  If a
+-- checksum doesn't match, the test will fail and the resulting image will be saved to "temp:doc_test_results/".
+-- Check the corresponding image file, if it is acceptable then update the old checksum from the test output in order
+-- to pass future tests.
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function renderDocToBitmap(Path)
+   local scene = obj.new('VectorScene', { pageWidth=1024, pageHeight=768 })
+   local vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
+   vp.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill='rgb(255,255,255)' })
+   vp.new('document', { viewport=vp, path=Path })
+   local bmp = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32 })
+   bmp.acClear()
+   scene.bitmap = bmp
+   scene.acDraw()
+   return bmp
+end
+
+function hashTestDoc(Path, ExpectedHash)
+   if (ExpectedHash == 0) then
+      error('File "' .. Path .. '" is yet to be assigned a checksum.')
+   end
+   local bmp = renderDocToBitmap(glDocFolder .. Path)
+   local hash = mSys.GenCRC32(0, bmp.data, bmp.size)
+   if (ExpectedHash != hash) then
+      saveBitmap(bmp, Path)
+      error('Computed hash for "' .. Path .. '" is ' .. string.format('$%.8x', hash) .. ', expected ' .. string.format('$%.8x', ExpectedHash))
+   end
+end
+
+function saveBitmap(Bitmap, Path)
+   local folder, filename = file.splitPath(Path)
+   local split = string.split(filename, '\\.')
+   filename = split[1] .. '.png'
+
+   local pic = obj.new('picture', { width = Bitmap.width, height = Bitmap.height, bitsPerPixel = Bitmap.bitsPerPixel, flags='NEW' })
+   Bitmap.acCopyData(pic.bitmap)
+   local file = obj.new('file', { flags='NEW|WRITE', path='temp:doc_test_results/' .. filename })
+   pic.acSaveImage(file)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testAlignment()   hashTestDoc('alignment.rpl', 0x8ff3857f) end
+function testDialog()      hashTestDoc('dialog.rpl', 0xb7e0f0b2) end
+function testFonts()       hashTestDoc('fonts.rpl', 0) end
+function testImages()      hashTestDoc('images.rpl', 0xd129eb49) end
+function testLayout()      hashTestDoc('layout.rpl', 0xc43ba293) end
+function testLinks()       hashTestDoc('links.rpl', 0x04fcc2ff) end
+function testLogic()       hashTestDoc('logic.rpl', 0x77173c79) end
+function testParagraphs()  hashTestDoc('paragraphs.rpl', 0xa1bfdbb5) end
+function testTables()      hashTestDoc('tables.rpl', 0xba214845) end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+        'testAlignment',
+        'testDialog',
+        'testFonts',
+        'testImages',
+        'testLayout',
+        'testLinks',
+        'testLogic',
+        'testParagraphs',
+        'testTables'
+      },
+      init = function(Folder)
+         glDocFolder = Folder
+      end,
+      cleanup = function()
+
+      end
+   }

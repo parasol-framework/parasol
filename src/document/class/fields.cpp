@@ -8,9 +8,9 @@ If a document declares the names of its author(s) under a head tag, the author s
 This field is always NULL if a document does not declare an author string.
 
 -FIELD-
-Background: Optional background colour for the document.
+Background: Optional background fill instruction for the document.
 
-Set the Background field to clear the document background to the colour specified.
+Set the Background field with an SVG fill instruction to create a customised background.
 
 *********************************************************************************************************************/
 

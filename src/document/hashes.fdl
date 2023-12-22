@@ -114,7 +114,7 @@ header({ copyright="Paul Manias © 2023" }, function()
     "savestyle",
     "script",
     "select",
-    "selectcolour",
+    "selectfill",
     "set",
     "setfont",
     "setmargins",

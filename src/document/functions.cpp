@@ -604,23 +604,6 @@ static LONG create_font(const std::string &Face, const std::string &Style, LONG 
 }
 
 //********************************************************************************************************************
-// Checks if an object reference is a valid member of the document.
-
-static bool valid_object(extDocument *Self, OBJECTPTR Object)
-{
-   if ((Self->Flags & DCF::UNRESTRICTED) != DCF::NIL) return true;
-
-   auto obj = Object;
-   while (obj) {
-      if (!obj->OwnerID) return false;
-      if (obj->OwnerID < 0) return valid_objectid(Self, obj->UID); // Switch to scanning public objects
-      obj = GetObjectPtr(obj->OwnerID);
-      if (obj IS Self) return true;
-   }
-   return false;
-}
-
-//********************************************************************************************************************
 //Checks if an object reference is a valid member of the document.
 
 static bool valid_objectid(extDocument *Self, OBJECTID ObjectID)

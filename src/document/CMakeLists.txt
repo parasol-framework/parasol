@@ -12,3 +12,5 @@ idl_c ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashe
 add_library (${MOD})
 set_module_defaults (${MOD})
 target_sources (${MOD} PRIVATE "${MOD}.cpp")
+
+flute_test (doc_output "tests/test-doc.fluid")

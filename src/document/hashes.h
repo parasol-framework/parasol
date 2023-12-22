@@ -115,7 +115,7 @@
 #define HASH_savestyle 0x3a48aec5UL
 #define HASH_script 0x1b600fbaUL
 #define HASH_select 0x1b80e3c5UL
-#define HASH_selectcolour 0xcaf45a59UL
+#define HASH_selectfill 0xf560f9ecUL
 #define HASH_set 0x0b88a991UL
 #define HASH_setfont 0x8c2edf88UL
 #define HASH_setmargins 0xba739162UL

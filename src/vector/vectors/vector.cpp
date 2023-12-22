@@ -965,7 +965,7 @@ ptr(func) Callback: Reference to a callback function that will receive input mes
 -ERRORS-
 Okay:
 NullArgs:
-FieldNotSet: The VectorScene has no reference to a Surface.
+FieldNotSet: The VectorScene's Surface field has not been defined.
 AllocMemory:
 Function: A call to gfxSubscribeInput() failed.
 

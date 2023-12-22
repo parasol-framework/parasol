@@ -657,12 +657,12 @@ static bool eval_condition(const std::string &String)
 
    LONG condition = 0;
    {
-      std::string cond;
-      cond.reserve(3);
-      char c;
+      char cond[4];
+      LONG c;
       for (i=cpos,c=0; (c < 2) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
          cond[c++] = String[i];
       }
+      cond[c] = 0;
 
       for (unsigned j=0; table[j].Name; j++) {
          if (!StrMatch(cond, table[j].Name)) {
@@ -1305,7 +1305,7 @@ void parser::tag_body(XMLTag &Tag)
             Self->VisitedLinkFill = Tag.Attribs[i].Value;
             break;
 
-         case HASH_selectcolour: // Colour to use when a link is selected (using the tab key to get to a link will select it)
+         case HASH_selectfill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
             Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
 
@@ -1359,7 +1359,7 @@ void parser::tag_body(XMLTag &Tag)
             log.msg("Page width forced to %g%s.", Self->PageWidth, Self->RelPageWidth ? "%%" : "");
             break;
 
-         case HASH_colour: // Background fill
+         case HASH_fill: // Background fill
             if (Self->Background) FreeResource(Self->Background);
             Self->Background = StrClone(Tag.Attribs[i].Value.c_str());
             break;
@@ -1380,7 +1380,7 @@ void parser::tag_body(XMLTag &Tag)
             break;
 
          default:
-            log.warning("Style attribute %s=%s not supported.", Tag.Attribs[i].Name.c_str(), Tag.Attribs[i].Value.c_str());
+            log.warning("Body attribute %s=%s not supported.", Tag.Attribs[i].Name.c_str(), Tag.Attribs[i].Value.c_str());
             break;
       }
    }
@@ -1589,7 +1589,7 @@ void parser::tag_editdef(XMLTag &Tag)
 
          case HASH_name: name = Tag.Attribs[i].Value; break;
 
-         case HASH_selectcolour: break;
+         case HASH_selectfill: break;
 
          case HASH_linebreaks: edit.line_breaks = StrToInt(Tag.Attribs[i].Value); break;
 
