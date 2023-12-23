@@ -214,6 +214,7 @@ private:
    DOUBLE calc_page_height(DOUBLE);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
    void end_line(NL, DOUBLE, stream_char, const std::string &);
+   void new_code_segment(const stream_char, const stream_char, const std::string &);
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
 
@@ -1751,6 +1752,56 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    segment.edit             = m_edit_mode;
 
    m_segments.emplace_back(segment);
+}
+
+// For the addition of non-graphical segments only (no area defined)
+
+void layout::new_code_segment(const stream_char Start, const stream_char Stop, const std::string &Debug)
+{
+   pf::Log log(__FUNCTION__);
+
+#ifdef DBG_STREAM
+   log.branch("#%d %d:%d - %d:%d, [%.20s]...[%.20s] (%s)",
+      LONG(m_segments.size()), Start.index, LONG(Start.offset), Stop.index, LONG(Stop.offset),
+      printable(Self, Start).c_str(), printable(Self, Stop).c_str(), Debug.c_str());
+#endif
+
+   if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
+      // TODO: Verify if this is still necessary?
+
+      // Patching: If the start of the new segment is < the end of the previous segment,
+      // adjust the previous segment so that it stops at the beginning of our new segment.
+      // This prevents overlapping between segments and the two segments can be patched
+      // together in the next section of this routine.
+
+      DLAYOUT("New segment #%d start index is less than (%d < %d) the end of previous segment - will patch up.",
+         m_segments.back().start.index, Start.index, m_segments.back().stop.index);
+      m_segments.back().stop = Start;
+   }
+
+   if ((!m_segments.empty()) and (m_segments.back().stop IS Start) and (m_segments.back().allow_merge)) {
+      // We can extend the previous segment.
+
+      auto &current_seg = m_segments.back();
+      current_seg.stop      = Stop;
+      current_seg.trim_stop = Stop;
+   }
+   else {
+      doc_segment segment;
+      segment.start       = Start;
+      segment.stop        = Stop;
+      segment.trim_stop   = Stop;
+      segment.area        = { 0, 0, 0, 0 };
+      segment.align_width = 0;
+      segment.gutter      = 0;
+      segment.inline_content   = false;
+      segment.floating_vectors = false;
+      segment.depth            = m_depth;
+      segment.allow_merge = true;
+      segment.edit        = m_edit_mode;
+
+      m_segments.emplace_back(segment);
+   }
 }
 
 //********************************************************************************************************************
