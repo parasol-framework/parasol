@@ -75,8 +75,8 @@ private:
    WORD m_space_width  = 0;      // Caches the pixel width of a single space in the current font.
    bool m_inline       = false; // Set to true when graphics (vectors, images) must be inline.
    bool m_no_wrap      = false; // Set to true when word-wrap is disabled.
-   bool m_text_content = false; // Set to true whenever text is encountered (inc. whitespace).  Resets on segment breaks.
    bool m_cursor_drawn = false; // Set to true when the cursor has been drawn during scene graph creation.
+   bool m_edit_mode    = false; // Set to true when inside an area that allows user editing of the content.
 
    struct {
       stream_char index;   // Stream position for the line's content.
@@ -119,7 +119,6 @@ private:
       m_kernchar         = 0;
       m_inline           = false;
       m_no_wrap          = false;
-      m_text_content     = false;
    }
 
    // Resets the string management variables, usually done when a string
@@ -132,7 +131,6 @@ private:
       m_line.x       = X;
       m_kernchar     = 0;
       m_word_width   = 0;
-      m_text_content = false;
    }
 
    inline void reset_segment() { reset_segment(idx, m_cursor_x); }
@@ -176,14 +174,6 @@ private:
          case SCODE::IMAGE:
             // Graphics don't break words.  Either the graphic is floating (therefore its presence has no impact)
             // or it is inline, and therefore treated like a character.
-            break;
-
-         case SCODE::FONT:
-            // Font style changes don't breakup text unless there's a face change.
-            //if (m_text_content) {
-            //   auto &style = stream_data<bc_font>(Self, idx);
-            //   if (m_font != style.get_font()) return true;
-            //}
             break;
 
          case SCODE::INDEX_START: {
@@ -301,7 +291,7 @@ CELL layout::lay_cell(bc_table *Table)
    idx++; // Go to start of cell content
 
    if (idx < cell_end_idx) {
-      Self->EditMode = (!cell.edit_def.empty()) ? true : false;
+      m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
       layout sl(Self);
       sl.m_depth = m_depth;
@@ -315,7 +305,7 @@ CELL layout::lay_cell(bc_table *Table)
       idx = cell_end_idx - 1; // -1 to make up for the loop's ++
 
       if (!cell.edit_def.empty()) {
-         Self->EditMode = false;
+         m_edit_mode = false;
 
          // Edit cells have a minimum width/height so that the user can still interact with them when empty.
 
@@ -586,9 +576,8 @@ WRAP layout::lay_text()
          else m_cursor_x += m_word_width + m_space_width;
 
          // Current word state must be reset.
-         m_kernchar     = 0;
-         m_word_width   = 0;
-         m_text_content = true;
+         m_kernchar   = 0;
+         m_word_width = 0;
          i++;
       }
       else {
@@ -599,10 +588,9 @@ WRAP layout::lay_text()
 
          LONG unicode, kerning;
          i += getutf8(str.c_str()+i, &unicode);
-         m_word_width  += fntCharWidth(m_font, unicode, m_kernchar, &kerning);
-         m_word_width  += kerning;
-         m_kernchar     = unicode;
-         m_text_content = true;
+         m_word_width += fntCharWidth(m_font, unicode, m_kernchar, &kerning);
+         m_word_width += kerning;
+         m_kernchar    = unicode;
 
          if (ascent > m_line.word_height) m_line.word_height = ascent;
       }
@@ -1655,15 +1643,20 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       return;
    }
 
-   // The content of the segment affects some factors such as line height.
-
-   bool text_content     = false;
+   bool inline_content   = false;
    bool floating_vectors = false;
    bool allow_merge      = true; // If true, this segment can be merged with prior segment(s) on the line
 
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (Self->Stream[i.index].code) {
-         case SCODE::IMAGE:
+         case SCODE::IMAGE: {
+            auto &img =  stream_data<bc_image>(Self, i.index);
+            if (img.floating()) floating_vectors = true;
+            else inline_content = true;
+            allow_merge = false;
+            break;
+         }
+
          case SCODE::TABLE_START:
          case SCODE::TABLE_END:
          case SCODE::FONT:
@@ -1671,7 +1664,8 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
             break;
 
          case SCODE::TEXT:
-            text_content = true;
+            // Disable merging because a single text code can be referenced by multiple segments (due to word wrapping)
+            inline_content = true;
             allow_merge = false;
             break;
 
@@ -1682,7 +1676,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
    auto line_height = m_line.height;
    auto gutter      = m_line.gutter;
-   if (text_content) {
+   if (inline_content) {
       if (line_height <= 0) {
          // No line-height given and there is text content - use the most recent font to determine the line height
          line_height = m_font->LineSpacing;
@@ -1700,8 +1694,6 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
       printable(Self, Stop).c_str(), Debug.c_str());
 #endif
-
-   auto x = m_line.x;
 
    if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
       // Patching: If the start of the new segment is < the end of the previous segment,
@@ -1745,7 +1737,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
    else {
       segment.start       = Start;
-      segment.area        = { x, Y, Width, line_height };
+      segment.area        = { m_line.x, Y, Width, line_height };
       segment.align_width = AlignWidth;
       segment.gutter      = gutter;
    }
@@ -1753,10 +1745,10 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    segment.stop             = Stop;
    segment.trim_stop        = trim_stop;
    segment.depth            = m_depth;
-   segment.text_content     = text_content;
+   segment.inline_content   = inline_content;
    segment.floating_vectors = floating_vectors;
    segment.allow_merge      = allow_merge;
-   segment.edit             = Self->EditMode;
+   segment.edit             = m_edit_mode;
 
    m_segments.emplace_back(segment);
 }
@@ -2100,9 +2092,9 @@ extend_page:
             tablestate = *this;
 
             if (esctable) {
-               auto ptr = esctable;
+               auto parent_table = esctable;
                esctable = &stream_data<bc_table>(Self, idx);
-               esctable->stack = ptr;
+               esctable->stack = parent_table;
             }
             else {
                esctable = &stream_data<bc_table>(Self, idx);
@@ -2504,7 +2496,7 @@ DOUBLE layout::calc_page_height(DOUBLE BottomMargin)
 
    DOUBLE page_height = 0;
    for (SEGINDEX last = m_segments.size() - 1; last >= 0; last--) {
-      if (m_segments[last].text_content) {
+      if (m_segments[last].inline_content) {
          page_height = m_segments[last].area.Height + m_segments[last].area.Y;
          break;
       }

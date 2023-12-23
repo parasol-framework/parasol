@@ -442,7 +442,7 @@ struct doc_segment {
    DOUBLE align_width;      // Full width of this segment if it were non-breaking
    UWORD depth;             // Branch depth associated with the segment - helps to differentiate between inner and outer tables
    bool  edit;              // true if this segment represents content that can be edited
-   bool  text_content;      // true if there is TEXT in this segment
+   bool  inline_content;    // true if there is text or an inline graphic in this segment
    bool  floating_vectors;  // true if there are user defined vectors in this segment with independent x,y coordinates
    bool  allow_merge;       // true if this segment can be merged with siblings that have allow_merge set to true
 
@@ -859,7 +859,6 @@ class extDocument : public objDocument {
    bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters
    bool   HasFocus;         // True if the main viewport has the focus
    bool   LMB;              // True if the LMB is depressed.
-   bool   EditMode;
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
    template <class T = base_code> T & insert_code(stream_char &, T &);
