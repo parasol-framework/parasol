@@ -138,7 +138,7 @@ private:
    // Add a segment for a single byte code at position idx.  This will not include support for text glyphs,
    // so extended information is not required.
 
-   inline void add_code_segment() {
+   inline void add_graphics_segment() {
       new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, BC_NAME(Self->Stream, idx));
       reset_segment(idx+1, m_cursor_x);
    }
@@ -391,7 +391,7 @@ void layout::lay_cell_end()
    // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
    // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
 
-   add_code_segment();
+   add_graphics_segment();
 }
 
 //********************************************************************************************************************
@@ -462,7 +462,7 @@ WRAP layout::lay_image()
       }
       else image.x = m_cursor_x;
 
-      add_code_segment();
+      add_graphics_segment();
 
       // For a floating image we need to declare a clip region based on the final image dimensions.
       // TODO: Add support for masked clipping through SVG paths.
@@ -692,7 +692,7 @@ void layout::lay_row_end(bc_table *Table)
    if (Table->row_width > Table->width) Table->width = Table->row_width;
 
    stack_row.pop();
-   add_code_segment();
+   add_graphics_segment();
 }
 
 //********************************************************************************************************************
@@ -979,7 +979,7 @@ TE layout::lay_table_end(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUB
 
    esctable = esctable->stack;
 
-   add_code_segment();
+   add_graphics_segment(); // Technically table-end is a graphics segment because tables can be inline
    return TE::NIL;
 }
 
@@ -1585,7 +1585,7 @@ wrap_vector:
       VerticalRepass = true;
    }
 
-   add_code_segment();
+   add_graphics_segment();
 
    return WRAP::DO_NOTHING;
 }
@@ -2170,7 +2170,7 @@ wrap_table_cell:
 
             m_cursor_x = esctable->x;
             m_cursor_y = esctable->y + esctable->strokeWidth + esctable->cell_vspacing;
-            add_code_segment();
+            add_graphics_segment();
             break;
          }
 
@@ -2198,7 +2198,7 @@ repass_row_height:
             stack_row.top()->y = m_cursor_y;
             esctable->row_width = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
 
-            add_code_segment();
+            add_graphics_segment();
             break;
 
          case SCODE::ROW_END:
