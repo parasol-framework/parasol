@@ -120,10 +120,6 @@ UBYTE stream_char::get_prev_char_or_inline(extDocument *Self, const RSTREAM &Str
             return 0xff;
          }
       }
-      else if (Stream[i].code IS SCODE::VECTOR) {
-         //auto &vec = stream_data<bc_vector>(Self, i);
-         return 0xff; // TODO: Check for inline status
-      }
       //else if (Stream[i].code IS SCODE::OBJECT) {
       //   auto &vec = stream_data<bcObject>(Self, i);
       //   return 0xff; // TODO: Check for inline status

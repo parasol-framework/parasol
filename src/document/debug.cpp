@@ -21,42 +21,6 @@ static std::string printable(extDocument *Self, stream_char Start, ULONG Length)
 
 //********************************************************************************************************************
 
-static void print_xmltree(objXML::TAGS &Tags, LONG &Indent)
-{
-   pf::Log log(__FUNCTION__);
-
-   for (auto &tag : Tags) {
-      std::ostringstream buffer;
-      for (LONG i=0; i < Indent; i++) buffer << ' ';
-
-      if (tag.isContent()) {
-         auto output = tag.Attribs[0].Value;
-         auto pos = output.find("\n", 0);
-         while (pos != std::string::npos) {
-            output.replace(pos, 1, "_");
-            pos = output.find("\n", pos+1);
-         }
-
-         buffer << '[' << output << ']';
-      }
-      else {
-         buffer << '<' << tag.Attribs[0].Name;
-         for (unsigned a=1; a < tag.Attribs.size(); a++) {
-            buffer << " " << tag.Attribs[a].Name << "=\"" << tag.Attribs[a].Value << "\"";
-         }
-         buffer << '>';
-      }
-
-      log.msg("%s", buffer.str().c_str());
-
-      Indent++;
-      print_xmltree(tag.Children, Indent);
-      Indent--;
-   }
-}
-
-//********************************************************************************************************************
-
 #ifdef DBG_STREAM
 
 static void print_stream(extDocument *Self, const RSTREAM &Stream)
@@ -100,15 +64,9 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
 
 #endif
 
-#ifdef DBG_SEGMENTS
-
-#include <stdio.h>
-#include <stdarg.h>
-#undef NULL
-#define NULL 0
-
 static void print_segments(extDocument *Self, const RSTREAM &Stream)
 {
+#ifdef DBG_SEGMENTS
    pf::Log log;
    std::ostringstream out;
 
@@ -118,50 +76,33 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
       auto &line = Self->Segments[row];
       auto i = line.start;
 
-      out << std::setw(3) << row << ": Span: " << line.start.index << "-" << line.Stop.index << ": ";
-      out << "(" << line.Area.x << "x" << line.Area.y << ", " << line.Area.width << "x" << line.Area.height << ") ";
-      if (line.Edit) out << "{ ";
+      out << std::setw(3) << row << ": Span: " << std::setw(3) << line.start.index << " - " << std::setw(3) << line.stop.index << ": ";
+      out << "(" << line.area.X << "x" << line.area.Y << ", " << line.area.Width << "x" << line.area.Height << ") ";
+      if (line.edit) out << "{ ";
       out << "\"";
-      while (i < line.Stop) {
-         auto code = Stream[i.index].Code;
+      while (i < line.stop) {
+         auto code = Stream[i.index].code;
          if (code IS SCODE::FONT) {
             auto style = &stream_data<bc_font>(Self, i.index);
             out << "[E:Font:#" << style->font_index << "]";
          }
          else if (code IS SCODE::PARAGRAPH_START) {
             auto para = &stream_data<bc_paragraph>(Self, i.index);
-            if (para->ListItem) out << "[E:LI]";
+            if (para->list_item) out << "[E:LI]";
             else out << "[E:PS]";
          }
          else if (code IS SCODE::PARAGRAPH_END) {
             out << "[E:PE]\n";
          }
-         else out << "[E:" <<  byteCode(code) << "]";
+         else out << "[E:" <<  byte_code(code) << "]";
          i.next_code();
       }
 
       out << "\"";
-      if (line.Edit) out << " }";
+      if (line.edit) out << " }";
       out << "\n";
    }
 
    log.msg("%s", out.str().c_str());
-}
-
-static void print_tabfocus(extDocument *Self)
-{
-   pf::Log log;
-   std::ostringstream out;
-
-   if (!Self->Tabs.empty()) {
-      out << "\nTAB FOCUSLIST\n-------------\n";
-
-      for (unsigned i=0; i < Self->Tabs.size(); i++) {
-         out << i << ": Type: " << LONG(Self->Tabs[i].type) << ", Ref: " << Self->Tabs[i].ref << ", XRef: " << Self->Tabs[i].XRef << "\n";
-      }
-   }
-
-   log.msg("%s", out.str().c_str());
-}
-
 #endif
+}

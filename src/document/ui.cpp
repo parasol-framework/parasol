@@ -110,7 +110,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                      auto &cell = stream_data<bc_cell>(Self, index);
                      if (cell.cell_id IS Self->ActiveEditCellID) break;
                   }
-                  else if (code IS SCODE::VECTOR); // Vectors count as a character
+                  else if (code IS SCODE::IMAGE); // Inline images count as a character
                   else if (code != SCODE::TEXT) continue;
 
                   if (!resolve_fontx_by_index(Self, index, Self->CursorCharX)) {
@@ -137,7 +137,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
                      break;
                   }
                }
-               else if (code IS SCODE::VECTOR); // Objects are treated as content, so do nothing special for these and drop through to next section
+               else if (code IS SCODE::IMAGE); // Inline images are treated as content, so do nothing special for these and drop through to next section
                else {
                   index.next_char(Self, Self->Stream);
                   continue;
@@ -363,7 +363,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
       CursorIndex.offset = 0;
       while (CursorIndex.index < INDEX(Self->Stream.size())) {
          std::array<SCODE, 6> content = {
-            SCODE::CELL_END, SCODE::TABLE_START, SCODE::VECTOR, SCODE::LINK_END, SCODE::PARAGRAPH_END, SCODE::TEXT
+            SCODE::CELL_END, SCODE::TABLE_START, SCODE::LINK_END, SCODE::IMAGE, SCODE::PARAGRAPH_END, SCODE::TEXT
          };
          if (std::find(std::begin(content), std::end(content), stream[CursorIndex.index].code) != std::end(content)) break;
          CursorIndex.next_code();

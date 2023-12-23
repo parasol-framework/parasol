@@ -79,7 +79,6 @@ enum class SCODE : char {
    TEXT,
    FONT,
    FONT_END,
-   VECTOR,
    LINK,
    TABDEF,
    PARAGRAPH_END,
@@ -436,7 +435,7 @@ struct style_status {
 
 struct doc_segment {
    stream_char start;       // Starting index (including character if text)
-   stream_char stop;        // stop at this index/character
+   stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
    FloatRect area;          // Dimensions of the segment.
    DOUBLE gutter;           // The largest gutter value after taking into account all fonts used on the line.
@@ -652,18 +651,6 @@ struct bc_set_margins : public base_code {
    bc_set_margins() { code = SCODE::SET_MARGINS; }
 };
 
-struct bc_vector : public base_code {
-   OBJECTID object_id = 0;     // Reference to the vector
-   CLASSID class_id = 0;       // Precise class that the object belongs to, mostly for informative/debugging purposes
-   ClipRectangle margins = { 0, 0, 0, 0 };
-   bool in_line       = false; // true if object is embedded as part of the text stream (treated as if it were a character)
-   bool owned         = false; // true if the object is owned by a parent (not subject to normal document layout)
-   bool ignore_cursor = false; // true if the client has set fixed values for both x and y
-   bool block_right   = false; // true if no text may be printed to the right of the object
-   bool block_left    = false; // true if no text may be printed to the left of the object
-   bc_vector() { code = SCODE::VECTOR; }
-};
-
 struct bc_xml : public base_code {
    OBJECTID object_id = 0;   // Reference to the object
    bool owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
@@ -825,7 +812,7 @@ class extDocument : public objDocument {
    std::unordered_map<std::string, doc_edit> EditDefs;
    std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_font_end, bc_vector, bc_set_margins, bc_xml, bc_image, bc_use>> Codes;
+      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face

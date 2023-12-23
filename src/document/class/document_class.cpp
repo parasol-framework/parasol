@@ -137,7 +137,10 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
 
    Self->UpdatingLayout = true;
 
+#ifndef RETAIN_LOG_LEVEL
    pf::LogLevel level(2);
+#endif
+
    layout_doc(Self);
 }
 
@@ -829,7 +832,9 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
             index.visible = false;
 
             {
+               #ifndef RETAIN_LOG_LEVEL
                pf::LogLevel level(2);
+               #endif
                Self->UpdatingLayout = true;
                layout_doc(Self);
             }
@@ -842,11 +847,11 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                   auto &end = stream_data<bc_index_end>(Self, i);
                   if (index.id IS end.id) break;
                }
-               else if (code IS SCODE::VECTOR) {
-                  auto &vec = stream_data<bc_vector>(Self, i);
-                  if (vec.object_id) acHide(vec.object_id);
+               else if (code IS SCODE::IMAGE) {
+                  auto &vec = stream_data<bc_image>(Self, i);
+                  if (vec.rect) acHide(vec.rect->UID);
 
-                  if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.object_id); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
@@ -1350,7 +1355,9 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
             // Show all objects and manage the ParentVisible status of any child indexes
 
             {
+               #ifndef RETAIN_LOG_LEVEL
                pf::LogLevel level(2);
+               #endif
                Self->UpdatingLayout = true;
                layout_doc(Self);
             }
@@ -1360,11 +1367,11 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                if (code IS SCODE::INDEX_END) {
                   if (index.id IS stream_data<bc_index_end>(Self, i).id) break;
                }
-               else if (code IS SCODE::VECTOR) {
-                  auto &vec = stream_data<bc_vector>(Self, i);
-                  if (vec.object_id) acShow(vec.object_id);
+               else if (code IS SCODE::IMAGE) {
+                  auto &img = stream_data<bc_image>(Self, i);
+                  if (img.rect) acShow(img.rect);
 
-                  if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.object_id); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT_OBJECT, img.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }

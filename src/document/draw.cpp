@@ -9,7 +9,10 @@ static void redraw(extDocument *Self, bool Focus)
    log.traceBranch("");
 
    {
+      #ifndef RETAIN_LOG_LEVEL
       pf::LogLevel level(3);
+      #endif
+
       layout_doc(Self); // Does nothing if UpdatingLayout is false
    }
 
@@ -141,14 +144,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
          }
       }
-
-      #ifdef GUIDELINES_CONTENT
-         if (segment.text_content) {
-            gfxDrawRectangle(Bitmap, segment.x, segment.y,
-               (segment.width > 0) ? segment.width : 5, segment.height,
-               Bitmap->packPixel(0, 255, 0), 0);
-         }
-      #endif
 
       auto x_offset = segment.area.X;
       for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {

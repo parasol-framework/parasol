@@ -165,7 +165,7 @@ private:
       }
    }
 
-   // Return true if an escape code is capable of breaking a word.
+   // Return true if a byte code is capable of breaking a word.
 
    inline bool breakable_word() {
       switch (Self->Stream[idx].code) {
@@ -173,7 +173,6 @@ private:
          case SCODE::TABLE_START:
             return true;
 
-         case SCODE::VECTOR:
          case SCODE::IMAGE:
             // Graphics don't break words.  Either the graphic is floating (therefore its presence has no impact)
             // or it is inline, and therefore treated like a character.
@@ -221,7 +220,6 @@ private:
    void lay_set_margins(LONG &);
    TE   lay_table_end(bc_table *, LONG, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
    WRAP lay_text();
-   WRAP lay_vector(LONG, LONG, bool &, bool &);
 
    DOUBLE calc_page_height(DOUBLE);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
@@ -1000,6 +998,7 @@ TE layout::lay_table_end(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUB
 //********************************************************************************************************************
 // Embedded vectors are always contained by a VectorViewport irrespective of whether or not the client asked for one.
 
+#if 0
 WRAP layout::lay_vector(LONG Offset, LONG PageHeight, bool &VerticalRepass, bool &CheckWrap)
 {
    pf::Log log;
@@ -1602,6 +1601,7 @@ wrap_vector:
 
    return WRAP::DO_NOTHING;
 }
+#endif
 
 //********************************************************************************************************************
 
@@ -1632,8 +1632,8 @@ void layout::lay_set_margins(LONG &BottomMargin)
 }
 
 //********************************************************************************************************************
-// This function creates segments, which are used during the drawing process as well as user interactivity, e.g. to
-// determine the character that the mouse is positioned over.
+// This function creates segments, that will be used in the final stage of the layout process to draw the graphics.
+// They can also assist with user interactivity, e.g. to determine the character that the mouse is positioned over.
 
 void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth,
    const std::string &Debug)
@@ -1650,7 +1650,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
 
    if (Start >= Stop) {
-      DLAYOUT("Cancelling addition, no content in line to add (bytes %d-%d) \"%.20s\" (%s)",
+      DLAYOUT("Cancelling new segment, no content in range %d-%d  \"%.20s\" (%s)",
          Start.index, Stop.index, printable(Self, Start).c_str(), Debug.c_str());
       return;
    }
@@ -1663,9 +1663,6 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (Self->Stream[i.index].code) {
-         case SCODE::VECTOR:
-            floating_vectors = true;
-            // Fall through
          case SCODE::IMAGE:
          case SCODE::TABLE_START:
          case SCODE::TABLE_END:
@@ -1857,10 +1854,7 @@ static void layout_doc(extDocument *Self)
 
    Self->UpdatingLayout = false;
 
-#ifdef DBG_SEGMENTS
    print_segments(Self, Self->Stream);
-   print_tabfocus(Self);
-#endif
 
    // If an error occurred during layout processing, unload the document and display an error dialog.  (NB: While it is
    // possible to display a document up to the point at which the error occurred, we want to maintain a strict approach
@@ -2090,12 +2084,6 @@ extend_page:
             break;
          }
 
-         case SCODE::VECTOR: {
-            auto ww = lay_vector(Offset, page_height, VerticalRepass, check_wrap);
-            if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
-            break;
-         }
-
          case SCODE::TABLE_START: {
             // Table layout steps are as follows:
             //
@@ -2127,7 +2115,7 @@ extend_page:
 
             for (unsigned j=0; j < esctable->columns.size(); j++) esctable->columns[j].min_width = 0;
 
-            LONG width;
+            DOUBLE width;
 wrap_table_start:
             // Calculate starting table width, ensuring that the table meets the minimum width according to the cell
             // spacing and padding values.
@@ -2512,7 +2500,7 @@ DOUBLE layout::calc_page_height(DOUBLE BottomMargin)
 
    if (m_segments.empty()) return 0;
 
-   // Find the last segment that had text and use that to determine the bottom of the page
+   // Find the last segment that had text or inline content and use that to determine the bottom of the page
 
    DOUBLE page_height = 0;
    for (SEGINDEX last = m_segments.size() - 1; last >= 0; last--) {

@@ -147,7 +147,7 @@ void parser::process_page()
       if (m_body_tag) {
          pf::Log log(__FUNCTION__);
          log.traceBranch("Processing this page through the body tag.");
-         
+
          auto tags = m_inject_tag;
          m_inject_tag = &page->Children;
          m_in_template++;
@@ -1100,7 +1100,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 TRF parser::parse_tags(objXML::TAGS &Tags, IPF Flags)
 {
    TRF result = TRF::NIL;
-   
+
    for (auto &tag : Tags) {
       // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
       result = parse_tag(tag, Flags);

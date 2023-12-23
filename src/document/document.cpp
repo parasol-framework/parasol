@@ -13,6 +13,10 @@ that is distributed with this package.  Please refer to it for further informati
 //#define GUIDELINES // Clipping guidelines
 //#define GUIDELINES_CONTENT // Segment guidelines
 
+#if (defined(_DEBUG) || defined(DBG_LAYOUT) || defined(DBG_STREAM) || defined(DBG_SEGMENTS))
+ #define RETAIN_LOG_LEVEL TRUE
+#endif
+
 #ifdef DBG_LAYOUT
  #define DLAYOUT(...)   log.msg(__VA_ARGS__)
 #else
@@ -175,7 +179,7 @@ template <class T> T & extDocument::reserve_code(stream_char &Cursor)
 
 static const std::string & byte_code(SCODE Code) {
    static const std::string strCodes[] = {
-      "?", "Text", "Font", "FontEnd", "Vector", "Link", "TabDef", "PE",
+      "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
       "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use"
    };
@@ -222,7 +226,6 @@ static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-static void  print_xmltree(objXML::TAGS &, LONG &);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
@@ -241,11 +244,6 @@ static BYTE  view_area(extDocument *, LONG, LONG, LONG, LONG);
 static std::string write_calc(DOUBLE, WORD);
 
 static ERROR GET_WorkingPath(extDocument *, CSTRING *);
-
-inline void print_xmltree(objXML::TAGS &Tags) {
-   LONG indent = 0;
-   print_xmltree(Tags, indent);
-}
 
 inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
    return read_rgb8(Value.c_str(), RGB);
@@ -365,7 +363,10 @@ inline doc_edit * find_editdef(extDocument *Self, const std::string Name)
 
 inline void layout_doc_fast(extDocument *Self)
 {
+#ifndef RETAIN_LOG_LEVEL
    pf::LogLevel level(2);
+#endif
+
    layout_doc(Self);
 }
 

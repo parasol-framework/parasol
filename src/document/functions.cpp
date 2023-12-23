@@ -233,7 +233,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
    if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) { // 'Hold Style' - Do nothing to change it
       // Parse content and insert it at the end of the stream (we'll move it to the insertion point afterwards).
       parser parse(Self, XML);
-      
+
       if (Self->Stream.empty()) {
          parse.parse_tags(Tag);
       }
@@ -375,12 +375,14 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
 
       objXML::create xml = {
          fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
-         fl::Path(Path), 
+         fl::Path(Path),
          fl::ReadOnly(true)
       };
-      
+
       if (xml.ok()) {
+         #ifndef RETAIN_LOG_LEVEL
          pf::LogLevel level(3);
+         #endif
          parser parse(Self, *xml);
          parse.process_page();
          return Self->Error;
@@ -575,7 +577,9 @@ static LONG create_font(const std::string &Face, const std::string &Style, LONG 
 
    log.branch("Index: %d, %s, %s, %d", LONG(glFonts.size()), Face.c_str(), Style.c_str(), Point);
 
+#ifndef RETAIN_LOG_LEVEL
    pf::LogLevel level(2);
+#endif
 
    objFont *font = objFont::create::integral(
       fl::Owner(modDocument->UID), fl::Face(Face), fl::Style(Style), fl::Point(Point), fl::Flags(FTF::PREFER_SCALED));
