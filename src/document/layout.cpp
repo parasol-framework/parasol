@@ -55,7 +55,7 @@ private:
    std::stack<bc_paragraph *> stack_para;
    std::stack<bc_font *>      stack_font;
 
-   std::vector<doc_clip>    m_clips;
+   std::vector<doc_clip> m_clips;
 
    objFont *m_font = NULL;
 
@@ -143,13 +143,6 @@ private:
       reset_segment(idx+1, m_cursor_x);
    }
 
-   // Add a segment for a single byte code at position idx.  For use by non-graphical codes only (i.e. no
-   // graphics region).
-
-   inline void add_code_segment() {
-      new_code_segment(stream_char(idx, 0), stream_char(idx + 1, 0), BC_NAME(Self->Stream, idx));
-   }
-
    // When lines are segmented, the last segment will store the final height of the line whilst the earlier segments
    // will have the wrong height.  This function ensures that all segments for a line have the same height and gutter
    // values.
@@ -198,7 +191,7 @@ private:
    DOUBLE calc_page_height(DOUBLE);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
    void end_line(NL, DOUBLE, stream_char, const std::string &);
-   void new_code_segment(const stream_char, const stream_char, const std::string &);
+   void new_code_segment();
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
 
@@ -376,7 +369,7 @@ void layout::lay_cell_end()
    // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
    // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
 
-   add_graphics_segment();
+   new_code_segment();
 }
 
 //********************************************************************************************************************
@@ -677,7 +670,7 @@ void layout::lay_row_end(bc_table *Table)
    if (Table->row_width > Table->width) Table->width = Table->row_width;
 
    stack_row.pop();
-   add_graphics_segment();
+   new_code_segment();
 }
 
 //********************************************************************************************************************
@@ -1662,7 +1655,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    auto gutter      = m_line.gutter;
    if (inline_content) {
       if (line_height <= 0) {
-         // No line-height given and there is text content - use the most recent font to determine the line height
+         // No line-height given and there is text/inline content - use the most recent font to determine the line height
          line_height = m_font->LineSpacing;
          gutter      = m_font->LineSpacing - m_font->Ascent;
       }
@@ -1708,8 +1701,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       // We are going to extend the previous segment rather than add a new one, as the two
       // segments only contain control codes.
 
-      segment = m_segments.back();
-      m_segments.pop_back();
+      auto &segment = m_segments.back();
 
       if (line_height > segment.area.Height) {
          segment.area.Height = line_height;
@@ -1718,72 +1710,60 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
       segment.area.Width  += Width;
       segment.align_width += AlignWidth;
+      segment.stop      = Stop;
+      segment.trim_stop = trim_stop;
+      if (inline_content)   segment.inline_content   = inline_content;
+      if (floating_vectors) segment.floating_vectors = floating_vectors;
    }
    else {
-      segment.start       = Start;
-      segment.area        = { m_line.x, Y, Width, line_height };
-      segment.align_width = AlignWidth;
-      segment.gutter      = gutter;
+      m_segments.emplace_back(doc_segment {
+         .start       = Start,
+         .stop        = Stop,
+         .trim_stop   = trim_stop,
+         .area        = { m_line.x, Y, Width, line_height },
+         .gutter      = gutter,
+         .align_width = AlignWidth,
+         .depth       = m_depth,
+         .edit        = m_edit_mode,
+         .inline_content   = inline_content,
+         .floating_vectors = floating_vectors,
+         .allow_merge      = allow_merge
+      });
    }
-
-   segment.stop             = Stop;
-   segment.trim_stop        = trim_stop;
-   segment.depth            = m_depth;
-   segment.inline_content   = inline_content;
-   segment.floating_vectors = floating_vectors;
-   segment.allow_merge      = allow_merge;
-   segment.edit             = m_edit_mode;
-
-   m_segments.emplace_back(segment);
 }
 
-// For the addition of non-graphical segments only (no area defined)
+//********************************************************************************************************************
+// Add a segment for a single byte code at position idx.  For use by non-graphical codes only (i.e. no graphics region).
 
-void layout::new_code_segment(const stream_char Start, const stream_char Stop, const std::string &Debug)
+void layout::new_code_segment()
 {
    pf::Log log(__FUNCTION__);
 
+   stream_char start(idx, 0), stop(idx + 1, 0); 
+
 #ifdef DBG_STREAM
-   log.branch("#%d %d:%d - %d:%d, [%.20s]...[%.20s] (%s)",
-      LONG(m_segments.size()), Start.index, LONG(Start.offset), Stop.index, LONG(Stop.offset),
-      printable(Self, Start).c_str(), printable(Self, Stop).c_str(), Debug.c_str());
+   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, BC_NAME(Self->Stream,idx).c_str());
 #endif
 
-   if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
-      // TODO: Verify if this is still necessary?
-
-      // Patching: If the start of the new segment is < the end of the previous segment,
-      // adjust the previous segment so that it stops at the beginning of our new segment.
-      // This prevents overlapping between segments and the two segments can be patched
-      // together in the next section of this routine.
-
-      DLAYOUT("New segment #%d start index is less than (%d < %d) the end of previous segment - will patch up.",
-         m_segments.back().start.index, Start.index, m_segments.back().stop.index);
-      m_segments.back().stop = Start;
-   }
-
-   if ((!m_segments.empty()) and (m_segments.back().stop IS Start) and (m_segments.back().allow_merge)) {
+   if ((!m_segments.empty()) and (m_segments.back().stop IS start) and (m_segments.back().allow_merge)) {
       // We can extend the previous segment.
 
-      auto &current_seg = m_segments.back();
-      current_seg.stop      = Stop;
-      current_seg.trim_stop = Stop;
+      m_segments.back().stop = stop;
    }
    else {
-      doc_segment segment;
-      segment.start       = Start;
-      segment.stop        = Stop;
-      segment.trim_stop   = Stop;
-      segment.area        = { 0, 0, 0, 0 };
-      segment.align_width = 0;
-      segment.gutter      = 0;
-      segment.inline_content   = false;
-      segment.floating_vectors = false;
-      segment.depth            = m_depth;
-      segment.allow_merge = true;
-      segment.edit        = m_edit_mode;
-
-      m_segments.emplace_back(segment);
+      m_segments.emplace_back(doc_segment {
+         .start       = start,
+         .stop        = stop,
+         .trim_stop   = stop,
+         .area        = { 0, 0, 0, 0 },
+         .gutter      = 0,
+         .align_width = 0,
+         .depth       = m_depth,
+         .edit        = m_edit_mode,
+         .inline_content   = false,
+         .floating_vectors = false,
+         .allow_merge      = true
+      });
    }
 }
 
@@ -2223,7 +2203,7 @@ wrap_table_cell:
 
             m_cursor_x = esctable->x;
             m_cursor_y = esctable->y + esctable->strokeWidth + esctable->cell_vspacing;
-            add_graphics_segment();
+            new_code_segment();
             break;
          }
 
@@ -2251,7 +2231,7 @@ repass_row_height:
             stack_row.top()->y = m_cursor_y;
             esctable->row_width = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
 
-            add_graphics_segment();
+            new_code_segment();
             break;
 
          case SCODE::ROW_END:
@@ -2354,7 +2334,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
    }
 
    if (idx > m_line.index.index) {
-      new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "Esc:EndLine");
+      new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "EndLine");
    }
 
    if (NewLine != NL::NONE) {
