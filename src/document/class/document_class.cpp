@@ -3,12 +3,12 @@
 -CLASS-
 Document: Provides document display and editing facilities.
 
-The Document class offers a complete page layout engine, providing rich text display features for creating complex 
-documents and text-based interfaces.  Internally, document data is maintained as a serial byte stream and all 
+The Document class offers a complete page layout engine, providing rich text display features for creating complex
+documents and text-based interfaces.  Internally, document data is maintained as a serial byte stream and all
 object model information from the source is discarded.  This simplification of the data makes it possible to
 edit the document in-place, much the same as any word processor.  Alternatively it can be used for presentation
-purposes only, similarly to PDF or HTML formats.  Presentation is achieved by building a vector scene graph in 
-conjunction with the @Vector module.  This means that the output is compatible with SVG and can be manipulated in 
+purposes only, similarly to PDF or HTML formats.  Presentation is achieved by building a vector scene graph in
+conjunction with the @Vector module.  This means that the output is compatible with SVG and can be manipulated in
 detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
 and seamlessly inherits SVG functionality such as filling and stroking commands.
 
@@ -23,7 +23,7 @@ By default, script execution is not enabled when parsing a document source.  If 
 there is no meaningful level of safety on offer when the document is processed.  This feature should not be
 used unless the source document has been written by the client, or has otherwise been received from a trusted source.
 
-To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop 
+To mitigate security problems, we recommend that the application is built with some form of sandbox that will stop
 the system being compromised by bad actors.  Utilising a project such as Win32 App Isolation
 https://github.com/microsoft/win32-app-isolation is one potential way of doing this.
 
@@ -385,8 +385,8 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       if (!Self->initialised()) return log.warning(ERR_NotInitialised);
       if (Self->Processing) return log.warning(ERR_Recursion);
 
-      objXML::create xml = { 
-         fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED), 
+      objXML::create xml = {
+         fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
          fl::Statement(CSTRING(Args->Buffer)),
          fl::ReadOnly(true)
       };
@@ -397,10 +397,18 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
             Self->UpdatingLayout = true;
             parser parse(Self, *xml);
             parse.process_page();
+
+            Self->Stream = parse.m_stream;
+            Self->UpdatingLayout = true;
+            if (Self->initialised()) redraw(Self, true);
+
+            #ifdef DBG_STREAM
+               print_stream(Self);
+            #endif
          }
          else { // UNTESTED
             log.trace("Appending data to XML #%d", xml->UID);
-            Self->Error = insert_xml(Self, *xml, xml->Tags, Self->Stream.size(), IXF::CLOSE_STYLE);
+            Self->Error = insert_xml(Self, Self->Stream, *xml, xml->Tags, Self->Stream.size(), IXF::CLOSE_STYLE);
             //acRefresh(Self);
          }
          return Self->Error;
@@ -556,7 +564,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].code IS SCODE::INDEX_START) {
-         auto &index = stream_data<bc_index>(Self, i);
+         auto &index = Self->stream_data<bc_index>(i);
          if (name_hash IS index.name_hash) {
             auto end_id = index.id;
             Args->Start = i;
@@ -565,7 +573,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
             for (++i; i < INDEX(Self->Stream.size()); i++) {
                if (Self->Stream[i].code IS SCODE::INDEX_END) {
-                  if (end_id IS stream_data<bc_index_end>(Self, i).id) {
+                  if (end_id IS Self->stream_data<bc_index_end>(i).id) {
                      Args->End = i;
                      log.trace("Found index at range %d - %d", Args->Start, Args->End);
                      return ERR_Okay;
@@ -682,7 +690,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
       call = make_function_stdc(notify_enable_viewport);
       SubscribeAction(Self->Viewport, AC_Enable, &call);
-      
+
       call = make_function_stdc(notify_redimension_viewport);
       Self->Viewport->setResizeEvent(call);
    }
@@ -825,7 +833,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (stream[i].code IS SCODE::INDEX_START) {
-         auto &index = stream_data<bc_index>(Self, i);
+         auto &index = Self->stream_data<bc_index>(i);
          if (name_hash IS index.name_hash) {
             if (!index.visible) return ERR_Okay; // It's already invisible!
 
@@ -844,11 +852,11 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
             for (++i; i < INDEX(stream.size()); i++) {
                auto code = stream[i].code;
                if (code IS SCODE::INDEX_END) {
-                  auto &end = stream_data<bc_index_end>(Self, i);
+                  auto &end = Self->stream_data<bc_index_end>(i);
                   if (index.id IS end.id) break;
                }
                else if (code IS SCODE::IMAGE) {
-                  auto &vec = stream_data<bc_image>(Self, i);
+                  auto &vec = Self->stream_data<bc_image>(i);
                   if (vec.rect) acHide(vec.rect->UID);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.rect->UID); tab >= 0) {
@@ -856,13 +864,13 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                   }
                }
                else if (code IS SCODE::LINK) {
-                  auto &esclink = stream_data<bc_link>(Self, i);
+                  auto &esclink = Self->stream_data<bc_link>(i);
                   if ((tab = find_tabfocus(Self, TT_LINK, esclink.id)) >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
                else if (code IS SCODE::INDEX_START) {
-                  auto &index = stream_data<bc_index>(Self, i);
+                  auto &index = Self->stream_data<bc_index>(i);
                   index.parent_visible = false;
                }
             }
@@ -913,15 +921,15 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
 
    if (Self->Stream.empty()) return ERR_NoData;
 
-   objXML::create xml = { 
-      fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS), 
-      fl::Statement(Args->XML) 
+   objXML::create xml = {
+      fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS),
+      fl::Statement(Args->XML)
    };
 
    if (!xml.ok()) {
       Self->UpdatingLayout = true;
 
-      ERROR error = insert_xml(Self, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE);
+      ERROR error = insert_xml(Self, Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE);
       if (error) log.warning("Insert failed for: %s", Args->XML);
 
       return error;
@@ -973,7 +981,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    if (index < 0) index = Self->Stream.size();
 
    stream_char sc(index, 0);
-   ERROR error = insert_text(Self, sc, std::string(Args->Text), Args->Preformat);
+   ERROR error = insert_text(Self, Self->Stream, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
       print_stream(Self);
@@ -1035,7 +1043,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
       for (INDEX i=Args->Start; i < Args->End; i++) {
          if (Self->Stream[i].code IS SCODE::TEXT) {
-            buffer << stream_data<bc_text>(Self, i).text;
+            buffer << Self->stream_data<bc_text>(i).text;
          }
       }
 
@@ -1346,7 +1354,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (stream[i].code IS SCODE::INDEX_START) {
-         auto &index = stream_data<bc_index>(Self, i);
+         auto &index = Self->stream_data<bc_index>(i);
          if (name_hash != index.name_hash) continue;
          if (index.visible) return ERR_Okay; // It's already visible!
 
@@ -1365,10 +1373,10 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
             for (++i; i < INDEX(stream.size()); i++) {
                auto code = stream[i].code;
                if (code IS SCODE::INDEX_END) {
-                  if (index.id IS stream_data<bc_index_end>(Self, i).id) break;
+                  if (index.id IS Self->stream_data<bc_index_end>(i).id) break;
                }
                else if (code IS SCODE::IMAGE) {
-                  auto &img = stream_data<bc_image>(Self, i);
+                  auto &img = Self->stream_data<bc_image>(i);
                   if (img.rect) acShow(img.rect);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, img.rect->UID); tab >= 0) {
@@ -1376,18 +1384,18 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                   }
                }
                else if (code IS SCODE::LINK) {
-                  if (auto tab = find_tabfocus(Self, TT_LINK, stream_data<bc_link>(Self, i).id); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT_LINK, Self->stream_data<bc_link>(i).id); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }
                else if (code IS SCODE::INDEX_START) {
-                  auto &index = stream_data<bc_index>(Self, i);
+                  auto &index = Self->stream_data<bc_index>(i);
                   index.parent_visible = true;
 
                   if (!index.visible) {
                      for (++i; i < INDEX(stream.size()); i++) {
                         if (stream[i].code IS SCODE::INDEX_END) {
-                           if (index.id IS stream_data<bc_index_end>(Self, i).id) break;
+                           if (index.id IS Self->stream_data<bc_index_end>(i).id) break;
                         }
                      }
                   }

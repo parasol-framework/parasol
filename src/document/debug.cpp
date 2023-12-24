@@ -10,7 +10,7 @@ static std::string printable(extDocument *Self, stream_char Start, ULONG Length)
    stream_char i = Start;
    while ((i.index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
       if (Self->Stream[i.index].code IS SCODE::TEXT) {
-         auto &text = stream_data<bc_text>(Self, i);
+         auto &text = Self->stream_data<bc_text>(i);
          result += text.text.substr(i.offset, result.capacity() - result.size());
       }
       else result += '%';
@@ -36,17 +36,17 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
    for (INDEX i=0; i < INDEX(Stream.size()); i++) {
       auto code = Stream[i].code;
       if (code IS SCODE::FONT) {
-         auto style = &stream_data<bc_font>(Self, i);
+         auto &style = Self->stream_data<bc_font>(i);
          out << "[Font";
-         out << ":#" << style->font_index;
-         if ((style->options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
-         if ((style->options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
-         if ((style->options & FSO::BOLD) != FSO::NIL) out << ":Bold";
-         out << ":" << style->fill << "]";
+         out << ":#" << style.font_index;
+         if ((style.options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
+         if ((style.options & FSO::ALIGN_CENTER) != FSO::NIL) out << ":A/C";
+         if ((style.options & FSO::BOLD) != FSO::NIL) out << ":Bold";
+         out << ":" << style.fill << "]";
       }
       else if (code IS SCODE::PARAGRAPH_START) {
-         auto para = &stream_data<bc_paragraph>(Self, i);
-         if (para->list_item) out << "[PS:LI]";
+         auto &para = Self->stream_data<bc_paragraph>(i);
+         if (para.list_item) out << "[PS:LI]";
          else out << "[PS]";
       }
       else if (code IS SCODE::PARAGRAPH_END) {
@@ -83,12 +83,12 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
       while (i < line.stop) {
          auto code = Stream[i.index].code;
          if (code IS SCODE::FONT) {
-            auto style = &stream_data<bc_font>(Self, i.index);
-            out << "[E:Font:#" << style->font_index << "]";
+            auto &style = Self->stream_data<bc_font>(i.index);
+            out << "[E:Font:#" << style.font_index << "]";
          }
          else if (code IS SCODE::PARAGRAPH_START) {
-            auto para = &stream_data<bc_paragraph>(Self, i.index);
-            if (para->list_item) out << "[E:LI]";
+            auto &para = Self->stream_data<bc_paragraph>(i.index);
+            if (para.list_item) out << "[E:LI]";
             else out << "[E:PS]";
          }
          else if (code IS SCODE::PARAGRAPH_END) {

@@ -374,11 +374,11 @@
 
     <field>
       <name>Background</name>
-      <comment>Optional background colour for the document.</comment>
+      <comment>Optional background fill instruction for the document.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>Set the Background field to clear the document background to the colour specified.</p>
+<p>Set the Background field with an SVG fill instruction to create a customised background.</p>
       </description>
     </field>
 

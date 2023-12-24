@@ -4,7 +4,7 @@
 void stream_char::erase_char(extDocument *Self, RSTREAM &Stream) // Erase a character OR an escape code.
 {
    if (Stream[index].code IS SCODE::TEXT) {
-      auto &text = stream_data<bc_text>(Self, index);
+      auto &text = Self->stream_data<bc_text>(index);
       if (offset < text.text.size()) text.text.erase(offset, 1);
       if (offset > text.text.size()) offset = text.text.size();
    }
@@ -20,7 +20,7 @@ UBYTE stream_char::get_char(extDocument *Self, const RSTREAM &Stream)
    auto seek = offset;
    while (size_t(idx) < Stream.size()) {
       if (Stream[idx].code IS SCODE::TEXT) {
-         auto &text = stream_data<bc_text>(Self, idx);
+         auto &text = Self->stream_data<bc_text>(idx);
          if (seek < text.text.size()) return text.text[seek];
          else seek = 0; // The current character offset isn't valid, reset it.
       }
@@ -39,7 +39,7 @@ UBYTE stream_char::get_char(extDocument *Self, const RSTREAM &Stream, INDEX Seek
 
    while (unsigned(idx) < Stream.size()) {
       if (Stream[idx].code IS SCODE::TEXT) {
-         auto &text = stream_data<bc_text>(Self, idx);
+         auto &text = Self->stream_data<bc_text>(idx);
          if (off + Seek < text.text.size()) return text.text[off + Seek];
          Seek -= text.text.size() - off;
          off = 0;
@@ -53,7 +53,7 @@ UBYTE stream_char::get_char(extDocument *Self, const RSTREAM &Stream, INDEX Seek
 void stream_char::next_char(extDocument *Self, const RSTREAM &Stream)
 {
    if (Stream[index].code IS SCODE::TEXT) {
-      auto &text = stream_data<bc_text>(Self, index);
+      auto &text = Self->stream_data<bc_text>(index);
       if (++offset >= text.text.size()) {
          index++;
          offset = 0;
@@ -74,7 +74,7 @@ void stream_char::prev_char(extDocument *Self, const RSTREAM &Stream)
    if (index > 0) {
       index--;
       if (Stream[index].code IS SCODE::TEXT) {
-         offset = stream_data<bc_text>(Self, index).text.size()-1;
+         offset = Self->stream_data<bc_text>(index).text.size()-1;
       }
       else offset = 0;
    }
@@ -88,12 +88,12 @@ void stream_char::prev_char(extDocument *Self, const RSTREAM &Stream)
 UBYTE stream_char::get_prev_char(extDocument *Self, const RSTREAM &Stream)
 {
    if ((offset > 0) and (Stream[index].code IS SCODE::TEXT)) {
-      return stream_data<bc_text>(Self, index).text[offset-1];
+      return Self->stream_data<bc_text>(index).text[offset-1];
    }
 
    for (auto i=index-1; i > 0; i--) {
       if (Stream[i].code IS SCODE::TEXT) {
-         return stream_data<bc_text>(Self, i).text.back();
+         return Self->stream_data<bc_text>(i).text.back();
       }
    }
 
@@ -107,21 +107,21 @@ UBYTE stream_char::get_prev_char(extDocument *Self, const RSTREAM &Stream)
 UBYTE stream_char::get_prev_char_or_inline(extDocument *Self, const RSTREAM &Stream)
 {
    if ((offset > 0) and (Stream[index].code IS SCODE::TEXT)) {
-      return stream_data<bc_text>(Self, index).text[offset-1];
+      return Self->stream_data<bc_text>(index).text[offset-1];
    }
 
    for (auto i=index-1; i > 0; i--) {
       if (Stream[i].code IS SCODE::TEXT) {
-         return stream_data<bc_text>(Self, i).text.back();
+         return Self->stream_data<bc_text>(i).text.back();
       }
       else if (Stream[i].code IS SCODE::IMAGE) {
-         auto &image = stream_data<bc_image>(Self, i);
+         auto &image = Self->stream_data<bc_image>(i);
          if (!image.floating()) {
             return 0xff;
          }
       }
       //else if (Stream[i].code IS SCODE::OBJECT) {
-      //   auto &vec = stream_data<bcObject>(Self, i);
+      //   auto &vec = Self->stream_data<bcObject>(i);
       //   return 0xff; // TODO: Check for inline status
       //}
    }

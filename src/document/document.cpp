@@ -135,7 +135,7 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 //********************************************************************************************************************
 // Inserts a byte code sequence into the text stream.
 
-template <class T> T & extDocument::insert_code(stream_char &Cursor, T &Code)
+template <class T> T & extDocument::insert_code(RSTREAM &Stream, stream_char &Cursor, T &Code)
 {
    // All byte codes are saved to a global container.
 
@@ -158,7 +158,7 @@ template <class T> T & extDocument::insert_code(stream_char &Cursor, T &Code)
    return std::get<T>(Codes[Code.uid]);
 }
 
-template <class T> T & extDocument::reserve_code(stream_char &Cursor)
+template <class T> T & extDocument::reserve_code(RSTREAM &Stream, stream_char &Cursor)
 {
    auto key = glByteCodeID;
    Codes.emplace(key, T());
@@ -215,8 +215,8 @@ static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 static std::string get_font_style(FSO);
 static LONG  getutf8(CSTRING, LONG *);
-static ERROR insert_text(extDocument *, stream_char &, const std::string &, bool);
-static ERROR insert_xml(extDocument *, objXML *, objXML::TAGS &, LONG, IXF);
+static ERROR insert_text(extDocument *, RSTREAM &, stream_char &, const std::string &, bool);
+static ERROR insert_xml(extDocument *, RSTREAM &, objXML *, objXML::TAGS &, LONG, IXF);
 static ERROR key_event(objVectorViewport *, KQ, KEY, LONG);
 static void  layout_doc(extDocument *);
 static ERROR load_doc(extDocument *, std::string, bool, ULD = ULD::NIL);
@@ -272,13 +272,13 @@ objFont * bc_font::get_font()
 //********************************************************************************************************************
 // For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
 
-template <class T> T & stream_data(extDocument *Self, stream_char Index) {
-   auto &sv = Self->Codes[Self->Stream[Index.index].uid];
+template <class T> T & extDocument::stream_data(stream_char Index) {
+   auto &sv = Codes[Stream[Index.index].uid];
    return std::get<T>(sv);
 }
 
-template <class T> T & stream_data(extDocument *Self, INDEX Index) {
-   auto &sv = Self->Codes[Self->Stream[Index].uid];
+template <class T> T & extDocument::stream_data(INDEX Index) {
+   auto &sv = Codes[Stream[Index].uid];
    return std::get<T>(sv);
 }
 
@@ -341,7 +341,7 @@ inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
 {
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].code IS SCODE::CELL) {
-         auto &cell = stream_data<bc_cell>(Self, i);
+         auto &cell = Self->stream_data<bc_cell>(i);
          if (EditDef == cell.edit_def) return i;
       }
    }
@@ -377,7 +377,7 @@ INDEX bc_cell::find_cell_end(extDocument *Self, RSTREAM &Stream, INDEX Offset)
    auto cell_end = Offset;
    while (cell_end < INDEX(Stream.size())) {
       if (Stream[cell_end].code IS SCODE::CELL_END) {
-         auto &end = stream_data<bc_cell_end>(Self, cell_end);
+         auto &end = Self->stream_data<bc_cell_end>(cell_end);
          if (end.cell_id IS cell_id) break;
       }
 

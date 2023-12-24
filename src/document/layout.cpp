@@ -218,7 +218,7 @@ CELL layout::lay_cell(bc_table *Table)
 
    bool vertical_repass = false;
 
-   auto &cell = stream_data<bc_cell>(Self, idx);
+   auto &cell = Self->stream_data<bc_cell>(idx);
 
    if (!Table) {
       log.warning("Table not defined for cell @ index %d - document byte code is corrupt.", idx);
@@ -263,7 +263,7 @@ CELL layout::lay_cell(bc_table *Table)
       return CELL::ABORT;
    }
 
-   auto cell_end = &stream_data<bc_cell_end>(Self, cell_end_idx);
+   auto cell_end = &Self->stream_data<bc_cell_end>(cell_end_idx);
    cell_end->cell_start = &cell;
 
    idx++; // Go to start of cell content
@@ -357,7 +357,7 @@ CELL layout::lay_cell(bc_table *Table)
 
 void layout::lay_cell_end()
 {
-   auto cell_end = &stream_data<bc_cell_end>(Self, idx);
+   auto cell_end = &Self->stream_data<bc_cell_end>(idx);
 
    if ((cell_end->cell_start) and (!cell_end->cell_start->edit_def.empty())) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
@@ -381,7 +381,7 @@ void layout::lay_cell_end()
 
 WRAP layout::lay_image()
 {
-   auto &image = stream_data<bc_image>(Self, idx);
+   auto &image = Self->stream_data<bc_image>(idx);
 
    if (!image.floating()) check_line_height(); // Necessary for inline images in case they are the first 'character' on the line.
 
@@ -477,7 +477,7 @@ WRAP layout::lay_image()
 void layout::lay_font()
 {
    pf::Log log;
-   auto style = &stream_data<bc_font>(Self, idx);
+   auto style = &Self->stream_data<bc_font>(idx);
    m_font = style->get_font();
 
    if (m_font) {
@@ -500,7 +500,7 @@ void layout::lay_font()
    }
    else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->font_index);
 
-   stack_font.push(&stream_data<bc_font>(Self, idx));
+   stack_font.push(&Self->stream_data<bc_font>(idx));
 }
 
 void layout::lay_font_end()
@@ -520,7 +520,7 @@ WRAP layout::lay_text()
    m_align_width = m_wrap_edge; // TODO: Not sure about this following the switch to embedded TEXT structures
 
    auto ascent = m_font->Ascent;
-   auto &text = stream_data<bc_text>(Self, idx);
+   auto &text = Self->stream_data<bc_text>(idx);
    auto &str = text.text;
    text.vector_text.clear();
    for (unsigned i=0; i < str.size(); ) {
@@ -617,7 +617,7 @@ void layout::lay_index()
 {
    pf::Log log(__FUNCTION__);
 
-   auto escindex = &stream_data<bc_index>(Self, idx);
+   auto escindex = &Self->stream_data<bc_index>(idx);
    escindex->y = m_cursor_y;
 
    if (!escindex->visible) {
@@ -626,7 +626,7 @@ void layout::lay_index()
       auto end = idx;
       while (end < INDEX(Self->Stream.size())) {
          if (Self->Stream[end].code IS SCODE::INDEX_END) {
-            bc_index_end &iend = stream_data<bc_index_end>(Self, end);
+            bc_index_end &iend = Self->stream_data<bc_index_end>(end);
             if (iend.id IS escindex->id) break;
             end++;
 
@@ -693,10 +693,10 @@ void layout::lay_paragraph()
       stream_char sc(idx, 0);
       end_line(NL::PARAGRAPH, ratio, sc, "PS");
 
-      stack_para.push(&stream_data<bc_paragraph>(Self, idx));
+      stack_para.push(&Self->stream_data<bc_paragraph>(idx));
    }
    else {
-      stack_para.push(&stream_data<bc_paragraph>(Self, idx));
+      stack_para.push(&Self->stream_data<bc_paragraph>(idx));
 
       // Leading ratio is only used if the paragraph is preceeded by content.
       // This check ensures that the first paragraph is always flush against
@@ -1573,7 +1573,7 @@ wrap_vector:
 
 void layout::lay_set_margins(LONG &BottomMargin)
 {
-   auto &escmargins = stream_data<::bc_set_margins>(Self, idx);
+   auto &escmargins = Self->stream_data<::bc_set_margins>(idx);
 
    if (escmargins.left != 0x7fff) {
       m_cursor_x    += escmargins.left;
@@ -1628,7 +1628,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (Self->Stream[i.index].code) {
          case SCODE::IMAGE: {
-            auto &img =  stream_data<bc_image>(Self, i.index);
+            auto &img = Self->stream_data<bc_image>(i.index);
             if (img.floating()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
@@ -1739,7 +1739,7 @@ void layout::new_code_segment()
 {
    pf::Log log(__FUNCTION__);
 
-   stream_char start(idx, 0), stop(idx + 1, 0); 
+   stream_char start(idx, 0), stop(idx + 1, 0);
 
 #ifdef DBG_STREAM
    log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, BC_NAME(Self->Stream,idx).c_str());
@@ -2010,7 +2010,7 @@ extend_page:
                break;
 
             case SCODE::INDEX_START: {
-               auto &index = stream_data<bc_index>(Self, idx);
+               auto &index = Self->stream_data<bc_index>(idx);
                if (!index.visible) set_segment_now = true;
                break;
             }
@@ -2063,7 +2063,7 @@ extend_page:
             }
             else if (wrap_result IS WRAP::WRAPPED) { // A wrap occurred during text processing.
                // The presence of the line-break must be ignored, due to word-wrap having already made the new line for us
-               auto &text = stream_data<bc_text>(Self, idx);
+               auto &text = Self->stream_data<bc_text>(idx);
                if (text.text[0] IS '\n') {
                   if (text.text.size() > 0) m_line.index.offset = 1;
                }
@@ -2072,7 +2072,7 @@ extend_page:
          }
 
          case SCODE::ADVANCE: {
-            auto adv = &stream_data<bc_advance>(Self, idx);
+            auto adv = &Self->stream_data<bc_advance>(idx);
             m_cursor_x += adv->x;
             m_cursor_y += adv->y;
             if (adv->x) reset_segment();
@@ -2093,7 +2093,7 @@ extend_page:
             // cursor position is advanced by the size of the item graphics element.
 
             liststate = *this;
-            stack_list.push(&stream_data<bc_list>(Self, idx));
+            stack_list.push(&Self->stream_data<bc_list>(idx));
             stack_list.top()->repass = false;
             break;
 
@@ -2126,11 +2126,11 @@ extend_page:
 
             if (esctable) {
                auto parent_table = esctable;
-               esctable = &stream_data<bc_table>(Self, idx);
+               esctable = &Self->stream_data<bc_table>(idx);
                esctable->stack = parent_table;
             }
             else {
-               esctable = &stream_data<bc_table>(Self, idx);
+               esctable = &Self->stream_data<bc_table>(idx);
                esctable->stack = NULL;
             }
 
@@ -2221,7 +2221,7 @@ wrap_table_cell:
          }
 
          case SCODE::ROW:
-            stack_row.push(&stream_data<bc_row>(Self, idx));
+            stack_row.push(&Self->stream_data<bc_row>(idx));
             rowstate = *this;
 
             if (esctable->reset_row_height) stack_row.top()->row_height = stack_row.top()->min_height;

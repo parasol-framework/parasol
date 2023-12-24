@@ -861,7 +861,9 @@ class extDocument : public objDocument {
    bool   LMB;              // True if the LMB is depressed.
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
-   template <class T = base_code> T & insert_code(stream_char &, T &);
-   template <class T = base_code> T & reserve_code(stream_char &);
+   template <class T = base_code> T & insert_code(RSTREAM &, stream_char &, T &);
+   template <class T = base_code> T & reserve_code(RSTREAM &, stream_char &);
+   template <class T> T & stream_data(stream_char Index);
+   template <class T> T & stream_data(INDEX Index);
    std::vector<sorted_segment> & get_sorted_segments();
 };

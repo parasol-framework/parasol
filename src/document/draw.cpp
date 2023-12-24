@@ -149,7 +149,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
       for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {
          switch (Stream[cursor.index].code) {
             case SCODE::FONT: {
-               auto &style = stream_data<bc_font>(Self, cursor);
+               auto &style = Self->stream_data<bc_font>(cursor);
                stack_style.push(&style);
                break;
             }
@@ -160,7 +160,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::LIST_START:
-               stack_list.push(&stream_data<bc_list>(Self, cursor));
+               stack_list.push(&Self->stream_data<bc_list>(cursor));
                break;
 
             case SCODE::LIST_END:
@@ -168,7 +168,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                break;
 
             case SCODE::PARAGRAPH_START:
-               stack_para.push(&stream_data<bc_paragraph>(Self, cursor));
+               stack_para.push(&Self->stream_data<bc_paragraph>(cursor));
 
                if (stack_style.empty()) { // Sanity check - there must always be at least one font style on the stack.
                   log.warning("The byte stream is missing a font style code.");
@@ -213,13 +213,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
             // TODO: It would be preferable to pre-process 'use' instructions in advance.
             case SCODE::USE: {
-               auto &use = stream_data<bc_use>(Self, cursor);
+               auto &use = Self->stream_data<bc_use>(cursor);
                svgParseSymbol(Self->SVG, use.id.c_str(), Viewport);
                break;
             }
 
             case SCODE::TABLE_START: {
-               stack_table.push(&stream_data<bc_table>(Self, cursor));
+               stack_table.push(&Self->stream_data<bc_table>(cursor));
                auto table = stack_table.top();
 
                stack_vp.push(Viewport);
@@ -267,7 +267,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::ROW: {
-               stack_row.push(&stream_data<bc_row>(Self, cursor));
+               stack_row.push(&Self->stream_data<bc_row>(cursor));
                auto row = stack_row.top();
                if ((!row->fill.empty()) and (row->row_height > 0)) {
                   objVectorRectangle::create::global({
@@ -286,7 +286,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                break;
 
             case SCODE::CELL: {
-               auto &cell = stream_data<bc_cell>(Self, cursor);
+               auto &cell = Self->stream_data<bc_cell>(cursor);
 
                stack_vp.push(Viewport);
 
@@ -367,7 +367,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::LINK: {
-               auto link = &stream_data<bc_link>(Self, cursor);
+               auto link = &Self->stream_data<bc_link>(cursor);
 
                link->cursor_start = cursor;
                link->area = { x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height };
@@ -427,7 +427,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             case SCODE::IMAGE: {
                if (oob) break;
 
-               auto &img = stream_data<bc_image>(Self, cursor);
+               auto &img = Self->stream_data<bc_image>(cursor);
 
                // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
                // x_offset for managing the horizontal position amongst the text.
@@ -456,7 +456,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             case SCODE::TEXT: {
                if (oob) break;
 
-               auto &txt = stream_data<bc_text>(Self, cursor);
+               auto &txt = Self->stream_data<bc_text>(cursor);
                auto font = stack_style.top()->get_font();
 
                std::string str;

@@ -194,7 +194,7 @@ To load a document file into a document object, set the Path field.  Valid strin
 
 `volume:folder/filename.rpl#Page?param1&param2=value`
 
-Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a 
+Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a
 change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document,
 a dialog is displayed to bring the error to the user's attention).
 

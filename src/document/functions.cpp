@@ -58,7 +58,7 @@ static std::string stream_to_string(extDocument *Self, stream_char Start, stream
    auto cs = Start;
    for (; (cs.index <= End.index) and (cs.index < INDEX(Self->Stream.size())); cs.next_code()) {
       if (Self->Stream[cs.index].code IS SCODE::TEXT) {
-         auto &text = stream_data<bc_text>(Self, cs);
+         auto &text = Self->stream_data<bc_text>(cs);
          if (cs.index < End.index) {
             str << text.text.substr(cs.offset, text.text.size() - cs.offset);
          }
@@ -220,21 +220,19 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 // IXF::HOLD_STYLE:  The font style will not be cleared.
 // IXF::RESET_STYLE: Current font style will be reset rather than defaulting to the most recent style at the insertion point.
 
-static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, IXF Flags)
+static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, IXF Flags)
 {
    pf::Log log(__FUNCTION__);
 
-   if (TargetIndex < 0) TargetIndex = Self->Stream.size();
+   if (TargetIndex < 0) TargetIndex = Stream.size();
 
    log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(Flags), Tag[0].Attribs[0].Name.c_str());
-
-   stream_char inserted_at(Self->Stream.size());
 
    if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) { // 'Hold Style' - Do nothing to change it
       // Parse content and insert it at the end of the stream (we'll move it to the insertion point afterwards).
       parser parse(Self, XML);
 
-      if (Self->Stream.empty()) {
+      if (Stream.empty()) {
          parse.parse_tags(Tag);
       }
       else {
@@ -243,6 +241,8 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
          parse.parse_tags(Tag);
          parse.m_paragraph_depth--;
       }
+
+      Stream.insert(Stream.begin() + TargetIndex, parse.m_stream.begin(), parse.m_stream.end());
    }
    else {
       style_status style;
@@ -252,8 +252,8 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       }
       else {
          for (auto i = TargetIndex - 1; i >= 0; i--) {
-            if (Self->Stream[i].code IS SCODE::FONT) {
-               style.font_style = stream_data<bc_font>(Self, i);
+            if (Stream[i].code IS SCODE::FONT) {
+               style.font_style = Self->stream_data<bc_font>(i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", style.font_style.font_index, style.font_style.options);
                break;
             }
@@ -278,7 +278,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
       }
 
       parser parse(Self, XML);
-      if (Self->Stream.empty()) {
+      if (Stream.empty()) {
          parse.parse_tags_with_style(Tag, style);
       }
       else {
@@ -286,20 +286,8 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
          parse.parse_tags_with_style(Tag, style);
          parse.m_paragraph_depth--;
       }
-   }
 
-   if (INDEX(Self->Stream.size()) <= inserted_at.index) {
-      log.trace("parse_tags() did not insert any content into the stream.");
-      return ERR_NothingDone;
-   }
-
-   // Move the content from the end of the stream to the requested insertion point
-
-   if (TargetIndex < inserted_at.index) {
-      auto length = Self->Stream.size() - inserted_at.index;
-      log.trace("Moving new content of %d bytes to the insertion point at index %d", TargetIndex, length);
-      Self->Stream.insert(Self->Stream.begin() + TargetIndex, Self->Stream.begin() + inserted_at.index, Self->Stream.begin() + length);
-      Self->Stream.resize(inserted_at.index + length);
+      Stream.insert(Stream.begin() + TargetIndex, parse.m_stream.begin(), parse.m_stream.end());
    }
 
    // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
@@ -316,7 +304,7 @@ static ERROR insert_xml(extDocument *Self, objXML *XML, objXML::TAGS &Tag, INDEX
 //
 // Preformat must be set to true if all consecutive whitespace characters in Text are to be inserted.
 
-static ERROR insert_text(extDocument *Self, stream_char &Index, const std::string &Text, bool Preformat)
+static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index, const std::string &Text, bool Preformat)
 {
    // Check if there is content to be processed
 
@@ -328,7 +316,7 @@ static ERROR insert_text(extDocument *Self, stream_char &Index, const std::strin
 
    if (Preformat) {
       bc_text et(Text, true);
-      Self->insert_code(Index, et);
+      Self->insert_code(Stream, Index, et);
    }
    else {
       bc_text et;
@@ -346,7 +334,7 @@ static ERROR insert_text(extDocument *Self, stream_char &Index, const std::strin
          }
       }
       Self->NoWhitespace = ws;
-      Self->insert_code(Index, et);
+      Self->insert_code(Stream, Index, et);
    }
 
    return ERR_Okay;
@@ -385,6 +373,14 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
          #endif
          parser parse(Self, *xml);
          parse.process_page();
+
+         Self->Stream = parse.m_stream;
+         Self->UpdatingLayout = true;
+         if (Self->initialised()) redraw(Self, true);
+
+         #ifdef DBG_STREAM
+            print_stream(Self);
+         #endif
          return Self->Error;
       }
       else {
@@ -681,7 +677,7 @@ static bc_font * find_style(extDocument *Self, const RSTREAM &Stream, stream_cha
    bc_font *style = NULL;
 
    for (INDEX fi = Char.index; fi < Char.index; fi++) {
-      if (Stream[fi].code IS SCODE::FONT) style = &stream_data<bc_font>(Self, fi);
+      if (Stream[fi].code IS SCODE::FONT) style = &Self->stream_data<bc_font>(fi);
       else if (Stream[fi].code IS SCODE::TEXT) break;
    }
 
@@ -690,7 +686,7 @@ static bc_font * find_style(extDocument *Self, const RSTREAM &Stream, stream_cha
    if (!style) {
       for (INDEX fi = Char.index; fi >= 0; fi--) {
          if (Stream[fi].code IS SCODE::FONT) {
-            style = &stream_data<bc_font>(Self, fi);
+            style = &Self->stream_data<bc_font>(fi);
             break;
          }
       }
@@ -712,7 +708,7 @@ static ERROR resolve_font_pos(extDocument *Self, doc_segment &Segment, DOUBLE X,
 
    for (INDEX i = Segment.start.index; i < Segment.stop.index; i++) {
       if (Self->Stream[i].code IS SCODE::TEXT) {
-         auto &str = stream_data<bc_text>(Self, i).text;
+         auto &str = Self->stream_data<bc_text>(i).text;
          LONG offset, cx;
          if (!fntConvertCoords(font, str.c_str(), X - Segment.area.X, 0, NULL, NULL, NULL, &offset, &cx)) {
             CharX = cx;
@@ -748,7 +744,7 @@ static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE 
       auto i = Self->Segments[segment].start;
       while ((i <= Self->Segments[segment].stop) and (i < Char)) {
          if (Self->Stream[i.index].code IS SCODE::TEXT) {
-            CharX = fntStringWidth(font, stream_data<bc_text>(Self, i).text.c_str(), -1);
+            CharX = fntStringWidth(font, Self->stream_data<bc_text>(i).text.c_str(), -1);
             return ERR_Okay;
          }
          i.next_code();
@@ -1061,7 +1057,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
    if (!docFindIndex(Self, Bookmark.c_str(), &start, &end)) {
       // Get the vertical position of the index and scroll to it
 
-      auto &esc_index = stream_data<bc_index>(Self, start);
+      auto &esc_index = Self->stream_data<bc_index>(start);
       Self->scrollToPoint(0, esc_index.y - 4, 0, STP::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());
