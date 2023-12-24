@@ -1660,7 +1660,6 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
          case SCODE::TABLE_START:
          case SCODE::TABLE_END:
-         case SCODE::FONT:
             allow_merge = false;
             break;
 
