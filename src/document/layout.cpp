@@ -143,6 +143,13 @@ private:
       reset_segment(idx+1, m_cursor_x);
    }
 
+   // Add a segment for a single byte code at position idx.  For use by non-graphical codes only (i.e. no
+   // graphics region).
+
+   inline void add_code_segment() {
+      new_code_segment(stream_char(idx, 0), stream_char(idx + 1, 0), BC_NAME(Self->Stream, idx));
+   }
+
    // When lines are segmented, the last segment will store the final height of the line whilst the earlier segments
    // will have the wrong height.  This function ensures that all segments for a line have the same height and gutter
    // values.
@@ -161,29 +168,6 @@ private:
             }
          }
       }
-   }
-
-   // Return true if a byte code is capable of breaking a word.
-
-   inline bool breakable_word() {
-      switch (Self->Stream[idx].code) {
-         case SCODE::ADVANCE:
-         case SCODE::TABLE_START:
-            return true;
-
-         case SCODE::IMAGE:
-            // Graphics don't break words.  Either the graphic is floating (therefore its presence has no impact)
-            // or it is inline, and therefore treated like a character.
-            break;
-
-         case SCODE::INDEX_START: {
-            auto &index = stream_data<bc_index>(Self, idx);
-            if (!index.visible) return true;
-         }
-
-         default: break;
-      }
-      return false;
    }
 
    // If the current font is larger or equal to the current line height, extend the line height.
@@ -2035,7 +2019,26 @@ extend_page:
       }
 
       if (m_line.index.index < idx) {
-         if (breakable_word()) {
+         // Some byte codes can force a segment definition to be defined now, e.g. because they might otherwise
+         // mess up the region size.
+         bool set_segment_now = false;
+
+         switch (Self->Stream[idx].code) {
+            case SCODE::ADVANCE:
+            case SCODE::TABLE_START:
+               set_segment_now = true;
+               break;
+
+            case SCODE::INDEX_START: {
+               auto &index = stream_data<bc_index>(Self, idx);
+               if (!index.visible) set_segment_now = true;
+               break;
+            }
+
+            default: break;
+         }
+
+         if (set_segment_now) {
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
                BC_NAME(Self->Stream,idx).c_str(), m_line.index.index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
