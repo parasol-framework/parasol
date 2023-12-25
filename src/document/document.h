@@ -40,14 +40,13 @@ enum class RTD : UBYTE {
 
 DEFINE_ENUM_FLAG_OPERATORS(RTD)
 
-enum class IXF : UBYTE {
-   NIL         = 0x00,
-   HOLD_STYLE  = 0x01,
-   RESET_STYLE = 0x02,
-   CLOSE_STYLE = 0x04
+enum class STYLE : UBYTE {
+   NIL           = 0x00,
+   INHERIT_STYLE = 0x01, // Inherit whatever font style applies at the insertion point.
+   RESET_STYLE   = 0x02  // Current font style will be reset rather than defaulting to the most recent style at the insertion point.
 };
 
-DEFINE_ENUM_FLAG_OPERATORS(IXF)
+DEFINE_ENUM_FLAG_OPERATORS(STYLE)
 
 enum class PXF : WORD {
    NIL       = 0,
@@ -658,7 +657,7 @@ struct bc_xml : public base_code {
 };
 
 struct bc_table : public base_code {
-   struct bc_table *stack = NULL;
+   struct bc_table *stack = NULL;        // Used for the layout process to support tables within tables
    objVectorPath *path = NULL;
    std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management

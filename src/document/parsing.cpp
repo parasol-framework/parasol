@@ -44,6 +44,8 @@ struct parser {
       m_index = stream_char(m_stream.size());
    }
 
+   // Switching out the XML object is sometimes done for things like template injection
+
    objXML * change_xml(objXML *pXML) {
       auto old = m_xml;
       m_xml = pXML;
@@ -102,7 +104,7 @@ void parser::process_page()
 
    pf::Log log(__FUNCTION__);
 
-   log.branch("Page: %s, XML: %d", Self->PageName.c_str(), m_xml->UID);
+   log.branch("Page: %s", Self->PageName.c_str());
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
@@ -142,7 +144,7 @@ void parser::process_page()
       parse_tags(m_xml->Tags, IPF::NO_CONTENT);
 
       if ((m_header_tag) and (!no_header)) {
-         insert_xml(Self, m_stream, m_xml, m_header_tag[0], m_stream.size(), IXF::RESET_STYLE);
+         insert_xml(Self, m_stream, m_xml, m_header_tag[0], m_stream.size(), STYLE::RESET_STYLE);
       }
 
       if (m_body_tag) {
@@ -153,7 +155,7 @@ void parser::process_page()
          m_inject_tag = &page->Children;
          m_in_template++;
 
-         insert_xml(Self, m_stream, m_inject_xml, m_body_tag[0], m_stream.size(), IXF::RESET_STYLE);
+         insert_xml(Self, m_stream, m_inject_xml, m_body_tag[0], m_stream.size(), STYLE::RESET_STYLE);
 
          m_in_template--;
          m_inject_tag = tags;
@@ -162,11 +164,11 @@ void parser::process_page()
          pf::Log log(__FUNCTION__);
          auto page_name = page->attrib("name");
          log.traceBranch("Processing page '%s'.", page_name ? page_name->c_str() : "");
-         insert_xml(Self, m_stream, m_xml, page->Children, m_stream.size(), IXF::RESET_STYLE);
+         insert_xml(Self, m_stream, m_xml, page->Children, m_stream.size(), STYLE::RESET_STYLE);
       }
 
       if ((m_footer_tag) and (!no_footer)) {
-         insert_xml(Self, m_stream, m_xml, m_footer_tag[0], m_stream.size(), IXF::RESET_STYLE);
+         insert_xml(Self, m_stream, m_xml, m_footer_tag[0], m_stream.size(), STYLE::RESET_STYLE);
       }
 
       // If an error occurred then we have to kill the document as the stream may contain unsynchronised
@@ -769,7 +771,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
    auto tag_hash = StrHash(tagname);
    object_template = NULL;
 
-   TRF result = TRF::NIL;
+   auto result = TRF::NIL;
    if (Tag.isContent()) {
       if ((Flags & IPF::NO_CONTENT) IS IPF::NIL) {
          if (m_strip_feeds) {

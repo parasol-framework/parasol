@@ -394,7 +394,6 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       if (xml.ok()) {
          if (Self->Stream.empty()) {
             // If the document is empty then we use the same process as load_doc()
-            Self->UpdatingLayout = true;
             parser parse(Self, *xml);
             parse.process_page();
 
@@ -408,7 +407,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
          }
          else { // UNTESTED
             log.trace("Appending data to XML #%d", xml->UID);
-            Self->Error = insert_xml(Self, Self->Stream, *xml, xml->Tags, Self->Stream.size(), IXF::CLOSE_STYLE);
+            Self->Error = insert_xml(Self, Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
             //acRefresh(Self);
          }
          return Self->Error;
@@ -929,7 +928,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if (!xml.ok()) {
       Self->UpdatingLayout = true;
 
-      ERROR error = insert_xml(Self, Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, IXF::CLOSE_STYLE);
+      ERROR error = insert_xml(Self, Self->Stream, *xml, xml->Tags, (Args->Index IS -1) ? Self->Stream.size() : Args->Index, STYLE::NIL);
       if (error) log.warning("Insert failed for: %s", Args->XML);
 
       return error;

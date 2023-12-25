@@ -222,6 +222,7 @@ CELL layout::lay_cell(bc_table *Table)
 
    if (!Table) {
       log.warning("Table not defined for cell @ index %d - document byte code is corrupt.", idx);
+      Self->Error = ERR_InvalidData;
       return CELL::ABORT;
    }
 
@@ -260,6 +261,7 @@ CELL layout::lay_cell(bc_table *Table)
 
    if (cell_end_idx IS -1) {
       log.warning("Failed to find matching cell-end.  Document stream is corrupt.");
+      Self->Error = ERR_InvalidData;
       return CELL::ABORT;
    }
 
@@ -1991,7 +1993,7 @@ extend_page:
    m_line.index.set(Offset);    // The starting index of the line we are operating on
    m_line.full_reset(Margins.Left);
 
-   for (idx = Offset; idx < End; idx++) {
+   for (idx = Offset; (idx < End) and (!Self->Error); idx++) {
       if ((m_cursor_x >= MAX_PAGE_WIDTH) or (m_cursor_y >= MAX_PAGE_HEIGHT)) {
          log.warning("Invalid cursor position reached @ %gx%g", m_cursor_x, m_cursor_y);
          Self->Error = ERR_InvalidDimension;

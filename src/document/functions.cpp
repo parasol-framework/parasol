@@ -216,29 +216,26 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 
 //********************************************************************************************************************
 // Process an XML tree by setting correct style information and then calling parse_tags().
-//
-// IXF::HOLD_STYLE:  The font style will not be cleared.
-// IXF::RESET_STYLE: Current font style will be reset rather than defaulting to the most recent style at the insertion point.
 
-static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, IXF Flags)
+static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, 
+   STYLE StyleFlags, IPF Options)
 {
    pf::Log log(__FUNCTION__);
 
    if (TargetIndex < 0) TargetIndex = Stream.size();
 
-   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(Flags), Tag[0].Attribs[0].Name.c_str());
+   log.traceBranch("Index: %d, Flags: $%.2x, Tag: %s", TargetIndex, LONG(StyleFlags), Tag[0].Attribs[0].Name.c_str());
 
-   if ((Flags & IXF::HOLD_STYLE) != IXF::NIL) { // 'Hold Style' - Do nothing to change it
-      // Parse content and insert it at the end of the stream (we'll move it to the insertion point afterwards).
+   if ((StyleFlags & STYLE::INHERIT_STYLE) != STYLE::NIL) { // Do nothing to change the style
       parser parse(Self, XML);
 
       if (Stream.empty()) {
-         parse.parse_tags(Tag);
+         parse.parse_tags(Tag, Options);
       }
       else {
-          // Override the paragraph-content sanity check when inserting content in an existing document
+         // Override the paragraph-content sanity check when inserting content in an existing document
          parse.m_paragraph_depth++;
-         parse.parse_tags(Tag);
+         parse.parse_tags(Tag, Options);
          parse.m_paragraph_depth--;
       }
 
@@ -247,7 +244,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
    else {
       style_status style;
 
-      if ((Flags & IXF::RESET_STYLE) != IXF::NIL) {
+      if ((StyleFlags & STYLE::RESET_STYLE) != STYLE::NIL) {
          // Do not search for the most recent font style (force a reset)
       }
       else {
@@ -279,11 +276,11 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
 
       parser parse(Self, XML);
       if (Stream.empty()) {
-         parse.parse_tags_with_style(Tag, style);
+         parse.parse_tags_with_style(Tag, style, Options);
       }
       else {
          parse.m_paragraph_depth++;
-         parse.parse_tags_with_style(Tag, style);
+         parse.parse_tags_with_style(Tag, style, Options);
          parse.m_paragraph_depth--;
       }
 
