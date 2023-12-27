@@ -3381,7 +3381,7 @@ void parser::tag_cell(XMLTag &Tag)
       parse.parse_tags_with_style(Tag.Children, new_style);
       parse.m_paragraph_depth--;
 
-      cell.stream = parse.m_stream;
+      cell.stream = new RSTREAM(parse.m_stream);
    }
 
    m_stream.insert_code(m_index, cell);

@@ -99,7 +99,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
       }
    }
 */
-   for (SEGINDEX seg=0; seg < Segments.size(); seg++) {
+   for (SEGINDEX seg=0; seg < SEGINDEX(Segments.size()); seg++) {
       auto &segment = Segments[seg];
 
       // Don't process codes that are out of bounds.  Be mindful of floating vectors as they can be placed at any coordinate.

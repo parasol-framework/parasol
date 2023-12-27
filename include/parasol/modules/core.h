@@ -2685,6 +2685,14 @@ class Log { // C++ wrapper for Parasol's log functionality
             va_end(arg);
          #endif
       }
+
+      ERROR traceWarning(ERROR Code) {
+         #ifdef _DEBUG
+            FuncError(header, Code);
+         #endif
+         return Code;
+      }
+
 };
 
 class LogLevel {

@@ -128,7 +128,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
             Self->SelectIndex.reset();
 
             auto index = Self->CursorIndex;
-            while (index.valid(Self->Stream)) {
+            while (index < INDEX(Self->Stream.size())) {
                auto code = Self->Stream[index.index].code;
                if (code IS SCODE::IMAGE); // Inline images are treated as content, so do nothing special for these and drop through to next section
                else {
@@ -344,7 +344,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
 
    auto &stream = cell.stream;
 
-   if (stream[CursorIndex.index].code != SCODE::TEXT) {
+   if (stream->data[CursorIndex.index].code != SCODE::TEXT) {
       // Skip ahead to the first relevant control code - it's always best to place the cursor ahead of things like
       // font styles, paragraph formatting etc.
 
@@ -353,7 +353,7 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
          std::array<SCODE, 5> content = {
             SCODE::TABLE_START, SCODE::LINK_END, SCODE::IMAGE, SCODE::PARAGRAPH_END, SCODE::TEXT
          };
-         if (std::find(std::begin(content), std::end(content), stream[CursorIndex.index].code) != std::end(content)) break;
+         if (std::find(std::begin(content), std::end(content), stream->data[CursorIndex.index].code) != std::end(content)) break;
          CursorIndex.next_code();
       }
    }

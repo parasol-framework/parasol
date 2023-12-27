@@ -152,6 +152,8 @@ enum class TRF : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(TRF)
 
+class RSTREAM;
+
 //********************************************************************************************************************
 // Tab is used to represent interactive entities within the document that can be tabbed to.
 
@@ -197,143 +199,6 @@ public:
 
    base_code() { uid = glByteCodeID++; }
    base_code(SCODE pCode) : code(pCode) { uid = glByteCodeID++; }
-};
-
-class bc_text;
-class bc_advance;
-class bc_table;
-class bc_table_end; 
-class bc_row; 
-class bc_row_end; 
-class bc_paragraph;
-class bc_paragraph_end; 
-class bc_cell; 
-class bc_link; 
-class bc_link_end; 
-class bc_list; 
-class bc_list_end; 
-class bc_index; 
-class bc_index_end;
-class bc_font; 
-class bc_font_end; 
-class bc_set_margins; 
-class bc_xml; 
-class bc_image; 
-class bc_use;
-struct stream_char;
-
-class RSTREAM {
-public:
-   std::vector<stream_code> data;
-
-   std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
-      bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>> codes;
-
-   void clear() {
-      data.clear();
-      codes.clear();
-   }
-
-   std::size_t size() const {
-      return data.size();
-   }
-
-   // Overloading [] operator to access elements in array style
-
-   stream_code& operator[](const int Index) {
-      return data[Index];
-   }
-
-   const stream_code& operator[](const int Index) const {
-      return data[Index];
-   }
-   
-   template <class T> T & lookup(const stream_char Index);
-   template <class T> T & lookup(const INDEX Index);
-   template <class T = base_code> T & insert_code(stream_char &, T &);
-   template <class T = base_code> T & reserve_code(stream_char &);
-   inline INDEX find_cell(LONG);
-   inline INDEX find_editable_cell(const std::string &);
-};
-
-//********************************************************************************************************************
-// stream_char provides indexing to specific characters in the stream.  It is designed to handle positional changes so
-// that text string boundaries can be crossed without incident.
-//
-// The index and offset are set to -1 if the stream_char is invalidated.
-
-struct stream_char {
-   INDEX index;     // A TEXT code position within the stream
-   size_t offset;   // Specific character offset within the bc_text.text string
-
-   stream_char() : index(-1), offset(-1) { }
-   stream_char(INDEX pIndex, ULONG pOffset) : index(pIndex), offset(pOffset) { }
-   stream_char(INDEX pIndex) : index(pIndex), offset(0) { }
-
-   bool operator==(const stream_char &Other) const {
-      return (this->index == Other.index) and (this->offset == Other.offset);
-   }
-
-   bool operator<(const stream_char &Other) const {
-      if (this->index < Other.index) return true;
-      else if ((this->index IS Other.index) and (this->offset < Other.offset)) return true;
-      else return false;
-   }
-
-   bool operator>(const stream_char &Other) const {
-      if (this->index > Other.index) return true;
-      else if ((this->index IS Other.index) and (this->offset > Other.offset)) return true;
-      else return false;
-   }
-
-   bool operator<=(const stream_char &Other) const {
-      if (this->index < Other.index) return true;
-      else if ((this->index IS Other.index) and (this->offset <= Other.offset)) return true;
-      else return false;
-   }
-
-   bool operator>=(const stream_char &Other) const {
-      if (this->index > Other.index) return true;
-      else if ((this->index IS Other.index) and (this->offset >= Other.offset)) return true;
-      else return false;
-   }
-
-   void operator+=(const LONG Value) {
-      offset += Value;
-   }
-
-   inline void reset() { index = -1; offset = -1; }
-   inline bool valid() { return index != -1; }
-   inline bool valid(RSTREAM &Stream) { return (index != -1) and (index < INDEX(Stream.size())); }
-
-   inline void set(INDEX pIndex, ULONG pOffset = 0) {
-      index  = pIndex;
-      offset = pOffset;
-   }
-
-   inline INDEX prev_code() {
-      index--;
-      if (index < 0) { index = -1; offset = -1; }
-      else offset = 0;
-      return index;
-   }
-
-   inline INDEX next_code() {
-      offset = 0;
-      index++;
-      return index;
-   }
-
-   // NB: None of these support unicode.
-
-   UBYTE get_char(RSTREAM &);
-   UBYTE get_char(RSTREAM &, LONG Seek);
-   UBYTE get_prev_char(RSTREAM &);
-   UBYTE get_prev_char_or_inline(RSTREAM &);
-   void erase_char(RSTREAM &); // Erase a character OR an escape code.
-   void next_char(RSTREAM &);
-   void prev_char(RSTREAM &);
 };
 
 //********************************************************************************************************************
@@ -483,6 +348,84 @@ struct style_status {
 };
 
 //********************************************************************************************************************
+// stream_char provides indexing to specific characters in the stream.  It is designed to handle positional changes so
+// that text string boundaries can be crossed without incident.
+//
+// The index and offset are set to -1 if the stream_char is invalidated.
+
+struct stream_char {
+   INDEX index;     // A TEXT code position within the stream
+   size_t offset;   // Specific character offset within the bc_text.text string
+
+   stream_char() : index(-1), offset(-1) { }
+   stream_char(INDEX pIndex, ULONG pOffset) : index(pIndex), offset(pOffset) { }
+   stream_char(INDEX pIndex) : index(pIndex), offset(0) { }
+
+   bool operator==(const stream_char &Other) const {
+      return (this->index == Other.index) and (this->offset == Other.offset);
+   }
+
+   bool operator<(const stream_char &Other) const {
+      if (this->index < Other.index) return true;
+      else if ((this->index IS Other.index) and (this->offset < Other.offset)) return true;
+      else return false;
+   }
+
+   bool operator>(const stream_char &Other) const {
+      if (this->index > Other.index) return true;
+      else if ((this->index IS Other.index) and (this->offset > Other.offset)) return true;
+      else return false;
+   }
+
+   bool operator<=(const stream_char &Other) const {
+      if (this->index < Other.index) return true;
+      else if ((this->index IS Other.index) and (this->offset <= Other.offset)) return true;
+      else return false;
+   }
+
+   bool operator>=(const stream_char &Other) const {
+      if (this->index > Other.index) return true;
+      else if ((this->index IS Other.index) and (this->offset >= Other.offset)) return true;
+      else return false;
+   }
+
+   void operator+=(const LONG Value) {
+      offset += Value;
+   }
+
+   inline void reset() { index = -1; offset = -1; }
+   inline bool valid() { return index != -1; }
+
+   inline void set(INDEX pIndex, ULONG pOffset = 0) {
+      index  = pIndex;
+      offset = pOffset;
+   }
+
+   inline INDEX prev_code() {
+      index--;
+      if (index < 0) { index = -1; offset = -1; }
+      else offset = 0;
+      return index;
+   }
+
+   inline INDEX next_code() {
+      offset = 0;
+      index++;
+      return index;
+   }
+
+   // NB: None of these support unicode.
+
+   UBYTE get_char(RSTREAM &);
+   UBYTE get_char(RSTREAM &, LONG Seek);
+   UBYTE get_prev_char(RSTREAM &);
+   UBYTE get_prev_char_or_inline(RSTREAM &);
+   void erase_char(RSTREAM &); // Erase a character OR an escape code.
+   void next_char(RSTREAM &);
+   void prev_char(RSTREAM &);
+};
+
+//********************************************************************************************************************
 // Refer to layout::new_segment().  A segment represents graphical content, which can be in the form of text,
 // graphics or both.  A segment can consist of one line only - so if the layout process encounters a boundary causing
 // wordwrap then a new segment must be created.
@@ -560,12 +503,6 @@ struct mouse_over {
    std::string function; // name of function to call.
    DOUBLE top, left, bottom, right;
    LONG element_id;
-};
-
-class sorted_segment { // Efficient lookup to the doc_segment array, sorted by vertical position
-public:
-   SEGINDEX segment;
-   DOUBLE y;
 };
 
 struct tablecol {
@@ -819,7 +756,7 @@ struct bc_row_end : public base_code {
 };
 
 struct bc_cell : public base_code {
-   RSTREAM stream;                // Internally managed byte code content for the cell
+   RSTREAM *stream = NULL;        // Internally managed byte code content for the cell
    LONG cell_id = 0;              // UID for the cell
    LONG column = 0;               // Column number that the cell starts in
    LONG col_span = 0;             // Number of columns spanned by this cell (normally set to 1)
@@ -840,6 +777,62 @@ struct bc_cell : public base_code {
       base_code(SCODE::CELL), cell_id(pCellID), column(pColumn),
       col_span(1), row_span(1), x(0), y(0), width(0), height(0)
       { }
+
+   ~bc_cell();
+   bc_cell (const bc_cell &Other);
+};
+
+//********************************************************************************************************************
+
+using CODEMAP = std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
+      bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
+      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>>;
+
+class RSTREAM {
+public:
+   std::vector<stream_code> data;
+   CODEMAP codes;
+
+   RSTREAM() { }
+
+   RSTREAM(RSTREAM &Other) {
+      data = Other.data;
+      codes = Other.codes;
+   }
+
+   void clear() {
+      data.clear();
+      codes.clear();
+   }
+
+   std::size_t size() const {
+      return data.size();
+   }
+
+   // Overloading [] operator to access elements in array style
+
+   stream_code& operator[](const int Index) {
+      return data[Index];
+   }
+
+   const stream_code& operator[](const int Index) const {
+      return data[Index];
+   }
+
+   template <class T> T & lookup(const stream_char Index);
+   template <class T> T & lookup(const INDEX Index);
+   template <class T = base_code> T & insert_code(stream_char &, T &);
+   template <class T = base_code> T & reserve_code(stream_char &);
+   inline INDEX find_cell(LONG);
+   inline INDEX find_editable_cell(const std::string &);
+};
+
+//********************************************************************************************************************
+
+class sorted_segment { // Efficient lookup to the doc_segment array, sorted by vertical position
+public:
+   SEGINDEX segment;
+   DOUBLE y;
 };
 
 //********************************************************************************************************************
@@ -914,3 +907,26 @@ class extDocument : public objDocument {
 
    std::vector<sorted_segment> & get_sorted_segments();
 };
+
+bc_cell::~bc_cell() {
+   delete stream;
+}
+
+bc_cell::bc_cell(const bc_cell &Other) {
+   if (Other.stream) stream = new RSTREAM(Other.stream[0]);
+   cell_id = Other.cell_id;
+   column = Other.column;
+   col_span = Other.col_span;
+   row_span = Other.row_span;
+   border = Other.border;
+   x = Other.x, y = Other.y;
+   width = Other.width, height = Other.height;
+   strokeWidth = Other.strokeWidth;
+   onclick = Other.onclick;
+   edit_def = Other.edit_def;
+   args = Other.args;
+   segments = Other.segments;
+   stroke = Other.stroke;
+   fill = Other.fill;
+   modified = Other.modified;
+}

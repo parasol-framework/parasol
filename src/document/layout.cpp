@@ -255,10 +255,10 @@ CELL layout::lay_cell(bc_table *Table)
    DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
       idx, m_cursor_x, m_cursor_y, cell.width, cell.height, cell.column);
 
-   if (!cell.stream.data.empty()) {
+   if (!cell.stream->data.empty()) {
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
-      layout sl(Self, &cell.stream);
+      layout sl(Self, cell.stream);
       sl.m_depth = m_depth + 1;
       sl.do_layout(&m_font, cell.width, cell.height, ClipRectangle(Table->cell_padding), vertical_repass);
 
@@ -1888,16 +1888,10 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, ClipRecta
    pf::Log log(__FUNCTION__);
 
    if ((m_stream->data.empty()) or (!Font) or (!Font[0])) {
-      log.traceBranch("No document stream to be processed.");
-      return ERR_NothingDone;
+      return log.traceWarning(ERR_NoData);
    }
 
-   if (m_depth >= MAX_DEPTH) {
-      log.traceBranch("Depth limit exceeded (too many tables-within-tables).");
-      return ERR_Recursion;
-   }
-
-   if (Self->Error) return Self->Error;
+   if (m_depth >= MAX_DEPTH) return log.traceWarning(ERR_Recursion);
 
    auto page_height = Height;
    m_page_width = Width;
