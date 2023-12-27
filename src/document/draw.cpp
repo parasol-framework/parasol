@@ -26,8 +26,10 @@ static void redraw(extDocument *Self, bool Focus)
 // performing this step separately to the layout process is that the graphics resources are managed last, which is
 // sensible for keeping them out of the layout loop.
 
-void layout::gen_scene_init(objVectorViewport *Viewport)
+ERROR layout::gen_scene_init(objVectorViewport *Viewport)
 {
+   pf::Log log(__FUNCTION__);
+
    // Remove former objects from the viewport
 
    pf::vector<ChildEntry> list;
@@ -38,26 +40,13 @@ void layout::gen_scene_init(objVectorViewport *Viewport)
    m_cursor_drawn = false;
 
    Self->Links.clear();
-}
 
-void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGINDEX Stop)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Self->UpdatingLayout) return; // Drawing is disabled if the layout is being updated
+   if (Self->UpdatingLayout) return ERR_NothingDone; // Drawing is disabled if the layout is being updated
 
    if (glFonts.empty()) { // Sanity check
       log.traceWarning("Failed to load a default font.");
-      return;
+      return ERR_Failed;
    }
-
-   std::stack<bc_list *>      stack_list;
-   std::stack<bc_row *>       stack_row;
-   std::stack<bc_paragraph *> stack_para;
-   std::stack<bc_table *>     stack_table;
-   std::stack<ui_link>        stack_ui_link;
-   std::stack<bc_font *>      stack_style;
-   std::stack<objVectorViewport *> stack_vp;
 
    #ifdef GUIDELINES // Make clip regions visible
       for (unsigned i=0; i < m_clips.size(); i++) {
@@ -70,6 +59,22 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGIND
       }
    #endif
 
+   return ERR_Okay;
+}
+
+void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segment> &Segments)
+{
+   pf::Log log(__FUNCTION__);
+
+   std::stack<bc_list *>      stack_list;
+   std::stack<bc_row *>       stack_row;
+   std::stack<bc_paragraph *> stack_para;
+   std::stack<bc_table *>     stack_table;
+   std::stack<ui_link>        stack_ui_link;
+   std::stack<bc_font *>      stack_style;
+   std::stack<objVectorViewport *> stack_vp;
+
+/*
    stream_char select_start, select_end;
    DOUBLE select_start_x, select_end_x;
 
@@ -93,9 +98,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGIND
          select_end_x   = Self->SelectCharX;
       }
    }
-
-   for (SEGINDEX seg=Start; seg < Stop; seg++) {
-      auto &segment = m_segments[seg];
+*/
+   for (SEGINDEX seg=0; seg < Segments.size(); seg++) {
+      auto &segment = Segments[seg];
 
       // Don't process codes that are out of bounds.  Be mindful of floating vectors as they can be placed at any coordinate.
 
@@ -290,13 +295,11 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGIND
             case SCODE::CELL: {
                auto &cell = segment.stream->lookup<bc_cell>(cursor);
 
-               stack_vp.push(Viewport);
-
                //DOUBLE cell_width  = stack_table.top()->columns[cell.column].width;
                //DOUBLE cell_height = stack_row.top()->row_height;
 
                if ((cell.width >= 1) and (cell.height >= 1)) {
-                  Viewport = objVectorViewport::create::global({
+                  objVectorViewport *cell_vp = objVectorViewport::create::global({
                      fl::Owner(Viewport->UID),
                      fl::X(cell.x - stack_table.top()->x), fl::Y(cell.y - stack_table.top()->y),
                      fl::Width(cell.width), fl::Height(cell.height)
@@ -309,7 +312,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGIND
 
                   if ((!cell.stroke.empty()) or (!cell.fill.empty())) {
                      auto rect = objVectorRectangle::create::global({
-                        fl::Owner(Viewport->UID),
+                        fl::Owner(cell_vp->UID),
                         fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%")
                      });
 
@@ -357,14 +360,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGIND
                         }
                      }
                   }
+
+                  gen_scene_graph(cell_vp, cell.segments);
                }
 
-               break;
-            }
-
-            case SCODE::CELL_END: {
-               Viewport = stack_vp.top();
-               stack_vp.pop();
                break;
             }
 

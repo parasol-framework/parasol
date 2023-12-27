@@ -6,9 +6,9 @@ that is distributed with this package.  Please refer to it for further informati
 *********************************************************************************************************************/
 
 //#define _DEBUG
-//#define DBG_LAYOUT
-//#define DBG_STREAM
-//#define DBG_LINES // Print list of segments
+#define DBG_LAYOUT
+#define DBG_STREAM
+#define DBG_SEGMENTS // Print list of segments
 //#define DBG_WORDWRAP
 //#define GUIDELINES // Clipping guidelines
 //#define GUIDELINES_CONTENT // Segment guidelines
@@ -181,7 +181,7 @@ static const std::string & byte_code(SCODE Code) {
    static const std::string strCodes[] = {
       "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
-      "CellEnd", "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use"
+      "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use"
    };
 
    if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];

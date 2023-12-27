@@ -90,7 +90,6 @@ enum class SCODE : char {
    TABLE_END,
    ROW,
    CELL,
-   CELL_END,
    ROW_END,
    SET_MARGINS,
    INDEX_START,
@@ -209,7 +208,6 @@ class bc_row_end;
 class bc_paragraph;
 class bc_paragraph_end; 
 class bc_cell; 
-class bc_cell_end; 
 class bc_link; 
 class bc_link_end; 
 class bc_list; 
@@ -229,7 +227,7 @@ public:
    std::vector<stream_code> data;
 
    std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
-      bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
+      bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
       bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>> codes;
 
    void clear() {
@@ -490,14 +488,13 @@ struct style_status {
 // wordwrap then a new segment must be created.
 
 struct doc_segment {
-   RSTREAM *stream;         // The stream that this segment refers to
    stream_char start;       // Starting index (including character if text)
    stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
    FloatRect area;          // Dimensions of the segment.
    DOUBLE gutter;           // The largest gutter value after taking into account all fonts used on the line.
    DOUBLE align_width;      // Full width of this segment if it were non-breaking
-   UWORD depth;             // Branch depth associated with the segment - helps to differentiate between inner and outer tables
+   RSTREAM *stream;         // The stream that this segment refers to
    bool  edit;              // true if this segment represents content that can be edited
    bool  inline_content;    // true if there is text or an inline graphic in this segment
    bool  floating_vectors;  // true if there are user defined vectors in this segment with independent x,y coordinates
@@ -821,10 +818,6 @@ struct bc_row_end : public base_code {
    bc_row_end() : base_code(SCODE::ROW_END) { }
 };
 
-struct bc_cell_end : public base_code { // Dummy structure to assist the drawing code
-   bc_cell_end() : base_code(SCODE::CELL_END) { }
-};
-
 struct bc_cell : public base_code {
    RSTREAM stream;                // Internally managed byte code content for the cell
    LONG cell_id = 0;              // UID for the cell
@@ -838,6 +831,7 @@ struct bc_cell : public base_code {
    std::string onclick;           // name of an onclick function
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> args;
+   std::vector<doc_segment> segments;
    std::string stroke;
    std::string fill;
    bool modified = false;         // Set to true when content in the cell has been modified

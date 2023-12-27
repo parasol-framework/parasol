@@ -35,7 +35,7 @@ given clipping zones.  This allows text to be laid out around the table with no 
 struct layout {
    extDocument *Self;
    LONG  m_break_loop = MAXLOOP;
-   UWORD m_depth = 0;     // Section depth - increases when do_layout() recurses, e.g. into tables
+   UWORD m_depth = 0;     // Section depth - increases when do_layout() recurses, e.g. into table cells
 
    std::vector<doc_segment> m_segments;
    std::vector<edit_cell>   m_ecells;
@@ -156,7 +156,6 @@ private:
 
          if (final_height) {
             for (auto i=m_line_seg_start; i < end; i++) {
-               if (m_segments[i].depth != m_depth) continue;
                m_segments[i].area.Height = final_height;
                m_segments[i].gutter      = final_gutter;
             }
@@ -200,8 +199,8 @@ public:
    layout(extDocument *pSelf, RSTREAM *Stream) : Self(pSelf), m_stream(Stream) { }
 
    ERROR do_layout(objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
-   void gen_scene_graph(objVectorViewport *, SEGINDEX, SEGINDEX);
-   void gen_scene_init(objVectorViewport *);
+   void gen_scene_graph(objVectorViewport *, std::vector<doc_segment> &);
+   ERROR gen_scene_init(objVectorViewport *);
 };
 
 //********************************************************************************************************************
@@ -260,12 +259,12 @@ CELL layout::lay_cell(bc_table *Table)
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
       layout sl(Self, &cell.stream);
-      sl.m_depth = m_depth;
+      sl.m_depth = m_depth + 1;
       sl.do_layout(&m_font, cell.width, cell.height, ClipRectangle(Table->cell_padding), vertical_repass);
 
       // The main product of do_layout() are the produced segments, so append them here.
 
-      m_segments.insert(m_segments.end(), sl.m_segments.begin(), sl.m_segments.end());
+      cell.segments = sl.m_segments;
 
       if (!cell.edit_def.empty()) {
          m_edit_mode = false;
@@ -1688,14 +1687,13 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
    else {
       m_segments.emplace_back(doc_segment {
-         .stream      = m_stream,
          .start       = Start,
          .stop        = Stop,
          .trim_stop   = trim_stop,
          .area        = { m_line.x, Y, Width, line_height },
          .gutter      = gutter,
          .align_width = AlignWidth,
-         .depth       = m_depth,
+         .stream      = m_stream,
          .edit        = m_edit_mode,
          .inline_content   = inline_content,
          .floating_vectors = floating_vectors,
@@ -1724,14 +1722,13 @@ void layout::new_code_segment()
    }
    else {
       m_segments.emplace_back(doc_segment {
-         .stream      = m_stream,
          .start       = start,
          .stop        = stop,
          .trim_stop   = stop,
          .area        = { 0, 0, 0, 0 },
          .gutter      = 0,
          .align_width = 0,
-         .depth       = m_depth,
+         .stream      = m_stream,
          .edit        = m_edit_mode,
          .inline_content   = false,
          .floating_vectors = false,
@@ -1777,10 +1774,8 @@ static void layout_doc(extDocument *Self)
       if (page_width < Self->MinPageWidth) page_width = Self->MinPageWidth;
 
       Self->SortSegments.clear();
-
       Self->PageProcessed = false;
       Self->Error = ERR_Okay;
-      l.m_depth = 0;
 
       if (glFonts.empty()) return;
       auto font = glFonts[0].font;
@@ -1851,8 +1846,9 @@ static void layout_doc(extDocument *Self)
    else {
       acResize(Self->Page, Self->CalcWidth, Self->PageHeight, 0);
 
-      l.gen_scene_init(Self->Page);
-      l.gen_scene_graph(Self->Page, 0, SEGINDEX(l.m_segments.size()));
+      if (!l.gen_scene_init(Self->Page)) {
+         l.gen_scene_graph(Self->Page, l.m_segments);
+      }
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.Type IS CALL_SCRIPT) {
@@ -1916,8 +1912,6 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, ClipRecta
       Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
 
-   m_depth++;
-
    layout tablestate(Self, m_stream), rowstate(Self, m_stream), liststate(Self, m_stream);
    bc_table *esctable;
    DOUBLE last_height;
@@ -1932,12 +1926,10 @@ extend_page:
    }
 
    if (Self->Error) {
-      m_depth--;
       return Self->Error;
    }
    else if (!m_break_loop) {
       Self->Error = ERR_Loop;
-      m_depth--;
       return Self->Error;
    }
    m_break_loop--;
@@ -2229,11 +2221,6 @@ repass_row_height:
             break;
          }
 
-         case SCODE::CELL_END:
-            // CELL_END exists to assist the drawing code, so here we ensure that it's included in the segment stream.
-            new_code_segment();
-            break;
-
          default: break;
       }
    }
@@ -2260,7 +2247,7 @@ exit:
    // to know the page height - e.g. if there is a gradient filling the background).
    //
    // This requirement is also handled in SCODE::CELL, so we only perform it here if processing is occurring within the
-   // root page area (Offset of 0).
+   // root page area.
 
    if ((!m_depth) and (VerticalRepass) and (last_height < page_height)) {
       DLAYOUT("============================================================");
@@ -2272,8 +2259,6 @@ exit:
 
    if (m_page_width > Width) Width = m_page_width;
    if (page_height > Height) Height = page_height;
-
-   m_depth--;
 
    return Self->Error;
 }

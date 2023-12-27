@@ -3388,9 +3388,6 @@ void parser::tag_cell(XMLTag &Tag)
 
    m_style.table->row_col += cell.col_span;
 
-   bc_cell_end esccell_end;
-   m_stream.insert_code(m_index, esccell_end);
-
    if (!cell.edit_def.empty()) {
       // Links are added to the list of tabbable points
 
