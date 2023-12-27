@@ -50,15 +50,15 @@ static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 //********************************************************************************************************************
 // Extract all printable text between start and End.
 
-static std::string stream_to_string(extDocument *Self, stream_char Start, stream_char End)
+static std::string stream_to_string(RSTREAM &Stream, stream_char Start, stream_char End)
 {
    if (End < Start) std::swap(Start, End);
 
    std::ostringstream str;
    auto cs = Start;
-   for (; (cs.index <= End.index) and (cs.index < INDEX(Self->Stream.size())); cs.next_code()) {
-      if (Self->Stream[cs.index].code IS SCODE::TEXT) {
-         auto &text = Self->stream_data<bc_text>(cs);
+   for (; (cs.index <= End.index) and (cs.index < INDEX(Stream.size())); cs.next_code()) {
+      if (Stream[cs.index].code IS SCODE::TEXT) {
+         auto &text = Stream.lookup<bc_text>(cs);
          if (cs.index < End.index) {
             str << text.text.substr(cs.offset, text.text.size() - cs.offset);
          }
@@ -217,7 +217,7 @@ static LONG safe_file_path(extDocument *Self, const std::string &Path)
 //********************************************************************************************************************
 // Process an XML tree by setting correct style information and then calling parse_tags().
 
-static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex, 
+static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML::TAGS &Tag, INDEX TargetIndex,
    STYLE StyleFlags, IPF Options)
 {
    pf::Log log(__FUNCTION__);
@@ -229,7 +229,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
    if ((StyleFlags & STYLE::INHERIT_STYLE) != STYLE::NIL) { // Do nothing to change the style
       parser parse(Self, XML);
 
-      if (Stream.empty()) {
+      if (Stream.data.empty()) {
          parse.parse_tags(Tag, Options);
       }
       else {
@@ -239,7 +239,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
          parse.m_paragraph_depth--;
       }
 
-      Stream.insert(Stream.begin() + TargetIndex, parse.m_stream.begin(), parse.m_stream.end());
+      Stream.data.insert(Stream.data.begin() + TargetIndex, parse.m_stream.data.begin(), parse.m_stream.data.end());
    }
    else {
       style_status style;
@@ -250,7 +250,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
       else {
          for (auto i = TargetIndex - 1; i >= 0; i--) {
             if (Stream[i].code IS SCODE::FONT) {
-               style.font_style = Self->stream_data<bc_font>(i);
+               style.font_style = Stream.lookup<bc_font>(i);
                log.trace("Found existing font style, font index %d, flags $%.8x.", style.font_style.font_index, style.font_style.options);
                break;
             }
@@ -275,7 +275,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
       }
 
       parser parse(Self, XML);
-      if (Stream.empty()) {
+      if (Stream.data.empty()) {
          parse.parse_tags_with_style(Tag, style, Options);
       }
       else {
@@ -284,7 +284,11 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
          parse.m_paragraph_depth--;
       }
 
-      Stream.insert(Stream.begin() + TargetIndex, parse.m_stream.begin(), parse.m_stream.end());
+      if (Stream.data.empty()) Stream = parse.m_stream;
+      else {
+         Stream.data.insert(Stream.data.begin() + TargetIndex, parse.m_stream.data.begin(), parse.m_stream.data.end());
+         Stream.codes.merge(parse.m_stream.codes);
+      }
    }
 
    // Check that the FocusIndex is valid (there's a slim possibility that it may not be if AC_Focus has been
@@ -313,7 +317,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index,
 
    if (Preformat) {
       bc_text et(Text, true);
-      Self->insert_code(Stream, Index, et);
+      Stream.insert_code(Index, et);
    }
    else {
       bc_text et;
@@ -331,7 +335,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index,
          }
       }
       Self->NoWhitespace = ws;
-      Self->insert_code(Stream, Index, et);
+      Stream.insert_code(Index, et);
    }
 
    return ERR_Okay;
@@ -372,11 +376,14 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
          parse.process_page();
 
          Self->Stream = parse.m_stream;
-         Self->UpdatingLayout = true;
-         if (Self->initialised()) redraw(Self, true);
+
+         if (Self->initialised()) {
+            Self->UpdatingLayout = true;
+            redraw(Self, true);
+         }
 
          #ifdef DBG_STREAM
-            print_stream(Self);
+            print_stream(Self->Stream);
          #endif
          return Self->Error;
       }
@@ -404,7 +411,7 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    log.branch("Flags: $%.2x", LONG(Flags));
 
    #ifdef DBG_STREAM
-      print_stream(Self);
+      print_stream(Self->Stream);
    #endif
 
    Self->Highlight = glHighlight;
@@ -669,12 +676,12 @@ static LONG getutf8(CSTRING Value, LONG *Unicode)
 //********************************************************************************************************************
 // Find the nearest font style that will represent Char
 
-static bc_font * find_style(extDocument *Self, const RSTREAM &Stream, stream_char &Char)
+static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 {
    bc_font *style = NULL;
 
    for (INDEX fi = Char.index; fi < Char.index; fi++) {
-      if (Stream[fi].code IS SCODE::FONT) style = &Self->stream_data<bc_font>(fi);
+      if (Stream[fi].code IS SCODE::FONT) style = &Stream.lookup<bc_font>(fi);
       else if (Stream[fi].code IS SCODE::TEXT) break;
    }
 
@@ -683,7 +690,7 @@ static bc_font * find_style(extDocument *Self, const RSTREAM &Stream, stream_cha
    if (!style) {
       for (INDEX fi = Char.index; fi >= 0; fi--) {
          if (Stream[fi].code IS SCODE::FONT) {
-            style = &Self->stream_data<bc_font>(fi);
+            style = &Stream.lookup<bc_font>(fi);
             break;
          }
       }
@@ -695,17 +702,17 @@ static bc_font * find_style(extDocument *Self, const RSTREAM &Stream, stream_cha
 //********************************************************************************************************************
 // For a given line segment, convert a horizontal coordinate to the corresponding character index and its coordinate.
 
-static ERROR resolve_font_pos(extDocument *Self, doc_segment &Segment, DOUBLE X, DOUBLE &CharX, stream_char &Char)
+static ERROR resolve_font_pos(doc_segment &Segment, DOUBLE X, DOUBLE &CharX, stream_char &Char)
 {
    pf::Log log(__FUNCTION__);
 
-   bc_font *style = find_style(Self, Self->Stream, Char);
+   bc_font *style = find_style(Segment.stream[0], Char);
    auto font = style ? style->get_font() : glFonts[0].font;
    if (!font) return ERR_Search;
 
    for (INDEX i = Segment.start.index; i < Segment.stop.index; i++) {
-      if (Self->Stream[i].code IS SCODE::TEXT) {
-         auto &str = Self->stream_data<bc_text>(i).text;
+      if (Segment.stream[0][i].code IS SCODE::TEXT) {
+         auto &str = Segment.stream->lookup<bc_text>(i).text;
          LONG offset, cx;
          if (!fntConvertCoords(font, str.c_str(), X - Segment.area.X, 0, NULL, NULL, NULL, &offset, &cx)) {
             CharX = cx;
@@ -730,18 +737,18 @@ static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE 
 
    log.branch("Index: %d", Char.index);
 
-   bc_font *style = find_style(Self, Self->Stream, Char);
+   bc_font *style = find_style(Self->Stream, Char);
    auto font = style ? style->get_font() : glFonts[0].font;
    if (!font) return log.warning(ERR_Search);
 
    // Find the segment linked to this character.  This is so that we can derive an x coordinate for the character
    // string.
 
-   if (SEGINDEX segment = find_segment(Self, Char, true); segment >= 0) {
+   if (SEGINDEX segment = find_segment(Self->Segments, Char, true); segment >= 0) {
       auto i = Self->Segments[segment].start;
       while ((i <= Self->Segments[segment].stop) and (i < Char)) {
          if (Self->Stream[i.index].code IS SCODE::TEXT) {
-            CharX = fntStringWidth(font, Self->stream_data<bc_text>(i).text.c_str(), -1);
+            CharX = fntStringWidth(font, Self->Stream.lookup<bc_text>(i).text.c_str(), -1);
             return ERR_Okay;
          }
          i.next_code();
@@ -755,19 +762,19 @@ static ERROR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE 
 //********************************************************************************************************************
 // For a given character in the stream, find its representative line segment.
 
-static SEGINDEX find_segment(extDocument *Self, stream_char Char, bool InclusiveStop)
+static SEGINDEX find_segment(std::vector<doc_segment> &Segments, stream_char Char, bool InclusiveStop)
 {
    if (InclusiveStop) {
-      for (SEGINDEX segment=0; segment < SEGINDEX(Self->Segments.size()); segment++) {
-         if ((Char >= Self->Segments[segment].start) and (Char <= Self->Segments[segment].stop)) {
-            if ((Char IS Self->Segments[segment].stop) and (Char.get_prev_char(Self, Self->Stream) IS '\n'));
+      for (SEGINDEX segment=0; segment < SEGINDEX(Segments.size()); segment++) {
+         if ((Char >= Segments[segment].start) and (Char <= Segments[segment].stop)) {
+            if ((Char IS Segments[segment].stop) and (Char.get_prev_char(Segments[segment].stream[0]) IS '\n'));
             else return segment;
          }
       }
    }
    else {
-      for (SEGINDEX segment=0; segment < SEGINDEX(Self->Segments.size()); segment++) {
-         if ((Char >= Self->Segments[segment].start) and (Char < Self->Segments[segment].stop)) {
+      for (SEGINDEX segment=0; segment < SEGINDEX(Segments.size()); segment++) {
+         if ((Char >= Segments[segment].start) and (Char < Segments[segment].stop)) {
             return segment;
          }
       }
@@ -929,7 +936,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
 
 //********************************************************************************************************************
 
-void bc_link::exec(extDocument *Self)
+void ui_link::exec(extDocument *Self)
 {
    OBJECTPTR script;
    std::string function_name, fargs;
@@ -944,33 +951,33 @@ void bc_link::exec(extDocument *Self)
    if ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL) {
       KEYVALUE params; // Parameters utilise XMLAttrib for named value pairs.  This aids compatibility with Fluid
 
-      if (type IS LINK::FUNCTION) {
+      if (origin.type IS LINK::FUNCTION) {
          std::string function_name, args;
-         if (!extract_script(Self, ref, NULL, function_name, args)) {
+         if (!extract_script(Self, origin.ref, NULL, function_name, args)) {
             params.emplace("onclick", function_name);
          }
       }
-      else if (type IS LINK::HREF) {
-         params.emplace("href", ref);
+      else if (origin.type IS LINK::HREF) {
+         params.emplace("href", origin.ref);
       }
 
-      for (unsigned i=0; i < args.size(); i++) {
-         if ((args[i].first[0] IS '@') or (args[i].first[0] IS '$')) {
-            params.emplace(args[i].first.c_str()+1, args[i].second);
+      for (unsigned i=0; i < origin.args.size(); i++) {
+         if ((origin.args[i].first[0] IS '@') or (origin.args[i].first[0] IS '$')) {
+            params.emplace(origin.args[i].first.c_str()+1, origin.args[i].second);
          }
-         else params.emplace(args[i].first, args[i].second);
+         else params.emplace(origin.args[i].first, origin.args[i].second);
       }
 
       ERROR result = report_event(Self, DEF::LINK_ACTIVATED, &params);
       if (result IS ERR_Skip) goto end;
    }
 
-   if (type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
-      if (!extract_script(Self, ref, &script, function_name, fargs)) {
+   if (origin.type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
+      if (!extract_script(Self, origin.ref, &script, function_name, fargs)) {
          std::vector<ScriptArg> sa;
 
-         if (!args.empty()) {
-            for (auto &arg : args) {
+         if (!origin.args.empty()) {
+            for (auto &arg : origin.args) {
                if (arg.first.starts_with('_')) { // Global variable setting
                   acSetVar(script, arg.first.c_str()+1, arg.second.c_str());
                }
@@ -981,24 +988,24 @@ void bc_link::exec(extDocument *Self)
          scExec(script, function_name.c_str(), sa.data(), sa.size());
       }
    }
-   else if (type IS LINK::HREF) {
-      if (ref[0] IS ':') {
-         Self->Bookmark = ref.substr(1);
+   else if (origin.type IS LINK::HREF) {
+      if (origin.ref[0] IS ':') {
+         Self->Bookmark = origin.ref.substr(1);
          show_bookmark(Self, Self->Bookmark);
       }
       else {
-         if ((ref[0] IS '#') or (ref[0] IS '?')) {
-            log.trace("Switching to page '%s'", ref.c_str());
+         if ((origin.ref[0] IS '#') or (origin.ref[0] IS '?')) {
+            log.trace("Switching to page '%s'", origin.ref.c_str());
 
             if (!Self->Path.empty()) {
                LONG end;
                for (end=0; Self->Path[end]; end++) {
                   if ((Self->Path[end] IS '&') or (Self->Path[end] IS '#') or (Self->Path[end] IS '?')) break;
                }
-               auto path = std::string(Self->Path, end) + ref;
+               auto path = std::string(Self->Path, end) + origin.ref;
                Self->set(FID_Path, path);
             }
-            else Self->set(FID_Path, ref);
+            else Self->set(FID_Path, origin.ref);
 
             if (!Self->Bookmark.empty()) show_bookmark(Self, Self->Bookmark);
          }
@@ -1008,8 +1015,8 @@ void bc_link::exec(extDocument *Self)
             std::string path;
 
             if (!Self->Path.empty()) {
-               auto j = ref.find_first_of("/\\:");
-               if ((j IS std::string::npos) or (ref[j] != ':')) { // Path is relative
+               auto j = origin.ref.find_first_of("/\\:");
+               if ((j IS std::string::npos) or (origin.ref[j] != ':')) { // Path is relative
                   auto end = Self->Path.find_first_of("&#?");
                   if (end IS std::string::npos) {
                      path.assign(Self->Path, 0, Self->Path.find_last_of("/\\") + 1);
@@ -1018,7 +1025,7 @@ void bc_link::exec(extDocument *Self)
                }
             }
 
-            auto lk = path + ref;
+            auto lk = path + origin.ref;
             auto end = lk.find_first_of("?#&");
             if (!IdentifyFile(lk.substr(0, end).c_str(), &class_id, &subclass_id)) {
                if (class_id IS ID_DOCUMENT) {
@@ -1054,7 +1061,7 @@ static void show_bookmark(extDocument *Self, const std::string &Bookmark)
    if (!docFindIndex(Self, Bookmark.c_str(), &start, &end)) {
       // Get the vertical position of the index and scroll to it
 
-      auto &esc_index = Self->stream_data<bc_index>(start);
+      auto &esc_index = Self->Stream.lookup<bc_index>(start);
       Self->scrollToPoint(0, esc_index.y - 4, 0, STP::Y);
    }
    else log.warning("Failed to find bookmark '%s'", Bookmark.c_str());

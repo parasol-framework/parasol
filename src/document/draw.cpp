@@ -36,9 +36,11 @@ void layout::gen_scene_init(objVectorViewport *Viewport)
    }
 
    m_cursor_drawn = false;
+
+   Self->Links.clear();
 }
 
-void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGINDEX Start, SEGINDEX Stop)
+void layout::gen_scene_graph(objVectorViewport *Viewport, SEGINDEX Start, SEGINDEX Stop)
 {
    pf::Log log(__FUNCTION__);
 
@@ -49,12 +51,12 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
       return;
    }
 
-   std::stack<bc_list *> stack_list;
-   std::stack<bc_row *> stack_row;
+   std::stack<bc_list *>      stack_list;
+   std::stack<bc_row *>       stack_row;
    std::stack<bc_paragraph *> stack_para;
-   std::stack<bc_table *> stack_table;
-   std::stack<bc_link *> stack_link;
-   std::stack<bc_font *> stack_style;
+   std::stack<bc_table *>     stack_table;
+   std::stack<ui_link>        stack_ui_link;
+   std::stack<bc_font *>      stack_style;
    std::stack<objVectorViewport *> stack_vp;
 
    #ifdef GUIDELINES // Make clip regions visible
@@ -99,8 +101,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
       bool oob = segment.oob(0, 0, Self->VPWidth, Self->VPHeight);
 
-      if (!stack_link.empty()) {
-         stack_link.top()->area = segment.area;
+      if (!stack_ui_link.empty()) {
+         stack_ui_link.top().area = segment.area;
       }
 
       // Highlighting of selected text
@@ -133,7 +135,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
       if ((Self->ActiveEditDef) and (Self->CursorState) and (!m_cursor_drawn)) {
          if ((Self->CursorIndex >= segment.start) and (Self->CursorIndex <= segment.stop)) {
             if ((Self->CursorIndex IS segment.stop) and
-                (Self->CursorIndex.get_prev_char_or_inline(Self, Stream) IS '\n'));
+                (Self->CursorIndex.get_prev_char_or_inline(segment.stream[0]) IS '\n'));
             else if ((Self->Page->Flags & VF::HAS_FOCUS) != VF::NIL) { // Standard text cursor
                objVectorRectangle::create::global({
                   fl::Owner(Viewport->UID),
@@ -147,9 +149,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
       auto x_offset = segment.area.X;
       for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {
-         switch (Stream[cursor.index].code) {
+         switch (segment.stream[0][cursor.index].code) {
             case SCODE::FONT: {
-               auto &style = Self->stream_data<bc_font>(cursor);
+               auto &style = segment.stream->lookup<bc_font>(cursor);
                stack_style.push(&style);
                break;
             }
@@ -160,7 +162,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::LIST_START:
-               stack_list.push(&Self->stream_data<bc_list>(cursor));
+               stack_list.push(&segment.stream->lookup<bc_list>(cursor));
                break;
 
             case SCODE::LIST_END:
@@ -168,7 +170,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                break;
 
             case SCODE::PARAGRAPH_START:
-               stack_para.push(&Self->stream_data<bc_paragraph>(cursor));
+               stack_para.push(&segment.stream->lookup<bc_paragraph>(cursor));
 
                if (stack_style.empty()) { // Sanity check - there must always be at least one font style on the stack.
                   log.warning("The byte stream is missing a font style code.");
@@ -213,13 +215,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
 
             // TODO: It would be preferable to pre-process 'use' instructions in advance.
             case SCODE::USE: {
-               auto &use = Self->stream_data<bc_use>(cursor);
+               auto &use = segment.stream->lookup<bc_use>(cursor);
                svgParseSymbol(Self->SVG, use.id.c_str(), Viewport);
                break;
             }
 
             case SCODE::TABLE_START: {
-               stack_table.push(&Self->stream_data<bc_table>(cursor));
+               stack_table.push(&segment.stream->lookup<bc_table>(cursor));
                auto table = stack_table.top();
 
                stack_vp.push(Viewport);
@@ -267,7 +269,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::ROW: {
-               stack_row.push(&Self->stream_data<bc_row>(cursor));
+               stack_row.push(&segment.stream->lookup<bc_row>(cursor));
                auto row = stack_row.top();
                if ((!row->fill.empty()) and (row->row_height > 0)) {
                   objVectorRectangle::create::global({
@@ -286,7 +288,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                break;
 
             case SCODE::CELL: {
-               auto &cell = Self->stream_data<bc_cell>(cursor);
+               auto &cell = segment.stream->lookup<bc_cell>(cursor);
 
                stack_vp.push(Viewport);
 
@@ -367,11 +369,14 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::LINK: {
-               auto link = &Self->stream_data<bc_link>(cursor);
+               auto link = &segment.stream->lookup<bc_link>(cursor);
 
-               link->cursor_start = cursor;
-               link->area = { x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height };
-               stack_link.push(link);
+               stack_ui_link.push(ui_link {
+                  .origin = *link,
+                  .area   = { x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height },
+                  .cursor_start = cursor,
+                  .stream = segment.stream
+               });
 
                // Font management
 
@@ -384,7 +389,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
                         (Self->Tabs[Self->FocusIndex].active)) {
                      link->font.fill = Self->LinkSelectFill;
                   }
-                  else if (link->hover) {
+                  else if (stack_ui_link.top().hover) {
                      link->font.fill = Self->LinkSelectFill;
                   }
                }
@@ -393,33 +398,35 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             }
 
             case SCODE::LINK_END: {
-               auto &link = stack_link.top();
-               link->cursor_end = cursor;
-               link->area.Width = x_offset - link->area.X;
-               if (link->area.Width >= 1) link->append_link();
+               auto &ui_link = stack_ui_link.top();
+               ui_link.cursor_end = cursor;
+               ui_link.area.Width = x_offset - ui_link.area.X;
+               if (ui_link.area.Width >= 1) ui_link.append_link();
 
                // Create a VectorPath that represents the clickable area.  Doing this at the end of the
                // link ensures that our path has input priority over existing text.
 
-               if ((link->vector_path = objVectorPath::create::global({
+               if ((ui_link.vector_path = objVectorPath::create::global({
                      fl::Owner(Viewport->UID), fl::Name("link_vp"), fl::Cursor(PTC::HAND)
                      #ifdef GUIDELINES
                      , fl::Stroke("rgb(255,0,0)"), fl::StrokeWidth(1)
                      #endif
                   }))) {
 
-                  vpSetCommand(link->vector_path, link->path.size(), link->path.data(),
-                     link->path.size() * sizeof(PathCommand));
+                  vpSetCommand(ui_link.vector_path, ui_link.path.size(), ui_link.path.data(),
+                     ui_link.path.size() * sizeof(PathCommand));
 
-                  if (link->vector_path->Scene->SurfaceID) {
+                  if (ui_link.vector_path->Scene->SurfaceID) {
                      auto callback = make_function_stdc(link_callback);
-                     vecSubscribeInput(link->vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+                     vecSubscribeInput(ui_link.vector_path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
                   }
                }
 
-               link->path.clear();
+               ui_link.path.clear();
 
-               stack_link.pop();
+               Self->Links.emplace_back(ui_link);
+
+               stack_ui_link.pop();
                stack_style.pop();
                break;
             }
@@ -427,7 +434,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             case SCODE::IMAGE: {
                if (oob) break;
 
-               auto &img = Self->stream_data<bc_image>(cursor);
+               auto &img = segment.stream->lookup<bc_image>(cursor);
 
                // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
                // x_offset for managing the horizontal position amongst the text.
@@ -456,7 +463,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
             case SCODE::TEXT: {
                if (oob) break;
 
-               auto &txt = Self->stream_data<bc_text>(cursor);
+               auto &txt = segment.stream->lookup<bc_text>(cursor);
                auto font = stack_style.top()->get_font();
 
                std::string str;
@@ -500,10 +507,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, RSTREAM &Stream, SEGIN
          } // switch()
       } // for cursor
 
-      if (!stack_link.empty()) {
-         auto &link = stack_link.top();
-         link->area.Width = x_offset - link->area.X;
-         if (link->area.Width >= 1) link->append_link();
+      if (!stack_ui_link.empty()) {
+         auto &link = stack_ui_link.top();
+         link.area.Width = x_offset - link.area.X;
+         if (link.area.Width >= 1) link.append_link();
       }
 
    } // for segment

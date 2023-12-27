@@ -1,16 +1,16 @@
 
 //********************************************************************************************************************
 
-static std::string printable(extDocument *, stream_char, ULONG = 60) __attribute__ ((unused));
+static std::string printable(RSTREAM &, stream_char, ULONG = 60) __attribute__ ((unused));
 
-static std::string printable(extDocument *Self, stream_char Start, ULONG Length)
+static std::string printable(RSTREAM &Stream, stream_char Start, ULONG Length)
 {
    std::string result;
    result.reserve(Length);
    stream_char i = Start;
-   while ((i.index < INDEX(Self->Stream.size())) and (result.size() < Length)) {
-      if (Self->Stream[i.index].code IS SCODE::TEXT) {
-         auto &text = Self->stream_data<bc_text>(i);
+   while ((i.index < INDEX(Stream.size())) and (result.size() < Length)) {
+      if (Stream[i.index].code IS SCODE::TEXT) {
+         auto &text = Stream.lookup<bc_text>(i);
          result += text.text.substr(i.offset, result.capacity() - result.size());
       }
       else result += '%';
@@ -23,9 +23,9 @@ static std::string printable(extDocument *Self, stream_char Start, ULONG Length)
 
 #ifdef DBG_STREAM
 
-static void print_stream(extDocument *Self, const RSTREAM &Stream)
+static void print_stream(RSTREAM &Stream)
 {
-   if (Stream.empty()) return;
+   if (Stream.data.empty()) return;
 
    pf::Log log;
    std::ostringstream out;
@@ -36,7 +36,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
    for (INDEX i=0; i < INDEX(Stream.size()); i++) {
       auto code = Stream[i].code;
       if (code IS SCODE::FONT) {
-         auto &style = Self->stream_data<bc_font>(i);
+         auto &style = Stream.lookup<bc_font>(i);
          out << "[Font";
          out << ":#" << style.font_index;
          if ((style.options & FSO::ALIGN_RIGHT) != FSO::NIL) out << ":A/R";
@@ -45,7 +45,7 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
          out << ":" << style.fill << "]";
       }
       else if (code IS SCODE::PARAGRAPH_START) {
-         auto &para = Self->stream_data<bc_paragraph>(i);
+         auto &para =  Stream.lookup<bc_paragraph>(i);
          if (para.list_item) out << "[PS:LI]";
          else out << "[PS]";
       }
@@ -57,14 +57,12 @@ static void print_stream(extDocument *Self, const RSTREAM &Stream)
       printpos = true;
    }
 
-   out << "\nActive Edit: " << Self->ActiveEditCellID << ", Cursor Index: " << Self->CursorIndex.index << " / X: " << Self->CursorCharX << ", Select Index: " << Self->SelectIndex.index << "\n";
-
    log.msg("%s", out.str().c_str());
 }
 
 #endif
 
-static void print_segments(extDocument *Self, const RSTREAM &Stream)
+static void print_segments(extDocument *Self)
 {
 #ifdef DBG_SEGMENTS
    pf::Log log;
@@ -72,22 +70,22 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
 
    out << "\nSEGMENTS\n--------\n";
 
-   for (unsigned row=0; row < Self->Segments.size(); row++) {
-      auto &line = Self->Segments[row];
-      auto i = line.start;
+   for (unsigned si=0; si < Self->Segments.size(); si++) {
+      auto &seg = Self->Segments[si];
+      auto i = seg.start;
 
-      out << std::setw(3) << row << ": Span: " << std::setw(3) << line.start.index << " - " << std::setw(3) << line.stop.index << ": ";
-      out << "(" << line.area.X << "x" << line.area.Y << ", " << line.area.Width << "x" << line.area.Height << ") ";
-      if (line.edit) out << "{ ";
+      out << std::setw(3) << si << ": Span: " << std::setw(3) << seg.start.index << " - " << std::setw(3) << seg.stop.index << ": ";
+      out << "(" << seg.area.X << "x" << seg.area.Y << ", " << seg.area.Width << "x" << seg.area.Height << ") ";
+      if (seg.edit) out << "{ ";
       out << "\"";
-      while (i < line.stop) {
-         auto code = Stream[i.index].code;
+      while (i < seg.stop) {
+         auto code = seg.stream[0][i.index].code;
          if (code IS SCODE::FONT) {
-            auto &style = Self->stream_data<bc_font>(i.index);
+            auto &style = seg.stream->lookup<bc_font>(i.index);
             out << "[E:Font:#" << style.font_index << "]";
          }
          else if (code IS SCODE::PARAGRAPH_START) {
-            auto &para = Self->stream_data<bc_paragraph>(i.index);
+            auto &para =  seg.stream->lookup<bc_paragraph>(i.index);
             if (para.list_item) out << "[E:LI]";
             else out << "[E:PS]";
          }
@@ -99,7 +97,7 @@ static void print_segments(extDocument *Self, const RSTREAM &Stream)
       }
 
       out << "\"";
-      if (line.edit) out << " }";
+      if (seg.edit) out << " }";
       out << "\n";
    }
 

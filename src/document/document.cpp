@@ -135,41 +135,41 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 //********************************************************************************************************************
 // Inserts a byte code sequence into the text stream.
 
-template <class T> T & extDocument::insert_code(RSTREAM &Stream, stream_char &Cursor, T &Code)
+template <class T> T & RSTREAM::insert_code(stream_char &Cursor, T &Code)
 {
    // All byte codes are saved to a global container.
 
-   if (Codes.contains(Code.uid)) {
+   if (codes.contains(Code.uid)) {
       // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
       // NB: At some point the re-use of codes should be allowed, e.g. bc_font reversions would benefit from this.
       pf::Log log(__FUNCTION__);
       log.warning("Code #%d is already registered.", Code.uid);
    }
-   else Codes[Code.uid] = Code;
+   else codes[Code.uid] = Code;
 
-   if (Cursor.index IS INDEX(Stream.size())) {
-      Stream.emplace_back(Code.code, Code.uid);
+   if (Cursor.index IS INDEX(data.size())) {
+      data.emplace_back(Code.code, Code.uid);
    }
    else {
       const stream_code insert(Code.code, Code.uid);
-      Stream.insert(Stream.begin() + Cursor.index, insert);
+      data.insert(data.begin() + Cursor.index, insert);
    }
    Cursor.next_code();
-   return std::get<T>(Codes[Code.uid]);
+   return std::get<T>(codes[Code.uid]);
 }
 
-template <class T> T & extDocument::reserve_code(RSTREAM &Stream, stream_char &Cursor)
+template <class T> T & RSTREAM::reserve_code(stream_char &Cursor)
 {
    auto key = glByteCodeID;
-   Codes.emplace(key, T());
-   auto &result = std::get<T>(Codes[key]);
+   codes.emplace(key, T());
+   auto &result = std::get<T>(codes[key]);
 
-   if (Cursor.index IS INDEX(Stream.size())) {
-      Stream.emplace_back(result.code, result.uid);
+   if (Cursor.index IS INDEX(data.size())) {
+      data.emplace_back(result.code, result.uid);
    }
    else {
       const stream_code insert(result.code, result.uid);
-      Stream.insert(Stream.begin() + Cursor.index, insert);
+      data.insert(data.begin() + Cursor.index, insert);
    }
    Cursor.next_code();
    return result;
@@ -210,7 +210,7 @@ static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std
 static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
 static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
-static SEGINDEX find_segment(extDocument *, stream_char, bool);
+static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 static std::string get_font_style(FSO);
@@ -233,11 +233,11 @@ static void  redraw(extDocument *, bool);
 static ERROR report_event(extDocument *, DEF, KEYVALUE *);
 static void  reset_cursor(extDocument *);
 static ERROR resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
-static ERROR resolve_font_pos(extDocument *, doc_segment &, DOUBLE, DOUBLE &, stream_char &);
+static ERROR resolve_font_pos(doc_segment &, DOUBLE, DOUBLE &, stream_char &);
 static LONG  safe_file_path(extDocument *, const std::string &);
 static void  set_focus(extDocument *, LONG, CSTRING);
 static void  show_bookmark(extDocument *, const std::string &);
-static std::string stream_to_string(extDocument *, stream_char, stream_char);
+static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERROR unload_doc(extDocument *, ULD = ULD::NIL);
 static bool  valid_objectid(extDocument *, OBJECTID);
 static BYTE  view_area(extDocument *, LONG, LONG, LONG, LONG);
@@ -250,8 +250,7 @@ inline bool read_rgb8(const std::string Value, RGB8 *RGB) {
 }
 
 #ifdef DBG_STREAM
-static void print_stream(extDocument *, const RSTREAM &);
-static void print_stream(extDocument *Self) { print_stream(Self, Self->Stream); }
+static void print_stream(RSTREAM &);
 #endif
 
 //********************************************************************************************************************
@@ -272,14 +271,12 @@ objFont * bc_font::get_font()
 //********************************************************************************************************************
 // For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
 
-template <class T> T & extDocument::stream_data(stream_char Index) {
-   auto &sv = Codes[Stream[Index.index].uid];
-   return std::get<T>(sv);
+template <class T> T & RSTREAM::lookup(const stream_char Index) {
+   return std::get<T>(codes[data[Index.index].uid]);
 }
 
-template <class T> T & extDocument::stream_data(INDEX Index) {
-   auto &sv = Codes[Stream[Index].uid];
-   return std::get<T>(sv);
+template <class T> T & RSTREAM::lookup(const INDEX Index) {
+   return std::get<T>(codes[data[Index].uid]);
 }
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
@@ -325,11 +322,11 @@ static ERROR CMDExpunge(void)
 
 //********************************************************************************************************************
 
-inline INDEX find_cell(extDocument *Self, LONG ID)
+inline INDEX RSTREAM::find_cell(LONG ID)
 {
-   for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].code IS SCODE::CELL) {
-         auto &cell = std::get<bc_cell>(Self->Codes[Self->Stream[i].uid]);
+   for (INDEX i=0; i < INDEX(data.size()); i++) {
+      if (data[i].code IS SCODE::CELL) {
+         auto &cell = std::get<bc_cell>(codes[data[i].uid]);
          if ((ID) and (ID IS cell.cell_id)) return i;
       }
    }
@@ -337,11 +334,11 @@ inline INDEX find_cell(extDocument *Self, LONG ID)
    return -1;
 }
 
-inline INDEX find_editable_cell(extDocument *Self, const std::string &EditDef)
+inline INDEX RSTREAM::find_editable_cell(const std::string &EditDef)
 {
-   for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
-      if (Self->Stream[i].code IS SCODE::CELL) {
-         auto &cell = Self->stream_data<bc_cell>(i);
+   for (INDEX i=0; i < INDEX(data.size()); i++) {
+      if (data[i].code IS SCODE::CELL) {
+         auto &cell = lookup<bc_cell>(i);
          if (EditDef == cell.edit_def) return i;
       }
    }
@@ -368,24 +365,6 @@ inline void layout_doc_fast(extDocument *Self)
 #endif
 
    layout_doc(Self);
-}
-
-//********************************************************************************************************************
-
-INDEX bc_cell::find_cell_end(extDocument *Self, RSTREAM &Stream, INDEX Offset)
-{
-   auto cell_end = Offset;
-   while (cell_end < INDEX(Stream.size())) {
-      if (Stream[cell_end].code IS SCODE::CELL_END) {
-         auto &end = Self->stream_data<bc_cell_end>(cell_end);
-         if (end.cell_id IS cell_id) break;
-      }
-
-      cell_end++;
-   }
-
-   if (cell_end >= INDEX(Stream.size())) return -1;
-   else return cell_end;
 }
 
 //********************************************************************************************************************

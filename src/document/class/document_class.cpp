@@ -86,7 +86,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].type IS TT_LINK) {
          for (auto &link : Self->Links) {
-            if (link->id IS Self->Tabs[Self->FocusIndex].ref) {
+            if (link.origin.id IS Self->Tabs[Self->FocusIndex].ref) {
                Self->Page->draw();
                break;
             }
@@ -298,7 +298,7 @@ static ERROR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       // Calculate the length of the highlighted document
 
       if (Self->SelectEnd != Self->SelectStart) {
-         auto buffer = stream_to_string(Self, Self->SelectStart, Self->SelectEnd);
+         auto buffer = stream_to_string(Self->Stream, Self->SelectStart, Self->SelectEnd);
 
          // Send the document to the clipboard object
 
@@ -392,7 +392,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       };
 
       if (xml.ok()) {
-         if (Self->Stream.empty()) {
+         if (Self->Stream.data.empty()) {
             // If the document is empty then we use the same process as load_doc()
             parser parse(Self, *xml);
             parse.process_page();
@@ -402,7 +402,7 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
             if (Self->initialised()) redraw(Self, true);
 
             #ifdef DBG_STREAM
-               print_stream(Self);
+               print_stream(Self->Stream);
             #endif
          }
          else { // UNTESTED
@@ -477,7 +477,7 @@ static ERROR DOCUMENT_Edit(extDocument *Self, struct docEdit *Args)
       deactivate_edit(Self, true);
       return ERR_Okay;
    }
-   else if (auto cellindex = find_editable_cell(Self, Args->Name); cellindex >= 0) {
+   else if (auto cellindex = Self->Stream.find_editable_cell(Args->Name); cellindex >= 0) {
       return activate_cell_edit(Self, cellindex, stream_char(0,0));
    }
    else return ERR_Search;
@@ -563,7 +563,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(Self->Stream.size()); i++) {
       if (Self->Stream[i].code IS SCODE::INDEX_START) {
-         auto &index = Self->stream_data<bc_index>(i);
+         auto &index = Self->Stream.lookup<bc_index>(i);
          if (name_hash IS index.name_hash) {
             auto end_id = index.id;
             Args->Start = i;
@@ -572,7 +572,7 @@ static ERROR DOCUMENT_FindIndex(extDocument *Self, struct docFindIndex *Args)
 
             for (++i; i < INDEX(Self->Stream.size()); i++) {
                if (Self->Stream[i].code IS SCODE::INDEX_END) {
-                  if (end_id IS Self->stream_data<bc_index_end>(i).id) {
+                  if (end_id IS Self->Stream.lookup<bc_index_end>(i).id) {
                      Args->End = i;
                      log.trace("Found index at range %d - %d", Args->Start, Args->End);
                      return ERR_Okay;
@@ -832,7 +832,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (stream[i].code IS SCODE::INDEX_START) {
-         auto &index = Self->stream_data<bc_index>(i);
+         auto &index = Self->Stream.lookup<bc_index>(i);
          if (name_hash IS index.name_hash) {
             if (!index.visible) return ERR_Okay; // It's already invisible!
 
@@ -851,11 +851,11 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
             for (++i; i < INDEX(stream.size()); i++) {
                auto code = stream[i].code;
                if (code IS SCODE::INDEX_END) {
-                  auto &end = Self->stream_data<bc_index_end>(i);
+                  auto &end = Self->Stream.lookup<bc_index_end>(i);
                   if (index.id IS end.id) break;
                }
                else if (code IS SCODE::IMAGE) {
-                  auto &vec = Self->stream_data<bc_image>(i);
+                  auto &vec = Self->Stream.lookup<bc_image>(i);
                   if (vec.rect) acHide(vec.rect->UID);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.rect->UID); tab >= 0) {
@@ -863,13 +863,13 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                   }
                }
                else if (code IS SCODE::LINK) {
-                  auto &esclink = Self->stream_data<bc_link>(i);
+                  auto &esclink = Self->Stream.lookup<bc_link>(i);
                   if ((tab = find_tabfocus(Self, TT_LINK, esclink.id)) >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
                else if (code IS SCODE::INDEX_START) {
-                  auto &index = Self->stream_data<bc_index>(i);
+                  auto &index = Self->Stream.lookup<bc_index>(i);
                   index.parent_visible = false;
                }
             }
@@ -918,7 +918,7 @@ static ERROR DOCUMENT_InsertXML(extDocument *Self, struct docInsertXML *Args)
    if ((!Args) or (!Args->XML)) return log.warning(ERR_NullArgs);
    if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
 
-   if (Self->Stream.empty()) return ERR_NoData;
+   if (Self->Stream.data.empty()) return ERR_NoData;
 
    objXML::create xml = {
       fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS),
@@ -983,7 +983,7 @@ static ERROR DOCUMENT_InsertText(extDocument *Self, struct docInsertText *Args)
    ERROR error = insert_text(Self, Self->Stream, sc, std::string(Args->Text), Args->Preformat);
 
    #ifdef DBG_STREAM
-      print_stream(Self);
+      print_stream(Self->Stream);
    #endif
 
    return error;
@@ -1042,7 +1042,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
 
       for (INDEX i=Args->Start; i < Args->End; i++) {
          if (Self->Stream[i].code IS SCODE::TEXT) {
-            buffer << Self->stream_data<bc_text>(i).text;
+            buffer << Self->Stream.lookup<bc_text>(i).text;
          }
       }
 
@@ -1054,7 +1054,7 @@ static ERROR DOCUMENT_ReadContent(extDocument *Self, struct docReadContent *Args
    else if (Args->Format IS DATA::RAW) {
       STRING output;
       if (!AllocMemory(Args->End - Args->Start + 1, MEM::NO_CLEAR, &output)) {
-         CopyMemory(Self->Stream.data() + Args->Start, output, Args->End - Args->Start);
+         CopyMemory(Self->Stream.data.data() + Args->Start, output, Args->End - Args->Start);
          output[Args->End - Args->Start] = 0;
          Args->Result = output;
          return ERR_Okay;
@@ -1146,8 +1146,8 @@ static ERROR DOCUMENT_RemoveContent(extDocument *Self, struct docRemoveContent *
    if ((Args->End < 0) or (Args->End >= LONG(Self->Stream.size()))) return log.warning(ERR_OutOfRange);
    if (Args->End <= Args->Start) return log.warning(ERR_Args);
 
-   CopyMemory(Self->Stream.data() + Args->End, Self->Stream.data() + Args->Start, Self->Stream.size() - Args->End);
-   Self->Stream.resize(Self->Stream.size() - Args->End - Args->Start);
+   CopyMemory(Self->Stream.data.data() + Args->End, Self->Stream.data.data() + Args->Start, Self->Stream.data.size() - Args->End);
+   Self->Stream.data.resize(Self->Stream.data.size() - Args->End - Args->Start);
 
    Self->UpdatingLayout = true;
    return ERR_Okay;
@@ -1353,7 +1353,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
    auto name_hash = StrHash(Args->Name);
    for (INDEX i=0; i < INDEX(stream.size()); i++) {
       if (stream[i].code IS SCODE::INDEX_START) {
-         auto &index = Self->stream_data<bc_index>(i);
+         auto &index = Self->Stream.lookup<bc_index>(i);
          if (name_hash != index.name_hash) continue;
          if (index.visible) return ERR_Okay; // It's already visible!
 
@@ -1372,10 +1372,10 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
             for (++i; i < INDEX(stream.size()); i++) {
                auto code = stream[i].code;
                if (code IS SCODE::INDEX_END) {
-                  if (index.id IS Self->stream_data<bc_index_end>(i).id) break;
+                  if (index.id IS Self->Stream.lookup<bc_index_end>(i).id) break;
                }
                else if (code IS SCODE::IMAGE) {
-                  auto &img = Self->stream_data<bc_image>(i);
+                  auto &img = Self->Stream.lookup<bc_image>(i);
                   if (img.rect) acShow(img.rect);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, img.rect->UID); tab >= 0) {
@@ -1383,18 +1383,18 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                   }
                }
                else if (code IS SCODE::LINK) {
-                  if (auto tab = find_tabfocus(Self, TT_LINK, Self->stream_data<bc_link>(i).id); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT_LINK, Self->Stream.lookup<bc_link>(i).id); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }
                else if (code IS SCODE::INDEX_START) {
-                  auto &index = Self->stream_data<bc_index>(i);
+                  auto &index = Self->Stream.lookup<bc_index>(i);
                   index.parent_visible = true;
 
                   if (!index.visible) {
                      for (++i; i < INDEX(stream.size()); i++) {
                         if (stream[i].code IS SCODE::INDEX_END) {
-                           if (index.id IS Self->stream_data<bc_index_end>(i).id) break;
+                           if (index.id IS Self->Stream.lookup<bc_index_end>(i).id) break;
                         }
                      }
                   }

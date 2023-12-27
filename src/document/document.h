@@ -189,8 +189,6 @@ struct stream_code {
    stream_code(SCODE pCode, ULONG pID) : code(pCode), uid(pID) { }
 };
 
-using RSTREAM = std::vector<stream_code>;
-
 //********************************************************************************************************************
 
 class base_code {
@@ -200,6 +198,65 @@ public:
 
    base_code() { uid = glByteCodeID++; }
    base_code(SCODE pCode) : code(pCode) { uid = glByteCodeID++; }
+};
+
+class bc_text;
+class bc_advance;
+class bc_table;
+class bc_table_end; 
+class bc_row; 
+class bc_row_end; 
+class bc_paragraph;
+class bc_paragraph_end; 
+class bc_cell; 
+class bc_cell_end; 
+class bc_link; 
+class bc_link_end; 
+class bc_list; 
+class bc_list_end; 
+class bc_index; 
+class bc_index_end;
+class bc_font; 
+class bc_font_end; 
+class bc_set_margins; 
+class bc_xml; 
+class bc_image; 
+class bc_use;
+struct stream_char;
+
+class RSTREAM {
+public:
+   std::vector<stream_code> data;
+
+   std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
+      bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
+      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>> codes;
+
+   void clear() {
+      data.clear();
+      codes.clear();
+   }
+
+   std::size_t size() const {
+      return data.size();
+   }
+
+   // Overloading [] operator to access elements in array style
+
+   stream_code& operator[](const int Index) {
+      return data[Index];
+   }
+
+   const stream_code& operator[](const int Index) const {
+      return data[Index];
+   }
+   
+   template <class T> T & lookup(const stream_char Index);
+   template <class T> T & lookup(const INDEX Index);
+   template <class T = base_code> T & insert_code(stream_char &, T &);
+   template <class T = base_code> T & reserve_code(stream_char &);
+   inline INDEX find_cell(LONG);
+   inline INDEX find_editable_cell(const std::string &);
 };
 
 //********************************************************************************************************************
@@ -250,7 +307,7 @@ struct stream_char {
 
    inline void reset() { index = -1; offset = -1; }
    inline bool valid() { return index != -1; }
-   inline bool valid(const RSTREAM &Stream) { return (index != -1) and (index < INDEX(Stream.size())); }
+   inline bool valid(RSTREAM &Stream) { return (index != -1) and (index < INDEX(Stream.size())); }
 
    inline void set(INDEX pIndex, ULONG pOffset = 0) {
       index  = pIndex;
@@ -272,13 +329,13 @@ struct stream_char {
 
    // NB: None of these support unicode.
 
-   UBYTE get_char(extDocument *, const RSTREAM &);
-   UBYTE get_char(extDocument *, const RSTREAM &, LONG Seek);
-   UBYTE get_prev_char(extDocument *, const RSTREAM &);
-   UBYTE get_prev_char_or_inline(extDocument *, const RSTREAM &);
-   void erase_char(extDocument *, RSTREAM &); // Erase a character OR an escape code.
-   void next_char(extDocument *, const RSTREAM &);
-   void prev_char(extDocument *, const RSTREAM &);
+   UBYTE get_char(RSTREAM &);
+   UBYTE get_char(RSTREAM &, LONG Seek);
+   UBYTE get_prev_char(RSTREAM &);
+   UBYTE get_prev_char_or_inline(RSTREAM &);
+   void erase_char(RSTREAM &); // Erase a character OR an escape code.
+   void next_char(RSTREAM &);
+   void prev_char(RSTREAM &);
 };
 
 //********************************************************************************************************************
@@ -433,6 +490,7 @@ struct style_status {
 // wordwrap then a new segment must be created.
 
 struct doc_segment {
+   RSTREAM *stream;         // The stream that this segment refers to
    stream_char start;       // Starting index (including character if text)
    stream_char stop;        // Stop at this index/character
    stream_char trim_stop;   // The stopping point when whitespace is removed
@@ -565,21 +623,30 @@ struct bc_index_end : public base_code {
 };
 
 struct bc_link : public base_code {
-   LINK  type;    // Link type (either a function or hyperlink)
+   LINK  type;                    // Link type (either a function or hyperlink)
    UWORD id;
-   FloatRect area;
-   objVectorPath *vector_path;
-   stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
-   std::vector<PathCommand> path;
    std::string pointer_motion;    // Function to call for pointer motion events
    std::string ref;               // Function name or a path, depending on the Type
    std::vector<std::pair<std::string,std::string>> args;
    std::string fill;              // Fill instruction from the client
-   bool hover;                    // True if the mouse pointer is hovering over the link
-   bc_font font;                  // Font style for the link
+   bc_font font;                  // Font style from the parser
 
-   bc_link() : type(LINK::NIL), id(0), vector_path(NULL), hover(false)
+   bc_link() : type(LINK::NIL), id(0)
       { code = SCODE::LINK; }
+};
+
+struct bc_link_end : public base_code {
+   bc_link_end() { code = SCODE::LINK_END; }
+};
+
+struct ui_link {
+   bc_link origin;                       // A copy of the original link information
+   FloatRect area;                       // Occupied area in the UI
+   stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
+   std::vector<PathCommand> path;
+   RSTREAM *stream;
+   objVectorPath *vector_path = NULL;
+   bool hover = false;                   // True if the mouse pointer is hovering over the link
 
    void exec(extDocument *);
 
@@ -590,10 +657,6 @@ struct bc_link : public base_code {
       path.push_back({ .Type = PE::HLineRel, .X = -area.Width, });
       path.push_back({ .Type = PE::ClosePath });
    }
-};
-
-struct bc_link_end : public base_code {
-   bc_link_end() { code = SCODE::LINK_END; }
 };
 
 struct bc_image : public base_code {
@@ -758,33 +821,31 @@ struct bc_row_end : public base_code {
    bc_row_end() : base_code(SCODE::ROW_END) { }
 };
 
-struct bc_cell_end : public base_code {
-   LONG cell_id = 0;    // Matching identifier from bc_cell
-   bc_cell *cell_start; // Temporary pointer managed during layout
+struct bc_cell_end : public base_code { // Dummy structure to assist the drawing code
    bc_cell_end() : base_code(SCODE::CELL_END) { }
 };
 
 struct bc_cell : public base_code {
-   LONG cell_id = 0;              // Identifier for the matching bc_cell_end
+   RSTREAM stream;                // Internally managed byte code content for the cell
+   LONG cell_id = 0;              // UID for the cell
    LONG column = 0;               // Column number that the cell starts in
    LONG col_span = 0;             // Number of columns spanned by this cell (normally set to 1)
    LONG row_span = 0;             // Number of rows spanned by this cell
    CB border = CB::NIL;           // Border options
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
-   DOUBLE width = 0, height = 0;  // width and height of the cell
+   DOUBLE width = 0, height = 0;  // Width and height of the cell
    DOUBLE strokeWidth = 0;
    std::string onclick;           // name of an onclick function
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> args;
    std::string stroke;
    std::string fill;
+   bool modified = false;         // Set to true when content in the cell has been modified
 
    bc_cell(LONG pCellID, LONG pColumn) :
       base_code(SCODE::CELL), cell_id(pCellID), column(pColumn),
       col_span(1), row_span(1), x(0), y(0), width(0), height(0)
       { }
-
-   INDEX find_cell_end(extDocument *, RSTREAM &, INDEX);
 };
 
 //********************************************************************************************************************
@@ -803,15 +864,12 @@ class extDocument : public objDocument {
    std::map<ULONG, XMLTag *>   TemplateIndex;
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
-   std::vector<bc_link *>      Links;
+   std::vector<ui_link>        Links;
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
    std::unordered_map<std::string, doc_edit> EditDefs;
-   std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
-      bc_paragraph_end, bc_cell, bc_cell_end, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>> Codes;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
@@ -860,9 +918,5 @@ class extDocument : public objDocument {
    bool   LMB;              // True if the LMB is depressed.
    bool   CursorState;      // True if the edit cursor is on, false if off.  Used for flashing of the cursor
 
-   template <class T = base_code> T & insert_code(RSTREAM &, stream_char &, T &);
-   template <class T = base_code> T & reserve_code(RSTREAM &, stream_char &);
-   template <class T> T & stream_data(stream_char Index);
-   template <class T> T & stream_data(INDEX Index);
    std::vector<sorted_segment> & get_sorted_segments();
 };

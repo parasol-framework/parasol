@@ -40,9 +40,7 @@ struct parser {
    ERROR tag_xml_content_eval(std::string &);
    void  trim_preformat(extDocument *);
 
-   parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML) {
-      m_index = stream_char(m_stream.size());
-   }
+   parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML), m_index(0) { }
 
    // Switching out the XML object is sometimes done for things like template injection
 
@@ -1131,25 +1129,25 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, style_status &Style, IPF F
       m_style.font_style.font_index = create_font(m_style.face, style_name, m_style.point);
       //log.trace("Changed font to index %d, face %s, style %s, size %d.", m_style.font_style.index, m_style.Face, style_name, m_style.point);
       m_style.font_style.uid = glByteCodeID++;
-      Self->insert_code(m_stream, m_index, m_style.font_style);
+      m_stream.insert_code(m_index, m_style.font_style);
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
          if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
       m_style = save_status;
-      Self->reserve_code<bc_font_end>(m_stream, m_index);
+      m_stream.reserve_code<bc_font_end>(m_index);
    }
    else if (style_change) { // Insert a minor font change into the text stream
       auto save_status = m_style;
       m_style = Style;
       m_style.font_style.uid = glByteCodeID++;
-      Self->insert_code(m_stream, m_index, m_style.font_style);
+      m_stream.insert_code(m_index, m_style.font_style);
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
          if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
       m_style = save_status;
-      Self->reserve_code<bc_font_end>(m_stream, m_index);
+      m_stream.reserve_code<bc_font_end>(m_index);
    }
    else {
       for (auto &tag : Tags) {
@@ -1239,7 +1237,7 @@ void parser::trim_preformat(extDocument *Self)
    auto i = m_index.index - 1;
    for (; i > 0; i--) {
       if (m_stream[i].code IS SCODE::TEXT) {
-         auto &text = Self->stream_data<bc_text>(i);
+         auto &text = m_stream.lookup<bc_text>(i);
 
          static const std::string ws(" \t\f\v\n\r");
          auto found = text.text.find_last_not_of(ws);
@@ -1258,7 +1256,7 @@ void parser::trim_preformat(extDocument *Self)
 
 void parser::tag_advance(XMLTag &Tag)
 {
-   auto &adv = Self->reserve_code<bc_advance>(m_stream, m_index);
+   auto &adv = m_stream.reserve_code<bc_advance>(m_index);
 
    for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -1530,7 +1528,7 @@ void parser::tag_use(XMLTag &Tag)
    }
 
    if (!id.empty()) {
-      auto &use = Self->reserve_code<bc_use>(m_stream, m_index);
+      auto &use = m_stream.reserve_code<bc_use>(m_index);
       use.id = id;
    }
 }
@@ -1774,7 +1772,7 @@ void parser::tag_image(XMLTag &Tag)
       if (img.height < 0) img.height = 0;
 
       if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
-      Self->insert_code(m_stream, m_index, img);
+      m_stream.insert_code(m_index, img);
    }
    else {
       log.warning("No src defined for <image> tag.");
@@ -1821,7 +1819,7 @@ void parser::tag_index(XMLTag &Tag)
    if (name) {
       bc_index esc(name, glUID++, 0, visible, Self->Invisible ? false : true);
 
-      Self->insert_code(m_stream, m_index, esc);
+      m_stream.insert_code(m_index, esc);
 
       if (!Tag.Children.empty()) {
          if (!visible) Self->Invisible++;
@@ -1830,7 +1828,7 @@ void parser::tag_index(XMLTag &Tag)
       }
 
       bc_index_end end(esc.id);
-      Self->insert_code(m_stream, m_index, end);
+      m_stream.insert_code(m_index, end);
    }
    else if (!Tag.Children.empty()) parse_tags(Tag.Children);
 }
@@ -1917,12 +1915,11 @@ void parser::tag_link(XMLTag &Tag)
       link.font.options |= FSO::UNDERLINE;
       link.font.fill = link.fill;
 
-      auto &new_link = Self->insert_code(m_stream, m_index, link);
-      Self->Links.push_back(&new_link);
+      m_stream.insert_code(m_index, link);
 
       parse_tags(Tag.Children);
 
-      Self->reserve_code<bc_link_end>(m_stream, m_index);
+      m_stream.reserve_code<bc_link_end>(m_index);
 
       // Links are added to the list of tab locations
 
@@ -1972,7 +1969,7 @@ void parser::tag_list(XMLTag &Tag, objXML::TAGS &Children)
 
    // Note: Paragraphs are not inserted because <li> does this
 
-   Self->insert_code(m_stream, m_index, esc);
+   m_stream.insert_code(m_index, esc);
 
    savelist = m_style.list;
    m_style.list = &esc;
@@ -1981,7 +1978,7 @@ void parser::tag_list(XMLTag &Tag, objXML::TAGS &Children)
 
    m_style.list = savelist;
 
-   Self->reserve_code<bc_list_end>(m_stream, m_index);
+   m_stream.reserve_code<bc_list_end>(m_index);
 
    Self->NoWhitespace = true;
 }
@@ -2012,14 +2009,14 @@ void parser::tag_paragraph(XMLTag &Tag, objXML::TAGS &Children)
       else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &esc, new_style);
    }
 
-   Self->insert_code(m_stream, m_index, esc);
+   m_stream.insert_code(m_index, esc);
 
    Self->NoWhitespace = esc.trim;
 
    parse_tags_with_style(Children, new_style);
 
    bc_paragraph_end end;
-   Self->insert_code(m_stream, m_index, end);
+   m_stream.insert_code(m_index, end);
    Self->NoWhitespace = true;
    m_paragraph_depth--;
 }
@@ -2630,7 +2627,7 @@ void parser::tag_vector(XMLTag &Tag)
             }
             else escobj.in_line = true; // If the layout object is not present, the object is managing its own graphics and likely is embedded (button, combobox, checkbox etc are like this)
 
-            Self->insert_code(Index, escobj);
+            m_stream.insert_code(Index, escobj);
 
             if (Self->ObjectCache) {
                switch (object->Class->ClassID) {
@@ -2921,7 +2918,7 @@ void parser::tag_setmargins(XMLTag &Tag)
       }
    }
 
-   Self->insert_code(m_stream, m_index, margins);
+   m_stream.insert_code(m_index, margins);
 }
 
 //********************************************************************************************************************
@@ -2981,11 +2978,11 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
    m_paragraph_depth++;
 
    if ((m_style.list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
-      Self->insert_code(m_stream, m_index, para);
+      m_stream.insert_code(m_index, para);
 
          parse_tags(Children);
 
-      Self->reserve_code<bc_paragraph_end>(m_stream, m_index);
+      m_stream.reserve_code<bc_paragraph_end>(m_index);
    }
    else if (m_style.list->type IS bc_list::ORDERED) {
       auto list_size = m_style.list->buffer.size();
@@ -2999,11 +2996,11 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
       if (para.aggregate) for (auto &p : m_style.list->buffer) para.value += p;
       else para.value = m_style.list->buffer.back();
 
-      Self->insert_code(m_stream, m_index, para);
+      m_stream.insert_code(m_index, para);
 
          parse_tags(Children);
 
-      Self->reserve_code<bc_paragraph_end>(m_stream, m_index);
+      m_stream.reserve_code<bc_paragraph_end>(m_index);
 
       m_style.list->item_num = save_item;
       m_style.list->buffer.resize(list_size);
@@ -3011,11 +3008,11 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
       m_style.list->item_num++;
    }
    else { // BULLET
-      Self->insert_code(m_stream, m_index, para);
+      m_stream.insert_code(m_index, para);
 
          parse_tags(Children);
 
-      Self->reserve_code<bc_paragraph_end>(m_stream, m_index);
+      m_stream.reserve_code<bc_paragraph_end>(m_index);
       Self->NoWhitespace = true;
    }
 
@@ -3110,7 +3107,7 @@ void parser::tag_table(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   auto &start = Self->reserve_code<bc_table>(m_stream, m_index);
+   auto &start = m_stream.reserve_code<bc_table>(m_index);
    start.min_width  = 1;
    start.min_height = 1;
 
@@ -3220,7 +3217,7 @@ void parser::tag_table(XMLTag &Tag)
    }
 
    bc_table_end end;
-   Self->insert_code(m_stream, m_index, end);
+   m_stream.insert_code(m_index, end);
 
    Self->NoWhitespace = true; // Setting this to true will prevent the possibility of blank spaces immediately following the table.
 }
@@ -3249,7 +3246,7 @@ void parser::tag_row(XMLTag &Tag)
       else if (!StrMatch("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;
    }
 
-   Self->insert_code(m_stream, m_index, escrow);
+   m_stream.insert_code(m_index, escrow);
    m_style.table->table->rows++;
    m_style.table->row_col = 0;
 
@@ -3258,7 +3255,7 @@ void parser::tag_row(XMLTag &Tag)
    }
 
    bc_row_end end;
-   Self->insert_code(m_stream, m_index, end);
+   m_stream.insert_code(m_index, end);
 
    if (m_style.table->row_col > LONG(m_style.table->table->columns.size())) {
       m_style.table->table->columns.resize(m_style.table->row_col);
@@ -3369,23 +3366,30 @@ void parser::tag_cell(XMLTag &Tag)
 
    auto cell_index = m_index;
 
-   Self->insert_code(m_stream, m_index, cell);
-
    if (!Tag.Children.empty()) {
       Self->NoWhitespace = true; // Reset whitespace flag: false allows whitespace at the start of the cell, true prevents whitespace
 
       if ((!cell.edit_def.empty()) and ((m_style.font_style.options & FSO::PREFORMAT) IS FSO::NIL)) {
          new_style.font_style.options |= FSO::PREFORMAT;
-         parse_tags_with_style(Tag.Children, new_style);
       }
-      else parse_tags_with_style(Tag.Children, new_style);
+
+      // Cell content is managed in an internal stream
+
+      parser parse(Self, m_xml);
+
+      parse.m_paragraph_depth++;
+      parse.parse_tags_with_style(Tag.Children, new_style);
+      parse.m_paragraph_depth--;
+
+      cell.stream = parse.m_stream;
    }
+
+   m_stream.insert_code(m_index, cell);
 
    m_style.table->row_col += cell.col_span;
 
    bc_cell_end esccell_end;
-   esccell_end.cell_id = cell.cell_id;
-   Self->insert_code(m_stream, m_index, esccell_end);
+   m_stream.insert_code(m_index, esccell_end);
 
    if (!cell.edit_def.empty()) {
       // Links are added to the list of tabbable points

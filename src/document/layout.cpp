@@ -58,6 +58,7 @@ private:
    std::vector<doc_clip> m_clips;
 
    objFont *m_font = NULL;
+   RSTREAM *m_stream = NULL;
 
    DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
    DOUBLE m_page_width = 0;
@@ -139,7 +140,7 @@ private:
    // so extended information is not required.
 
    inline void add_graphics_segment() {
-      new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, BC_NAME(Self->Stream, idx));
+      new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, BC_NAME(m_stream[0], idx));
       reset_segment(idx+1, m_cursor_x);
    }
 
@@ -185,7 +186,7 @@ private:
    void lay_paragraph();
    void lay_row_end(bc_table *);
    void lay_set_margins(LONG &);
-   TE   lay_table_end(bc_table *, LONG, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
+   TE   lay_table_end(bc_table *, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
    WRAP lay_text();
 
    DOUBLE calc_page_height(DOUBLE);
@@ -196,10 +197,10 @@ private:
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
 
 public:
-   layout(extDocument *pSelf) : Self(pSelf) { }
+   layout(extDocument *pSelf, RSTREAM *Stream) : Self(pSelf), m_stream(Stream) { }
 
-   ERROR do_layout(INDEX, INDEX, objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
-   void gen_scene_graph(objVectorViewport *, RSTREAM &, SEGINDEX, SEGINDEX);
+   ERROR do_layout(objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
+   void gen_scene_graph(objVectorViewport *, SEGINDEX, SEGINDEX);
    void gen_scene_init(objVectorViewport *);
 };
 
@@ -218,7 +219,7 @@ CELL layout::lay_cell(bc_table *Table)
 
    bool vertical_repass = false;
 
-   auto &cell = Self->stream_data<bc_cell>(idx);
+   auto &cell = m_stream->lookup<bc_cell>(idx);
 
    if (!Table) {
       log.warning("Table not defined for cell @ index %d - document byte code is corrupt.", idx);
@@ -255,34 +256,16 @@ CELL layout::lay_cell(bc_table *Table)
    DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
       idx, m_cursor_x, m_cursor_y, cell.width, cell.height, cell.column);
 
-   // Find the matching CELL_END
-
-   auto cell_end_idx = cell.find_cell_end(Self, Self->Stream, idx);
-
-   if (cell_end_idx IS -1) {
-      log.warning("Failed to find matching cell-end.  Document stream is corrupt.");
-      Self->Error = ERR_InvalidData;
-      return CELL::ABORT;
-   }
-
-   auto cell_end = &Self->stream_data<bc_cell_end>(cell_end_idx);
-   cell_end->cell_start = &cell;
-
-   idx++; // Go to start of cell content
-
-   if (idx < cell_end_idx) {
+   if (!cell.stream.data.empty()) {
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
-      layout sl(Self);
+      layout sl(Self, &cell.stream);
       sl.m_depth = m_depth;
-      sl.do_layout(idx, cell_end_idx, &m_font, cell.width, cell.height,
-         ClipRectangle(Table->cell_padding), vertical_repass);
+      sl.do_layout(&m_font, cell.width, cell.height, ClipRectangle(Table->cell_padding), vertical_repass);
 
       // The main product of do_layout() are the produced segments, so append them here.
 
       m_segments.insert(m_segments.end(), sl.m_segments.begin(), sl.m_segments.end());
-
-      idx = cell_end_idx - 1; // -1 to make up for the loop's ++
 
       if (!cell.edit_def.empty()) {
          m_edit_mode = false;
@@ -352,26 +335,12 @@ CELL layout::lay_cell(bc_table *Table)
 
    if (cell.column IS 0) m_cursor_x += Table->strokeWidth;
 
-   return CELL::NIL;
-}
-
-//********************************************************************************************************************
-
-void layout::lay_cell_end()
-{
-   auto cell_end = &Self->stream_data<bc_cell_end>(idx);
-
-   if ((cell_end->cell_start) and (!cell_end->cell_start->edit_def.empty())) {
+   if (!cell.edit_def.empty()) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
-
-      auto cs = cell_end->cell_start;
-      m_ecells.emplace_back(cell_end->cell_id, cs->x, cs->y, cs->width, cs->height);
+      m_ecells.emplace_back(cell.cell_id, cell.x, cell.y, cell.width, cell.height);
    }
 
-   // CELL_END helps draw(), so set the segment to ensure that it is included in the draw stream.  Please
-   // refer to SCODE::CELL to see how content is processed and how the cell dimensions are formed.
-
-   new_code_segment();
+   return CELL::NIL;
 }
 
 //********************************************************************************************************************
@@ -383,7 +352,7 @@ void layout::lay_cell_end()
 
 WRAP layout::lay_image()
 {
-   auto &image = Self->stream_data<bc_image>(idx);
+   auto &image = m_stream->lookup<bc_image>(idx);
 
    if (!image.floating()) check_line_height(); // Necessary for inline images in case they are the first 'character' on the line.
 
@@ -479,7 +448,7 @@ WRAP layout::lay_image()
 void layout::lay_font()
 {
    pf::Log log;
-   auto style = &Self->stream_data<bc_font>(idx);
+   auto style = &m_stream->lookup<bc_font>(idx);
    m_font = style->get_font();
 
    if (m_font) {
@@ -502,7 +471,7 @@ void layout::lay_font()
    }
    else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->font_index);
 
-   stack_font.push(&Self->stream_data<bc_font>(idx));
+   stack_font.push(&m_stream->lookup<bc_font>(idx));
 }
 
 void layout::lay_font_end()
@@ -522,7 +491,7 @@ WRAP layout::lay_text()
    m_align_width = m_wrap_edge; // TODO: Not sure about this following the switch to embedded TEXT structures
 
    auto ascent = m_font->Ascent;
-   auto &text = Self->stream_data<bc_text>(idx);
+   auto &text = m_stream->lookup<bc_text>(idx);
    auto &str = text.text;
    text.vector_text.clear();
    for (unsigned i=0; i < str.size(); ) {
@@ -619,16 +588,16 @@ void layout::lay_index()
 {
    pf::Log log(__FUNCTION__);
 
-   auto escindex = &Self->stream_data<bc_index>(idx);
+   auto escindex = &m_stream->lookup<bc_index>(idx);
    escindex->y = m_cursor_y;
 
    if (!escindex->visible) {
       // If not visible, all content within the index is not to be displayed
 
       auto end = idx;
-      while (end < INDEX(Self->Stream.size())) {
-         if (Self->Stream[end].code IS SCODE::INDEX_END) {
-            bc_index_end &iend = Self->stream_data<bc_index_end>(end);
+      while (end < INDEX(m_stream[0].size())) {
+         if (m_stream[0][end].code IS SCODE::INDEX_END) {
+            bc_index_end &iend = m_stream->lookup<bc_index_end>(end);
             if (iend.id IS escindex->id) break;
             end++;
 
@@ -695,10 +664,10 @@ void layout::lay_paragraph()
       stream_char sc(idx, 0);
       end_line(NL::PARAGRAPH, ratio, sc, "PS");
 
-      stack_para.push(&Self->stream_data<bc_paragraph>(idx));
+      stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
    }
    else {
-      stack_para.push(&Self->stream_data<bc_paragraph>(idx));
+      stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
 
       // Leading ratio is only used if the paragraph is preceeded by content.
       // This check ensures that the first paragraph is always flush against
@@ -777,7 +746,7 @@ void layout::lay_paragraph_end()
 
 //********************************************************************************************************************
 
-TE layout::lay_table_end(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUBLE BottomMargin, DOUBLE &Height, DOUBLE &Width)
+TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMargin, DOUBLE &Height, DOUBLE &Width)
 {
    pf::Log log(__FUNCTION__);
 
@@ -866,7 +835,7 @@ TE layout::lay_table_end(bc_table *esctable, LONG Offset, DOUBLE TopMargin, DOUB
       // If the table height is expressed as a percentage, it is calculated with
       // respect to the height of the display port.
 
-      if (!Offset) {
+      if (!m_depth) {
          minheight = ((Self->Area.Height - BottomMargin - esctable->y) * esctable->min_height) / 100;
       }
       else minheight = ((Height - BottomMargin - TopMargin) * esctable->min_height) / 100;
@@ -1575,7 +1544,7 @@ wrap_vector:
 
 void layout::lay_set_margins(LONG &BottomMargin)
 {
-   auto &escmargins = Self->stream_data<::bc_set_margins>(idx);
+   auto &escmargins = m_stream->lookup<::bc_set_margins>(idx);
 
    if (escmargins.left != 0x7fff) {
       m_cursor_x    += escmargins.left;
@@ -1612,14 +1581,14 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    // occurring in whitespace at the end of the line during word-wrapping.
 
    auto trim_stop = Stop;
-   while ((trim_stop.get_prev_char_or_inline(Self, Self->Stream) <= 0x20) and (trim_stop > Start)) {
-      if (!trim_stop.get_prev_char_or_inline(Self, Self->Stream)) break;
-      trim_stop.prev_char(Self, Self->Stream);
+   while ((trim_stop.get_prev_char_or_inline(m_stream[0]) <= 0x20) and (trim_stop > Start)) {
+      if (!trim_stop.get_prev_char_or_inline(m_stream[0])) break;
+      trim_stop.prev_char(m_stream[0]);
    }
 
    if (Start >= Stop) {
       DLAYOUT("Cancelling new segment, no content in range %d-%d  \"%.20s\" (%s)",
-         Start.index, Stop.index, printable(Self, Start).c_str(), Debug.c_str());
+         Start.index, Stop.index, printable(*m_stream, Start).c_str(), Debug.c_str());
       return;
    }
 
@@ -1628,9 +1597,9 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    bool allow_merge      = true; // If true, this segment can be merged with prior segment(s) on the line
 
    for (auto i=Start; i < Stop; i.next_code()) {
-      switch (Self->Stream[i.index].code) {
+      switch (m_stream[0][i.index].code) {
          case SCODE::IMAGE: {
-            auto &img = Self->stream_data<bc_image>(i.index);
+            auto &img = m_stream->lookup<bc_image>(i.index);
             if (img.floating()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
@@ -1670,8 +1639,8 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 #ifdef DBG_STREAM
    log.branch("#%d %d:%d - %d:%d, Area: %gx%g,%g:%gx%g, WordWidth: %d [%.20s]...[%.20s] (%s)",
       LONG(m_segments.size()), Start.index, LONG(Start.offset), Stop.index, LONG(Stop.offset), m_line.x, Y, Width,
-      AlignWidth, line_height, m_word_width, printable(Self, Start).c_str(),
-      printable(Self, Stop).c_str(), Debug.c_str());
+      AlignWidth, line_height, m_word_width, printable(*m_stream, Start).c_str(),
+      printable(*m_stream, Stop).c_str(), Debug.c_str());
 #endif
 
    if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
@@ -1719,6 +1688,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
    else {
       m_segments.emplace_back(doc_segment {
+         .stream      = m_stream,
          .start       = Start,
          .stop        = Stop,
          .trim_stop   = trim_stop,
@@ -1744,7 +1714,7 @@ void layout::new_code_segment()
    stream_char start(idx, 0), stop(idx + 1, 0);
 
 #ifdef DBG_STREAM
-   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, BC_NAME(Self->Stream,idx).c_str());
+   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, BC_NAME(m_stream[0],idx).c_str());
 #endif
 
    if ((!m_segments.empty()) and (m_segments.back().stop IS start) and (m_segments.back().allow_merge)) {
@@ -1754,6 +1724,7 @@ void layout::new_code_segment()
    }
    else {
       m_segments.emplace_back(doc_segment {
+         .stream      = m_stream,
          .start       = start,
          .stop        = stop,
          .trim_stop   = stop,
@@ -1779,7 +1750,7 @@ static void layout_doc(extDocument *Self)
 
    if (!Self->UpdatingLayout) return;
 
-   if (Self->Stream.empty()) return;
+   if (Self->Stream.data.empty()) return;
 
    // Initial height is 1 and not set to the viewport height because we want to accurately report the final height
    // of the page.
@@ -1788,7 +1759,7 @@ static void layout_doc(extDocument *Self)
       log.branch("Area: %gx%g,%gx%g Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
    #endif
 
-   layout l(Self);
+   layout l(Self, &Self->Stream);
    bool repeat = true;
    while (repeat) {
       repeat = false;
@@ -1815,9 +1786,9 @@ static void layout_doc(extDocument *Self)
       auto font = glFonts[0].font;
 
       DOUBLE page_height = 1;
-      l = layout(Self);
+      l = layout(Self, &Self->Stream);
       bool vertical_repass = false;
-      if (l.do_layout(0, Self->Stream.size(), &font, page_width, page_height,
+      if (l.do_layout(&font, page_width, page_height,
          ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin),
          vertical_repass) != ERR_Okay) break;
 
@@ -1862,7 +1833,7 @@ static void layout_doc(extDocument *Self)
 
    Self->UpdatingLayout = false;
 
-   print_segments(Self, Self->Stream);
+   print_segments(Self);
 
    // If an error occurred during layout processing, unload the document and display an error dialog.  (NB: While it is
    // possible to display a document up to the point at which the error occurred, we want to maintain a strict approach
@@ -1881,7 +1852,7 @@ static void layout_doc(extDocument *Self)
       acResize(Self->Page, Self->CalcWidth, Self->PageHeight, 0);
 
       l.gen_scene_init(Self->Page);
-      l.gen_scene_graph(Self->Page, Self->Stream, 0, SEGINDEX(l.m_segments.size()));
+      l.gen_scene_graph(Self->Page, 0, SEGINDEX(l.m_segments.size()));
 
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.Type IS CALL_SCRIPT) {
@@ -1916,12 +1887,11 @@ static void layout_doc(extDocument *Self)
 // Margins:    Margins within the page area.  These are inclusive to the resulting page width/height.  If in a cell,
 //             margins reflect cell padding values.
 
-ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, DOUBLE &Height,
-   ClipRectangle Margins, bool &VerticalRepass)
+ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, ClipRectangle Margins, bool &VerticalRepass)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((Self->Stream.empty()) or (Offset >= End) or (!Font) or (!Font[0])) {
+   if ((m_stream->data.empty()) or (!Font) or (!Font[0])) {
       log.traceBranch("No document stream to be processed.");
       return ERR_NothingDone;
    }
@@ -1948,7 +1918,7 @@ ERROR layout::do_layout(INDEX Offset, INDEX End, objFont **Font, DOUBLE &Width, 
 
    m_depth++;
 
-   layout tablestate(Self), rowstate(Self), liststate(Self);
+   layout tablestate(Self, m_stream), rowstate(Self, m_stream), liststate(Self, m_stream);
    bc_table *esctable;
    DOUBLE last_height;
    LONG edit_segment;
@@ -1990,10 +1960,10 @@ extend_page:
    m_space_width  = fntCharWidth(m_font, ' ', 0, NULL);
 
    m_word_index.reset();
-   m_line.index.set(Offset);    // The starting index of the line we are operating on
+   m_line.index.set(0);    // The starting index of the line we are operating on
    m_line.full_reset(Margins.Left);
 
-   for (idx = Offset; (idx < End) and (!Self->Error); idx++) {
+   for (idx = 0; (idx < INDEX(m_stream->size())) and (!Self->Error); idx++) {
       if ((m_cursor_x >= MAX_PAGE_WIDTH) or (m_cursor_y >= MAX_PAGE_HEIGHT)) {
          log.warning("Invalid cursor position reached @ %gx%g", m_cursor_x, m_cursor_y);
          Self->Error = ERR_InvalidDimension;
@@ -2005,14 +1975,14 @@ extend_page:
          // mess up the region size.
          bool set_segment_now = false;
 
-         switch (Self->Stream[idx].code) {
+         switch (m_stream[0][idx].code) {
             case SCODE::ADVANCE:
             case SCODE::TABLE_START:
                set_segment_now = true;
                break;
 
             case SCODE::INDEX_START: {
-               auto &index = Self->stream_data<bc_index>(idx);
+               auto &index = m_stream->lookup<bc_index>(idx);
                if (!index.visible) set_segment_now = true;
                break;
             }
@@ -2022,7 +1992,7 @@ extend_page:
 
          if (set_segment_now) {
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
-               BC_NAME(Self->Stream,idx).c_str(), m_line.index.index, m_line.x, m_word_width);
+               BC_NAME(m_stream[0],idx).c_str(), m_line.index.index, m_line.x, m_word_width);
             m_cursor_x += m_word_width;
             new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
             reset_segment();
@@ -2033,7 +2003,7 @@ extend_page:
       // Any escape code for an inline element that forces a word-break will initiate a wrapping check.
 
       if (esctable) m_align_width = m_wrap_edge;
-      else switch (Self->Stream[idx].code) {
+      else switch (m_stream[0][idx].code) {
          case SCODE::TABLE_END:
          case SCODE::ADVANCE: {
             auto wrap_result = check_wordwrap("EscCode", m_page_width, m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
@@ -2049,14 +2019,14 @@ extend_page:
             break;
       }
 
-      if (idx >= End) break;
+      if (idx >= INDEX(m_stream->size())) break;
 
 #ifdef DBG_LAYOUT_ESCAPE
       DLAYOUT("ESC_%s Indexes: %d-%d-%d, WordWidth: %d",
-         BC_NAME(Self->Stream, idx).c_str(), m_line.index.index, idx, m_word_index.index, m_word_width);
+         BC_NAME(m_stream[0], idx).c_str(), m_line.index.index, idx, m_word_index.index, m_word_width);
 #endif
 
-      switch (Self->Stream[idx].code) {
+      switch (m_stream[0][idx].code) {
          case SCODE::TEXT: {
             auto wrap_result = lay_text();
             if (wrap_result IS WRAP::EXTEND_PAGE) { // A word in the text string is too big for the available space.
@@ -2065,7 +2035,7 @@ extend_page:
             }
             else if (wrap_result IS WRAP::WRAPPED) { // A wrap occurred during text processing.
                // The presence of the line-break must be ignored, due to word-wrap having already made the new line for us
-               auto &text = Self->stream_data<bc_text>(idx);
+               auto &text = m_stream->lookup<bc_text>(idx);
                if (text.text[0] IS '\n') {
                   if (text.text.size() > 0) m_line.index.offset = 1;
                }
@@ -2074,7 +2044,7 @@ extend_page:
          }
 
          case SCODE::ADVANCE: {
-            auto adv = &Self->stream_data<bc_advance>(idx);
+            auto adv = &m_stream->lookup<bc_advance>(idx);
             m_cursor_x += adv->x;
             m_cursor_y += adv->y;
             if (adv->x) reset_segment();
@@ -2095,7 +2065,7 @@ extend_page:
             // cursor position is advanced by the size of the item graphics element.
 
             liststate = *this;
-            stack_list.push(&Self->stream_data<bc_list>(idx));
+            stack_list.push(&m_stream->lookup<bc_list>(idx));
             stack_list.top()->repass = false;
             break;
 
@@ -2128,11 +2098,11 @@ extend_page:
 
             if (esctable) {
                auto parent_table = esctable;
-               esctable = &Self->stream_data<bc_table>(idx);
+               esctable = &m_stream->lookup<bc_table>(idx);
                esctable->stack = parent_table;
             }
             else {
-               esctable = &Self->stream_data<bc_table>(idx);
+               esctable = &m_stream->lookup<bc_table>(idx);
                esctable->stack = NULL;
             }
 
@@ -2210,7 +2180,7 @@ wrap_table_cell:
          }
 
          case SCODE::TABLE_END: {
-            auto action = lay_table_end(esctable, Offset, Margins.Top, Margins.Bottom, Height, Width);
+            auto action = lay_table_end(esctable, Margins.Top, Margins.Bottom, Height, Width);
             if (action != TE::NIL) {
                auto req_width = m_page_width;
                *this = tablestate;
@@ -2223,7 +2193,7 @@ wrap_table_cell:
          }
 
          case SCODE::ROW:
-            stack_row.push(&Self->stream_data<bc_row>(idx));
+            stack_row.push(&m_stream->lookup<bc_row>(idx));
             rowstate = *this;
 
             if (esctable->reset_row_height) stack_row.top()->row_height = stack_row.top()->min_height;
@@ -2260,7 +2230,8 @@ repass_row_height:
          }
 
          case SCODE::CELL_END:
-            lay_cell_end();
+            // CELL_END exists to assist the drawing code, so here we ensure that it's included in the segment stream.
+            new_code_segment();
             break;
 
          default: break;
@@ -2291,9 +2262,9 @@ exit:
    // This requirement is also handled in SCODE::CELL, so we only perform it here if processing is occurring within the
    // root page area (Offset of 0).
 
-   if ((!Offset) and (VerticalRepass) and (last_height < page_height)) {
+   if ((!m_depth) and (VerticalRepass) and (last_height < page_height)) {
       DLAYOUT("============================================================");
-      DLAYOUT("SECOND PASS [%d]: Root page height increased from %g to %g", Offset, last_height, page_height);
+      DLAYOUT("SECOND PASS: Root page height increased from %g to %g", last_height, page_height);
       goto extend_page;
    }
 
