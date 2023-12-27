@@ -67,8 +67,9 @@ void stream_char::next_char(RSTREAM &Stream)
 
 void stream_char::prev_char(RSTREAM &Stream)
 {
-   if (Stream[index].code IS SCODE::TEXT) {
-      if (offset > 0) { offset--; return; }
+   if (offset > 0) { // If the offset is defined then the indexed code is TEXT
+      offset--; 
+      return;
    }
 
    if (index > 0) {

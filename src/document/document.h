@@ -354,7 +354,7 @@ struct style_status {
 // The index and offset are set to -1 if the stream_char is invalidated.
 
 struct stream_char {
-   INDEX index;     // A TEXT code position within the stream
+   INDEX index;     // Byte code position within the stream
    size_t offset;   // Specific character offset within the bc_text.text string
 
    stream_char() : index(-1), offset(-1) { }
