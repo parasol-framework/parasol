@@ -12,8 +12,11 @@ The following example illustrates typical usage:
 Valid options to use when creating the scrollbar are as follows:
 
   target:    Required.  Refers to a viewport that will contain the scrollbar.
-  view:      Required.  A viewport that is within the target and contains the page content.  Note that the dimensions of the view will be controlled by the scrollbar.
-  page:      Required.  A viewport within the view.  The page will contain the content for display and must use fixed width and height values.
+  view:      Required.  A viewport that is within the target and contains the page content.  Note that the dimensions
+             of the view will be controlled by the scrollbar, notably the XOffset and YOffset which the client should
+             set to zero.
+  page:      Required.  A viewport within the view.  The page will contain the content for display and must use fixed
+             width and height values.
   breadth:   Overrides the breadth of the scrollbar in pixel units.
   direction: Limits scrolling to 'vertical' or 'horizontal' if desired.  Both axis are enabled by default.
 
@@ -33,6 +36,11 @@ Functionality:
   setFixedPageSize(Width, Height)
 
     Defines a fixed page size.
+
+Internally the scrollbar code works by monitoring the FM_PATH_CHANGED event of the provided view and page.  The
+recalcSlidersFromView() function is responsible for making adjustments to the scrollbars, and alters their visibility
+as required.
+
 --]]
 
    require 'common'

@@ -123,6 +123,12 @@
     </field>
 
     <field>
+      <name>Fill</name>
+      <access read="G" write="S">Get/Set</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
       <name>Focus</name>
       <comment>Refers to the object that will be monitored for user focussing.</comment>
       <access read="G" write="S">Get/Set</access>

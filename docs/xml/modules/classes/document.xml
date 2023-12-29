@@ -383,23 +383,12 @@
     </field>
 
     <field>
-      <name>BorderEdge</name>
-      <comment>Border edge flags.</comment>
-      <access read="R" write="I">Read/Init</access>
-      <type lookup="DBE">DBE</type>
-      <description>
-<p>This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined in the <field>BorderStroke</field> field.</p>
-<types lookup="DBE"/>
-      </description>
-    </field>
-
-    <field>
       <name>BorderStroke</name>
       <comment>The stroke to use for drawing a border around the document window.</comment>
       <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
       <description>
-<p>This field enables the drawing of a stroke along the border of the document window. The edges are controlled by the <field>BorderEdge</field> field.</p>
+<p>This field enables the drawing of a stroke along the border of the document window.</p>
       </description>
     </field>
 
@@ -526,6 +515,13 @@
     </field>
 
     <field>
+      <name>Page</name>
+      <comment>The Page contains the document content and is hosted by the View</comment>
+      <access read="R">Read</access>
+      <type class="VectorViewport">*VectorViewport</type>
+    </field>
+
+    <field>
       <name>PageHeight</name>
       <comment>Measures the page height of the document, in pixels.</comment>
       <access read="R">Read</access>
@@ -555,9 +551,9 @@
 <p>
 <code>volume:folder/filename.rpl</code></p>
 <p>
-<code>#Page?param1&amp;param2=value</code></p>
+<code>#page_name?param1&amp;param2=value</code></p>
 <p>
-<code>volume:folder/filename.rpl#Page?param1&amp;param2=value</code></p>
+<code>volume:folder/filename.rpl#page_name?param1&amp;param2=value</code></p>
 <p>Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document, a dialog is displayed to bring the error to the user's attention).</p>
 <p>To leap to a bookmark in the page that has been specified with the &lt;index&gt; element, use the colon as a separator after the pagename, i.e. <code>#pagename:bookmark</code>.</p>
 <p>Other means of opening a document include loading the data manually and passing it via the <action>DataFeed</action> action.</p>
@@ -582,6 +578,13 @@
       <description>
 <p>If a document declares a title under a head tag, the title string will be readable from this field.   This field is always NULL if a document does not declare a title.</p>
       </description>
+    </field>
+
+    <field>
+      <name>View</name>
+      <comment>An internally created viewport that hosts the Page</comment>
+      <access read="R">Read</access>
+      <type class="VectorViewport">*VectorViewport</type>
     </field>
 
     <field>
@@ -621,13 +624,6 @@
       <const name="REQUEST">Make a request for item data</const>
       <const name="TEXT">Standard ASCII text</const>
       <const name="XML">Markup based text data.  NOTE - For clipboard data, the top-level encapsulating tag must declare the type of XML, e.g. 'html', 'ripple'.  For plain XML, use 'xml'</const>
-    </constants>
-
-    <constants lookup="DBE" comment="Border edge flags.">
-      <const name="BOTTOM">Bottom border edge.</const>
-      <const name="LEFT">Left border edge.</const>
-      <const name="RIGHT">Right border edge.</const>
-      <const name="TOP">Top border edge.</const>
     </constants>
 
     <constants lookup="DCF" comment="Document flags">

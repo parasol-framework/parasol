@@ -25,6 +25,10 @@ static void redraw(extDocument *Self, bool Focus)
 // Convert the layout information to a vector scene.  This is the final step in the layout process. The advantage in
 // performing this step separately to the layout process is that the graphics resources are managed last, which is
 // sensible for keeping them out of the layout loop.
+//
+// It is intended that the layout process generates the document's entire scene graph every time.  Optimisations 
+// relating to things like obscuration of graphics elements are considered to be the job of the VectorScene's drawing 
+// functionality.
 
 ERROR layout::gen_scene_init(objVectorViewport *Viewport)
 {
@@ -101,10 +105,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 */
    for (SEGINDEX seg=0; seg < SEGINDEX(Segments.size()); seg++) {
       auto &segment = Segments[seg];
-
-      // Don't process codes that are out of bounds.  Be mindful of floating vectors as they can be placed at any coordinate.
-
-      bool oob = segment.oob(0, 0, Self->VPWidth, Self->VPHeight);
 
       if (!stack_ui_link.empty()) {
          stack_ui_link.top().area = segment.area;
@@ -431,8 +431,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             }
 
             case SCODE::IMAGE: {
-               if (oob) break;
-
                auto &img = segment.stream->lookup<bc_image>(cursor);
 
                // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
@@ -460,8 +458,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             }
 
             case SCODE::TEXT: {
-               if (oob) break;
-
                auto &txt = segment.stream->lookup<bc_text>(cursor);
                auto font = stack_style.top()->get_font();
 

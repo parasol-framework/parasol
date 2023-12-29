@@ -835,7 +835,7 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
       // respect to the height of the display port.
 
       if (!m_depth) {
-         minheight = ((Self->Area.Height - BottomMargin - esctable->y) * esctable->min_height) / 100;
+         minheight = ((Self->VPHeight - BottomMargin - esctable->y) * esctable->min_height) / 100;
       }
       else minheight = ((Height - BottomMargin - TopMargin) * esctable->min_height) / 100;
 
@@ -1766,10 +1766,10 @@ static void layout_doc(extDocument *Self)
 
       if (Self->PageWidth <= 0) {
          // No preferred page width; maximise the page width to the available viewing area
-         page_width = Self->Area.Width;
+         page_width = Self->VPWidth;
       }
       else if (!Self->RelPageWidth) page_width = Self->PageWidth;
-      else page_width = (Self->PageWidth * Self->Area.Width) * 0.01;
+      else page_width = (Self->PageWidth * Self->VPWidth) * 0.01;
 
       if (page_width < Self->MinPageWidth) page_width = Self->MinPageWidth;
 
@@ -1790,7 +1790,7 @@ static void layout_doc(extDocument *Self)
       // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
       // the number of passes required for the next time we do a layout.
 
-      if ((page_width > Self->Area.Width) and (Self->MinPageWidth < page_width)) Self->MinPageWidth = page_width;
+      if ((page_width > Self->VPWidth) and (Self->MinPageWidth < page_width)) Self->MinPageWidth = page_width;
 
       Self->PageHeight = page_height;
       //if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
@@ -1799,7 +1799,7 @@ static void layout_doc(extDocument *Self)
       // Recalculation may be required if visibility of the scrollbar needs to change.
 
       if ((l.m_break_loop > 0) and (!Self->Error)) {
-         if (Self->PageHeight > Self->Area.Height) {
+         if (Self->PageHeight > Self->VPHeight) {
             // Page height is bigger than the viewport, so the scrollbar needs to be visible.
 
             if (!Self->VScrollVisible) {
@@ -1853,8 +1853,8 @@ static void layout_doc(extDocument *Self)
       for (auto &trigger : Self->Triggers[LONG(DRT::AFTER_LAYOUT)]) {
          if (trigger.Type IS CALL_SCRIPT) {
             const ScriptArg args[] = {
-               { "ViewWidth",  Self->Area.Width },
-               { "ViewHeight", Self->Area.Height },
+               { "ViewWidth",  Self->VPWidth },
+               { "ViewHeight", Self->VPHeight },
                { "PageWidth",  Self->CalcWidth },
                { "PageHeight", Self->PageHeight }
             };
@@ -1863,7 +1863,7 @@ static void layout_doc(extDocument *Self)
          else if (trigger.Type IS CALL_STDC) {
             auto routine = (void (*)(APTR, extDocument *, LONG, LONG, LONG, LONG))trigger.StdC.Routine;
             pf::SwitchContext context(trigger.StdC.Context);
-            routine(trigger.StdC.Context, Self, Self->Area.Width, Self->Area.Height, Self->CalcWidth, Self->PageHeight);
+            routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight, Self->CalcWidth, Self->PageHeight);
          }
       }
    }

@@ -27,7 +27,6 @@ static ERROR SET_Background(extDocument *Self, CSTRING Value)
 BorderStroke: The stroke to use for drawing a border around the document window.
 
 This field enables the drawing of a stroke along the border of the document window.
-The edges are controlled by the #BorderEdge field.
 
 *********************************************************************************************************************/
 
@@ -39,12 +38,6 @@ static ERROR SET_BorderStroke(extDocument *Self, CSTRING Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-BorderEdge: Border edge flags.
-
-This field controls the border edge that is drawn around the document's surface.  The colour of the border is defined
-in the #BorderStroke field.
 
 -FIELD-
 Copyright: Copyright information for the document.
@@ -190,9 +183,9 @@ To load a document file into a document object, set the Path field.  Valid strin
 
 `volume:folder/filename.rpl`
 
-`#Page?param1&param2=value`
+`#page_name?param1&param2=value`
 
-`volume:folder/filename.rpl#Page?param1&param2=value`
+`volume:folder/filename.rpl#page_name?param1&param2=value`
 
 Setting this field post-initialisation will cause a complete reload unless the path begins with a hash to signal a
 change to the current page and parameters.  Note: if a requested page does not exist in the currently loaded document,

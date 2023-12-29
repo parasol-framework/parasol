@@ -96,7 +96,9 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
 }
 
 //********************************************************************************************************************
-// Receiver for incoming redimension messages from Self->Viewport
+// Receiver for incoming redimension messages from Self->Viewport.
+// Bear in mind that the XOffset and YOffset of the document View must both be zero initially, and will be controlled
+// by the scrollbar.
 
 static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
 {
@@ -110,12 +112,7 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
    Self->VPWidth = Width;
    Self->VPHeight = Height;
 
-   Self->Area.X = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->Area.Y = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->Area.Width  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-   Self->Area.Height = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-
-   acRedimension(Self->View, Self->Area.X, Self->Area.Y, 0, Self->Area.Width, Self->Area.Height, 0);
+   acRedimension(Self->View, 0, 0, 0, Self->VPWidth, Self->VPHeight, 0);
 
    for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
       if (trigger.Type IS CALL_SCRIPT) {
@@ -123,15 +120,15 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
          // function to resize elements on the page in preparation of the new layout.
 
          const ScriptArg args[] = {
-            { "ViewWidth",  Self->Area.Width },
-            { "ViewHeight", Self->Area.Height }
+            { "ViewWidth",  Self->VPWidth },
+            { "ViewHeight", Self->VPHeight }
          };
          scCallback(trigger.Script.Script, trigger.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
       else if (trigger.Type IS CALL_STDC) {
          auto routine = (void (*)(APTR, extDocument *, LONG, LONG))trigger.StdC.Routine;
          pf::SwitchContext context(trigger.StdC.Context);
-         routine(trigger.StdC.Context, Self, Self->Area.Width, Self->Area.Height);
+         routine(trigger.StdC.Context, Self, Self->VPWidth, Self->VPHeight);
       }
    }
 
@@ -704,17 +701,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    Self->Viewport->setFillColour(bkgd, 4);
 
    if (Self->BorderStroke) {
-      // TODO: Use a VectorPolygon with a custom path based on the BorderEdge values.
-      if (Self->BorderEdge IS DBE::NIL) Self->BorderEdge = DBE::TOP|DBE::BOTTOM|DBE::RIGHT|DBE::LEFT;
-
       objVectorRectangle::create::global(fl::Owner(Self->Page->UID), fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"),
          fl::StrokeWidth(1), fl::Stroke(Self->BorderStroke));
    }
-
-   Self->Area.X = ((Self->BorderEdge & DBE::LEFT) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->Area.Y = ((Self->BorderEdge & DBE::TOP) != DBE::NIL) ? BORDER_SIZE : 0;
-   Self->Area.Width  = Self->VPWidth - ((((Self->BorderEdge & DBE::RIGHT) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
-   Self->Area.Height = Self->VPHeight - ((((Self->BorderEdge & DBE::BOTTOM) != DBE::NIL) ? BORDER_SIZE : 0)<<1);
 
    // Allocate the view and page areas
 
@@ -729,6 +718,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    if ((Self->View = objVectorViewport::create::global(
          fl::Name("docView"),
          fl::Owner(Self->Viewport->UID),
+         fl::Overflow(VOF::HIDDEN),
          fl::X(Self->Area.X), fl::Y(Self->Area.Y),
          fl::Width(Self->Area.Width), fl::Height(Self->Area.Height)))) {
    }
@@ -1229,8 +1219,8 @@ static ERROR DOCUMENT_ScrollToPoint(extDocument *Self, struct acScrollToPoint *A
 
    // Validation: coordinates must be negative offsets
 
-   if (-Self->YPosition > Self->PageHeight - Self->Area.Height) {
-      Self->YPosition = -(Self->PageHeight - Self->Area.Height);
+   if (-Self->YPosition > Self->PageHeight - Self->VPHeight) {
+      Self->YPosition = -(Self->PageHeight - Self->VPHeight);
    }
 
    if (Self->YPosition > 0) Self->YPosition = 0;
@@ -1426,11 +1416,12 @@ static const FieldArray clFields[] = {
    { "BorderStroke",   FDF_STRING|FDF_RW, NULL, SET_BorderStroke },
    { "Viewport",       FDF_OBJECT|FDF_RW, NULL, SET_Viewport, ID_VECTORVIEWPORT },
    { "Focus",          FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORVIEWPORT },
+   { "View",           FDF_OBJECT|FDF_R, NULL, NULL, ID_VECTORVIEWPORT },
+   { "Page",           FDF_OBJECT|FDF_R, NULL, NULL, ID_VECTORVIEWPORT },
    { "TabFocus",       FDF_OBJECTID|FDF_RW },
    { "EventMask",      FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
    { "PageHeight",     FDF_LONG|FDF_R },
-   { "BorderEdge",     FDF_LONGFLAGS|FDF_RI, NULL, NULL, &clDocumentBorderEdge },
    { "LineHeight",     FDF_LONG|FDF_R },
    { "Error",          FDF_LONG|FDF_R },
    // Virtual fields

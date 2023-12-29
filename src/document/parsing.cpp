@@ -456,12 +456,12 @@ void parser::translate_args(const std::string &Input, std::string &Output)
             }
             else if (!Output.compare(pos, sizeof("[%view-height]")-1, "[%view-height]")) {
                char buffer[28];
-               snprintf(buffer, sizeof(buffer), "%g", Self->Area.Height);
+               snprintf(buffer, sizeof(buffer), "%g", Self->VPHeight);
                Output.replace(pos, sizeof("[%view-height]")-1, buffer);
             }
             else if (!Output.compare(pos, sizeof("[%view-width]")-1, "[%view-width]")) {
                char buffer[28];
-               snprintf(buffer, sizeof(buffer), "%g", Self->Area.Width);
+               snprintf(buffer, sizeof(buffer), "%g", Self->VPWidth);
                Output.replace(pos, sizeof("[%view-width]")-1, buffer);
             }
          }

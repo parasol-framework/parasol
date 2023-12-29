@@ -230,14 +230,14 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
       case KEY::PAGE_DOWN:
          scroll.DeltaX = 0;
-         scroll.DeltaY = Self->Area.Height;
+         scroll.DeltaY = Self->VPHeight;
          scroll.DeltaZ = 0;
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::PAGE_UP:
          scroll.DeltaX = 0;
-         scroll.DeltaY = -Self->Area.Height;
+         scroll.DeltaY = -Self->VPHeight;
          scroll.DeltaZ = 0;
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
@@ -934,15 +934,15 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
 {
    pf::Log log(__FUNCTION__);
 
-   DOUBLE hgap = Self->Area.Width * 0.1, vgap = Self->Area.Height * 0.1;
+   DOUBLE hgap = Self->VPWidth * 0.1, vgap = Self->VPHeight * 0.1;
    DOUBLE view_x = -Self->XPosition, view_y = -Self->YPosition;
-   DOUBLE view_height = Self->Area.Height, view_width  = Self->Area.Width;
+   DOUBLE view_height = Self->VPHeight, view_width  = Self->VPWidth;
 
    log.trace("View: %dx%d,%dx%d Link: %dx%d,%dx%d", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
 
    // Vertical
 
-   if (Self->PageHeight > Self->Area.Height) {
+   if (Self->PageHeight > Self->VPHeight) {
       if (Top < view_y + vgap) {
          view_y = Top - vgap;
          if (view_y < view_height * 0.25) view_y = 0;
@@ -960,7 +960,7 @@ static BYTE view_area(extDocument *Self, LONG Left, LONG Top, LONG Right, LONG B
 
    // Horizontal
 
-   if (Self->CalcWidth > Self->Area.Width) {
+   if (Self->CalcWidth > Self->VPWidth) {
       if (Left < view_x + hgap) {
          view_x = Left - hgap;
          if (view_x < 0) view_x = 0;
@@ -1045,7 +1045,7 @@ static void calc_scroll(extDocument *Self)
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("PageHeight: %d/%g, PageWidth: %g/%g, XPos: %g, YPos: %g",
-      Self->PageHeight, Self->Area.Height, Self->CalcWidth, Self->Area.Width, Self->XPosition, Self->YPosition);
+      Self->PageHeight, Self->VPHeight, Self->CalcWidth, Self->VPWidth, Self->XPosition, Self->YPosition);
 }
 
 //********************************************************************************************************************

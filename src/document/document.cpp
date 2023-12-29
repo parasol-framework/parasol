@@ -54,7 +54,6 @@ static const LONG MAX_PAGE_HEIGHT  = 100000;
 static const LONG MIN_PAGE_WIDTH   = 20;
 static const LONG MAX_DEPTH        = 50;    // Limits the number of tables-within-tables
 static const LONG BULLET_INDENT    = 14;    // Minimum indentation for bullet point lists
-static const LONG BORDER_SIZE      = 1;
 static const LONG WIDTH_LIMIT      = 4000;
 static const LONG LINE_HEIGHT      = 16;    // Default line height (measured as an average) for the page
 static const LONG DEFAULT_INDENT   = 30;

@@ -380,9 +380,19 @@ template <class T> FieldValue X(T Value) {
    return FieldValue(FID_X, Value);
 }
 
+template <class T> FieldValue XOffset(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "XOffset value must be numeric");
+   return FieldValue(FID_XOffset, Value);
+}
+
 template <class T> FieldValue Y(T Value) {
    static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
+}
+
+template <class T> FieldValue YOffset(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "YOffset value must be numeric");
+   return FieldValue(FID_YOffset, Value);
 }
 
 template <class T> FieldValue X1(T Value) {

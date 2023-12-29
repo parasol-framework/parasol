@@ -2568,5 +2568,6 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 namespace fl {
    using namespace pf;
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
+constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }
 }
 

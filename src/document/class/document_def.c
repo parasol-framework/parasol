@@ -16,14 +16,6 @@ static const struct FieldDef clDocumentFlags[] = {
    { NULL, 0 }
 };
 
-static const struct FieldDef clDocumentBorderEdge[] = {
-   { "Top", 0x00000001 },
-   { "Left", 0x00000002 },
-   { "Right", 0x00000004 },
-   { "Bottom", 0x00000008 },
-   { NULL, 0 }
-};
-
 FDEF maFeedParser[] = { { "String", FD_STR }, { 0, 0 } };
 FDEF maSelectLink[] = { { "Index", FD_LONG }, { "Name", FD_STR }, { 0, 0 } };
 FDEF maFindIndex[] = { { "Name", FD_STR }, { "Start", FD_LONG|FD_RESULT }, { "End", FD_LONG|FD_RESULT }, { 0, 0 } };

@@ -442,28 +442,6 @@ struct doc_segment {
    bool  inline_content;    // true if there is text or an inline graphic in this segment
    bool  floating_vectors;  // true if there are user defined vectors in this segment with independent x,y coordinates
    bool  allow_merge;       // true if this segment can be merged with siblings that have allow_merge set to true
-
-   // Return true if a given region is out of the bounds of a segment's area
-
-   inline constexpr bool oob(const DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height) const {
-      if (!floating_vectors) {
-         if (area.Y >= Height) return true;
-         else if (area.Y + area.Height < Y) return true;
-         else if (area.X + area.Width < X) return true;
-         else if (area.X >= Width) return true;
-      }
-      return false;
-   }
-
-   inline constexpr bool oob(const FloatRect &Region) const {
-      if (!floating_vectors) {
-         if (area.Y >= Region.Height) return true;
-         else if (area.Y + area.Height < Region.Y) return true;
-         else if (area.X + area.Width < Region.X) return true;
-         else if (area.X >= Region.Width) return true;
-      }
-      return false;
-   }
 };
 
 struct doc_clip {
@@ -860,7 +838,6 @@ class extDocument : public objDocument {
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
-   FloatRect Area;             // Available space in the viewport for hosting the document
    stream_char SelectStart, SelectEnd;  // Selection start & end (stream index)
    stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    stream_char SelectIndex;    // The end of the selected text area, if text is selected.
@@ -871,9 +848,7 @@ class extDocument : public objDocument {
    OBJECTPTR DefaultScript;
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene    *Scene; // A document specific scene is required to keep our resources away from the host
-   objVectorViewport *View;  // View viewport - this contains the page and serves as the page's scrolling area
-   objVectorViewport *Page;  // Page viewport - this holds the graphics content
-   DOUBLE VPWidth, VPHeight;
+   DOUBLE VPWidth, VPHeight; // Dimensions of the host Viewport
    DOUBLE FontSize;
    DOUBLE MinPageWidth;      // Internal value for managing the page width, speeds up layout processing
    DOUBLE PageWidth;         // width of the widest section of the document page.  Can be pre-defined for a fixed width.
