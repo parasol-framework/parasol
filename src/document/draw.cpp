@@ -77,6 +77,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
    std::stack<ui_link>        stack_ui_link;
    std::stack<bc_font *>      stack_style;
    std::stack<objVectorViewport *> stack_vp;
+   
+#ifndef RETAIN_LOG_LEVEL
+   pf::LogLevel level(2);
+#endif
 
 /*
    stream_char select_start, select_end;

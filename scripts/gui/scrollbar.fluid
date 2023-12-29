@@ -339,6 +339,8 @@ gui.scrollbar = function(Options)
    if (lView.id == lTarget.id) then error('The view and target cannot be the same.') end
    if (lPage.parent.id != lView.id) then error('The page is not a child of the view.') end
    if (lView.overflow != VOF_HIDDEN) then error('The overflow setting for the view must be HIDDEN.') end
+   if (lView.xOffset != 0) then error('The XOffset of the view must be set to zero.') end
+   if (lView.yOffset != 0) then error('The YOffset of the view must be set to zero.') end
 
    if (Options.direction == 'all') then Options.direction = nil end
 

@@ -224,7 +224,7 @@ static void  notify_enable_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_focus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_free_event(OBJECTPTR, ACTIONID, ERROR, APTR);
 static void  notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERROR, APTR);
-static void  notify_redimension_viewport(objVectorViewport *, objVector *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
+static ERROR feedback_view(objVectorViewport *, FM);
 static void  process_parameters(extDocument *, const std::string &);
 static bool  read_rgb8(CSTRING, RGB8 *);
 static CSTRING read_unit(CSTRING, DOUBLE &, bool &);

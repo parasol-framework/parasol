@@ -96,24 +96,26 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
 }
 
 //********************************************************************************************************************
-// Receiver for incoming redimension messages from Self->Viewport.
-// Bear in mind that the XOffset and YOffset of the document View must both be zero initially, and will be controlled
-// by the scrollbar.
+// Receiver for events from Self->View.  Bear in mind that the XOffset and YOffset of the document's View must 
+// be zero initially, and will be controlled by the scrollbar.  For that reason we don't need to do much here other
+// than respond by updating the layout of the page.
 
-static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *Vector, DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height)
+static ERROR feedback_view(objVectorViewport *View, FM Event)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
+   
+   DOUBLE width, height;
+   View->get(FID_Width, &width);
+   View->get(FID_Height, &height);
 
-   if ((Self->VPWidth IS Width) and (Self->VPHeight IS Height)) return;
+   if ((Self->VPWidth IS width) and (Self->VPHeight IS height)) return ERR_Okay;
 
-   log.traceBranch("Redimension: %gx%g -> %gx%g", Self->VPWidth, Self->VPHeight, Width, Height);
+   log.traceBranch("Redimension: %gx%g -> %gx%g", Self->VPWidth, Self->VPHeight, width, height);
 
-   Self->VPWidth = Width;
-   Self->VPHeight = Height;
-
-   acRedimension(Self->View, 0, 0, 0, Self->VPWidth, Self->VPHeight, 0);
-
+   Self->VPWidth = width;
+   Self->VPHeight = height;
+ 
    for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
       if (trigger.Type IS CALL_SCRIPT) {
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
@@ -139,6 +141,8 @@ static void notify_redimension_viewport(objVectorViewport *Viewport, objVector *
 #endif
 
    layout_doc(Self);
+
+   return ERR_Okay;
 }
 
 /*********************************************************************************************************************
@@ -686,9 +690,6 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
       call = make_function_stdc(notify_enable_viewport);
       SubscribeAction(Self->Viewport, AC_Enable, &call);
-
-      call = make_function_stdc(notify_redimension_viewport);
-      Self->Viewport->setResizeEvent(call);
    }
 
    auto call = make_function_stdc(notify_free_viewport);
@@ -719,8 +720,8 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
          fl::Name("docView"),
          fl::Owner(Self->Viewport->UID),
          fl::Overflow(VOF::HIDDEN),
-         fl::X(Self->Area.X), fl::Y(Self->Area.Y),
-         fl::Width(Self->Area.Width), fl::Height(Self->Area.Height)))) {
+         fl::X(0), fl::Y(0),
+         fl::XOffset(0), fl::YOffset(0)))) {
    }
    else return ERR_CreateObject;
 
@@ -736,6 +737,9 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       }
    }
    else return ERR_CreateObject;
+   
+   call = make_function_stdc(feedback_view);
+   vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, &call);
 
 #ifdef GUIDELINES
    // Temporary rectangle to help analyse page sizing

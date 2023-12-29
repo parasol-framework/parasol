@@ -831,7 +831,7 @@ Alternatively have the callback function return `ERR_Terminate`.
 The synopsis for the Callback is:
 
 ```
-ERROR callback(*Vector, LONG Event)
+ERROR callback(*Vector, FM Event)
 ```
 
 -INPUT-
