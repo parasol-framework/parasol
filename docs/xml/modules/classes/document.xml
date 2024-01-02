@@ -383,16 +383,6 @@
     </field>
 
     <field>
-      <name>BorderStroke</name>
-      <comment>The stroke to use for drawing a border around the document window.</comment>
-      <access read="R" write="S">Read/Set</access>
-      <type>STRING</type>
-      <description>
-<p>This field enables the drawing of a stroke along the border of the document window.</p>
-      </description>
-    </field>
-
-    <field>
       <name>Copyright</name>
       <comment>Copyright information for the document.</comment>
       <access read="R">Read</access>
@@ -495,13 +485,6 @@
       <description>
 <p>If a document declares keywords under a head tag, the keywords string will be readable from this field.   This field is always NULL if a document does not declare any keywords.  It is recommended that keywords are separated with spaces or commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword separation.</p>
       </description>
-    </field>
-
-    <field>
-      <name>LineHeight</name>
-      <comment>Default line height (taken as an average) for all text on the page.</comment>
-      <access read="R">Read</access>
-      <type>INT</type>
     </field>
 
     <field>
@@ -627,7 +610,7 @@
     </constants>
 
     <constants lookup="DCF" comment="Document flags">
-      <const name="DISABLED">This read-only flag is set if the object has been disabled through the Disable action.</const>
+      <const name="DISABLED">This read-only flag is set if the UI has been disabled through the Disable action.</const>
       <const name="EDIT">Allow direct keyboard input and document editing.</const>
       <const name="NO_LAYOUT_MSG">Turn off debug output produced during document layout and processing - useful on refresh for example.</const>
       <const name="NO_SYS_KEYS">System-keys provide standard key support for Ctrl-C, Ctrl-X etc.  Set this flag to turn them off.</const>

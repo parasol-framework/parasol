@@ -281,12 +281,13 @@ enum class VTXF : ULONG {
    OVERLINE = 0x00000002,
    LINE_THROUGH = 0x00000004,
    BLINK = 0x00000008,
-   EDIT = 0x00000010,
    EDITABLE = 0x00000010,
+   EDIT = 0x00000010,
    AREA_SELECTED = 0x00000020,
    NO_SYS_KEYS = 0x00000040,
    OVERWRITE = 0x00000080,
-   RASTER = 0x00000100,
+   SECRET = 0x00000100,
+   RASTER = 0x00000200,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(VTXF)
@@ -2569,5 +2570,19 @@ namespace fl {
    using namespace pf;
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
 constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }
+
+constexpr FieldValue Sequence(CSTRING Value) { return FieldValue(FID_Sequence, Value); }
+inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence, Value.c_str()); }
+
+template <class T> FieldValue RoundX(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "RoundX value must be numeric");
+   return FieldValue(FID_RoundX, Value);
+}
+
+template <class T> FieldValue RoundY(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "RoundY value must be numeric");
+   return FieldValue(FID_RoundY, Value);
+}
+
 }
 

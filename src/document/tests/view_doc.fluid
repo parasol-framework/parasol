@@ -4,7 +4,7 @@
 
    glScript = obj.find('self')
 
-   local win = gui.window({ title='Document Test', insideWidth=1024, insideHeight=400, center=true })
+   local win = gui.window({ title='Document Test', insideWidth=1024, insideHeight=800, center=true })
 
    local src_file = arg('file', 'test.rpl')
 

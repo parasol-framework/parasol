@@ -68,7 +68,7 @@ void stream_char::next_char(RSTREAM &Stream)
 void stream_char::prev_char(RSTREAM &Stream)
 {
    if (offset > 0) { // If the offset is defined then the indexed code is TEXT
-      offset--; 
+      offset--;
       return;
    }
 
@@ -116,15 +116,25 @@ UBYTE stream_char::get_prev_char_or_inline(RSTREAM &Stream)
          return Stream.lookup<bc_text>(i).text.back();
       }
       else if (Stream[i].code IS SCODE::IMAGE) {
-         auto &image = Stream.lookup<bc_image>(i);
-         if (!image.floating()) {
-            return 0xff;
-         }
+         auto &widget = Stream.lookup<bc_image>(i);
+         if (!widget.floating()) return 0xff;
       }
-      //else if (Stream[i].code IS SCODE::OBJECT) {
-      //   auto &vec = Self->Stream.lookup<bcObject>(i);
-      //   return 0xff; // TODO: Check for inline status
-      //}
+      else if (Stream[i].code IS SCODE::BUTTON) {
+         auto &widget = Stream.lookup<bc_button>(i);
+         if (!widget.floating()) return 0xff;
+      }
+      else if (Stream[i].code IS SCODE::CHECKBOX) {
+         auto &widget = Stream.lookup<bc_checkbox>(i);
+         if (!widget.floating()) return 0xff;
+      }
+      else if (Stream[i].code IS SCODE::COMBOBOX) {
+         auto &widget = Stream.lookup<bc_combobox>(i);
+         if (!widget.floating()) return 0xff;
+      }
+      else if (Stream[i].code IS SCODE::INPUT) {
+         auto &widget = Stream.lookup<bc_input>(i);
+         if (!widget.floating()) return 0xff;
+      }
    }
 
    return 0;

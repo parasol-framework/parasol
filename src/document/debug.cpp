@@ -74,7 +74,7 @@ static void print_segments(extDocument *Self)
       auto &seg = Self->Segments[si];
       auto i = seg.start;
 
-      out << std::setw(3) << si << ": Span: " << std::setw(3) << seg.start.index << " - " << std::setw(3) << seg.stop.index << ": ";
+      out << std::setw(3) << si << ": Span: " << seg.start.index << ':' << seg.start.offset << " - " << seg.stop.index << ':' << seg.stop.offset << ": ";
       out << "(" << seg.area.X << "x" << seg.area.Y << ", " << seg.area.Width << "x" << seg.area.Height << ") ";
       if (seg.edit) out << "{ ";
       out << "\"";

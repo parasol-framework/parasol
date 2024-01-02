@@ -6,9 +6,9 @@ that is distributed with this package.  Please refer to it for further informati
 *********************************************************************************************************************/
 
 //#define _DEBUG
-#define DBG_LAYOUT
-#define DBG_STREAM
-#define DBG_SEGMENTS // Print list of segments
+//#define DBG_LAYOUT
+//#define DBG_STREAM
+//#define DBG_SEGMENTS // Print list of segments
 //#define DBG_WORDWRAP
 //#define GUIDELINES // Clipping guidelines
 //#define GUIDELINES_CONTENT // Segment guidelines
@@ -55,14 +55,12 @@ static const LONG MIN_PAGE_WIDTH   = 20;
 static const LONG MAX_DEPTH        = 50;    // Limits the number of tables-within-tables
 static const LONG BULLET_INDENT    = 14;    // Minimum indentation for bullet point lists
 static const LONG WIDTH_LIMIT      = 4000;
-static const LONG LINE_HEIGHT      = 16;    // Default line height (measured as an average) for the page
-static const LONG DEFAULT_INDENT   = 30;
 static const LONG DEFAULT_FONTSIZE = 10;
-static const LONG MAX_VSPACING     = 20;
-static const LONG MAX_LEADING      = 20;
+static const DOUBLE MAX_VSPACING   = 6.0;
+static const DOUBLE MAX_LEADING    = 6.0;
 static const DOUBLE MIN_LINEHEIGHT = 0.001;
 static const DOUBLE MIN_VSPACING   = 0.001;
-static const DOUBLE MIN_LEADING    = 0.001;
+static const DOUBLE MIN_LEADING    = 1.0;
 
 static ULONG glByteCodeID = 1;
 static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
@@ -180,7 +178,7 @@ static const std::string & byte_code(SCODE Code) {
    static const std::string strCodes[] = {
       "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
-      "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use"
+      "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use", "Button", "Checkbox", "Combobox", "Input"
    };
 
    if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];

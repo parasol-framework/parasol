@@ -155,6 +155,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "AREA_SELECTED: Automatically set if a region of text has been selected.",
     "NO_SYS_KEYS: Disables support for system-keys that enable common key combinations such as Ctrl-C, Ctrl-X etc.",
     "OVERWRITE: Turns on overwrite mode (if off, insert mode is enabled).",
+    "SECRET: Hide all characters from the UI by using generic symbols in place of glyphs.",
     "RASTER: Rasterise glyphs to a texture cache for very fast rendering.  This feature is not compatible with scalable graphics conventions.")
 
   flags("VMF", { comment="Morph flags" },
@@ -554,7 +555,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
   class('VectorClip', { base='Vector', references={ 'VUNIT' }, src='vectors/clip.cpp', output='vectors/clip_def.cpp' })
 
   class('VectorViewport', { base='Vector', references={ 'VOF' }, src='vectors/viewport.cpp', output='vectors/viewport_def.cpp' })
-   
+
   functionNames("vec",
     "DrawPath",
     "FreePath",
@@ -1087,6 +1088,20 @@ namespace fl {
    using namespace pf;
 constexpr FieldValue TextFlags(VTXF Value) { return FieldValue(FID_TextFlags, LONG(Value)); }
 constexpr FieldValue Overflow(VOF Value) { return FieldValue(FID_Overflow, LONG(Value)); }
+
+constexpr FieldValue Sequence(CSTRING Value) { return FieldValue(FID_Sequence, Value); }
+inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence, Value.c_str()); }
+
+template <class T> FieldValue RoundX(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "RoundX value must be numeric");
+   return FieldValue(FID_RoundX, Value);
+}
+
+template <class T> FieldValue RoundY(T Value) {
+   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "RoundY value must be numeric");
+   return FieldValue(FID_RoundY, Value);
+}
+
 }
 ]])
 

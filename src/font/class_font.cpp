@@ -608,8 +608,8 @@ static ERROR GET_FreeTypeFace(extFont *Self, APTR *Handle)
 -FIELD-
 Gutter: The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
 
-This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It applies to fixed
-fonts only.
+This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It is typically
+defined by fixed bitmap fonts.  For truetype fonts the gutter is derived from the calculation `LineSpacing - Ascent`.
 
 -FIELD-
 HDPI: Defines the horizontal dots-per-inch of the target device.
@@ -1576,11 +1576,12 @@ static ERROR cache_truetype_font(extFont *Self, CSTRING Path)
 
    // Leading adjustments for the top part of the font
 
-   Self->Leading = Self->MaxHeight - Self->Height; // Make the leading the same size as the gutter
+   Self->Leading      = Self->MaxHeight - Self->Height; // Make the leading the same size as the gutter
    Self->MaxHeight   += Self->Leading; // Increase the max-height by the leading amount
    Self->LineSpacing += Self->Leading; // Increase the line-spacing by the leading amount
-   Self->Ascent = Self->Height + Self->Leading;
-   Self->prvChar = glyph.Chars;
+   Self->Ascent       = Self->Height + Self->Leading;
+   Self->prvChar      = glyph.Chars;
+   Self->Gutter       = Self->LineSpacing - Self->Ascent;
 
    if (Self->FixedWidth > 0) Self->prvSpaceWidth = Self->FixedWidth;
    else if (!FT_Load_Glyph(fc->Face, FT_Get_Char_Index(fc->Face, FT_Get_Char_Index(fc->Face, CHAR_SPACE)), FT_LOAD_DEFAULT)) {

@@ -3,8 +3,8 @@
 --
 -- This technique uses pre-computed checksums from the Document's bitmap output, captured from a 'good' state.  If a
 -- checksum doesn't match, the test will fail and the resulting image will be saved to "temp:doc_test_results/".
--- Check the corresponding image file, if it is acceptable then update the old checksum from the test output in order
--- to pass future tests.
+-- You can view the saved image files to confirm the accuracy of the results.  If the test has passed then update the
+-- old checksum with the new one provided in this program's output.
 
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -20,15 +20,14 @@ function renderDocToBitmap(Path)
    return bmp
 end
 
-function hashTestDoc(Path, ExpectedHash)
-   if (ExpectedHash == 0) then
-      error('File "' .. Path .. '" is yet to be assigned a checksum.')
-   end
+function crcTest(Path, ExpectedCRC)
    local bmp = renderDocToBitmap(glDocFolder .. Path)
-   local hash = mSys.GenCRC32(0, bmp.data, bmp.size)
-   if (ExpectedHash != hash) then
+   local crc = mSys.GenCRC32(0, bmp.data, bmp.size)
+   if (ExpectedCRC == 0) then
+      error('File "' .. Path .. '" is yet to be assigned a checksum, current CRC is ' .. string.format('0x%.8x', crc))
+   elseif (ExpectedCRC != crc) then
       saveBitmap(bmp, Path)
-      error('Computed hash for "' .. Path .. '" is ' .. string.format('$%.8x', hash) .. ', expected ' .. string.format('$%.8x', ExpectedHash))
+      error('The CRC for "' .. Path .. '" is ' .. string.format('0x%.8x', crc) .. ', expected ' .. string.format('0x%.8x', ExpectedCRC))
    end
 end
 
@@ -45,15 +44,16 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testAlignment()   hashTestDoc('alignment.rpl', 0x8ff3857f) end
-function testDialog()      hashTestDoc('dialog.rpl', 0xb7e0f0b2) end
-function testFonts()       hashTestDoc('fonts.rpl', 0) end
-function testImages()      hashTestDoc('images.rpl', 0xd129eb49) end
-function testLayout()      hashTestDoc('layout.rpl', 0xc43ba293) end
-function testLinks()       hashTestDoc('links.rpl', 0x04fcc2ff) end
-function testLogic()       hashTestDoc('logic.rpl', 0x77173c79) end
-function testParagraphs()  hashTestDoc('paragraphs.rpl', 0xa1bfdbb5) end
-function testTables()      hashTestDoc('tables.rpl', 0xba214845) end
+function testAlignment()   crcTest('alignment.rpl', 0x8ff3857f) end
+function testDialog()      crcTest('dialog.rpl', 0x3637e9eb) end
+function testFonts()       crcTest('fonts.rpl', 0) end
+function testImages()      crcTest('images.rpl', 0xd129eb49) end
+function testLayout()      crcTest('layout.rpl', 0xc43ba293) end
+function testLinks()       crcTest('links.rpl', 0x04fcc2ff) end
+function testLists()       crcTest('lists.rpl', 0x152c69d3) end
+function testLogic()       crcTest('logic.rpl', 0xd2ea5705) end
+function testParagraphs()  crcTest('paragraphs.rpl', 0xd0656f9e) end
+function testTables()      crcTest('tables.rpl', 0x65b73d09) end
 
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -65,6 +65,7 @@ function testTables()      hashTestDoc('tables.rpl', 0xba214845) end
         'testImages',
         'testLayout',
         'testLinks',
+        'testLists',
         'testLogic',
         'testParagraphs',
         'testTables'

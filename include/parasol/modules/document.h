@@ -200,7 +200,6 @@ class objDocument : public BaseClass {
    STRING   Keywords;               // Includes keywords declared by the source document.
    STRING   Background;             // Optional background fill instruction for the document.
    STRING   CursorStroke;           // The colour or brush stroke to use for the document cursor.
-   STRING   BorderStroke;           // The stroke to use for drawing a border around the document window.
    objVectorViewport * Viewport;    // A client-specific viewport that will host the document graphics.
    objVectorViewport * Focus;       // Refers to the object that will be monitored for user focusing.
    objVectorViewport * View;        // An internally created viewport that hosts the Page
@@ -209,7 +208,6 @@ class objDocument : public BaseClass {
    DEF      EventMask;              // Specifies events that need to be reported from the Document object.
    DCF      Flags;                  // Optional flags that affect object behaviour.
    LONG     PageHeight;             // Measures the page height of the document, in pixels.
-   LONG     LineHeight;             // Default line height (taken as an average) for all text on the page.
    ERROR    Error;                  // The most recently generated error code.
 
    // Action stubs
@@ -267,15 +265,9 @@ class objDocument : public BaseClass {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   template <class T> inline ERROR setBorderStroke(T && Value) {
-      auto target = this;
-      auto field = &this->Class->Dictionary[23];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -309,7 +301,7 @@ class objDocument : public BaseClass {
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[28];
+      auto field = &this->Class->Dictionary[26];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

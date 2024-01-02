@@ -830,9 +830,7 @@ Alternatively have the callback function return `ERR_Terminate`.
 
 The synopsis for the Callback is:
 
-```
-ERROR callback(*Vector, FM Event)
-```
+`ERROR callback(*Vector, FM Event)`
 
 -INPUT-
 int(FM) Mask: Defines the feedback events required by the client.  Set to 0xffffffff if all messages are required.
@@ -887,9 +885,7 @@ Please refer to gfxSubscribeInput() for further information on event management 
 
 The synopsis for the Callback is:
 
-```
-ERROR callback(*Vector, *InputEvent)
-```
+`ERROR callback(*Vector, *InputEvent)`
 
 -INPUT-
 flags(JTYPE) Mask: Combine JTYPE flags to define the input messages required by the client.  Set to zero to remove an existing subscription.
@@ -953,9 +949,7 @@ The prototype for the callback is as follows, whereby Qualifers are `KQ` flags a
 representing the raw key value.  The Unicode value is the resulting character when the qualifier and code are
 translated through the user's keymap.
 
-```
-ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);
-```
+`ERROR callback(*Viewport, LONG Qualifiers, LONG Code, LONG Unicode);`
 
 If the callback returns `ERR_Terminate` then the subscription will be ended.  All other error codes are ignored.
 

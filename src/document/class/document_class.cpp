@@ -611,7 +611,6 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
 
    if (Self->Background)   { FreeResource(Self->Background);   Self->Background     = NULL; }
    if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke   = NULL; }
-   if (Self->BorderStroke) { FreeResource(Self->BorderStroke); Self->BorderStroke   = NULL; }
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
 
@@ -700,11 +699,6 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
 
    FLOAT bkgd[4] = { 1.0, 1.0, 1.0, 1.0 };
    Self->Viewport->setFillColour(bkgd, 4);
-
-   if (Self->BorderStroke) {
-      objVectorRectangle::create::global(fl::Owner(Self->Page->UID), fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"),
-         fl::StrokeWidth(1), fl::Stroke(Self->BorderStroke));
-   }
 
    // Allocate the view and page areas
 
@@ -1417,7 +1411,6 @@ static const FieldArray clFields[] = {
    { "Keywords",       FDF_STRING|FDF_R },
    { "Background",     FDF_STRING|FDF_RW, NULL, SET_Background },
    { "CursorStroke",   FDF_STRING|FDF_RW, NULL, SET_CursorStroke },
-   { "BorderStroke",   FDF_STRING|FDF_RW, NULL, SET_BorderStroke },
    { "Viewport",       FDF_OBJECT|FDF_RW, NULL, SET_Viewport, ID_VECTORVIEWPORT },
    { "Focus",          FDF_OBJECT|FDF_RI, NULL, NULL, ID_VECTORVIEWPORT },
    { "View",           FDF_OBJECT|FDF_R, NULL, NULL, ID_VECTORVIEWPORT },
@@ -1426,7 +1419,6 @@ static const FieldArray clFields[] = {
    { "EventMask",      FDF_LONGFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
    { "Flags",          FDF_LONGFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
    { "PageHeight",     FDF_LONG|FDF_R },
-   { "LineHeight",     FDF_LONG|FDF_R },
    { "Error",          FDF_LONG|FDF_R },
    // Virtual fields
    { "DefaultScript", FDF_OBJECT|FDF_I,        NULL, SET_DefaultScript },

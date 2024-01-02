@@ -20,31 +20,36 @@ struct parser {
    objXML *m_inject_xml = NULL;
    objXML::TAGS *m_inject_tag = NULL, *m_header_tag = NULL, *m_footer_tag = NULL, *m_body_tag = NULL;
    objTime *m_time = NULL;
-   LONG  m_loop_index = 0;
+   LONG  m_loop_index  = 0;
    UWORD m_paragraph_depth = 0;     // Incremented when inside <p> tags
-   UWORD m_bkgd_gfx = 0;
+   UWORD m_bkgd_gfx    = 0;
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
-   bool  m_check_else = false;
+   bool  m_check_else  = false;
+   bool  m_button_pattern    = false;
+   bool  m_default_pattern   = false;
+   bool  m_combobox_pattern  = false;
+   bool  m_checkbox_patterns = false;
    stream_char  m_index;
    style_status m_style;
+   std::stack<bc_list *> m_list_stack;
 
-   void  process_page();
-   TRF   parse_tag(XMLTag &, IPF &);
-   TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
-   TRF   parse_tags_with_style(objXML::TAGS &, style_status &, IPF = IPF::NIL);
-   void  tag_xml_content(XMLTag &, PXF);
-   void  translate_attrib_args(pf::vector<XMLAttrib> &);
-   void  translate_args(const std::string &, std::string &);
-   ERROR calc(const std::string &, DOUBLE *, std::string &);
-   ERROR tag_xml_content_eval(std::string &);
-   void  trim_preformat(extDocument *);
+   inline void  process_page();
+   inline TRF   parse_tag(XMLTag &, IPF &);
+   inline TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
+   inline TRF   parse_tags_with_style(objXML::TAGS &, style_status &, IPF = IPF::NIL);
+   inline void  tag_xml_content(XMLTag &, PXF);
+   inline void  translate_attrib_args(pf::vector<XMLAttrib> &);
+   inline void  translate_args(const std::string &, std::string &);
+   inline ERROR calc(const std::string &, DOUBLE *, std::string &);
+   inline ERROR tag_xml_content_eval(std::string &);
+   inline void  trim_preformat(extDocument *);
 
    parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML), m_index(0) { }
 
    // Switching out the XML object is sometimes done for things like template injection
 
-   objXML * change_xml(objXML *pXML) {
+   inline objXML * change_xml(objXML *pXML) {
       auto old = m_xml;
       m_xml = pXML;
       return old;
@@ -52,10 +57,13 @@ struct parser {
 
    inline void tag_advance(XMLTag &);
    inline void tag_body(XMLTag &);
+   inline void tag_button(XMLTag &);
    inline void tag_call(XMLTag &);
    inline void tag_cell(XMLTag &);
+   inline void tag_checkbox(XMLTag &);
+   inline void tag_combobox(XMLTag &);
    inline void tag_debug(XMLTag &);
-   inline void tag_div(XMLTag &, objXML::TAGS &);
+   inline void tag_div(XMLTag &);
    inline void tag_editdef(XMLTag &);
    inline void tag_font(XMLTag &);
    inline void tag_font_style(objXML::TAGS &, FSO);
@@ -63,11 +71,12 @@ struct parser {
    inline void tag_image(XMLTag &);
    inline void tag_include(XMLTag &);
    inline void tag_index(XMLTag &);
-   inline void tag_li(XMLTag &, objXML::TAGS &);
+   inline void tag_input(XMLTag &);
+   inline void tag_li(XMLTag &);
    inline void tag_link(XMLTag &);
-   inline void tag_list(XMLTag &, objXML::TAGS &);
+   inline void tag_list(XMLTag &);
    inline void tag_page(XMLTag &);
-   inline void tag_paragraph(XMLTag &, objXML::TAGS &);
+   inline void tag_paragraph(XMLTag &);
    inline void tag_parse(XMLTag &);
    inline void tag_pre(objXML::TAGS &);
    inline void tag_print(XMLTag &);
@@ -84,6 +93,28 @@ struct parser {
 
    ~parser() {
       if (m_time) FreeResource(m_time);
+   }
+
+   void config_default_pattern() {
+      if (m_default_pattern) return;
+      m_default_pattern = true;
+
+      if (auto pattern = objVectorPattern::create::global({
+            fl::Name("default_pattern"),
+            fl::SpreadMethod(VSPREAD::PAD)
+         })) {
+            
+         objVectorRectangle::create::global({
+            fl::Name("default_widget_bkgd"),
+            fl::Owner(pattern->Scene->Viewport->UID),
+            fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"),
+            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0), 
+            fl::RoundX(4), fl::RoundY(4),
+            fl::Fill("rgb(0,0,0,128)")
+         });
+
+         scAddDef(Self->Viewport->Scene, "/widget/default", pattern);
+      }
    }
 };
 
@@ -873,11 +904,11 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          break;
 
       case HASH_div:
-         if (!Tag.Children.empty()) tag_div(Tag, Tag.Children);
+         if (!Tag.Children.empty()) tag_div(Tag);
          break;
 
       case HASH_p:
-         if (!Tag.Children.empty()) tag_paragraph(Tag, Tag.Children);
+         if (!Tag.Children.empty()) tag_paragraph(Tag);
          break;
 
       case HASH_font:
@@ -889,7 +920,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          break;
 
       case HASH_li:
-         if (!Tag.Children.empty()) tag_li(Tag, Tag.Children);
+         if (!Tag.Children.empty()) tag_li(Tag);
          break;
 
       case HASH_pre:
@@ -898,7 +929,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_u: if (!Tag.Children.empty()) tag_font_style(Tag.Children, FSO::UNDERLINE); break;
 
-      case HASH_list: if (!Tag.Children.empty()) tag_list(Tag, Tag.Children); break;
+      case HASH_list: if (!Tag.Children.empty()) tag_list(Tag); break;
 
       case HASH_advance: tag_advance(Tag); break;
 
@@ -906,6 +937,14 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          insert_text(Self, m_stream, m_index, "\n", true);
          Self->NoWhitespace = true;
          break;
+
+      case HASH_button: tag_button(Tag); break;
+
+      case HASH_checkbox: tag_checkbox(Tag); break;
+
+      case HASH_combobox: tag_combobox(Tag); break;
+
+      case HASH_input: tag_input(Tag); break;
 
       case HASH_image: tag_image(Tag); break;
 
@@ -1036,7 +1075,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_data: break; // Intentionally does nothing
 
-      case HASH_editdef: tag_editdef(Tag); break;
+      case HASH_edit_def: tag_editdef(Tag); break;
 
       case HASH_footer:
          if (!Tag.Children.empty()) m_footer_tag = &Tag.Children;
@@ -1162,7 +1201,8 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, style_status &Style, IPF F
 
 //********************************************************************************************************************
 
-static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, bc_paragraph *esc, style_status &Style)
+static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, 
+   bc_paragraph *Para, style_status &Style)
 {
    switch (StrHash(Attrib)) {
       case HASH_inline:
@@ -1171,18 +1211,21 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
          break;
 
       case HASH_leading:
-         if (esc) {
-            esc->leading_ratio = StrToFloat(Value);
-            if (esc->leading_ratio < MIN_LEADING) esc->leading_ratio = MIN_LEADING;
-            else if (esc->leading_ratio > MAX_LEADING) esc->leading_ratio = MAX_LEADING;
+         // The leading is a line height multiplier that applies to the first line in the paragraph only.
+         // It is typically used for things like headers.
+
+         if (Para) {
+            Para->leading = StrToFloat(Value);
+            if (Para->leading < MIN_LEADING) Para->leading = MIN_LEADING;
+            else if (Para->leading > MAX_LEADING) Para->leading = MAX_LEADING;
          }
          break;
 
-      case HASH_nowrap:
+      case HASH_no_wrap:
          Style.font_style.options |= FSO::NO_WRAP;
          break;
 
-      case HASH_valign: {
+      case HASH_v_align: {
          // Vertical alignment defines the vertical position for text in cases where the line height is greater than
          // the text itself (e.g. if an image is anchored in the line).
          ALIGN align = ALIGN::NIL;
@@ -1199,32 +1242,34 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
       case HASH_kerning:  // REQUIRES CODE and DOCUMENTATION
          break;
 
-      case HASH_lineheight: // REQUIRES CODE and DOCUMENTATION
-         // Line height is expressed as a ratio - 1.0 is standard, 1.5 would be an extra half, 0.5 would squash the text by half.
+      case HASH_line_height: // REQUIRES CODE
+         // Line height is expressed as a multiplier that is applied to m_line.line_height for every line in the
+         // paragraph (as opposed to the leading, which applies to the first line only).  This is not the same thing
+         // as changing the vertical spacing (which adjusts the cursor's vertical advance when word wrapping).
 
          //Style.LineHeightRatio = StrToFloat(Tag.Attribs[i].Value);
          //if (Style.LineHeightRatio < MIN_LINEHEIGHT) Style.LineHeightRatio = MIN_LINEHEIGHT;
          break;
 
       case HASH_trim:
-         if (esc) esc->trim = true;
+         if (Para) Para->trim = true;
          break;
 
-      case HASH_vspacing:
+      case HASH_v_spacing:
          // Vertical spacing between embedded paragraphs.  Ratio is expressed as a measure of the *default* lineheight (not the height of the
          // last line of the paragraph).  E.g. 1.5 is one and a half times the standard lineheight.  The default is 1.0.
 
-         if (esc) {
-            esc->vspacing = StrToFloat(Value);
-            if (esc->vspacing < MIN_VSPACING) esc->vspacing = MIN_VSPACING;
-            else if (esc->vspacing > MAX_VSPACING) esc->vspacing = MAX_VSPACING;
+         if (Para) {
+            Para->v_spacing = StrToFloat(Value);
+            if (Para->v_spacing < MIN_VSPACING) Para->v_spacing = MIN_VSPACING;
+            else if (Para->v_spacing > MAX_VSPACING) Para->v_spacing = MAX_VSPACING;
          }
          break;
 
       case HASH_indent:
-         if (esc) {
-            read_unit(Value.c_str(), esc->indent, esc->relative);
-            if (esc->indent < 0) esc->indent = 0;
+         if (Para) {
+            read_unit(Value.c_str(), Para->indent, Para->relative);
+            if (Para->indent < 0) Para->indent = 0;
          }
          break;
    }
@@ -1284,17 +1329,17 @@ void parser::tag_body(XMLTag &Tag)
 
    // Body tag needs to be placed before any content
 
-   for (unsigned i = 1; i < Tag.Attribs.size(); i++) {
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_link:
             Self->LinkFill = Tag.Attribs[i].Value;
             break;
 
-         case HASH_vlink:
+         case HASH_v_link:
             Self->VisitedLinkFill = Tag.Attribs[i].Value;
             break;
 
-         case HASH_selectfill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
+         case HASH_select_fill: // Fill to use when a link is selected (using the tab key to get to a link will select it)
             Self->LinkSelectFill = Tag.Attribs[i].Value;
             break;
 
@@ -1331,13 +1376,7 @@ void parser::tag_body(XMLTag &Tag)
             break;
          }
 
-         case HASH_lineheight:
-            Self->LineHeight = StrToInt(Tag.Attribs[i].Value);
-            if (Self->LineHeight < 4) Self->LineHeight = 4;
-            else if (Self->LineHeight > 100) Self->LineHeight = 100;
-            break;
-
-         case HASH_pagewidth:
+         case HASH_page_width:
          case HASH_width:
             Self->PageWidth = StrToFloat(Tag.Attribs[i].Value);
             if (Self->PageWidth < 1) Self->PageWidth = 1;
@@ -1354,17 +1393,17 @@ void parser::tag_body(XMLTag &Tag)
             break;
 
          case HASH_face:
-         case HASH_fontface:
+         case HASH_font_face:
             Self->FontFace = Tag.Attribs[i].Value;
             break;
 
-         case HASH_fontsize: // Default font point size
+         case HASH_font_size: // Default font point size
             Self->FontSize = StrToFloat(Tag.Attribs[i].Value);
             break;
 
-         case HASH_fontcolour: // DEPRECATED, use font fill
-            log.warning("The fontcolour attrib is deprecated, use fontfill.");
-         case HASH_fontfill: // Default font fill
+         case HASH_font_colour: // DEPRECATED, use font fill
+            log.warning("The fontcolour attrib is deprecated, use font-fill.");
+         case HASH_font_fill: // Default font fill
             Self->FontFill = Tag.Attribs[i].Value;
             break;
 
@@ -1474,6 +1513,162 @@ void parser::tag_call(XMLTag &Tag)
 
 //********************************************************************************************************************
 
+void parser::tag_checkbox(XMLTag &Tag)
+{
+   pf::Log log(__FUNCTION__);
+
+   bc_checkbox widget;
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto &value = Tag.Attribs[i].Value;
+      if (hash IS HASH_label) {
+         widget.label = value;
+      }
+      else if (hash IS HASH_label_pos) {
+         if (!StrMatch("left", value)) widget.label_pos = 0;
+         else if (!StrMatch("right", value)) widget.label_pos = 1;
+      }
+      else if (hash IS HASH_value) {
+         if ((value == "1") or (value == "true")) widget.alt_state = true;
+         else widget.alt_state = false;
+      }
+      else if (hash IS HASH_fill) {
+         widget.fill = value;
+      }
+      else if (hash IS HASH_width) {
+         read_unit(value.c_str(), widget.width, widget.width_pct);
+      }
+      else if (hash IS HASH_name) {
+         widget.name = value;
+      }
+      else log.warning("<checkbox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
+   }
+   
+   if (widget.fill.empty()) widget.fill = "url(#/widget/checkbox/off)";
+
+   if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/checkbox/on)";
+   
+   if (!m_checkbox_patterns) {
+      m_checkbox_patterns = true;
+
+      if (auto pattern_on = objVectorPattern::create::global({
+            fl::Name("checkbox_on"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+         
+         auto vp = pattern_on->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
+            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0), 
+            fl::RoundX(6), fl::RoundY(6),
+            fl::Fill("rgb(0,0,0,128)")
+         });
+
+         objVectorPath::create::global({
+            fl::Owner(vp->UID),
+            fl::Sequence("M4.75 15.0832 15.8333 26.1665 33.2498 4 38 8.75 15.8333 35.6665 0 19.8332 4.75 15.0832Z"),
+            fl::Fill("rgb(255,255,255)")
+         });
+
+         vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
+            fl::ViewX(-8), fl::ViewY(-8), fl::ViewWidth(54), fl::ViewHeight(54));
+
+         scAddDef(Self->Viewport->Scene, "/widget/checkbox/on", pattern_on);
+      }
+
+      if (auto pattern_off = objVectorPattern::create::global({
+            fl::Name("checkbox_off"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+         
+         auto vp = pattern_off->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
+            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0), 
+            fl::RoundX(6), fl::RoundY(6),
+            fl::Fill("rgb(0,0,0,128)")
+         });
+
+         objVectorPath::create::global({
+            fl::Owner(vp->UID),
+            fl::Sequence("M4.75 15.0832 15.8333 26.1665 33.2498 4 38 8.75 15.8333 35.6665 0 19.8332 4.75 15.0832Z"),
+            fl::Fill("rgb(255,255,255,64)")
+         });
+
+         vp->setFields(fl::AspectRatio(ARF::X_MIN|ARF::Y_MIN|ARF::MEET),
+            fl::ViewX(-8), fl::ViewY(-8), fl::ViewWidth(54), fl::ViewHeight(54));
+
+         scAddDef(Self->Viewport->Scene, "/widget/checkbox/off", pattern_off);
+      }
+   }
+
+   if (widget.height < m_style.point * 1.8) widget.height = m_style.point * 1.8;
+
+   if (!widget.label.empty()) widget.label_pad = widget.height - m_style.font_style.get_font()->Ascent;
+
+   Self->NoWhitespace = false; // Widgets are treated as inline characters
+   m_stream.insert_code(m_index, widget);
+}
+
+   Self->NoWhitespace = false; // Widgets are treated as inline characters
+   m_stream.insert_code(m_index, widget);
+}
+
+void parser::tag_input(XMLTag &Tag)
+{
+   pf::Log log(__FUNCTION__);
+
+   bc_input widget;
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto &value = Tag.Attribs[i].Value;
+      if (hash IS HASH_label) {
+         widget.label = value;
+      }
+      else if (hash IS HASH_value) {
+         widget.value = value;
+      }
+      else if (hash IS HASH_fill) {
+         widget.fill = value;
+      }
+      else if (hash IS HASH_label_pos) {
+         // TODO (left, right)
+      }
+      else if (hash IS HASH_width) {
+         read_unit(value.c_str(), widget.width, widget.width_pct);
+      }
+      else if (hash IS HASH_font_fill) {
+         widget.font_fill = value;
+      }
+      else if (hash IS HASH_name) {
+         // TODO
+      }
+      else log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
+   }
+   
+   if (widget.fill.empty()) {
+      config_default_pattern();
+      widget.fill="url(#/widget/default)";
+   }
+
+   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
+
+   if (widget.height < m_style.point * 2.2) {
+      widget.height = m_style.point * 2.2;
+   }
+
+   widget.label_pad = m_style.font_style.get_font()->Ascent * 0.5;
+
+   Self->NoWhitespace = false; // Widgets are treated as inline characters
+   m_stream.insert_code(m_index, widget);
+}
+
+//********************************************************************************************************************
+
 void parser::tag_debug(XMLTag &Tag)
 {
    pf::Log log("DocMsg");
@@ -1534,10 +1729,10 @@ void parser::tag_use(XMLTag &Tag)
 }
 
 //********************************************************************************************************************
-// Use div to structure the document in a similar way to paragraphs.  The main difference is that it avoids the
-// declaration of paragraph start and end points and won't cause line breaks.
+// Use div to structure the document in a similar way to paragraphs.  The main difference is that it impacts on style
+// attributes only, avoiding the declaration of paragraph start and end points and won't cause line breaks.
 
-void parser::tag_div(XMLTag &Tag, objXML::TAGS &Children)
+void parser::tag_div(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1555,7 +1750,7 @@ void parser::tag_div(XMLTag &Tag, objXML::TAGS &Children)
       else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, 0, new_style);
    }
 
-   parse_tags_with_style(Children, new_style);
+   parse_tags_with_style(Tag.Children, new_style);
 }
 
 //********************************************************************************************************************
@@ -1578,25 +1773,25 @@ void parser::tag_editdef(XMLTag &Tag)
 
          case HASH_name: name = Tag.Attribs[i].Value; break;
 
-         case HASH_selectfill: break;
+         case HASH_select_fill: break;
 
-         case HASH_linebreaks: edit.line_breaks = StrToInt(Tag.Attribs[i].Value); break;
+         case HASH_line_breaks: edit.line_breaks = StrToInt(Tag.Attribs[i].Value); break;
 
-         case HASH_editfonts:
-         case HASH_editimages:
-         case HASH_edittables:
-         case HASH_editall:
+         case HASH_edit_fonts:
+         case HASH_edit_images:
+         case HASH_edit_tables:
+         case HASH_edit_all:
             break;
 
-         case HASH_onchange:
+         case HASH_on_change:
             if (!Tag.Attribs[i].Value.empty()) edit.on_change = Tag.Attribs[i].Value;
             break;
 
-         case HASH_onexit:
+         case HASH_on_exit:
             if (!Tag.Attribs[i].Value.empty()) edit.on_exit = Tag.Attribs[i].Value;
             break;
 
-         case HASH_onenter:
+         case HASH_on_enter:
             if (!Tag.Attribs[i].Value.empty()) edit.on_enter = Tag.Attribs[i].Value;
             break;
 
@@ -1726,7 +1921,7 @@ void parser::tag_image(XMLTag &Tag)
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
       if (hash IS HASH_src) {
-         img.src = value;
+         img.fill = value;
       }
       else if ((hash IS HASH_float) or (hash IS HASH_align)) {
          // Setting the horizontal alignment of an image will cause it to float above the text.
@@ -1738,7 +1933,7 @@ void parser::tag_image(XMLTag &Tag)
          else if (vh IS HASH_middle) img.align = ALIGN::CENTER;
          else log.warning("Invalid alignment value '%s'", value.c_str());
       }
-      else if (hash IS HASH_valign) {
+      else if (hash IS HASH_v_align) {
          // If the image is anchored and the line is taller than the image, the image can be vertically aligned.
          auto vh = StrHash(value);
          if (vh IS HASH_top) img.align = ALIGN::TOP;
@@ -1767,7 +1962,7 @@ void parser::tag_image(XMLTag &Tag)
       else log.warning("<image> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   if (!img.src.empty()) {
+   if (!img.fill.empty()) {
       if (img.width < 0) img.width = 0; // Zero is equivalent to 'auto', meaning on-the-fly computation
       if (img.height < 0) img.height = 0;
 
@@ -1864,7 +2059,7 @@ void parser::tag_link(XMLTag &Tag)
             }
             break;
 
-         case HASH_onclick:
+         case HASH_on_click:
             if (link.type IS LINK::NIL) { // Function to execute on click
                link.ref = Tag.Attribs[i].Value;
                link.type = LINK::FUNCTION;
@@ -1881,7 +2076,7 @@ void parser::tag_link(XMLTag &Tag)
             link.fill = Tag.Attribs[i].Value;
             break;
 
-         case HASH_pointermotion: // Function to execute on pointer motion
+         case HASH_pointer_motion: // Function to execute on pointer motion
             pointermotion = Tag.Attribs[i].Value;
             break;
 
@@ -1931,53 +2126,52 @@ void parser::tag_link(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_list(XMLTag &Tag, objXML::TAGS &Children)
+void parser::tag_list(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
-   bc_list esc, *savelist;
+   bc_list list;
 
-   esc.fill    = m_style.font_style.fill; // Default fill matches the current font colour
-   esc.item_num = esc.start;
+   list.fill     = m_style.font_style.fill; // Default fill matches the current font colour
+   list.item_num = list.start;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("fill", Tag.Attribs[i].Name)) {
-         esc.fill = Tag.Attribs[i].Value;
+         list.fill = Tag.Attribs[i].Value;
       }
       else if (!StrMatch("indent", Tag.Attribs[i].Name)) {
          // Affects the indenting to apply to child items.
-         esc.block_indent = StrToInt(Tag.Attribs[i].Value);
+         list.block_indent = StrToInt(Tag.Attribs[i].Value);
       }
-      else if (!StrMatch("vspacing", Tag.Attribs[i].Name)) {
-         esc.vspacing = StrToFloat(Tag.Attribs[i].Value);
-         if (esc.vspacing < 0) esc.vspacing = 0;
+      else if (!StrMatch("v-spacing", Tag.Attribs[i].Name)) {
+         // Affects the vertical advance from one list-item paragraph to the next.
+         // Not equivalent to paragraph v-spacing, which affects each line
+         list.v_spacing = StrToFloat(Tag.Attribs[i].Value);
+         if (list.v_spacing < 0) list.v_spacing = 0;
       }
       else if (!StrMatch("type", Tag.Attribs[i].Name)) {
          if (!StrMatch("bullet", Tag.Attribs[i].Value)) {
-            esc.type = bc_list::BULLET;
+            list.type = bc_list::BULLET;
          }
          else if (!StrMatch("ordered", Tag.Attribs[i].Value)) {
-            esc.type = bc_list::ORDERED;
-            esc.item_indent = 0;
+            list.type = bc_list::ORDERED;
+            list.item_indent = 0;
          }
          else if (!StrMatch("custom", Tag.Attribs[i].Value)) {
-            esc.type = bc_list::CUSTOM;
-            esc.item_indent = 0;
+            list.type = bc_list::CUSTOM;
+            list.item_indent = 0;
          }
       }
       else log.msg("Unknown list attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
 
-   // Note: Paragraphs are not inserted because <li> does this
+   m_stream.insert_code(m_index, list);
+   m_list_stack.push(&list);
 
-   m_stream.insert_code(m_index, esc);
+      // Refer to tag_li() to see how list items are managed
 
-   savelist = m_style.list;
-   m_style.list = &esc;
+      if (!Tag.Children.empty()) parse_tags(Tag.Children);
 
-      if (!Children.empty()) parse_tags(Children);
-
-   m_style.list = savelist;
-
+   m_list_stack.pop();
    m_stream.reserve_code<bc_list_end>(m_index);
 
    Self->NoWhitespace = true;
@@ -1986,14 +2180,13 @@ void parser::tag_list(XMLTag &Tag, objXML::TAGS &Children)
 //********************************************************************************************************************
 // Also see check_para_attrib() for paragraph attributes.
 
-void parser::tag_paragraph(XMLTag &Tag, objXML::TAGS &Children)
+void parser::tag_paragraph(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
    m_paragraph_depth++;
 
-   bc_paragraph esc;
-   esc.leading_ratio = 0;
+   bc_paragraph para;
 
    auto new_style = m_style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
@@ -2006,14 +2199,14 @@ void parser::tag_paragraph(XMLTag &Tag, objXML::TAGS &Children)
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
-      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &esc, new_style);
+      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &para, new_style);
    }
 
-   m_stream.insert_code(m_index, esc);
+   m_stream.insert_code(m_index, para);
 
-   Self->NoWhitespace = esc.trim;
+   Self->NoWhitespace = para.trim;
 
-   parse_tags_with_style(Children, new_style);
+   parse_tags_with_style(Tag.Children, new_style);
 
    bc_paragraph_end end;
    m_stream.insert_code(m_index, end);
@@ -2935,23 +3128,23 @@ void parser::tag_font_style(objXML::TAGS &Children, FSO StyleFlag)
 }
 
 //********************************************************************************************************************
-// List item parser
+// List item parser.  List items are essentially paragraphs with automated indentation management.
 
-void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
+void parser::tag_li(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!m_style.list) {
+   if (m_list_stack.empty()) {
       log.warning("<li> not used inside a <list> tag.");
       return;
    }
 
    bc_paragraph para;
-
    para.list_item    = true;
-   para.leading_ratio = 0;
-   para.applyStyle(m_style);
+   para.v_spacing    = m_list_stack.top()->v_spacing;
+   para.item_indent  = m_list_stack.top()->item_indent;
 
+   auto new_style = m_style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto tagname = Tag.Attribs[i].Name.c_str();
       if (*tagname IS '$') tagname++;
@@ -2959,58 +3152,49 @@ void parser::tag_li(XMLTag &Tag, objXML::TAGS &Children)
       if (!StrMatch("value", tagname)) {
          para.value = Tag.Attribs[i].Value;
       }
-      else if (!StrMatch("leading", tagname)) {
-         para.leading_ratio = StrToFloat(Tag.Attribs[i].Value);
-         if (para.leading_ratio < MIN_LEADING) para.leading_ratio = MIN_LEADING;
-         else if (para.leading_ratio > MAX_LEADING) para.leading_ratio = MAX_LEADING;
-      }
-      else if (!StrMatch("vspacing", tagname)) {
-         para.vspacing = StrToFloat(Tag.Attribs[i].Value);
-         if (para.vspacing < MIN_LEADING) para.vspacing = MIN_LEADING;
-         else if (para.vspacing > MAX_VSPACING) para.vspacing = MAX_VSPACING;
-      }
       else if (!StrMatch("aggregate", tagname)) {
          if (Tag.Attribs[i].Value == "true") para.aggregate = true;
          else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
       }
+      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &para, new_style);
    }
 
    m_paragraph_depth++;
 
-   if ((m_style.list->type IS bc_list::CUSTOM) and (!para.value.empty())) {
+   if ((m_list_stack.top()->type IS bc_list::CUSTOM) and (!para.value.empty())) {
       m_stream.insert_code(m_index, para);
 
-         parse_tags(Children);
+         parse_tags_with_style(Tag.Children, new_style);
 
       m_stream.reserve_code<bc_paragraph_end>(m_index);
    }
-   else if (m_style.list->type IS bc_list::ORDERED) {
-      auto list_size = m_style.list->buffer.size();
-      m_style.list->buffer.push_back(std::to_string(m_style.list->item_num) + ".");
+   else if (m_list_stack.top()->type IS bc_list::ORDERED) {
+      auto list_size = m_list_stack.top()->buffer.size();
+      m_list_stack.top()->buffer.push_back(std::to_string(m_list_stack.top()->item_num) + ".");
 
       // ItemNum is reset because a child list could be created
 
-      auto save_item = m_style.list->item_num;
-      m_style.list->item_num = 1;
+      auto save_item = m_list_stack.top()->item_num;
+      m_list_stack.top()->item_num = 1;
 
-      if (para.aggregate) for (auto &p : m_style.list->buffer) para.value += p;
-      else para.value = m_style.list->buffer.back();
+      if (para.aggregate) for (auto &p : m_list_stack.top()->buffer) para.value += p;
+      else para.value = m_list_stack.top()->buffer.back();
 
       m_stream.insert_code(m_index, para);
 
-         parse_tags(Children);
+         parse_tags_with_style(Tag.Children, new_style);
 
       m_stream.reserve_code<bc_paragraph_end>(m_index);
 
-      m_style.list->item_num = save_item;
-      m_style.list->buffer.resize(list_size);
+      m_list_stack.top()->item_num = save_item;
+      m_list_stack.top()->buffer.resize(list_size);
 
-      m_style.list->item_num++;
+      m_list_stack.top()->item_num++;
    }
    else { // BULLET
       m_stream.insert_code(m_index, para);
-
-         parse_tags(Children);
+      
+         parse_tags_with_style(Tag.Children, new_style);
 
       m_stream.reserve_code<bc_paragraph_end>(m_index);
       Self->NoWhitespace = true;
@@ -3144,30 +3328,30 @@ void parser::tag_table(XMLTag &Tag)
 
          case HASH_stroke:
             start.stroke = Tag.Attribs[i].Value;
-            if (start.strokeWidth < 1) start.strokeWidth = 1;
+            if (start.stroke_width < 1) start.stroke_width = 1;
             break;
 
          case HASH_spacing: // Spacing between the cells
-            start.cell_vspacing = StrToInt(Tag.Attribs[i].Value);
-            if (start.cell_vspacing < 0) start.cell_vspacing = 0;
-            else if (start.cell_vspacing > 200) start.cell_vspacing = 200;
-            start.cell_hspacing = start.cell_vspacing;
+            start.cell_v_spacing = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
+            else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
+            start.cell_h_spacing = start.cell_v_spacing;
             break;
 
          case HASH_collapsed: // Collapsed tables do not have spacing (defined by 'spacing' or 'hspacing') on the sides
             start.collapsed = true;
             break;
 
-         case HASH_vspacing: // Spacing between the cells
-            start.cell_vspacing = StrToInt(Tag.Attribs[i].Value);
-            if (start.cell_vspacing < 0) start.cell_vspacing = 0;
-            else if (start.cell_vspacing > 200) start.cell_vspacing = 200;
+         case HASH_v_spacing: // Spacing between the cells
+            start.cell_v_spacing = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
+            else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
             break;
 
-         case HASH_hspacing: // Spacing between the cells
-            start.cell_hspacing = StrToInt(Tag.Attribs[i].Value);
-            if (start.cell_hspacing < 0) start.cell_hspacing = 0;
-            else if (start.cell_hspacing > 200) start.cell_hspacing = 200;
+         case HASH_h_spacing: // Spacing between the cells
+            start.cell_h_spacing = StrToInt(Tag.Attribs[i].Value);
+            if (start.cell_h_spacing < 0) start.cell_h_spacing = 0;
+            else if (start.cell_h_spacing > 200) start.cell_h_spacing = 200;
             break;
 
          case HASH_margins:
@@ -3177,11 +3361,11 @@ void parser::tag_table(XMLTag &Tag)
             else if (start.cell_padding > 200) start.cell_padding = 200;
             break;
 
-         case HASH_strokeWidth: {
+         case HASH_stroke_width: {
             auto j = StrToFloat(Tag.Attribs[i].Value);
             if (j < 0.0) j = 0.0;
             else if (j > 255.0) j = 255.0;
-            start.strokeWidth = j;
+            start.stroke_width = j;
             break;
          }
       }
@@ -3295,13 +3479,13 @@ void parser::tag_cell(XMLTag &Tag)
             break;
          }
 
-         case HASH_colspan:
+         case HASH_col_span:
             cell.col_span = StrToInt(Tag.Attribs[i].Value);
             if (cell.col_span < 1) cell.col_span = 1;
             else if (cell.col_span > 1000) cell.col_span = 1000;
             break;
 
-         case HASH_rowspan:
+         case HASH_row_span:
             cell.row_span = StrToInt(Tag.Attribs[i].Value);
             if (cell.row_span < 1) cell.row_span = 1;
             else if (cell.row_span > 1000) cell.row_span = 1000;
@@ -3329,21 +3513,21 @@ void parser::tag_cell(XMLTag &Tag)
 
          case HASH_stroke:
             cell.stroke = Tag.Attribs[i].Value;
-            if (!cell.strokeWidth) {
-               cell.strokeWidth = m_style.table->table->strokeWidth;
-               if (!cell.strokeWidth) cell.strokeWidth = 1;
+            if (!cell.stroke_width) {
+               cell.stroke_width = m_style.table->table->stroke_width;
+               if (!cell.stroke_width) cell.stroke_width = 1;
             }
             break;
 
-         case HASH_strokeWidth:
-            cell.strokeWidth = StrToFloat(Tag.Attribs[i].Value);
+         case HASH_stroke_width:
+            cell.stroke_width = StrToFloat(Tag.Attribs[i].Value);
             break;
 
-         case HASH_nowrap:
+         case HASH_no_wrap:
             new_style.font_style.options |= FSO::NO_WRAP;
             break;
 
-         case HASH_onclick:
+         case HASH_on_click:
             cell.onclick = Tag.Attribs[i].Value;
             break;
 

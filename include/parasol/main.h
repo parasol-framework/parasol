@@ -237,6 +237,7 @@ constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value);
 constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
+constexpr FieldValue LineLimit(LONG Value) { return FieldValue(FID_LineLimit, Value); }
 constexpr FieldValue Listener(LONG Value) { return FieldValue(FID_Listener, Value); }
 constexpr FieldValue MatrixColumns(LONG Value) { return FieldValue(FID_MatrixColumns, Value); }
 constexpr FieldValue MatrixRows(LONG Value) { return FieldValue(FID_MatrixRows, Value); }

@@ -8,7 +8,7 @@
   </defs>
 </svg>
 
-<body face="sans serif" fontsize="10" link="rgb(60,60,130)" margins="30"/>
+<body face="sans serif" font-size="10" link="rgb(60,60,130)" margins="30"/>
 
 <page name="Index">
 <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse egestas nibh turpis, et faucibus risus varius quis. Mauris quis cursus sapien. Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar.</p>
@@ -19,9 +19,9 @@
 
 <image align="center" src="url(#add)" width="64" height="64" padding="10 0 10 0" align="center"/>
 
-<p valign="top">The size of this inline image <image src="url(#cancel)"/> must be automatically sized to match the font's height.</p>
+<p v-align="top">The size of this inline image <image src="url(#cancel)"/> must be automatically sized to match the font's height.</p>
 
-<p valign="center">This paragraph includes a large inline image <image src="url(#cancel)" width="32" height="32"/> and the line on which it appears (after wrapping) must match its height and be vertically centered.</p>
+<p v-align="center">This paragraph includes a large inline image <image src="url(#cancel)" width="32" height="32"/> and the line on which it appears (after wrapping) must match its height and be vertically centered.</p>
 
 <p>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</p>
 

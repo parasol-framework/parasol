@@ -24,22 +24,6 @@ static ERROR SET_Background(extDocument *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-BorderStroke: The stroke to use for drawing a border around the document window.
-
-This field enables the drawing of a stroke along the border of the document window.
-
-*********************************************************************************************************************/
-
-static ERROR SET_BorderStroke(extDocument *Self, CSTRING Value)
-{
-   if (Self->BorderStroke) { FreeResource(Self->BorderStroke); Self->BorderStroke = NULL; }
-   if ((Value) and (*Value)) Self->BorderStroke = StrClone(Value);
-   return ERR_Okay;
-}
-
-/*********************************************************************************************************************
-
--FIELD-
 Copyright: Copyright information for the document.
 
 If a document declares copyright information under a head tag, the copyright string will be readable from this field.
@@ -172,9 +156,6 @@ If a document declares keywords under a head tag, the keywords string will be re
 always NULL if a document does not declare any keywords.  It is recommended that keywords are separated with spaces or
 commas.  It should not be assumed that the author of the document has adhered to the accepted standard for keyword
 separation.
-
--FIELD-
-LineHeight: Default line height (taken as an average) for all text on the page.
 
 -FIELD-
 Path: Identifies the location of a document file to load.

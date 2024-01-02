@@ -8,7 +8,7 @@
   </defs>
 </svg>
 
-<body margins="10 10 18 10" link="rgb(.27,.27,.48)" fill="rgb(.94,.94,.98)" fontfill="rgb(0,0,0)" selectfill="rgb(.31,.62,.31)"/>
+<body margins="10 10 18 10"/>
 
 <page name="Index">
   <table columns="48,0" width="100%">
@@ -18,10 +18,12 @@
       </cell>
       <cell>
         <p>To be or not to be?</p>
-<p><input name="inDialog" flags="!IgnoreFocus" width="200" string="That is the question"/></p>
+<p><input name="inDialog" ignore-focus width="200" value="That is the question"/></p>
 <p><checkbox name="dlgCheckbox" label="'Tis nobler to suffer" value="false"/></p>
+<!--
 <p><rect height="1" colour="rgb(0,0,0,0.2)"/></p>
-<p nowrap><image src="url(#checkmark)" width="16" height="16" padding="0 0 4 0"/>
+-->
+<p no-wrap><image src="url(#checkmark)" width="16" height="16" padding="0 0 4 0"/>
 <a @response="1">To be</a>
 <advance x="30"/><image src="url(#cancel)" width="16" height="16" padding="0 0 4 0"/>
 <a @response="2">Not to be</a>

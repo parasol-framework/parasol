@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
-<body face="courier" fontfill="rgb(64,0,0)" fontsize="10"/>
+<body face="courier" font-fill="rgb(64,0,0)" font-size="10"/>
 
 <header>
   <p><b>HEADER IN BOLD</b></p>
@@ -27,6 +27,10 @@ This dangling content must be ignored.
 <p>Mauris magna est, tempus at consequat a, euismod sed libero. Aliquam in erat sodales, viverra orci vel, tincidunt massa. Morbi laoreet mi et leo commodo egestas. Donec nec aliquet lacus, sodales tincidunt nunc. Ut tristique non diam in pellentesque. Cras sollicitudin congue interdum. Mauris vel ullamcorper metus. Donec vel neque accumsan, ultricies dui a, dictum nunc. Integer ut ex dolor.</p>
 
 <p>Sed interdum nunc ac justo aliquam, in fringilla lectus porttitor. Proin imperdiet elit malesuada, vehicula nisl vitae, porta libero. Quisque leo purus, eleifend quis ex eu, tristique ornare quam. Curabitur sit amet ex ut leo gravida eleifend eu auctor orci. Ut rhoncus faucibus sem, sit amet pretium dolor fringilla aliquam. Fusce ac suscipit dui. Nulla feugiat mauris erat, vitae pulvinar odio tristique sed. Curabitur mattis massa vel lectus eleifend congue. Integer a ex sit amet diam blandit sagittis. Morbi augue dolor, tempus a elementum vitae, venenatis eu nisl.</p>
+
+<p leading="2.0">This paragraph has its leading value set to 2.0.  Morbi sit amet pretium est, id lobortis turpis. Integer mollis dapibus porttitor. Pellentesque aliquet ornare neque, non auctor quam pretium eget.</p>
+
+<p no-wrap>This paragraph has word-wrapping turned off with use of the 'no-wrap' attribute.  Morbi sit amet pretium est.</p>
 
 <p>This paragraph contains an embedded paragraph <p>right here.  There must be a standard line break prior, in order to separate it from the parent.</p></p>
 

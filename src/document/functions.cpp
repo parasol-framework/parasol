@@ -437,7 +437,6 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
    Self->Invisible     = 0;
    Self->PageWidth     = 0;
    Self->CalcWidth     = 0;
-   Self->LineHeight    = LINE_HEIGHT; // Default line height for measurements concerning the page (can be derived from a font)
    Self->RelPageWidth  = false;
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
    Self->DefaultScript = NULL;

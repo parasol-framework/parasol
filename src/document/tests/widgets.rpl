@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
+
+<body/>
+
+<page name="Index">
+
+<h1>Input Widgets</h1>
+
+<p><input width="200" value="pre-defined content"/></p>
+
+<p><font face="Courier" size="20"><input width="300" value="Courier 20pt"/></font></p>
+
+<h1>Checkbox Widgets</h1>
+
+<p><checkbox label="Checkbox label" value="false"/> Not part of the label</p>
+
+<p><checkbox value="false"/> Follow-on text with default vertical alignment.</p>
+
+<p v-align="center"><font size="20">Prefixed text <checkbox value="true"/> Follow-on text with centered vertical alignment.</font></p>
+
+</page>

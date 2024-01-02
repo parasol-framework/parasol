@@ -10,14 +10,14 @@
 
 <p>This list has blue items and an increased vertical spacing value of 1.5.</p>
 
-<list type="ordered" fill="rgb(0,0,190)" vspacing="1.5">
+<list type="ordered" fill="rgb(0,0,190)" v-spacing="1.5">
 <li>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut nibh tortor, egestas sit amet metus at, fermentum gravida purus.<li>Embedded list item one.</li><li>Embedded list item two.</li></li>
 <li>Mauris quis cursus sapien.  Etiam eget dui id turpis molestie condimentum. Duis mollis erat vitae ante bibendum, ac pellentesque justo volutpat. Pellentesque blandit aliquam eros ut pulvinar. Phasellus malesuada pulvinar metus vel ullamcorper. Phasellus tristique, sapien non pharetra vehicula, massa lectus blandit lorem, eget consectetur felis massa sed quam.</li>
 <li>Etiam vel tempor massa. Integer quis nunc non risus malesuada pellentesque. Etiam pretium nunc nibh, sit amet tempor ipsum rhoncus a.</li>
 <li>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit. Praesent et nibh a elit pretium posuere et ut sapien. Morbi fermentum eget mi vel ultricies. Cras rutrum eros id justo posuere, ac posuere massa imperdiet. Sed in tempor diam.</li>
 </list>
 
-<p><font size="14">Custom List</a></p>
+<h2>Custom List</>
 
 <list type="custom" fill="rgb(0,128,0)">
 <li value="Orange">Lorem ipsum dolor sit amet.<li value="Lime">consectetur adipiscing elit.</li><li value="Lemon">Etiam vel tempor massa.<li value="Limincello">Donec ut lectus nisl.</li></li></li>
@@ -32,7 +32,7 @@
 <li>Proin imperdiet elit malesuada, vehicula nisl vitae, porta libero. Quisque leo purus, eleifend quis ex eu, tristique ornare quam. Curabitur sit amet ex ut leo gravida eleifend eu auctor orci.</li>
 </list>
 
-<p><font size="14">Bullet Point List</a></p>
+<h2>Bullet Point List</>
 
 <list type="bullet" fill="rgb(128,0,0)">
 <li>Morbi sit amet pretium est, id lobortis turpis. Integer mollis dapibus porttitor. Pellentesque aliquet ornare neque, non auctor quam pretium eget. Cras eget egestas leo.</li>

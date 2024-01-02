@@ -1156,9 +1156,9 @@ private:
          else if (shape->ColourSpace IS VCS::LINEAR_RGB) state.mLinearRGB = true; // Use the parent value unless a specific CS is required by the client
          else if (shape->ColourSpace IS VCS::SRGB) state.mLinearRGB = false;
 
-         if (shape->LineJoin != agg::inherit_join)   state.mLineJoin  = shape->LineJoin;
+         if (shape->LineJoin  != agg::inherit_join)  state.mLineJoin  = shape->LineJoin;
          if (shape->InnerJoin != agg::inner_inherit) state.mInnerJoin = shape->InnerJoin;
-         if (shape->LineCap != agg::inherit_cap)     state.mLineCap   = shape->LineCap;
+         if (shape->LineCap   != agg::inherit_cap)   state.mLineCap   = shape->LineCap;
          state.mOpacity = shape->Opacity * state.mOpacity;
 
          // Support for enable-background="new".  This requires the bitmap to have an alpha channel so that
@@ -1263,6 +1263,11 @@ private:
                      auto s_apply     = state.mApplyTransform;
                      state.mTransform      = view->Transform;
                      state.mApplyTransform = true;
+
+                     if (view->FillPattern->Units IS VUNIT::BOUNDING_BOX) {
+                        view->FillPattern->Scene->setPageWidth(view->vpFixedWidth);
+                        view->FillPattern->Scene->setPageHeight(view->vpFixedHeight);
+                     }
 
                      draw_vectors(view->FillPattern->Viewport, state);
 

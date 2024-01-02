@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
-<body face="courier" link="rgb(60,60,130)" fontfill="rgb(128,0,0)" fontsize="12"/>
+<body face="courier" link="rgb(60,60,130)" font-fill="rgb(128,0,0)" font-size="12"/>
 
 <page name="Index">
 

@@ -85,11 +85,13 @@ private:
       DOUBLE height;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text gutter is aligned to the base line
       DOUBLE x;            // Starting horizontal position
       DOUBLE word_height;  // Height of the current word (including inline graphics), utilised for word wrapping
+      DOUBLE leading;      // Height multiplier to apply to the first line of a paragraph.  Must be 1.0 or greater
 
       void reset(DOUBLE LeftMargin) {
          x      = LeftMargin;
          gutter = 0;
          height = 0;
+         leading = 1.0;
       }
 
       void full_reset(DOUBLE LeftMargin) {
@@ -170,15 +172,15 @@ private:
    inline void check_line_height() {
       if (m_font->LineSpacing >= m_line.height) {
          m_line.height = m_font->LineSpacing;
-         m_line.gutter = m_font->LineSpacing - m_font->Ascent;
+         m_line.gutter = m_font->Gutter;
       }
    }
 
+   WRAP lay_widget(widget_mgr &);
    CELL lay_cell(bc_table *);
    void lay_cell_end();
    void lay_font();
    void lay_font_end();
-   WRAP lay_image();
    void lay_index();
    bool lay_list_end();
    void lay_paragraph_end();
@@ -242,11 +244,11 @@ CELL layout::lay_cell(bc_table *Table)
 
    if (Table->collapsed) {
       //if (cell.column IS 0);
-      //else cell.AbsX += Table->cell_hspacing;
+      //else cell.AbsX += Table->cell_h_spacing;
    }
-   else cell.x += Table->cell_hspacing;
+   else cell.x += Table->cell_h_spacing;
 
-   if (cell.column IS 0) cell.x += Table->strokeWidth;
+   if (cell.column IS 0) cell.x += Table->stroke_width;
 
    cell.width  = Table->columns[cell.column].width; // Minimum width for the cell's column
    cell.height = stack_row.top()->row_height;
@@ -309,8 +311,8 @@ CELL layout::lay_cell(bc_table *Table)
 
    Table->row_width += Table->columns[cell.column].width;
 
-   if (!Table->collapsed) Table->row_width += Table->cell_hspacing;
-   else if ((cell.column + cell.col_span) < LONG(Table->columns.size())-1) Table->row_width += Table->cell_hspacing;
+   if (!Table->collapsed) Table->row_width += Table->cell_h_spacing;
+   else if ((cell.column + cell.col_span) < LONG(Table->columns.size())-1) Table->row_width += Table->cell_h_spacing;
 
    if ((cell.height > stack_row.top()->row_height) or (stack_row.top()->vertical_repass)) {
       // A repass will be required if the row height has increased and vectors or tables have been used
@@ -329,10 +331,10 @@ CELL layout::lay_cell(bc_table *Table)
 
    m_cursor_x += Table->columns[cell.column].width;
 
-   if (!Table->collapsed) m_cursor_x += Table->cell_hspacing;
-   else if ((cell.column + cell.col_span) < LONG(Table->columns.size())) m_cursor_x += Table->cell_hspacing;
+   if (!Table->collapsed) m_cursor_x += Table->cell_h_spacing;
+   else if ((cell.column + cell.col_span) < LONG(Table->columns.size())) m_cursor_x += Table->cell_h_spacing;
 
-   if (cell.column IS 0) m_cursor_x += Table->strokeWidth;
+   if (cell.column IS 0) m_cursor_x += Table->stroke_width;
 
    if (!cell.edit_def.empty()) {
       // The area of each edit cell is logged for assisting interaction between the mouse pointer and the cells.
@@ -343,99 +345,102 @@ CELL layout::lay_cell(bc_table *Table)
 }
 
 //********************************************************************************************************************
-// Calculate the image position.  The host rectangle is modified in gen_scene_graph() as this is the most optimal
+// Calculate the widget position.  The host rectangle is modified in gen_scene_graph() as this is the most optimal
 // approach (i.e. if the page width expands during layout).
 //
-// NOTE: If you ever see an image unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
+// NOTE: If you ever see a widget unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
 // segment.
 
-WRAP layout::lay_image()
+WRAP layout::lay_widget(widget_mgr &Widget)
 {
-   auto &image = m_stream->lookup<bc_image>(idx);
-
-   if (!image.floating()) check_line_height(); // Necessary for inline images in case they are the first 'character' on the line.
+   if (!Widget.floating()) check_line_height(); // Necessary for inline widgets in case they are the first 'character' on the line.
 
    // Calculate the final width and height.
 
-   if (image.width_pct) {
-      image.final_width = image.width * (m_page_width - m_left_margin - m_right_margin);
+   if (Widget.width_pct) {
+      Widget.final_width = Widget.width * (m_page_width - m_left_margin - m_right_margin);
    }
-   else if (!image.width) {
-      if (image.height) {
-         if (image.height_pct) {
-            if (image.floating()) image.final_width = image.height * (m_page_width - m_left_margin - m_right_margin);
-            else image.final_width = image.height * m_font->Ascent;
+   else if (!Widget.width) {
+      if (Widget.height) {
+         if (Widget.height_pct) {
+            if (Widget.floating()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_right_margin);
+            else Widget.final_width = Widget.height * m_font->Ascent;
          }
-         else image.final_width = image.height;
+         else Widget.final_width = Widget.height;
       }
-      else image.final_width = m_font->Ascent;
+      else Widget.final_width = m_font->Ascent;
    }
-   else image.final_width = image.width;
+   else Widget.final_width = Widget.width;
 
-   if (image.height_pct) {
-      if (image.floating()) image.final_height = image.height * (m_page_width - m_left_margin - m_right_margin);
-      else image.final_height = image.height * m_font->Ascent;
+   if (Widget.height_pct) {
+      if (Widget.floating()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_right_margin);
+      else Widget.final_height = Widget.height * m_font->Ascent;
    }
-   else if (!image.height) {
-      if (image.floating()) image.final_height = image.final_width;
-      else image.final_height = m_font->Ascent;
+   else if (!Widget.height) {
+      if (Widget.floating()) Widget.final_height = Widget.final_width;
+      else Widget.final_height = m_font->Ascent;
    }
-   else image.final_height = image.height;
+   else Widget.final_height = Widget.height;
 
-   if (image.final_height < 0.01) image.final_height = 0.01;
-   if (image.final_width < 0.01) image.final_width = 0.01;
+   if (Widget.final_height < 0.01) Widget.final_height = 0.01;
+   if (Widget.final_width < 0.01) Widget.final_width = 0.01;
 
-   if (image.padding) {
-      auto hypot = fast_hypot(image.final_width, image.final_height);
-      image.final_pad.left   = image.pad.left_pct ? (image.pad.left * hypot) : image.pad.left;
-      image.final_pad.top    = image.pad.top_pct ? (image.pad.top * hypot) : image.pad.top;
-      image.final_pad.right  = image.pad.right_pct ? (image.pad.right * hypot) : image.pad.right;
-      image.final_pad.bottom = image.pad.bottom_pct ? (image.pad.bottom * hypot) : image.pad.bottom;
+   if (Widget.padding) {
+      auto hypot = fast_hypot(Widget.final_width, Widget.final_height);
+      Widget.final_pad.left   = Widget.pad.left_pct ? (Widget.pad.left * hypot) : Widget.pad.left;
+      Widget.final_pad.top    = Widget.pad.top_pct ? (Widget.pad.top * hypot) : Widget.pad.top;
+      Widget.final_pad.right  = Widget.pad.right_pct ? (Widget.pad.right * hypot) : Widget.pad.right;
+      Widget.final_pad.bottom = Widget.pad.bottom_pct ? (Widget.pad.bottom * hypot) : Widget.pad.bottom;
    }
 
    auto wrap_result = WRAP::DO_NOTHING;
 
-   if (image.floating()) {
+   if (!Widget.label.empty()) {
+      Widget.label_width = fntStringWidth(m_font, Widget.label.c_str(), -1);
+   }
+   else Widget.label_width = 0;
+
+   if (Widget.floating()) {
       // Calculate horizontal position
 
-      if ((image.align & ALIGN::LEFT) != ALIGN::NIL) {
-         image.x = m_left_margin;
+      if ((Widget.align & ALIGN::LEFT) != ALIGN::NIL) {
+         Widget.x = m_left_margin;
       }
-      else if ((image.align & ALIGN::CENTER) != ALIGN::NIL) {
-         // We use the left margin and not the cursor for calculating the center because the image is floating.
-         image.x = m_left_margin + ((m_align_width - (image.final_width + image.final_pad.left + image.final_pad.right)) * 0.5);
+      else if ((Widget.align & ALIGN::CENTER) != ALIGN::NIL) {
+         // We use the left margin and not the cursor for calculating the center because the widget is floating.
+         Widget.x = m_left_margin + ((m_align_width - (Widget.final_width + Widget.label_width + Widget.final_pad.left + Widget.final_pad.right)) * 0.5);
       }
-      else if ((image.align & ALIGN::RIGHT) != ALIGN::NIL) {
-         image.x = m_align_width - (image.final_width + image.final_pad.left + image.final_pad.right);
+      else if ((Widget.align & ALIGN::RIGHT) != ALIGN::NIL) {
+         Widget.x = m_align_width - (Widget.final_width + Widget.label_width + Widget.final_pad.left + Widget.final_pad.right);
       }
-      else image.x = m_cursor_x;
+      else Widget.x = m_cursor_x;
 
       add_graphics_segment();
 
-      // For a floating image we need to declare a clip region based on the final image dimensions.
+      // For a floating widget we need to declare a clip region based on the final widget dimensions.
       // TODO: Add support for masked clipping through SVG paths.
 
-      m_clips.emplace_back(image.x, m_cursor_y,
-         image.x + image.final_pad.left + image.final_width + image.final_pad.right,
-         m_cursor_y + image.final_pad.top + image.final_height + image.final_pad.bottom,
+      m_clips.emplace_back(Widget.x, m_cursor_y,
+         Widget.x + Widget.final_pad.left + Widget.final_width + Widget.label_width + Widget.final_pad.right,
+         m_cursor_y + Widget.final_pad.top + Widget.final_height + Widget.final_pad.bottom,
          idx, false, "Image");
    }
-   else { // Image is inline and must be treated like a text character.
+   else { // Widget is inline and must be treated like a text character.
       if (!m_word_width) m_word_index.set(idx); // Save the index of the new word
 
       // Checking for wordwrap here is optimal, BUT bear in mind that if characters immediately follow the
-      // image then it is also possible for word-wrapping to occur later.  Note that the line height isn't
-      // adjusted in this call because if a wrap occurs then the image won't be in the former segment.
+      // widget then it is also possible for word-wrapping to occur later.  Note that the line height isn't
+      // adjusted in this call because if a wrap occurs then the widget won't be in the former segment.
 
-      wrap_result = check_wordwrap("Image", m_page_width, m_word_index,
-         m_cursor_x, m_cursor_y, m_word_width + image.full_width(), m_line.height);
+      wrap_result = check_wordwrap("Widget", m_page_width, m_word_index,
+         m_cursor_x, m_cursor_y, m_word_width + Widget.full_width(), m_line.height);
 
-      // The inline image will probably increase the height of the line, but due to the potential for delayed
+      // The inline widget will probably increase the height of the line, but due to the potential for delayed
       // word-wrapping (if we're part of an embedded word) we need to cache the value for now.
 
-      if (image.full_height() > m_line.word_height) m_line.word_height = image.full_height();
+      if (Widget.full_height() > m_line.word_height) m_line.word_height = Widget.full_height();
 
-      m_word_width += image.full_width();
+      m_word_width += Widget.full_width();
       m_kernchar   = 0;
    }
 
@@ -475,6 +480,12 @@ void layout::lay_font()
 
 void layout::lay_font_end()
 {
+   if ((m_word_width > 0) and (m_line.height < m_font->LineSpacing)) {
+      // We need to record the line-height for the active word now, in case we revert to a smaller font.
+      m_line.height = m_font->LineSpacing;
+      m_line.gutter = m_font->Gutter;
+   }
+
    stack_font.pop();
    if (!stack_font.empty()) m_font = stack_font.top()->get_font();
 }
@@ -572,7 +583,7 @@ bool layout::lay_list_end()
    if (stack_list.empty()) {
       // At the end of a list, increase the whitespace to that of a standard paragraph.
       stream_char sc(idx, 0);
-      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->vspacing, sc, "ListEnd");
+      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->v_spacing, sc, "ListEnd");
       else end_line(NL::PARAGRAPH, 1.0, sc, "ListEnd");
    }
 
@@ -625,17 +636,17 @@ void layout::lay_row_end(bc_table *Table)
 
    // Increase the table height if the row extends beyond it
 
-   auto j = Row->y + Row->row_height + Table->cell_vspacing;
+   auto j = Row->y + Row->row_height + Table->cell_v_spacing;
    if (j > Table->y + Table->height) {
       Table->height = j - Table->y;
    }
 
    // Advance the cursor by the height of this row
 
-   m_cursor_y += Row->row_height + Table->cell_vspacing;
+   m_cursor_y += Row->row_height + Table->cell_v_spacing;
    m_cursor_x = Table->x;
    DLAYOUT("Row ends, advancing down by %g+%g, new height: %g, y-cursor: %g",
-      Row->row_height, Table->cell_vspacing, Table->height, m_cursor_y);
+      Row->row_height, Table->cell_v_spacing, Table->height, m_cursor_y);
 
    if (Table->row_width > Table->width) Table->width = Table->row_width;
 
@@ -655,28 +666,16 @@ void layout::lay_paragraph()
       m_left_margin = stack_para.top()->x; // Reset the margin so that the next line will be flush with the parent
 
       if (m_paragraph_y > 0) {
-         if (stack_para.top()->leading_ratio > stack_para.top()->vspacing) ratio = stack_para.top()->leading_ratio;
-         else ratio = stack_para.top()->vspacing;
+         if (stack_para.top()->leading > stack_para.top()->v_spacing) ratio = stack_para.top()->leading;
+         else ratio = stack_para.top()->v_spacing;
       }
-      else ratio = stack_para.top()->vspacing;
+      else ratio = stack_para.top()->v_spacing;
 
       stream_char sc(idx, 0);
       end_line(NL::PARAGRAPH, ratio, sc, "PS");
-
-      stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
    }
-   else {
-      stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
 
-      // Leading ratio is only used if the paragraph is preceeded by content.
-      // This check ensures that the first paragraph is always flush against
-      // the top of the page.
-
-      if ((stack_para.top()->leading_ratio > 0) and (m_paragraph_y > 0)) {
-         stream_char sc(idx, 0);
-         end_line(NL::PARAGRAPH, stack_para.top()->leading_ratio, sc, "PS");
-      }
-   }
+   stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
 
    auto escpara = stack_para.top();
 
@@ -693,7 +692,7 @@ void layout::lay_paragraph()
          if (!escpara->value.empty()) {
             auto strwidth = fntStringWidth(m_font, escpara->value.c_str(), -1) + 10;
             if (strwidth > list->item_indent) {
-               list->item_indent     = strwidth;
+               list->item_indent    = strwidth;
                escpara->item_indent = strwidth;
                list->repass         = true;
             }
@@ -713,9 +712,14 @@ void layout::lay_paragraph()
    m_cursor_x    += escpara->block_indent + escpara->item_indent;
    m_line.x      += escpara->block_indent + escpara->item_indent;
 
+   if ((escpara->leading >= 1.0) and (m_paragraph_y > 0)) {
+      // Leading is applied only if there is at least one previous line of content.
+      m_line.leading = escpara->leading;
+   }
+
    // Paragraph management variables
 
-   if (!stack_list.empty()) escpara->vspacing = stack_list.top()->vspacing;
+   if (!stack_list.empty()) escpara->v_spacing = stack_list.top()->v_spacing;
 
    escpara->y = m_cursor_y;
    escpara->height = 0;
@@ -733,14 +737,14 @@ void layout::lay_paragraph_end()
       auto para = stack_para.top();
       m_paragraph_bottom = para->y + para->height;
 
-      end_line(NL::PARAGRAPH, para->vspacing, sc, "PE");
+      end_line(NL::PARAGRAPH, para->v_spacing, sc, "PE");
 
       m_left_margin = para->x - para->block_indent;
       m_cursor_x    = para->x - para->block_indent;
       m_line.x      = para->x - para->block_indent;
       stack_para.pop();
    }
-   else end_line(NL::PARAGRAPH, 0, sc, "PE-NP"); // Technically an error when there's no matching PS code.
+   else end_line(NL::PARAGRAPH, 1.0, sc, "PE-NP"); // Technically an error when there's no matching PS code.
 }
 
 //********************************************************************************************************************
@@ -762,19 +766,19 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
       esctable->cells_expanded = true;
 
       if (!esctable->columns.empty()) {
-         colwidth = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
+         colwidth = (esctable->stroke_width * 2) + esctable->cell_h_spacing;
          for (auto &col : esctable->columns) {
-            colwidth += col.width + esctable->cell_hspacing;
+            colwidth += col.width + esctable->cell_h_spacing;
          }
-         if (esctable->collapsed) colwidth -= esctable->cell_hspacing * 2; // Collapsed tables have no spacing allocated on the sides
+         if (esctable->collapsed) colwidth -= esctable->cell_h_spacing * 2; // Collapsed tables have no spacing allocated on the sides
 
          if (colwidth < esctable->width) { // Cell layout is less than the pre-determined table width
             // Calculate the amount of additional space that is available for cells to expand into
 
-            LONG avail_width = esctable->width - (esctable->strokeWidth * 2) -
-               (esctable->cell_hspacing * (esctable->columns.size() - 1));
+            LONG avail_width = esctable->width - (esctable->stroke_width * 2) -
+               (esctable->cell_h_spacing * (esctable->columns.size() - 1));
 
-            if (!esctable->collapsed) avail_width -= (esctable->cell_hspacing * 2);
+            if (!esctable->collapsed) avail_width -= (esctable->cell_h_spacing * 2);
 
             // Count the number of columns that do not have a fixed size
 
@@ -843,10 +847,10 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
    }
    else minheight = esctable->min_height;
 
-   if (minheight > esctable->height + esctable->cell_vspacing + esctable->strokeWidth) {
+   if (minheight > esctable->height + esctable->cell_v_spacing + esctable->stroke_width) {
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
-         auto h = minheight - (esctable->height + esctable->cell_vspacing + esctable->strokeWidth);
+         auto h = minheight - (esctable->height + esctable->cell_v_spacing + esctable->stroke_width);
          DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
             minheight, stack_row.top()->row_height, h, esctable->min_height, esctable->y);
          stack_row.top()->row_height += h;
@@ -857,7 +861,7 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
 
    // Adjust for cellspacing at the bottom
 
-   esctable->height += esctable->cell_vspacing + esctable->strokeWidth;
+   esctable->height += esctable->cell_v_spacing + esctable->stroke_width;
 
    // Restart if the width of the table will force an extension of the page.
 
@@ -932,614 +936,6 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
 }
 
 //********************************************************************************************************************
-// Embedded vectors are always contained by a VectorViewport irrespective of whether or not the client asked for one.
-
-#if 0
-WRAP layout::lay_vector(LONG Offset, LONG PageHeight, bool &VerticalRepass, bool &CheckWrap)
-{
-   pf::Log log;
-   DOUBLE cx, cy, cr, cb;
-   OBJECTID vector_id;
-
-   // Tell the vector our cursor_x and cursor_y positions so that it can position itself within the stream
-   // layout.  The vector will tell us its clipping boundary when it returns (if it has a clipping boundary).
-
-   auto &vec = stream_data<::bc_vector>(Self, idx);
-   if (!(vector_id = vec.object_id)) return WRAP::DO_NOTHING;
-   if (vec.owned) return WRAP::DO_NOTHING; // Do not manipulate vectors that have owners
-
-   // cell: Reflects the page/cell coordinates and width/height of the page/cell.
-
-wrap_vector:
-   cx = 0;
-   cy = 0;
-   cr  = cx + m_page_width;
-   if ((!Offset) and (PageHeight < Self->Area.Height)) {
-      cb = Self->Area.Height; // The reported page height cannot be shorter than the document's viewport area
-   }
-   else cb = PageHeight;
-
-   if (m_line.height) {
-      if (cb < m_cursor_y + m_line.height) cb = m_line.height;
-   }
-   else if (cb < m_cursor_y + 1) cb = m_cursor_y + 1;
-
-   LONG dimensions = 0;
-   ALIGN align;
-   DOUBLE cell_width, cell_height, left_margin, line_height, zone_height;
-   ERROR error;
-
-   pf::ScopedObjectLock<objVectorViewport> vector(vector_id, 5000);
-   if (!vector.granted()) {
-      if (vector.error IS ERR_DoesNotExist) vec.object_id = 0;
-      return WRAP::DO_NOTHING;
-   }
-
-   DLAYOUT("[Idx:%d] The %s's available page area is (%gx%g, %gx%g), cursor %gx%g",
-      idx, vector->Class->ClassName, cx, cr, cy, cb, m_cursor_x, m_cursor_y);
-
-#if true
-   DOUBLE new_y, new_width, new_height, calc_x;
-   vector->get(FID_Dimensions, &dimensions);
-
-   left_margin = m_left_margin;
-   line_height = m_line.height ? (m_line.height - m_line.gutter) : m_font->Ascent;
-
-   cell_width  = cr - cx;
-   cell_height = cb - cy;
-   align = m_font->Align;
-
-   // Relative dimensions can use the full size of the page/cell only when text-wrapping is disabled.
-
-   zone_height = line_height;
-   cx  += left_margin;
-   cell_width  = cell_width - m_right_margin - left_margin; // Remove margins from the cell_width because we're only interested in the space available to the vector
-   DOUBLE new_x = m_cursor_x;
-
-   // WIDTH
-
-   if (dimensions & DMF_RELATIVE_WIDTH) {
-      DOUBLE wp;
-      vector->getPercentage(FID_Width, &wp);
-      new_width = cell_width * wp;
-      if (new_width < 1) new_width = 1;
-      else if (new_width > cell_width) new_width = cell_width;
-   }
-   else if (dimensions & DMF_FIXED_WIDTH) vector->get(FID_Width, &new_width);
-   else if ((dimensions & DMF_X) and (dimensions & DMF_X_OFFSET)) {
-      calc_x = new_x;
-
-      if (dimensions & DMF_FIXED_X);
-      else {
-         // Relative x, such as 10% would mean 'NewX must be at least 10% beyond 'cell.left + leftmargin'
-         DOUBLE xp;
-         vector->getPercentage(FID_X, &xp);
-         DOUBLE minx = cx + cell_width * xp;
-         if (minx > calc_x) calc_x = minx;
-      }
-
-      // Calculate width
-
-      if (dimensions & DMF_FIXED_X_OFFSET) {
-         DOUBLE xo;
-         vector->get(FID_XOffset, &xo);
-         new_width = cell_width - xo - (calc_x - cx);
-      }
-      else {
-         DOUBLE xop;
-         vector->getPercentage(FID_XOffset, &xop);
-         new_width = cell_width - (calc_x - cx) - (cell_width * xop);
-      }
-
-      if (new_width < 1) new_width = 1;
-      else if (new_width > cell_width) new_width = cell_width;
-   }
-   else {
-      DLAYOUT("No width specified for %s #%d (dimensions $%x), defaulting to 1 pixel.",
-         vector->Class->ClassName, vector->UID, dimensions);
-      new_width = 1;
-   }
-
-   // X COORD
-
-   if (((align & ALIGN::HORIZONTAL) != ALIGN::NIL) and (dimensions & DMF_WIDTH)) {
-      new_x = new_x + ((cell_width - new_width) * 0.5);
-   }
-   else if (((align & ALIGN::RIGHT) != ALIGN::NIL) and (dimensions & DMF_WIDTH)) {
-      new_x = m_page_width - m_right_margin - new_width;
-   }
-   else if (dimensions & DMF_RELATIVE_X) {
-      DOUBLE xp;
-      vector->getPercentage(FID_X, &xp);
-      new_x = m_cursor_x + xp * cell_width;
-   }
-   else if ((dimensions & DMF_WIDTH) and (dimensions & DMF_X_OFFSET)) {
-      if (dimensions & DMF_FIXED_X_OFFSET) {
-         DOUBLE xo;
-         vector->get(FID_XOffset, &xo);
-         new_x = m_cursor_x + (cell_width - new_width - xo);
-      }
-      else {
-         DOUBLE xop;
-         vector->getPercentage(FID_XOffset, &xop);
-         new_x = m_cursor_x + cell_width - new_width - (cell_width * xop);
-      }
-   }
-   else if (dimensions & DMF_FIXED_X) {
-      vector->get(FID_X, &new_x);
-      new_x += m_cursor_x;
-   }
-
-   // HEIGHT
-
-   if (dimensions & DMF_RELATIVE_HEIGHT) {
-      // If the vector is inside a paragraph <p> section, the height will be calculated based
-      // on the current line height.  Otherwise, the height is calculated based on the cell/page
-      // height.
-
-      DOUBLE hp;
-      vector->getPercentage(FID_Height, &hp);
-      new_height = zone_height * hp;
-      if (new_height > zone_height) new_height = zone_height;
-   }
-   else if (dimensions & DMF_FIXED_HEIGHT) {
-      vector->get(FID_Height, &new_height);
-   }
-   else if ((dimensions & DMF_Y) and (dimensions & DMF_Y_OFFSET)) {
-      DOUBLE yp, yo, yop;
-      if (dimensions & DMF_FIXED_Y) vector->get(FID_Y, &new_y);
-      else {
-         vector->getPercentage(FID_Y, &yp);
-         new_y = zone_height * yp;
-      }
-
-      if (dimensions & DMF_FIXED_Y_OFFSET) {
-         vector->get(FID_YOffset, &yo);
-         new_height = zone_height - yo;
-      }
-      else {
-         vector->getPercentage(FID_YOffset, &yop);
-         new_height = zone_height - zone_height * yop;
-      }
-
-      if (new_height > zone_height) new_height = zone_height;
-   }
-   else new_height = line_height;
-
-   if (new_height < 1) new_height = 1;
-
-   // Y COORD
-
-   const DOUBLE top = vec.ignore_cursor ? cy : m_cursor_y;
-
-   if (dimensions & DMF_RELATIVE_Y) {
-      DOUBLE yp;
-      vector->getPercentage(FID_Y, &yp);
-      new_y = top + yp * line_height;
-   }
-   else if ((dimensions & DMF_HEIGHT) and (dimensions & DMF_Y_OFFSET)) {
-      DOUBLE height, yo, yop;
-      vector->get(FID_Height, &height);
-      if (dimensions & DMF_FIXED_Y_OFFSET) {
-         vector->get(FID_YOffset, &yo);
-         new_y = cy + zone_height - height - yo;
-      }
-      else {
-         vector->getPercentage(FID_YOffset, &yop);
-         new_y = top + zone_height - height - (zone_height * yop);
-      }
-   }
-   else if (dimensions & DMF_Y_OFFSET) {
-      // This section resolves situations where no explicit Y coordinate has been defined,
-      // but the Y offset has been defined.  This means we leave the existing Y coordinate as-is and
-      // adjust the height.
-
-      if (dimensions & DMF_FIXED_Y_OFFSET) {
-         DOUBLE yo;
-         vector->get(FID_YOffset, &yo);
-         new_height = zone_height - yo;
-      }
-      else {
-         DOUBLE yop;
-         vector->getPercentage(FID_YOffset, &yop);
-         new_height = zone_height - zone_height * yop;
-      }
-
-      if (new_height < 1) new_height = 1;
-      if (new_height > zone_height) new_height = zone_height;
-      new_y = top;
-   }
-   else if (dimensions & DMF_FIXED_Y) {
-      DOUBLE y;
-      vector->get(FID_Y, &y);
-      new_y = top + y;
-   }
-
-   // Set the clipping
-
-   DLAYOUT("Clip region is being restricted to the bounds: %gx%g,%gx%g", new_x, new_y, new_width, new_height);
-
-   cx = new_x;
-   cy = new_y;
-   cr = new_x + new_width;
-   cb = new_y + new_height;
-
-   // If BlockRight is true, no text may be printed to the right of the vector.
-
-   if (vec.block_right) {
-      DLAYOUT("Block Right: Expanding clip.right boundary from %g to %g.",
-         cr, m_page_width - m_right_margin);
-      cr = m_page_width - m_right_margin; //cell_width;
-   }
-
-   // If BlockLeft is true, no text may be printed to the left of the vector (but not
-   // including text that has already been printed).
-
-   if (vec.block_left) cx  = 0; // left_margin
-
-   DOUBLE width_check = vec.ignore_cursor ? cr : cr + m_right_margin;
-
-   DLAYOUT("#%d, Pos: %gx%g,%gx%g, Align: $%.8x, WidthCheck: %g/%g",
-      vector->UID, new_x, new_y, new_width, new_height, LONG(align), width_check, m_page_width);
-   DLAYOUT("Clip Size: %gx%g,%gx%g, LineHeight: %g",
-      cx, cy, cell_width, cell_height, line_height);
-
-   dimensions = dimensions;
-   error = ERR_Okay;
-
-   acRedimension(vector.obj, new_x, new_y, 0.0, new_width, new_height, 0.0);
-
-#else
-   left_margin = m_left_margin;
-   line_height = m_line.height ? (m_line.height - m_line.gutter) : m_font->Ascent;
-
-   cell_width  = cr - cx;
-   cell_height = cb - cy;
-   align = m_font->Align;
-
-   // The vector can extend the line's height if the GraphicHeight is larger than the line.
-   //
-   // Alignment calculations are restricted to this area, which forms the initial Bounds*:
-   //
-   //   X: CursorX
-   //   Y: CursorY
-   //   Right: PageWidth - RightMargin
-   //   Bottom: LineHeight - GraphicHeight
-   //
-   // If IgnoreCursor is defined then the user has set fixed values for both X and Y.
-   // The cursor is completely ignored and the existing Bound* fields will be used without alteration.
-   // Use of IgnoreCursor also means that the left, right, top and bottom margins are all ignored.  Text
-   // will still be wrapped around the boundaries as long as LAYOUT_BACKGROUND isn't set.
-
-   LONG extclip_left = 0;
-   LONG extclip_right = 0;
-
-   if (vec.IgnoreCursor);
-   else {
-      // In cursor-relative (normal) layout mode, the graphic will be restricted by
-      // the margins, so we adjust cell.left and the cell_width accordingly.
-      //
-      // The BoundWidth and BoundHeight can be expanded if the GraphicWidth/GraphicHeight exceed the bound values.
-      //
-      // Relative width/height values are allowed.
-      //
-      // A relative XOffset is allowed, this will be computed against the cell_width.
-      //
-      // Y Coordinates are allowed, these are computed from the top of the line.
-      //
-      // Relative height and vertical offsets are allowed, these are computed from the line_height.
-      //
-      // Vertical alignment is managed within the bounds of the vector when
-      // it is drawn, so we do not cater for vertical alignment when positioning
-      // the vector in this code.
-
-      cx += left_margin;
-      cell_width = cell_width - right_margin - left_margin; // Remove margins from the cell_width because we're only interested in the space available to the vector
-   }
-
-   // Adjust the bounds to reflect special dimension settings.  The minimum
-   // width and height is 1, and the bounds may not exceed the size of the
-   // available cell space (because a width of 110% would cause infinite recursion).
-
-   if (vec.IgnoreCursor) vector->BoundX = cx;
-   else vector->BoundX = m_cursor_x;
-
-   vector->BoundWidth = 1; // Just a default in case no width in the Dimension flags is defined
-
-   if ((align & ALIGN::HORIZONTAL) and (vector->GraphicWidth)) {
-      // In horizontal mode where a GraphicWidth is preset, we force the BoundX and BoundWidth to their
-      // exact settings and override any attempt by the user to have preset the X and Width fields.
-      // The vector will attempt a horizontal alignment within the bounds, this will be to no effect as the
-      // GraphicWidth is equivalent to the BoundWidth.  Text can still appear to the left and right of the vector,
-      // if the author does not like this then the BlockLeft and BlockRight options can be used to extend
-      // the clipping region.
-
-
-      LONG new_x = vector->BoundX + ((cell_width - (vector->GraphicWidth + vec.margins.left + vec.margins.right))/2);
-      if (new_x > vector->BoundX) vector->BoundX = new_x;
-      vector->BoundX += vec.margins.left;
-      vector->BoundWidth = vector->GraphicWidth;
-      extclip_left = vec.margins.left;
-      extclip_right = vec.margins.right;
-   }
-   else if ((align & ALIGN::RIGHT) and (vector->GraphicWidth)) {
-      LONG new_x = (width - right_margin) - (vector->GraphicWidth + vec.margins.right);
-      if (new_x > vector->BoundX) vector->BoundX = new_x;
-      vector->BoundWidth = vector->GraphicWidth;
-      extclip_left = vec.margins.left;
-      extclip_right = vec.margins.right;
-   }
-   else {
-      LONG xoffset;
-
-      if (dimensions & DMF_FIXED_X_OFFSET) xoffset = vector->XOffset;
-      else if (dimensions & DMF_RELATIVE_X_OFFSET) xoffset = (DOUBLE)cell_width * (DOUBLE)vector->XOffset;
-      else xoffset = 0;
-
-      if (dimensions & DMF_RELATIVE_X) {
-         LONG new_x = vector->BoundX + vec.margins.left + vector->x * cell_width;
-         if (new_x > vector->BoundX) vector->BoundX = new_x;
-         extclip_left = 0;
-         extclip_right = 0;
-      }
-      else if (dimensions & DMF_FIXED_X) {
-         LONG new_x = vector->BoundX + vector->x + vec.margins.left;
-         if (new_x > vector->BoundX) vector->BoundX = new_x;
-         extclip_left = 0;
-         extclip_right = 0;
-      }
-
-      // WIDTH
-
-      if (dimensions & DMF_RELATIVE_WIDTH) {
-         vector->BoundWidth = (DOUBLE)(cell_width - (vector->BoundX - cx)) * (DOUBLE)vector->width;
-         if (vector->BoundWidth < 1) vector->BoundWidth = 1;
-         else if (vector->BoundWidth > cell_width) vector->BoundWidth = cell_width;
-      }
-      else if (dimensions & DMF_FIXED_WIDTH) vector->BoundWidth = vector->width;
-
-      // GraphicWidth and GraphicHeight settings will expand the width and height
-      // bounds automatically unless the width and height fields in the Layout have been preset
-      // by the user.
-      //
-      // NOTE: If the vector supports GraphicWidth and GraphicHeight, it must keep
-      // them up to date if they are based on relative values.
-
-      if ((vector->GraphicWidth > 0) and (!(dimensions & DMF_WIDTH))) {
-         DLAYOUT("Setting BoundWidth from %d to preset GraphicWidth of %d", vector->BoundWidth, vector->GraphicWidth);
-         vector->BoundWidth = vector->GraphicWidth;
-      }
-      else if ((dimensions & DMF_X) and (dimensions & DMF_X_OFFSET)) {
-         if (dimensions & DMF_FIXED_X_OFFSET) vector->BoundWidth = cell_width - xoffset - (vector->BoundX - cx);
-         else vector->BoundWidth = cell_width - (vector->BoundX - cx) - xoffset;
-
-         if (vector->BoundWidth < 1) vector->BoundWidth = 1;
-         else if (vector->BoundWidth > cell_width) vector->BoundWidth = cell_width;
-      }
-      else if ((dimensions & DMF_WIDTH) and
-               (dimensions & DMF_X_OFFSET)) {
-         if (dimensions & DMF_FIXED_X_OFFSET) {
-            LONG new_x = vector->BoundX + cell_width - vector->BoundWidth - xoffset - vec.margins.right;
-            if (new_x > vector->BoundX) vector->BoundX = new_x;
-            extclip_left = vec.margins.left;
-         }
-         else {
-            LONG new_x = vector->BoundX + cell_width - vector->BoundWidth - xoffset;
-            if (new_x > vector->BoundX) vector->BoundX = new_x;
-         }
-      }
-      else {
-         if ((align & ALIGN::HORIZONTAL) and (dimensions & DMF_WIDTH)) {
-            LONG new_x = vector->BoundX + ((cell_width - (vector->BoundWidth + vec.margins.left + vec.margins.right))/2);
-            if (new_x > vector->BoundX) vector->BoundX = new_x;
-            vector->BoundX += vec.margins.left;
-            extclip_left = vec.margins.left;
-            extclip_right = vec.margins.right;
-         }
-         else if ((align & ALIGN::RIGHT) and (dimensions & DMF_WIDTH)) {
-            // Note that it is possible the BoundX may end up behind the cursor, or the cell's left margin.
-            // A check for this is made later, so don't worry about it here.
-
-            LONG new_x = (width - m_right_margin) - (vector->BoundWidth + vec.margins.right);
-            if (new_x > vector->BoundX) vector->BoundX = new_x;
-            extclip_left = vec.margins.left;
-            extclip_right = vec.margins.right;
-         }
-      }
-   }
-
-   // VERTICAL SUPPORT
-
-   LONG obj_y;
-
-   if (vec.IgnoreCursor) vector->BoundY = cy;
-   else vector->BoundY = m_cursor_y;
-
-   obj_y = 0;
-   if (dimensions & DMF_RELATIVE_Y)   obj_y = vector->y * line_height;
-   else if (dimensions & DMF_FIXED_Y) obj_y = vector->y;
-   obj_y += vector->TopMargin;
-   vector->BoundY += obj_y;
-   vector->BoundHeight = line_height - obj_y; // This is merely a default
-
-   LONG zone_height;
-
-   if ((Paragraph) or (PageHeight < 1)) zone_height = line_height;
-   else zone_height = PageHeight;
-
-   // HEIGHT
-
-   if (dimensions & DMF_RELATIVE_HEIGHT) {
-      // If the vector is inside a paragraph <p> section, the height will be calculated based
-      // on the current line height.  Otherwise, the height is calculated based on the cell/page
-      // height.
-
-      vector->BoundHeight = (DOUBLE)(zone_height - obj_y) * (DOUBLE)vector->height;
-      if (vector->BoundHeight > zone_height - obj_y) vector->BoundHeight = line_height - obj_y;
-   }
-   else if (dimensions & DMF_FIXED_HEIGHT) {
-      vector->BoundHeight = vector->height;
-   }
-
-   if ((vector->GraphicHeight > vector->BoundHeight) and (!(dimensions & DMF_HEIGHT))) {
-      DLAYOUT("Expanding BoundHeight from %d to preset GraphicHeight of %d", vector->BoundHeight, vector->GraphicHeight);
-      vector->BoundHeight = vector->GraphicHeight;
-   }
-   else {
-      if (vector->BoundHeight < 1) vector->BoundHeight = 1;
-
-      // This code deals with vertical offsets
-
-      if (dimensions & DMF_Y_OFFSET) {
-         if (dimensions & DMF_Y) {
-            if (dimensions & DMF_FIXED_Y_OFFSET) vector->BoundHeight = zone_height - vector->YOffset;
-            else vector->BoundHeight = zone_height - (DOUBLE)zone_height * (DOUBLE)vector->YOffset;
-
-            if (vector->BoundHeight > zone_height) vector->BoundHeight = zone_height;
-         }
-         else if (dimensions & DMF_HEIGHT) {
-            if (dimensions & DMF_FIXED_Y_OFFSET) vector->BoundY = cy + zone_height - vector->height - vector->YOffset;
-            else vector->BoundY += (DOUBLE)zone_height - (DOUBLE)vector->height - ((DOUBLE)zone_height * (DOUBLE)vector->YOffset);
-         }
-      }
-   }
-
-   if (layoutflags & (LAYOUT_BACKGROUND|LAYOUT_TILE)) {
-      error = ERR_NothingDone; // No text wrapping for background and tile layouts
-   }
-   else {
-      // Set the clipping
-
-      DLAYOUT("Clip region is being restricted to the bounds: %dx%d,%dx%d", vector->BoundX, vector->BoundY, vector->BoundWidth, vector->BoundHeight);
-
-      cx  = vector->BoundX - extclip_left;
-      cy   = vector->BoundY - vector->TopMargin;
-      cr = vector->BoundX + vector->BoundWidth + extclip_right;
-      cb = vector->BoundY + vector->BoundHeight + vector->BottomMargin;
-
-      // If BlockRight is set, no text may be printed to the right of the vector.  This has no impact
-      // on the vector's bounds.
-
-      if (vec.BlockRight) {
-         DLAYOUT("BlockRight: Expanding clip.right boundary from %d to %d.", cr, width - l.right_margin);
-         LONG new_right = width - right_margin; //cell_width;
-         if (new_right > cr) cr = new_right;
-      }
-
-      // If BlockLeft is set, no text may be printed to the left of the vector (but not
-      // including text that has already been printed).  This has no impact on the vector's
-      // bounds.
-
-      if (vec.BlockLeft) cx = IgnoreCursor ? 0 : m_left_margin;
-      width_check = IgnoreCursor ? cr : cr + m_right_margin;
-
-      DLAYOUT("#%d, Pos: %dx%d,%dx%d, Align: $%.8x, WidthCheck: %d/%d", vector->UID, vector->BoundX, vector->BoundY, vector->BoundWidth, vector->BoundHeight, align, vector->x), width_check, width);
-      DLAYOUT("Clip Size: %dx%d,%dx%d, LineHeight: %d, GfxSize: %dx%d, LayoutFlags: $%.8x", cx, cy, cell_width, cell_height, line_height, vector->GraphicWidth, vector->GraphicHeight, layoutflags);
-
-      dimensions = dimensions;
-      error = ERR_Okay;
-   }
-#endif
-
-   if (width_check) {
-      // The cursor must advance past the clipping region so that the segment positions will be
-      // correct when set.
-
-      CheckWrap = true;
-
-      // Check if the clipping region is invalid.  Invalid clipping regions are not added to the clip
-      // region list (i.e. layout of document text will ignore the presence of the vector).
-
-      if ((cb <= cy) or (cr <= cx)) {
-         if (auto name = vector->Name) log.warning("%s %s returned an invalid clip region of %gx%g,%gx%g", vector->Class->ClassName, name, cx, cy, cr, cb);
-         else log.warning("%s #%d returned an invalid clip region of %gx%g,%gx%g", vector->Class->ClassName, vector->UID, cx, cy, cr, cb);
-         return WRAP::DO_NOTHING;
-      }
-
-      // If the right-side of the vector extends past the page width, increase the width.
-
-      LONG left_check;
-
-      if (vec.ignore_cursor) left_check = 0;
-      else if (vec.block_left) left_check = m_left_margin;
-      else left_check = m_left_margin; //m_cursor_x;
-
-      if (m_page_width >= WIDTH_LIMIT);
-      else if ((cx < left_check) or (vec.ignore_cursor)) {
-         // The vector is < left-hand side of the page/cell, this means that we may have to force a page/cell width
-         // increase.
-         //
-         // Note: Vectors with IgnoreCursor are always checked here, because they aren't subject
-         // to wrapping due to the x/y being fixed.  Such vectors are limited to width increases only.
-
-         LONG cmp_width;
-
-         if (vec.ignore_cursor) cmp_width = (cr - cx);
-         else cmp_width = m_left_margin + (cr - cx) + m_right_margin;
-
-         if (m_page_width < cmp_width) {
-            DLAYOUT("Restarting as %s clip.left %g < %d and extends past the page width (%g > %g).", vector->Class->ClassName, cx, left_check, width_check, m_page_width);
-            m_page_width = cmp_width;
-            return WRAP::EXTEND_PAGE;
-         }
-      }
-      else if (width_check > m_page_width) {
-         // Perform a wrapping check if the vector possibly extends past the width of the page/cell.
-
-         DLAYOUT("Wrapping %s vector #%d as it extends past the page width (%g > %g).  Pos: %gx%g", vector->Class->ClassName, vector->UID, width_check, m_page_width, cx, cy);
-
-         auto ww = check_wordwrap("Vector", m_page_width, idx, cx, cy, cr - cx, cb - cy);
-
-         if (ww IS WRAP::EXTEND_PAGE) {
-            DLAYOUT("Expanding page width due to vector size.");
-            return WRAP::EXTEND_PAGE;
-         }
-         else if (ww IS WRAP::WRAPPED) {
-            DLAYOUT("Vector coordinates wrapped to %gx%g", cx, cy);
-            // The check_wordwrap() function will have reset m_cursor_x and m_cursor_y, so
-            // on our repass, the cell.left and cell.top will reflect this new cursor position.
-
-            goto wrap_vector;
-         }
-      }
-
-      DLAYOUT("Adding %s clip to the list: (%gx%g, %gx%g)", vector->Class->ClassName, cx, cy, cr-cx, cb-cy);
-
-      m_clips.emplace_back(cx, cy, cr, cb, idx, !vec.in_line, "Vector");
-
-      if (vec.in_line) {
-         if (cb > m_cursor_y) {
-            auto objheight = cb - m_cursor_y;
-            if ((m_inline) or (vec.in_line)) { // Inline graphics affect the line height.
-               if (objheight > m_line.word_height) m_line.word_height = objheight;
-            }
-         }
-
-         //if (cr > m_cursor_x) m_word_width += cr - m_cursor_x;
-
-         if (!stack_para.empty()) {
-            auto j = cb - stack_para.top()->y;
-            if (j > stack_para.top()->height) stack_para.top()->height = j;
-         }
-      }
-   }
-
-   // If the vector uses a relative height or vertical offset, a repass will be required if the page height
-   // increases.
-
-   if ((dimensions & (DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) and
-       ((!vec.in_line) or (vec.ignore_cursor))) {
-      DLAYOUT("Vertical repass may be required.");
-      VerticalRepass = true;
-   }
-
-   add_graphics_segment();
-
-   return WRAP::DO_NOTHING;
-}
-#endif
-
-//********************************************************************************************************************
 
 void layout::lay_set_margins(LONG &BottomMargin)
 {
@@ -1586,7 +982,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
 
    if (Start >= Stop) {
-      DLAYOUT("Cancelling new segment, no content in range %d-%d  \"%.20s\" (%s)",
+      DLAYOUT("Cancelling new segment, no content in range %d-%d \"%.20s\" (%s)",
          Start.index, Stop.index, printable(*m_stream, Start).c_str(), Debug.c_str());
       return;
    }
@@ -1597,9 +993,41 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (m_stream[0][i.index].code) {
+         case SCODE::BUTTON: {
+            auto &widget = m_stream->lookup<bc_button>(i.index);
+            if (widget.floating()) floating_vectors = true;
+            else inline_content = true;
+            allow_merge = false;
+            break;
+         }
+
+         case SCODE::CHECKBOX: {
+            auto &widget = m_stream->lookup<bc_checkbox>(i.index);
+            if (widget.floating()) floating_vectors = true;
+            else inline_content = true;
+            allow_merge = false;
+            break;
+         }
+
+         case SCODE::COMBOBOX: {
+            auto &widget = m_stream->lookup<bc_combobox>(i.index);
+            if (widget.floating()) floating_vectors = true;
+            else inline_content = true;
+            allow_merge = false;
+            break;
+         }
+
+         case SCODE::INPUT: {
+            auto &widget = m_stream->lookup<bc_input>(i.index);
+            if (widget.floating()) floating_vectors = true;
+            else inline_content = true;
+            allow_merge = false;
+            break;
+         }
+
          case SCODE::IMAGE: {
-            auto &img = m_stream->lookup<bc_image>(i.index);
-            if (img.floating()) floating_vectors = true;
+            auto &widget = m_stream->lookup<bc_image>(i.index);
+            if (widget.floating()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
             break;
@@ -1634,6 +1062,8 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       }
    }
    else if (line_height < 0) line_height = 0;
+
+   line_height *= m_line.leading;
 
 #ifdef DBG_STREAM
    log.branch("#%d %d:%d - %d:%d, Area: %gx%g,%g:%gx%g, WordWidth: %d [%.20s]...[%.20s] (%s)",
@@ -1753,7 +1183,7 @@ static void layout_doc(extDocument *Self)
    // of the page.
 
    #ifdef DBG_LAYOUT
-      log.branch("Area: %gx%g,%gx%g Visible: %d ----------", Self->Area.X, Self->Area.Y, Self->Area.Width, Self->Area.Height, Self->VScrollVisible);
+      log.branch("Area: %gx%g Visible: %d ----------", Self->VPWidth, Self->VPHeight, Self->VScrollVisible);
    #endif
 
    layout l(Self, &Self->Stream);
@@ -2061,8 +1491,37 @@ extend_page:
             }
             break;
 
+         case SCODE::BUTTON: {
+            auto &button = m_stream->lookup<bc_button>(idx);
+            auto ww = lay_widget(button);
+            if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
+            break;
+         }
+
+         case SCODE::CHECKBOX: {
+            auto &checkbox = m_stream->lookup<bc_checkbox>(idx);
+            auto ww = lay_widget(checkbox);
+            if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
+            break;
+         }
+
+         case SCODE::COMBOBOX: {
+            auto &combobox = m_stream->lookup<bc_combobox>(idx);
+            auto ww = lay_widget(combobox);
+            if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
+            break;
+         }
+
          case SCODE::IMAGE: {
-            auto ww = lay_image();
+            auto &image = m_stream->lookup<bc_image>(idx);
+            auto ww = lay_widget(image);
+            if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
+            break;
+         }
+
+         case SCODE::INPUT: {
+            auto &input = m_stream->lookup<bc_input>(idx);
+            auto ww = lay_widget(input);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
@@ -2111,8 +1570,8 @@ wrap_table_start:
             if (width < 0) width = 0;
 
             {
-               DOUBLE min = (esctable->strokeWidth * 2) + (esctable->cell_hspacing * (esctable->columns.size()-1)) + (esctable->cell_padding * 2 * esctable->columns.size());
-               if (esctable->collapsed) min -= esctable->cell_hspacing * 2; // Thin tables do not have spacing on the left and right borders
+               DOUBLE min = (esctable->stroke_width * 2) + (esctable->cell_h_spacing * (esctable->columns.size()-1)) + (esctable->cell_padding * 2 * esctable->columns.size());
+               if (esctable->collapsed) min -= esctable->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
                if (width < min) width = min;
             }
 
@@ -2134,7 +1593,7 @@ wrap_table_cell:
             esctable->y           = m_cursor_y;
             esctable->row_index   = 0;
             esctable->total_clips = m_clips.size();
-            esctable->height      = esctable->strokeWidth;
+            esctable->height      = esctable->stroke_width;
 
             DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g%s, page width %g.",
                idx, LONG(esctable->columns.size()), esctable->rows, esctable->x, esctable->y,
@@ -2160,7 +1619,7 @@ wrap_table_cell:
             }
 
             m_cursor_x = esctable->x;
-            m_cursor_y = esctable->y + esctable->strokeWidth + esctable->cell_vspacing;
+            m_cursor_y = esctable->y + esctable->stroke_width + esctable->cell_v_spacing;
             new_code_segment();
             break;
          }
@@ -2187,7 +1646,7 @@ wrap_table_cell:
 repass_row_height:
             stack_row.top()->vertical_repass = false;
             stack_row.top()->y = m_cursor_y;
-            esctable->row_width = (esctable->strokeWidth * 2) + esctable->cell_hspacing;
+            esctable->row_width = (esctable->stroke_width * 2) + esctable->cell_h_spacing;
 
             new_code_segment();
             break;
@@ -2224,7 +1683,7 @@ repass_row_height:
    if ((m_cursor_x + m_word_width > m_left_margin) or (m_word_index.valid())) {
       stream_char sc(idx, 0);
       m_line.apply_word_height();
-      end_line(NL::NONE, 0, sc, "LayoutEnd");
+      end_line(NL::NONE, 1.0, sc, "LayoutEnd");
    }
 
 exit:
@@ -2267,7 +1726,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
    if ((!m_line.height) and (m_word_width)) {
       // If this is a one-word line, the line height will not have been defined yet
       m_line.height = m_font->LineSpacing;
-      m_line.gutter = m_font->LineSpacing - m_font->Ascent;
+      m_line.gutter = m_font->Gutter;
    }
 
 #ifdef DBG_LAYOUT
@@ -2278,7 +1737,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
 
    for (auto &clip : m_clips) {
       if (clip.transparent) continue;
-      if ((m_cursor_y + m_line.height >= clip.top) and (m_cursor_y < clip.bottom)) {
+      if ((m_cursor_y + (m_line.height * m_line.leading) >= clip.top) and (m_cursor_y < clip.bottom)) {
          if (m_cursor_x + m_word_width < clip.left) {
             if (clip.left < m_align_width) m_align_width = clip.left;
          }
@@ -2293,7 +1752,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
       // Determine the new vertical position of the cursor.  This subroutine takes into account multiple line-breaks, so that
       // the overall amount of whitespace is no more than the biggest line-break specified in a line-break sequence.
 
-      auto bottom_line = m_cursor_y + m_line.height;
+      auto bottom_line = m_cursor_y + (m_line.height * m_line.leading);
       if (m_paragraph_bottom > bottom_line) bottom_line = m_paragraph_bottom;
 
       m_paragraph_y = bottom_line;
@@ -2302,9 +1761,9 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
          // The m_cursor_y position will not be advanced in this case.
       }
       else {
-         // Paragraph gap measured as default line height * spacing ratio
+         // Paragraph gap measured as line height * spacing ratio
 
-         auto advance_to = bottom_line + F2I(Self->LineHeight * Spacing);
+         auto advance_to = bottom_line + F2I(m_line.height * Spacing);
          if (advance_to > m_cursor_y) m_cursor_y = advance_to;
       }
    }
@@ -2391,7 +1850,7 @@ restart:
       sanitise_line_height();
 
       X  = m_left_margin;
-      Y += m_line.height;
+      Y += m_line.height * m_line.leading;
 
       m_cursor_x = X;
       m_cursor_y = Y;

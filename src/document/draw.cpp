@@ -22,12 +22,102 @@ static void redraw(extDocument *Self, bool Focus)
 }
 
 //********************************************************************************************************************
+// Generic input handler for all widgets
+
+static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const InputEvent *Event)
+{
+   for (; Event; Event = Event->Next) {
+      if (Event->Type IS JET::ENTERED_AREA) {
+         //Widget.hover = true;
+         Self->Viewport->draw();
+      }
+      else if (Event->Type IS JET::LEFT_AREA) {
+         //Widget.hover = false;
+         Self->Viewport->draw();
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Event)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+
+   ui_widget &widget = Self->Widgets[Viewport->UID];
+   auto checkbox = std::get<bc_checkbox *>(widget.widget);
+
+   handle_widget_event(Self, *checkbox, Event);
+
+   for (; Event; Event = Event->Next) {
+      if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         if (Event->Type IS JET::LMB) {
+            if (Event->Value IS 1) checkbox->alt_state ^= 1;
+         }
+
+         if (checkbox->alt_state) checkbox->viewport->setFill(checkbox->alt_fill);
+         else checkbox->viewport->setFill(checkbox->fill);
+
+         Self->Viewport->draw();
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
+ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *Viewport, bc_font *Style,
+   DOUBLE &XOffset, bool CreateViewport)
+{
+   // Apply the widget dimensions as defined during layout.  If the widget is inline then we utilise
+   // x_advance for managing the horizontal position amongst the text.
+
+   DOUBLE x, y;
+   if (Widget.floating()) x = Widget.x + Widget.final_pad.left;
+   else {
+      if ((Style->options & FSO::ALIGN_CENTER) != FSO::NIL) x = XOffset + ((Segment.align_width - Segment.area.Width) * 0.5);
+      else if ((Style->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = XOffset + Segment.align_width - Segment.area.Width;
+      else x = XOffset;
+   }
+   y = Segment.area.Y + Widget.final_pad.top;
+
+   if (CreateViewport) {
+      if (!(Widget.viewport = objVectorViewport::create::global({
+            fl::Name("vp_widget"),
+            fl::Owner(Viewport->UID),
+            fl::X(x), fl::Y(y),
+            fl::Width(Widget.calc_width()), fl::Height(Widget.final_height),
+            fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
+         }))) {
+         return ERR_CreateObject;
+      }
+   }
+   else if (!(Widget.rect = objVectorRectangle::create::global({
+        fl::Name("rect_widget"),
+        fl::Owner(Viewport->UID),
+        fl::X(x), fl::Y(y),
+        fl::Width(Widget.calc_width()), fl::Height(Widget.final_height),
+        fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
+      }))) {
+
+      return ERR_CreateObject;
+   }
+
+   if (!Widget.floating()) XOffset += Widget.full_width();
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
 // Convert the layout information to a vector scene.  This is the final step in the layout process. The advantage in
 // performing this step separately to the layout process is that the graphics resources are managed last, which is
 // sensible for keeping them out of the layout loop.
 //
-// It is intended that the layout process generates the document's entire scene graph every time.  Optimisations 
-// relating to things like obscuration of graphics elements are considered to be the job of the VectorScene's drawing 
+// It is intended that the layout process generates the document's entire scene graph every time.  Optimisations
+// relating to things like obscuration of graphics elements are considered to be the job of the VectorScene's drawing
 // functionality.
 
 ERROR layout::gen_scene_init(objVectorViewport *Viewport)
@@ -44,6 +134,7 @@ ERROR layout::gen_scene_init(objVectorViewport *Viewport)
    m_cursor_drawn = false;
 
    Self->Links.clear();
+   Self->Widgets.clear();
 
    if (Self->UpdatingLayout) return ERR_NothingDone; // Drawing is disabled if the layout is being updated
 
@@ -77,7 +168,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
    std::stack<ui_link>        stack_ui_link;
    std::stack<bc_font *>      stack_style;
    std::stack<objVectorViewport *> stack_vp;
-   
+
 #ifndef RETAIN_LOG_LEVEL
    pf::LogLevel level(2);
 #endif
@@ -156,7 +247,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
          }
       }
 
-      auto x_offset = segment.area.X;
+      auto x_advance = segment.area.X;
       for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {
          switch (segment.stream[0][cursor.index].code) {
             case SCODE::FONT: {
@@ -165,10 +256,9 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                break;
             }
 
-            case SCODE::FONT_END: {
+            case SCODE::FONT_END:
                stack_style.pop();
                break;
-            }
 
             case SCODE::LIST_START:
                stack_list.push(&segment.stream->lookup<bc_list>(cursor));
@@ -258,7 +348,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   if (!table->stroke.empty()) {
                      table->path->set(FID_Stroke, table->stroke);
-                     table->path->set(FID_StrokeWidth, table->strokeWidth);
+                     table->path->set(FID_StrokeWidth, table->stroke_width);
                   }
                }
                break;
@@ -322,7 +412,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                      if (!cell.stroke.empty()) {
                         rect->set(FID_Stroke, cell.stroke);
-                        rect->set(FID_StrokeWidth, cell.strokeWidth);
+                        rect->set(FID_StrokeWidth, cell.stroke_width);
                      }
 
                      if (!cell.fill.empty()) rect->set(FID_Fill, cell.fill);
@@ -376,7 +466,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                stack_ui_link.push(ui_link {
                   .origin = *link,
-                  .area   = { x_offset, segment.area.Y, segment.area.Width - x_offset, segment.area.Height },
+                  .area   = { x_advance, segment.area.Y, segment.area.Width - x_advance, segment.area.Height },
                   .cursor_start = cursor,
                   .stream = segment.stream
                });
@@ -403,7 +493,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             case SCODE::LINK_END: {
                auto &ui_link = stack_ui_link.top();
                ui_link.cursor_end = cursor;
-               ui_link.area.Width = x_offset - ui_link.area.X;
+               ui_link.area.Width = x_advance - ui_link.area.X;
                if (ui_link.area.Width >= 1) ui_link.append_link();
 
                // Create a VectorPath that represents the clickable area.  Doing this at the end of the
@@ -434,30 +524,89 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                break;
             }
 
+            case SCODE::BUTTON: {
+               auto &button = segment.stream->lookup<bc_button>(cursor);
+               build_widget(button, segment, Viewport, stack_style.top(), x_advance, true);
+               break;
+            }
+
+            case SCODE::CHECKBOX: {
+               // NB: Labeling is declared within the widget's viewport so that clicking on the label affects state.
+               auto &checkbox = segment.stream->lookup<bc_checkbox>(cursor);
+
+               if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, true)) {
+                  if (!checkbox.label.empty()) {
+                     DOUBLE x, y;
+                     auto font = stack_style.top()->get_font();
+                     const DOUBLE avail_space = checkbox.final_height - font->Gutter;
+                     y = checkbox.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
+
+                     if (checkbox.label_pos) x = checkbox.final_width + checkbox.label_pad;
+                     else x = 0;
+
+                     objVectorText::create::global({
+                        fl::Owner(checkbox.viewport->UID),
+                        fl::X(std::trunc(x)), fl::Y(std::trunc(y)),
+                        fl::String(checkbox.label),
+                        fl::Font(font),
+                        fl::Fill(stack_style.top()->fill)
+                     });
+                  }
+
+                  if (checkbox.viewport) {
+                     auto call = make_function_stdc(inputevent_checkbox);
+                     vecSubscribeInput(checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+
+                     Self->Widgets.emplace(checkbox.viewport->UID, ui_widget { &checkbox });
+                  }
+               }
+               break;
+            }
+
             case SCODE::IMAGE: {
                auto &img = segment.stream->lookup<bc_image>(cursor);
+               build_widget(img, segment, Viewport, stack_style.top(), x_advance, false);
+               break;
+            }
 
-               // Apply the rectangle dimensions as defined during layout.  If the image is inline then we utilise
-               // x_offset for managing the horizontal position amongst the text.
+            case SCODE::COMBOBOX: {
+               auto &combo = segment.stream->lookup<bc_combobox>(cursor);
+               build_widget(combo, segment, Viewport, stack_style.top(), x_advance, true);
+               break;
+            }
 
-               DOUBLE x;
-               if (img.floating()) x = img.x + img.final_pad.left;
-               else {
-                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
-                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
-                  else x = x_offset;
-               }
-               DOUBLE y = segment.area.Y + img.final_pad.top;
+            case SCODE::INPUT: {
+               auto &input = segment.stream->lookup<bc_input>(cursor);
+               auto font = stack_style.top()->get_font();
 
-               if ((img.rect = objVectorRectangle::create::global({
-                     fl::Name("rect_image"),
-                     fl::Owner(Viewport->UID),
-                     fl::X(x), fl::Y(y), fl::Width(img.final_width), fl::Height(img.final_height),
-                     fl::Fill(img.src)
+               build_widget(input, segment, Viewport, stack_style.top(), x_advance, true);
+
+               DOUBLE avail_space = input.final_height - font->Gutter;
+               DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
+
+               if ((input.clip_vp = objVectorViewport::create::global({
+                     fl::Name("vp_clip_input"),
+                     fl::Owner(input.viewport->UID),
+                     fl::X(input.label_pad), fl::Y(0),
+                     fl::XOffset(input.label_pad), fl::YOffset(0),
+                     fl::Overflow(VOF::HIDDEN)
                   }))) {
+
+                  auto flags = VTXF::EDITABLE;
+                  if (input.secret) flags |= VTXF::SECRET;
+
+                  objVectorText::create::global({
+                     fl::Owner(input.clip_vp->UID),
+                     fl::X(0), fl::Y(std::trunc(y)),
+                     fl::String(input.value),
+                     fl::Cursor(PTC::TEXT),
+                     fl::Font(font),
+                     fl::Fill(input.font_fill),
+                     fl::LineLimit(1),
+                     fl::TextFlags(flags)
+                  });
                }
 
-               if (!img.floating()) x_offset += img.final_width + img.final_pad.left + img.final_pad.right;
                break;
             }
 
@@ -479,13 +628,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   else y += segment.area.Height - segment.gutter;
 
                   DOUBLE x;
-                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_offset + ((segment.align_width - segment.area.Width) * 0.5);
-                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_offset + segment.align_width - segment.area.Width;
-                  else x = x_offset;
+                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) x = x_advance + ((segment.align_width - segment.area.Width) * 0.5);
+                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = x_advance + segment.align_width - segment.area.Width;
+                  else x = x_advance;
 
-                  auto vt  = objVectorText::create::global({
+                  auto vt = objVectorText::create::global({
                      fl::Owner(Viewport->UID),
-                     fl::X(x), fl::Y(y),
+                     fl::X(x), fl::Y(std::trunc(y)),
                      fl::String(str),
                      fl::Cursor(PTC::TEXT),
                      fl::Font(font),
@@ -497,7 +646,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   DOUBLE twidth;
                   vt->get(FID_TextWidth, &twidth);
-                  x_offset += twidth;
+                  x_advance += twidth;
                }
                break;
             }
@@ -508,7 +657,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
       if (!stack_ui_link.empty()) {
          auto &link = stack_ui_link.top();
-         link.area.Width = x_offset - link.area.X;
+         link.area.Width = x_advance - link.area.X;
          if (link.area.Width >= 1) link.append_link();
       }
 

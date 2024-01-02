@@ -97,6 +97,10 @@ enum class SCODE : char {
    XML,
    IMAGE,
    USE,
+   BUTTON,
+   CHECKBOX,
+   COMBOBOX,
+   INPUT,
    // End of list - NB: PLEASE UPDATE byte_code() IF YOU ADD NEW CODES
    END
 };
@@ -340,11 +344,10 @@ struct bc_font_end : public base_code {
 struct style_status {
    struct bc_font font_style;
    struct process_table *table;
-   struct bc_list *list;
    std::string face;
    DOUBLE point;
 
-   style_status() : table(NULL), list(NULL), face(""), point(0) { }
+   style_status() : table(NULL), face(""), point(0) { }
 };
 
 //********************************************************************************************************************
@@ -551,50 +554,6 @@ struct bc_link_end : public base_code {
    bc_link_end() { code = SCODE::LINK_END; }
 };
 
-struct ui_link {
-   bc_link origin;                       // A copy of the original link information
-   FloatRect area;                       // Occupied area in the UI
-   stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
-   std::vector<PathCommand> path;
-   RSTREAM *stream;
-   objVectorPath *vector_path = NULL;
-   bool hover = false;                   // True if the mouse pointer is hovering over the link
-
-   void exec(extDocument *);
-
-   void append_link() {
-      path.push_back({ .Type = PE::Move, .X = area.X, .Y = area.Y });
-      path.push_back({ .Type = PE::HLineRel, .X = area.Width, });
-      path.push_back({ .Type = PE::VLineRel, .Y = area.Height });
-      path.push_back({ .Type = PE::HLineRel, .X = -area.Width, });
-      path.push_back({ .Type = PE::ClosePath });
-   }
-};
-
-struct bc_image : public base_code {
-   std::string src;                  // Fill instruction
-   DOUBLE width = 0, height = 0;     // Client can define a fixed width/height, or leave at 0 for auto-sizing
-   DOUBLE final_width, final_height; // Final dimensions computed during layout
-   objVectorRectangle *rect = NULL;  // A vector will host the image and define a clipping mask for it
-   DOUBLE x = 0;                     // For floating images only, horizontal position calculated during layout
-   ALIGN align = ALIGN::NIL;         // NB: If horizontal alignment is defined then the image is treated as floating.
-   bool width_pct = false, height_pct = false, padding = false;
-
-   struct {
-      DOUBLE left = 0, right = 0, top = 0, bottom = 0;
-      bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
-   } pad, final_pad;
-
-   bc_image() { code = SCODE::IMAGE; }
-
-   inline bool floating() {
-      return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
-   }
-
-   constexpr DOUBLE full_width() { return final_width + final_pad.left + final_pad.right; }
-   constexpr DOUBLE full_height() { return final_height + final_pad.top + final_pad.bottom; }
-};
-
 struct bc_list : public base_code {
    enum {
       ORDERED=0,
@@ -609,7 +568,7 @@ struct bc_list : public base_code {
    LONG   block_indent = BULLET_INDENT; // Indentation for each set of items
    LONG   item_num     = 0;
    LONG   order_insert = 0;
-   DOUBLE vspacing     = 0.5;           // Spacing between list items, expressed as a ratio
+   DOUBLE v_spacing    = 0.5;           // Spacing between list items, expressed as a ratio
    UBYTE  type         = BULLET;
    bool   repass       = false;
 
@@ -637,13 +596,13 @@ struct bc_table : public base_code {
    std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
-   DOUBLE cell_vspacing = 0, cell_hspacing = 0; // Spacing between each cell
+   DOUBLE cell_v_spacing = 0, cell_h_spacing = 0; // Spacing between each cell
    DOUBLE cell_padding = 0;              // Spacing inside each cell (margins)
    DOUBLE row_width = 0;                 // Assists in the computation of row width
    DOUBLE x = 0, y = 0, width = 0, height = 0; // Dimensions
    DOUBLE min_width = 0, min_height = 0; // User-determined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
-   DOUBLE strokeWidth = 0;               // Stroke width
+   DOUBLE stroke_width = 0;              // Stroke width
    size_t total_clips = 0;               // Temporary record of Document->Clips.size()
    LONG   rows = 0;                      // Total number of rows in table
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
@@ -692,27 +651,21 @@ struct bc_table_end : public base_code {
 class bc_paragraph : public base_code {
    public:
    std::string value = "";
-   DOUBLE x, y, height;
-   DOUBLE block_indent;
-   DOUBLE item_indent;
+   DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
+   DOUBLE block_indent;  // Indentation; also equivalent to setting a left margin value
+   DOUBLE item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
    DOUBLE indent;
-   DOUBLE vspacing;      // Trailing whitespace, expressed as a ratio of the default line height
-   DOUBLE leading_ratio; // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
+   DOUBLE v_spacing;     // Spacing between paragraph lines, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
+   DOUBLE leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
    // Options
    bool relative;
-   bool list_item;
+   bool list_item;       // True if this paragraph represents a list item
    bool trim;
    bool aggregate;
 
    bc_paragraph() : base_code(SCODE::PARAGRAPH_START), x(0), y(0), height(0),
-      block_indent(0), item_indent(0), indent(0), vspacing(1.0), leading_ratio(1.0),
+      block_indent(0), item_indent(0), indent(0), v_spacing(1.0), leading(1.0),
       relative(false), list_item(false), trim(false), aggregate(false) { }
-
-   void applyStyle(const style_status &Style) {
-      vspacing     = Style.list->vspacing;
-      block_indent = Style.list->block_indent;
-      item_indent  = Style.list->item_indent;
-   }
 };
 
 struct bc_paragraph_end : public base_code {
@@ -742,7 +695,7 @@ struct bc_cell : public base_code {
    CB border = CB::NIL;           // Border options
    DOUBLE x = 0, y = 0;           // Cell coordinates, relative to their container
    DOUBLE width = 0, height = 0;  // Width and height of the cell
-   DOUBLE strokeWidth = 0;
+   DOUBLE stroke_width = 0;
    std::string onclick;           // name of an onclick function
    std::string edit_def;          // The edit definition that this cell is linked to (if any)
    std::vector<std::pair<std::string, std::string>> args;
@@ -761,10 +714,100 @@ struct bc_cell : public base_code {
 };
 
 //********************************************************************************************************************
+// Common widget management structure
+
+struct widget_mgr {
+   std::string name;                   // Client provided name identifier
+   std::string label;
+   std::string fill;                   // Default fill instruction
+   std::string alt_fill;               // Alternative fill instruction for state changes
+   std::string font_fill;              // Default fill instruction for user input text
+   DOUBLE width = 0, height = 0;       // Client can define a fixed width/height, or leave at 0 for auto-sizing
+   DOUBLE final_width, final_height;   // Final dimensions computed during layout
+   DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
+   objVectorViewport *viewport = NULL;
+   objVectorRectangle *rect = NULL;    // A vector will host the widget and define a clipping mask for it
+   DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
+   ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
+   bool width_pct = false, height_pct = false, padding = false;
+   bool alt_state = false;
+   UBYTE label_pos = 1;                // 0 = left, 1 = right
+
+   struct {
+      DOUBLE left = 0, right = 0, top = 0, bottom = 0;
+      bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
+   } pad, final_pad; // Padding defines whitespace around the widget
+
+   inline bool floating() {
+      return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
+   }
+
+   constexpr DOUBLE calc_width() const { return final_width + label_width + label_pad; }
+   constexpr DOUBLE full_width() const { return final_width + label_width + label_pad + final_pad.left + final_pad.right; }
+   constexpr DOUBLE full_height() const { return final_height + final_pad.top + final_pad.bottom; }
+};
+
+//********************************************************************************************************************
+
+struct bc_button : public base_code, widget_mgr {
+   bc_button() { code = SCODE::BUTTON; }
+};
+
+struct bc_checkbox : public base_code, widget_mgr {
+   bc_checkbox() { code = SCODE::CHECKBOX; }
+};
+
+struct bc_combobox : public base_code, widget_mgr {
+   std::string value;
+
+   bc_combobox() { code = SCODE::COMBOBOX; }
+};
+
+struct bc_input : public base_code, widget_mgr {
+   std::string value;
+   objVectorViewport *clip_vp;
+   bool secret = false;
+
+   bc_input() { code = SCODE::INPUT; }
+};
+
+struct bc_image : public base_code, widget_mgr {
+   // Images inherit from widget graphics management since the rules are identical
+   bc_image() { code = SCODE::IMAGE; }
+};
+
+//********************************************************************************************************************
+
+struct ui_widget {
+   std::variant<bc_checkbox *, bc_image *, bc_input *, bc_combobox *, bc_button *> widget;
+   bool hover = false;                   // True if the mouse pointer is hovering over the widget
+};
+
+struct ui_link {
+   bc_link origin;                       // A copy of the original link information
+   FloatRect area;                       // Occupied area in the UI
+   stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
+   std::vector<PathCommand> path;
+   RSTREAM *stream;
+   objVectorPath *vector_path = NULL;
+   bool hover = false;                   // True if the mouse pointer is hovering over the link
+
+   void exec(extDocument *);
+
+   void append_link() {
+      path.push_back({ .Type = PE::Move, .X = area.X, .Y = area.Y });
+      path.push_back({ .Type = PE::HLineRel, .X = area.Width, });
+      path.push_back({ .Type = PE::VLineRel, .Y = area.Height });
+      path.push_back({ .Type = PE::HLineRel, .X = -area.Width, });
+      path.push_back({ .Type = PE::ClosePath });
+   }
+};
+
+//********************************************************************************************************************
 
 using CODEMAP = std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use>>;
+      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>>;
 
 class RSTREAM {
 public:
@@ -830,6 +873,7 @@ class extDocument : public objDocument {
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<ui_link>        Links;
+   std::unordered_map<OBJECTID, ui_widget> Widgets;
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
@@ -896,7 +940,7 @@ bc_cell::bc_cell(const bc_cell &Other) {
    border = Other.border;
    x = Other.x, y = Other.y;
    width = Other.width, height = Other.height;
-   strokeWidth = Other.strokeWidth;
+   stroke_width = Other.stroke_width;
    onclick = Other.onclick;
    edit_def = Other.edit_def;
    args = Other.args;
