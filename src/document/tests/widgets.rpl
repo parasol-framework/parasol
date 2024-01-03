@@ -9,7 +9,9 @@
 
 <p>Prefix <input width="200" value="pre-defined content"/> Suffix</p>
 
-<p><font face="Courier" size="20"><input width="300" value="Courier 20pt"/></font></p>
+<p><font face="Courier" size="20"><input width="300" value="Courier 20pt" label="Default Label"/> Not a label</font></p>
+
+<p><input width="200" label-pos="left" label="Left Label: " value="pre-defined content"/> Suffix</p>
 
 <h1>Checkbox Widgets</h1>
 

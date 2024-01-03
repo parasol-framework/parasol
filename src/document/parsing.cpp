@@ -1636,7 +1636,8 @@ void parser::tag_input(XMLTag &Tag)
          widget.fill = value;
       }
       else if (hash IS HASH_label_pos) {
-         // TODO (left, right)
+         if (!StrMatch("left", value)) widget.label_pos = 0;
+         else if (!StrMatch("right", value)) widget.label_pos = 1;
       }
       else if (hash IS HASH_width) {
          read_unit(value.c_str(), widget.width, widget.width_pct);
