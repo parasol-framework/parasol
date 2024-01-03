@@ -742,7 +742,6 @@ struct widget_mgr {
       return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
    }
 
-   constexpr DOUBLE calc_width() const { return final_width + label_width + label_pad; }
    constexpr DOUBLE full_width() const { return final_width + label_width + label_pad + final_pad.left + final_pad.right; }
    constexpr DOUBLE full_height() const { return final_height + final_pad.top + final_pad.bottom; }
 };

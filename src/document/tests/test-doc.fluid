@@ -24,6 +24,7 @@ function crcTest(Path, ExpectedCRC)
    local bmp = renderDocToBitmap(glDocFolder .. Path)
    local crc = mSys.GenCRC32(0, bmp.data, bmp.size)
    if (ExpectedCRC == 0) then
+      saveBitmap(bmp, Path)
       error('File "' .. Path .. '" is yet to be assigned a checksum, current CRC is ' .. string.format('0x%.8x', crc))
    elseif (ExpectedCRC != crc) then
       saveBitmap(bmp, Path)
@@ -48,12 +49,12 @@ function testAlignment()   crcTest('alignment.rpl', 0x8ff3857f) end
 function testDialog()      crcTest('dialog.rpl', 0x3637e9eb) end
 function testFonts()       crcTest('fonts.rpl', 0) end
 function testImages()      crcTest('images.rpl', 0xd129eb49) end
-function testLayout()      crcTest('layout.rpl', 0xc43ba293) end
-function testLinks()       crcTest('links.rpl', 0x04fcc2ff) end
-function testLists()       crcTest('lists.rpl', 0x152c69d3) end
-function testLogic()       crcTest('logic.rpl', 0xd2ea5705) end
+function testLayout()      crcTest('layout.rpl', 0x7d3b4eab) end
+function testLinks()       crcTest('links.rpl', 0xa783c1e9) end
+function testLists()       crcTest('lists.rpl', 0x5d591401) end
+function testLogic()       crcTest('logic.rpl', 0x7f3c5286) end
 function testParagraphs()  crcTest('paragraphs.rpl', 0xd0656f9e) end
-function testTables()      crcTest('tables.rpl', 0x65b73d09) end
+function testTables()      crcTest('tables.rpl', 0x1f9608d8) end
 
 -----------------------------------------------------------------------------------------------------------------------
 

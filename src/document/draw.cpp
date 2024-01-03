@@ -70,26 +70,29 @@ static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *
 //********************************************************************************************************************
 
 ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *Viewport, bc_font *Style,
-   DOUBLE &XOffset, bool CreateViewport)
+   DOUBLE &XAdvance, bool CreateViewport)
 {
-   // Apply the widget dimensions as defined during layout.  If the widget is inline then we utilise
-   // x_advance for managing the horizontal position amongst the text.
-
    DOUBLE x, y;
    if (Widget.floating()) x = Widget.x + Widget.final_pad.left;
    else {
-      if ((Style->options & FSO::ALIGN_CENTER) != FSO::NIL) x = XOffset + ((Segment.align_width - Segment.area.Width) * 0.5);
-      else if ((Style->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = XOffset + Segment.align_width - Segment.area.Width;
-      else x = XOffset;
+      if ((Style->options & FSO::ALIGN_CENTER) != FSO::NIL) x = XAdvance + ((Segment.align_width - Segment.area.Width) * 0.5);
+      else if ((Style->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = XAdvance + Segment.align_width - Segment.area.Width;
+      else x = XAdvance;
    }
    y = Segment.area.Y + Widget.final_pad.top;
+
+   DOUBLE width = Widget.final_width;
+   if ((Widget.label_width) and (Widget.label_pos)) {
+      // Widgets with right-sided labels can include the label text in their viewport.
+      width += Widget.label_width + Widget.label_pad;
+   }
 
    if (CreateViewport) {
       if (!(Widget.viewport = objVectorViewport::create::global({
             fl::Name("vp_widget"),
             fl::Owner(Viewport->UID),
             fl::X(x), fl::Y(y),
-            fl::Width(Widget.calc_width()), fl::Height(Widget.final_height),
+            fl::Width(width), fl::Height(Widget.final_height),
             fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
          }))) {
          return ERR_CreateObject;
@@ -99,14 +102,14 @@ ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *
         fl::Name("rect_widget"),
         fl::Owner(Viewport->UID),
         fl::X(x), fl::Y(y),
-        fl::Width(Widget.calc_width()), fl::Height(Widget.final_height),
+        fl::Width(width), fl::Height(Widget.final_height),
         fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
       }))) {
 
       return ERR_CreateObject;
    }
 
-   if (!Widget.floating()) XOffset += Widget.full_width();
+   if (!Widget.floating()) XAdvance += Widget.full_width();
 
    return ERR_Okay;
 }
@@ -531,34 +534,55 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             }
 
             case SCODE::CHECKBOX: {
-               // NB: Labeling is declared within the widget's viewport so that clicking on the label affects state.
                auto &checkbox = segment.stream->lookup<bc_checkbox>(cursor);
 
-               if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, true)) {
-                  if (!checkbox.label.empty()) {
-                     DOUBLE x, y;
+               if (!checkbox.label.empty()) {
+                  if (checkbox.label_pos) { 
+                     // Right-sided labels can be integrated with the widget so that clicking affects state.
+                     if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, true)) {
+                        DOUBLE x, y;
+                        auto font = stack_style.top()->get_font();
+                        const DOUBLE avail_space = checkbox.final_height - font->Gutter;
+                        y = checkbox.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
+
+                        x = checkbox.final_width + checkbox.label_pad;                        
+
+                        objVectorText::create::global({
+                           fl::Owner(checkbox.viewport->UID),
+                           fl::X(std::trunc(x)), fl::Y(std::trunc(y)),
+                           fl::String(checkbox.label),
+                           fl::Font(font),
+                           fl::Fill(stack_style.top()->fill)
+                        });
+                     }
+                  }
+                  else { 
+                     // Left-sided labels aren't included in the scope of the widget's viewport
+                     // TODO: Interactivity is feasible but we'll need to add an input feedback mechanism for that
                      auto font = stack_style.top()->get_font();
                      const DOUBLE avail_space = checkbox.final_height - font->Gutter;
-                     y = checkbox.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
-
-                     if (checkbox.label_pos) x = checkbox.final_width + checkbox.label_pad;
-                     else x = 0;
+                     DOUBLE y = segment.area.Y + checkbox.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
 
                      objVectorText::create::global({
-                        fl::Owner(checkbox.viewport->UID),
-                        fl::X(std::trunc(x)), fl::Y(std::trunc(y)),
+                        fl::Owner(Viewport->UID),
+                        fl::X(std::trunc(x_advance)), fl::Y(std::trunc(y)),
                         fl::String(checkbox.label),
                         fl::Font(font),
                         fl::Fill(stack_style.top()->fill)
                      });
-                  }
 
-                  if (checkbox.viewport) {
-                     auto call = make_function_stdc(inputevent_checkbox);
-                     vecSubscribeInput(checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                     x_advance += checkbox.label_width + checkbox.label_pos;
 
-                     Self->Widgets.emplace(checkbox.viewport->UID, ui_widget { &checkbox });
+                     build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, true);                     
                   }
+               }
+               else build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, true);
+
+               if (checkbox.viewport) {
+                  auto call = make_function_stdc(inputevent_checkbox);
+                  vecSubscribeInput(checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+
+                  Self->Widgets.emplace(checkbox.viewport->UID, ui_widget { &checkbox });
                }
                break;
             }

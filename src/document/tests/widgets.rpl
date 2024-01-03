@@ -7,16 +7,18 @@
 
 <h1>Input Widgets</h1>
 
-<p><input width="200" value="pre-defined content"/></p>
+<p>Prefix <input width="200" value="pre-defined content"/> Suffix</p>
 
 <p><font face="Courier" size="20"><input width="300" value="Courier 20pt"/></font></p>
 
 <h1>Checkbox Widgets</h1>
 
-<p><checkbox label="Checkbox label" value="false"/> Not part of the label</p>
+<p><checkbox label="Checkbox label" value="false"/> <font fill="rgb(0,0,128)">Clicking the label should change the checkbox state</font></p>
 
-<p><checkbox value="false"/> Follow-on text with default vertical alignment.</p>
+<p><checkbox value="false"/> Follow-on text with default (bottom) alignment.</p>
 
-<p v-align="center"><font size="20">Prefixed text <checkbox value="true"/> Follow-on text with centered vertical alignment.</font></p>
+<p><checkbox label="Left Label: " label-pos="left" value="false"/></p>
+
+<p v-align="center"><font size="20">Prefix <checkbox value="true"/> Suffix; v-align="center"</font></p>
 
 </page>
