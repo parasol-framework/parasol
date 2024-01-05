@@ -992,48 +992,36 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       return;
    }
 
-   bool inline_content   = false;
-   bool floating_vectors = false;
-   bool allow_merge      = true; // If true, this segment can be merged with prior segment(s) on the line
+   bool allow_merge = true; // If true, this segment can be merged with prior segment(s) on the line
 
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (m_stream[0][i.index].code) {
          case SCODE::BUTTON: {
             auto &widget = m_stream->lookup<bc_button>(i.index);
-            if (widget.floating_x()) floating_vectors = true;
-            else inline_content = true;
             allow_merge = false;
             break;
          }
 
          case SCODE::CHECKBOX: {
             auto &widget = m_stream->lookup<bc_checkbox>(i.index);
-            if (widget.floating_x()) floating_vectors = true;
-            else inline_content = true;
             allow_merge = false;
             break;
          }
 
          case SCODE::COMBOBOX: {
             auto &widget = m_stream->lookup<bc_combobox>(i.index);
-            if (widget.floating_x()) floating_vectors = true;
-            else inline_content = true;
             allow_merge = false;
             break;
          }
 
          case SCODE::INPUT: {
             auto &widget = m_stream->lookup<bc_input>(i.index);
-            if (widget.floating_x()) floating_vectors = true;
-            else inline_content = true;
             allow_merge = false;
             break;
          }
 
          case SCODE::IMAGE: {
             auto &widget = m_stream->lookup<bc_image>(i.index);
-            if (widget.floating_x()) floating_vectors = true;
-            else inline_content = true;
             allow_merge = false;
             break;
          }
@@ -1045,7 +1033,6 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
          case SCODE::TEXT:
             // Disable merging because a single text code can be referenced by multiple segments (due to word wrapping)
-            inline_content = true;
             allow_merge = false;
             break;
 
@@ -1056,17 +1043,15 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
    auto line_height = m_line.height;
    auto gutter      = m_line.gutter;
-   if (inline_content) {
-      if (line_height <= 0) {
-         // No line-height given and there is text/inline content - use the most recent font to determine the line height
-         line_height = m_font->LineSpacing;
-         gutter      = m_font->LineSpacing - m_font->Ascent;
-      }
-      else if (!gutter) { // If gutter is missing for some reason, define it
-         gutter = m_font->LineSpacing - m_font->Ascent;
-      }
+   if (line_height <= 0) {
+      // Use the most recent font to determine the line height
+      line_height = m_font->LineSpacing;
+      gutter      = m_font->Gutter;
    }
-   else if (line_height < 0) line_height = 0;
+   
+   if (!gutter) { // If gutter is missing for some reason, define it
+      gutter = m_font->LineSpacing - m_font->Ascent;
+   }
 
    line_height *= m_line.leading;
 
@@ -1117,8 +1102,6 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       segment.align_width += AlignWidth;
       segment.stop      = Stop;
       segment.trim_stop = trim_stop;
-      if (inline_content)   segment.inline_content   = inline_content;
-      if (floating_vectors) segment.floating_vectors = floating_vectors;
    }
    else {
       m_segments.emplace_back(doc_segment {
@@ -1130,9 +1113,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
          .align_width = AlignWidth,
          .stream      = m_stream,
          .edit        = m_edit_mode,
-         .inline_content   = inline_content,
-         .floating_vectors = floating_vectors,
-         .allow_merge      = allow_merge
+         .allow_merge = allow_merge
       });
    }
 }
@@ -1165,9 +1146,7 @@ void layout::new_code_segment()
          .align_width = 0,
          .stream      = m_stream,
          .edit        = m_edit_mode,
-         .inline_content   = false,
-         .floating_vectors = false,
-         .allow_merge      = true
+         .allow_merge = true
       });
    }
 }
@@ -1950,11 +1929,11 @@ DOUBLE layout::calc_page_height(DOUBLE BottomMargin)
 
    if (m_segments.empty()) return 0;
 
-   // Find the last segment that had text or inline content and use that to determine the bottom of the page
+   // Find the last segment to express a height, use it to determine the bottom of the page
 
    DOUBLE page_height = 0;
    for (SEGINDEX last = m_segments.size() - 1; last >= 0; last--) {
-      if (m_segments[last].inline_content) {
+      if (m_segments[last].area.Height > 0) {
          page_height = m_segments[last].area.Height + m_segments[last].area.Y;
          break;
       }

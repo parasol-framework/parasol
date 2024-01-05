@@ -442,8 +442,6 @@ struct doc_segment {
    DOUBLE align_width;      // Full width of this segment if it were non-breaking
    RSTREAM *stream;         // The stream that this segment refers to
    bool  edit;              // true if this segment represents content that can be edited
-   bool  inline_content;    // true if there is text or an inline graphic in this segment
-   bool  floating_vectors;  // true if there are user defined vectors in this segment with independent x,y coordinates
    bool  allow_merge;       // true if this segment can be merged with siblings that have allow_merge set to true
 };
 

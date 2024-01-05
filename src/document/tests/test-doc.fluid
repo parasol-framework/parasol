@@ -46,9 +46,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testAlignment()   crcTest('alignment.rpl', 0x8ff3857f) end
-function testDialog()      crcTest('dialog.rpl', 0x3637e9eb) end
+function testDialog()      crcTest('dialog.rpl', 0xba2b133d) end
 function testFonts()       crcTest('fonts.rpl', 0) end
-function testImages()      crcTest('images.rpl', 0xd129eb49) end
+function testImages()      crcTest('images.rpl', 0xb54e1355) end
 function testLayout()      crcTest('layout.rpl', 0x7d3b4eab) end
 function testLinks()       crcTest('links.rpl', 0xa783c1e9) end
 function testLists()       crcTest('lists.rpl', 0x5d591401) end
