@@ -55,6 +55,7 @@ function testLists()       crcTest('lists.rpl', 0x5d591401) end
 function testLogic()       crcTest('logic.rpl', 0x7f3c5286) end
 function testParagraphs()  crcTest('paragraphs.rpl', 0xd0656f9e) end
 function testTables()      crcTest('tables.rpl', 0x1f9608d8) end
+function testWidgets()     crcTest('widgets.rpl', 0) end
 
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -69,7 +70,8 @@ function testTables()      crcTest('tables.rpl', 0x1f9608d8) end
         'testLists',
         'testLogic',
         'testParagraphs',
-        'testTables'
+        'testTables',
+        'testWidgets'
       },
       init = function(Folder)
          glDocFolder = Folder

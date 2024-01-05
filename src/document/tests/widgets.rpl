@@ -23,4 +23,12 @@
 
 <p v-align="center"><font size="20">Prefix <checkbox value="true"/> Suffix; v-align="center"</font></p>
 
+<h1>Button Widgets</h1>
+
+<p>Suffix <button label="Hello"/> Prefix</p>
+<p><button width="400" height="60" label="Preset 400x60px Size"/></p>
+
+<h1>Combobox Widgets</h1>
+
+
 </page>
