@@ -1000,7 +1000,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       switch (m_stream[0][i.index].code) {
          case SCODE::BUTTON: {
             auto &widget = m_stream->lookup<bc_button>(i.index);
-            if (widget.floating()) floating_vectors = true;
+            if (widget.floating_x()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
             break;
@@ -1008,7 +1008,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
          case SCODE::CHECKBOX: {
             auto &widget = m_stream->lookup<bc_checkbox>(i.index);
-            if (widget.floating()) floating_vectors = true;
+            if (widget.floating_x()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
             break;
@@ -1016,7 +1016,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
          case SCODE::COMBOBOX: {
             auto &widget = m_stream->lookup<bc_combobox>(i.index);
-            if (widget.floating()) floating_vectors = true;
+            if (widget.floating_x()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
             break;
@@ -1024,7 +1024,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
          case SCODE::INPUT: {
             auto &widget = m_stream->lookup<bc_input>(i.index);
-            if (widget.floating()) floating_vectors = true;
+            if (widget.floating_x()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
             break;
@@ -1032,7 +1032,7 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
          case SCODE::IMAGE: {
             auto &widget = m_stream->lookup<bc_image>(i.index);
-            if (widget.floating()) floating_vectors = true;
+            if (widget.floating_x()) floating_vectors = true;
             else inline_content = true;
             allow_merge = false;
             break;

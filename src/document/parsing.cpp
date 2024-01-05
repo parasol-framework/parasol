@@ -28,7 +28,6 @@ struct parser {
    bool  m_check_else  = false;
    bool  m_default_pattern   = false;
    bool  m_button_patterns   = false;
-   bool  m_combobox_pattern  = false;
    bool  m_checkbox_patterns = false;
    stream_char  m_index;
    style_status m_style;
@@ -61,7 +60,6 @@ struct parser {
    inline void tag_call(XMLTag &);
    inline void tag_cell(XMLTag &);
    inline void tag_checkbox(XMLTag &);
-   inline void tag_combobox(XMLTag &);
    inline void tag_debug(XMLTag &);
    inline void tag_div(XMLTag &);
    inline void tag_editdef(XMLTag &);
@@ -941,8 +939,6 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_button: tag_button(Tag); break;
 
       case HASH_checkbox: tag_checkbox(Tag); break;
-
-      case HASH_combobox: tag_combobox(Tag); break;
 
       case HASH_input: tag_input(Tag); break;
 
