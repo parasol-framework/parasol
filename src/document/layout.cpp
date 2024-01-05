@@ -1675,7 +1675,6 @@ repass_row_height:
 
    if ((m_cursor_x + m_word_width > m_left_margin) or (m_word_index.valid())) {
       stream_char sc(idx, 0);
-      m_line.apply_word_height();
       end_line(NL::NONE, 1.0, sc, "LayoutEnd");
    }
 
@@ -1721,6 +1720,8 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
       m_line.height = m_font->LineSpacing;
       m_line.gutter = m_font->Gutter;
    }
+   
+   m_line.apply_word_height();
 
 #ifdef DBG_LAYOUT
    log.branch("%s: CursorX/Y: %g/%g, ParaY: %d, ParaEnd: %d, Line Height: %g * %g, Span: %d:%d - %d:%d",
