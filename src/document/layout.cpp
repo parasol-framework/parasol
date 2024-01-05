@@ -124,10 +124,10 @@ private:
       m_no_wrap          = false;
    }
 
-   // Resets the string management variables, usually done when a string
+   // Break and reset the content management variables for the active line.  Usually done when a string
    // has been broken up on the current line due to a vector or table graphic for example.
 
-   inline void reset_segment(INDEX Index, LONG X) {
+   inline void reset_broken_segment(INDEX Index, LONG X) {
       m_word_index.reset();
 
       m_line.index.set(Index);
@@ -136,14 +136,21 @@ private:
       m_word_width   = 0;
    }
 
-   inline void reset_segment() { reset_segment(idx, m_cursor_x); }
+   inline void reset_broken_segment() { reset_broken_segment(idx, m_cursor_x); }
+
+   // Call this prior to new_segment() for ensuring that the content up to this point is correctly finished.
+
+   inline void finish_segment() {
+      m_cursor_x += m_word_width;
+      m_word_width = 0;
+   }
 
    // Add a segment for a single byte code at position idx.  This will not include support for text glyphs,
    // so extended information is not required.
 
    inline void add_graphics_segment() {
       new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, BC_NAME(m_stream[0], idx));
-      reset_segment(idx+1, m_cursor_x);
+      reset_broken_segment(idx+1, m_cursor_x);
    }
 
    // When lines are segmented, the last segment will store the final height of the line whilst the earlier segments
@@ -421,6 +428,12 @@ WRAP layout::place_widget(widget_mgr &Widget)
          Widget.x = m_align_width - Widget.full_width();
       }
       else Widget.x = m_cursor_x;
+
+      if (m_line.index < idx) { // Any outstanding content has to be set prior to add_graphics_segment()
+         finish_segment();
+         new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "FloatingWidget");
+         reset_broken_segment();
+      }
 
       add_graphics_segment();
 
@@ -996,36 +1009,11 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (m_stream[0][i.index].code) {
-         case SCODE::BUTTON: {
-            auto &widget = m_stream->lookup<bc_button>(i.index);
-            allow_merge = false;
-            break;
-         }
-
-         case SCODE::CHECKBOX: {
-            auto &widget = m_stream->lookup<bc_checkbox>(i.index);
-            allow_merge = false;
-            break;
-         }
-
-         case SCODE::COMBOBOX: {
-            auto &widget = m_stream->lookup<bc_combobox>(i.index);
-            allow_merge = false;
-            break;
-         }
-
-         case SCODE::INPUT: {
-            auto &widget = m_stream->lookup<bc_input>(i.index);
-            allow_merge = false;
-            break;
-         }
-
-         case SCODE::IMAGE: {
-            auto &widget = m_stream->lookup<bc_image>(i.index);
-            allow_merge = false;
-            break;
-         }
-
+         case SCODE::BUTTON:
+         case SCODE::CHECKBOX:
+         case SCODE::COMBOBOX:
+         case SCODE::IMAGE:
+         case SCODE::INPUT:
          case SCODE::TABLE_START:
          case SCODE::TABLE_END:
             allow_merge = false;
@@ -1393,9 +1381,9 @@ extend_page:
          if (set_segment_now) {
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
                BC_NAME(m_stream[0],idx).c_str(), m_line.index.index, m_line.x, m_word_width);
-            m_cursor_x += m_word_width;
+            finish_segment();
             new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
-            reset_segment();
+            reset_broken_segment();
             m_align_width = m_wrap_edge;
          }
       }
@@ -1447,7 +1435,7 @@ extend_page:
             auto adv = &m_stream->lookup<bc_advance>(idx);
             m_cursor_x += adv->x;
             m_cursor_y += adv->y;
-            if (adv->x) reset_segment();
+            if (adv->x) reset_broken_segment();
             break;
          }
 
