@@ -737,8 +737,12 @@ struct widget_mgr {
       DOUBLE left = 0, right = 0, top = 0, bottom = 0;
       bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
    } pad, final_pad; // Padding defines whitespace around the widget
+   
+   inline bool floating_y() {
+      return false;
+   }
 
-   inline bool floating() {
+   inline bool floating_x() {
       return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
    }
 

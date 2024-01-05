@@ -117,23 +117,23 @@ UBYTE stream_char::get_prev_char_or_inline(RSTREAM &Stream)
       }
       else if (Stream[i].code IS SCODE::IMAGE) {
          auto &widget = Stream.lookup<bc_image>(i);
-         if (!widget.floating()) return 0xff;
+         if (!widget.floating_x()) return 0xff;
       }
       else if (Stream[i].code IS SCODE::BUTTON) {
          auto &widget = Stream.lookup<bc_button>(i);
-         if (!widget.floating()) return 0xff;
+         if (!widget.floating_x()) return 0xff;
       }
       else if (Stream[i].code IS SCODE::CHECKBOX) {
          auto &widget = Stream.lookup<bc_checkbox>(i);
-         if (!widget.floating()) return 0xff;
+         if (!widget.floating_x()) return 0xff;
       }
       else if (Stream[i].code IS SCODE::COMBOBOX) {
          auto &widget = Stream.lookup<bc_combobox>(i);
-         if (!widget.floating()) return 0xff;
+         if (!widget.floating_x()) return 0xff;
       }
       else if (Stream[i].code IS SCODE::INPUT) {
          auto &widget = Stream.lookup<bc_input>(i);
-         if (!widget.floating()) return 0xff;
+         if (!widget.floating_x()) return 0xff;
       }
    }
 

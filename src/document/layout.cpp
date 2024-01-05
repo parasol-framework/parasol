@@ -346,15 +346,12 @@ CELL layout::lay_cell(bc_table *Table)
 }
 
 //********************************************************************************************************************
-// Calculate the widget position.  The host rectangle is modified in gen_scene_graph() as this is the most optimal
-// approach (i.e. if the page width expands during layout).
-//
-// NOTE: If you ever see a widget unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
-// segment.
+// Calculate widget dimensions (refer to place_widget() for the x,y values).  The host rectangle is modified in 
+// gen_scene_graph() as this is the most optimal approach (i.e. if the page width expands during layout).
 
 void layout::preset_widget(widget_mgr &Widget)
 {
-   if (!Widget.floating()) check_line_height(); // Necessary for inline widgets in case they are the first 'character' on the line.
+   if (!Widget.floating_x()) check_line_height(); // Necessary for inline widgets in case they are the first 'character' on the line.
 
    // Calculate the final width and height.
 
@@ -364,7 +361,7 @@ void layout::preset_widget(widget_mgr &Widget)
    else if (!Widget.width) {
       if (Widget.height) {
          if (Widget.height_pct) {
-            if (Widget.floating()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_right_margin);
+            if (Widget.floating_x()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_right_margin);
             else Widget.final_width = Widget.height * m_font->Ascent;
          }
          else Widget.final_width = Widget.height;
@@ -374,11 +371,11 @@ void layout::preset_widget(widget_mgr &Widget)
    else Widget.final_width = Widget.width;
 
    if (Widget.height_pct) {
-      if (Widget.floating()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_right_margin);
+      if (Widget.floating_x()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_right_margin);
       else Widget.final_height = Widget.height * m_font->Ascent;
    }
    else if (!Widget.height) {
-      if (Widget.floating()) Widget.final_height = Widget.final_width;
+      if (Widget.floating_x()) Widget.final_height = Widget.final_width;
       else Widget.final_height = m_font->Ascent;
    }
    else Widget.final_height = Widget.height;
@@ -401,12 +398,16 @@ void layout::preset_widget(widget_mgr &Widget)
 }
 
 //********************************************************************************************************************
+// Calculate the position of a widget, check for word-wrapping etc.
+// 
+// NOTE: If you ever see a widget unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
+// segment.
 
 WRAP layout::lay_widget(widget_mgr &Widget)
 {
    auto wrap_result = WRAP::DO_NOTHING;
 
-   if (Widget.floating()) {
+   if (Widget.floating_x()) {
       // Calculate horizontal position
 
       if ((Widget.align & ALIGN::LEFT) != ALIGN::NIL) {
@@ -736,7 +737,7 @@ void layout::lay_paragraph_end()
    stream_char sc(idx + 1, 0);
    if (!stack_para.empty()) {
       // The paragraph height reflects the true size of the paragraph after we take into account
-      // any vectors and tables within the paragraph.
+      // any inline graphics within the paragraph.
 
       auto para = stack_para.top();
       m_paragraph_bottom = para->y + para->height;

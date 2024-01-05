@@ -2043,7 +2043,7 @@ void parser::tag_image(XMLTag &Tag)
       if (img.width < 0) img.width = 0; // Zero is equivalent to 'auto', meaning on-the-fly computation
       if (img.height < 0) img.height = 0;
 
-      if (!img.floating()) Self->NoWhitespace = false; // Images count as characters when inline.
+      if (!img.floating_x()) Self->NoWhitespace = false; // Images count as characters when inline.
       m_stream.insert_code(m_index, img);
    }
    else {
