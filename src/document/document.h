@@ -730,7 +730,7 @@ struct widget_mgr {
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
    bool width_pct = false, height_pct = false, padding = false;
-   bool alt_state = false;
+   bool alt_state = false, internal_label = false;
    UBYTE label_pos = 1;                // 0 = left, 1 = right
 
    struct {
@@ -742,7 +742,11 @@ struct widget_mgr {
       return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
    }
 
-   constexpr DOUBLE full_width() const { return final_width + label_width + label_pad + final_pad.left + final_pad.right; }
+   constexpr DOUBLE full_width() const { 
+      if (internal_label) return final_width + final_pad.left + final_pad.right;
+      else return final_width + label_width + label_pad + final_pad.left + final_pad.right; 
+   }
+
    constexpr DOUBLE full_height() const { return final_height + final_pad.top + final_pad.bottom; }
 };
 

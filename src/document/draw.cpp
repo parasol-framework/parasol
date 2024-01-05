@@ -40,6 +40,36 @@ static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const Inp
 
 //********************************************************************************************************************
 
+static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Event)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+
+   ui_widget &widget = Self->Widgets[Viewport->UID];
+   auto button = std::get<bc_button *>(widget.widget);
+
+   handle_widget_event(Self, *button, Event);
+
+   for (; Event; Event = Event->Next) {
+      if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         if (Event->Type IS JET::LMB) {
+            if (Event->Value IS 1) button->alt_state = true;
+            else button->alt_state = false;
+         }
+
+         if (button->alt_state) button->viewport->setFill(button->alt_fill);
+         else button->viewport->setFill(button->fill);
+
+         Self->Viewport->draw();
+      }
+   }
+
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+
 static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Event)
 {
    auto Self = (extDocument *)CurrentContext();
@@ -70,16 +100,28 @@ static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *
 //********************************************************************************************************************
 
 ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *Viewport, bc_font *Style,
-   DOUBLE &XAdvance, DOUBLE ExtWidth, bool CreateViewport)
+   DOUBLE &XAdvance, DOUBLE ExtWidth, bool CreateViewport, DOUBLE &X, DOUBLE &Y)
 {
-   DOUBLE x, y;
-   if (Widget.floating()) x = Widget.x + Widget.final_pad.left;
+   if (Widget.floating_x()) X = Widget.x + Widget.final_pad.left;
    else {
-      if ((Style->options & FSO::ALIGN_CENTER) != FSO::NIL) x = XAdvance + ((Segment.align_width - Segment.area.Width) * 0.5);
-      else if ((Style->options & FSO::ALIGN_RIGHT) != FSO::NIL) x = XAdvance + Segment.align_width - Segment.area.Width;
-      else x = XAdvance;
+      if ((Style->options & FSO::ALIGN_CENTER) != FSO::NIL) X = XAdvance + ((Segment.align_width - Segment.area.Width) * 0.5);
+      else if ((Style->options & FSO::ALIGN_RIGHT) != FSO::NIL) X = XAdvance + Segment.align_width - Segment.area.Width;
+      else X = XAdvance;
    }
-   y = Segment.area.Y + Widget.final_pad.top;
+
+   if (Widget.floating_x()) Y = Segment.area.Y + Widget.final_pad.top;
+   else {
+      Y = Segment.area.Y;
+      if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) Y += Widget.final_pad.top;
+      else if ((Style->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
+         DOUBLE avail_space = Segment.area.Height - Segment.gutter;
+         Y += ((avail_space - (Widget.final_height + Widget.final_pad.top + Widget.final_pad.bottom)) * 0.5);
+      }
+      else {
+         // Bottom alignment.  Aligning to the gutter produces better results compared to base line alignment.
+         Y += Segment.area.Height - Widget.final_height - Widget.final_pad.bottom;
+      }
+   }
 
    const DOUBLE width = Widget.final_width + ExtWidth;
 
@@ -87,7 +129,7 @@ ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *
       if (!(Widget.viewport = objVectorViewport::create::global({
             fl::Name("vp_widget"),
             fl::Owner(Viewport->UID),
-            fl::X(x), fl::Y(y),
+            fl::X(X), fl::Y(Y),
             fl::Width(width), fl::Height(Widget.final_height),
             fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
          }))) {
@@ -97,7 +139,7 @@ ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *
    else if (!(Widget.rect = objVectorRectangle::create::global({
         fl::Name("rect_widget"),
         fl::Owner(Viewport->UID),
-        fl::X(x), fl::Y(y),
+        fl::X(X), fl::Y(Y),
         fl::Width(width), fl::Height(Widget.final_height),
         fl::Fill(Widget.alt_state ? Widget.alt_fill : Widget.fill)
       }))) {
@@ -105,7 +147,7 @@ ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *
       return ERR_CreateObject;
    }
 
-   if (!Widget.floating()) XAdvance += Widget.final_pad.left + Widget.final_pad.right + width;
+   if (!Widget.floating_x()) XAdvance += Widget.final_pad.left + Widget.final_pad.right + width;
 
    return ERR_Okay;
 }
@@ -524,22 +566,45 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
             }
 
             case SCODE::BUTTON: {
+               DOUBLE wx, wy;
                auto &button = segment.stream->lookup<bc_button>(cursor);
-               build_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true);
+               auto font = stack_style.top()->get_font();
+
+               if (!build_widget(button, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
+                  const DOUBLE avail_space = button.final_height - font->Gutter;
+                  const DOUBLE x = (button.final_width - button.label_width) * 0.5;
+                  const DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
+
+                  objVectorText::create::global({
+                     fl::Owner(button.viewport->UID),
+                     fl::X(x), fl::Y(std::trunc(y)),
+                     fl::String(button.label),
+                     fl::Font(font),
+                     fl::Fill(button.font_fill)
+                  });
+               
+                  if (button.viewport) {
+                     auto call = make_function_stdc(inputevent_button);
+                     vecSubscribeInput(button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+
+                     Self->Widgets.emplace(button.viewport->UID, ui_widget { &button });
+                  }
+               }
                break;
             }
 
             case SCODE::CHECKBOX: {
                auto &checkbox = segment.stream->lookup<bc_checkbox>(cursor);
 
+               DOUBLE wx, wy;
                if (!checkbox.label.empty()) {
                   if (checkbox.label_pos) { 
                      // Right-sided labels can be integrated with the widget so that clicking affects state.
-                     if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true)) {
+                     if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy)) {
                         DOUBLE x, y;
                         auto font = stack_style.top()->get_font();
                         const DOUBLE avail_space = checkbox.final_height - font->Gutter;
-                        y = checkbox.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
+                        y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
                         x = checkbox.final_width + checkbox.label_pad;                        
 
@@ -556,23 +621,23 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      // Left-sided labels aren't included in the scope of the widget's viewport
                      // TODO: Interactivity is feasible but we'll need to add an input feedback mechanism for that
                      auto font = stack_style.top()->get_font();
-                     const DOUBLE avail_space = checkbox.final_height - font->Gutter;
-                     DOUBLE y = segment.area.Y + checkbox.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
-
-                     objVectorText::create::global({
-                        fl::Owner(Viewport->UID),
-                        fl::X(std::trunc(x_advance)), fl::Y(std::trunc(y)),
-                        fl::String(checkbox.label),
-                        fl::Font(font),
-                        fl::Fill(stack_style.top()->fill)
-                     });
-
+                     auto x_label = x_advance;
                      x_advance += checkbox.label_width + checkbox.label_pos;
+                     if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy)) {
+                        const DOUBLE avail_space = checkbox.final_height - font->Gutter;
+                        DOUBLE y = wy + avail_space - ((avail_space - font->Ascent) * 0.5);
 
-                     build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true);                     
+                        objVectorText::create::global({
+                           fl::Owner(Viewport->UID),
+                           fl::X(std::trunc(x_label)), fl::Y(std::trunc(y)),
+                           fl::String(checkbox.label),
+                           fl::Font(font),
+                           fl::Fill(stack_style.top()->fill)
+                        });
+                     }                   
                   }
                }
-               else build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true);
+               else build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                if (checkbox.viewport) {
                   auto call = make_function_stdc(inputevent_checkbox);
@@ -585,13 +650,15 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
             case SCODE::IMAGE: {
                auto &img = segment.stream->lookup<bc_image>(cursor);
-               build_widget(img, segment, Viewport, stack_style.top(), x_advance, 0, false);
+               DOUBLE wx, wy;
+               build_widget(img, segment, Viewport, stack_style.top(), x_advance, 0, false, wx, wy);
                break;
             }
 
             case SCODE::COMBOBOX: {
                auto &combo = segment.stream->lookup<bc_combobox>(cursor);
-               build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true);
+               DOUBLE wx, wy;
+               build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
                break;
             }
 
@@ -599,13 +666,14 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                auto &input = segment.stream->lookup<bc_input>(cursor);
                auto font = stack_style.top()->get_font();
 
+               DOUBLE wx, wy;
                const DOUBLE avail_space = input.final_height - font->Gutter;
 
                if (!input.label.empty()) {
                   if (input.label_pos) {
-                     build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true);
+                     build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
-                     DOUBLE y = segment.area.Y + input.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
+                     DOUBLE y = wy + avail_space - ((avail_space - font->Ascent) * 0.5);
 
                      objVectorText::create::global({
                         fl::Owner(Viewport->UID),
@@ -618,22 +686,23 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      x_advance += input.label_width + input.label_pad;
                   }
                   else {
-                     DOUBLE y = segment.area.Y + input.final_pad.top + avail_space - ((avail_space - font->Ascent) * 0.5);
+                     auto x_label = x_advance;
+                     x_advance += input.label_pad + input.label_width;
+
+                     build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+
+                     DOUBLE y = wy + avail_space - ((avail_space - font->Ascent) * 0.5);
 
                      objVectorText::create::global({
                         fl::Owner(Viewport->UID),
-                        fl::X(std::trunc(x_advance)), fl::Y(std::trunc(y)),
+                        fl::X(std::trunc(x_label)), fl::Y(std::trunc(y)),
                         fl::String(input.label),
                         fl::Font(font),
                         fl::Fill(stack_style.top()->fill)
                      });
-
-                     x_advance += input.label_pad + input.label_width;
-
-                     build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true);
                   }
                }
-               else build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true);
+               else build_widget(input, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
 

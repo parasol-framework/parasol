@@ -176,6 +176,7 @@ private:
       }
    }
 
+   void preset_widget(widget_mgr &);
    WRAP lay_widget(widget_mgr &);
    CELL lay_cell(bc_table *);
    void lay_cell_end();
@@ -351,7 +352,7 @@ CELL layout::lay_cell(bc_table *Table)
 // NOTE: If you ever see a widget unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
 // segment.
 
-WRAP layout::lay_widget(widget_mgr &Widget)
+void layout::preset_widget(widget_mgr &Widget)
 {
    if (!Widget.floating()) check_line_height(); // Necessary for inline widgets in case they are the first 'character' on the line.
 
@@ -393,12 +394,17 @@ WRAP layout::lay_widget(widget_mgr &Widget)
       Widget.final_pad.bottom = Widget.pad.bottom_pct ? (Widget.pad.bottom * hypot) : Widget.pad.bottom;
    }
 
-   auto wrap_result = WRAP::DO_NOTHING;
-
    if (!Widget.label.empty()) {
       Widget.label_width = fntStringWidth(m_font, Widget.label.c_str(), -1);
    }
    else Widget.label_width = 0;
+}
+
+//********************************************************************************************************************
+
+WRAP layout::lay_widget(widget_mgr &Widget)
+{
+   auto wrap_result = WRAP::DO_NOTHING;
 
    if (Widget.floating()) {
       // Calculate horizontal position
@@ -408,10 +414,10 @@ WRAP layout::lay_widget(widget_mgr &Widget)
       }
       else if ((Widget.align & ALIGN::CENTER) != ALIGN::NIL) {
          // We use the left margin and not the cursor for calculating the center because the widget is floating.
-         Widget.x = m_left_margin + ((m_align_width - (Widget.final_width + Widget.label_width + Widget.final_pad.left + Widget.final_pad.right)) * 0.5);
+         Widget.x = m_left_margin + ((m_align_width - Widget.full_width()) * 0.5);
       }
       else if ((Widget.align & ALIGN::RIGHT) != ALIGN::NIL) {
-         Widget.x = m_align_width - (Widget.final_width + Widget.label_width + Widget.final_pad.left + Widget.final_pad.right);
+         Widget.x = m_align_width - Widget.full_width();
       }
       else Widget.x = m_cursor_x;
 
@@ -420,9 +426,7 @@ WRAP layout::lay_widget(widget_mgr &Widget)
       // For a floating widget we need to declare a clip region based on the final widget dimensions.
       // TODO: Add support for masked clipping through SVG paths.
 
-      m_clips.emplace_back(Widget.x, m_cursor_y,
-         Widget.x + Widget.final_pad.left + Widget.final_width + Widget.label_width + Widget.final_pad.right,
-         m_cursor_y + Widget.final_pad.top + Widget.final_height + Widget.final_pad.bottom,
+      m_clips.emplace_back(Widget.x, m_cursor_y, Widget.x + Widget.full_width(), m_cursor_y + Widget.full_height(),
          idx, false, "Image");
    }
    else { // Widget is inline and must be treated like a text character.
@@ -1493,6 +1497,11 @@ extend_page:
 
          case SCODE::BUTTON: {
             auto &button = m_stream->lookup<bc_button>(idx);
+
+            preset_widget(button);
+            const DOUBLE min_width = button.label_width + (button.label_pad * 2);
+            if (button.final_width < min_width) button.final_width = min_width;
+
             auto ww = lay_widget(button);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1500,6 +1509,7 @@ extend_page:
 
          case SCODE::CHECKBOX: {
             auto &checkbox = m_stream->lookup<bc_checkbox>(idx);
+            preset_widget(checkbox);
             auto ww = lay_widget(checkbox);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1507,6 +1517,7 @@ extend_page:
 
          case SCODE::COMBOBOX: {
             auto &combobox = m_stream->lookup<bc_combobox>(idx);
+            preset_widget(combobox);
             auto ww = lay_widget(combobox);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1514,6 +1525,7 @@ extend_page:
 
          case SCODE::IMAGE: {
             auto &image = m_stream->lookup<bc_image>(idx);
+            preset_widget(image);
             auto ww = lay_widget(image);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
@@ -1521,6 +1533,7 @@ extend_page:
 
          case SCODE::INPUT: {
             auto &input = m_stream->lookup<bc_input>(idx);
+            preset_widget(input);
             auto ww = lay_widget(input);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;

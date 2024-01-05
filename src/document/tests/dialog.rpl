@@ -23,11 +23,7 @@
 <!--
 <p><rect height="1" colour="rgb(0,0,0,0.2)"/></p>
 -->
-<p no-wrap><image src="url(#checkmark)" width="16" height="16" padding="0 0 4 0"/>
-<a @response="1">To be</a>
-<advance x="30"/><image src="url(#cancel)" width="16" height="16" padding="0 0 4 0"/>
-<a @response="2">Not to be</a>
-</p>
+<p no-wrap><image src="url(#checkmark)" width="16" height="16" padding="0 0 4 0"/><a @response="1">To be</a><advance x="30"/><image src="url(#cancel)" width="16" height="16" padding="0 0 4 0"/><a @response="2">Not to be</a></p>
       </cell>
     </row>
   </table>

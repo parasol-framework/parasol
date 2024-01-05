@@ -29,6 +29,7 @@ namespace agg
     public:
         rounded_rect() {}
         rounded_rect(double x1, double y1, double x2, double y2, double r);
+        rounded_rect(double x1, double y1, double x2, double y2, double rx, double ry);
 
         void rect(double x1, double y1, double x2, double y2);
         void radius(double r);

@@ -9,6 +9,8 @@ template<class... Args> void DBG_TRANSFORM(Args...) {
 #define FT_DOWNSIZE 6
 #define FT_UPSIZE 6
 #define DEG2RAD 0.0174532925 // Multiple any angle by this value to convert to radians
+#define SQRT2 1.41421356237 // sqrt(2)
+#define INV_SQRT2 (1.0 / SQRT2)
 
 #include <array>
 #include <memory>

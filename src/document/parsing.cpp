@@ -26,8 +26,8 @@ struct parser {
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
    bool  m_check_else  = false;
-   bool  m_button_pattern    = false;
    bool  m_default_pattern   = false;
+   bool  m_button_patterns   = false;
    bool  m_combobox_pattern  = false;
    bool  m_checkbox_patterns = false;
    stream_char  m_index;
@@ -1613,6 +1613,82 @@ void parser::tag_checkbox(XMLTag &Tag)
    m_stream.insert_code(m_index, widget);
 }
 
+//********************************************************************************************************************
+
+void parser::tag_button(XMLTag &Tag)
+{
+   pf::Log log(__FUNCTION__);
+
+   bc_button widget;
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto &value = Tag.Attribs[i].Value;
+      if (hash IS HASH_label) {
+         widget.label = value;
+      }
+      else if (hash IS HASH_fill) {
+         widget.fill = value;
+      }
+      else if (hash IS HASH_name) {
+         widget.name = value;
+      }
+      else if (hash IS HASH_width) {
+         read_unit(value.c_str(), widget.width, widget.width_pct);
+      }
+      else if (hash IS HASH_height) {
+         read_unit(value.c_str(), widget.height, widget.height_pct);
+      }
+      else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
+   }
+
+   widget.internal_label = true;
+
+   if (!m_button_patterns) {
+      m_button_patterns = true;
+
+      if (auto pattern_on = objVectorPattern::create::global({
+            fl::Name("button_on"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+         
+         auto vp = pattern_on->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::Width("100%"), fl::Height("100%"),
+            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0), 
+            fl::RoundX("10%"),
+            fl::Fill("rgb(0,0,0,32)")
+         });
+
+         scAddDef(Self->Viewport->Scene, "/widget/button/on", pattern_on);
+      }
+
+      if (auto pattern_off = objVectorPattern::create::global({
+            fl::Name("button_off"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+         
+         auto vp = pattern_off->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::Width("100%"), fl::Height("100%"),
+            fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0), 
+            fl::RoundX("10%"),
+            fl::Fill("rgb(255,255,255,96)")
+         });
+
+         scAddDef(Self->Viewport->Scene, "/widget/button/off", pattern_off);
+      }
+   }
+
+   if (widget.fill.empty()) widget.fill = "url(#/widget/button/off)";
+   if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/button/on)";
+   if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
+   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
+
+   widget.label_pad = m_style.font_style.get_font()->Ascent;
+
    Self->NoWhitespace = false; // Widgets are treated as inline characters
    m_stream.insert_code(m_index, widget);
 }
@@ -1646,7 +1722,7 @@ void parser::tag_input(XMLTag &Tag)
          widget.font_fill = value;
       }
       else if (hash IS HASH_name) {
-         // TODO
+         widget.name = value;
       }
       else log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }

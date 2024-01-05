@@ -26,9 +26,28 @@ static void generate_rectangle(extVectorRectangle *Vector)
       if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
    }
 
-   if ((Vector->rRoundX) or (Vector->rRoundY)) {
-      agg::rounded_rect aggrect(x, y, x + width, y + height, Vector->rRoundX);
-      if (Vector->rRoundX != Vector->rRoundY) aggrect.radius(Vector->rRoundX, Vector->rRoundY);
+   if (Vector->rRoundX > 0) {
+      // SVG rules that RX will also apply to RY unless RY != 0.
+      // An RX of zero disables rounding (contrary to SVG).
+      // If RX is greater than width/2, set RX to width/2.  Same for RY on the vertical axis.
+
+      DOUBLE rx = Vector->rRoundX, ry = Vector->rRoundY;
+
+      if (Vector->rDimensions & DMF_RELATIVE_RADIUS_X) {
+         rx *= sqrt((width * width) + (height * height)) * INV_SQRT2;
+      }
+
+      if (rx > width * 0.5) rx = width * 0.5; // SVG rule
+
+      if ((rx != ry) and (ry)) {
+         if (Vector->rDimensions & DMF_RELATIVE_RADIUS_Y) {
+            ry *= sqrt((width * width) + (height * height)) * INV_SQRT2;
+         }
+         if (ry > height * 0.5) ry = height * 0.5;
+      }
+      else ry = rx;
+
+      agg::rounded_rect aggrect(x, y, x + width, y + height, rx, ry);
       aggrect.normalize_radius(); // Required because???
 
       Vector->BasePath.concat_path(aggrect);
@@ -123,10 +142,14 @@ The following dimension flags are supported:
 <type name="FIXED_WIDTH">The #Width value is a fixed coordinate.</>
 <type name="FIXED_X">The #X value is a fixed coordinate.</>
 <type name="FIXED_Y">The #Y value is a fixed coordinate.</>
+<type name="FIXED_RADIUS_X">The #RoundX value is a fixed coordinate.</>
+<type name="FIXED_RADIUS_Y">The #RoundY value is a fixed coordinate.</>
 <type name="RELATIVE_HEIGHT">The #Height value is a relative coordinate.</>
 <type name="RELATIVE_WIDTH">The #Width value is a relative coordinate.</>
 <type name="RELATIVE_X">The #X value is a relative coordinate.</>
 <type name="RELATIVE_Y">The #Y value is a relative coordinate.</>
+<type name="RELATIVE_RADIUS_X">The #RoundX value is a relative coordinate.</>
+<type name="RELATIVE_RADIUS_Y">The #RoundY value is a relative coordinate.</>
 </types>
 
 *********************************************************************************************************************/
@@ -190,16 +213,29 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 *********************************************************************************************************************/
 
-static ERROR RECTANGLE_GET_RoundX(extVectorRectangle *Self, DOUBLE *Value)
+static ERROR RECTANGLE_GET_RoundX(extVectorRectangle *Self, Variable *Value)
 {
-   *Value = Self->rRoundX;
+   DOUBLE val = Self->rRoundX;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_RoundX(extVectorRectangle *Self, DOUBLE Value)
+static ERROR RECTANGLE_SET_RoundX(extVectorRectangle *Self, Variable *Value)
 {
-   if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
-   Self->rRoundX = Value;
+   DOUBLE val;
+
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
+
+   if ((val < 0) or (val > 1000)) return ERR_OutOfRange;
+
+   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
+   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_X) & (~DMF_RELATIVE_RADIUS_X);
+
+   Self->rRoundX = val;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -214,16 +250,29 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 *********************************************************************************************************************/
 
-static ERROR RECTANGLE_GET_RoundY(extVectorRectangle *Self, DOUBLE *Value)
+static ERROR RECTANGLE_GET_RoundY(extVectorRectangle *Self, Variable *Value)
 {
-   *Value = Self->rRoundY;
+   DOUBLE val = Self->rRoundY;
+   if (Value->Type & FD_DOUBLE) Value->Double = val;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
 }
 
-static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, DOUBLE Value)
+static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Variable *Value)
 {
-   if ((Value < 0) or (Value > 1000)) return ERR_OutOfRange;
-   Self->rRoundY = Value;
+   DOUBLE val;
+
+   if (Value->Type & FD_DOUBLE) val = Value->Double;
+   else if (Value->Type & FD_LARGE) val = Value->Large;
+   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
+
+   if ((val < 0) or (val > 1000)) return ERR_OutOfRange;
+
+   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
+   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_RELATIVE_RADIUS_Y);
+
+   Self->rRoundY = val;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -350,8 +399,8 @@ static const FieldDef clRectDimensions[] = {
 };
 
 static const FieldArray clRectangleFields[] = {
-   { "RoundX",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
-   { "RoundY",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
+   { "RoundX",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
+   { "RoundY",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
    { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
    { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
    { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },

@@ -298,7 +298,7 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
       else ((extVector *)Self->Parent)->Child = Self->Next;
    }
 
-   if (Self->Child) { 
+   if (Self->Child) {
       // Clear the parent reference for all children of the vector (essential for maintaining pointer integrity).
       auto &scan = Self->Child;
       while (scan) {
@@ -2276,7 +2276,7 @@ void send_feedback(extVector *Vector, FM Event)
 DOUBLE extVector::fixed_stroke_width()
 {
    if (this->RelativeStrokeWidth) {
-      return get_parent_diagonal(this) * this->StrokeWidth;
+      return get_parent_diagonal(this) * INV_SQRT2 * this->StrokeWidth;
    }
    else return this->StrokeWidth;
 }

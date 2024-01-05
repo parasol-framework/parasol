@@ -18,17 +18,15 @@
 
 namespace agg
 {
-    //------------------------------------------------------------------------
-    rounded_rect::rounded_rect(double x1, double y1, double x2, double y2, double r) :
+    rounded_rect::rounded_rect(double x1, double y1, double x2, double y2, double rx, double ry) :
         m_x1(x1), m_y1(y1), m_x2(x2), m_y2(y2),
-        m_rx1(r), m_ry1(r), m_rx2(r), m_ry2(r),
-        m_rx3(r), m_ry3(r), m_rx4(r), m_ry4(r)
+        m_rx1(rx), m_ry1(ry), m_rx2(rx), m_ry2(ry),
+        m_rx3(rx), m_ry3(ry), m_rx4(rx), m_ry4(ry)
     {
         if(x1 > x2) { m_x1 = x2; m_x2 = x1; }
         if(y1 > y2) { m_y1 = y2; m_y2 = y1; }
     }
 
-    //--------------------------------------------------------------------
     void rounded_rect::rect(double x1, double y1, double x2, double y2)
     {
         m_x1 = x1;
@@ -39,20 +37,17 @@ namespace agg
         if(y1 > y2) { m_y1 = y2; m_y2 = y1; }
     }
 
-    //--------------------------------------------------------------------
     void rounded_rect::radius(double r)
     {
         m_rx1 = m_ry1 = m_rx2 = m_ry2 = m_rx3 = m_ry3 = m_rx4 = m_ry4 = r;
     }
 
-    //--------------------------------------------------------------------
     void rounded_rect::radius(double rx, double ry)
     {
         m_rx1 = m_rx2 = m_rx3 = m_rx4 = rx;
         m_ry1 = m_ry2 = m_ry3 = m_ry4 = ry;
     }
 
-    //--------------------------------------------------------------------
     void rounded_rect::radius(double rx_bottom, double ry_bottom,
                               double rx_top,    double ry_top)
     {
@@ -62,7 +57,6 @@ namespace agg
         m_ry3 = m_ry4 = ry_top;
     }
 
-    //--------------------------------------------------------------------
     void rounded_rect::radius(double rx1, double ry1, double rx2, double ry2,
                               double rx3, double ry3, double rx4, double ry4)
     {
@@ -70,7 +64,6 @@ namespace agg
         m_rx3 = rx3; m_ry3 = ry3; m_rx4 = rx4; m_ry4 = ry4;
     }
 
-    //--------------------------------------------------------------------
     void rounded_rect::normalize_radius()
     {
         double dx = fabs(m_x2 - m_x1);
