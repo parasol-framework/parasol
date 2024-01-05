@@ -176,8 +176,8 @@ private:
       }
    }
 
-   void preset_widget(widget_mgr &);
-   WRAP lay_widget(widget_mgr &);
+   void size_widget(widget_mgr &);
+   WRAP place_widget(widget_mgr &);
    CELL lay_cell(bc_table *);
    void lay_cell_end();
    void lay_font();
@@ -349,7 +349,7 @@ CELL layout::lay_cell(bc_table *Table)
 // Calculate widget dimensions (refer to place_widget() for the x,y values).  The host rectangle is modified in 
 // gen_scene_graph() as this is the most optimal approach (i.e. if the page width expands during layout).
 
-void layout::preset_widget(widget_mgr &Widget)
+void layout::size_widget(widget_mgr &Widget)
 {
    if (!Widget.floating_x()) check_line_height(); // Necessary for inline widgets in case they are the first 'character' on the line.
 
@@ -403,7 +403,7 @@ void layout::preset_widget(widget_mgr &Widget)
 // NOTE: If you ever see a widget unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
 // segment.
 
-WRAP layout::lay_widget(widget_mgr &Widget)
+WRAP layout::place_widget(widget_mgr &Widget)
 {
    auto wrap_result = WRAP::DO_NOTHING;
 
@@ -1499,43 +1499,43 @@ extend_page:
          case SCODE::BUTTON: {
             auto &button = m_stream->lookup<bc_button>(idx);
 
-            preset_widget(button);
+            size_widget(button);
             const DOUBLE min_width = button.label_width + (button.label_pad * 2);
             if (button.final_width < min_width) button.final_width = min_width;
 
-            auto ww = lay_widget(button);
+            auto ww = place_widget(button);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
 
          case SCODE::CHECKBOX: {
             auto &checkbox = m_stream->lookup<bc_checkbox>(idx);
-            preset_widget(checkbox);
-            auto ww = lay_widget(checkbox);
+            size_widget(checkbox);
+            auto ww = place_widget(checkbox);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
 
          case SCODE::COMBOBOX: {
             auto &combobox = m_stream->lookup<bc_combobox>(idx);
-            preset_widget(combobox);
-            auto ww = lay_widget(combobox);
+            size_widget(combobox);
+            auto ww = place_widget(combobox);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
 
          case SCODE::IMAGE: {
             auto &image = m_stream->lookup<bc_image>(idx);
-            preset_widget(image);
-            auto ww = lay_widget(image);
+            size_widget(image);
+            auto ww = place_widget(image);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
 
          case SCODE::INPUT: {
             auto &input = m_stream->lookup<bc_input>(idx);
-            preset_widget(input);
-            auto ww = lay_widget(input);
+            size_widget(input);
+            auto ww = place_widget(input);
             if (ww IS WRAP::EXTEND_PAGE) goto extend_page;
             break;
          }
