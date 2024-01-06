@@ -343,11 +343,10 @@ struct bc_font_end : public base_code {
 
 struct style_status {
    struct bc_font font_style;
-   struct process_table *table;
    std::string face;
    DOUBLE point;
 
-   style_status() : table(NULL), face(""), point(0) { }
+   style_status() : face(""), point(0) { }
 };
 
 //********************************************************************************************************************
@@ -493,28 +492,10 @@ struct tablecol {
 
 //********************************************************************************************************************
 
-struct bc_text : public base_code {
-   std::string text;
-   std::vector<objVectorText *> vector_text;
-   bool formatted = false;
-   SEGINDEX segment = -1; // Reference to the first segment that manages this text string.
-
-   bc_text() { code = SCODE::TEXT; }
-   bc_text(std::string pText) : text(pText) { code = SCODE::TEXT; }
-   bc_text(std::string pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; }
-};
-
 struct bc_advance : public base_code {
    DOUBLE x, y;
 
    bc_advance() : x(0), y(0) { code = SCODE::ADVANCE; }
-};
-
-struct bc_use : public base_code {
-   std::string id; // Reference to a symbol registered in the Document's SVG object
-
-   bc_use() { code = SCODE::USE; }
-   bc_use(std::string pID) : id(pID) { code = SCODE::USE; }
 };
 
 struct bc_index : public base_code {
@@ -575,17 +556,6 @@ struct bc_list : public base_code {
 
 struct bc_list_end : public base_code {
    bc_list_end() { code = SCODE::LIST_END; }
-};
-
-struct bc_set_margins : public base_code {
-   WORD left = 0x7fff; WORD top = 0x7fff; WORD bottom = 0x7fff; WORD right = 0x7fff;
-   bc_set_margins() { code = SCODE::SET_MARGINS; }
-};
-
-struct bc_xml : public base_code {
-   OBJECTID object_id = 0;   // Reference to the object
-   bool owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
-   bc_xml() { code = SCODE::XML; }
 };
 
 struct bc_table : public base_code {
@@ -709,6 +679,35 @@ struct bc_cell : public base_code {
 
    ~bc_cell();
    bc_cell (const bc_cell &Other);
+};
+
+struct bc_set_margins : public base_code {
+   WORD left = 0x7fff; WORD top = 0x7fff; WORD bottom = 0x7fff; WORD right = 0x7fff;
+   bc_set_margins() { code = SCODE::SET_MARGINS; }
+};
+
+struct bc_text : public base_code {
+   std::string text;
+   std::vector<objVectorText *> vector_text;
+   bool formatted = false;
+   SEGINDEX segment = -1; // Reference to the first segment that manages this text string.
+
+   bc_text() { code = SCODE::TEXT; }
+   bc_text(std::string pText) : text(pText) { code = SCODE::TEXT; }
+   bc_text(std::string pText, bool pFormatted) : text(pText), formatted(pFormatted) { code = SCODE::TEXT; }
+};
+
+struct bc_use : public base_code {
+   std::string id; // Reference to a symbol registered in the Document's SVG object
+
+   bc_use() { code = SCODE::USE; }
+   bc_use(std::string pID) : id(pID) { code = SCODE::USE; }
+};
+
+struct bc_xml : public base_code {
+   OBJECTID object_id = 0;   // Reference to the object
+   bool owned = false;      // true if the object is owned by a parent (not subject to normal document layout)
+   bc_xml() { code = SCODE::XML; }
 };
 
 //********************************************************************************************************************

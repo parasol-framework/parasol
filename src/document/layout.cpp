@@ -1857,7 +1857,7 @@ restart:
 }
 
 //********************************************************************************************************************
-// Compare a given area against clip regions and move the x,y position when there's an intersection.
+// Compare a given area against clip regions and move the x,y position when there's a collision.
 
 void layout::wrap_through_clips(stream_char WordIndex, DOUBLE &X, DOUBLE &Y, DOUBLE Width, DOUBLE Height)
 {

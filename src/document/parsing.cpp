@@ -32,6 +32,7 @@ struct parser {
    stream_char  m_index;
    style_status m_style;
    std::stack<bc_list *> m_list_stack;
+   std::stack<process_table> m_table_stack;
 
    inline void  process_page();
    inline TRF   parse_tag(XMLTag &, IPF &);
@@ -116,7 +117,8 @@ struct parser {
    }
 };
 
-static void check_para_attrib(extDocument *, const std::string &, const std::string &, bc_paragraph *, style_status &);
+static bool check_para_attrib(extDocument *, const XMLAttrib &, bc_paragraph *, style_status &);
+static bool check_font_attrib(extDocument *, const XMLAttrib &, style_status &);
 
 //********************************************************************************************************************
 // Converts XML to byte code, then displays the page that is referenced by the PageName field by calling
@@ -1197,46 +1199,34 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, style_status &Style, IPF F
 
 //********************************************************************************************************************
 
-static void check_para_attrib(extDocument *Self, const std::string &Attrib, const std::string &Value, 
-   bc_paragraph *Para, style_status &Style)
+static bool check_para_attrib(extDocument *Self, const XMLAttrib &Attrib, bc_paragraph *Para, style_status &Style)
 {
-   switch (StrHash(Attrib)) {
+   switch (StrHash(Attrib.Name)) {
       case HASH_inline:
       case HASH_anchor: // DEPRECATED, clients should use 'inline'
          Style.font_style.options |= FSO::IN_LINE;
-         break;
-
-      case HASH_leading:
-         // The leading is a line height multiplier that applies to the first line in the paragraph only.
-         // It is typically used for things like headers.
-
-         if (Para) {
-            Para->leading = StrToFloat(Value);
-            if (Para->leading < MIN_LEADING) Para->leading = MIN_LEADING;
-            else if (Para->leading > MAX_LEADING) Para->leading = MAX_LEADING;
-         }
-         break;
+         return true;
 
       case HASH_no_wrap:
          Style.font_style.options |= FSO::NO_WRAP;
-         break;
+         return true;
 
       case HASH_v_align: {
          // Vertical alignment defines the vertical position for text in cases where the line height is greater than
          // the text itself (e.g. if an image is anchored in the line).
          ALIGN align = ALIGN::NIL;
-         if (!StrMatch("top", Value)) align = ALIGN::TOP;
-         else if (!StrMatch("center", Value)) align = ALIGN::VERTICAL;
-         else if (!StrMatch("middle", Value)) align = ALIGN::VERTICAL;
-         else if (!StrMatch("bottom", Value)) align = ALIGN::BOTTOM;
+         if (!StrMatch("top", Attrib.Value)) align = ALIGN::TOP;
+         else if (!StrMatch("center", Attrib.Value)) align = ALIGN::VERTICAL;
+         else if (!StrMatch("middle", Attrib.Value)) align = ALIGN::VERTICAL;
+         else if (!StrMatch("bottom", Attrib.Value)) align = ALIGN::BOTTOM;
          if (align != ALIGN::NIL) {
             Style.font_style.valign = (Style.font_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) | align;
          }
-         break;
+         return true;
       }
 
       case HASH_kerning:  // REQUIRES CODE and DOCUMENTATION
-         break;
+         return true;
 
       case HASH_line_height: // REQUIRES CODE
          // Line height is expressed as a multiplier that is applied to m_line.line_height for every line in the
@@ -1245,30 +1235,93 @@ static void check_para_attrib(extDocument *Self, const std::string &Attrib, cons
 
          //Style.LineHeightRatio = StrToFloat(Tag.Attribs[i].Value);
          //if (Style.LineHeightRatio < MIN_LINEHEIGHT) Style.LineHeightRatio = MIN_LINEHEIGHT;
-         break;
+         return true;
 
       case HASH_trim:
          if (Para) Para->trim = true;
-         break;
+         return true;
 
       case HASH_v_spacing:
          // Vertical spacing between embedded paragraphs.  Ratio is expressed as a measure of the *default* lineheight (not the height of the
          // last line of the paragraph).  E.g. 1.5 is one and a half times the standard lineheight.  The default is 1.0.
 
          if (Para) {
-            Para->v_spacing = StrToFloat(Value);
+            Para->v_spacing = StrToFloat(Attrib.Value);
             if (Para->v_spacing < MIN_VSPACING) Para->v_spacing = MIN_VSPACING;
             else if (Para->v_spacing > MAX_VSPACING) Para->v_spacing = MAX_VSPACING;
          }
-         break;
+         return true;
 
       case HASH_indent:
          if (Para) {
-            read_unit(Value.c_str(), Para->indent, Para->relative);
+            read_unit(Attrib.Value.c_str(), Para->indent, Para->relative);
             if (Para->indent < 0) Para->indent = 0;
          }
-         break;
+         return true;
    }
+
+   return false;
+}
+
+//********************************************************************************************************************
+
+static bool check_font_attrib(extDocument *Self, const XMLAttrib &Attrib, style_status &Style)
+{
+   pf::Log log;
+
+   switch (StrHash(Attrib.Name)) {
+      case HASH_colour:
+         log.warning("Font 'colour' attrib is deprecated, use 'fill'");
+         Style.font_style.fill = Attrib.Value;
+         return true;
+
+      case HASH_fill:
+         Style.font_style.fill = Attrib.Value;
+         return true;
+
+      case HASH_face: {
+         auto j = Attrib.Value.find(':');
+         if (j != std::string::npos) { // Point size follows
+            auto str = Attrib.Value.c_str();
+            j++;
+            Style.point = StrToInt(str+j);
+            j = Attrib.Value.find(':', j);
+            if (j != std::string::npos) { // Style follows
+               j++;
+               if (!StrMatch("bold", str+j)) {
+                  Style.font_style.options |= FSO::BOLD;
+               }
+               else if (!StrMatch("italic", str+j)) {
+                  Style.font_style.options |= FSO::ITALIC;
+               }
+               else if (!StrMatch("bold italic", str+j)) {
+                  Style.font_style.options |= FSO::BOLD|FSO::ITALIC;
+               }
+            }
+         }
+
+         Style.face = Attrib.Value.substr(0, j);
+         return true;
+      }
+
+      case HASH_size:
+         Style.point = StrToFloat(Attrib.Value);
+         return true;
+      
+      case HASH_style:
+         if (!StrMatch("bold", Attrib.Value)) {
+            Style.font_style.options |= FSO::BOLD;
+         }
+         else if (!StrMatch("italic", Attrib.Value)) {
+            Style.font_style.options |= FSO::ITALIC;
+         }
+         else if (!StrMatch("bold italic", Attrib.Value)) {
+            Style.font_style.options |= FSO::BOLD|FSO::ITALIC;
+         }
+         return true;
+   }
+
+   return false;
 }
 
 //********************************************************************************************************************
@@ -1820,7 +1873,7 @@ void parser::tag_div(XMLTag &Tag)
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
-      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, 0, new_style);
+      else check_para_attrib(Self, Tag.Attribs[i], 0, new_style);
    }
 
    parse_tags_with_style(Tag.Children, new_style);
@@ -2272,7 +2325,16 @@ void parser::tag_paragraph(XMLTag &Tag)
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
-      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &para, new_style);
+      else if (!StrMatch("leading", Tag.Attribs[i].Name)) {
+         // The leading is a line height multiplier that applies to the first line in the paragraph only.
+         // It is typically used for things like headers.
+
+         para.leading = StrToFloat(Tag.Attribs[i].Value);
+         if (para.leading < MIN_LEADING) para.leading = MIN_LEADING;
+         else if (para.leading > MAX_LEADING) para.leading = MAX_LEADING;
+      }
+      else if (check_para_attrib(Self, Tag.Attribs[i], &para, new_style));
+      else check_font_attrib(Self, Tag.Attribs[i], new_style);
    }
 
    m_stream.insert_code(m_index, para);
@@ -2662,55 +2724,12 @@ void parser::tag_font(XMLTag &Tag)
    bool preformat = false;
 
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("colour", Tag.Attribs[i].Name)) {
-         log.warning("Font 'colour' attrib is deprecated, use 'fill'");
-         new_style.font_style.fill = Tag.Attribs[i].Value;
-      }
-      else if (!StrMatch("fill", Tag.Attribs[i].Name)) {
-         new_style.font_style.fill = Tag.Attribs[i].Value;
-      }
-      else if (!StrMatch("face", Tag.Attribs[i].Name)) {
-         auto j = Tag.Attribs[i].Value.find(':');
-         if (j != std::string::npos) { // Point size follows
-            auto str = Tag.Attribs[i].Value.c_str();
-            j++;
-            new_style.point = StrToInt(str+j);
-            j = Tag.Attribs[i].Value.find(':', j);
-            if (j != std::string::npos) { // Style follows
-               j++;
-               if (!StrMatch("bold", str+j)) {
-                  new_style.font_style.options |= FSO::BOLD;
-               }
-               else if (!StrMatch("italic", str+j)) {
-                  new_style.font_style.options |= FSO::ITALIC;
-               }
-               else if (!StrMatch("bold italic", str+j)) {
-                  new_style.font_style.options |= FSO::BOLD|FSO::ITALIC;
-               }
-            }
-         }
-
-         new_style.face = Tag.Attribs[i].Value.substr(0, j);
-      }
-      else if (!StrMatch("size", Tag.Attribs[i].Name)) {
-         new_style.point = StrToFloat(Tag.Attribs[i].Value);
-      }
-      else if (!StrMatch("style", Tag.Attribs[i].Name)) {
-         if (!StrMatch("bold", Tag.Attribs[i].Value)) {
-            new_style.font_style.options |= FSO::BOLD;
-         }
-         else if (!StrMatch("italic", Tag.Attribs[i].Value)) {
-            new_style.font_style.options |= FSO::ITALIC;
-         }
-         else if (!StrMatch("bold italic", Tag.Attribs[i].Value)) {
-            new_style.font_style.options |= FSO::BOLD|FSO::ITALIC;
-         }
-      }
-      else if (!StrMatch("preformat", Tag.Attribs[i].Name)) {
+      if (!StrMatch("preformat", Tag.Attribs[i].Name)) {
          new_style.font_style.options |= FSO::PREFORMAT;
          preformat = true;
          m_strip_feeds = true;
       }
+      else check_font_attrib(Self, Tag.Attribs[i], new_style);
    }
 
    parse_tags_with_style(Tag.Children, new_style);
@@ -3229,7 +3248,7 @@ void parser::tag_li(XMLTag &Tag)
          if (Tag.Attribs[i].Value == "true") para.aggregate = true;
          else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
       }
-      else check_para_attrib(Self, Tag.Attribs[i].Name, Tag.Attribs[i].Value, &para, new_style);
+      else check_para_attrib(Self, Tag.Attribs[i], &para, new_style);
    }
 
    m_paragraph_depth++;
@@ -3444,14 +3463,11 @@ void parser::tag_table(XMLTag &Tag)
       }
    }
 
-   auto savevar = m_style.table;
-   process_table var;
-   m_style.table = &var;
-   m_style.table->table = &start;
+   m_table_stack.push(process_table { &start, 0 });
 
       parse_tags(Tag.Children, IPF::NO_CONTENT|IPF::FILTER_TABLE);
 
-   m_style.table = savevar;
+   m_table_stack.pop();
 
    if (!columns.empty()) { // The columns value, if supplied is arranged as a CSV list of column widths
       std::vector<std::string> list;
@@ -3485,7 +3501,7 @@ void parser::tag_row(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!m_style.table) {
+   if (m_table_stack.empty()) {
       log.warning("<row> not defined inside <table> section.");
       Self->Error = ERR_InvalidData;
       return;
@@ -3504,8 +3520,8 @@ void parser::tag_row(XMLTag &Tag)
    }
 
    m_stream.insert_code(m_index, escrow);
-   m_style.table->table->rows++;
-   m_style.table->row_col = 0;
+   m_table_stack.top().table->rows++;
+   m_table_stack.top().row_col = 0;
 
    if (!Tag.Children.empty()) {
       parse_tags(Tag.Children, IPF::NO_CONTENT|IPF::FILTER_ROW);
@@ -3514,8 +3530,8 @@ void parser::tag_row(XMLTag &Tag)
    bc_row_end end;
    m_stream.insert_code(m_index, end);
 
-   if (m_style.table->row_col > LONG(m_style.table->table->columns.size())) {
-      m_style.table->table->columns.resize(m_style.table->row_col);
+   if (m_table_stack.top().row_col > LONG(m_table_stack.top().table->columns.size())) {
+      m_table_stack.top().table->columns.resize(m_table_stack.top().row_col);
    }
 }
 
@@ -3527,13 +3543,13 @@ void parser::tag_cell(XMLTag &Tag)
    auto new_style = m_style;
    static UBYTE edit_recurse = 0;
 
-   if (!m_style.table) {
+   if (m_table_stack.empty()) {
       log.warning("<cell> not defined inside <table> section.");
       Self->Error = ERR_InvalidData;
       return;
    }
 
-   bc_cell cell(glUID++, m_style.table->row_col);
+   bc_cell cell(glUID++, m_table_stack.top().row_col);
    bool select = false;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       switch (StrHash(Tag.Attribs[i].Name)) {
@@ -3587,7 +3603,7 @@ void parser::tag_cell(XMLTag &Tag)
          case HASH_stroke:
             cell.stroke = Tag.Attribs[i].Value;
             if (!cell.stroke_width) {
-               cell.stroke_width = m_style.table->table->stroke_width;
+               cell.stroke_width = m_table_stack.top().table->stroke_width;
                if (!cell.stroke_width) cell.stroke_width = 1;
             }
             break;
@@ -3643,7 +3659,7 @@ void parser::tag_cell(XMLTag &Tag)
 
    m_stream.insert_code(m_index, cell);
 
-   m_style.table->row_col += cell.col_span;
+   m_table_stack.top().row_col += cell.col_span;
 
    if (!cell.edit_def.empty()) {
       // Links are added to the list of tabbable points
