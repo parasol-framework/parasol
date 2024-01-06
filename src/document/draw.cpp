@@ -310,11 +310,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
             case SCODE::PARAGRAPH_START:
                stack_para.push(&segment.stream->lookup<bc_paragraph>(cursor));
-
-               if (stack_style.empty()) { // Sanity check - there must always be at least one font style on the stack.
-                  log.warning("The byte stream is missing a font style code.");
-                  return;
-               }
+               stack_style.push(&segment.stream->lookup<bc_paragraph>(cursor).font);
 
                if ((!stack_list.empty()) and (stack_para.top()->list_item)) {
                   // Handling for paragraphs that form part of a list
@@ -349,6 +345,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                break;
 
             case SCODE::PARAGRAPH_END:
+               stack_style.pop();
                stack_para.pop();
                break;
 
@@ -581,7 +578,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Font(font),
                      fl::Fill(button.font_fill)
                   });
-               
+
                   if (button.viewport) {
                      auto call = make_function_stdc(inputevent_button);
                      vecSubscribeInput(button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
@@ -597,7 +594,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                DOUBLE wx, wy;
                if (!checkbox.label.empty()) {
-                  if (checkbox.label_pos) { 
+                  if (checkbox.label_pos) {
                      // Right-sided labels can be integrated with the widget so that clicking affects state.
                      if (!build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, checkbox.label_width + checkbox.label_pad, true, wx, wy)) {
                         DOUBLE x, y;
@@ -605,7 +602,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                         const DOUBLE avail_space = checkbox.final_height - font->Gutter;
                         y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
-                        x = checkbox.final_width + checkbox.label_pad;                        
+                        x = checkbox.final_width + checkbox.label_pad;
 
                         objVectorText::create::global({
                            fl::Owner(checkbox.viewport->UID),
@@ -616,7 +613,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                         });
                      }
                   }
-                  else { 
+                  else {
                      // Left-sided labels aren't included in the scope of the widget's viewport
                      // TODO: Interactivity is feasible but we'll need to add an input feedback mechanism for that
                      auto font = stack_style.top()->get_font();
@@ -633,7 +630,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                            fl::Font(font),
                            fl::Fill(stack_style.top()->fill)
                         });
-                     }                   
+                     }
                   }
                }
                else build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);

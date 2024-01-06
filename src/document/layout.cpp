@@ -62,22 +62,23 @@ private:
 
    DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
    DOUBLE m_page_width = 0;
-   INDEX idx = 0;               // Current seek position for processing of the stream
-   stream_char m_word_index;    // Position of the word currently being operated on
-   LONG m_align_flags = 0;      // Current alignment settings according to the font style
-   LONG m_align_width = 0;      // Horizontal alignment will be calculated relative to this value
-   LONG m_kernchar    = 0;      // Previous character of the word being operated on
+   INDEX idx = 0;                 // Current seek position for processing of the stream
+   stream_char m_word_index;      // Position of the word currently being operated on
+   LONG m_align_flags = 0;        // Current alignment settings according to the font style
+   LONG m_align_width = 0;        // Horizontal alignment will be calculated relative to this value
+   LONG m_kernchar    = 0;        // Previous character of the word being operated on
    LONG m_left_margin = 0, m_right_margin = 0; // Margins control whitespace for paragraphs and table cells
-   LONG m_paragraph_bottom = 0; // Bottom Y coordinate of the current paragraph; defined on paragraph end.
-   LONG m_paragraph_y  = 0;     // The vertical position of the current paragraph
+   LONG m_paragraph_bottom = 0;   // Bottom Y coordinate of the current paragraph; defined on paragraph end.
+   LONG m_paragraph_y  = 0;       // The vertical position of the current paragraph
    SEGINDEX m_line_seg_start = 0; // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
-   LONG m_word_width   = 0;     // Pixel width of the current word
-   LONG m_wrap_edge    = 0;     // Marks the boundary at which graphics and text will need to wrap.
-   WORD m_space_width  = 0;      // Caches the pixel width of a single space in the current font.
-   bool m_inline       = false; // Set to true when graphics (vectors, images) must be inline.
-   bool m_no_wrap      = false; // Set to true when word-wrap is disabled.
-   bool m_cursor_drawn = false; // Set to true when the cursor has been drawn during scene graph creation.
-   bool m_edit_mode    = false; // Set to true when inside an area that allows user editing of the content.
+   LONG m_word_width   = 0;       // Pixel width of the current word
+   LONG m_wrap_edge    = 0;       // Marks the boundary at which graphics and text will need to wrap.
+   LONG m_line_count   = 0;       // Increments at every line-end or word-wrap
+   WORD m_space_width  = 0;       // Caches the pixel width of a single space in the current font.
+   bool m_inline       = false;   // Set to true when graphics (vectors, images) must be inline.
+   bool m_no_wrap      = false;   // Set to true when word-wrap is disabled.
+   bool m_cursor_drawn = false;   // Set to true when the cursor has been drawn during scene graph creation.
+   bool m_edit_mode    = false;   // Set to true when inside an area that allows user editing of the content.
 
    struct {
       stream_char index;   // Stream position for the line's content.
@@ -85,13 +86,11 @@ private:
       DOUBLE height;       // The complete height of the line, including inline vectors/images/tables.  Text is drawn so that the text gutter is aligned to the base line
       DOUBLE x;            // Starting horizontal position
       DOUBLE word_height;  // Height of the current word (including inline graphics), utilised for word wrapping
-      DOUBLE leading;      // Height multiplier to apply to the first line of a paragraph.  Must be 1.0 or greater
 
       void reset(DOUBLE LeftMargin) {
          x      = LeftMargin;
          gutter = 0;
          height = 0;
-         leading = 1.0;
       }
 
       void full_reset(DOUBLE LeftMargin) {
@@ -170,6 +169,8 @@ private:
             }
          }
       }
+
+      m_line_count++;
    }
 
    // If the current font is larger or equal to the current line height, extend the line height.
@@ -200,7 +201,7 @@ private:
 
    DOUBLE calc_page_height(DOUBLE);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
-   void end_line(NL, DOUBLE, stream_char, const std::string &);
+   void end_line(NL, stream_char, const std::string &);
    void new_code_segment();
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
@@ -353,7 +354,7 @@ CELL layout::lay_cell(bc_table *Table)
 }
 
 //********************************************************************************************************************
-// Calculate widget dimensions (refer to place_widget() for the x,y values).  The host rectangle is modified in 
+// Calculate widget dimensions (refer to place_widget() for the x,y values).  The host rectangle is modified in
 // gen_scene_graph() as this is the most optimal approach (i.e. if the page width expands during layout).
 
 void layout::size_widget(widget_mgr &Widget)
@@ -406,7 +407,7 @@ void layout::size_widget(widget_mgr &Widget)
 
 //********************************************************************************************************************
 // Calculate the position of a widget, check for word-wrapping etc.
-// 
+//
 // NOTE: If you ever see a widget unexpectedly appearing at (0,0) it's because it hasn't been included in a draw
 // segment.
 
@@ -470,10 +471,10 @@ WRAP layout::place_widget(widget_mgr &Widget)
 void layout::lay_font()
 {
    pf::Log log;
-   auto style = &m_stream->lookup<bc_font>(idx);
-   m_font = style->get_font();
 
-   if (m_font) {
+   auto style = &m_stream->lookup<bc_font>(idx);
+
+   if ((m_font = style->get_font())) {
       if ((style->options & FSO::ALIGN_RIGHT) != FSO::NIL) m_font->Align = ALIGN::RIGHT;
       else if ((style->options & FSO::ALIGN_CENTER) != FSO::NIL) m_font->Align = ALIGN::HORIZONTAL;
       else m_font->Align = ALIGN::NIL;
@@ -491,7 +492,7 @@ void layout::lay_font()
 
       if (!m_word_width) m_word_index.set(idx);
    }
-   else DLAYOUT("ESC_FONT: Unable to lookup font using style index %d.", style->font_index);
+   else DLAYOUT("Failed to lookup font for %s:%g", style->face.c_str(), style->point);
 
    stack_font.push(&m_stream->lookup<bc_font>(idx));
 }
@@ -529,8 +530,7 @@ WRAP layout::lay_text()
             (m_line.height < 1) ? 1 : m_line.height);
          if (wrap_result IS WRAP::EXTEND_PAGE) break;
 
-         stream_char end(idx, i);
-         end_line(NL::PARAGRAPH, 0, end, "CR");
+         end_line(NL::PARAGRAPH, stream_char(idx, i), "CR");
          i++;
       }
       else if (str[i] <= 0x20) { // Whitespace encountered
@@ -600,9 +600,8 @@ bool layout::lay_list_end()
 
    if (stack_list.empty()) {
       // At the end of a list, increase the whitespace to that of a standard paragraph.
-      stream_char sc(idx, 0);
-      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stack_para.top()->v_spacing, sc, "ListEnd");
-      else end_line(NL::PARAGRAPH, 1.0, sc, "ListEnd");
+      if (!stack_para.empty()) end_line(NL::PARAGRAPH, stream_char(idx), "ListEnd");
+      else end_line(NL::PARAGRAPH, stream_char(idx), "ListEnd");
    }
 
    return false;
@@ -676,21 +675,9 @@ void layout::lay_row_end(bc_table *Table)
 
 void layout::lay_paragraph()
 {
-   if (!stack_para.empty()) {
-      DOUBLE ratio;
-
-      // If a paragraph is embedded within a paragraph, insert a newline before the new paragraph starts.
-
+   if (!stack_para.empty()) { // Embedded paragraph detected - end the current line.
       m_left_margin = stack_para.top()->x; // Reset the margin so that the next line will be flush with the parent
-
-      if (m_paragraph_y > 0) {
-         if (stack_para.top()->leading > stack_para.top()->v_spacing) ratio = stack_para.top()->leading;
-         else ratio = stack_para.top()->v_spacing;
-      }
-      else ratio = stack_para.top()->v_spacing;
-
-      stream_char sc(idx, 0);
-      end_line(NL::PARAGRAPH, ratio, sc, "PS");
+      end_line(NL::PARAGRAPH, stream_char(idx), "PS");
    }
 
    stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
@@ -730,24 +717,31 @@ void layout::lay_paragraph()
    m_cursor_x    += escpara->block_indent + escpara->item_indent;
    m_line.x      += escpara->block_indent + escpara->item_indent;
 
-   if ((escpara->leading >= 1.0) and (m_paragraph_y > 0)) {
-      // Leading is applied only if there is at least one previous line of content.
-      m_line.leading = escpara->leading;
-   }
-
    // Paragraph management variables
 
-   if (!stack_list.empty()) escpara->v_spacing = stack_list.top()->v_spacing;
+   if (!stack_list.empty()) escpara->leading = stack_list.top()->v_spacing;
+
+   m_font = escpara->font.get_font();
+
+   if (!m_font) {
+      pf::Log log;
+      DLAYOUT("Failed to lookup font for %s:%g", escpara->font.face.c_str(), escpara->font.point);
+      Self->Error = ERR_Failed;
+      return;
+   }
+
+   if (m_line_count > 0) m_cursor_y += escpara->leading * m_font->LineSpacing;
 
    escpara->y = m_cursor_y;
    escpara->height = 0;
+
+   stack_font.push(&escpara->font);
 }
 
 //********************************************************************************************************************
 
 void layout::lay_paragraph_end()
 {
-   stream_char sc(idx + 1, 0);
    if (!stack_para.empty()) {
       // The paragraph height reflects the true size of the paragraph after we take into account
       // any inline graphics within the paragraph.
@@ -755,14 +749,17 @@ void layout::lay_paragraph_end()
       auto para = stack_para.top();
       m_paragraph_bottom = para->y + para->height;
 
-      end_line(NL::PARAGRAPH, para->v_spacing, sc, "PE");
+      end_line(NL::PARAGRAPH, stream_char(idx + 1), "PE");
 
       m_left_margin = para->x - para->block_indent;
       m_cursor_x    = para->x - para->block_indent;
       m_line.x      = para->x - para->block_indent;
       stack_para.pop();
    }
-   else end_line(NL::PARAGRAPH, 1.0, sc, "PE-NP"); // Technically an error when there's no matching PS code.
+   else end_line(NL::PARAGRAPH, stream_char(idx + 1), "PE-NP"); // Technically an error when there's no matching PS code.
+
+   stack_font.pop();
+   if (!stack_font.empty()) m_font = stack_font.top()->get_font();
 }
 
 //********************************************************************************************************************
@@ -1036,12 +1033,10 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       line_height = m_font->LineSpacing;
       gutter      = m_font->Gutter;
    }
-   
+
    if (!gutter) { // If gutter is missing for some reason, define it
       gutter = m_font->LineSpacing - m_font->Ascent;
    }
-
-   line_height *= m_line.leading;
 
 #ifdef DBG_STREAM
    log.branch("#%d %d:%d - %d:%d, Area: %gx%g,%g:%gx%g, WordWidth: %d [%.20s]...[%.20s] (%s)",
@@ -1346,6 +1341,7 @@ extend_page:
    m_line_seg_start = m_segments.size();
    m_font         = *Font;
    m_space_width  = fntCharWidth(m_font, ' ', 0, NULL);
+   m_line_count   = 0;
 
    m_word_index.reset();
    m_line.index.set(0);    // The starting index of the line we are operating on
@@ -1443,8 +1439,16 @@ extend_page:
          case SCODE::FONT_END:        lay_font_end(); break;
          case SCODE::INDEX_START:     lay_index(); break;
          case SCODE::SET_MARGINS:     lay_set_margins(Margins.Bottom); break;
-         case SCODE::LINK:            break;
-         case SCODE::LINK_END:        break;
+
+         case SCODE::LINK:
+            stack_font.push(&m_stream->lookup<bc_link>(idx).font);
+            break;
+
+         case SCODE::LINK_END:
+            stack_font.pop();
+            if (!stack_font.empty()) m_font = stack_font.top()->get_font();
+            break;
+
          case SCODE::PARAGRAPH_START: lay_paragraph(); break;
          case SCODE::PARAGRAPH_END:   lay_paragraph_end(); break;
 
@@ -1458,9 +1462,7 @@ extend_page:
             break;
 
          case SCODE::LIST_END:
-            if (lay_list_end()) {
-               *this = liststate;
-            }
+            if (lay_list_end()) *this = liststate;
             break;
 
          case SCODE::BUTTON: {
@@ -1662,8 +1664,7 @@ repass_row_height:
    // Check if the cursor + any remaining text requires closure
 
    if ((m_cursor_x + m_word_width > m_left_margin) or (m_word_index.valid())) {
-      stream_char sc(idx, 0);
-      end_line(NL::NONE, 1.0, sc, "LayoutEnd");
+      end_line(NL::NONE, stream_char(idx), "LayoutEnd");
    }
 
 exit:
@@ -1699,7 +1700,7 @@ exit:
 //********************************************************************************************************************
 // This function is called only when a paragraph or explicit line-break (\n) is encountered.
 
-void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::string &Caller)
+void layout::end_line(NL NewLine, stream_char Next, const std::string &Caller)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1708,7 +1709,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
       m_line.height = m_font->LineSpacing;
       m_line.gutter = m_font->Gutter;
    }
-   
+
    m_line.apply_word_height();
 
 #ifdef DBG_LAYOUT
@@ -1719,7 +1720,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
 
    for (auto &clip : m_clips) {
       if (clip.transparent) continue;
-      if ((m_cursor_y + (m_line.height * m_line.leading) >= clip.top) and (m_cursor_y < clip.bottom)) {
+      if ((m_cursor_y + m_line.height >= clip.top) and (m_cursor_y < clip.bottom)) {
          if (m_cursor_x + m_word_width < clip.left) {
             if (clip.left < m_align_width) m_align_width = clip.left;
          }
@@ -1734,7 +1735,7 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
       // Determine the new vertical position of the cursor.  This subroutine takes into account multiple line-breaks, so that
       // the overall amount of whitespace is no more than the biggest line-break specified in a line-break sequence.
 
-      auto bottom_line = m_cursor_y + (m_line.height * m_line.leading);
+      auto bottom_line = m_cursor_y + m_line.height;
       if (m_paragraph_bottom > bottom_line) bottom_line = m_paragraph_bottom;
 
       m_paragraph_y = bottom_line;
@@ -1743,9 +1744,10 @@ void layout::end_line(NL NewLine, DOUBLE Spacing, stream_char Next, const std::s
          // The m_cursor_y position will not be advanced in this case.
       }
       else {
-         // Paragraph gap measured as line height * spacing ratio
+         // Paragraph spacing is managed in the following paragraph, if any.  Otherwise content
+         // is positioned flush against the bottom of the paragraph.
 
-         auto advance_to = bottom_line + F2I(m_line.height * Spacing);
+         auto advance_to = bottom_line;
          if (advance_to > m_cursor_y) m_cursor_y = advance_to;
       }
    }
@@ -1832,7 +1834,8 @@ restart:
       sanitise_line_height();
 
       X  = m_left_margin;
-      Y += m_line.height * m_line.leading;
+      if (stack_para.empty()) Y += m_line.height;
+      else Y += m_line.height * stack_para.top()->line_height;
 
       m_cursor_x = X;
       m_cursor_y = Y;

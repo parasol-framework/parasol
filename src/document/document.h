@@ -329,7 +329,7 @@ struct font_entry {
 // in the document stream.
 
 struct bc_font : public base_code {
-   WORD font_index;     // Font lookup (reflects the font face, point size, style)
+   WORD font_index;     // Font lookup (will reflect the true font face, point size, style)
    FSO  options;        // Style options, like underline and italics
    std::string fill;    // Font fill instruction
    ALIGN valign;        // Vertical alignment of text within the available line height
@@ -339,6 +339,12 @@ struct bc_font : public base_code {
    bc_font(): font_index(-1), options(FSO::NIL), fill("rgb(0,0,0)"), valign(ALIGN::BOTTOM), point(0) { code = SCODE::FONT; }
 
    objFont * get_font();
+
+   bc_font(const bc_font &Other) {
+      // Copy another style and reset the index to -1 so that changes can refreshed
+      *this = Other;
+      font_index = -1;
+   }
 };
 
 struct bc_font_end : public base_code {
@@ -624,8 +630,9 @@ class bc_paragraph : public base_code {
    DOUBLE block_indent;  // Indentation; also equivalent to setting a left margin value
    DOUBLE item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
    DOUBLE indent;
-   DOUBLE v_spacing;     // Spacing between paragraph lines, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
+   DOUBLE line_height;   // Spacing between paragraph lines on word-wrap, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
    DOUBLE leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
+   //DOUBLE trailing;    // Not implemented: Trailing whitespace
    // Options
    bool relative;
    bool list_item;       // True if this paragraph represents a list item
@@ -633,8 +640,13 @@ class bc_paragraph : public base_code {
    bool aggregate;
 
    bc_paragraph() : base_code(SCODE::PARAGRAPH_START), x(0), y(0), height(0),
-      block_indent(0), item_indent(0), indent(0), v_spacing(1.0), leading(1.0),
+      block_indent(0), item_indent(0), indent(0), line_height(1.0), leading(1.0),
       relative(false), list_item(false), trim(false), aggregate(false) { }
+
+   bc_paragraph(const bc_font &Style) : bc_paragraph() {
+      font = Style;
+      font.font_index = -1;
+   }
 };
 
 struct bc_paragraph_end : public base_code {

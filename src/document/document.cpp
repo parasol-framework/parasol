@@ -58,8 +58,8 @@ static const LONG WIDTH_LIMIT      = 4000;
 static const LONG DEFAULT_FONTSIZE = 10;
 static const DOUBLE MAX_VSPACING   = 6.0;
 static const DOUBLE MAX_LEADING    = 6.0;
-static const DOUBLE MIN_LINEHEIGHT = 0.001;
-static const DOUBLE MIN_VSPACING   = 0.001;
+static const DOUBLE MIN_LINE_HEIGHT = 0.001;
+static const DOUBLE MAX_LINE_HEIGHT = 10.0;
 static const DOUBLE MIN_LEADING    = 1.0;
 
 static ULONG glByteCodeID = 1;
@@ -256,13 +256,26 @@ static std::vector<font_entry> glFonts;
 
 objFont * bc_font::get_font()
 {
-   if ((font_index < INDEX(glFonts.size())) and (font_index >= 0)) return glFonts[font_index].font;
-   else {
-      pf::Log log(__FUNCTION__);
-      log.warning("Bad font index %d.  Max: %d", font_index, LONG(glFonts.size()));
-      if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
-      else return NULL;
+   if (font_index != -2) {
+      if ((font_index < INDEX(glFonts.size())) and (font_index >= 0)) return glFonts[font_index].font;
+      else if (font_index IS -1) {
+         if (face.empty()) {
+            if ((font_index = create_font(((extDocument *)CurrentContext())->FontFace, "Regular", ((extDocument *)CurrentContext())->FontSize)) IS -1) {
+               font_index = create_font("Open Sans", "Regular", 10);
+            }
+         }
+         else font_index = create_font(face, get_font_style(options), point);
+
+         if (font_index != -1) return glFonts[font_index].font;
+         else font_index = -2;
+      }
    }
+
+   pf::Log log(__FUNCTION__);
+   log.warning("Failed to create font %s:%g", face.c_str(), point);
+
+   if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
+   else return NULL;
 }
 
 //********************************************************************************************************************

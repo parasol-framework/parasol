@@ -2,12 +2,12 @@
 static const LONG MAXLOOP = 100000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"18\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h2\"><p leading=\"2.0\"><font face=\"Open Sans\" size=\"16\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h3\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"14\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h4\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"14\"><inject/></font></p></template>\n\
-<template name=\"h5\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"12\"><inject/></font></p></template>\n\
-<template name=\"h6\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"10\"><inject/></font></p></template>\n";
+"<template name=\"h1\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"18\" style=\"bold\"><inject/></font></p></template>\n\
+<template name=\"h2\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"16\" style=\"bold\"><inject/></font></p></template>\n\
+<template name=\"h3\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"14\" style=\"bold\"><inject/></font></p></template>\n\
+<template name=\"h4\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"14\"><inject/></font></p></template>\n\
+<template name=\"h5\"><p leading=\"1.0\"><font face=\"Open Sans\" size=\"12\"><inject/></font></p></template>\n\
+<template name=\"h6\"><p leading=\"1.0\"><font face=\"Open Sans\" size=\"10\"><inject/></font></p></template>\n";
 
 static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -243,6 +243,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
    }
    else {
       bc_font style;
+      style.fill = Self->FontFill;
 
       if ((StyleFlags & STYLE::RESET_STYLE) != STYLE::NIL) {
          // Do not search for the most recent font style (force a reset)
@@ -265,16 +266,6 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
       }
 
       // Revert to the default style if none is available.
-
-      if (style.font_index IS -1) {
-         if ((style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-            if ((style.font_index = create_font("Open Sans", "Regular", 10)) IS -1) {
-               return ERR_Failed;
-            }
-         }
-
-         style.fill = Self->FontFill;
-      }
 
       if (auto font = style.get_font()) {
          style.face  = font->Face;
@@ -688,6 +679,8 @@ static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 
    for (INDEX fi = Char.index; fi < Char.index; fi++) {
       if (Stream[fi].code IS SCODE::FONT) style = &Stream.lookup<bc_font>(fi);
+      else if (Stream[fi].code IS SCODE::PARAGRAPH_START) style = &Stream.lookup<bc_paragraph>(fi).font;
+      else if (Stream[fi].code IS SCODE::LINK) style = &Stream.lookup<bc_link>(fi).font;
       else if (Stream[fi].code IS SCODE::TEXT) break;
    }
 
@@ -697,6 +690,14 @@ static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
       for (INDEX fi = Char.index; fi >= 0; fi--) {
          if (Stream[fi].code IS SCODE::FONT) {
             style = &Stream.lookup<bc_font>(fi);
+            break;
+         }
+         else if (Stream[fi].code IS SCODE::PARAGRAPH_START) {
+            style = &Stream.lookup<bc_paragraph>(fi).font;
+            break;
+         }
+         else if (Stream[fi].code IS SCODE::LINK) {
+            style = &Stream.lookup<bc_link>(fi).font;
             break;
          }
       }

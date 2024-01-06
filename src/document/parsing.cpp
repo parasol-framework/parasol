@@ -38,6 +38,7 @@ struct parser {
    inline TRF   parse_tag(XMLTag &, IPF &);
    inline TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
    inline TRF   parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
+   inline TRF   parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline void  tag_xml_content(XMLTag &, PXF);
    inline void  translate_attrib_args(pf::vector<XMLAttrib> &);
    inline void  translate_args(const std::string &, std::string &);
@@ -102,12 +103,12 @@ struct parser {
             fl::Name("default_pattern"),
             fl::SpreadMethod(VSPREAD::PAD)
          })) {
-            
+
          objVectorRectangle::create::global({
             fl::Name("default_widget_bkgd"),
             fl::Owner(pattern->Scene->Viewport->UID),
             fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"),
-            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0), 
+            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0),
             fl::RoundX(4), fl::RoundY(4),
             fl::Fill("rgb(0,0,0,128)")
          });
@@ -1140,49 +1141,37 @@ TRF parser::parse_tags(objXML::TAGS &Tags, IPF Flags)
 
 TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
 {
-   bool face_change = false, style_change = false;
+   bool font_change = false;
 
    if ((Style.options & (FSO::BOLD|FSO::ITALIC)) != (m_style.options & (FSO::BOLD|FSO::ITALIC))) {
-      face_change = true;
-   }
-   else if ((Style.face != m_style.face) or (Style.point != m_style.point)) {
-      face_change = true;
-   }
-   else if ((Style.fill != m_style.fill)) {
-      style_change = true;
+      font_change = true;
    }
    else if ((Style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != (m_style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
-      style_change= true;
+      font_change = true;
    }
    else if ((Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (m_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
-      style_change = true;
+      font_change = true;
+   }
+   else if ((Style.face != m_style.face) or (Style.point != m_style.point)) {
+      font_change = true;
+   }
+   else if ((Style.fill != m_style.fill)) {
+      font_change = true;
    }
 
    TRF result = TRF::NIL;
-   if (face_change) { // Create a new font object for the current style
+   if (font_change) {
+      Style.uid = glByteCodeID++;
+
       auto save_status = m_style;
       m_style = Style;
-      auto style_name = get_font_style(m_style.options);
-      m_style.font_index = create_font(m_style.face, style_name, m_style.point);
-      //log.trace("Changed font to index %d, face %s, style %s, size %d.", m_style.index, m_style.Face, style_name, m_style.point);
-      m_style.uid = glByteCodeID++;
       m_stream.insert_code(m_index, m_style);
+
       for (auto &tag : Tags) {
          result = parse_tag(tag, Flags);
          if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
       }
-      m_style = save_status;
-      m_stream.reserve_code<bc_font_end>(m_index);
-   }
-   else if (style_change) { // Insert a minor font change into the text stream
-      auto save_status = m_style;
-      m_style = Style;
-      m_style.uid = glByteCodeID++;
-      m_stream.insert_code(m_index, m_style);
-      for (auto &tag : Tags) {
-         result = parse_tag(tag, Flags);
-         if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
-      }
+
       m_style = save_status;
       m_stream.reserve_code<bc_font_end>(m_index);
    }
@@ -1194,6 +1183,26 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
       }
    }
 
+   return result;
+}
+
+//********************************************************************************************************************
+
+TRF parser::parse_tags_with_embedded_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
+{
+   Style.uid = glByteCodeID++;
+
+   auto save_style = m_style;
+   m_style = Style;
+
+   TRF result = TRF::NIL;
+   for (auto &tag : Tags) {
+      // Note that Flags will carry state between multiple calls to parse_tag().  This allows if/else to work correctly.
+      result = parse_tag(tag, Flags);
+      if ((Self->Error) or ((result & (TRF::CONTINUE|TRF::BREAK)) != TRF::NIL)) break;
+   }
+
+   m_style = save_style;
    return result;
 }
 
@@ -1228,28 +1237,19 @@ static bool check_para_attrib(extDocument *Self, const XMLAttrib &Attrib, bc_par
       case HASH_kerning:  // REQUIRES CODE and DOCUMENTATION
          return true;
 
-      case HASH_line_height: // REQUIRES CODE
-         // Line height is expressed as a multiplier that is applied to m_line.line_height for every line in the
-         // paragraph (as opposed to the leading, which applies to the first line only).  This is not the same thing
-         // as changing the vertical spacing (which adjusts the cursor's vertical advance when word wrapping).
+      case HASH_line_height:
+         // Line height affects the advance of m_cursor_y whenever a word-wrap occurs.  It is expressed as a multiplier
+         // that is applied to m_line.height.
 
-         //Style.LineHeightRatio = StrToFloat(Tag.Attribs[i].Value);
-         //if (Style.LineHeightRatio < MIN_LINEHEIGHT) Style.LineHeightRatio = MIN_LINEHEIGHT;
+         if (Para) {
+            Para->line_height = StrToFloat(Attrib.Value);
+            if (Para->line_height < MIN_LINE_HEIGHT) Para->line_height = MIN_LINE_HEIGHT;
+            else if (Para->line_height > MAX_LINE_HEIGHT) Para->line_height = MAX_LINE_HEIGHT;
+         }
          return true;
 
       case HASH_trim:
          if (Para) Para->trim = true;
-         return true;
-
-      case HASH_v_spacing:
-         // Vertical spacing between embedded paragraphs.  Ratio is expressed as a measure of the *default* lineheight (not the height of the
-         // last line of the paragraph).  E.g. 1.5 is one and a half times the standard lineheight.  The default is 1.0.
-
-         if (Para) {
-            Para->v_spacing = StrToFloat(Attrib.Value);
-            if (Para->v_spacing < MIN_VSPACING) Para->v_spacing = MIN_VSPACING;
-            else if (Para->v_spacing > MAX_VSPACING) Para->v_spacing = MAX_VSPACING;
-         }
          return true;
 
       case HASH_indent:
@@ -1301,7 +1301,7 @@ static bool check_font_attrib(extDocument *Self, const XMLAttrib &Attrib, bc_fon
       case HASH_size:
          Style.point = StrToFloat(Attrib.Value);
          return true;
-      
+
       case HASH_font_style:
       case HASH_style:
          if (!StrMatch("bold", Attrib.Value)) Style.options |= FSO::BOLD;
@@ -1453,7 +1453,6 @@ void parser::tag_body(XMLTag &Tag)
 
    // Overwrite the default Style attributes with the client's choices
 
-   m_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize);
    m_style.options   = FSO::NIL;
    m_style.fill      = Self->FontFill;
    m_style.face      = Self->FontFace;
@@ -1582,11 +1581,11 @@ void parser::tag_checkbox(XMLTag &Tag)
       }
       else log.warning("<checkbox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
-   
+
    if (widget.fill.empty()) widget.fill = "url(#/widget/checkbox/off)";
 
    if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/checkbox/on)";
-   
+
    if (!m_checkbox_patterns) {
       m_checkbox_patterns = true;
 
@@ -1594,12 +1593,12 @@ void parser::tag_checkbox(XMLTag &Tag)
             fl::Name("checkbox_on"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
-         
+
          auto vp = pattern_on->Scene->Viewport;
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
-            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0), 
+            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
             fl::Fill("rgb(0,0,0,128)")
          });
@@ -1620,12 +1619,12 @@ void parser::tag_checkbox(XMLTag &Tag)
             fl::Name("checkbox_off"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
-         
+
          auto vp = pattern_off->Scene->Viewport;
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
             fl::X(-8), fl::Y(-8), fl::Width(54), fl::Height(54),
-            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0), 
+            fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(2.0),
             fl::RoundX(6), fl::RoundY(6),
             fl::Fill("rgb(0,0,0,128)")
          });
@@ -1689,12 +1688,12 @@ void parser::tag_button(XMLTag &Tag)
             fl::Name("button_on"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
-         
+
          auto vp = pattern_on->Scene->Viewport;
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
             fl::Width("100%"), fl::Height("100%"),
-            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0), 
+            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
             fl::RoundX("10%"),
             fl::Fill("rgb(0,0,0,32)")
          });
@@ -1706,12 +1705,12 @@ void parser::tag_button(XMLTag &Tag)
             fl::Name("button_off"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
-         
+
          auto vp = pattern_off->Scene->Viewport;
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
             fl::Width("100%"), fl::Height("100%"),
-            fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0), 
+            fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
             fl::RoundX("10%"),
             fl::Fill("rgb(255,255,255,96)")
          });
@@ -1764,7 +1763,7 @@ void parser::tag_input(XMLTag &Tag)
       }
       else log.warning("<input> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
-   
+
    if (widget.fill.empty()) {
       config_default_pattern();
       widget.fill="url(#/widget/default)";
@@ -2221,13 +2220,13 @@ void parser::tag_link(XMLTag &Tag)
       // Font modifications are saved with the link as opposed to inserting a new bc_font as it's a lot cleaner
       // this way - especially for run-time modifications.
 
-      link.font = m_style;
+      link.font = bc_font(m_style);
       link.font.options |= FSO::UNDERLINE;
       link.font.fill = link.fill;
 
       m_stream.insert_code(m_index, link);
 
-      parse_tags(Tag.Children);
+      parse_tags_with_embedded_style(Tag.Children, link.font);
 
       m_stream.reserve_code<bc_link_end>(m_index);
 
@@ -2301,16 +2300,15 @@ void parser::tag_paragraph(XMLTag &Tag)
 
    m_paragraph_depth++;
 
-   bc_paragraph para;
+   bc_paragraph para(m_style);
 
-   auto new_style = m_style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       if (!StrMatch("align", Tag.Attribs[i].Name)) {
          if ((!StrMatch(Tag.Attribs[i].Value, "center")) or (!StrMatch(Tag.Attribs[i].Value, "horizontal"))) {
-            new_style.options |= FSO::ALIGN_CENTER;
+            para.font.options |= FSO::ALIGN_CENTER;
          }
          else if (!StrMatch(Tag.Attribs[i].Value, "right")) {
-            new_style.options |= FSO::ALIGN_RIGHT;
+            para.font.options |= FSO::ALIGN_RIGHT;
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
@@ -2322,15 +2320,15 @@ void parser::tag_paragraph(XMLTag &Tag)
          if (para.leading < MIN_LEADING) para.leading = MIN_LEADING;
          else if (para.leading > MAX_LEADING) para.leading = MAX_LEADING;
       }
-      else if (check_para_attrib(Self, Tag.Attribs[i], &para, new_style));
-      else check_font_attrib(Self, Tag.Attribs[i], new_style);
+      else if (check_para_attrib(Self, Tag.Attribs[i], &para, para.font));
+      else check_font_attrib(Self, Tag.Attribs[i], para.font);
    }
 
    m_stream.insert_code(m_index, para);
 
    Self->NoWhitespace = para.trim;
 
-   parse_tags_with_style(Tag.Children, new_style);
+   parse_tags_with_embedded_style(Tag.Children, para.font);
 
    bc_paragraph_end end;
    m_stream.insert_code(m_index, end);
@@ -3220,12 +3218,10 @@ void parser::tag_li(XMLTag &Tag)
       return;
    }
 
-   bc_paragraph para;
-   para.list_item    = true;
-   para.v_spacing    = m_list_stack.top()->v_spacing;
-   para.item_indent  = m_list_stack.top()->item_indent;
+   bc_paragraph para(m_style);
+   para.list_item   = true;
+   para.item_indent = m_list_stack.top()->item_indent;
 
-   auto new_style = m_style;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto tagname = Tag.Attribs[i].Name.c_str();
       if (*tagname IS '$') tagname++;
@@ -3237,7 +3233,7 @@ void parser::tag_li(XMLTag &Tag)
          if (Tag.Attribs[i].Value == "true") para.aggregate = true;
          else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
       }
-      else check_para_attrib(Self, Tag.Attribs[i], &para, new_style);
+      else check_para_attrib(Self, Tag.Attribs[i], &para, para.font);
    }
 
    m_paragraph_depth++;
@@ -3245,7 +3241,7 @@ void parser::tag_li(XMLTag &Tag)
    if ((m_list_stack.top()->type IS bc_list::CUSTOM) and (!para.value.empty())) {
       m_stream.insert_code(m_index, para);
 
-         parse_tags_with_style(Tag.Children, new_style);
+         parse_tags_with_embedded_style(Tag.Children, para.font);
 
       m_stream.reserve_code<bc_paragraph_end>(m_index);
    }
@@ -3263,7 +3259,7 @@ void parser::tag_li(XMLTag &Tag)
 
       m_stream.insert_code(m_index, para);
 
-         parse_tags_with_style(Tag.Children, new_style);
+         parse_tags_with_embedded_style(Tag.Children, para.font);
 
       m_stream.reserve_code<bc_paragraph_end>(m_index);
 
@@ -3274,8 +3270,8 @@ void parser::tag_li(XMLTag &Tag)
    }
    else { // BULLET
       m_stream.insert_code(m_index, para);
-      
-         parse_tags_with_style(Tag.Children, new_style);
+
+         parse_tags_with_embedded_style(Tag.Children, para.font);
 
       m_stream.reserve_code<bc_paragraph_end>(m_index);
       Self->NoWhitespace = true;
