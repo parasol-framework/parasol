@@ -55,6 +55,7 @@ header({ copyright="Paul Manias © 2023" }, function()
     "font-face",
     "font-fill",
     "font-size",
+    "font-style",
     "footer",
     "function",
     "GotFocus",

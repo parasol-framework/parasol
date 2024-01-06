@@ -56,6 +56,7 @@
 #define HASH_font_face 0xf1c14998UL
 #define HASH_font_fill 0xf1c16cd0UL
 #define HASH_font_size 0xf1c88f84UL
+#define HASH_font_style 0x2ae0853aUL
 #define HASH_footer 0xfde4add4UL
 #define HASH_function 0xd424384bUL
 #define HASH_GotFocus 0x00bb074fUL

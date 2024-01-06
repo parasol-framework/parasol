@@ -242,7 +242,7 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
       Stream.data.insert(Stream.data.begin() + TargetIndex, parse.m_stream.data.begin(), parse.m_stream.data.end());
    }
    else {
-      style_status style;
+      bc_font style;
 
       if ((StyleFlags & STYLE::RESET_STYLE) != STYLE::NIL) {
          // Do not search for the most recent font style (force a reset)
@@ -250,8 +250,15 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
       else {
          for (auto i = TargetIndex - 1; i >= 0; i--) {
             if (Stream[i].code IS SCODE::FONT) {
-               style.font_style = Stream.lookup<bc_font>(i);
-               log.trace("Found existing font style, font index %d, flags $%.8x.", style.font_style.font_index, style.font_style.options);
+               style = Stream.lookup<bc_font>(i);
+               break;
+            }
+            else if (Stream[i].code IS SCODE::PARAGRAPH_START) {
+               style = Stream.lookup<bc_paragraph>(i).font;
+               break;
+            }
+            else if (Stream[i].code IS SCODE::LINK) {
+               style = Stream.lookup<bc_link>(i).font;
                break;
             }
          }
@@ -259,17 +266,17 @@ static ERROR insert_xml(extDocument *Self, RSTREAM &Stream, objXML *XML, objXML:
 
       // Revert to the default style if none is available.
 
-      if (style.font_style.font_index IS -1) {
-         if ((style.font_style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
-            if ((style.font_style.font_index = create_font("Open Sans", "Regular", 10)) IS -1) {
+      if (style.font_index IS -1) {
+         if ((style.font_index = create_font(Self->FontFace, "Regular", Self->FontSize)) IS -1) {
+            if ((style.font_index = create_font("Open Sans", "Regular", 10)) IS -1) {
                return ERR_Failed;
             }
          }
 
-         style.font_style.fill = Self->FontFill;
+         style.fill = Self->FontFill;
       }
 
-      if (auto font = style.font_style.get_font()) {
+      if (auto font = style.get_font()) {
          style.face  = font->Face;
          style.point = font->Point;
       }

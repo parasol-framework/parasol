@@ -325,28 +325,24 @@ struct font_entry {
 };
 
 //********************************************************************************************************************
+// bc_font has a dual purpose - it can maintain current font style information during parsing as well as being embedded
+// in the document stream.
 
 struct bc_font : public base_code {
    WORD font_index;     // Font lookup (reflects the font face, point size, style)
    FSO  options;        // Style options, like underline and italics
    std::string fill;    // Font fill instruction
    ALIGN valign;        // Vertical alignment of text within the available line height
+   std::string face;    // The font face as requested by the client.  Might not match the font we actually use.
+   DOUBLE point;        // The point size as requested by the client.  Might not match the font we actually use.
 
-   bc_font(): font_index(-1), options(FSO::NIL), fill("rgb(0,0,0)"), valign(ALIGN::BOTTOM) { code = SCODE::FONT; }
+   bc_font(): font_index(-1), options(FSO::NIL), fill("rgb(0,0,0)"), valign(ALIGN::BOTTOM), point(0) { code = SCODE::FONT; }
 
    objFont * get_font();
 };
 
 struct bc_font_end : public base_code {
    bc_font_end() : base_code(SCODE::FONT_END) { }
-};
-
-struct style_status {
-   struct bc_font font_style;
-   std::string face;
-   DOUBLE point;
-
-   style_status() : face(""), point(0) { }
 };
 
 //********************************************************************************************************************
@@ -616,8 +612,13 @@ struct bc_table_end : public base_code {
    bc_table_end() { code = SCODE::TABLE_END; }
 };
 
+// It is recommended that font styling for paragraphs take advantage of the embedded font object.  Using a separate
+// FONT code raises the chance of confusion for the user, because features like leading are calculated using the
+// style registered in the paragraph.
+
 class bc_paragraph : public base_code {
    public:
+   bc_font font;         // Default font that applies to this paragraph.  Embedding the font style in this way ensures that vertical placement can be computed immediately without looking for a FONT code.
    std::string value = "";
    DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
    DOUBLE block_indent;  // Indentation; also equivalent to setting a left margin value

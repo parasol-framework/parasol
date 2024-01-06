@@ -292,8 +292,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
       for (auto cursor = segment.start; cursor < segment.stop; cursor.next_code()) {
          switch (segment.stream[0][cursor.index].code) {
             case SCODE::FONT: {
-               auto &style = segment.stream->lookup<bc_font>(cursor);
-               stack_style.push(&style);
+               stack_style.push(&segment.stream->lookup<bc_font>(cursor));
                break;
             }
 
