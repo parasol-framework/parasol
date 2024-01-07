@@ -4,11 +4,11 @@
 <body face="courier" font-fill="rgb(64,0,0)" font-size="10"/>
 
 <header>
-  <p><b>HEADER IN BOLD</b></p>
+  <p font-style="bold">HEADER IN BOLD</p>
 </header>
 
 <footer>
-  <p><i>FOOTER IN ITALICS</i></p>
+  <p font-style="italic">FOOTER IN ITALICS</p>
 </footer>
 
 <p>This paragraph must be ignored by the parser</p>

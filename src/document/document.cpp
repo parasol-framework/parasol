@@ -47,6 +47,7 @@ that is distributed with this package.  Please refer to it for further informati
 #include <variant>
 #include <stack>
 #include <cmath>
+#include <mutex>
 #include "hashes.h"
 
 static const LONG MAX_PAGE_WIDTH   = 30000;
@@ -200,7 +201,6 @@ static void  check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
 static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
 static void  check_mouse_release(extDocument *, DOUBLE X, DOUBLE Y);
 static ERROR consume_input_events(objVector *, const InputEvent *);
-static LONG  create_font(const std::string &, const std::string &, LONG);
 static void  deactivate_edit(extDocument *, bool);
 static void  deselect_text(extDocument *);
 static ERROR extract_script(extDocument *, const std::string &, OBJECTPTR *, std::string &, std::string &);
@@ -210,7 +210,7 @@ static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
 static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
-static std::string get_font_style(FSO);
+inline std::string get_font_style(const FSO);
 static LONG  getutf8(CSTRING, LONG *);
 static ERROR insert_text(extDocument *, RSTREAM &, stream_char &, const std::string &, bool);
 static ERROR insert_xml(extDocument *, RSTREAM &, objXML *, objXML::TAGS &, LONG, STYLE = STYLE::NIL, IPF = IPF::NIL);
@@ -251,27 +251,79 @@ static void print_stream(RSTREAM &);
 #endif
 
 //********************************************************************************************************************
+// Fonts are shared in a global cache (multiple documents can have access to the cache)
 
 static std::vector<font_entry> glFonts;
+static std::mutex glFontsMutex;
 
 objFont * bc_font::get_font()
 {
-   if (font_index != -2) {
-      if ((font_index < INDEX(glFonts.size())) and (font_index >= 0)) return glFonts[font_index].font;
-      else if (font_index IS -1) {
-         if (face.empty()) {
-            if ((font_index = create_font(((extDocument *)CurrentContext())->FontFace, "Regular", ((extDocument *)CurrentContext())->FontSize)) IS -1) {
-               font_index = create_font("Open Sans", "Regular", 10);
-            }
-         }
-         else font_index = create_font(face, get_font_style(options), point);
+   pf::Log log(__FUNCTION__);
 
-         if (font_index != -1) return glFonts[font_index].font;
-         else font_index = -2;
+   if (font_index IS -2) {
+      if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL
+      return NULL;
+   }
+
+   if ((font_index < INDEX(glFonts.size())) and (font_index >= 0)) return glFonts[font_index].font;
+
+   // Sanity check the face and point values
+
+   if (face.empty()) face = ((extDocument *)CurrentContext())->FontFace;
+
+   if (point < 3) {
+      point = ((extDocument *)CurrentContext())->FontSize;
+      if (point < 3) point = DEFAULT_FONTSIZE;
+   }
+
+   // Check the cache for this font
+
+   auto style_name = get_font_style(options);
+   for (unsigned i=0; i < glFonts.size(); i++) {
+      if ((point IS glFonts[i].point) and (!StrMatch(face, glFonts[i].font->Face))) {
+         if (!StrMatch(style_name, glFonts[i].font->Style)) {
+            font_index = i;
+            break;
+         }
       }
    }
 
-   pf::Log log(__FUNCTION__);
+   if (font_index IS -1) { // Font not in cache
+      std::lock_guard lk(glFontsMutex);
+
+      log.branch("Index: %d, %s, %s, %g", LONG(glFonts.size()), face.c_str(), style_name.c_str(), point);
+
+      #ifndef RETAIN_LOG_LEVEL
+         pf::LogLevel level(2);
+      #endif
+
+      objFont *font = objFont::create::integral(
+         fl::Owner(modDocument->UID), fl::Face(face), fl::Style(style_name), fl::Point(point), fl::Flags(FTF::PREFER_SCALED));
+
+      if (font) {
+         // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
+         // is a little different to what we requested (e.g. scalable instead of fixed, or a different face).
+
+         for (unsigned i=0; i < glFonts.size(); i++) {
+            if ((font->Point IS glFonts[i].point) and
+                (!StrMatch(font->Face, glFonts[i].font->Face)) and
+                (!StrMatch(font->Style, glFonts[i].font->Style))) {
+               FreeResource(font);
+               font_index = i;
+               break;
+            }
+         }
+
+         if (font_index IS -1) { // Add the font to the cache
+            font_index = glFonts.size();
+            glFonts.emplace_back(font, point);
+         }
+      }
+      else font_index = -2;
+   }
+
+   if (font_index >= 0) return glFonts[font_index].font;
+
    log.warning("Failed to create font %s:%g", face.c_str(), point);
 
    if (!glFonts.empty()) return glFonts[0].font; // Always try to return a font rather than NULL

@@ -130,9 +130,9 @@ private:
       m_word_index.reset();
 
       m_line.index.set(Index);
-      m_line.x       = X;
-      m_kernchar     = 0;
-      m_word_width   = 0;
+      m_line.x     = X;
+      m_kernchar   = 0;
+      m_word_width = 0;
    }
 
    inline void reset_broken_segment() { reset_broken_segment(idx, m_cursor_x); }
@@ -140,7 +140,7 @@ private:
    // Call this prior to new_segment() for ensuring that the content up to this point is correctly finished.
 
    inline void finish_segment() {
-      m_cursor_x += m_word_width;
+      m_cursor_x  += m_word_width;
       m_word_width = 0;
    }
 
@@ -199,6 +199,7 @@ private:
    TE   lay_table_end(bc_table *, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
    WRAP lay_text();
 
+   void apply_style(bc_font &);
    DOUBLE calc_page_height(DOUBLE);
    WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
    void end_line(NL, stream_char, const std::string &);
@@ -467,32 +468,31 @@ WRAP layout::place_widget(widget_mgr &Widget)
 }
 
 //********************************************************************************************************************
+// Any style change must be followed with a call to this function to ensure that its config is applied.
+
+void layout::apply_style(bc_font &Style) {
+   if ((Style.options & FSO::ALIGN_RIGHT) != FSO::NIL) m_font->Align = ALIGN::RIGHT;
+   else if ((Style.options & FSO::ALIGN_CENTER) != FSO::NIL) m_font->Align = ALIGN::HORIZONTAL;
+   else m_font->Align = ALIGN::NIL;
+
+   m_inline = ((Style.options & FSO::IN_LINE) != FSO::NIL);
+   m_no_wrap = ((Style.options & FSO::NO_WRAP) != FSO::NIL);
+   m_space_width = fntCharWidth(m_font, ' ', 0, 0);
+}
+
+//********************************************************************************************************************
 
 void layout::lay_font()
 {
-   pf::Log log;
+   auto &style = m_stream->lookup<bc_font>(idx);
 
-   auto style = &m_stream->lookup<bc_font>(idx);
+   if ((m_font = style.get_font())) {
+      apply_style(style);
 
-   if ((m_font = style->get_font())) {
-      if ((style->options & FSO::ALIGN_RIGHT) != FSO::NIL) m_font->Align = ALIGN::RIGHT;
-      else if ((style->options & FSO::ALIGN_CENTER) != FSO::NIL) m_font->Align = ALIGN::HORIZONTAL;
-      else m_font->Align = ALIGN::NIL;
-
-      m_inline = ((style->options & FSO::IN_LINE) != FSO::NIL);
-      m_no_wrap = ((style->options & FSO::NO_WRAP) != FSO::NIL);
-      //if (m_no_wrap) m_wrap_edge = 1000;
-
-      DLAYOUT("Font Index: %d, LineSpacing: %d, Pt: %g, Height: %d, Ascent: %d, Cursor: %gx%g",
-         style->font_index, m_font->LineSpacing, m_font->Point, m_font->Height, m_font->Ascent, m_cursor_x, m_cursor_y);
-      m_space_width = fntCharWidth(m_font, ' ', 0, 0);
-
-      // Treat the font as if it is a text character by setting the m_word_index.
-      // This ensures it is included in the drawing process.
+      // Setting m_word_index ensures that the font code appears in the current segment.
 
       if (!m_word_width) m_word_index.set(idx);
    }
-   else DLAYOUT("Failed to lookup font for %s:%g", style->face.c_str(), style->point);
 
    stack_font.push(&m_stream->lookup<bc_font>(idx));
 }
@@ -506,7 +506,10 @@ void layout::lay_font_end()
    }
 
    stack_font.pop();
-   if (!stack_font.empty()) m_font = stack_font.top()->get_font();
+   if (!stack_font.empty()) {
+      m_font = stack_font.top()->get_font();
+      apply_style(*stack_font.top());
+   }
 }
 
 //********************************************************************************************************************
@@ -730,6 +733,8 @@ void layout::lay_paragraph()
       return;
    }
 
+   apply_style(escpara->font);
+
    if (m_line_count > 0) m_cursor_y += escpara->leading * m_font->LineSpacing;
 
    escpara->y = m_cursor_y;
@@ -759,7 +764,10 @@ void layout::lay_paragraph_end()
    else end_line(NL::PARAGRAPH, stream_char(idx + 1), "PE-NP"); // Technically an error when there's no matching PS code.
 
    stack_font.pop();
-   if (!stack_font.empty()) m_font = stack_font.top()->get_font();
+   if (!stack_font.empty()) {
+      m_font = stack_font.top()->get_font();
+      apply_style(*stack_font.top());
+   }
 }
 
 //********************************************************************************************************************
@@ -1713,8 +1721,8 @@ void layout::end_line(NL NewLine, stream_char Next, const std::string &Caller)
    m_line.apply_word_height();
 
 #ifdef DBG_LAYOUT
-   log.branch("%s: CursorX/Y: %g/%g, ParaY: %d, ParaEnd: %d, Line Height: %g * %g, Span: %d:%d - %d:%d",
-      Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height, Spacing,
+   log.branch("%s: CursorX/Y: %g/%g, ParaY: %d, ParaEnd: %d, Line Height: %g, Span: %d:%d - %d:%d",
+      Caller.c_str(), m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height,
       m_line.index.index, LONG(m_line.index.offset), Next.index, LONG(Next.offset));
 #endif
 
@@ -1795,16 +1803,16 @@ WRAP layout::check_wordwrap(const std::string &Type, DOUBLE &PageWidth, stream_c
 #endif
 
    auto result = WRAP::DO_NOTHING;
-   LONG breakloop = MAXLOOP; // Employ safety measures to prevent a loop trap.
+   LONG breakloop;
+   for (breakloop = MAXLOOP; breakloop > 0; breakloop--) {
+      m_align_width = m_wrap_edge;
 
-restart:
-   m_align_width = m_wrap_edge;
+      if (!m_clips.empty()) { // If clips are registered then we need to check them for collisions.
+         wrap_through_clips(Cursor, X, Y, Width, Height);
+      }
 
-   if (!m_clips.empty()) { // If clips are registered then we need to check them for collisions.
-      wrap_through_clips(Cursor, X, Y, Width, Height);
-   }
+      if (X + Width <= m_wrap_edge) break;
 
-   if (X + Width > m_wrap_edge) {
       if ((PageWidth < WIDTH_LIMIT) and ((X IS m_left_margin) or (m_no_wrap))) {
          // Force an extension of the page width and recalculate from scratch
          auto min_width = X + Width + m_right_margin;
@@ -1845,11 +1853,14 @@ restart:
       m_line.reset(m_left_margin);
 
       result = WRAP::WRAPPED;
-      if (--breakloop > 0) goto restart; // Go back and check the clip boundaries again
-      else {
-         log.traceWarning("Breaking out of continuous loop.");
-         Self->Error = ERR_Loop;
-      }
+
+      // Typically we will loop only once after a wrap, but multiple loops may occur if there are clip regions
+      // present and/or the word is very long.
+   } // while()
+
+   if (breakloop < 0) {
+      log.traceWarning("Infinite loop detected.");
+      Self->Error = ERR_Loop;
    }
 
    #ifdef DBG_WORDWRAP

@@ -2,12 +2,12 @@
 static const LONG MAXLOOP = 100000;
 
 static const char glDefaultStyles[] =
-"<template name=\"h1\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"18\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h2\"><p leading=\"1.5\"><font face=\"Open Sans\" size=\"16\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h3\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"14\" style=\"bold\"><inject/></font></p></template>\n\
-<template name=\"h4\"><p leading=\"1.25\"><font face=\"Open Sans\" size=\"14\"><inject/></font></p></template>\n\
-<template name=\"h5\"><p leading=\"1.0\"><font face=\"Open Sans\" size=\"12\"><inject/></font></p></template>\n\
-<template name=\"h6\"><p leading=\"1.0\"><font face=\"Open Sans\" size=\"10\"><inject/></font></p></template>\n";
+"<template name=\"h1\"><p leading=\"1.5\" font-face=\"Open Sans\" font-size=\"18\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h2\"><p leading=\"1.5\" font-face=\"Open Sans\" font-size=\"16\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h3\"><p leading=\"1.25\" font-face=\"Open Sans\" font-size=\"14\" font-style=\"bold\"><inject/></p></template>\n\
+<template name=\"h4\"><p leading=\"1.25\" font-face=\"Open Sans\" font-size=\"14\"><inject/></p></template>\n\
+<template name=\"h5\"><p leading=\"1.0\" font-face=\"Open Sans\" font-size=\"12\"><inject/></p></template>\n\
+<template name=\"h6\"><p leading=\"1.0\" font-face=\"Open Sans\" font-size=\"10\"><inject/></p></template>\n";
 
 static const Field * find_field(OBJECTPTR Object, CSTRING Name, OBJECTPTR *Source) // Read-only, thread safe function.
 {
@@ -541,67 +541,12 @@ static LONG get_line_from_index(extDocument *Self, INDEX index)
 
 //********************************************************************************************************************
 
-static std::string get_font_style(FSO Options)
+inline std::string get_font_style(const FSO Options)
 {
    if ((Options & (FSO::BOLD|FSO::ITALIC)) IS (FSO::BOLD|FSO::ITALIC)) return "Bold Italic";
    else if ((Options & FSO::BOLD) != FSO::NIL) return "Bold";
    else if ((Options & FSO::ITALIC) != FSO::NIL) return "Italic";
    else return "Regular";
-}
-
-//********************************************************************************************************************
-// Creates a font (if it doesn't already exist) and returns an index.
-//
-// Created fonts belong to the Document module rather than the current object, so they can be reused between multiple
-// open documents.
-
-static LONG create_font(const std::string &Face, const std::string &Style, LONG Point)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Point < 3) Point = DEFAULT_FONTSIZE;
-
-   // Check the cache for this font
-
-   for (unsigned i=0; i < glFonts.size(); i++) {
-      if ((!StrMatch(Face, glFonts[i].font->Face)) and
-          (!StrMatch(Style, glFonts[i].font->Style)) and
-          (Point IS glFonts[i].point)) {
-         log.trace("Match %d = %s(%s,%d)", i, Face.c_str(), Style.c_str(), Point);
-         return i;
-      }
-   }
-
-   log.branch("Index: %d, %s, %s, %d", LONG(glFonts.size()), Face.c_str(), Style.c_str(), Point);
-
-#ifndef RETAIN_LOG_LEVEL
-   pf::LogLevel level(2);
-#endif
-
-   objFont *font = objFont::create::integral(
-      fl::Owner(modDocument->UID), fl::Face(Face), fl::Style(Style), fl::Point(Point), fl::Flags(FTF::PREFER_SCALED));
-
-   if (font) {
-      // Perform a second check in case the font we ended up with is in our cache.  This can occur if the font we have acquired
-      // is a little different to what we requested (e.g. scalable instead of fixed, or a different face).
-
-      for (unsigned i=0; i < glFonts.size(); i++) {
-         if ((!StrMatch(font->Face, glFonts[i].font->Face)) and
-            (!StrMatch(font->Style, glFonts[i].font->Style)) and
-            (font->Point IS glFonts[i].point)) {
-            log.trace("Match %d = %s(%s,%d)", i, Face.c_str(), Style.c_str(), Point);
-            FreeResource(font);
-            return i;
-         }
-      }
-
-      auto index = glFonts.size();
-      glFonts.emplace_back(font, Point);
-      return index;
-   }
-   else {
-      return -1;
-   }
 }
 
 //********************************************************************************************************************

@@ -90,6 +90,9 @@ struct parser {
    inline void tag_trigger(XMLTag &);
    inline void tag_use(XMLTag &);
    inline void tag_vector(XMLTag &);
+   inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
+   inline bool check_font_attrib(const XMLAttrib &, bc_font &);
+
 
    ~parser() {
       if (m_time) FreeResource(m_time);
@@ -117,9 +120,6 @@ struct parser {
       }
    }
 };
-
-static bool check_para_attrib(extDocument *, const XMLAttrib &, bc_paragraph *, bc_font &);
-static bool check_font_attrib(extDocument *, const XMLAttrib &, bc_font &);
 
 //********************************************************************************************************************
 // Converts XML to byte code, then displays the page that is referenced by the PageName field by calling
@@ -908,9 +908,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
          if (!Tag.Children.empty()) tag_div(Tag);
          break;
 
-      case HASH_p:
-         if (!Tag.Children.empty()) tag_paragraph(Tag);
-         break;
+      case HASH_p: tag_paragraph(Tag); break;
 
       case HASH_font:
          if (!Tag.Children.empty()) tag_font(Tag);
@@ -1190,6 +1188,8 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
 
 TRF parser::parse_tags_with_embedded_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
 {
+   if (Tags.empty()) return TRF::NIL;
+
    Style.uid = glByteCodeID++;
 
    auto save_style = m_style;
@@ -1208,7 +1208,7 @@ TRF parser::parse_tags_with_embedded_style(objXML::TAGS &Tags, bc_font &Style, I
 
 //********************************************************************************************************************
 
-static bool check_para_attrib(extDocument *Self, const XMLAttrib &Attrib, bc_paragraph *Para, bc_font &Style)
+bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_font &Style)
 {
    switch (StrHash(Attrib.Name)) {
       case HASH_inline:
@@ -1265,7 +1265,7 @@ static bool check_para_attrib(extDocument *Self, const XMLAttrib &Attrib, bc_par
 
 //********************************************************************************************************************
 
-static bool check_font_attrib(extDocument *Self, const XMLAttrib &Attrib, bc_font &Style)
+bool parser::check_font_attrib(const XMLAttrib &Attrib, bc_font &Style)
 {
    pf::Log log;
 
@@ -1861,7 +1861,7 @@ void parser::tag_div(XMLTag &Tag)
          }
          else log.warning("Alignment type '%s' not supported.", Tag.Attribs[i].Value.c_str());
       }
-      else check_para_attrib(Self, Tag.Attribs[i], 0, new_style);
+      else check_para_attrib(Tag.Attribs[i], 0, new_style);
    }
 
    parse_tags_with_style(Tag.Children, new_style);
@@ -2320,8 +2320,8 @@ void parser::tag_paragraph(XMLTag &Tag)
          if (para.leading < MIN_LEADING) para.leading = MIN_LEADING;
          else if (para.leading > MAX_LEADING) para.leading = MAX_LEADING;
       }
-      else if (check_para_attrib(Self, Tag.Attribs[i], &para, para.font));
-      else check_font_attrib(Self, Tag.Attribs[i], para.font);
+      else if (check_para_attrib(Tag.Attribs[i], &para, para.font));
+      else check_font_attrib(Tag.Attribs[i], para.font);
    }
 
    m_stream.insert_code(m_index, para);
@@ -2716,7 +2716,7 @@ void parser::tag_font(XMLTag &Tag)
          preformat = true;
          m_strip_feeds = true;
       }
-      else check_font_attrib(Self, Tag.Attribs[i], new_style);
+      else check_font_attrib(Tag.Attribs[i], new_style);
    }
 
    parse_tags_with_style(Tag.Children, new_style);
@@ -3233,7 +3233,7 @@ void parser::tag_li(XMLTag &Tag)
          if (Tag.Attribs[i].Value == "true") para.aggregate = true;
          else if (Tag.Attribs[i].Value == "1") para.aggregate = true;
       }
-      else check_para_attrib(Self, Tag.Attribs[i], &para, para.font);
+      else check_para_attrib(Tag.Attribs[i], &para, para.font);
    }
 
    m_paragraph_depth++;
