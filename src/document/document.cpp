@@ -139,7 +139,7 @@ template <class T> T & RSTREAM::insert_code(stream_char &Cursor, T &Code)
 
    if (codes.contains(Code.uid)) {
       // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
-      // NB: At some point the re-use of codes should be allowed, e.g. bc_font reversions would benefit from this.
+      // TODO: At some point the re-use of codes should be allowed, e.g. bc_font reversions would benefit from this.
       pf::Log log(__FUNCTION__);
       log.warning("Code #%d is already registered.", Code.uid);
    }

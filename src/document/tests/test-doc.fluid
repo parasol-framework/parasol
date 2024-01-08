@@ -13,24 +13,26 @@ function renderDocToBitmap(Path, Width)
    local vp = scene.new('VectorViewport', { x=0, y=0, width='100%', height='100%' })
    vp.new('VectorRectangle', { x=0, y=0, width='100%', height='100%', fill='rgb(255,255,255)' })
    vp.new('document', { viewport=vp, path=Path })
+
    local bmp = obj.new('bitmap', { width=scene.pageWidth, height=scene.pageHeight, bitsPerPixel=32 })
    bmp.acClear()
+
    scene.bitmap = bmp
    scene.acDraw()
    return bmp
 end
 
-function crcTest(Path, ExpectedCRC)
+function crcTest(Name, Path, ExpectedCRC)
    if type(ExpectedCRC) == 'table' then
       for res,crc in pairs(ExpectedCRC) do
          local bmp = renderDocToBitmap(glDocFolder .. Path, res)
 
          local crc = mSys.GenCRC32(0, bmp.data, bmp.size)
          if (ExpectedCRC == 0) then
-            saveBitmap(bmp, Path)
+            saveBitmap(bmp, Name)
             error('File "' .. Path .. '" @ page width ' .. res .. ' is yet to be assigned a checksum, current CRC is ' .. string.format('0x%.8x', crc))
          elseif (ExpectedCRC != crc) then
-            saveBitmap(bmp, Path)
+            saveBitmap(bmp, Name)
             error('The CRC for "' .. Path .. '" @ page width ' .. res .. ' is ' .. string.format('0x%.8x', crc) .. ', expected ' .. string.format('0x%.8x', ExpectedCRC))
          end
       end
@@ -41,18 +43,16 @@ function crcTest(Path, ExpectedCRC)
 
    local crc = mSys.GenCRC32(0, bmp.data, bmp.size)
    if (ExpectedCRC == 0) then
-      saveBitmap(bmp, Path)
-      error('File "' .. Path .. '" is yet to be assigned a checksum, current CRC is ' .. string.format('0x%.8x', crc))
+      saveBitmap(bmp, Name)
+      error('The ' .. Name .. ' test is yet to be assigned a checksum, current CRC is ' .. string.format('0x%.8x', crc))
    elseif (ExpectedCRC != crc) then
-      saveBitmap(bmp, Path)
-      error('The CRC for "' .. Path .. '" is ' .. string.format('0x%.8x', crc) .. ', expected ' .. string.format('0x%.8x', ExpectedCRC))
+      saveBitmap(bmp, Name)
+      error('The CRC for ' .. Name .. ' is ' .. string.format('0x%.8x', crc) .. ', expected ' .. string.format('0x%.8x', ExpectedCRC))
    end
 end
 
-function saveBitmap(Bitmap, Path)
-   local folder, filename = file.splitPath(Path)
-   local split = string.split(filename, '\\.')
-   filename = split[1] .. '.png'
+function saveBitmap(Bitmap, Name)
+   filename = Name .. '.png'
 
    local pic = obj.new('picture', { width = Bitmap.width, height = Bitmap.height, bitsPerPixel = Bitmap.bitsPerPixel, flags='NEW' })
    Bitmap.acCopyData(pic.bitmap)
@@ -62,17 +62,22 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testAlignment()   crcTest('alignment.rpl', 0x1fcf4fa3) end
-function testDialog()      crcTest('dialog.rpl', 0x6fc02e09) end
-function testFonts()       crcTest('fonts.rpl', 0xe695ea88) end
-function testImages()      crcTest('images.rpl', 0x2593b904) end
-function testLayout()      crcTest('layout.rpl', 0x3286483c) end
-function testLinks()       crcTest('links.rpl', 0x8a501cce) end
-function testLists()       crcTest('lists.rpl', 0x36036549) end
-function testLogic()       crcTest('logic.rpl', 0xb65c73e2) end
-function testParagraphs()  crcTest('paragraphs.rpl', 0xd7ebbbb2) end
-function testTables()      crcTest('tables.rpl', 0xc30f392e) end
-function testWidgets()     crcTest('widgets.rpl', 0x0275e439) end
+function testAlignment()   crcTest('Alignment', 'alignment.rpl', 0x1fcf4fa3) end
+function testDialog()      crcTest('Dialog', 'dialog.rpl', 0x6fc02e09) end
+function testFonts()       crcTest('Fonts', 'fonts.rpl', 0xe695ea88) end
+function testImages()      crcTest('Images', 'images.rpl', 0x2593b904) end
+function testLayout()      crcTest('Layout', 'layout.rpl', 0x3286483c) end
+
+function testLinks()
+   crcTest('Links1', 'links.rpl', 0x8a501cce)
+   crcTest('Links2', 'links.rpl?font=Open Sans&font-size=16', 0x0a25b29a)
+end
+
+function testLists()       crcTest('Lists', 'lists.rpl', 0x36036549) end
+function testLogic()       crcTest('Logic', 'logic.rpl', 0x1b200a7c) end
+function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0xd7ebbbb2) end
+function testTables()      crcTest('Tables', 'tables.rpl', 0xc30f392e) end
+function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0x0275e439) end
 
 -----------------------------------------------------------------------------------------------------------------------
 

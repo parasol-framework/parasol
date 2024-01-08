@@ -42,6 +42,9 @@ struct parser {
    inline void  tag_xml_content(XMLTag &, PXF);
    inline void  translate_attrib_args(pf::vector<XMLAttrib> &);
    inline void  translate_args(const std::string &, std::string &);
+   inline void  translate_calc(std::string &, size_t);
+   inline void  translate_param(std::string &, size_t);
+   inline void  translate_reserved(std::string &, size_t, bool &);
    inline ERROR calc(const std::string &, DOUBLE *, std::string &);
    inline ERROR tag_xml_content_eval(std::string &);
    inline void  trim_preformat(extDocument *);
@@ -267,6 +270,8 @@ void parser::translate_attrib_args(pf::vector<XMLAttrib> &Attribs)
 //
 // If an attribute name is prefixed with '$' then no translation of the attribute value is attempted.
 //
+// URI parameters are referenced with [@param:default_val]
+//
 // If a major error occurs during processing, the function will abort, returning the error and also setting the Error
 // field to the resulting error code.  The most common reason for an abort is a buffer overflow or memory allocation
 // problems, so a complete abort of document processing is advisable.
@@ -326,226 +331,13 @@ void parser::translate_args(const std::string &Input, std::string &Output)
       }
       else if (Output[pos] IS '[') {
          if (Output[pos+1] IS '=') { // Perform a calcuation within [= ... ]
-            std::string temp;
-            temp.reserve(Output.size());
-            unsigned j = 0;
-            auto end = pos+2;
-            while ((end < LONG(Output.size())) and (Output[end] != ']')) {
-               if (Output[end] IS '\'') {
-                  temp[j++] = '\'';
-                  for (++end; (Output[end]) and (Output[end] != '\''); end++) temp[j++] = Output[end];
-                  if (Output[end]) temp[j++] = Output[end++];
-               }
-               else if (Output[end] IS '"') {
-                  temp[j++] = '"';
-                  for (++end; (Output[end]) and (Output[end] != '"'); end++);
-                  if (Output[end]) temp[j++] = Output[end++];
-               }
-               else temp[j++] = Output[end++];
-            }
-            if (end < LONG(Output.size())) end++; // Skip ']'
-            std::string calcbuffer;
-            calc(temp, 0, calcbuffer);
-            Output.replace(pos, end-pos, calcbuffer);
-         }
-         else if (Output[pos+1] IS '%') {
-            // Check against reserved keywords
-
-            if (!Output.compare(pos, sizeof("[%index]")-1, "[%index]")) {
-               Output.replace(pos, sizeof("[%index]")-1, std::to_string(m_loop_index));
-            }
-            else if (!Output.compare(pos, sizeof("[%id]")-1, "[%id]")) {
-               Output.replace(pos, sizeof("[%id]")-1, std::to_string(Self->UID));
-            }
-            else if (!Output.compare(pos, sizeof("[%self]")-1, "[%self]")) {
-               Output.replace(pos, sizeof("[%self]")-1, std::to_string(Self->UID));
-            }
-            else if (!Output.compare(pos, sizeof("[%platform]")-1, "[%platform]")) {
-               Output.replace(pos, sizeof("[%platform]")-1, GetSystemState()->Platform);
-            }
-            else if (!Output.compare(pos, sizeof("[%random]")-1, "[%random]")) {
-               // Generate a random string of digits
-               std::string random;
-               random.resize(10);
-               for (unsigned j=0; j < random.size(); j++) random[j] = '0' + (rand() % 10);
-               Output.replace(pos, sizeof("[%random]")-1, random);
-            }
-            else if (!Output.compare(pos, sizeof("[%current-page]")-1, "[%current-page]")) {
-               if (Self->PageTag) {
-                  if (auto page_name = Self->PageTag[0].attrib("name")) {
-                     Output.replace(pos, sizeof("[%current-page]")-1, page_name[0]);
-                  }
-                  else Output.replace(pos, sizeof("[%current-page]")-1, "");
-               }
-               else Output.replace(pos, sizeof("[%current-page]")-1, "");
-            }
-            else if (!Output.compare(pos, sizeof("[%next-page]")-1, "[%next-page]")) {
-               if (Self->PageTag) {
-                  auto next = Self->PageTag->attrib("next-page");
-                  Output.replace(pos, sizeof("[%next-page]")-1, next ? *next : "");
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%prev-page]")-1, "[%prev-page]")) {
-               if (Self->PageTag) {
-                  auto next = Self->PageTag->attrib("prev-page");
-                  Output.replace(pos, sizeof("[%prev-page]")-1, next ? *next : "");
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%path]"), "[%path]")) {
-               CSTRING workingpath = "";
-               Self->get(FID_WorkingPath, &workingpath);
-               if (!workingpath) workingpath = "";
-               Output.replace(pos, sizeof("[%path]")-1, workingpath);
-            }
-            else if (!Output.compare(pos, sizeof("[%author]")-1, "[%author]")) {
-               Output.replace(pos, sizeof("[%author]")-1, Self->Author);
-            }
-            else if (!Output.compare(pos, sizeof("[%description]")-1, "[%description]")) {
-               Output.replace(pos, sizeof("[%description]")-1, Self->Description);
-            }
-            else if (!Output.compare(pos, sizeof("[%copyright]")-1, "[%copyright]")) {
-               Output.replace(pos, sizeof("[%copyright]")-1, Self->Copyright);
-            }
-            else if (!Output.compare(pos, sizeof("[%keywords]")-1, "[%keywords]")) {
-               Output.replace(pos, sizeof("[%keywords]")-1, Self->Keywords);
-            }
-            else if (!Output.compare(pos, sizeof("[%title]")-1, "[%title]")) {
-               Output.replace(pos, sizeof("[%title]")-1, Self->Title);
-            }
-            else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
-               if (auto font = m_style.get_font()) {
-                  char buffer[60];
-                  snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->Face, font->Point, font->Style);
-                  Output.replace(pos, sizeof("[%font]")-1, buffer);
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%font-face]")-1, "[%font-face]")) {
-               if (auto font = m_style.get_font()) {
-                  Output.replace(pos, sizeof("[%font-face]")-1, font->Face);
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%font-colour]")-1, "[%font-colour]")) {
-               if (auto font = m_style.get_font()) {
-                  char colour[28];
-                  snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
-                  Output.replace(pos, sizeof("[%font-colour]")-1, colour);
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
-               if (auto font = m_style.get_font()) {
-                  char buffer[28];
-                  snprintf(buffer, sizeof(buffer), "%g", font->Point);
-                  Output.replace(pos, sizeof("[%font-size]")-1, buffer);
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%line-no]")-1, "[%line-no]")) {
-               auto num = std::to_string(Self->Segments.size());
-               Output.replace(pos, sizeof("[%line-no]")-1, num);
-            }
-            else if (!Output.compare(pos, sizeof("[%content]")-1, "[%content]")) {
-               if ((m_in_template) and (m_inject_tag)) {
-                  std::string content = xmlGetContent(m_inject_tag[0][0]);
-                  Output.replace(pos, sizeof("[%content]")-1, content);
-
-                  //if (!xmlGetString(m_inject_xml, m_inject_tag[0][0].ID, XMF::INCLUDE_SIBLINGS, &content)) {
-                  //   Output.replace(pos, sizeof("[%content]")-1, content);
-                  //   FreeResource(content);
-                  //}
-               }
-            }
-            else if (!Output.compare(pos, sizeof("[%tm-day]")-1, "[%tm-day]")) {
-               if (!m_time) m_time = objTime::create::integral();
-               if (!time_queried) { acQuery(m_time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(m_time->Day));
-            }
-            else if (!Output.compare(pos, sizeof("[%tm-month]")-1, "[%tm-month]")) {
-               if (!m_time) m_time = objTime::create::integral();
-               if (!time_queried) { acQuery(m_time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(m_time->Month));
-            }
-            else if (!Output.compare(pos, sizeof("[%tm-year]")-1, "[%tm-year]")) {
-               if (!m_time) m_time = objTime::create::integral();
-               if (!time_queried) { acQuery(m_time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(m_time->Year));
-            }
-            else if (!Output.compare(pos, sizeof("[%tm-hour]")-1, "[%tm-hour]")) {
-               if (!m_time) m_time = objTime::create::integral();
-               if (!time_queried) { acQuery(m_time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(m_time->Hour));
-            }
-            else if (!Output.compare(pos, sizeof("[%tm-minute]")-1, "[%tm-minute]")) {
-               if (!m_time) m_time = objTime::create::integral();
-               if (!time_queried) { acQuery(m_time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(m_time->Minute));
-            }
-            else if (!Output.compare(pos, sizeof("[%tm-second]")-1, "[%tm-second]")) {
-               if (!m_time) m_time = objTime::create::integral();
-               if (!time_queried) { acQuery(m_time); time_queried = true; }
-               Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(m_time->Second));
-            }
-            else if (!Output.compare(pos, sizeof("[%version]")-1, "[%version]")) {
-               Output.replace(pos, sizeof("[%version]")-1, RIPL_VERSION);
-            }
-            else if (!Output.compare(pos, sizeof("[%view-height]")-1, "[%view-height]")) {
-               char buffer[28];
-               snprintf(buffer, sizeof(buffer), "%g", Self->VPHeight);
-               Output.replace(pos, sizeof("[%view-height]")-1, buffer);
-            }
-            else if (!Output.compare(pos, sizeof("[%view-width]")-1, "[%view-width]")) {
-               char buffer[28];
-               snprintf(buffer, sizeof(buffer), "%g", Self->VPWidth);
-               Output.replace(pos, sizeof("[%view-width]")-1, buffer);
-            }
+            translate_calc(Output, pos);
          }
          else if (Output[pos+1] IS '@') {
-            // Translate argument reference.
-            // Valid examples: [@arg] [@arg:defaultvalue] [@arg:"value[]"] [@arg:'value[[]]]']
-
-            char terminator = ']';
-            auto end = Output.find_first_of("]:", pos);
-            if (end IS std::string::npos) continue; // Not a valid reference
-
-            auto argname = Output.substr(pos, end-pos);
-
-            auto true_end = end;
-            if ((Output[end] IS '\'') or (Output[end] IS '"')) {
-               terminator = Output[end];
-               for (++true_end; (true_end < Output.size()) and (Output[true_end] != '\''); true_end++);
-               while ((true_end < Output.size()) and (Output[true_end] != ']')) true_end++;
-            }
-
-            bool processed = false;
-            for (auto it=Self->TemplateArgs.rbegin(); (!processed) and (it != Self->TemplateArgs.rend()); it++) {
-               auto args = *it;
-               for (unsigned arg=1; arg < args->Attribs.size(); arg++) {
-                  if (StrCompare(args->Attribs[arg].Name, argname)) continue;
-                  Output.replace(pos, true_end-pos, args->Attribs[arg].Value);
-                  processed = true;
-                  break;
-               }
-            }
-
-            if (processed) continue;
-
-            // Check against global arguments / variables
-
-            if (Self->Vars.contains(argname)) {
-               Output.replace(pos, true_end-pos, Self->Vars[argname]);
-            }
-            else if (Self->Params.contains(argname)) {
-               Output.replace(pos, true_end-pos, Self->Params[argname]);
-            }
-            else if (Output[end] IS ':') { // Resort to the default value
-               end++;
-               if ((Output[end] IS '\'') or (Output[end] IS '"')) {
-                  end++;
-                  auto start = end;
-                  while ((end < Output.size()) and (Output[end] != terminator)) end++;
-                  Output.replace(pos, true_end-pos, Output.substr(start, end));
-               }
-               else Output.replace(pos, true_end-pos, Output.substr(end, true_end));
-            }
-            else Output.replace(pos, true_end+1-pos, "");
+            translate_param(Output, pos);
+         }
+         else if (Output[pos+1] IS '%') {
+            translate_reserved(Output, pos, time_queried);
          }
          else { // Object translation, can be [object] or [object.field]
             // Make sure that there is a closing bracket
@@ -624,6 +416,248 @@ void parser::translate_args(const std::string &Input, std::string &Output)
             }
          }
       }
+   }
+}
+
+//********************************************************************************************************************
+
+void parser::translate_calc(std::string &Output, size_t pos)
+{
+   std::string temp;
+   temp.reserve(Output.size());
+   unsigned j = 0;
+   auto end = pos + 2;
+   while ((end < Output.size()) and (Output[end] != ']')) {
+      if (Output[end] IS '\'') {
+         temp[j++] = '\'';
+         for (++end; (Output[end]) and (Output[end] != '\''); end++) temp[j++] = Output[end];
+         if (Output[end]) temp[j++] = Output[end++];
+      }
+      else if (Output[end] IS '"') {
+         temp[j++] = '"';
+         for (++end; (Output[end]) and (Output[end] != '"'); end++);
+         if (Output[end]) temp[j++] = Output[end++];
+      }
+      else temp[j++] = Output[end++];
+   }
+   if (end < Output.size()) end++; // Skip ']'
+   std::string calcbuffer;
+   calc(temp, 0, calcbuffer);
+   Output.replace(pos, end-pos, calcbuffer);
+}
+
+//********************************************************************************************************************
+// Translate argument reference.
+// Valid examples: [@arg] [@arg:defaultvalue] [@arg:"value[]"] [@arg:'value[[]]]']
+
+void parser::translate_param(std::string &Output, size_t pos)
+{
+   char terminator = ']';
+   auto name_end = Output.find_first_of("]:", pos);
+   if (name_end IS std::string::npos) return; // Invalid format
+
+   auto argname = Output.substr(pos+2, name_end-pos-2);
+
+   auto true_end = name_end;
+   if (Output[true_end] IS ':') {
+      true_end++;
+      if ((Output[name_end] IS '\'') or (Output[name_end] IS '"')) {
+         terminator = Output[name_end];
+         for (++true_end; (true_end < Output.size()) and (Output[true_end] != terminator); true_end++);
+         true_end++; // Skip terminator and the end bracket should appear immediately after.
+         if ((true_end >= Output.size()) or (Output[true_end] != ']')) return;
+      }
+      else {
+         true_end = Output.find(']', true_end);
+         if (true_end IS std::string::npos) return; // Invalid format
+      }
+   }
+
+   if (!Self->TemplateArgs.empty()) {
+      bool processed = false;
+      for (auto it=Self->TemplateArgs.rbegin(); (!processed) and (it != Self->TemplateArgs.rend()); it++) {
+         auto args = *it;
+         for (unsigned arg=1; arg < args->Attribs.size(); arg++) {
+            if (StrCompare(args->Attribs[arg].Name, argname)) continue;
+            Output.replace(pos, true_end+1-pos, args->Attribs[arg].Value);
+            processed = true;
+            break;
+         }
+      }
+
+      if (processed) return;
+   }
+
+   // Check against global arguments / variables
+
+   if (Self->Vars.contains(argname)) {
+      Output.replace(pos, true_end+1-pos, Self->Vars[argname]);
+   }
+   else if (Self->Params.contains(argname)) {
+      Output.replace(pos, true_end+1-pos, Self->Params[argname]);
+   }
+   else if (Output[name_end] IS ':') { // Resort to the default value
+      name_end++;
+      if ((Output[name_end] IS '\'') or (Output[name_end] IS '"')) {
+         auto default_value = Output.substr(name_end + 1, true_end);
+         Output.replace(pos, true_end+1-pos, default_value);
+      }
+      else {
+         auto default_value = Output.substr(name_end, true_end - name_end);
+         Output.replace(pos, true_end+1-pos, default_value);
+      }
+   }
+   else Output.replace(pos, true_end+1-pos, "");
+}
+
+//********************************************************************************************************************
+
+void parser::translate_reserved(std::string &Output, size_t pos, bool &time_queried)
+{
+   if (!Output.compare(pos, sizeof("[%index]")-1, "[%index]")) {
+      Output.replace(pos, sizeof("[%index]")-1, std::to_string(m_loop_index));
+   }
+   else if (!Output.compare(pos, sizeof("[%id]")-1, "[%id]")) {
+      Output.replace(pos, sizeof("[%id]")-1, std::to_string(Self->UID));
+   }
+   else if (!Output.compare(pos, sizeof("[%self]")-1, "[%self]")) {
+      Output.replace(pos, sizeof("[%self]")-1, std::to_string(Self->UID));
+   }
+   else if (!Output.compare(pos, sizeof("[%platform]")-1, "[%platform]")) {
+      Output.replace(pos, sizeof("[%platform]")-1, GetSystemState()->Platform);
+   }
+   else if (!Output.compare(pos, sizeof("[%random]")-1, "[%random]")) {
+      // Generate a random string of digits
+      std::string random;
+      random.resize(10);
+      for (unsigned j=0; j < random.size(); j++) random[j] = '0' + (rand() % 10);
+      Output.replace(pos, sizeof("[%random]")-1, random);
+   }
+   else if (!Output.compare(pos, sizeof("[%current-page]")-1, "[%current-page]")) {
+      if (Self->PageTag) {
+         if (auto page_name = Self->PageTag[0].attrib("name")) {
+            Output.replace(pos, sizeof("[%current-page]")-1, page_name[0]);
+         }
+         else Output.replace(pos, sizeof("[%current-page]")-1, "");
+      }
+      else Output.replace(pos, sizeof("[%current-page]")-1, "");
+   }
+   else if (!Output.compare(pos, sizeof("[%next-page]")-1, "[%next-page]")) {
+      if (Self->PageTag) {
+         auto next = Self->PageTag->attrib("next-page");
+         Output.replace(pos, sizeof("[%next-page]")-1, next ? *next : "");
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%prev-page]")-1, "[%prev-page]")) {
+      if (Self->PageTag) {
+         auto next = Self->PageTag->attrib("prev-page");
+         Output.replace(pos, sizeof("[%prev-page]")-1, next ? *next : "");
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%path]"), "[%path]")) {
+      CSTRING workingpath = "";
+      Self->get(FID_WorkingPath, &workingpath);
+      if (!workingpath) workingpath = "";
+      Output.replace(pos, sizeof("[%path]")-1, workingpath);
+   }
+   else if (!Output.compare(pos, sizeof("[%author]")-1, "[%author]")) {
+      Output.replace(pos, sizeof("[%author]")-1, Self->Author);
+   }
+   else if (!Output.compare(pos, sizeof("[%description]")-1, "[%description]")) {
+      Output.replace(pos, sizeof("[%description]")-1, Self->Description);
+   }
+   else if (!Output.compare(pos, sizeof("[%copyright]")-1, "[%copyright]")) {
+      Output.replace(pos, sizeof("[%copyright]")-1, Self->Copyright);
+   }
+   else if (!Output.compare(pos, sizeof("[%keywords]")-1, "[%keywords]")) {
+      Output.replace(pos, sizeof("[%keywords]")-1, Self->Keywords);
+   }
+   else if (!Output.compare(pos, sizeof("[%title]")-1, "[%title]")) {
+      Output.replace(pos, sizeof("[%title]")-1, Self->Title);
+   }
+   else if (!Output.compare(pos, sizeof("[%font]")-1, "[%font]")) {
+      if (auto font = m_style.get_font()) {
+         char buffer[60];
+         snprintf(buffer, sizeof(buffer), "%s:%g:%s", font->Face, font->Point, font->Style);
+         Output.replace(pos, sizeof("[%font]")-1, buffer);
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%font-face]")-1, "[%font-face]")) {
+      if (auto font = m_style.get_font()) {
+         Output.replace(pos, sizeof("[%font-face]")-1, font->Face);
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%font-colour]")-1, "[%font-colour]")) {
+      if (auto font = m_style.get_font()) {
+         char colour[28];
+         snprintf(colour, sizeof(colour), "#%.2x%.2x%.2x%.2x", font->Colour.Red, font->Colour.Green, font->Colour.Blue, font->Colour.Alpha);
+         Output.replace(pos, sizeof("[%font-colour]")-1, colour);
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%font-size]")-1, "[%font-size]")) {
+      if (auto font = m_style.get_font()) {
+         char buffer[28];
+         snprintf(buffer, sizeof(buffer), "%g", font->Point);
+         Output.replace(pos, sizeof("[%font-size]")-1, buffer);
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%line-no]")-1, "[%line-no]")) {
+      auto num = std::to_string(Self->Segments.size());
+      Output.replace(pos, sizeof("[%line-no]")-1, num);
+   }
+   else if (!Output.compare(pos, sizeof("[%content]")-1, "[%content]")) {
+      if ((m_in_template) and (m_inject_tag)) {
+         std::string content = xmlGetContent(m_inject_tag[0][0]);
+         Output.replace(pos, sizeof("[%content]")-1, content);
+
+         //if (!xmlGetString(m_inject_xml, m_inject_tag[0][0].ID, XMF::INCLUDE_SIBLINGS, &content)) {
+         //   Output.replace(pos, sizeof("[%content]")-1, content);
+         //   FreeResource(content);
+         //}
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%tm-day]")-1, "[%tm-day]")) {
+      if (!m_time) m_time = objTime::create::integral();
+      if (!time_queried) { acQuery(m_time); time_queried = true; }
+      Output.replace(pos, sizeof("[%tm-day]")-1, std::to_string(m_time->Day));
+   }
+   else if (!Output.compare(pos, sizeof("[%tm-month]")-1, "[%tm-month]")) {
+      if (!m_time) m_time = objTime::create::integral();
+      if (!time_queried) { acQuery(m_time); time_queried = true; }
+      Output.replace(pos, sizeof("[%tm-month]")-1, std::to_string(m_time->Month));
+   }
+   else if (!Output.compare(pos, sizeof("[%tm-year]")-1, "[%tm-year]")) {
+      if (!m_time) m_time = objTime::create::integral();
+      if (!time_queried) { acQuery(m_time); time_queried = true; }
+      Output.replace(pos, sizeof("[%tm-year]")-1, std::to_string(m_time->Year));
+   }
+   else if (!Output.compare(pos, sizeof("[%tm-hour]")-1, "[%tm-hour]")) {
+      if (!m_time) m_time = objTime::create::integral();
+      if (!time_queried) { acQuery(m_time); time_queried = true; }
+      Output.replace(pos, sizeof("[%tm-hour]")-1, std::to_string(m_time->Hour));
+   }
+   else if (!Output.compare(pos, sizeof("[%tm-minute]")-1, "[%tm-minute]")) {
+      if (!m_time) m_time = objTime::create::integral();
+      if (!time_queried) { acQuery(m_time); time_queried = true; }
+      Output.replace(pos, sizeof("[%tm-minute]")-1, std::to_string(m_time->Minute));
+   }
+   else if (!Output.compare(pos, sizeof("[%tm-second]")-1, "[%tm-second]")) {
+      if (!m_time) m_time = objTime::create::integral();
+      if (!time_queried) { acQuery(m_time); time_queried = true; }
+      Output.replace(pos, sizeof("[%tm-second]")-1, std::to_string(m_time->Second));
+   }
+   else if (!Output.compare(pos, sizeof("[%version]")-1, "[%version]")) {
+      Output.replace(pos, sizeof("[%version]")-1, RIPL_VERSION);
+   }
+   else if (!Output.compare(pos, sizeof("[%view-height]")-1, "[%view-height]")) {
+      char buffer[28];
+      snprintf(buffer, sizeof(buffer), "%g", Self->VPHeight);
+      Output.replace(pos, sizeof("[%view-height]")-1, buffer);
+   }
+   else if (!Output.compare(pos, sizeof("[%view-width]")-1, "[%view-width]")) {
+      char buffer[28];
+      snprintf(buffer, sizeof(buffer), "%g", Self->VPWidth);
+      Output.replace(pos, sizeof("[%view-width]")-1, buffer);
    }
 }
 
