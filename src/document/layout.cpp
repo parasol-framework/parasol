@@ -51,12 +51,12 @@ private:
    };
 
    std::stack<bc_list *>      stack_list;
-   std::stack<bc_row *>       stack_row;
    std::stack<bc_paragraph *> stack_para;
    std::stack<bc_font *>      stack_font;
 
    std::vector<doc_clip> m_clips;
 
+   bc_row *m_row = NULL;          // Active table row (a persistent state is required in case of loop back)
    objFont *m_font = NULL;
    RSTREAM *m_stream = NULL;
 
@@ -110,7 +110,6 @@ private:
 
       stack_list = {};
       stack_para = {};
-      stack_row  = {};
       stack_font = {};
 
       m_align_flags      = 0;
@@ -259,7 +258,7 @@ CELL layout::lay_cell(bc_table *Table)
    if (cell.column IS 0) cell.x += Table->stroke_width;
 
    cell.width  = Table->columns[cell.column].width; // Minimum width for the cell's column
-   cell.height = stack_row.top()->row_height;
+   cell.height = m_row->row_height;
    //DLAYOUT("%d / %d", escrow->min_height, escrow->row_height);
 
    DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
@@ -322,19 +321,19 @@ CELL layout::lay_cell(bc_table *Table)
    if (!Table->collapsed) Table->row_width += Table->cell_h_spacing;
    else if ((cell.column + cell.col_span) < LONG(Table->columns.size())-1) Table->row_width += Table->cell_h_spacing;
 
-   if ((cell.height > stack_row.top()->row_height) or (stack_row.top()->vertical_repass)) {
+   if ((cell.height > m_row->row_height) or (m_row->vertical_repass)) {
       // A repass will be required if the row height has increased and vectors or tables have been used
       // in earlier cells, because vectors need to know the final dimensions of their table cell (viewport).
 
       if (cell.column IS LONG(Table->columns.size())-1) {
-         DLAYOUT("Extending row height from %g to %g (row repass required)", stack_row.top()->row_height, cell.height);
+         DLAYOUT("Extending row height from %g to %g (row repass required)", m_row->row_height, cell.height);
       }
 
-      stack_row.top()->row_height = cell.height;
+      m_row->row_height = cell.height;
       if ((cell.column + cell.col_span) >= LONG(Table->columns.size())) {
          return CELL::REPASS_ROW_HEIGHT;
       }
-      else stack_row.top()->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed
+      else m_row->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed
    }
 
    m_cursor_x += Table->columns[cell.column].width;
@@ -648,7 +647,7 @@ void layout::lay_row_end(bc_table *Table)
 {
    pf::Log log;
 
-   auto Row = stack_row.top();
+   auto Row = m_row;
    Table->row_index++;
 
    // Increase the table height if the row exceeds it
@@ -665,7 +664,6 @@ void layout::lay_row_end(bc_table *Table)
 
    if (Table->row_width > Table->width) Table->width = Table->row_width;
 
-   stack_row.pop();
    new_code_segment();
 }
 
@@ -871,11 +869,11 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    if (minheight > Table.height + Table.cell_v_spacing + Table.stroke_width) {
       // The last row in the table needs its height increased
-      if (!stack_row.empty()) {
+      if (m_row) {
          auto h = minheight - (Table.height + Table.cell_v_spacing + Table.stroke_width);
          DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
-            minheight, stack_row.top()->row_height, h, Table.min_height, Table.y);
-         stack_row.top()->row_height += h;
+            minheight, m_row->row_height, h, Table.min_height, Table.y);
+         m_row->row_height += h;
          return TE::REPASS_ROW_HEIGHT;
       }
       else log.warning("No last row defined for table height extension.");
@@ -1311,7 +1309,7 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, ClipRecta
    #endif
 
    layout tablestate(Self, m_stream), rowstate(Self, m_stream), liststate(Self, m_stream);
-   bc_table *esctable;
+   bc_table *table;
    DOUBLE last_height;
    LONG edit_segment;
    bool check_wrap;
@@ -1335,7 +1333,7 @@ extend_page:
    reset();
 
    last_height  = page_height;
-   esctable     = NULL;
+   table        = NULL;
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
@@ -1386,7 +1384,7 @@ extend_page:
 
       // Any escape code for an inline element that forces a word-break will initiate a wrapping check.
 
-      if (esctable) m_align_width = m_wrap_edge;
+      if (table) m_align_width = m_wrap_edge;
       else switch (m_stream[0][idx].code) {
          case SCODE::TABLE_END:
          case SCODE::ADVANCE: {
@@ -1524,37 +1522,28 @@ extend_page:
 
             tablestate = *this;
 
-            if (esctable) {
-               auto parent_table = esctable;
-               esctable = &m_stream->lookup<bc_table>(idx);
-               esctable->stack = parent_table;
-            }
-            else {
-               esctable = &m_stream->lookup<bc_table>(idx);
-               esctable->stack = NULL;
-            }
+            table = &m_stream->lookup<bc_table>(idx);
+            table->reset_row_height = true; // All rows start with a height of min_height up until TABLE_END in the first pass
+            table->compute_columns = 1;
+            table->width = -1;
 
-            esctable->reset_row_height = true; // All rows start with a height of min_height up until TABLE_END in the first pass
-            esctable->compute_columns = 1;
-            esctable->width = -1;
-
-            for (unsigned j=0; j < esctable->columns.size(); j++) esctable->columns[j].min_width = 0;
+            for (unsigned j=0; j < table->columns.size(); j++) table->columns[j].min_width = 0;
 
             DOUBLE width;
 wrap_table_start:
             // Calculate starting table width, ensuring that the table meets the minimum width according to the cell
             // spacing and padding values.
 
-            if (esctable->width_pct) {
-               width = ((Width - m_cursor_x - m_right_margin) * esctable->min_width) * 0.01;
+            if (table->width_pct) {
+               width = ((Width - m_cursor_x - m_right_margin) * table->min_width) * 0.01;
             }
-            else width = esctable->min_width;
+            else width = table->min_width;
 
             if (width < 0) width = 0;
 
             {
-               DOUBLE min = (esctable->stroke_width * 2) + (esctable->cell_h_spacing * (esctable->columns.size()-1)) + (esctable->cell_padding * 2 * esctable->columns.size());
-               if (esctable->collapsed) min -= esctable->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
+               DOUBLE min = (table->stroke_width * 2) + (table->cell_h_spacing * (table->columns.size()-1)) + (table->cell_padding * 2 * table->columns.size());
+               if (table->collapsed) min -= table->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
                if (width < min) width = min;
             }
 
@@ -1564,30 +1553,30 @@ wrap_table_start:
                if (m_break_loop > 4) m_break_loop = 4;
             }
 
-            if ((esctable->compute_columns) and (esctable->width >= width)) esctable->compute_columns = 0;
+            if ((table->compute_columns) and (table->width >= width)) table->compute_columns = 0;
 
-            esctable->width = width;
+            table->width = width;
 
 wrap_table_end:
 wrap_table_cell:
-            esctable->cursor_x    = m_cursor_x;
-            esctable->cursor_y    = m_cursor_y;
-            esctable->x           = m_cursor_x;
-            esctable->y           = m_cursor_y;
-            esctable->row_index   = 0;
-            esctable->total_clips = m_clips.size();
-            esctable->height      = esctable->stroke_width;
+            table->cursor_x    = m_cursor_x;
+            table->cursor_y    = m_cursor_y;
+            table->x           = m_cursor_x;
+            table->y           = m_cursor_y;
+            table->row_index   = 0;
+            table->total_clips = m_clips.size();
+            table->height      = table->stroke_width;
 
             DLAYOUT("(i%d) Laying out table of %dx%d, coords %gx%g,%gx%g%s, page width %g.",
-               idx, LONG(esctable->columns.size()), esctable->rows, esctable->x, esctable->y,
-               esctable->width, esctable->min_height, esctable->height_pct ? "%" : "", Width);
+               idx, LONG(table->columns.size()), table->rows, table->x, table->y,
+               table->width, table->min_height, table->height_pct ? "%" : "", Width);
 
-            esctable->computeColumns();
+            table->computeColumns();
 
             DLAYOUT("Checking for table collisions before layout (%gx%g).  reset_row_height: %d",
-               esctable->x, esctable->y, esctable->reset_row_height);
+               table->x, table->y, table->reset_row_height);
 
-            auto ww = check_wordwrap("Table", m_page_width, idx, esctable->x, esctable->y, esctable->width, esctable->height);
+            auto ww = check_wordwrap("Table", m_page_width, idx, table->x, table->y, table->width, table->height);
             if (ww IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width due to table size.");
                goto extend_page;
@@ -1597,18 +1586,18 @@ wrap_table_cell:
                // table wrap.
 
                DLAYOUT("Restarting table calculation due to page wrap to position %gx%g.", m_cursor_x, m_cursor_y);
-               esctable->compute_columns = 1;
+               table->compute_columns = 1;
                goto wrap_table_start;
             }
 
-            m_cursor_x = esctable->x; // Configure cursor location to help with the layout of rows and cells.
-            m_cursor_y = esctable->y + esctable->stroke_width + esctable->cell_v_spacing;
+            m_cursor_x = table->x; // Configure cursor location to help with the layout of rows and cells.
+            m_cursor_y = table->y + table->stroke_width + table->cell_v_spacing;
             new_code_segment();
             break;
          }
 
          case SCODE::TABLE_END: {
-            auto action = lay_table_end(*esctable, Margins.Top, Margins.Bottom, Height, Width);
+            auto action = lay_table_end(*table, Margins.Top, Margins.Bottom, Height, Width);
             if (action != TE::NIL) {
                auto req_width = m_page_width;
                *this = tablestate;
@@ -1621,25 +1610,25 @@ wrap_table_cell:
          }
 
          case SCODE::ROW:
-            stack_row.push(&m_stream->lookup<bc_row>(idx));
+            m_row = &m_stream->lookup<bc_row>(idx);
             rowstate = *this;
 
-            if (esctable->reset_row_height) stack_row.top()->row_height = stack_row.top()->min_height;
+            if (table->reset_row_height) m_row->row_height = m_row->min_height;
 
 repass_row_height:
-            stack_row.top()->vertical_repass = false;
-            stack_row.top()->y = m_cursor_y;
-            esctable->row_width = (esctable->stroke_width * 2) + esctable->cell_h_spacing;
+            m_row->vertical_repass = false;
+            m_row->y = m_cursor_y;
+            table->row_width = (table->stroke_width * 2) + table->cell_h_spacing;
 
             new_code_segment();
             break;
 
          case SCODE::ROW_END:
-            lay_row_end(esctable);
+            lay_row_end(table);
             break;
 
          case SCODE::CELL: {
-            switch(lay_cell(esctable)) {
+            switch(lay_cell(table)) {
                case CELL::ABORT:
                   goto exit;
 

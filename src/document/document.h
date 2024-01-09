@@ -561,7 +561,6 @@ struct bc_list_end : public base_code {
 };
 
 struct bc_table : public base_code {
-   struct bc_table *stack = NULL;        // Used for the layout process to support tables within tables
    objVectorPath *path = NULL;
    std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management
