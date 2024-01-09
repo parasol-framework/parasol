@@ -33,10 +33,14 @@
 <type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
 <type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
 <type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS_X">The <field>RoundX</field> value is a fixed coordinate.</type>
+<type name="FIXED_RADIUS_Y">The <field>RoundY</field> value is a fixed coordinate.</type>
 <type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
 <type name="RELATIVE_WIDTH">The <field>Width</field> value is a relative coordinate.</type>
 <type name="RELATIVE_X">The <field>X</field> value is a relative coordinate.</type>
 <type name="RELATIVE_Y">The <field>Y</field> value is a relative coordinate.</type>
+<type name="RELATIVE_RADIUS_X">The <field>RoundX</field> value is a relative coordinate.</type>
+<type name="RELATIVE_RADIUS_Y">The <field>RoundY</field> value is a relative coordinate.</type>
 </types>
       </description>
     </field>

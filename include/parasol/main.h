@@ -83,18 +83,18 @@ template <typename F> deferred_call<F> Defer(F&& f) {
 // E.g. std::unique_ptr<objVectorViewport, DeleteObject<objVectorViewport>> viewport;
 
 template <class T = BaseClass> struct DeleteObject {
-  void operator()(T *Object) { FreeResource(Object->UID); }
+  void operator()(T *Object) const { if (Object) FreeResource(Object->UID); }
 };
 
 // Simplify the creation of unique pointers with the destructor
 
-template <class T> std::shared_ptr<T> make_unique_object(T *Object) {
-   return std::unique_ptr<T>(Object, DeleteObject);
+template <class T = BaseClass> std::unique_ptr<T> make_unique_object(T *Object) {
+   return std::unique_ptr<T>(Object, DeleteObject{});
 }
 
 // Variant for std::shared_ptr
 
-template <class T> std::shared_ptr<T> make_shared_object(T *Object) {
+template <class T = BaseClass> std::shared_ptr<T> make_shared_object(T *Object) {
    return std::shared_ptr<T>(Object, DeleteObject{});
 }
 

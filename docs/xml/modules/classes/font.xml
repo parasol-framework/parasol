@@ -235,7 +235,7 @@ Charter:120%::255,128,255
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It applies to fixed fonts only.</p>
+<p>This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.  It is typically defined by fixed bitmap fonts.  For truetype fonts the gutter is derived from the calculation <code>LineSpacing - Ascent</code>.</p>
       </description>
     </field>
 

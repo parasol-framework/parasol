@@ -583,7 +583,9 @@ struct bc_table : public base_code {
    bool   reset_row_height = false;      // true if the height of all rows needs to be reset in the current pass
    bool   wrap = false;
    bool   collapsed = false;             // Equivalent to HTML collapsing, eliminates whitespace between rows and cells
+
    // Entry followed by the minimum width of each column
+
    bc_table() { code = SCODE::TABLE_START; }
 
    inline bool floating_x() {
@@ -751,7 +753,7 @@ struct widget_mgr {
       DOUBLE left = 0, right = 0, top = 0, bottom = 0;
       bool left_pct = false, right_pct = false, top_pct = false, bottom_pct = false;
    } pad, final_pad; // Padding defines whitespace around the widget
-   
+
    inline bool floating_y() {
       return false;
    }
@@ -760,9 +762,9 @@ struct widget_mgr {
       return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
    }
 
-   constexpr DOUBLE full_width() const { 
+   constexpr DOUBLE full_width() const {
       if (internal_label) return final_width + final_pad.left + final_pad.right;
-      else return final_width + label_width + label_pad + final_pad.left + final_pad.right; 
+      else return final_width + label_width + label_pad + final_pad.left + final_pad.right;
    }
 
    constexpr DOUBLE full_height() const { return final_height + final_pad.top + final_pad.bottom; }

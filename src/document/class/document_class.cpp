@@ -735,28 +735,6 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
    call = make_function_stdc(feedback_view);
    vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, &call);
 
-#ifdef GUIDELINES
-   // Temporary rectangle to help analyse page sizing
-
-   objVectorRectangle::create::global({
-      fl::Name("pageBorder"),
-      fl::Owner(Self->Page->UID),
-      fl::X(0), fl::Y(0),
-      fl::Width("100%"),
-      fl::Height("100%"),
-      fl::Stroke("rgb(0,0,255,48)"),
-      fl::StrokeWidth(3)});
-
-   objVectorRectangle::create::global({
-      fl::Name("viewBorder"),
-      fl::Owner(Self->View->UID),
-      fl::X(0), fl::Y(0),
-      fl::Width("100%"),
-      fl::Height("100%"),
-      fl::Stroke("rgb(0,255,0,48)"),
-      fl::StrokeWidth(3)});
-#endif
-
    // Flash the cursor via the timer
 
    if ((Self->Flags & DCF::EDIT) != DCF::NIL) {

@@ -230,8 +230,7 @@ CELL layout::lay_cell(bc_table *Table)
    auto &cell = m_stream->lookup<bc_cell>(idx);
 
    if (!Table) {
-      log.warning("Table not defined for cell @ index %d - document byte code is corrupt.", idx);
-      Self->Error = ERR_InvalidData;
+      Self->Error = log.warning(ERR_InvalidData);
       return CELL::ABORT;
    }
 
@@ -1529,33 +1528,35 @@ extend_page:
 
             for (unsigned j=0; j < table->columns.size(); j++) table->columns[j].min_width = 0;
 
-            DOUBLE width;
 wrap_table_start:
             // Calculate starting table width, ensuring that the table meets the minimum width according to the cell
             // spacing and padding values.
 
-            if (table->width_pct) {
-               width = ((Width - m_cursor_x - m_right_margin) * table->min_width) * 0.01;
-            }
-            else width = table->min_width;
-
-            if (width < 0) width = 0;
-
             {
-               DOUBLE min = (table->stroke_width * 2) + (table->cell_h_spacing * (table->columns.size()-1)) + (table->cell_padding * 2 * table->columns.size());
-               if (table->collapsed) min -= table->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
-               if (width < min) width = min;
+               DOUBLE width;
+               if (table->width_pct) {
+                  width = ((Width - m_cursor_x - m_right_margin) * table->min_width) * 0.01;
+               }
+               else width = table->min_width;
+
+               if (width < 0) width = 0;
+
+               {
+                  DOUBLE min = (table->stroke_width * 2) + (table->cell_h_spacing * (table->columns.size()-1)) + (table->cell_padding * 2 * table->columns.size());
+                  if (table->collapsed) min -= table->cell_h_spacing * 2; // Thin tables do not have spacing on the left and right borders
+                  if (width < min) width = min;
+               }
+
+               if (width > WIDTH_LIMIT - m_cursor_x - m_right_margin) {
+                  log.traceWarning("Table width in excess of allowable limits.");
+                  width = WIDTH_LIMIT - m_cursor_x - m_right_margin;
+                  if (m_break_loop > 4) m_break_loop = 4;
+               }
+
+               if ((table->compute_columns) and (table->width >= width)) table->compute_columns = 0;
+
+               table->width = width;
             }
-
-            if (width > WIDTH_LIMIT - m_cursor_x - m_right_margin) {
-               log.traceWarning("Table width in excess of allowable limits.");
-               width = WIDTH_LIMIT - m_cursor_x - m_right_margin;
-               if (m_break_loop > 4) m_break_loop = 4;
-            }
-
-            if ((table->compute_columns) and (table->width >= width)) table->compute_columns = 0;
-
-            table->width = width;
 
 wrap_table_end:
 wrap_table_cell:
