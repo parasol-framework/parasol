@@ -77,6 +77,28 @@ template <typename F> deferred_call<F> Defer(F&& f) {
 }
 
 //********************************************************************************************************************
+// Deleter for use with std::unique_ptr to free objects correctly on destruction.  Note that these always assume that
+// the object pointer remains safe (cannot be deleted by external factors).
+// 
+// E.g. std::unique_ptr<objVectorViewport, DeleteObject<objVectorViewport>> viewport;
+
+template <class T = BaseClass> struct DeleteObject {
+  void operator()(T *Object) { FreeResource(Object->UID); }
+};
+
+// Simplify the creation of unique pointers with the destructor
+
+template <class T> std::shared_ptr<T> make_unique_object(T *Object) {
+   return std::unique_ptr<T>(Object, DeleteObject);
+}
+
+// Variant for std::shared_ptr
+
+template <class T> std::shared_ptr<T> make_shared_object(T *Object) {
+   return std::shared_ptr<T>(Object, DeleteObject{});
+}
+
+//********************************************************************************************************************
 // Scoped object locker.  Use granted() to confirm that the lock has been granted.
 
 template <class T = BaseClass>
