@@ -75,7 +75,6 @@ private:
    LONG m_wrap_edge    = 0;       // Marks the boundary at which graphics and text will need to wrap.
    LONG m_line_count   = 0;       // Increments at every line-end or word-wrap
    WORD m_space_width  = 0;       // Caches the pixel width of a single space in the current font.
-   bool m_inline       = false;   // Set to true when graphics (vectors, images) must be inline.
    bool m_no_wrap      = false;   // Set to true when word-wrap is disabled.
    bool m_cursor_drawn = false;   // Set to true when the cursor has been drawn during scene graph creation.
    bool m_edit_mode    = false;   // Set to true when inside an area that allows user editing of the content.
@@ -119,7 +118,6 @@ private:
       m_paragraph_bottom = 0;
       m_word_width       = 0;
       m_kernchar         = 0;
-      m_inline           = false;
       m_no_wrap          = false;
    }
 
@@ -148,7 +146,7 @@ private:
    // so extended information is not required.
 
    inline void add_graphics_segment() {
-      new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, BC_NAME(m_stream[0], idx));
+      new_segment(stream_char(idx), stream_char(idx + 1), m_cursor_y, 0, 0, BC_NAME(m_stream[0], idx));
       reset_broken_segment(idx+1, m_cursor_x);
    }
 
@@ -196,7 +194,7 @@ private:
    void lay_paragraph();
    void lay_row_end(bc_table *);
    void lay_set_margins(LONG &);
-   TE   lay_table_end(bc_table *, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
+   TE   lay_table_end(bc_table &, DOUBLE, DOUBLE, DOUBLE &, DOUBLE &);
    WRAP lay_text();
 
    void apply_style(bc_font &);
@@ -245,7 +243,7 @@ CELL layout::lay_cell(bc_table *Table)
 
    // Adding a segment ensures that the table graphics will be accounted for when drawing.
 
-   new_segment(stream_char(idx, 0), stream_char(idx + 1, 0), m_cursor_y, 0, 0, "Cell");
+   new_segment(stream_char(idx), stream_char(idx + 1), m_cursor_y, 0, 0, "Cell");
 
    // Set the absolute coordinates of the cell within the viewport.
 
@@ -433,7 +431,7 @@ WRAP layout::place_widget(widget_mgr &Widget)
 
       if (m_line.index < idx) { // Any outstanding content has to be set prior to add_graphics_segment()
          finish_segment();
-         new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "FloatingWidget");
+         new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "FloatingWidget");
          reset_broken_segment();
       }
 
@@ -475,7 +473,6 @@ void layout::apply_style(bc_font &Style) {
    else if ((Style.options & FSO::ALIGN_CENTER) != FSO::NIL) m_font->Align = ALIGN::HORIZONTAL;
    else m_font->Align = ALIGN::NIL;
 
-   m_inline = ((Style.options & FSO::IN_LINE) != FSO::NIL);
    m_no_wrap = ((Style.options & FSO::NO_WRAP) != FSO::NIL);
    m_space_width = fntCharWidth(m_font, ' ', 0, 0);
 }
@@ -654,12 +651,10 @@ void layout::lay_row_end(bc_table *Table)
    auto Row = stack_row.top();
    Table->row_index++;
 
-   // Increase the table height if the row extends beyond it
+   // Increase the table height if the row exceeds it
 
-   auto j = Row->y + Row->row_height + Table->cell_v_spacing;
-   if (j > Table->y + Table->height) {
-      Table->height = j - Table->y;
-   }
+   auto bottom = Row->y + Row->row_height + Table->cell_v_spacing;
+   if (bottom > Table->y + Table->height) Table->height = bottom - Table->y;
 
    // Advance the cursor by the height of this row
 
@@ -710,7 +705,11 @@ void layout::lay_paragraph()
    }
 
    if (escpara->indent) {
-      if (escpara->relative) escpara->block_indent = escpara->indent * (0.01 * m_page_width);
+      if (escpara->relative) {
+         // To ensure that relative indenting remains constant, the multiple is a factor of the 
+         // paragraph's font size.
+         escpara->block_indent = escpara->indent * escpara->font.get_font()->LineSpacing;
+      }
       else escpara->block_indent = escpara->indent;
    }
 
@@ -772,42 +771,42 @@ void layout::lay_paragraph_end()
 
 //********************************************************************************************************************
 
-TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMargin, DOUBLE &Height, DOUBLE &Width)
+TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin, DOUBLE &Height, DOUBLE &Width)
 {
    pf::Log log(__FUNCTION__);
 
    DOUBLE minheight;
 
-   if (esctable->cells_expanded IS false) {
+   if (Table.cells_expanded IS false) {
       LONG unfixed, colwidth;
 
       // Table cells need to match the available width inside the table.  This routine checks for that - if the cells
       // are short then the table processing is restarted.
 
-      DLAYOUT("Checking table @ index %d for cell/table widening.  Table width: %g", idx, esctable->width);
+      DLAYOUT("Checking table @ index %d for cell/table widening.  Table width: %g", idx, Table.width);
 
-      esctable->cells_expanded = true;
+      Table.cells_expanded = true;
 
-      if (!esctable->columns.empty()) {
-         colwidth = (esctable->stroke_width * 2) + esctable->cell_h_spacing;
-         for (auto &col : esctable->columns) {
-            colwidth += col.width + esctable->cell_h_spacing;
+      if (!Table.columns.empty()) {
+         colwidth = (Table.stroke_width * 2) + Table.cell_h_spacing;
+         for (auto &col : Table.columns) {
+            colwidth += col.width + Table.cell_h_spacing;
          }
-         if (esctable->collapsed) colwidth -= esctable->cell_h_spacing * 2; // Collapsed tables have no spacing allocated on the sides
+         if (Table.collapsed) colwidth -= Table.cell_h_spacing * 2; // Collapsed tables have no spacing allocated on the sides
 
-         if (colwidth < esctable->width) { // Cell layout is less than the pre-determined table width
+         if (colwidth < Table.width) { // Cell layout is less than the pre-determined table width
             // Calculate the amount of additional space that is available for cells to expand into
 
-            LONG avail_width = esctable->width - (esctable->stroke_width * 2) -
-               (esctable->cell_h_spacing * (esctable->columns.size() - 1));
+            DOUBLE avail_width = Table.width - (Table.stroke_width * 2) -
+               (Table.cell_h_spacing * (Table.columns.size() - 1));
 
-            if (!esctable->collapsed) avail_width -= (esctable->cell_h_spacing * 2);
+            if (!Table.collapsed) avail_width -= (Table.cell_h_spacing * 2);
 
             // Count the number of columns that do not have a fixed size
 
             unfixed = 0;
-            for (unsigned j=0; j < esctable->columns.size(); j++) {
-               if (esctable->columns[j].preset_width) avail_width -= esctable->columns[j].width;
+            for (unsigned j=0; j < Table.columns.size(); j++) {
+               if (Table.columns[j].preset_width) avail_width -= Table.columns[j].width;
                else unfixed++;
             }
 
@@ -817,9 +816,9 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
 
             if (unfixed > 0) {
                DOUBLE cell_width = avail_width / unfixed;
-               for (unsigned j=0; j < esctable->columns.size(); j++) {
-                  if ((esctable->columns[j].min_width) and (esctable->columns[j].min_width > cell_width)) {
-                     avail_width -= esctable->columns[j].min_width;
+               for (unsigned j=0; j < Table.columns.size(); j++) {
+                  if ((Table.columns[j].min_width) and (Table.columns[j].min_width > cell_width)) {
+                     avail_width -= Table.columns[j].min_width;
                      unfixed--;
                   }
                }
@@ -829,14 +828,14 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
                   bool expanded = false;
 
                   //total = 0;
-                  for (unsigned j=0; j < esctable->columns.size(); j++) {
-                     if (esctable->columns[j].preset_width) continue; // Columns with preset-widths are never auto-expanded
-                     if (esctable->columns[j].min_width > cell_width) continue;
+                  for (unsigned j=0; j < Table.columns.size(); j++) {
+                     if (Table.columns[j].preset_width) continue; // Columns with preset-widths are never auto-expanded
+                     if (Table.columns[j].min_width > cell_width) continue;
 
-                     if (esctable->columns[j].width < cell_width) {
-                        DLAYOUT("Expanding column %d from width %g to %g", j, esctable->columns[j].width, cell_width);
-                        esctable->columns[j].width = cell_width;
-                        //if (total - (DOUBLE)F2I(total) >= 0.5) esctable->Columns[j].width++; // Fractional correction
+                     if (Table.columns[j].width < cell_width) {
+                        DLAYOUT("Expanding column %d from width %g to %g", j, Table.columns[j].width, cell_width);
+                        Table.columns[j].width = cell_width;
+                        //if (total - (DOUBLE)F2I(total) >= 0.5) Table.Columns[j].width++; // Fractional correction
 
                         expanded = true;
                      }
@@ -853,29 +852,29 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
       }
       else DLAYOUT("Table is missing its columns array.");
    }
-   else DLAYOUT("Cells already widened - keeping table width of %g.", esctable->width);
+   else DLAYOUT("Cells already widened - keeping table width of %g.", Table.width);
 
    // Cater for the minimum height requested
 
-   if (esctable->height_pct) {
+   if (Table.height_pct) {
       // If the table height is expressed as a percentage, it is calculated with
       // respect to the height of the display port.
 
       if (!m_depth) {
-         minheight = ((Self->VPHeight - BottomMargin - esctable->y) * esctable->min_height) / 100;
+         minheight = ((Self->VPHeight - BottomMargin - Table.y) * Table.min_height) / 100;
       }
-      else minheight = ((Height - BottomMargin - TopMargin) * esctable->min_height) / 100;
+      else minheight = ((Height - BottomMargin - TopMargin) * Table.min_height) / 100;
 
       if (minheight < 0) minheight = 0;
    }
-   else minheight = esctable->min_height;
+   else minheight = Table.min_height;
 
-   if (minheight > esctable->height + esctable->cell_v_spacing + esctable->stroke_width) {
+   if (minheight > Table.height + Table.cell_v_spacing + Table.stroke_width) {
       // The last row in the table needs its height increased
       if (!stack_row.empty()) {
-         auto h = minheight - (esctable->height + esctable->cell_v_spacing + esctable->stroke_width);
+         auto h = minheight - (Table.height + Table.cell_v_spacing + Table.stroke_width);
          DLAYOUT("Extending table height to %g (row %g+%g) due to a minimum height of %g at coord %g",
-            minheight, stack_row.top()->row_height, h, esctable->min_height, esctable->y);
+            minheight, stack_row.top()->row_height, h, Table.min_height, Table.y);
          stack_row.top()->row_height += h;
          return TE::REPASS_ROW_HEIGHT;
       }
@@ -884,30 +883,37 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
 
    // Adjust for cellspacing at the bottom
 
-   esctable->height += esctable->cell_v_spacing + esctable->stroke_width;
+   Table.height += Table.cell_v_spacing + Table.stroke_width;
 
    // Restart if the width of the table will force an extension of the page.
 
-   LONG j = esctable->x + esctable->width + m_right_margin;
-   if ((j > Width) and (Width < WIDTH_LIMIT)) {
-      DLAYOUT("Table width (%g+%g) increases page width to %d, layout restart forced.",
-         esctable->x, esctable->width, j);
-      Width = j;
+   DOUBLE right_side = Table.x + Table.width + m_right_margin;
+   if ((right_side > Width) and (Width < WIDTH_LIMIT)) {
+      DLAYOUT("Table width (%g+%g) increases page width to %g, layout restart forced.",
+         Table.x, Table.width, right_side);
+      Width = right_side;
       return TE::EXTEND_PAGE;
    }
 
-   // Extend the height of the current line to the height of the table if the table is to be inline
-   // (like an image).  We also extend the line height if the table covers the
-   // entire width of the page (this is a valuable optimisation for the layout routine).
-
-   if ((m_inline) or ((esctable->x <= m_left_margin) and (esctable->x + esctable->width >= m_wrap_edge))) {
-      if (esctable->height > m_line.height) {
-         m_line.height = esctable->height;
+   if (Table.floating_x()) {
+      if ((Table.align & ALIGN::CENTER) != ALIGN::NIL) {
+         Table.x = m_left_margin + ((m_align_width - Table.width) * 0.5);
       }
+      else if ((Table.align & ALIGN::RIGHT) != ALIGN::NIL) {
+         Table.x = m_align_width - Table.width;
+      }
+      else Table.x = m_left_margin;
+   }
+
+   // Inline tables extend the line height.  We also extend the line height if the table covers the
+   // entire page width (a valuable optimisation for the layout routine).
+
+   if ((!Table.floating_x()) or ((Table.x <= m_left_margin) and (Table.x + Table.width >= m_wrap_edge))) {
+      if (Table.height > m_line.height) m_line.height = Table.height;
    }
 
    if (!stack_para.empty()) {
-      j = (esctable->y + esctable->height) - stack_para.top()->y;
+      DOUBLE j = (Table.y + Table.height) - stack_para.top()->y;
       if (j > stack_para.top()->height) stack_para.top()->height = j;
    }
 
@@ -919,16 +925,16 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
    // considered (otherwise, clips inside the table cells will cause collisions against the parent
    // table).
 
-   DLAYOUT("Checking table collisions (%gx%g, %gx%g).", esctable->x, esctable->y, esctable->width, esctable->height);
+   DLAYOUT("Checking table collisions (%gx%g, %gx%g).", Table.x, Table.y, Table.width, Table.height);
 
    WRAP ww;
-   if (esctable->total_clips > m_clips.size()) {
-      std::vector<doc_clip> saved_clips(m_clips.begin() + esctable->total_clips, m_clips.end() + m_clips.size());
-      m_clips.resize(esctable->total_clips);
-      ww = check_wordwrap("Table", m_page_width, idx, esctable->x, esctable->y, esctable->width, esctable->height);
+   if (Table.total_clips > m_clips.size()) {
+      std::vector<doc_clip> saved_clips(m_clips.begin() + Table.total_clips, m_clips.end() + m_clips.size());
+      m_clips.resize(Table.total_clips);
+      ww = check_wordwrap("Table", m_page_width, idx, Table.x, Table.y, Table.width, Table.height);
       m_clips.insert(m_clips.end(), saved_clips.begin(), saved_clips.end());
    }
-   else ww = check_wordwrap("Table", m_page_width, idx, esctable->x, esctable->y, esctable->width, esctable->height);
+   else ww = check_wordwrap("Table", m_page_width, idx, Table.x, Table.y, Table.width, Table.height);
 
    if (ww IS WRAP::EXTEND_PAGE) {
       DLAYOUT("Table wrapped - expanding page width due to table size/position.");
@@ -943,18 +949,14 @@ TE layout::lay_table_end(bc_table *esctable, DOUBLE TopMargin, DOUBLE BottomMarg
    // The table sets a clipping region because its surrounds are available as whitespace for
    // other content.
 
-   m_clips.emplace_back(
-      esctable->x, esctable->y, esctable->x + esctable->width, esctable->y + esctable->height,
-      idx, false, "Table");
+   m_clips.emplace_back(Table.x, Table.y, Table.x + Table.width, Table.y + Table.height, idx, false, "Table");
 
-   m_cursor_x = esctable->x + esctable->width;
-   m_cursor_y = esctable->y;
+   m_cursor_x = Table.x + Table.width;
+   m_cursor_y = Table.y;
 
-   DLAYOUT("Final Table Size: %gx%g,%gx%g", esctable->x, esctable->y, esctable->width, esctable->height);
+   DLAYOUT("Final Table Size: %gx%g,%gx%g", Table.x, Table.y, Table.width, Table.height);
 
-   esctable = esctable->stack;
-
-   add_graphics_segment(); // Technically table-end is a graphics segment because tables can be inline
+   add_graphics_segment(); // Table-end is a graphics segment for inline handling
    return TE::NIL;
 }
 
@@ -987,7 +989,7 @@ void layout::lay_set_margins(LONG &BottomMargin)
 }
 
 //********************************************************************************************************************
-// This function creates segments, that will be used in the final stage of the layout process to draw the graphics.
+// This function creates segments that will be used in the final stage of the layout process to draw the graphics.
 // They can also assist with user interactivity, e.g. to determine the character that the mouse is positioned over.
 
 void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE Y, DOUBLE Width, DOUBLE AlignWidth,
@@ -1010,8 +1012,10 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       return;
    }
 
-   bool allow_merge = true; // If true, this segment can be merged with prior segment(s) on the line
+   // If allow_merge is true, this segment can be merged with prior segment(s) on the line to create one continuous
+   // segment.  The basic rule is that any code that produces a graphics element is not safe to merge.
 
+   bool allow_merge = true;
    for (auto i=Start; i < Stop; i.next_code()) {
       switch (m_stream[0][i.index].code) {
          case SCODE::BUTTON:
@@ -1021,16 +1025,11 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
          case SCODE::INPUT:
          case SCODE::TABLE_START:
          case SCODE::TABLE_END:
-            allow_merge = false;
-            break;
-
          case SCODE::TEXT:
-            // Disable merging because a single text code can be referenced by multiple segments (due to word wrapping)
             allow_merge = false;
             break;
 
-         default:
-            break;
+         default: break;
       }
    }
 
@@ -1054,16 +1053,15 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 #endif
 
    if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
-      // Patching: If the start of the new segment is < the end of the previous segment,
-      // adjust the previous segment so that it stops at the beginning of our new segment.
-      // This prevents overlapping between segments and the two segments will be patched
-      // together in the next section of this routine.
+      // Patching: Segments should never overlap each other.  If the start of this segment is less than the end of 
+      // the previous segment, adjust the previous segment so that it stops at the beginning of our new segment.
 
       if (Start <= m_segments.back().start) {
          // If the start of the new segment retraces to an index that has already been configured,
          // then we have actually encountered a coding flaw and the caller should be investigated.
 
-         log.warning("(%s) New segment #%d retraces to index %d, which has been configured by previous segments.", Debug.c_str(), m_segments.back().start.index, Start.index);
+         log.warning("(%s) New segment at index %d overlaps previously registered segment starting at %d.", 
+            Debug.c_str(), Start.index, m_segments.back().start.index);
          return;
       }
       else {
@@ -1114,11 +1112,10 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
 void layout::new_code_segment()
 {
-   pf::Log log(__FUNCTION__);
-
-   stream_char start(idx, 0), stop(idx + 1, 0);
+   stream_char start(idx), stop(idx + 1);
 
 #ifdef DBG_STREAM
+   pf::Log log(__FUNCTION__);
    log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, BC_NAME(m_stream[0],idx).c_str());
 #endif
 
@@ -1140,6 +1137,8 @@ void layout::new_code_segment()
          .allow_merge = true
       });
    }
+
+   m_line.index = idx + 1;
 }
 
 //********************************************************************************************************************
@@ -1352,7 +1351,7 @@ extend_page:
    m_line_count   = 0;
 
    m_word_index.reset();
-   m_line.index.set(0);    // The starting index of the line we are operating on
+   m_line.index.set(0);
    m_line.full_reset(Margins.Left);
 
    for (idx = 0; (idx < INDEX(m_stream->size())) and (!Self->Error); idx++) {
@@ -1365,28 +1364,21 @@ extend_page:
       if (m_line.index.index < idx) {
          // Some byte codes can force a segment definition to be defined now, e.g. because they might otherwise
          // mess up the region size.
+
          bool set_segment_now = false;
-
-         switch (m_stream[0][idx].code) {
-            case SCODE::ADVANCE:
-            case SCODE::TABLE_START:
-               set_segment_now = true;
-               break;
-
-            case SCODE::INDEX_START: {
-               auto &index = m_stream->lookup<bc_index>(idx);
-               if (!index.visible) set_segment_now = true;
-               break;
-            }
-
-            default: break;
+         if ((m_stream[0][idx].code IS SCODE::ADVANCE) or (m_stream[0][idx].code IS SCODE::TABLE_START)) {
+            set_segment_now = true;
+         }
+         else if (m_stream[0][idx].code IS SCODE::INDEX_START) {
+            auto &index = m_stream->lookup<bc_index>(idx);
+            if (!index.visible) set_segment_now = true;
          }
 
          if (set_segment_now) {
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
                BC_NAME(m_stream[0],idx).c_str(), m_line.index.index, m_line.x, m_word_width);
             finish_segment();
-            new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
+            new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x, "WordBreak");
             reset_broken_segment();
             m_align_width = m_wrap_edge;
          }
@@ -1554,7 +1546,7 @@ wrap_table_start:
             // spacing and padding values.
 
             if (esctable->width_pct) {
-               width = ((Width - m_cursor_x - m_right_margin) * esctable->min_width) / 100;
+               width = ((Width - m_cursor_x - m_right_margin) * esctable->min_width) * 0.01;
             }
             else width = esctable->min_width;
 
@@ -1609,14 +1601,14 @@ wrap_table_cell:
                goto wrap_table_start;
             }
 
-            m_cursor_x = esctable->x;
+            m_cursor_x = esctable->x; // Configure cursor location to help with the layout of rows and cells.
             m_cursor_y = esctable->y + esctable->stroke_width + esctable->cell_v_spacing;
             new_code_segment();
             break;
          }
 
          case SCODE::TABLE_END: {
-            auto action = lay_table_end(esctable, Margins.Top, Margins.Bottom, Height, Width);
+            auto action = lay_table_end(*esctable, Margins.Top, Margins.Bottom, Height, Width);
             if (action != TE::NIL) {
                auto req_width = m_page_width;
                *this = tablestate;
@@ -1736,7 +1728,7 @@ void layout::end_line(NL NewLine, stream_char Next, const std::string &Caller)
    }
 
    if (idx > m_line.index.index) {
-      new_segment(m_line.index, stream_char(idx, 0), m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "EndLine");
+      new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x + m_word_width - m_line.x, m_align_width - m_line.x, "EndLine");
    }
 
    if (NewLine != NL::NONE) {

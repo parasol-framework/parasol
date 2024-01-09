@@ -569,7 +569,7 @@ struct bc_table : public base_code {
    DOUBLE cell_v_spacing = 0, cell_h_spacing = 0; // Spacing between each cell
    DOUBLE cell_padding = 0;              // Spacing inside each cell (margins)
    DOUBLE row_width = 0;                 // Assists in the computation of row width
-   DOUBLE x = 0, y = 0, width = 0, height = 0; // Dimensions
+   DOUBLE x = 0, y = 0, width = 0, height = 0; // Run-time dimensions calculated during layout
    DOUBLE min_width = 0, min_height = 0; // User-determined minimum table width/height
    DOUBLE cursor_x = 0, cursor_y = 0;    // Cursor coordinates
    DOUBLE stroke_width = 0;              // Stroke width
@@ -577,6 +577,7 @@ struct bc_table : public base_code {
    LONG   rows = 0;                      // Total number of rows in table
    LONG   row_index = 0;                 // Current row being processed, generally for debugging
    UBYTE  compute_columns = 0;
+   ALIGN  align = ALIGN::NIL;            // Horizontal alignment.  If defined, the table will be floating.
    bool   width_pct = false;             // true if width is a percentage
    bool   height_pct = false;            // true if height is a percentage
    bool   cells_expanded = false;        // false if the table cells have not been expanded to match the inside table width
@@ -585,6 +586,10 @@ struct bc_table : public base_code {
    bool   collapsed = false;             // Equivalent to HTML collapsing, eliminates whitespace between rows and cells
    // Entry followed by the minimum width of each column
    bc_table() { code = SCODE::TABLE_START; }
+
+   inline bool floating_x() {
+      return (align & (ALIGN::LEFT|ALIGN::RIGHT|ALIGN::HORIZONTAL)) != ALIGN::NIL;
+   }
 
    void computeColumns() { // Compute the default column widths
       if (!compute_columns) return;
@@ -629,12 +634,12 @@ class bc_paragraph : public base_code {
    DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
    DOUBLE block_indent;  // Indentation; also equivalent to setting a left margin value
    DOUBLE item_indent;   // For list items only.  This value is carried directly from bc_list.item_indent
-   DOUBLE indent;
+   DOUBLE indent;        // Client specified indent value
    DOUBLE line_height;   // Spacing between paragraph lines on word-wrap, affects the cursor's vertical advance.  Expressed as a ratio of the m_line.line_height
    DOUBLE leading;       // Leading whitespace (minimum amount of space from the end of the last paragraph).  Expressed as a ratio of the default line height
    //DOUBLE trailing;    // Not implemented: Trailing whitespace
    // Options
-   bool relative;
+   bool relative;        // True if the indent value is relative
    bool list_item;       // True if this paragraph represents a list item
    bool trim;
    bool aggregate;

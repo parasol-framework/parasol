@@ -1178,7 +1178,7 @@ TRF parser::parse_tags_with_style(objXML::TAGS &Tags, bc_font &Style, IPF Flags)
    if ((Style.options & (FSO::BOLD|FSO::ITALIC)) != (m_style.options & (FSO::BOLD|FSO::ITALIC))) {
       font_change = true;
    }
-   else if ((Style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != (m_style.options & (FSO::IN_LINE|FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
+   else if ((Style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE)) != (m_style.options & (FSO::NO_WRAP|FSO::ALIGN_CENTER|FSO::ALIGN_RIGHT|FSO::PREFORMAT|FSO::UNDERLINE))) {
       font_change = true;
    }
    else if ((Style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM)) != (m_style.valign & (ALIGN::TOP|ALIGN::VERTICAL|ALIGN::BOTTOM))) {
@@ -1245,11 +1245,6 @@ TRF parser::parse_tags_with_embedded_style(objXML::TAGS &Tags, bc_font &Style, I
 bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_font &Style)
 {
    switch (StrHash(Attrib.Name)) {
-      case HASH_inline:
-      case HASH_anchor: // DEPRECATED, clients should use 'inline'
-         Style.options |= FSO::IN_LINE;
-         return true;
-
       case HASH_no_wrap:
          Style.options |= FSO::NO_WRAP;
          return true;
@@ -1288,8 +1283,14 @@ bool parser::check_para_attrib(const XMLAttrib &Attrib, bc_paragraph *Para, bc_f
 
       case HASH_indent:
          if (Para) {
-            read_unit(Attrib.Value.c_str(), Para->indent, Para->relative);
-            if (Para->indent < 0) Para->indent = 0;
+            if (Attrib.Value.empty()) {
+               Para->indent = 3;
+               Para->relative = true;
+            }
+            else {
+               read_unit(Attrib.Value.c_str(), Para->indent, Para->relative);
+               if (Para->indent < 0) Para->indent = 0;
+            }
          }
          return true;
    }
@@ -3408,16 +3409,17 @@ void parser::tag_table(XMLTag &Tag)
 
    std::string columns;
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto &value = Tag.Attribs[i].Value;
       switch (StrHash(Tag.Attribs[i].Name)) {
          case HASH_columns:
             // Column preferences are processed only when the end of the table marker has been reached.
-            columns = Tag.Attribs[i].Value;
+            columns = value;
             break;
 
          case HASH_width:
-            start.min_width = StrToInt(Tag.Attribs[i].Value);
+            start.min_width = StrToInt(value);
             start.width_pct = false;
-            if (Tag.Attribs[i].Value.find_first_of('%') != std::string::npos) {
+            if (value.find_first_of('%') != std::string::npos) {
                start.width_pct = true;
             }
             if (start.min_width < 1) start.min_width = 1;
@@ -3425,8 +3427,8 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_height:
-            start.min_height = StrToInt(Tag.Attribs[i].Value);
-            if (Tag.Attribs[i].Value.find_first_of('%') != std::string::npos) {
+            start.min_height = StrToInt(value);
+            if (value.find_first_of('%') != std::string::npos) {
                start.height_pct = true;
             }
             if (start.min_height < 1) start.min_height = 1;
@@ -3434,16 +3436,16 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_fill:
-            start.fill = Tag.Attribs[i].Value;
+            start.fill = value;
             break;
 
          case HASH_stroke:
-            start.stroke = Tag.Attribs[i].Value;
+            start.stroke = value;
             if (start.stroke_width < 1) start.stroke_width = 1;
             break;
 
          case HASH_spacing: // Spacing between the cells
-            start.cell_v_spacing = StrToInt(Tag.Attribs[i].Value);
+            start.cell_v_spacing = StrToInt(value);
             if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
             else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
             start.cell_h_spacing = start.cell_v_spacing;
@@ -3454,26 +3456,36 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_v_spacing: // Spacing between the cells
-            start.cell_v_spacing = StrToInt(Tag.Attribs[i].Value);
+            start.cell_v_spacing = StrToInt(value);
             if (start.cell_v_spacing < 0) start.cell_v_spacing = 0;
             else if (start.cell_v_spacing > 200) start.cell_v_spacing = 200;
             break;
 
          case HASH_h_spacing: // Spacing between the cells
-            start.cell_h_spacing = StrToInt(Tag.Attribs[i].Value);
+            start.cell_h_spacing = StrToInt(value);
             if (start.cell_h_spacing < 0) start.cell_h_spacing = 0;
             else if (start.cell_h_spacing > 200) start.cell_h_spacing = 200;
             break;
 
+         case HASH_align: {
+            auto align = StrHash(value);
+            if (align IS HASH_left)        start.align = ALIGN::LEFT;
+            else if (align IS HASH_right)  start.align = ALIGN::RIGHT;
+            else if (align IS HASH_center) start.align = ALIGN::CENTER;
+            else if (align IS HASH_middle) start.align = ALIGN::CENTER;
+            else log.warning("Invalid alignment value '%s'", value.c_str());
+            break;
+         }
+
          case HASH_margins:
          case HASH_padding: // Padding inside the cells
-            start.cell_padding = StrToInt(Tag.Attribs[i].Value);
+            start.cell_padding = StrToInt(value);
             if (start.cell_padding < 0) start.cell_padding = 0;
             else if (start.cell_padding > 200) start.cell_padding = 200;
             break;
 
          case HASH_stroke_width: {
-            auto j = StrToFloat(Tag.Attribs[i].Value);
+            auto j = StrToFloat(value);
             if (j < 0.0) j = 0.0;
             else if (j > 255.0) j = 255.0;
             start.stroke_width = j;

@@ -102,8 +102,12 @@ static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *
 ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *Viewport, bc_font *Style,
    DOUBLE &XAdvance, DOUBLE ExtWidth, bool CreateViewport, DOUBLE &X, DOUBLE &Y)
 {
-   if (Widget.floating_x()) X = Widget.x + Widget.final_pad.left;
+   if (Widget.floating_x()) {
+      // If the widget is floating then the X coordinate will be pre-calculated during layout
+      X = Widget.x + Widget.final_pad.left;
+   }
    else {
+      // For inline widgets, alignment is calculated from the active style.
       if ((Style->options & FSO::ALIGN_CENTER) != FSO::NIL) X = XAdvance + ((Segment.align_width - Segment.area.Width) * 0.5);
       else if ((Style->options & FSO::ALIGN_RIGHT) != FSO::NIL) X = XAdvance + Segment.align_width - Segment.area.Width;
       else X = XAdvance;
@@ -111,15 +115,14 @@ ERROR build_widget(widget_mgr &Widget, doc_segment &Segment, objVectorViewport *
 
    if (Widget.floating_x()) Y = Segment.area.Y + Widget.final_pad.top;
    else {
-      Y = Segment.area.Y;
-      if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) Y += Widget.final_pad.top;
+      if ((Style->valign & ALIGN::TOP) != ALIGN::NIL) Y = Segment.area.Y + Widget.final_pad.top;
       else if ((Style->valign & ALIGN::VERTICAL) != ALIGN::NIL) {
          DOUBLE avail_space = Segment.area.Height - Segment.gutter;
-         Y += ((avail_space - (Widget.final_height + Widget.final_pad.top + Widget.final_pad.bottom)) * 0.5);
+         Y = Segment.area.Y + ((avail_space - (Widget.final_height + Widget.final_pad.top + Widget.final_pad.bottom)) * 0.5);
       }
       else {
          // Bottom alignment.  Aligning to the gutter produces better results compared to base line alignment.
-         Y += Segment.area.Height - Widget.final_height - Widget.final_pad.bottom;
+         Y = Segment.area.Y + Segment.area.Height - Widget.final_height - Widget.final_pad.bottom;
       }
    }
 
@@ -360,8 +363,16 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                stack_table.push(&segment.stream->lookup<bc_table>(cursor));
                auto table = stack_table.top();
 
-               stack_vp.push(Viewport);
+               if (table->floating_x()); // If floating, X coordinate is calculated during layout
+               else {
+                  // Otherwise the X coordinate is dependent on the style's alignment
+                  // NB: Currently the TABLE code is defined as non-graphical and positioning is declared in the
+                  // table structure, not the segment.area.
+                  if ((stack_style.top()->options & FSO::ALIGN_CENTER) != FSO::NIL) table->x = table->x + ((segment.align_width - segment.area.Width) * 0.5);
+                  else if ((stack_style.top()->options & FSO::ALIGN_RIGHT) != FSO::NIL) table->x = table->x + segment.align_width - segment.area.Width;
+               }
 
+               stack_vp.push(Viewport);
                Viewport = objVectorViewport::create::global({
                   fl::Owner(Viewport->UID),
                   fl::X(table->x), fl::Y(table->y),
@@ -580,8 +591,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   });
 
                   if (button.viewport) {
-                     auto call = make_function_stdc(inputevent_button);
-                     vecSubscribeInput(button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                     if (button.viewport->Scene->SurfaceID) {
+                        auto call = make_function_stdc(inputevent_button);
+                        vecSubscribeInput(button.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                     }
 
                      Self->Widgets.emplace(button.viewport->UID, ui_widget { &button });
                   }
@@ -636,8 +649,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                else build_widget(checkbox, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                if (checkbox.viewport) {
-                  auto call = make_function_stdc(inputevent_checkbox);
-                  vecSubscribeInput(checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                  if (checkbox.viewport->Scene->SurfaceID) {
+                     auto call = make_function_stdc(inputevent_checkbox);
+                     vecSubscribeInput(checkbox.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+                  }
 
                   Self->Widgets.emplace(checkbox.viewport->UID, ui_widget { &checkbox });
                }

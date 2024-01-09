@@ -32,7 +32,7 @@ This dangling content must be ignored.
 
 <p no-wrap>This paragraph has word-wrapping turned off with use of the 'no-wrap' attribute.</p>
 
-<p>This paragraph contains an embedded paragraph <p>right here.  There must be a standard line break prior, in order to separate it from the parent.</p></p>
+<p indent>This indented paragraph contains an embedded paragraph <p>right here.  There must be a standard line break prior, in order to separate it from the parent.</p></p>
 
 <p>This paragraph must follow on from the embedded paragraph and be separated with the standard amount of leading whitespace.</p>
 

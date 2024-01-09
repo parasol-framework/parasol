@@ -342,7 +342,7 @@ static ERROR VECTORTEXT_Init(extVectorText *Self, APTR Void)
 
       if (Self->txLines.empty()) Self->txLines.emplace_back(std::string(""));
 
-      if (Self->ParentView) {
+      if ((Self->ParentView) and (Self->ParentView->Scene->SurfaceID)) {
          auto callback = make_function_stdc(text_input_events);
          vecSubscribeInput(Self->ParentView, JTYPE::BUTTON, &callback);
       }
@@ -636,7 +636,7 @@ static ERROR TEXT_SET_Font(extVectorText *Self, objFont *Value)
    // Setting the Font with a reference to an external font object will copy across the configuration of
    // that font.  It is recommended that the external font is initialised beforehand.
 
-   if (Value->Class->BaseClassID IS ID_FONT) {      
+   if (Value->Class->BaseClassID IS ID_FONT) {
       if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
       Self->txFamily = StrClone(Value->Face);
 
@@ -672,7 +672,7 @@ static ERROR TEXT_SET_LetterSpacing(extVectorText *Self, DOUBLE Value)
 }
 
 //********************************************************************************************************************
-// Override the existing Vector Fill field - this is required for bitmap fonts as they need a path reset to be 
+// Override the existing Vector Fill field - this is required for bitmap fonts as they need a path reset to be
 // triggered when decorative changes occur.
 
 static ERROR TEXT_GET_Fill(extVectorText *Self, CSTRING *Value)
@@ -1084,7 +1084,7 @@ static ERROR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
 -FIELD-
 TextWidth: The raw pixel width of the widest line in the #String field.
 
-This field will return the pixel width of the widest line in the #String field.  The result is not modified by 
+This field will return the pixel width of the widest line in the #String field.  The result is not modified by
 transforms.
 
 *********************************************************************************************************************/
@@ -1470,7 +1470,7 @@ static void generate_text(extVectorText *Vector)
    }
 
    // Text paths are always oriented around (0,0) and are transformed later
-   
+
    Vector->BX1 = 0;
    Vector->BY1 = -Vector->txFont->Ascent;
    Vector->BX2 = Vector->txWidth;
@@ -1627,7 +1627,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    }
 
    // Text paths are always oriented around (0,0) and are transformed later
-   
+
    Vector->BX1 = 0;
    Vector->BY1 = 0;
    Vector->BX2 = Vector->txWidth;
