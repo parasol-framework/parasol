@@ -849,24 +849,21 @@ public:
       codes.clear();
    }
 
-   std::size_t size() const {
-      return data.size();
-   }
+   std::size_t size() const { return data.size(); }
 
    // Overloading [] operator to access elements in array style
 
-   stream_code& operator[](const int Index) {
-      return data[Index];
-   }
+   stream_code& operator[](const int Index) { return data[Index]; }
 
-   const stream_code& operator[](const int Index) const {
-      return data[Index];
-   }
+   const stream_code& operator[](const int Index) const { return data[Index]; }
 
    template <class T> T & lookup(const stream_char Index);
    template <class T> T & lookup(const INDEX Index);
-   template <class T = base_code> T & insert_code(stream_char &, T &);
-   template <class T = base_code> T & reserve_code(stream_char &);
+
+   template <class T = base_code> T & insert(stream_char &, T &);
+   template <class T = base_code> T & emplace(stream_char &, T &);
+   template <class T = base_code> T & emplace(stream_char &);
+
    inline INDEX find_cell(LONG);
    inline INDEX find_editable_cell(const std::string &);
 };

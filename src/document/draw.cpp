@@ -766,6 +766,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   else x = x_advance;
 
                   auto vt = objVectorText::create::global({
+                     fl::Name("doc_text"),
                      fl::Owner(Viewport->UID),
                      fl::X(x), fl::Y(std::trunc(y)),
                      fl::String(str),

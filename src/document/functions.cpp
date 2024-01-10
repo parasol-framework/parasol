@@ -315,7 +315,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index,
 
    if (Preformat) {
       bc_text et(Text, true);
-      Stream.insert_code(Index, et);
+      Stream.emplace<bc_text>(Index, et);
    }
    else {
       bc_text et;
@@ -333,7 +333,7 @@ static ERROR insert_text(extDocument *Self, RSTREAM &Stream, stream_char &Index,
          }
       }
       Self->NoWhitespace = ws;
-      Stream.insert_code(Index, et);
+      Stream.emplace(Index, et);
    }
 
    return ERR_Okay;

@@ -131,49 +131,6 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 }
 
 //********************************************************************************************************************
-// Inserts a byte code sequence into the text stream.
-
-template <class T> T & RSTREAM::insert_code(stream_char &Cursor, T &Code)
-{
-   // All byte codes are saved to a global container.
-
-   if (codes.contains(Code.uid)) {
-      // Sanity check - is the UID unique?  The caller probably needs to utilise glByteCodeID++
-      // TODO: At some point the re-use of codes should be allowed, e.g. bc_font reversions would benefit from this.
-      pf::Log log(__FUNCTION__);
-      log.warning("Code #%d is already registered.", Code.uid);
-   }
-   else codes[Code.uid] = Code;
-
-   if (Cursor.index IS INDEX(data.size())) {
-      data.emplace_back(Code.code, Code.uid);
-   }
-   else {
-      const stream_code insert(Code.code, Code.uid);
-      data.insert(data.begin() + Cursor.index, insert);
-   }
-   Cursor.next_code();
-   return std::get<T>(codes[Code.uid]);
-}
-
-template <class T> T & RSTREAM::reserve_code(stream_char &Cursor)
-{
-   auto key = glByteCodeID;
-   codes.emplace(key, T());
-   auto &result = std::get<T>(codes[key]);
-
-   if (Cursor.index IS INDEX(data.size())) {
-      data.emplace_back(result.code, result.uid);
-   }
-   else {
-      const stream_code insert(result.code, result.uid);
-      data.insert(data.begin() + Cursor.index, insert);
-   }
-   Cursor.next_code();
-   return result;
-}
-
-//********************************************************************************************************************
 
 static const std::string & byte_code(SCODE Code) {
    static const std::string strCodes[] = {
