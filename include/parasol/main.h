@@ -79,7 +79,7 @@ template <typename F> deferred_call<F> Defer(F&& f) {
 //********************************************************************************************************************
 // Deleter for use with std::unique_ptr to free objects correctly on destruction.  Note that these always assume that
 // the object pointer remains safe (cannot be deleted by external factors).
-// 
+//
 // E.g. std::unique_ptr<objVectorViewport, DeleteObject<objVectorViewport>> viewport;
 
 template <class T = BaseClass> struct DeleteObject {
@@ -135,11 +135,106 @@ class GuardedResource {
    private:
       MEMORYID id;
    public:
-      GuardedResource(T Resource) { 
+      GuardedResource(T Resource) {
          static_assert(std::is_pointer<T>::value, "The resource value must be a pointer");
-         id = ((LONG *)Resource)[-2]; 
+         id = ((LONG *)Resource)[-2];
       }
       ~GuardedResource() { FreeResource(id); }
+};
+
+//********************************************************************************************************************
+// The object equivalent of GuardedResource.  Also guarantees safety for object termination.
+
+template <class T = BaseClass, class C = std::atomic_int>
+class GuardedObject {
+   private:
+      C * count;  // Count of GuardedObjects accessing the same resource.  Can be LONG (non-threaded) or std::atomic_int
+      T * object;
+
+   public:
+      OBJECTID id; // Object UID
+
+      // Constructors
+
+      GuardedObject() : count(new C(1)), id(0), object(NULL) { }
+
+      GuardedObject(T *Object) : count(new C(1)), id(Object->UID), object(Object) {
+         static_assert(std::is_base_of_v<BaseClass, T>, "The resource value must belong to BaseClass");
+      }
+
+      GuardedObject(const GuardedObject &other) { // Copy constructor
+         if (other.object) {
+            object = other.object;
+            count  = other.count;
+            count[0]++;
+         }
+         else { // If the other object is undefined then use a default state
+            object = NULL;
+            id     = 0;
+            count  = new C(1);
+         }
+      }
+
+      GuardedObject(GuardedObject &&other) { // Move constructor
+         id     = other.id;
+         object = other.object;
+         count  = other.count;
+         other.count = NULL;
+      }
+
+      // Destructor
+
+      ~GuardedObject() {
+         if (!count) return; // The count can be empty if this GuardedObject was moved
+
+         if (!--count[0]) {
+            if (id) FreeResource(id);
+            delete count;
+         }
+      }
+
+      // Assignments
+
+      GuardedObject & operator = (const GuardedObject &other) { // Copy assignment
+         if (this == &other) return *this;
+         if (!--count[0]) delete count;
+         if (other.object) {
+            object = other.object;
+            count  = other.count;
+            count[0]++;
+         }
+         else { // If the other object is undefined then we reset our state with no count inheritance.
+            object   = NULL;
+            id       = 0;
+            count[0] = 1;
+         }
+         return *this;
+      }
+
+      GuardedObject & operator = (GuardedObject &&other) { // Move assignment
+         if (this == &other) return *this;
+         if (!--count[0]) delete count;
+         id     = other.id;
+         object = other.object;
+         count  = other.count;
+         other.count = NULL;
+         return *this;
+      }
+
+      // Public methods
+
+      inline void set(T *Object) { // set() requires caution as the object reference is modified without adjusting the counter
+         if (count[0] IS 1) {
+            object = Object;
+            id     = Object->UID;
+         }
+         else { pf::Log log(__FUNCTION__); log.warning(ERR_InUse); }
+      }
+
+      constexpr bool empty() { return !object; }
+
+      T * operator->() { return object; }; // Promotes underlying methods and fields
+      T * & operator*() { return object; }; // To allow object pointer referencing when calling functions
 };
 
 //********************************************************************************************************************
