@@ -56,7 +56,7 @@ private:
 
    std::vector<doc_clip> m_clips;
 
-   bc_row *m_row = NULL;          // Active table row (a persistent state is required in case of loop back)
+   bc_row *m_row = NULL;                 // Active table row (a persistent state is required in case of loop back)
    objFont *m_font = NULL;
    RSTREAM *m_stream = NULL;
 
@@ -1432,10 +1432,10 @@ extend_page:
             break;
          }
 
-         case SCODE::FONT:            lay_font(); break;
-         case SCODE::FONT_END:        lay_font_end(); break;
-         case SCODE::INDEX_START:     lay_index(); break;
-         case SCODE::SET_MARGINS:     lay_set_margins(Margins.Bottom); break;
+         case SCODE::FONT:        lay_font(); break;
+         case SCODE::FONT_END:    lay_font_end(); break;
+         case SCODE::INDEX_START: lay_index(); break;
+         case SCODE::SET_MARGINS: lay_set_margins(Margins.Bottom); break;
 
          case SCODE::LINK:
             stack_font.push(&m_stream->lookup<bc_link>(idx).font);

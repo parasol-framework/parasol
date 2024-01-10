@@ -113,7 +113,7 @@ struct parser {
          objVectorRectangle::create::global({
             fl::Name("default_widget_bkgd"),
             fl::Owner(pattern->Scene->Viewport->UID),
-            fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%"),
+            fl::X(0), fl::Y(0), fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0),
             fl::RoundX(4), fl::RoundY(4),
             fl::Fill("rgb(0,0,0,128)")
@@ -1727,9 +1727,9 @@ void parser::tag_button(XMLTag &Tag)
          auto vp = pattern_on->Scene->Viewport;
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
-            fl::Width("100%"), fl::Height("100%"),
+            fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)),
             fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
-            fl::RoundX("10%"),
+            fl::RoundX(PERCENT(0.1)),
             fl::Fill("rgb(0,0,0,32)")
          });
 
@@ -1744,9 +1744,9 @@ void parser::tag_button(XMLTag &Tag)
          auto vp = pattern_off->Scene->Viewport;
          objVectorRectangle::create::global({
             fl::Owner(vp->UID),
-            fl::Width("100%"), fl::Height("100%"),
+            fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)),
             fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
-            fl::RoundX("10%"),
+            fl::RoundX(PERCENT(0.1)),
             fl::Fill("rgb(255,255,255,96)")
          });
 

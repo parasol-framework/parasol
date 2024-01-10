@@ -807,7 +807,7 @@ struct ui_widget {
 };
 
 struct ui_link {
-   bc_link origin;                       // A copy of the original link information
+   bc_link origin;                       // A copy of the original link information (stable pointers are unavailable)
    FloatRect area;                       // Occupied area in the UI
    stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
    std::vector<PathCommand> path;

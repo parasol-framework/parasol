@@ -125,17 +125,21 @@ class ScopedObjectLock { // C++ wrapper for automatically releasing an object
 };
 
 //********************************************************************************************************************
-// Resource guard for any allocation that can be freed with FreeResource()
+// Resource guard for any allocation that can be freed with FreeResource().  Retains the resource ID rather than the
+// pointer to ensure that termination is safe even if the original resource gets terminated elsewhere.
 //
 // Usage: pf::GuardedResource resource(thing)
 
 template <class T>
-class GuardedResource { // C++ wrapper for terminating resources when scope is lost
+class GuardedResource {
    private:
-      T *resource;
+      MEMORYID id;
    public:
-      GuardedResource(T Resource) { resource = Resource; }
-      ~GuardedResource() { FreeResource(resource); }
+      GuardedResource(T Resource) { 
+         static_assert(std::is_pointer<T>::value, "The resource value must be a pointer");
+         id = ((LONG *)Resource)[-2]; 
+      }
+      ~GuardedResource() { FreeResource(id); }
 };
 
 //********************************************************************************************************************
@@ -334,27 +338,27 @@ template <class T> FieldValue PageHeight(T Value) {
 }
 
 template <class T> FieldValue Radius(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Radius value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Radius value must be numeric");
    return FieldValue(FID_Radius, Value);
 }
 
 template <class T> FieldValue CenterX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "CenterX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "CenterX value must be numeric");
    return FieldValue(FID_CenterX, Value);
 }
 
 template <class T> FieldValue CenterY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "CenterY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "CenterY value must be numeric");
    return FieldValue(FID_CenterY, Value);
 }
 
 template <class T> FieldValue FX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "FX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "FX value must be numeric");
    return FieldValue(FID_FX, Value);
 }
 
 template <class T> FieldValue FY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "FY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "FY value must be numeric");
    return FieldValue(FID_FY, Value);
 }
 
@@ -389,52 +393,52 @@ template <class T> FieldValue ViewHeight(T Value) {
 }
 
 template <class T> FieldValue Width(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Width value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Width value must be numeric");
    return FieldValue(FID_Width, Value);
 }
 
 template <class T> FieldValue Height(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Height value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Height value must be numeric");
    return FieldValue(FID_Height, Value);
 }
 
 template <class T> FieldValue X(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "X value must be numeric");
    return FieldValue(FID_X, Value);
 }
 
 template <class T> FieldValue XOffset(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "XOffset value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "XOffset value must be numeric");
    return FieldValue(FID_XOffset, Value);
 }
 
 template <class T> FieldValue Y(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
 }
 
 template <class T> FieldValue YOffset(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "YOffset value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "YOffset value must be numeric");
    return FieldValue(FID_YOffset, Value);
 }
 
 template <class T> FieldValue X1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "X1 value must be numeric");
    return FieldValue(FID_X1, Value);
 }
 
 template <class T> FieldValue Y1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Y1 value must be numeric");
    return FieldValue(FID_Y1, Value);
 }
 
 template <class T> FieldValue X2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "X2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "X2 value must be numeric");
    return FieldValue(FID_X2, Value);
 }
 
 template <class T> FieldValue Y2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "Y2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Y2 value must be numeric");
    return FieldValue(FID_Y2, Value);
 }
 
