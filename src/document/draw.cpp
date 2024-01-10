@@ -455,7 +455,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   if ((!cell.stroke.empty()) or (!cell.fill.empty())) {
                      auto rect = objVectorRectangle::create::global({
                         fl::Owner(cell_vp->UID),
-                        fl::X(0), fl::Y(0), fl::Width("100%"), fl::Height("100%")
+                        fl::X(0), fl::Y(0), fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0))
                      });
 
                      if (!cell.stroke.empty()) {
