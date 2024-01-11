@@ -199,7 +199,7 @@ private:
 
    void apply_style(bc_font &);
    DOUBLE calc_page_height(DOUBLE);
-   WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
+   WRAP check_wordwrap(const std::string &, DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE, bool = false);
    void end_line(NL, stream_char, const std::string &);
    void new_code_segment();
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
@@ -971,10 +971,10 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
    if (Table.total_clips > m_clips.size()) {
       std::vector<doc_clip> saved_clips(m_clips.begin() + Table.total_clips, m_clips.end() + m_clips.size());
       m_clips.resize(Table.total_clips);
-      ww = check_wordwrap("Table", m_page_width, idx, Table.x, Table.y, Table.width, Table.height);
+      ww = check_wordwrap("Table", m_page_width, idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
       m_clips.insert(m_clips.end(), saved_clips.begin(), saved_clips.end());
    }
-   else ww = check_wordwrap("Table", m_page_width, idx, Table.x, Table.y, Table.width, Table.height);
+   else ww = check_wordwrap("Table", m_page_width, idx, Table.x, Table.y, Table.width, Table.height, Table.floating_x());
 
    if (ww IS WRAP::EXTEND_PAGE) {
       DLAYOUT("Table wrapped - expanding page width due to table size/position.");
@@ -1428,7 +1428,16 @@ extend_page:
 
       if (table) m_align_width = m_wrap_edge;
       else switch (m_stream[0][idx].code) {
-         case SCODE::TABLE_END:
+         case SCODE::TABLE_END: {
+            auto &table = m_stream->lookup<bc_table>(idx);
+            auto wrap_result = check_wordwrap("EscCode", m_page_width, m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height, table.floating_x());
+            if (wrap_result IS WRAP::EXTEND_PAGE) {
+               DLAYOUT("Expanding page width on wordwrap request.");
+               goto extend_page;
+            }
+            break;
+         }
+
          case SCODE::ADVANCE: {
             auto wrap_result = check_wordwrap("EscCode", m_page_width, m_word_index.index, m_cursor_x, m_cursor_y, m_word_width, (m_line.height < 1) ? 1 : m_line.height);
             if (wrap_result IS WRAP::EXTEND_PAGE) {
@@ -1667,7 +1676,7 @@ wrap_table_cell:
             DLAYOUT("Checking for table collisions before layout (%gx%g).  reset_row_height: %d",
                table->x, table->y, table->reset_row_height);
 
-            auto ww = check_wordwrap("Table", m_page_width, idx, table->x, table->y, table->width, table->height);
+            auto ww = check_wordwrap("Table", m_page_width, idx, table->x, table->y, table->width, table->height, table->floating_x());
             if (ww IS WRAP::EXTEND_PAGE) {
                DLAYOUT("Expanding page width due to table size.");
                goto extend_page;
@@ -1866,7 +1875,7 @@ void layout::end_line(NL NewLine, stream_char Next, const std::string &Caller)
 // solo <br/> tags).
 
 WRAP layout::check_wordwrap(const std::string &Type, DOUBLE &PageWidth, stream_char Cursor,
-   DOUBLE &X, DOUBLE &Y, DOUBLE Width, DOUBLE Height)
+   DOUBLE &X, DOUBLE &Y, DOUBLE Width, DOUBLE Height, bool Floating)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1894,9 +1903,10 @@ WRAP layout::check_wordwrap(const std::string &Type, DOUBLE &PageWidth, stream_c
       }
 
       if (X + Width <= m_wrap_edge) break;
-
-      if ((PageWidth < WIDTH_LIMIT) and ((X IS m_left_margin) or (m_no_wrap))) {
-         // Force an extension of the page width and recalculate from scratch
+      
+      if ((Floating) or (X IS m_left_margin) or (m_no_wrap)) {
+         // Force an extension of the page width and recalculate from scratch.
+         // NB: Floating vectors are permitted to wrap when colliding with other clip regions.  In all other cases a width increase is required.
          auto min_width = X + Width + m_right_margin;
          if (min_width > PageWidth) {
             PageWidth = min_width;
