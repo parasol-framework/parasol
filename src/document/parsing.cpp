@@ -2271,7 +2271,7 @@ void parser::tag_link(XMLTag &Tag)
 
       // Links are added to the list of tab locations
 
-      auto i = add_tabfocus(Self, TT_LINK, stream_link.id);
+      auto i = add_tabfocus(Self, TT::LINK, stream_link.id);
       if (select) Self->FocusIndex = i;
    }
    else parse_tags(Tag.Children);
@@ -2976,7 +2976,7 @@ void parser::tag_vector(XMLTag &Tag)
 
             for (unsigned i=0; i < ARRAYSIZE(classes); i++) {
                if (classes[i] IS class_id) {
-                  add_tabfocus(Self, TT_OBJECT, object->UID);
+                  add_tabfocus(Self, TT::OBJECT, object->UID);
                   break;
                }
             }
@@ -3704,7 +3704,7 @@ void parser::tag_cell(XMLTag &Tag)
    if (!stream_cell.edit_def.empty()) {
       // Links are added to the list of tabbable points
 
-      LONG tab = add_tabfocus(Self, TT_EDIT, stream_cell.cell_id);
+      LONG tab = add_tabfocus(Self, TT::EDIT, stream_cell.cell_id);
       if (select) Self->FocusIndex = tab;
    }
 

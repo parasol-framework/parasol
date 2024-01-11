@@ -84,7 +84,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
    // Redraw any selected link so that it is unhighlighted
 
    if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
-      if (Self->Tabs[Self->FocusIndex].type IS TT_LINK) {
+      if (Self->Tabs[Self->FocusIndex].type IS TT::LINK) {
          for (auto &link : Self->Links) {
             if (link.origin.id IS Self->Tabs[Self->FocusIndex].ref) {
                Self->Page->draw();
@@ -824,13 +824,13 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                   auto &vec = Self->Stream.lookup<bc_image>(i);
                   if (!vec.rect.empty()) acHide(vec.rect->UID);
 
-                  if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.rect->UID); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT::VECTOR, vec.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
                else if (code IS SCODE::LINK) {
                   auto &esclink = Self->Stream.lookup<bc_link>(i);
-                  if ((tab = find_tabfocus(Self, TT_LINK, esclink.id)) >= 0) {
+                  if ((tab = find_tabfocus(Self, TT::LINK, esclink.id)) >= 0) {
                      Self->Tabs[tab].active = false;
                   }
                }
@@ -1245,13 +1245,13 @@ static ERROR DOCUMENT_SelectLink(extDocument *Self, struct docSelectLink *Args)
 /*
       LONG i;
       for (i=0; i < Self->Tabs.size(); i++) {
-         if (Self->Tabs[i].Type IS TT_OBJECT) {
+         if (Self->Tabs[i].Type IS TT::OBJECT) {
             name = GetObjectName(?)
             if (!(StrMatch(args->name, name))) {
 
             }
          }
-         else if (Self->Tabs[i].Type IS TT_LINK) {
+         else if (Self->Tabs[i].Type IS TT::LINK) {
 
          }
       }
@@ -1344,12 +1344,12 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                   auto &img = Self->Stream.lookup<bc_image>(i);
                   if (!img.rect.empty()) acShow(*img.rect);
 
-                  if (auto tab = find_tabfocus(Self, TT_OBJECT, img.rect->UID); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT::VECTOR, img.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }
                else if (code IS SCODE::LINK) {
-                  if (auto tab = find_tabfocus(Self, TT_LINK, Self->Stream.lookup<bc_link>(i).id); tab >= 0) {
+                  if (auto tab = find_tabfocus(Self, TT::LINK, Self->Stream.lookup<bc_link>(i).id); tab >= 0) {
                      Self->Tabs[tab].active = true;
                   }
                }

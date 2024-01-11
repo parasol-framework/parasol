@@ -13,7 +13,7 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     VERSION = "\"20231123\""
   })
 
-  enum("TT", { start=1 }, "OBJECT", "LINK", "EDIT")
+  enum("TT", { type="char", start=1 }, "VECTOR", "LINK", "EDIT")
 
   flags("DEF", { comment="Event flags for selectively receiving events from the Document object." },
     "PATH: The source file path has changed.  Useful for detecting when the user has left the page.",

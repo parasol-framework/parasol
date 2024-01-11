@@ -431,7 +431,7 @@ enum class JET : LONG {
 #define FD_SYNONYM 0x00020000
 #define FD_UNSIGNED 0x00040000
 #define FD_RGB 0x00080000
-#define FD_PERCENTAGE 0x00200000
+#define FD_SCALE 0x00200000
 #define FD_WORD 0x00400000
 #define FD_STR 0x00800000
 #define FD_STRING 0x00800000
@@ -1653,7 +1653,7 @@ struct OpenInfo {
 #define FDF_INTEGRAL    (FD_POINTER|FD_INTEGRAL) // Field refers to an integral object
 #define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
 #define FDF_STR         (FDF_STRING)
-#define FDF_PERCENTAGE  FD_PERCENTAGE
+#define FDF_SCALE       FD_SCALE
 #define FDF_FLAGS       FD_FLAGS                // Field contains flags
 #define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
 #define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
@@ -1685,7 +1685,7 @@ struct OpenInfo {
 #define TSTR      0x0080000000000000LL
 #define TRELATIVE 0x0020000000000000LL
 #define TARRAY    0x0000100000000000LL
-#define TPERCENT  TRELATIVE
+#define TSCALE    TRELATIVE
 #define TAGEND    0LL
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
@@ -1706,7 +1706,7 @@ struct FieldValue {
       APTR    Pointer;
       CPTR    CPointer;
       DOUBLE  Double;
-      PERCENT Percent;
+      SCALE   Percent;
       LARGE   Large;
       LONG    Long;
    };
@@ -1716,7 +1716,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(ULONG pFID, PERCENT pValue) : FieldID(pFID), Type(FD_DOUBLE|FD_PERCENTAGE), Percent(pValue) { };
+   constexpr FieldValue(ULONG pFID, SCALE pValue)   : FieldID(pFID), Type(FD_DOUBLE|FD_SCALE), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
@@ -2785,7 +2785,7 @@ struct BaseClass { // Must be 64-bit aligned
    // Works both for regular data pointers and function pointers if field is defined correctly.
    inline ERROR set(ULONG FieldID, const void *Value) { return SetField(this, (FIELD)FieldID|TPTR, Value); }
 
-   inline ERROR setPercentage(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+   inline ERROR setScale(ULONG FieldID, DOUBLE Value) { return SetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
 
    inline ERROR get(ULONG FieldID, LONG *Value)     { return GetField(this, (FIELD)FieldID|TLONG, Value); }
    inline ERROR get(ULONG FieldID, LARGE *Value)    { return GetField(this, (FIELD)FieldID|TLARGE, Value); }
@@ -2794,7 +2794,7 @@ struct BaseClass { // Must be 64-bit aligned
    inline ERROR get(ULONG FieldID, CSTRING *Value)  { return GetField(this, (FIELD)FieldID|TSTRING, Value); }
    inline ERROR get(ULONG FieldID, Variable *Value) { return GetField(this, (FIELD)FieldID|TVAR, Value); }
    inline ERROR getPtr(ULONG FieldID, APTR Value)   { return GetField(this, (FIELD)FieldID|TPTR, Value); }
-   inline ERROR getPercentage(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TPERCENT, Value); }
+   inline ERROR getScale(ULONG FieldID, DOUBLE *Value) { return GetField(this, (FIELD)FieldID|TDOUBLE|TSCALE, Value); }
 
    template <typename... Args> ERROR setFields(Args&&... pFields) {
       pf::Log log("setFields");

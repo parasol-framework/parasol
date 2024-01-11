@@ -214,9 +214,9 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
       case KEY::ENTER: {
          auto tab = Self->FocusIndex;
          if ((tab >= 0) and (unsigned(tab) < Self->Tabs.size())) {
-            log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, LONG(Self->Tabs.size()), Self->Tabs[tab].type);
+            log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, LONG(Self->Tabs.size()), LONG(Self->Tabs[tab].type));
 
-            if ((Self->Tabs[tab].type IS TT_LINK) and (Self->Tabs[tab].active)) {
+            if ((Self->Tabs[tab].type IS TT::LINK) and (Self->Tabs[tab].active)) {
                for (auto &link : Self->Links) {
                   if (link.origin.id IS Self->Tabs[tab].ref) {
                      link.exec(Self);
@@ -374,10 +374,10 @@ static ERROR activate_cell_edit(extDocument *Self, INDEX CellIndex, stream_char 
    log.msg("Activated cell %d, cursor index %d, EditDef: %p, CRC: $%.8x",
       Self->ActiveEditCellID, Self->CursorIndex.index, Self->ActiveEditDef, Self->ActiveEditCRC);
 
-   // Set the focus index to the relevant TT_EDIT entry
+   // Set the focus index to the relevant TT::EDIT entry
 
    for (unsigned tab=0; tab < Self->Tabs.size(); tab++) {
-      if ((Self->Tabs[tab].type IS TT_EDIT) and (Self->Tabs[tab].ref IS cell.cell_id)) {
+      if ((Self->Tabs[tab].type IS TT::EDIT) and (Self->Tabs[tab].ref IS cell.cell_id)) {
          Self->FocusIndex = tab;
          break;
       }
@@ -708,7 +708,7 @@ static void deselect_text(extDocument *Self)
 
 //********************************************************************************************************************
 
-static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
+static LONG find_tabfocus(extDocument *Self, TT Type, LONG Reference)
 {
    for (unsigned i=0; i < Self->Tabs.size(); i++) {
       if ((Self->Tabs[i].type IS Type) and (Reference IS Self->Tabs[i].ref)) return i;
@@ -719,50 +719,22 @@ static LONG find_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
 //********************************************************************************************************************
 // This function is used in tags.c by the link and object insertion code.
 
-static LONG add_tabfocus(extDocument *Self, UBYTE Type, LONG Reference)
+static LONG add_tabfocus(extDocument *Self, TT Type, LONG Reference)
 {
    pf::Log log(__FUNCTION__);
 
-   //log.function("Type: %d, Ref: %d", Type, Reference);
+   //log.branch("Type: %d, Ref: %d", LONG(Type), Reference);
 
-   if (Type IS TT_LINK) { // For TT_LINK types, check that the link isn't already registered
+   if (Type IS TT::LINK) { // For TT::LINK types, check that the link isn't already registered
       for (unsigned i=0; i < Self->Tabs.size(); i++) {
-         if ((Self->Tabs[i].type IS TT_LINK) and (Self->Tabs[i].ref IS Reference)) {
+         if ((Self->Tabs[i].type IS TT::LINK) and (Self->Tabs[i].ref IS Reference)) {
             return i;
          }
       }
    }
 
    auto index = Self->Tabs.size();
-   Self->Tabs.emplace_back(Type, Reference, Type, Self->Invisible ^ 1);
-
-   if (Type IS TT_OBJECT) {
-      // Find out if the object has a surface and if so, place it in the XRef field.
-
-      if (GetClassID(Reference) != ID_SURFACE) {
-         pf::ScopedObjectLock object(Reference, 3000);
-         if (object.granted()) {
-            OBJECTID regionid = 0;
-            if (FindField(*object, FID_Region, NULL)) {
-               if (!object->get(FID_Region, &regionid)) {
-                  if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
-               }
-            }
-
-            if (!regionid) {
-               if (FindField(*object, FID_Surface, NULL)) {
-                  if (!object->get(FID_Surface, &regionid)) {
-                     if (GetClassID(regionid) != ID_SURFACE) regionid = 0;
-                  }
-               }
-            }
-
-            Self->Tabs.back().xref = regionid;
-         }
-      }
-      else Self->Tabs.back().xref = Reference;
-   }
-
+   Self->Tabs.emplace_back(Type, Reference, Self->Invisible ^ 1);
    return index;
 }
 
@@ -858,14 +830,15 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
       return;
    }
 
-   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, LONG(Self->Tabs.size()), Index != -1 ? Self->Tabs[Index].type : -1, Index != -1 ? Self->Tabs[Index].ref : -1, Self->HasFocus, Caller);
+   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, LONG(Self->Tabs.size()), 
+      Index != -1 ? LONG(Self->Tabs[Index].type) : -1, Index != -1 ? Self->Tabs[Index].ref : -1, Self->HasFocus, Caller);
 
    if (Self->ActiveEditDef) deactivate_edit(Self, true);
 
    if (Index IS -1) {
       Index = 0;
       Self->FocusIndex = 0;
-      if (Self->Tabs[0].type IS TT_LINK) {
+      if (Self->Tabs[0].type IS TT::LINK) {
          log.msg("First focusable element is a link - focus unchanged.");
          return;
       }
@@ -878,14 +851,14 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 
    Self->FocusIndex = Index;
 
-   if (Self->Tabs[Index].type IS TT_EDIT) {
+   if (Self->Tabs[Index].type IS TT::EDIT) {
       acFocus(Self->Page);
 
       if (auto cell_index = Self->Stream.find_cell(Self->Tabs[Self->FocusIndex].ref); cell_index >= 0) {
          activate_cell_edit(Self, cell_index, stream_char());
       }
    }
-   else if (Self->Tabs[Index].type IS TT_OBJECT) {
+   else if (Self->Tabs[Index].type IS TT::VECTOR) {
       if (Self->HasFocus) {
          CLASSID class_id = GetClassID(Self->Tabs[Index].ref);
          OBJECTPTR input;
@@ -898,13 +871,10 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
                ReleaseObject(input);
             }
          }
-         else if (acFocus(Self->Tabs[Index].ref) != ERR_Okay) {
-            acFocus(Self->Tabs[Index].xref);
-            // Causes an InheritedFocus callback in ActionNotify
-         }
+         else acFocus(Self->Tabs[Index].ref);
       }
    }
-   else if (Self->Tabs[Index].type IS TT_LINK) {
+   else if (Self->Tabs[Index].type IS TT::LINK) {
       if (Self->HasFocus) { // Scroll to the link if it is out of view, or redraw the display if it is not.
          for (unsigned i=0; i < Self->Links.size(); i++) {
             auto &link = Self->Links[i];
@@ -991,7 +961,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
    OBJECTID currentfocus = gfxGetUserFocus();
    for (unsigned i=0; i < Self->Tabs.size(); i++) {
-      if (Self->Tabs[i].xref IS currentfocus) {
+      if (Self->Tabs[i].ref IS currentfocus) {
          Self->FocusIndex = i;
          break;
       }
@@ -1023,11 +993,13 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
       if (!Self->Tabs[Self->FocusIndex].active) continue;
 
-      if ((Self->Tabs[Self->FocusIndex].type IS TT_OBJECT) and (Self->Tabs[Self->FocusIndex].xref)) {
+      if (Self->Tabs[Self->FocusIndex].type IS TT::VECTOR) {
+         /*
          SURFACEINFO *info;
-         if (!gfxGetSurfaceInfo(Self->Tabs[Self->FocusIndex].xref, &info)) {
+         if (!gfxGetSurfaceInfo(Self->Tabs[Self->FocusIndex].ref, &info)) {
             if ((info->Flags & RNF::DISABLED) != RNF::NIL) continue;
          }
+         */
       }
       break;
    }

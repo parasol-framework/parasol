@@ -152,7 +152,7 @@ struct layout; // Pre-def
 
 static ERROR activate_cell_edit(extDocument *, LONG, stream_char);
 static ERROR add_document_class(void);
-static LONG  add_tabfocus(extDocument *, UBYTE, LONG);
+static LONG  add_tabfocus(extDocument *, TT, LONG);
 static void  advance_tabfocus(extDocument *, BYTE);
 static void  check_mouse_click(extDocument *, DOUBLE X, DOUBLE Y);
 static void  check_mouse_pos(extDocument *, DOUBLE, DOUBLE);
@@ -165,7 +165,7 @@ static void  error_dialog(const std::string, const std::string);
 static void  error_dialog(const std::string, ERROR);
 static const Field * find_field(OBJECTPTR, CSTRING, OBJECTPTR *);
 static SEGINDEX find_segment(std::vector<doc_segment> &, stream_char, bool);
-static LONG  find_tabfocus(extDocument *, UBYTE, LONG);
+static LONG  find_tabfocus(extDocument *, TT, LONG);
 static ERROR flash_cursor(extDocument *, LARGE, LARGE);
 inline std::string get_font_style(const FSO);
 static LONG  getutf8(CSTRING, LONG *);

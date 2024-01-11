@@ -19,9 +19,12 @@ class objDocument;
 
 #define RIPL_VERSION "20231123"
 
-#define TT_OBJECT 1
-#define TT_LINK 2
-#define TT_EDIT 3
+enum class TT : BYTE {
+   NIL = 0,
+   VECTOR = 1,
+   LINK = 2,
+   EDIT = 3,
+};
 
 // Event flags for selectively receiving events from the Document object.
 

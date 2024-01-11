@@ -163,10 +163,11 @@ class RSTREAM;
 
 struct tab {
    // The ref is a UID for the Type, so you can use it to find the tab in the document stream
-   LONG  ref;        // For TT_OBJECT: ObjectID; TT_LINK: LinkID
-   LONG  xref;       // For TT_OBJECT: SurfaceID (if found)
-   UBYTE type;       // TT_LINK, TT_OBJECT
+   LONG  ref;        // For TT::VECTOR: VectorID; TT::LINK: LinkID
+   TT    type;
    bool  active;     // true if the tabbable entity is active/visible
+
+   tab(TT pType, LONG pReference, bool pActive) : ref(pReference), type(pType), active(pActive) { }
 };
 
 //********************************************************************************************************************

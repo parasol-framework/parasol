@@ -2562,7 +2562,6 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="OBJECT">Supplementary, can be used with longs (for IDs) or pointers</const>
       <const name="OBJECTID">Synonym for LONG | OBJECT</const>
       <const name="OBJECTPTR">Synonym for PTR | OBJECT</const>
-      <const name="PERCENTAGE">Supplementary, indicates integer or float value is a percentage.</const>
       <const name="POINTER">Pointer (32 or 64 bit).</const>
       <const name="PRIVATE">Synonym for SYSTEM</const>
       <const name="PTR">Synonym for POINTER</const>
@@ -2580,6 +2579,7 @@ SubscribeAction(surface, AC_Redimension, &amp;callback);
       <const name="RGB">Supplementary, if a long type then format is 0xAARRGGBB, if pointer then refers to an RGB structure.</const>
       <const name="RI">Synonym for READ | INIT</const>
       <const name="RW">Synonym for READ | WRITE</const>
+      <const name="SCALE">Supplementary, indicates a float value for multiplicative scaling.</const>
       <const name="STR">Synonym for STRING</const>
       <const name="STRING">Pointer to a string.</const>
       <const name="STRRESULT">Synonym for STR | RESULT</const>

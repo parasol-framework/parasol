@@ -285,14 +285,7 @@ CELL layout::lay_cell(bc_table *Table)
             fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
          }));
       }
-
-      if (!cell.stroke.empty()) {
-         cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width));
-      }
-
-      if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
    }
-   else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Fill(NULL), fl::Stroke(NULL));
 
    if (!cell.stream->data.empty()) {
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
@@ -360,7 +353,7 @@ CELL layout::lay_cell(bc_table *Table)
       }
 
       m_row->row_height = cell.height;
-      if ((cell.column + cell.col_span) >= LONG(Table->columns.size())) {
+      if (unsigned(cell.column + cell.col_span) >= Table->columns.size()) {
          return CELL::REPASS_ROW_HEIGHT;
       }
       else m_row->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed

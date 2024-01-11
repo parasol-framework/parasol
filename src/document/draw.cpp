@@ -422,24 +422,29 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                break;
 
             case SCODE::CELL: {
-               auto &cell = segment.stream->lookup<bc_cell>(cursor);
+               // If a cell defines fill/stroke values then it gets an independent rectangle to achieve that.
+               //
+               // If it defines a border then it can instead make use of the table's VectorPath object, which is
+               // more efficient and creates consistent looking output.
 
-               //DOUBLE cell_width  = stack_table.top()->columns[cell.column].width;
-               //DOUBLE cell_height = stack_row.top()->row_height;
+               auto &cell = segment.stream->lookup<bc_cell>(cursor);
+               auto table = stack_table.top();
+               
+               if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
+                  if (!cell.stroke.empty()) {
+                     cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width));
+                  }
+                  if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
+               }
+               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Fill(NULL), fl::Stroke(NULL));
 
                if ((cell.width >= 1) and (cell.height >= 1)) {
-                  cell.viewport->setFields(fl::X(cell.x - stack_table.top()->x), 
-                     fl::Y(cell.y - stack_table.top()->y),
+                  cell.viewport->setFields(fl::X(cell.x - table->x), 
+                     fl::Y(cell.y - table->y),
                      fl::Width(cell.width), fl::Height(cell.height));
-
-                  // If a cell defines fill/stroke values then it gets an independent rectangle to achieve that.
-                  //
-                  // If it defines a border then it can instead make use of the table's VectorPath object, which is
-                  // more efficient and creates consistent looking output.
 
                   if ((cell.border != CB::NIL) and (cell.stroke.empty())) {
                      // When a cell defines a border value, it piggy-backs the table's stroke definition
-                     auto &table = stack_table.top();
                      if (cell.border IS CB::ALL) {
                         table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
                         table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
@@ -473,6 +478,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                         }
                      }
                   }
+                  else cell.viewport->setFields(fl::Width(0), fl::Height(0));
 
                   gen_scene_graph(*cell.viewport, cell.segments);
                }
@@ -496,7 +502,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                stack_style.push(&link->font);
                if (Self->HasFocus) {
                   // Override the default link colour if the link has the tab key's focus
-                  if ((Self->Tabs[Self->FocusIndex].type IS TT_LINK) and
+                  if ((Self->Tabs[Self->FocusIndex].type IS TT::LINK) and
                         (Self->Tabs[Self->FocusIndex].ref IS link->id) and
                         (Self->Tabs[Self->FocusIndex].active)) {
                      link->font.fill = Self->LinkSelectFill;
