@@ -182,7 +182,7 @@ static ERROR FILTEREFFECT_SET_Height(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->Height = val;
@@ -251,7 +251,7 @@ static ERROR FILTEREFFECT_SET_Width(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->Width = val;
@@ -282,7 +282,7 @@ static ERROR FILTEREFFECT_SET_X(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->X = val;
@@ -314,7 +314,7 @@ static ERROR FILTEREFFECT_SET_Y(extFilterEffect *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->Y = val;
@@ -331,10 +331,10 @@ static const FieldArray clFilterEffectFields[] = {
    { "Target",     FDF_OBJECT|FDF_RW, NULL, NULL, ID_BITMAP },
    { "Input",      FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Input, ID_FILTEREFFECT },
    { "Mix",        FDF_OBJECT|FDF_RW, NULL, FILTEREFFECT_SET_Mix, ID_FILTEREFFECT },
-   { "X",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, FILTEREFFECT_GET_X, FILTEREFFECT_SET_X },
-   { "Y",          FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
-   { "Width",      FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },
-   { "Height",     FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, FILTEREFFECT_GET_Height, FILTEREFFECT_SET_Height },
+   { "X",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, FILTEREFFECT_GET_X, FILTEREFFECT_SET_X },
+   { "Y",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, FILTEREFFECT_GET_Y, FILTEREFFECT_SET_Y },
+   { "Width",      FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, FILTEREFFECT_GET_Width, FILTEREFFECT_SET_Width },
+   { "Height",     FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, FILTEREFFECT_GET_Height, FILTEREFFECT_SET_Height },
    { "Dimensions", FDF_LONGFLAGS|FDF_R, NULL, NULL, &clFilterEffectDimensions },
    { "SourceType", FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectSourceType },
    { "MixType",    FDF_LONG|FDF_LOOKUP|FDF_RW, NULL, NULL, &clFilterEffectMixType },

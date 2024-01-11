@@ -195,7 +195,7 @@ static ERROR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->rHeight = val;
@@ -232,7 +232,7 @@ static ERROR RECTANGLE_SET_RoundX(extVectorRectangle *Self, Variable *Value)
 
    if ((val < 0) or (val > 1000)) return ERR_OutOfRange;
 
-   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_X) & (~DMF_RELATIVE_RADIUS_X);
 
    Self->rRoundX = val;
@@ -269,7 +269,7 @@ static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Variable *Value)
 
    if ((val < 0) or (val > 1000)) return ERR_OutOfRange;
 
-   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_RELATIVE_RADIUS_Y);
 
    Self->rRoundY = val;
@@ -304,7 +304,7 @@ static ERROR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->rX = val;
@@ -340,7 +340,7 @@ static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->rWidth = val;
@@ -376,7 +376,7 @@ static ERROR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->rY = val;
@@ -399,12 +399,12 @@ static const FieldDef clRectDimensions[] = {
 };
 
 static const FieldArray clRectangleFields[] = {
-   { "RoundX",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
-   { "RoundY",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
-   { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
-   { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
-   { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
-   { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
+   { "RoundX",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
+   { "RoundY",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
+   { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
+   { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
+   { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, RECTANGLE_GET_Dimensions, RECTANGLE_SET_Dimensions, &clRectDimensions },
    END_FIELD
 };

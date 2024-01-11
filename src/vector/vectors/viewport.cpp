@@ -390,14 +390,14 @@ static ERROR VIEW_GET_Height(extVectorViewport *Self, Variable *Value)
    if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_HEIGHT) { // Working with a fixed dimension
-      if (Value->Type & FD_PERCENTAGE) {
+      if (Value->Type & FD_SCALE) {
          if (Self->ParentView) val = Self->vpFixedHeight * Self->ParentView->vpFixedHeight;
          else val = Self->vpFixedHeight * Self->Scene->PageHeight;
       }
       else val = Self->vpTargetHeight;
    }
    else if (Self->vpDimensions & DMF_RELATIVE_HEIGHT) { // Working with a relative dimension
-      if (Value->Type & FD_PERCENTAGE) val = Self->vpTargetHeight;
+      if (Value->Type & FD_SCALE) val = Self->vpTargetHeight;
       else if (Self->ParentView) val = Self->vpTargetHeight * Self->ParentView->vpFixedHeight;
       else val = Self->vpTargetHeight * Self->Scene->PageHeight;
    }
@@ -433,7 +433,7 @@ static ERROR VIEW_SET_Height(extVectorViewport *Self, Variable *Value)
    else return ERR_SetValueNotNumeric;
 
    Self->vpTargetHeight = val;
-   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   if (Value->Type & FD_SCALE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -627,14 +627,14 @@ static ERROR VIEW_GET_Width(extVectorViewport *Self, Variable *Value)
    if (Self->dirty()) gen_vector_tree(Self);
 
    if (Self->vpDimensions & DMF_FIXED_WIDTH) { // Working with a fixed dimension
-      if (Value->Type & FD_PERCENTAGE) {
+      if (Value->Type & FD_SCALE) {
          if (Self->ParentView) val = Self->vpFixedWidth * Self->ParentView->vpFixedWidth;
          else val = Self->vpFixedWidth * Self->Scene->PageWidth;
       }
       else val = Self->vpTargetWidth;
    }
    else if (Self->vpDimensions & DMF_RELATIVE_WIDTH) { // Working with a relative dimension
-      if (Value->Type & FD_PERCENTAGE) val = Self->vpTargetWidth;
+      if (Value->Type & FD_SCALE) val = Self->vpTargetWidth;
       else if (Self->ParentView) val = Self->vpTargetWidth * Self->ParentView->vpFixedWidth;
       else val = Self->vpTargetWidth * Self->Scene->PageWidth;
    }
@@ -669,7 +669,7 @@ static ERROR VIEW_SET_Width(extVectorViewport *Self, Variable *Value)
    else return ERR_SetValueNotNumeric;
 
    Self->vpTargetWidth = val;
-   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   if (Value->Type & FD_SCALE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -707,7 +707,7 @@ static ERROR VIEW_GET_X(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedWidth;
+   if (Value->Type & FD_SCALE) value = value / Self->ParentView->vpFixedWidth;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -728,7 +728,7 @@ static ERROR VIEW_SET_X(extVectorViewport *Self, Variable *Value)
    else return ERR_SetValueNotNumeric;
 
    Self->vpTargetX = val;
-   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
+   if (Value->Type & FD_SCALE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -768,7 +768,7 @@ static ERROR VIEW_GET_XOffset(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedWidth;
+   if (Value->Type & FD_SCALE) value = value / Self->ParentView->vpFixedWidth;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -790,7 +790,7 @@ static ERROR VIEW_SET_XOffset(extVectorViewport *Self, Variable *Value)
    else return ERR_SetValueNotNumeric;
 
    Self->vpTargetXO = val;
-   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
+   if (Value->Type & FD_SCALE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -829,7 +829,7 @@ static ERROR VIEW_GET_Y(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_SCALE) value = value / Self->ParentView->vpFixedHeight;
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
    else {
@@ -849,7 +849,7 @@ static ERROR VIEW_SET_Y(extVectorViewport *Self, Variable *Value)
    else return ERR_SetValueNotNumeric;
 
    Self->vpTargetY = val;
-   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
+   if (Value->Type & FD_SCALE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -889,7 +889,7 @@ static ERROR VIEW_GET_YOffset(extVectorViewport *Self, Variable *Value)
    }
    else value = 0;
 
-   if (Value->Type & FD_PERCENTAGE) value = value / Self->ParentView->vpFixedHeight;
+   if (Value->Type & FD_SCALE) value = value / Self->ParentView->vpFixedHeight;
 
    if (Value->Type & FD_DOUBLE) Value->Double = value;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
@@ -910,7 +910,7 @@ static ERROR VIEW_SET_YOffset(extVectorViewport *Self, Variable *Value)
    else return ERR_SetValueNotNumeric;
 
    Self->vpTargetYO = val;
-   if (Value->Type & FD_PERCENTAGE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
+   if (Value->Type & FD_SCALE) Self->vpDimensions = (Self->vpDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
    else Self->vpDimensions = (Self->vpDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
 
    mark_dirty((extVector *)Self, RC::ALL);
@@ -942,12 +942,12 @@ static const FieldArray clViewFields[] = {
    { "Overflow",     FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_Overflow, VIEW_SET_Overflow, &clVectorViewportVOF },
    { "OverflowX",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowX, VIEW_SET_OverflowX, &clVectorViewportVOF },
    { "OverflowY",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, VIEW_GET_OverflowY, VIEW_SET_OverflowY, &clVectorViewportVOF },
-   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_X,       VIEW_SET_X },
-   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_Y,       VIEW_SET_Y },
-   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_XOffset, VIEW_SET_XOffset },
-   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_YOffset, VIEW_SET_YOffset },
-   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_Width,   VIEW_SET_Width },
-   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VIEW_GET_Height,  VIEW_SET_Height },
+   { "X",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VIEW_GET_X,       VIEW_SET_X },
+   { "Y",            FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VIEW_GET_Y,       VIEW_SET_Y },
+   { "XOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VIEW_GET_XOffset, VIEW_SET_XOffset },
+   { "YOffset",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VIEW_GET_YOffset, VIEW_SET_YOffset },
+   { "Width",        FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VIEW_GET_Width,   VIEW_SET_Width },
+   { "Height",       FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VIEW_GET_Height,  VIEW_SET_Height },
    { "ViewX",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, VIEW_GET_ViewX,      VIEW_SET_ViewX },
    { "ViewY",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, VIEW_GET_ViewY,      VIEW_SET_ViewY },
    { "ViewWidth",    FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, VIEW_GET_ViewWidth,  VIEW_SET_ViewWidth },

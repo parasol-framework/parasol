@@ -96,7 +96,7 @@ static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
 
    Self->CX = val;
@@ -130,7 +130,7 @@ static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->CY = val;
@@ -243,7 +243,7 @@ static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_PERCENTAGE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
+   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
    else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
 
    Self->Radius = val;
@@ -341,18 +341,18 @@ static const ActionArray clVectorSpiralActions[] = {
 
 static const FieldArray clVectorSpiralFields[] = {
    { "PathLength", FDF_VIRTUAL|FDF_LONG|FDF_RW, SPIRAL_GET_PathLength, SPIRAL_SET_PathLength },
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_Width,   SPIRAL_SET_Width },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_Height,  SPIRAL_SET_Height },
-   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
-   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
-   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Width,   SPIRAL_SET_Width },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Height,  SPIRAL_SET_Height },
+   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
+   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
+   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
    { "Offset",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Offset, SPIRAL_SET_Offset },
    { "Scale",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Scale, SPIRAL_SET_Scale },
    { "Step",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Step, SPIRAL_SET_Step },
    // Synonyms
-   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
-   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
-   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
+   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
+   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
+   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
    END_FIELD
 };
 

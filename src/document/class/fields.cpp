@@ -307,7 +307,7 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
    if (Self->initialised()) {
       value = Self->CalcWidth;
 
-      if (Value->Type & FD_PERCENTAGE) {
+      if (Value->Type & FD_SCALE) {
          if (Self->VPWidth <= 0) return ERR_GetField;
          value = (DOUBLE)(value * Self->VPWidth);
       }
@@ -340,7 +340,7 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
    }
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->RelPageWidth = true;
+   if (Value->Type & FD_SCALE) Self->RelPageWidth = true;
    else Self->RelPageWidth = false;
 
    return ERR_Okay;

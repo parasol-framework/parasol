@@ -90,7 +90,7 @@ static ERROR xtag_lineargradient(extSVG *Self, const XMLTag &Tag)
          fl::Type(VGT::LINEAR),
          fl::X1(0.0),
          fl::Y1(0.0),
-         fl::X2(PERCENT(1.0)),
+         fl::X2(SCALE(1.0)),
          fl::Y2(0.0));
 
       // Determine the user coordinate system first.
@@ -165,7 +165,7 @@ static ERROR xtag_radialgradient(extSVG *Self, const XMLTag &Tag)
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGRadialGrad"), fl::Type(VGT::RADIAL),
-         fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
+         fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
       // Determine the user coordinate system first.
 
@@ -231,7 +231,7 @@ static ERROR xtag_diamondgradient(extSVG *Self, const XMLTag &Tag)
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGDiamondGrad"), fl::Type(VGT::DIAMOND),
-         fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
+         fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
       // Determine the user coordinate system first.
 
@@ -358,7 +358,7 @@ static ERROR xtag_conicgradient(extSVG *Self, const XMLTag &Tag)
       SetOwner(gradient, Self->Scene);
 
       gradient->setFields(fl::Name("SVGConicGrad"), fl::Type(VGT::CONIC),
-         fl::CenterX(PERCENT(0.5)), fl::CenterY(PERCENT(0.5)), fl::Radius(PERCENT(0.5)));
+         fl::CenterX(SCALE(0.5)), fl::CenterY(SCALE(0.5)), fl::Radius(SCALE(0.5)));
 
       std::string id;
 

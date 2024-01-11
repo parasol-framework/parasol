@@ -315,7 +315,7 @@ static DOUBLE read_unit(const std::string Value, LARGE *FieldID)
       DOUBLE dpi = 96.0;
 
       if (*str IS '%') {
-         if (FieldID) *FieldID |= TPERCENT;
+         if (FieldID) *FieldID |= TSCALE;
          multiplier = 0.01;
          str++;
       }
@@ -349,7 +349,7 @@ inline void set_double_units(OBJECTPTR Object, FIELD FieldID, const std::string 
 {
    LARGE field = FieldID;
    DOUBLE num = read_unit(Value, &field);
-   if (Units IS VUNIT::BOUNDING_BOX) field |= TPERCENT;
+   if (Units IS VUNIT::BOUNDING_BOX) field |= TSCALE;
    SetField(Object, field, num);
 }
 
@@ -509,7 +509,7 @@ static ERROR load_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
             auto view = Self->Scene->Viewport;
             while ((view) and (view->Class->ClassID != ID_VECTORVIEWPORT)) view = (objVectorViewport *)view->Next;
-            if (view) view->setFields(fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0)));
+            if (view) view->setFields(fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)));
          }
 
          Self->XML = NULL;

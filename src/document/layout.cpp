@@ -282,7 +282,7 @@ CELL layout::lay_cell(bc_table *Table)
          cell.rect_fill.set(objVectorRectangle::create::global({
             fl::Name("cell_rect"),
             fl::Owner(cell.viewport->UID),
-            fl::X(0), fl::Y(0), fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0))
+            fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0))
          }));
       }
 

@@ -2131,7 +2131,7 @@ static ERROR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
 {
    DOUBLE val;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       if (Self->RelativeStrokeWidth) val = Self->StrokeWidth * 100.0;
       else val = 0;
    }
@@ -2151,7 +2151,7 @@ static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
 
    if ((val >= 0.0) and (val <= 100.0)) {
       Self->StrokeWidth = val;
-      Self->RelativeStrokeWidth = (Value->Type & FD_PERCENTAGE) ? true : false;
+      Self->RelativeStrokeWidth = (Value->Type & FD_SCALE) ? true : false;
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -2361,7 +2361,7 @@ static const FieldArray clVectorFields[] = {
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },
-   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
+   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
    { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_EnableBkgd, VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },

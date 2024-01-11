@@ -20,7 +20,7 @@ class strong_typedef {
       T val;
 };
 
-struct PERCENT : strong_typedef<PERCENT, DOUBLE> {
+struct SCALE : strong_typedef<SCALE, DOUBLE> {
     // Make constructors available
     using strong_typedef::strong_typedef;
 };

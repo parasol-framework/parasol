@@ -1160,15 +1160,15 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // Recalculate coordinates if offsets are used
 
       if (Self->Dimensions & DMF_FIXED_X_OFFSET)         Self->setXOffset(Self->XOffset);
-      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->setPercentage(FID_XOffset, Self->XOffsetPercent);
+      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->setScale(FID_XOffset, Self->XOffsetPercent);
 
       if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         Self->setYOffset(Self->YOffset);
-      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->setPercentage(FID_YOffset, Self->YOffsetPercent);
+      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->setScale(FID_YOffset, Self->YOffsetPercent);
 
-      if (Self->Dimensions & DMF_RELATIVE_X)       Self->setPercentage(FID_X, Self->XPercent);
-      if (Self->Dimensions & DMF_RELATIVE_Y)       Self->setPercentage(FID_Y, Self->YPercent);
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   Self->setPercentage(FID_Width,  Self->WidthPercent);
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)  Self->setPercentage(FID_Height, Self->HeightPercent);
+      if (Self->Dimensions & DMF_RELATIVE_X)       Self->setScale(FID_X, Self->XPercent);
+      if (Self->Dimensions & DMF_RELATIVE_Y)       Self->setScale(FID_Y, Self->YPercent);
+      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   Self->setScale(FID_Width,  Self->WidthPercent);
+      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)  Self->setScale(FID_Height, Self->HeightPercent);
 
       if (!(Self->Dimensions & DMF_WIDTH)) {
          if (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET)) {
@@ -2625,10 +2625,10 @@ static const FieldArray clSurfaceFields[] = {
    { "BottomLimit",  FDF_LONG|FDF_RW,  NULL, SET_BottomLimit },
    { "Display",      FDF_OBJECTID|FDF_R, NULL, NULL, ID_DISPLAY },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clSurfaceFlags },
-   { "X",            FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_XCoord, SET_XCoord },
-   { "Y",            FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_YCoord, SET_YCoord },
-   { "Width",        FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_Width,  SET_Width },
-   { "Height",       FD_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_Height, SET_Height },
+   { "X",            FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_XCoord, SET_XCoord },
+   { "Y",            FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_YCoord, SET_YCoord },
+   { "Width",        FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_Width,  SET_Width },
+   { "Height",       FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_Height, SET_Height },
    { "RootLayer",    FDF_OBJECTID|FDF_RW, NULL, SET_RootLayer },
    { "Align",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSurfaceAlign },
    { "Dimensions",   FDF_LONG|FDF_RW, NULL, SET_Dimensions, &clSurfaceDimensions },
@@ -2657,8 +2657,8 @@ static const FieldArray clSurfaceFields[] = {
    { "WindowType",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, GET_WindowType, SET_WindowType, &clWindowType },
    { "WindowHandle",  FDF_VIRTUAL|FDF_POINTER|FDF_RW, GET_WindowHandle, SET_WindowHandle },
    // Variable fields
-   { "XOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_XOffset, SET_XOffset },
-   { "YOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_PERCENTAGE|FDF_RW, GET_YOffset, SET_YOffset },
+   { "XOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_XOffset, SET_XOffset },
+   { "YOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_YOffset, SET_YOffset },
    END_FIELD
 };
 

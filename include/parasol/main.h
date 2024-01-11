@@ -433,27 +433,27 @@ template <class T> FieldValue PageHeight(T Value) {
 }
 
 template <class T> FieldValue Radius(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Radius value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Radius value must be numeric");
    return FieldValue(FID_Radius, Value);
 }
 
 template <class T> FieldValue CenterX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "CenterX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterX value must be numeric");
    return FieldValue(FID_CenterX, Value);
 }
 
 template <class T> FieldValue CenterY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "CenterY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "CenterY value must be numeric");
    return FieldValue(FID_CenterY, Value);
 }
 
 template <class T> FieldValue FX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "FX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FX value must be numeric");
    return FieldValue(FID_FX, Value);
 }
 
 template <class T> FieldValue FY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "FY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "FY value must be numeric");
    return FieldValue(FID_FY, Value);
 }
 
@@ -488,52 +488,52 @@ template <class T> FieldValue ViewHeight(T Value) {
 }
 
 template <class T> FieldValue Width(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Width value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Width value must be numeric");
    return FieldValue(FID_Width, Value);
 }
 
 template <class T> FieldValue Height(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Height value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Height value must be numeric");
    return FieldValue(FID_Height, Value);
 }
 
 template <class T> FieldValue X(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "X value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X value must be numeric");
    return FieldValue(FID_X, Value);
 }
 
 template <class T> FieldValue XOffset(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "XOffset value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "XOffset value must be numeric");
    return FieldValue(FID_XOffset, Value);
 }
 
 template <class T> FieldValue Y(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Y value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y value must be numeric");
    return FieldValue(FID_Y, Value);
 }
 
 template <class T> FieldValue YOffset(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "YOffset value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "YOffset value must be numeric");
    return FieldValue(FID_YOffset, Value);
 }
 
 template <class T> FieldValue X1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "X1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X1 value must be numeric");
    return FieldValue(FID_X1, Value);
 }
 
 template <class T> FieldValue Y1(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Y1 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y1 value must be numeric");
    return FieldValue(FID_Y1, Value);
 }
 
 template <class T> FieldValue X2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "X2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "X2 value must be numeric");
    return FieldValue(FID_X2, Value);
 }
 
 template <class T> FieldValue Y2(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<PERCENT, T>, "Y2 value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "Y2 value must be numeric");
    return FieldValue(FID_Y2, Value);
 }
 

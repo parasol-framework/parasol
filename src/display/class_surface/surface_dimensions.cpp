@@ -238,7 +238,7 @@ Height: Defines the height of a surface object.
 
 The height of a surface object is manipulated through this field, although you can also use the Resize() action, which
 is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as
-a relative value if you set the `FD_PERCENT` marker. Relative heights are always calculated in relationship to a surface
+a relative value if you set the `FD_SCALE` marker. Relative heights are always calculated in relationship to a surface
 object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will
 be 160 pixels high.
 
@@ -252,7 +252,7 @@ for pairing the Y and YOffset fields together for dynamic height adjustment.
 
 static ERROR GET_Height(extSurface *Self, Variable *Value)
 {
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
          Value->Double = Self->HeightPercent;
          Value->Large  = F2I(Self->HeightPercent);
@@ -286,7 +286,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       if (Self->ParentID) {
          extSurface *parent;
          if (!AccessObject(Self->ParentID, 500, &parent)) {
@@ -311,7 +311,7 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
 
       if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
          Variable var;
-         var.Type   = FD_DOUBLE|FD_PERCENTAGE;
+         var.Type   = FD_DOUBLE|FD_SCALE;
          var.Double = Self->YOffsetPercent;
          SET_YOffset(Self, &var);
       }
@@ -763,7 +763,7 @@ Width: Defines the width of a surface object.
 
 The width of a surface object is manipulated through this field, although you can also use the Resize() action, which
 is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a
-relative value if you set the `FD_PERCENT` field.  Relative widths are always calculated in relationship to a surface
+relative value if you set the `FD_SCALE` field.  Relative widths are always calculated in relationship to a surface
 object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be
 160 pixels wide.
 
@@ -777,7 +777,7 @@ Width values of 0 or less are illegal, and will result in an `ERR_OutOfRange` er
 static ERROR GET_Width(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) {
+      if (Value->Type & FD_SCALE) {
          if (Self->Dimensions & DMF_RELATIVE_WIDTH) {
             Value->Double = Self->WidthPercent;
          }
@@ -810,7 +810,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->WidthPercent = value;
@@ -832,7 +832,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 
       // If the offset flags are used, adjust the horizontal position
       if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) {
-         var.Type = FD_DOUBLE|FD_PERCENTAGE;
+         var.Type = FD_DOUBLE|FD_SCALE;
          var.Double = Self->XOffsetPercent;
          SET_XOffset(Self, &var);
       }
@@ -851,7 +851,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 X: Determines the horizontal position of a surface object.
 
 The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the `FD_PERCENT` flag.
+coordinate (the default) or a relative coordinate if you use the `FD_SCALE` flag.
 
 If you set the X while the surface object is on display, the position of the surface area will be updated
 immediately.
@@ -861,11 +861,11 @@ immediately.
 static ERROR GET_XCoord(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Double = Self->XPercent;
+      if (Value->Type & FD_SCALE) Value->Double = Self->XPercent;
       else Value->Double = Self->X;
    }
    else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Large = F2I(Self->XPercent);
+      if (Value->Type & FD_SCALE) Value->Large = F2I(Self->XPercent);
       else Value->Large = Self->X;
    }
    else {
@@ -886,7 +886,7 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
    else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
@@ -939,7 +939,7 @@ static ERROR GET_XOffset(extSurface *Self, Variable *Value)
    extSurface *parent;
    DOUBLE value;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       xoffset.Type = FD_DOUBLE;
       xoffset.Double = 0;
       if (GET_XOffset(Self, &xoffset) IS ERR_Okay) {
@@ -983,7 +983,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
       Self->XOffsetPercent = value;
 
@@ -1028,7 +1028,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 Y: Determines the vertical position of a surface object.
 
 The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag.
+coordinate (the default) or a relative coordinate if you use the `FD_SCALE` flag.
 
 If the value is changed while the surface is on display, its position will be updated immediately.
 
@@ -1037,11 +1037,11 @@ If the value is changed while the surface is on display, its position will be up
 static ERROR GET_YCoord(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Double = Self->YPercent;
+      if (Value->Type & FD_SCALE) Value->Double = Self->YPercent;
       else Value->Double = Self->Y;
    }
    else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_PERCENTAGE) Value->Large = F2I(Self->YPercent);
+      if (Value->Type & FD_SCALE) Value->Large = F2I(Self->YPercent);
       else Value->Large = Self->Y;
    }
    else {
@@ -1062,7 +1062,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
    else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
       Self->YPercent = value;
       if (Self->ParentID) {
@@ -1105,7 +1105,7 @@ static ERROR GET_YOffset(extSurface *Self, Variable *Value)
    extSurface *parent;
    DOUBLE value;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       yoffset.Type = FD_DOUBLE;
       yoffset.Double = 0;
       if (!GET_YOffset(Self, &yoffset)) {
@@ -1147,7 +1147,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
 
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_PERCENTAGE) {
+   if (Value->Type & FD_SCALE) {
       Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
       Self->YOffsetPercent = value;
 

@@ -1093,12 +1093,12 @@ constexpr FieldValue Sequence(CSTRING Value) { return FieldValue(FID_Sequence, V
 inline FieldValue Sequence(std::string &Value) { return FieldValue(FID_Sequence, Value.c_str()); }
 
 template <class T> FieldValue RoundX(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "RoundX value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundX value must be numeric");
    return FieldValue(FID_RoundX, Value);
 }
 
 template <class T> FieldValue RoundY(T Value) {
-   static_assert(std::is_arithmetic<T>::value || std::is_class_v<PERCENT>, "RoundY value must be numeric");
+   static_assert(std::is_arithmetic<T>::value || std::is_base_of_v<SCALE, T>, "RoundY value must be numeric");
    return FieldValue(FID_RoundY, Value);
 }
 

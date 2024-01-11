@@ -391,7 +391,7 @@ static ERROR WAVE_SET_Height(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   if (Value->Type & FD_SCALE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
 
    Self->wHeight = val;
@@ -466,7 +466,7 @@ static ERROR WAVE_SET_Width(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
+   if (Value->Type & FD_SCALE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
    Self->wWidth = val;
@@ -497,7 +497,7 @@ static ERROR WAVE_SET_X(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
+   if (Value->Type & FD_SCALE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->wX = val;
@@ -528,7 +528,7 @@ static ERROR WAVE_SET_Y(extVectorWave *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
+   if (Value->Type & FD_SCALE) Self->wDimensions = (Self->wDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->wDimensions = (Self->wDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->wY = val;
@@ -571,12 +571,12 @@ static const FieldArray clWaveFields[] = {
    { "Degree",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Degree, WAVE_SET_Degree },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, WAVE_GET_Dimensions, WAVE_SET_Dimensions, &clWaveDimensions },
    { "Frequency",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Frequency, WAVE_SET_Frequency },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_Height, WAVE_SET_Height },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, WAVE_GET_Height, WAVE_SET_Height },
    { "Style",      FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, WAVE_GET_Style, WAVE_SET_Style, &clWaveStyle },
    { "Thickness",  FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, WAVE_GET_Thickness, WAVE_SET_Thickness },
-   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_X, WAVE_SET_X },
-   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_Y, WAVE_SET_Y },
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, WAVE_GET_Width, WAVE_SET_Width },
+   { "X",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, WAVE_GET_X, WAVE_SET_X },
+   { "Y",          FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, WAVE_GET_Y, WAVE_SET_Y },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, WAVE_GET_Width, WAVE_SET_Width },
    END_FIELD
 };
 

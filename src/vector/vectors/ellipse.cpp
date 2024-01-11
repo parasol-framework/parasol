@@ -192,7 +192,7 @@ static ERROR ELLIPSE_SET_CenterX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
+   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
 
    Self->eCX = val;
@@ -224,7 +224,7 @@ static ERROR ELLIPSE_SET_CenterY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
+   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
 
    Self->eCY = val;
@@ -256,7 +256,7 @@ static ERROR ELLIPSE_SET_Radius(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
+   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
 
    Self->eRadiusX = Self->eRadiusY = val;
@@ -287,7 +287,7 @@ static ERROR ELLIPSE_SET_RadiusX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
+   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_X) & (~DMF_RELATIVE_RADIUS_X);
 
    Self->eRadiusX = val;
@@ -318,7 +318,7 @@ static ERROR ELLIPSE_SET_RadiusY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_PERCENTAGE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
+   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
    else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_RELATIVE_RADIUS_Y);
 
    Self->eRadiusY = val;
@@ -396,21 +396,21 @@ static const FieldDef clEllipseDimensions[] = {
 };
 
 static const FieldArray clEllipseFields[] = {
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_Width,   ELLIPSE_SET_Width },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_Height,  ELLIPSE_SET_Height },
-   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
-   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
-   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
-   { "RadiusX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
-   { "RadiusY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Width,   ELLIPSE_SET_Width },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Height,  ELLIPSE_SET_Height },
+   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
+   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
+   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
+   { "RadiusX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
+   { "RadiusY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, ELLIPSE_GET_Dimensions, ELLIPSE_SET_Dimensions, &clEllipseDimensions },
    { "Vertices",   FDF_VIRTUAL|FDF_LONG|FDF_RW, ELLIPSE_GET_Vertices, ELLIPSE_SET_Vertices },
    // Synonyms
-   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
-   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
-   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
-   { "RX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
-   { "RY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_PERCENTAGE|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
+   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
+   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
+   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
+   { "RX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
+   { "RY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
    END_FIELD
 };
 
