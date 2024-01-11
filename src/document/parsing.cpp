@@ -13,6 +13,11 @@ hyperlink etc.  When a type is instantiated it will be assigned a UID and stored
 // State machine for the parser.  This information is discarded after parsing.
 
 struct parser {
+   struct process_table {
+      struct bc_table *table;
+      LONG row_col;
+   };
+
    extDocument *Self;
    objXML *m_xml;
 
@@ -95,7 +100,6 @@ struct parser {
    inline void tag_vector(XMLTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
-
 
    ~parser() {
       if (m_time) FreeResource(m_time);

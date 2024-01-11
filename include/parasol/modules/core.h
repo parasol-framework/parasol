@@ -2692,7 +2692,6 @@ class Log { // C++ wrapper for Parasol's log functionality
          #endif
          return Code;
       }
-
 };
 
 class LogLevel {

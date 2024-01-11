@@ -822,7 +822,7 @@ static ERROR DOCUMENT_HideIndex(extDocument *Self, struct docHideIndex *Args)
                }
                else if (code IS SCODE::IMAGE) {
                   auto &vec = Self->Stream.lookup<bc_image>(i);
-                  if (vec.rect) acHide(vec.rect->UID);
+                  if (!vec.rect.empty()) acHide(vec.rect->UID);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, vec.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = false;
@@ -1342,7 +1342,7 @@ static ERROR DOCUMENT_ShowIndex(extDocument *Self, struct docShowIndex *Args)
                }
                else if (code IS SCODE::IMAGE) {
                   auto &img = Self->Stream.lookup<bc_image>(i);
-                  if (img.rect) acShow(img.rect);
+                  if (!img.rect.empty()) acShow(*img.rect);
 
                   if (auto tab = find_tabfocus(Self, TT_OBJECT, img.rect->UID); tab >= 0) {
                      Self->Tabs[tab].active = true;

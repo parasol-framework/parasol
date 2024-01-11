@@ -511,6 +511,15 @@ static ERROR unload_doc(extDocument *Self, ULD Flags)
       Self->RefreshTemplates = true;
    }
 
+   if (Self->Page) {
+      pf::vector<ChildEntry> list;
+      if (!ListChildren(Self->Page->UID, &list)) {
+         for (auto it=list.rbegin(); it != list.rend(); it++) FreeResource(it->ObjectID);
+      }
+   }
+
+   Self->UIObjects.clear();
+
    if (Self->Page) acMoveToPoint(Self->Page, 0, 0, 0, MTF::X|MTF::Y);
 
    Self->NoWhitespace   = true;

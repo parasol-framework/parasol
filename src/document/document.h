@@ -230,24 +230,24 @@ public:
    }
 
    docresource(docresource &&other) noexcept { // Move constructor
-      object_id  = other.object_id;
-      class_id   = other.class_id;
+      object_id = other.object_id;
+      class_id  = other.class_id;
       type      = other.type;
       terminate = other.terminate;
       other.type = RTD::NIL;
    }
 
    docresource(const docresource &other) { // Copy constructor
-      object_id  = other.object_id;
-      class_id   = other.class_id;
+      object_id = other.object_id;
+      class_id  = other.class_id;
       type      = other.type;
       terminate = other.terminate;
    }
 
    docresource& operator=(docresource &&other) noexcept { // Move assignment
       if (this == &other) return *this;
-      object_id  = other.object_id;
-      class_id   = other.class_id;
+      object_id = other.object_id;
+      class_id  = other.class_id;
       type      = other.type;
       terminate = other.terminate;
       other.type = RTD::NIL;
@@ -256,19 +256,12 @@ public:
 
    docresource& operator=(const docresource& other) { // Copy assignment
       if (this == &other) return *this;
-      object_id  = other.object_id;
-      class_id   = other.class_id;
+      object_id = other.object_id;
+      class_id  = other.class_id;
       type      = other.type;
       terminate = other.terminate;
       return *this;
    }
-};
-
-//********************************************************************************************************************
-
-struct process_table {
-   struct bc_table *table;
-   LONG row_col;
 };
 
 //********************************************************************************************************************
@@ -331,12 +324,12 @@ struct font_entry {
 struct bc_font : public base_code {
    WORD font_index;     // Font lookup (will reflect the true font face, point size, style)
    FSO  options;        // Style options, like underline and italics
-   std::string fill;    // Font fill instruction
    ALIGN valign;        // Vertical alignment of text within the available line height
+   std::string fill;    // Font fill instruction
    std::string face;    // The font face as requested by the client.  Might not match the font we actually use.
    DOUBLE point;        // The point size as requested by the client.  Might not match the font we actually use.
 
-   bc_font(): font_index(-1), options(FSO::NIL), fill("rgb(0,0,0)"), valign(ALIGN::BOTTOM), point(0) { code = SCODE::FONT; }
+   bc_font(): font_index(-1), options(FSO::NIL), valign(ALIGN::BOTTOM), fill("rgb(0,0,0)"), point(0) { code = SCODE::FONT; }
 
    objFont * get_font();
 
@@ -519,6 +512,7 @@ struct bc_index_end : public base_code {
 };
 
 struct bc_link : public base_code {
+   GuardedObject<objVectorPath> path;
    LINK  type;                    // Link type (either a function or hyperlink)
    UWORD id;
    std::string pointer_motion;    // Function to call for pointer motion events
@@ -561,7 +555,8 @@ struct bc_list_end : public base_code {
 };
 
 struct bc_table : public base_code {
-   objVectorPath *path = NULL;
+   GuardedObject<objVectorPath> path;
+   GuardedObject<objVectorViewport> viewport;
    std::vector<PathCommand> seq;
    std::vector<tablecol> columns;        // Table column management
    std::string fill, stroke;             // SVG stroke and fill instructions
@@ -630,6 +625,7 @@ struct bc_table_end : public base_code {
 
 class bc_paragraph : public base_code {
    public:
+   GuardedObject<objVector> icon; // Icon representation if this is an item
    bc_font font;         // Default font that applies to this paragraph.  Embedding the font style in this way ensures that vertical placement can be computed immediately without looking for a FONT code.
    std::string value = "";
    DOUBLE x, y, height;  // Layout dimensions, manipulated at run-time
@@ -660,6 +656,7 @@ struct bc_paragraph_end : public base_code {
 };
 
 struct bc_row : public base_code {
+   GuardedObject<objVectorRectangle> rect_fill;
    DOUBLE y = 0;
    DOUBLE row_height = 0; // height of all cells on this row, used when drawing the cells
    DOUBLE min_height = 0;
@@ -674,6 +671,8 @@ struct bc_row_end : public base_code {
 };
 
 struct bc_cell : public base_code {
+   GuardedObject<objVectorViewport> viewport;
+   GuardedObject<objVectorRectangle> rect_fill;
    RSTREAM *stream = NULL;        // Internally managed byte code content for the cell
    LONG cell_id = 0;              // UID for the cell
    LONG column = 0;               // Column number that the cell starts in
@@ -718,6 +717,7 @@ struct bc_text : public base_code {
 
 struct bc_use : public base_code {
    std::string id; // Reference to a symbol registered in the Document's SVG object
+   bool processed = false;
 
    bc_use() { code = SCODE::USE; }
    bc_use(std::string pID) : id(pID) { code = SCODE::USE; }
@@ -738,11 +738,11 @@ struct widget_mgr {
    std::string fill;                   // Default fill instruction
    std::string alt_fill;               // Alternative fill instruction for state changes
    std::string font_fill;              // Default fill instruction for user input text
+   GuardedObject<objVectorViewport> viewport;
+   GuardedObject<objVectorRectangle> rect;    // A vector will host the widget and define a clipping mask for it
    DOUBLE width = 0, height = 0;       // Client can define a fixed width/height, or leave at 0 for auto-sizing
    DOUBLE final_width, final_height;   // Final dimensions computed during layout
    DOUBLE label_width = 0, label_pad = 0;  // If a label is specified, the label_width & pad is in addition to final_width
-   objVectorViewport *viewport = NULL;
-   objVectorRectangle *rect = NULL;    // A vector will host the widget and define a clipping mask for it
    DOUBLE x = 0;                       // For floating widgets only, horizontal position calculated during layout
    ALIGN align = ALIGN::NIL;           // NB: If horizontal alignment is defined then the widget is treated as floating.
    bool width_pct = false, height_pct = false, padding = false;
@@ -774,10 +774,14 @@ struct widget_mgr {
 
 struct bc_button : public base_code, widget_mgr {
    bc_button() { code = SCODE::BUTTON; }
+   GuardedObject<objVectorText> label_text;
+   bool processed = false;
 };
 
 struct bc_checkbox : public base_code, widget_mgr {
    bc_checkbox() { code = SCODE::CHECKBOX; }
+   GuardedObject<objVectorText> label_text;
+   bool processed = false;
 };
 
 struct bc_combobox : public base_code, widget_mgr {
@@ -788,7 +792,8 @@ struct bc_combobox : public base_code, widget_mgr {
 
 struct bc_input : public base_code, widget_mgr {
    std::string value;
-   objVectorViewport *clip_vp;
+   GuardedObject<objVectorText> label_text;
+   GuardedObject<objVectorViewport> clip_vp;
    bool secret = false;
 
    bc_input() { code = SCODE::INPUT; }
@@ -812,7 +817,6 @@ struct ui_link {
    stream_char cursor_start, cursor_end; // Starting position and end of the link's segment
    std::vector<PathCommand> path;
    RSTREAM *stream;
-   objVectorPath *vector_path = NULL;
    bool hover = false;                   // True if the mouse pointer is hovering over the link
 
    void exec(extDocument *);
@@ -837,7 +841,7 @@ public:
    std::vector<stream_code> data;
    CODEMAP codes;
 
-   RSTREAM() { }
+   RSTREAM() { data.reserve(8 * 1024); }
 
    RSTREAM(RSTREAM &Other) {
       data = Other.data;
@@ -890,10 +894,11 @@ class extDocument : public objDocument {
    std::string LinkFill, VisitedLinkFill, LinkSelectFill, FontFill, Highlight;
    RSTREAM Stream;                 // Internal stream buffer
    std::map<ULONG, XMLTag *>   TemplateIndex;
+   std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<ui_link>        Links;
-   std::unordered_map<OBJECTID, ui_widget> Widgets;
+   std::unordered_map<OBJECTID, ui_widget> Widgets; // For UI matching viewport interactivity to widgets.
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;

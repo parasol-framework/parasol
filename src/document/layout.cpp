@@ -59,6 +59,7 @@ private:
    bc_row *m_row = NULL;                 // Active table row (a persistent state is required in case of loop back)
    objFont *m_font = NULL;
    RSTREAM *m_stream = NULL;
+   objVectorViewport *m_viewport = NULL; // Target viewport
 
    DOUBLE m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
    DOUBLE m_page_width = 0;
@@ -204,8 +205,12 @@ private:
    void new_segment(const stream_char, const stream_char, DOUBLE, DOUBLE, DOUBLE, const std::string &);
    void wrap_through_clips(stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE);
 
+   ERROR build_widget(widget_mgr &, doc_segment &, objVectorViewport *, bc_font *, DOUBLE &, DOUBLE, bool,
+      DOUBLE &, DOUBLE &);
+
 public:
-   layout(extDocument *pSelf, RSTREAM *Stream) : Self(pSelf), m_stream(Stream) { }
+   layout(extDocument *pSelf, RSTREAM *pStream, objVectorViewport *pViewport) : 
+      Self(pSelf), m_stream(pStream), m_viewport(pViewport) { }
 
    ERROR do_layout(objFont **, DOUBLE &, DOUBLE &, ClipRectangle, bool &);
    void gen_scene_graph(objVectorViewport *, std::vector<doc_segment> &);
@@ -263,10 +268,36 @@ CELL layout::lay_cell(bc_table *Table)
    DLAYOUT("Index %d, Processing cell at (%g,%gy), size (%g,%g), column %d",
       idx, m_cursor_x, m_cursor_y, cell.width, cell.height, cell.column);
 
+   if (cell.viewport.empty()) {
+      cell.viewport.set(objVectorViewport::create::global({
+         fl::Name("cell_viewport"),
+         fl::Owner(Table->viewport->UID),
+         fl::X(0), fl::Y(0),
+         fl::Width(1), fl::Height(1)
+      }));
+   }
+
+   if ((!cell.fill.empty()) or (!cell.stroke.empty())) {
+      if (cell.rect_fill.empty()) {
+         cell.rect_fill.set(objVectorRectangle::create::global({
+            fl::Name("cell_rect"),
+            fl::Owner(cell.viewport->UID),
+            fl::X(0), fl::Y(0), fl::Width(PERCENT(1.0)), fl::Height(PERCENT(1.0))
+         }));
+      }
+
+      if (!cell.stroke.empty()) {
+         cell.rect_fill->setFields(fl::Stroke(cell.stroke), fl::StrokeWidth(cell.stroke_width));
+      }
+
+      if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
+   }
+   else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Fill(NULL), fl::Stroke(NULL));
+
    if (!cell.stream->data.empty()) {
       m_edit_mode = (!cell.edit_def.empty()) ? true : false;
 
-      layout sl(Self, cell.stream);
+      layout sl(Self, cell.stream, *cell.viewport);
       sl.m_depth = m_depth + 1;
       sl.do_layout(&m_font, cell.width, cell.height, ClipRectangle(Table->cell_padding), vertical_repass);
 
@@ -675,68 +706,87 @@ void layout::lay_paragraph()
       end_line(NL::PARAGRAPH, stream_char(idx), "PS");
    }
 
-   stack_para.push(&m_stream->lookup<bc_paragraph>(idx));
-
-   auto escpara = stack_para.top();
+   auto &para = m_stream->lookup<bc_paragraph>(idx);
+   stack_para.push(&para);
 
    if (!stack_list.empty()) {
       // If a paragraph is inside a list then it's treated as a list item.
       // Indentation values are inherited from the list.
 
       auto list = stack_list.top();
-      if (escpara->list_item) {
-         if (stack_para.size() > 1) escpara->indent = list->block_indent;
-         escpara->item_indent = list->item_indent;
-         escpara->relative = false;
+      if (para.list_item) {
+         if (stack_para.size() > 1) para.indent = list->block_indent;
+         para.item_indent = list->item_indent;
+         para.relative    = false;
 
-         if (!escpara->value.empty()) {
-            auto strwidth = fntStringWidth(m_font, escpara->value.c_str(), -1) + 10;
+         if (!para.value.empty()) {
+            auto strwidth = fntStringWidth(m_font, para.value.c_str(), -1) + 10;
             if (strwidth > list->item_indent) {
-               list->item_indent    = strwidth;
-               escpara->item_indent = strwidth;
-               list->repass         = true;
+               list->item_indent = strwidth;
+               para.item_indent  = strwidth;
+               list->repass      = true;
+            }
+
+            if (para.icon.empty()) {
+               para.icon.set(objVectorText::create::global({
+                  fl::Name("list_point"),
+                  fl::Owner(m_viewport->UID),
+                  fl::Fill(list->fill),
+                  fl::String(para.value),
+                  fl::Font(m_font),
+                  fl::Fill(list->fill)
+               }));
+            }
+         }
+         else if (list->type IS bc_list::BULLET) {
+            if (para.icon.empty()) {
+               para.icon.set(objVectorEllipse::create::global({
+                  fl::Name("bullet_point"),
+                  fl::Owner(m_viewport->UID),
+                  fl::Fill(list->fill)
+               }));
             }
          }
       }
-      else escpara->indent = list->item_indent;
+      else para.indent = list->item_indent;
    }
 
-   if (escpara->indent) {
-      if (escpara->relative) {
+   if (para.indent) {
+      if (para.relative) {
          // To ensure that relative indenting remains constant, the multiple is a factor of the 
          // paragraph's font size.
-         escpara->block_indent = escpara->indent * escpara->font.get_font()->LineSpacing;
+         para.block_indent = para.indent * para.font.get_font()->LineSpacing;
       }
-      else escpara->block_indent = escpara->indent;
+      else para.block_indent = para.indent;
    }
 
-   escpara->x = m_left_margin + escpara->block_indent;
+   para.x = m_left_margin + para.block_indent;
 
-   m_left_margin += escpara->block_indent + escpara->item_indent;
-   m_cursor_x    += escpara->block_indent + escpara->item_indent;
-   m_line.x      += escpara->block_indent + escpara->item_indent;
+   m_left_margin += para.block_indent + para.item_indent;
+   m_cursor_x    += para.block_indent + para.item_indent;
+   m_line.x      += para.block_indent + para.item_indent;
 
    // Paragraph management variables
 
-   if (!stack_list.empty()) escpara->leading = stack_list.top()->v_spacing;
+   if (!stack_list.empty()) para.leading = stack_list.top()->v_spacing;
 
-   m_font = escpara->font.get_font();
+   m_font = para.font.get_font();
 
    if (!m_font) {
       pf::Log log;
-      DLAYOUT("Failed to lookup font for %s:%g", escpara->font.face.c_str(), escpara->font.point);
+      DLAYOUT("Failed to lookup font for %s:%g", para.font.face.c_str(), para.font.point);
       Self->Error = ERR_Failed;
       return;
    }
 
-   apply_style(escpara->font);
+   apply_style(para.font);
 
-   if (m_line_count > 0) m_cursor_y += escpara->leading * m_font->LineSpacing;
+   if (m_line_count > 0) m_cursor_y += para.leading * m_font->LineSpacing;
 
-   escpara->y = m_cursor_y;
-   escpara->height = 0;
+   para.y = m_cursor_y;
+   para.height = 0;
 
-   stack_font.push(&escpara->font);
+   stack_font.push(&para.font);
 }
 
 //********************************************************************************************************************
@@ -1157,7 +1207,7 @@ static void layout_doc(extDocument *Self)
       log.branch("Area: %gx%g Visible: %d ----------", Self->VPWidth, Self->VPHeight, Self->VScrollVisible);
    #endif
 
-   layout l(Self, &Self->Stream);
+   layout l(Self, &Self->Stream, Self->Page);
    bool repeat = true;
    while (repeat) {
       repeat = false;
@@ -1182,11 +1232,11 @@ static void layout_doc(extDocument *Self)
       auto font = glFonts[0].font;
 
       DOUBLE page_height = 1;
-      l = layout(Self, &Self->Stream);
+      l = layout(Self, &Self->Stream, Self->Page);
       bool vertical_repass = false;
       if (l.do_layout(&font, page_width, page_height,
-         ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin),
-         vertical_repass) != ERR_Okay) break;
+           ClipRectangle(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin),
+           vertical_repass) != ERR_Okay) break;
 
       // If the resulting page width has increased beyond the available area, increase the MinPageWidth value to reduce
       // the number of passes required for the next time we do a layout.
@@ -1307,7 +1357,7 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, ClipRecta
       Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
    #endif
 
-   layout tablestate(Self, m_stream), rowstate(Self, m_stream), liststate(Self, m_stream);
+   layout tablestate(Self, m_stream, m_viewport), rowstate(Self, m_stream, m_viewport), liststate(Self, m_stream, m_viewport);
    bc_table *table;
    DOUBLE last_height;
    LONG edit_segment;
@@ -1437,9 +1487,26 @@ extend_page:
          case SCODE::INDEX_START: lay_index(); break;
          case SCODE::SET_MARGINS: lay_set_margins(Margins.Bottom); break;
 
-         case SCODE::LINK:
-            stack_font.push(&m_stream->lookup<bc_link>(idx).font);
+         case SCODE::LINK: {
+            auto &link = m_stream->lookup<bc_link>(idx);
+
+            stack_font.push(&link.font);
+
+            if (link.path.empty()) {
+               // This 'invisible' viewport will be used to receive user input
+               link.path.set(objVectorPath::create::global({
+                  fl::Owner(m_viewport->UID), 
+                  fl::Name("link_vp"), 
+                  fl::Cursor(PTC::HAND)
+               }));
+
+               if (link.path->Scene->SurfaceID) {
+                  auto callback = make_function_stdc(link_callback);
+                  vecSubscribeInput(*link.path, JTYPE::BUTTON|JTYPE::FEEDBACK, &callback);
+               }
+            }
             break;
+         }
 
          case SCODE::LINK_END:
             stack_font.pop();
@@ -1461,6 +1528,15 @@ extend_page:
          case SCODE::LIST_END:
             if (lay_list_end()) *this = liststate;
             break;
+
+         case SCODE::USE: {
+            auto &use = m_stream->lookup<bc_use>(idx);
+            if (!use.processed) {
+               svgParseSymbol(Self->SVG, use.id.c_str(), m_viewport);
+               use.processed = true;
+            }
+            break;
+         }
 
          case SCODE::BUTTON: {
             auto &button = m_stream->lookup<bc_button>(idx);
@@ -1527,6 +1603,27 @@ extend_page:
             table->width = -1;
 
             for (unsigned j=0; j < table->columns.size(); j++) table->columns[j].min_width = 0;
+
+            if (table->viewport.empty()) {
+               table->viewport.set(objVectorViewport::create::global({
+                  fl::Name("table_viewport"),
+                  fl::Owner(m_viewport->UID),
+                  fl::X(0), fl::Y(0),
+                  fl::Width(1), fl::Height(1)
+               }));
+            }
+            
+            if (table->path.empty()) {
+               table->path.set(objVectorPath::create::global({ 
+                  fl::Name("table_path"), fl::Owner(table->viewport->UID) 
+               }));
+
+               if (!table->fill.empty()) table->path->set(FID_Fill, table->fill);
+
+               if (!table->stroke.empty()) {
+                  table->path->setFields(fl::Stroke(table->stroke), fl::StrokeWidth(table->stroke_width));
+               }
+            }
 
 wrap_table_start:
             // Calculate starting table width, ensuring that the table meets the minimum width according to the cell
@@ -1615,6 +1712,16 @@ wrap_table_cell:
             rowstate = *this;
 
             if (table->reset_row_height) m_row->row_height = m_row->min_height;
+
+            if (!m_row->fill.empty()) {
+               if (m_row->rect_fill.empty()) {
+                  m_row->rect_fill.set(objVectorRectangle::create::global({
+                     fl::Name("row_fill"),
+                     fl::Owner(table->viewport->UID),
+                     fl::Fill(m_row->fill)
+                  }));
+               }
+            }
 
 repass_row_height:
             m_row->vertical_repass = false;

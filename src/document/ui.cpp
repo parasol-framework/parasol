@@ -777,7 +777,7 @@ static ERROR link_callback(objVector *Vector, InputEvent *Event)
 
    ui_link *link = NULL;
    for (unsigned i=0; i < Self->Links.size(); i++) {
-      if (Self->Links[i].vector_path IS Vector) {
+      if (*Self->Links[i].origin.path IS Vector) {
          link = &Self->Links[i];
          break;
       }
@@ -912,7 +912,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
                DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
                   if (link.origin.id IS Self->Tabs[Index].ref) {
-                     vecGetBoundary(link.vector_path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
+                     vecGetBoundary(*link.origin.path, VBF::NIL, &link_x, &link_y, &link_width, &link_height);
                   }
                }
 

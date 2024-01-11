@@ -156,9 +156,9 @@ class GuardedObject {
 
       // Constructors
 
-      GuardedObject() : count(new C(1)), id(0), object(NULL) { }
+      GuardedObject() : count(new C(1)), object(NULL), id(0) { }
 
-      GuardedObject(T *Object) : count(new C(1)), id(Object->UID), object(Object) {
+      GuardedObject(T *Object) : count(new C(1)), object(Object), id(Object->UID) {
          static_assert(std::is_base_of_v<BaseClass, T>, "The resource value must belong to BaseClass");
       }
 

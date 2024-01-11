@@ -1,4 +1,15 @@
 //********************************************************************************************************************
+// For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
+
+template <class T> T & RSTREAM::lookup(const stream_char Index) {
+   return std::get<T>(codes[data[Index.index].uid]);
+}
+
+template <class T> T & RSTREAM::lookup(const INDEX Index) {
+   return std::get<T>(codes[data[Index].uid]);
+}
+
+//********************************************************************************************************************
 // Inserts a byte code sequence into the text stream.
 
 template <class T> T & RSTREAM::insert(stream_char &Cursor, T &Code)

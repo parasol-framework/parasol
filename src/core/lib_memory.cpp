@@ -279,7 +279,7 @@ ERROR FreeResource(MEMORYID MemoryID)
 
          return error;
       }
-      log.warning("Memory ID #%d does not exist.", MemoryID);
+      log.traceWarning("Memory ID #%d does not exist.", MemoryID);
       return ERR_MemoryDoesNotExist;
    }
    else return log.warning(ERR_SystemLocked);

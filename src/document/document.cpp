@@ -288,15 +288,6 @@ objFont * bc_font::get_font()
 }
 
 //********************************************************************************************************************
-// For a given index in the stream, return the element code.  Index MUST be a valid reference to a byte code sequence.
-
-template <class T> T & RSTREAM::lookup(const stream_char Index) {
-   return std::get<T>(codes[data[Index.index].uid]);
-}
-
-template <class T> T & RSTREAM::lookup(const INDEX Index) {
-   return std::get<T>(codes[data[Index].uid]);
-}
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
