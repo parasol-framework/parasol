@@ -132,11 +132,11 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 
 //********************************************************************************************************************
 
-static const std::string & byte_code(SCODE Code) {
-   static const std::string strCodes[] = {
+static const std::string_view & byte_code(SCODE Code) {
+   static const std::string_view strCodes[] = {
       "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE",
       "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
-      "RowEnd", "SetMargins", "Index", "IndexEnd", "XML", "Image", "Use", "Button", "Checkbox", "Combobox", "Input"
+      "RowEnd", "Index", "IndexEnd", "XML", "Image", "Use", "Button", "Checkbox", "Combobox", "Input"
    };
 
    if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];
@@ -291,7 +291,7 @@ objFont * bc_font::get_font()
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
-template <class T> inline const std::string & BC_NAME(RSTREAM &Stream, T Index) {
+template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T Index) {
    return byte_code(Stream[Index].code);
 }
 
@@ -344,7 +344,7 @@ inline INDEX RSTREAM::find_cell(LONG ID)
    return -1;
 }
 
-inline INDEX RSTREAM::find_editable_cell(const std::string &EditDef)
+inline INDEX RSTREAM::find_editable_cell(std::string_view EditDef)
 {
    for (INDEX i=0; i < INDEX(data.size()); i++) {
       if (data[i].code IS SCODE::CELL) {
@@ -358,7 +358,7 @@ inline INDEX RSTREAM::find_editable_cell(const std::string &EditDef)
 
 //********************************************************************************************************************
 
-inline doc_edit * find_editdef(extDocument *Self, const std::string Name)
+inline doc_edit * find_editdef(extDocument *Self, std::string_view Name)
 {
    auto it = Self->EditDefs.find(Name);
    if (it != Self->EditDefs.end()) return &it->second;

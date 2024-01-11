@@ -90,7 +90,6 @@ struct parser {
    inline void tag_print(XMLTag &);
    inline void tag_repeat(XMLTag &);
    inline void tag_row(XMLTag &);
-   inline void tag_setmargins(XMLTag &);
    inline void tag_script(XMLTag &);
    inline void tag_svg(XMLTag &);
    inline void tag_table(XMLTag &);
@@ -1138,8 +1137,6 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       case HASH_body: tag_body(Tag); break;
 
       case HASH_index: tag_index(Tag); break;
-
-      case HASH_setmargins: tag_setmargins(Tag); break;
 
       case HASH_script: tag_script(Tag); break;
 
@@ -3191,45 +3188,6 @@ void parser::tag_script(XMLTag &Tag)
       }
       else FreeResource(script);
    }
-}
-
-//********************************************************************************************************************
-
-void parser::tag_setmargins(XMLTag &Tag)
-{
-   bc_set_margins margins;
-
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      if (!StrMatch("top", Tag.Attribs[i].Name)) {
-         margins.top = StrToInt(Tag.Attribs[i].Value);
-         if (margins.top < -4000) margins.top = -4000;
-         else if (margins.top > 4000) margins.top = 4000;
-      }
-      else if (!StrMatch("bottom", Tag.Attribs[i].Name)) {
-         margins.bottom = StrToInt(Tag.Attribs[i].Value);
-         if (margins.bottom < -4000) margins.bottom = -4000;
-         else if (margins.bottom > 4000) margins.bottom = 4000;
-      }
-      else if (!StrMatch("right", Tag.Attribs[i].Name)) {
-         margins.right = StrToInt(Tag.Attribs[i].Value);
-         if (margins.right < -4000) margins.right = -4000;
-         else if (margins.right > 4000) margins.right = 4000;
-      }
-      else if (!StrMatch("left", Tag.Attribs[i].Name)) {
-         margins.left = StrToInt(Tag.Attribs[i].Value);
-         if (margins.left < -4000) margins.left = -4000;
-         else if (margins.left > 4000) margins.left = 4000;
-      }
-      else if (!StrMatch("all", Tag.Attribs[i].Name)) {
-         LONG value;
-         value = StrToInt(Tag.Attribs[i].Value);
-         if (value < -4000) value = -4000;
-         else if (value > 4000) value = 4000;
-         margins.left = margins.top = margins.right = margins.bottom = value;
-      }
-   }
-
-   m_stream.emplace(m_index, margins);
 }
 
 //********************************************************************************************************************

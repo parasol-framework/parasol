@@ -91,7 +91,6 @@ enum class SCODE : char {
    ROW,
    CELL,
    ROW_END,
-   SET_MARGINS,
    INDEX_START,
    INDEX_END,
    XML,
@@ -700,11 +699,6 @@ struct bc_cell : public base_code {
    bc_cell (const bc_cell &Other);
 };
 
-struct bc_set_margins : public base_code {
-   WORD left = 0x7fff; WORD top = 0x7fff; WORD bottom = 0x7fff; WORD right = 0x7fff;
-   bc_set_margins() { code = SCODE::SET_MARGINS; }
-};
-
 struct bc_text : public base_code {
    std::string text;
    std::vector<objVectorText *> vector_text;
@@ -835,7 +829,7 @@ struct ui_link {
 
 using CODEMAP = std::unordered_map<ULONG, std::variant<bc_text, bc_advance, bc_table, bc_table_end, bc_row, bc_row_end, bc_paragraph,
       bc_paragraph_end, bc_cell, bc_link, bc_link_end, bc_list, bc_list_end, bc_index, bc_index_end,
-      bc_font, bc_font_end, bc_set_margins, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>>;
+      bc_font, bc_font_end, bc_xml, bc_image, bc_use, bc_button, bc_checkbox, bc_combobox, bc_input>>;
 
 class RSTREAM {
 public:
@@ -870,7 +864,7 @@ public:
    template <class T = base_code> T & emplace(stream_char &);
 
    inline INDEX find_cell(LONG);
-   inline INDEX find_editable_cell(const std::string &);
+   inline INDEX find_editable_cell(std::string_view);
 };
 
 //********************************************************************************************************************
@@ -904,7 +898,7 @@ class extDocument : public objDocument {
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
-   std::unordered_map<std::string, doc_edit> EditDefs;
+   std::unordered_map<std::string_view, doc_edit> EditDefs;
    std::array<std::vector<FUNCTION>, size_t(DRT::MAX)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
