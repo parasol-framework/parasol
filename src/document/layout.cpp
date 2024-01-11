@@ -69,7 +69,7 @@ private:
    LONG m_align_flags = 0;        // Current alignment settings according to the font style
    LONG m_align_width = 0;        // Horizontal alignment will be calculated relative to this value
    LONG m_kernchar    = 0;        // Previous character of the word being operated on
-   LONG m_left_margin = 0, m_right_margin = 0; // Margins control whitespace for paragraphs and table cells
+   LONG m_left_margin = 0;
    LONG m_paragraph_bottom = 0;   // Bottom Y coordinate of the current paragraph; defined on paragraph end.
    LONG m_paragraph_y  = 0;       // The vertical position of the current paragraph
    SEGINDEX m_line_seg_start = 0; // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
@@ -391,12 +391,12 @@ void layout::size_widget(widget_mgr &Widget)
    // Calculate the final width and height.
 
    if (Widget.width_pct) {
-      Widget.final_width = Widget.width * (m_page_width - m_left_margin - m_right_margin);
+      Widget.final_width = Widget.width * (m_page_width - m_left_margin - m_margins.Right);
    }
    else if (!Widget.width) {
       if (Widget.height) {
          if (Widget.height_pct) {
-            if (Widget.floating_x()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_right_margin);
+            if (Widget.floating_x()) Widget.final_width = Widget.height * (m_page_width - m_left_margin - m_margins.Right);
             else Widget.final_width = Widget.height * m_font->Ascent;
          }
          else Widget.final_width = Widget.height;
@@ -406,7 +406,7 @@ void layout::size_widget(widget_mgr &Widget)
    else Widget.final_width = Widget.width;
 
    if (Widget.height_pct) {
-      if (Widget.floating_x()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_right_margin);
+      if (Widget.floating_x()) Widget.final_height = Widget.height * (m_page_width - m_left_margin - m_margins.Right);
       else Widget.final_height = Widget.height * m_font->Ascent;
    }
    else if (!Widget.height) {
@@ -933,7 +933,7 @@ TE layout::lay_table_end(bc_table &Table, DOUBLE TopMargin, DOUBLE BottomMargin,
 
    // Restart if the width of the table will force an extension of the page.
 
-   DOUBLE right_side = Table.x + Table.width + m_right_margin;
+   DOUBLE right_side = Table.x + Table.width + m_margins.Right;
    if ((right_side > Width) and (Width < WIDTH_LIMIT)) {
       DLAYOUT("Table width (%g+%g) increases page width to %g, layout restart forced.",
          Table.x, Table.width, right_side);
@@ -1356,8 +1356,7 @@ extend_page:
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
-   m_left_margin  = m_margins.Left;
-   m_right_margin = m_margins.Right;   // Retain the right margin in an adjustable variable, in case we adjust the margin
+   m_left_margin  = m_margins.Left;  // Retain the margin in an adjustable variable, in case we adjust the margin
    m_align_width  = wrap_edge();
    m_cursor_x     = m_margins.Left;
    m_cursor_y     = m_margins.Top;
@@ -1609,7 +1608,7 @@ wrap_table_start:
             {
                DOUBLE width;
                if (table->width_pct) {
-                  width = ((Width - m_cursor_x - m_right_margin) * table->min_width) * 0.01;
+                  width = ((Width - m_cursor_x - m_margins.Right) * table->min_width) * 0.01;
                }
                else width = table->min_width;
 
@@ -1621,9 +1620,9 @@ wrap_table_start:
                   if (width < min) width = min;
                }
 
-               if (width > WIDTH_LIMIT - m_cursor_x - m_right_margin) {
+               if (width > WIDTH_LIMIT - m_cursor_x - m_margins.Right) {
                   log.traceWarning("Table width in excess of allowable limits.");
-                  width = WIDTH_LIMIT - m_cursor_x - m_right_margin;
+                  width = WIDTH_LIMIT - m_cursor_x - m_margins.Right;
                   if (m_break_loop > 4) m_break_loop = 4;
                }
 
@@ -1882,7 +1881,7 @@ WRAP layout::check_wordwrap(DOUBLE &PageWidth, stream_char Cursor,
       if ((Floating) or (X IS m_left_margin) or (m_no_wrap)) {
          // Force an extension of the page width and recalculate from scratch.
          // NB: Floating vectors are permitted to wrap when colliding with other clip regions.  In all other cases a width increase is required.
-         auto min_width = X + Width + m_right_margin;
+         auto min_width = X + Width + m_margins.Right;
          if (min_width > PageWidth) {
             PageWidth = min_width;
             DWRAP("Forcing an extension of the page width to %d", min_width);
