@@ -58,4 +58,11 @@
   <row><cell><p align="center">3</p></cell><cell><p align="center">c</p></cell></row>
   <row><cell><p align="center">4</p></cell><cell><p align="center">d</p></cell></row>
   </table></p>
+
+<p>Donec ut lectus nisl <table fill="rgb(255,255,255)" stroke="rgb(200,200,200)" width="300" align="center">
+  <row><cell fill="rgb(255,200,200)">Cell 1</cell><cell>Cell 2</cell></row>
+  <row><cell>Cell 3</cell><cell>Cell 4</cell></row>
+  <row><cell>Cell 5</cell><cell>Cell 6</cell></row>
+</table>Donec ut lectus nisl. Pellentesque sed augue vestibulum turpis volutpat pretium. Vestibulum quis tempor ligula. Praesent varius facilisis tortor in volutpat. Duis non purus velit.</p>
+
 </page>

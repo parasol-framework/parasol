@@ -100,7 +100,7 @@ enum class SCODE : char {
    CHECKBOX,
    COMBOBOX,
    INPUT,
-   // End of list - NB: PLEASE UPDATE byte_code() IF YOU ADD NEW CODES
+   // End of list - NB: PLEASE UPDATE BC_NAME() IF YOU ADD NEW CODES
    END
 };
 

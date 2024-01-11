@@ -131,19 +131,6 @@ std::vector<sorted_segment> & extDocument::get_sorted_segments()
 }
 
 //********************************************************************************************************************
-
-static const std::string_view & byte_code(SCODE Code) {
-   static const std::string_view strCodes[] = {
-      "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE",
-      "P", "EndLink", "Advance", "List", "ListEnd", "Table", "TableEnd", "Row", "Cell",
-      "RowEnd", "Index", "IndexEnd", "XML", "Image", "Use", "Button", "Checkbox", "Combobox", "Input"
-   };
-
-   if (LONG(Code) < ARRAYSIZE(strCodes)) return strCodes[LONG(Code)];
-   return strCodes[0];
-}
-
-//********************************************************************************************************************
 // Function prototypes.
 
 #include "module_def.c"
@@ -291,8 +278,17 @@ objFont * bc_font::get_font()
 
 template <class T> inline void remove_cursor(T a) { draw_cursor(a, false); }
 
+//********************************************************************************************************************
+
+static const std::array<std::string_view, LONG(SCODE::END)> strCodes = {
+   "?", "Text", "Font", "FontEnd", "Link", "TabDef", "PE", "P", "EndLink", "Advance", "List", "ListEnd",
+   "Table", "TableEnd", "Row", "Cell", "RowEnd", "Index", "IndexEnd", "XML", "Image", "Use", "Button", "Checkbox",
+   "Combobox", "Input"
+};
+
 template <class T> inline const std::string_view & BC_NAME(RSTREAM &Stream, T Index) {
-   return byte_code(Stream[Index].code);
+   if (LONG(Stream[Index].code) < strCodes.size()) return strCodes[LONG(Stream[Index].code)];
+   return strCodes[0];
 }
 
 //********************************************************************************************************************

@@ -439,14 +439,13 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Fill(NULL), fl::Stroke(NULL));
 
                if ((cell.width >= 1) and (cell.height >= 1)) {
-                  cell.viewport->setFields(fl::X(cell.x - table->x), 
-                     fl::Y(cell.y - table->y),
+                  cell.viewport->setFields(fl::X(cell.x), fl::Y(cell.y),
                      fl::Width(cell.width), fl::Height(cell.height));
 
                   if ((cell.border != CB::NIL) and (cell.stroke.empty())) {
                      // When a cell defines a border value, it piggy-backs the table's stroke definition
                      if (cell.border IS CB::ALL) {
-                        table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
+                        table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y });
                         table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
                         table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
                         table->seq.push_back({ .Type = PE::HLineRel, .X = -cell.width });
@@ -454,25 +453,25 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      }
                      else {
                         if ((cell.border & CB::LEFT) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y });
                            table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
                            table->seq.push_back({ .Type = PE::ClosePath });
                         }
 
                         if ((cell.border & CB::TOP) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y });
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y });
                            table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
                            table->seq.push_back({ .Type = PE::ClosePath });
                         }
 
                         if ((cell.border & CB::RIGHT) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x + cell.width, .Y = cell.y - table->y });
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x + cell.width, .Y = cell.y });
                            table->seq.push_back({ .Type = PE::VLineRel, .Y = cell.height });
                            table->seq.push_back({ .Type = PE::ClosePath });
                         }
 
                         if ((cell.border & CB::BOTTOM) != CB::NIL) {
-                           table->seq.push_back({ .Type = PE::Move, .X = cell.x - table->x, .Y = cell.y - table->y + cell.height });
+                           table->seq.push_back({ .Type = PE::Move, .X = cell.x, .Y = cell.y + cell.height });
                            table->seq.push_back({ .Type = PE::HLineRel, .X = cell.width });
                            table->seq.push_back({ .Type = PE::ClosePath });
                         }

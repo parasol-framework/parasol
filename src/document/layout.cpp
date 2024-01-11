@@ -71,7 +71,6 @@ private:
    LONG m_kernchar    = 0;        // Previous character of the word being operated on
    LONG m_left_margin = 0;
    LONG m_paragraph_bottom = 0;   // Bottom Y coordinate of the current paragraph; defined on paragraph end.
-   LONG m_paragraph_y  = 0;       // The vertical position of the current paragraph
    SEGINDEX m_line_seg_start = 0; // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
    LONG m_word_width   = 0;       // Pixel width of the current word
    LONG m_line_count   = 0;       // Increments at every line-end or word-wrap
@@ -114,7 +113,6 @@ private:
       stack_font = {};
 
       m_align_flags      = 0;
-      m_paragraph_y      = 0;
       m_paragraph_bottom = 0;
       m_word_width       = 0;
       m_kernchar         = 0;
@@ -189,7 +187,6 @@ private:
    void size_widget(widget_mgr &);
    WRAP place_widget(widget_mgr &);
    CELL lay_cell(bc_table *);
-   void lay_cell_end();
    void lay_font();
    void lay_font_end();
    void lay_index();
@@ -253,8 +250,8 @@ CELL layout::lay_cell(bc_table *Table)
 
    // Set the absolute coordinates of the cell within the viewport.
 
-   cell.x = m_cursor_x;
-   cell.y = m_cursor_y;
+   cell.x = m_cursor_x - Table->x;
+   cell.y = m_cursor_y - Table->y;
 
    if (Table->collapsed) {
       //if (cell.column IS 0);
@@ -1786,8 +1783,8 @@ void layout::end_line(NL NewLine, stream_char Next)
    m_line.apply_word_height();
 
 #ifdef DBG_LAYOUT
-   log.branch("CursorX/Y: %g/%g, ParaY: %d, ParaEnd: %d, Line Height: %g, Span: %d:%d - %d:%d",
-      m_cursor_x, m_cursor_y, m_paragraph_y, m_paragraph_bottom, m_line.height,
+   log.branch("CursorX/Y: %g/%g, ParaEnd: %d, Line Height: %g, Span: %d:%d - %d:%d",
+      m_cursor_x, m_cursor_y, m_paragraph_bottom, m_line.height,
       m_line.index.index, LONG(m_line.index.offset), Next.index, LONG(Next.offset));
 #endif
 
@@ -1811,7 +1808,6 @@ void layout::end_line(NL NewLine, stream_char Next)
       auto bottom_line = m_cursor_y + m_line.height;
       if (m_paragraph_bottom > bottom_line) bottom_line = m_paragraph_bottom;
 
-      m_paragraph_y = bottom_line;
       if (!m_line.height) {
          // The line is devoid of content, e.g. in the case of "<p>...<p>...</p></p>" the "</p></p>" is empty.
          // The m_cursor_y position will not be advanced in this case.
