@@ -34,6 +34,7 @@ struct parser {
    bool  m_default_pattern   = false;
    bool  m_button_patterns   = false;
    bool  m_checkbox_patterns = false;
+   bool  m_combobox_patterns = false;
    stream_char  m_index;
    bc_font m_style;
    std::stack<bc_list *> m_list_stack;
@@ -70,6 +71,7 @@ struct parser {
    inline void tag_call(XMLTag &);
    inline void tag_cell(XMLTag &);
    inline void tag_checkbox(XMLTag &);
+   inline void tag_combobox(XMLTag &);
    inline void tag_debug(XMLTag &);
    inline void tag_div(XMLTag &);
    inline void tag_editdef(XMLTag &);
@@ -978,6 +980,8 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
 
       case HASH_checkbox: tag_checkbox(Tag); break;
 
+      case HASH_combobox: tag_combobox(Tag); break;
+
       case HASH_input: tag_input(Tag); break;
 
       case HASH_image: tag_image(Tag); break;
@@ -1766,6 +1770,82 @@ void parser::tag_button(XMLTag &Tag)
    m_stream.emplace(m_index, widget);
 }
 
+//********************************************************************************************************************
+
+void parser::tag_combobox(XMLTag &Tag)
+{
+   pf::Log log(__FUNCTION__);
+
+   bc_combobox widget;
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto &value = Tag.Attribs[i].Value;
+      if (hash IS HASH_label) {
+         widget.label = value;
+      }
+      else if (hash IS HASH_value) {
+         widget.value = value;
+      }
+      else if (hash IS HASH_fill) {
+         widget.fill = value;
+      }
+      else if (hash IS HASH_label_pos) {
+         if (!StrMatch("left", value)) widget.label_pos = 0;
+         else if (!StrMatch("right", value)) widget.label_pos = 1;
+      }
+      else if (hash IS HASH_width) {
+         read_unit(value.c_str(), widget.width, widget.width_pct);
+      }
+      else if (hash IS HASH_font_fill) {
+         widget.font_fill = value;
+      }
+      else if (hash IS HASH_name) {
+         widget.name = value;
+      }
+      else log.warning("<combobox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
+   }
+   
+   if (!m_combobox_patterns) {
+      m_combobox_patterns = true;
+
+      if (auto pattern_on = objVectorPattern::create::global({
+            fl::Name("combobox"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+
+         auto vp = pattern_on->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
+            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
+            fl::RoundX(SCALE(0.1)),
+            fl::Fill("rgb(0,0,0,32)")
+         });
+
+         scAddDef(Self->Viewport->Scene, "/widget/combobox", pattern_on);
+      }
+   }
+
+   if (widget.fill.empty()) {
+      config_default_pattern();
+      widget.fill="url(#/widget/combobox)";
+   }
+
+   if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
+
+   if (widget.height < m_style.point * 2.2) {
+      widget.height = m_style.point * 2.2;
+   }
+
+   widget.label_pad = m_style.get_font()->Ascent * 0.5;
+
+   Self->NoWhitespace = false; // Widgets are treated as inline characters
+   m_stream.emplace(m_index, widget);
+}
+
+//********************************************************************************************************************
+
 void parser::tag_input(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
@@ -1802,7 +1882,7 @@ void parser::tag_input(XMLTag &Tag)
 
    if (widget.fill.empty()) {
       config_default_pattern();
-      widget.fill="url(#/widget/default)";
+      widget.fill = "url(#/widget/default)";
    }
 
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";

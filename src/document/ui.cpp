@@ -213,7 +213,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
       case KEY::ENTER: {
          auto tab = Self->FocusIndex;
-         if ((tab >= 0) and (unsigned(tab) < Self->Tabs.size())) {
+         if ((tab >= 0) and (tab < signed(Self->Tabs.size()))) {
             log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, LONG(Self->Tabs.size()), LONG(Self->Tabs[tab].type));
 
             if ((Self->Tabs[tab].type IS TT::LINK) and (Self->Tabs[tab].active)) {
@@ -229,44 +229,32 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
       }
 
       case KEY::PAGE_DOWN:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = Self->VPHeight;
-         scroll.DeltaZ = 0;
+         scroll = { 0, Self->VPHeight, 0 };
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::PAGE_UP:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = -Self->VPHeight;
-         scroll.DeltaZ = 0;
+         scroll = { 0, -Self->VPHeight, 0 };
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::LEFT:
-         scroll.DeltaX = -10;
-         scroll.DeltaY = 0;
-         scroll.DeltaZ = 0;
+         scroll = { -10, 0, 0 };
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::RIGHT:
-         scroll.DeltaX = 10;
-         scroll.DeltaY = 0;
-         scroll.DeltaZ = 0;
+         scroll = { 10, 0, 0 };
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::DOWN:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = 10;
-         scroll.DeltaZ = 0;
+         scroll = { 0, 10, 0 };
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 
       case KEY::UP:
-         scroll.DeltaX = 0;
-         scroll.DeltaY = -10;
-         scroll.DeltaZ = 0;
+         scroll = { 0, -10, 0 };
          QueueAction(AC_Scroll, Self->Viewport->UID, &scroll);
          break;
 

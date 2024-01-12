@@ -783,6 +783,8 @@ struct bc_checkbox : public base_code, widget_mgr {
 
 struct bc_combobox : public base_code, widget_mgr {
    std::string value;
+   GuardedObject<objVectorText> label_text;
+   GuardedObject<objVectorViewport> clip_vp;
 
    bc_combobox() { code = SCODE::COMBOBOX; }
 };

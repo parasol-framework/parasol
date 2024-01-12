@@ -10,7 +10,7 @@ void sndFrequency(struct PlatformData *, int);
 void sndSetPosition(struct PlatformData *, int);
 const char * sndInitialiseAudio(void);
 void sndPan(struct PlatformData *, float);
-int sndPlay(struct PlatformData *, bool, int);
+__declspec(no_sanitize_address) int sndPlay(struct PlatformData *, bool, int);
 void sndReleaseAudio(void);
 void sndStop(struct PlatformData *);
 extern "C" int sndStreamAudio(struct PlatformData *);

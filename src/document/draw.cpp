@@ -631,17 +631,88 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                break;
             }
 
+            case SCODE::COMBOBOX: {
+               auto &combo = segment.stream->lookup<bc_combobox>(cursor);
+               auto font = stack_style.top()->get_font();
+
+               DOUBLE wx, wy;
+               const DOUBLE avail_space = combo.final_height - font->Gutter;
+
+               if (!combo.label.empty()) {
+                  if (combo.label_pos) {
+                     build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+
+                     DOUBLE y = wy + avail_space - ((avail_space - font->Ascent) * 0.5);
+
+                     if (combo.label_text.empty()) {
+                        combo.label_text = objVectorText::create::global({
+                           fl::Owner(Viewport->UID),
+                           fl::String(combo.label),
+                           fl::Font(font),
+                           fl::Fill(stack_style.top()->fill)
+                        });
+                     }
+                     
+                     combo.label_text->setFields(fl::X(F2T(x_advance + combo.label_pad)), fl::Y(F2T(y)));
+
+                     x_advance += combo.label_width + combo.label_pad;
+                  }
+                  else {
+                     auto x_label = x_advance;
+                     x_advance += combo.label_pad + combo.label_width;
+
+                     build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+
+                     DOUBLE y = wy + avail_space - ((avail_space - font->Ascent) * 0.5);
+
+                     if (combo.label_text.empty()) {
+                        combo.label_text = objVectorText::create::global({
+                           fl::Owner(Viewport->UID),
+                           fl::String(combo.label),
+                           fl::Font(font),
+                           fl::Fill(stack_style.top()->fill)
+                        });
+                     }
+
+                     combo.label_text->setFields(fl::X(F2T(x_label)), fl::Y(F2T(y)));
+                  }
+               }
+               else build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
+
+               if (combo.clip_vp.empty()) {
+                  combo.clip_vp = objVectorViewport::create::global({
+                     fl::Name("vp_clip_combo"),
+                     fl::Owner(combo.viewport->UID),
+                     fl::Overflow(VOF::HIDDEN)
+                  });
+                  
+                  auto flags = VTXF::EDITABLE;
+
+                  DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
+
+                  objVectorText::create::global({
+                     fl::Owner(combo.clip_vp->UID),
+                     fl::X(0), fl::Y(F2T(y)),
+                     fl::String(combo.value),
+                     fl::Cursor(PTC::TEXT),
+                     fl::Font(font),
+                     fl::Fill(combo.font_fill),
+                     fl::LineLimit(1),
+                     fl::TextFlags(flags)
+                  });
+               }
+
+               if (!combo.clip_vp.empty()) {
+                  combo.clip_vp->setFields(fl::X(combo.label_pad), fl::Y(0), fl::XOffset(combo.label_pad), fl::YOffset(0));
+               }
+
+               break;
+            }
+
             case SCODE::IMAGE: {
                auto &img = segment.stream->lookup<bc_image>(cursor);
                DOUBLE wx, wy;
                build_widget(img, segment, Viewport, stack_style.top(), x_advance, 0, false, wx, wy);
-               break;
-            }
-
-            case SCODE::COMBOBOX: {
-               auto &combo = segment.stream->lookup<bc_combobox>(cursor);
-               DOUBLE wx, wy;
-               build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
                break;
             }
 
