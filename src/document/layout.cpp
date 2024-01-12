@@ -66,8 +66,7 @@ private:
    DOUBLE m_page_width = 0;
    INDEX idx = 0;                 // Current seek position for processing of the stream
    stream_char m_word_index;      // Position of the word currently being operated on
-   LONG m_align_flags = 0;        // Current alignment settings according to the font style
-   LONG m_align_width = 0;        // Horizontal alignment will be calculated relative to this value
+   LONG m_align_width = 0;        // Available space for horizontal alignment.  Typically equivalent to wrap_edge(), but can be smaller if a clip region exists on the line.
    LONG m_kernchar    = 0;        // Previous character of the word being operated on
    LONG m_left_margin = 0;
    LONG m_paragraph_bottom = 0;   // Bottom Y coordinate of the current paragraph; defined on paragraph end.
@@ -112,7 +111,6 @@ private:
       stack_para = {};
       stack_font = {};
 
-      m_align_flags      = 0;
       m_paragraph_bottom = 0;
       m_word_width       = 0;
       m_kernchar         = 0;
@@ -1085,15 +1083,10 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
       }
    }
 
-   doc_segment segment;
-
-   // Is the new segment a continuation of the previous one, and does the previous segment contain content?
+   // The new segment can be a continuation of the previous if both are content-free.
 
    if ((allow_merge) and (!m_segments.empty()) and (m_segments.back().stop IS Start) and
        (m_segments.back().allow_merge)) {
-      // We are going to extend the previous segment rather than add a new one, as the two
-      // segments only contain control codes.
-
       auto &segment = m_segments.back();
 
       if (line_height > segment.area.Height) {
@@ -1353,14 +1346,14 @@ extend_page:
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
-   m_left_margin  = m_margins.Left;  // Retain the margin in an adjustable variable, in case we adjust the margin
-   m_align_width  = wrap_edge();
-   m_cursor_x     = m_margins.Left;
-   m_cursor_y     = m_margins.Top;
+   m_left_margin    = m_margins.Left;  // Retain the margin in an adjustable variable, in case we adjust the margin
+   m_align_width    = wrap_edge();
+   m_cursor_x       = m_margins.Left;
+   m_cursor_y       = m_margins.Top;
    m_line_seg_start = m_segments.size();
-   m_font         = *Font;
-   m_space_width  = fntCharWidth(m_font, ' ', 0, NULL);
-   m_line_count   = 0;
+   m_font           = *Font;
+   m_space_width    = fntCharWidth(m_font, ' ', 0, NULL);
+   m_line_count     = 0;
 
    m_word_index.reset();
    m_line.index.set(0);
@@ -1868,7 +1861,8 @@ WRAP layout::check_wordwrap(DOUBLE &PageWidth, stream_char Cursor,
    for (breakloop = MAXLOOP; breakloop > 0; breakloop--) {
       m_align_width = wrap_edge();
 
-      if (!m_clips.empty()) { // If clips are registered then we need to check them for collisions.
+      if (!m_clips.empty()) { 
+         // If clips are registered then we need to check them for collisions.  Updates m_align_width if necessary
          wrap_through_clips(Cursor, X, Y, Width, Height);
       }
 
