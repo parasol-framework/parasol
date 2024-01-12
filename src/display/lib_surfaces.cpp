@@ -53,7 +53,6 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   size_t i;
    for (auto &record : glSurfaces) {
       if (record.SurfaceID IS SurfaceID) {
          if (AbsX)   *AbsX = record.Left;

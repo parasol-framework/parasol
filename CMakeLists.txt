@@ -407,6 +407,12 @@ if (MSVC)
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
    add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
    # add_link_options ("/VERBOSE:LIB")
+   if (ENABLE_ANALYSIS)
+      # Note that this option is not compatible with /ZI (edit-and-continue).  To rectify complaints about the asan DLL, you may also need a line like this one added to each entry in launch.vs.json:
+      # "env": { "Path": "${env:Path};C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\Hostx64\\x64" }
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /fsanitize=address")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
+   endif ()
 else ()
    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       add_compile_definitions ("_DARWIN_C_SOURCE")

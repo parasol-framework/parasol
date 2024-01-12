@@ -235,7 +235,7 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 //********************************************************************************************************************
 // Alpha blending data.
 
-INLINE UBYTE clipByte(LONG value)
+inline UBYTE clipByte(LONG value)
 {
    value = (0 & (-(WORD)(value < 0))) | (value & (-(WORD)!(value < 0)));
    value = (255 & (-(WORD)(value > 255))) | (value & (-(WORD)!(value > 255)));

@@ -1094,12 +1094,14 @@ static bool get_over_object(extPointer *Self)
 
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG index;
+   if (glSurfaces.empty()) return false;
+
+   size_t index;
    if (!Self->SurfaceID) {
       Self->SurfaceID = glSurfaces[0].SurfaceID;
       index = 0;
    }
-   else for (index=0; (index < LONG(glSurfaces.size())) and (glSurfaces[index].SurfaceID != Self->SurfaceID); index++);
+   else for (index=0; (index < glSurfaces.size()) and (glSurfaces[index].SurfaceID != Self->SurfaceID); index++);
 
    auto i = examine_chain(Self, index, glSurfaces, glSurfaces.size());
 
