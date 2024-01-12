@@ -53,16 +53,18 @@ ERROR get_surface_abs(OBJECTID SurfaceID, LONG *AbsX, LONG *AbsY, LONG *Width, L
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-   LONG i;
-   for (i=0; (glSurfaces[i].SurfaceID) and (glSurfaces[i].SurfaceID != SurfaceID); i++);
+   size_t i;
+   for (auto &record : glSurfaces) {
+      if (record.SurfaceID IS SurfaceID) {
+         if (AbsX)   *AbsX = record.Left;
+         if (AbsY)   *AbsY = record.Top;
+         if (Width)  *Width  = record.Width;
+         if (Height) *Height = record.Height;
+         return ERR_Okay;
+      }
+   }
 
-   if (!glSurfaces[i].SurfaceID) return ERR_Search;
-
-   if (AbsX)   *AbsX = glSurfaces[i].Left;
-   if (AbsY)   *AbsY = glSurfaces[i].Top;
-   if (Width)  *Width  = glSurfaces[i].Width;
-   if (Height) *Height = glSurfaces[i].Height;
-   return ERR_Okay;
+   return ERR_Search;
 }
 
 //********************************************************************************************************************
@@ -213,12 +215,12 @@ void untrack_layer(OBJECTID ObjectID)
 
       // Mark all subsequent child layers as invisible
 
-      LONG end;
-      for (end=i+1; (end < LONG(glSurfaces.size())) and (glSurfaces[end].Level > glSurfaces[i].Level); end++) {
+      size_t end;
+      for (end=i+1; (end < glSurfaces.size()) and (glSurfaces[end].Level > glSurfaces[i].Level); end++) {
          glSurfaces[end].Flags &= ~RNF::VISIBLE;
       }
 
-      if (end >= LONG(glSurfaces.size())) glSurfaces.resize(i);
+      if (end >= glSurfaces.size()) glSurfaces.resize(i);
       else glSurfaces.erase(glSurfaces.begin() + i, glSurfaces.begin() + end);
 
       #ifdef DBG_LAYERS
@@ -231,8 +233,6 @@ void untrack_layer(OBJECTID ObjectID)
 
 ERROR update_surface_copy(extSurface *Self)
 {
-   LONG i;
-
    if (!Self) return ERR_NullArgs;
    if (!Self->initialised()) return ERR_Okay;
 
@@ -242,6 +242,7 @@ ERROR update_surface_copy(extSurface *Self)
    // Calculate absolute coordinates by looking for the parent of this object.  Then simply add the parent's
    // absolute X,Y coordinates to our X and Y fields.
 
+   LONG i;
    LONG absx, absy;
    if (Self->ParentID) {
       if ((i = find_parent_list(list, Self)) != -1) {

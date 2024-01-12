@@ -483,7 +483,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> marker. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
+<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as a relative value if you set the <code>FD_SCALE</code> marker. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
 <p>Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change. Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for pairing the Y and YOffset fields together for dynamic height adjustment.</p>
       </description>
@@ -766,7 +766,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a relative value if you set the <code>FD_PERCENT</code> field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
+<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a relative value if you set the <code>FD_SCALE</code> field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
 <p>Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>Width values of 0 or less are illegal, and will result in an <code>ERR_OutOfRange</code> error-code.</p>
       </description>
@@ -801,7 +801,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the <code>FD_PERCENT</code> flag.</p>
+<p>The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the <code>FD_SCALE</code> flag.</p>
 <p>If you set the X while the surface object is on display, the position of the surface area will be updated immediately.</p>
       </description>
     </field>
@@ -824,7 +824,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the FD_PERCENT flag.</p>
+<p>The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the <code>FD_SCALE</code> flag.</p>
 <p>If the value is changed while the surface is on display, its position will be updated immediately.</p>
       </description>
     </field>
