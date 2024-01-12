@@ -332,7 +332,7 @@ void gen_vector_path(extVector *Vector)
 
       //Vector->BasePath.cusp_limit(x); // Set in radians.  If more than 0, it restricts sharpness at the cusp (presumably for awkward angles).  Do not exceed 10-15 degrees
 
-      if ((Vector->FillColour.Alpha > 0) or (Vector->FillGradient) or (Vector->FillImage) or (Vector->FillPattern)) {
+      if ((Vector->Fill.Colour.Alpha > 0) or (Vector->Fill.Gradient) or (Vector->Fill.Image) or (Vector->Fill.Pattern)) {
          if (!Vector->FillRaster) {
             Vector->FillRaster = new (std::nothrow) agg::rasterizer_scanline_aa<>;
             if (!Vector->FillRaster) return;
@@ -348,8 +348,8 @@ void gen_vector_path(extVector *Vector)
       }
 
       if ((Vector->StrokeWidth > 0) and
-          ((Vector->StrokePattern) or (Vector->StrokeGradient) or (Vector->StrokeImage) or
-           (Vector->StrokeColour.Alpha * Vector->StrokeOpacity * Vector->Opacity > 0.001))) {
+          ((Vector->Stroke.Pattern) or (Vector->Stroke.Gradient) or (Vector->Stroke.Image) or
+           (Vector->Stroke.Colour.Alpha * Vector->StrokeOpacity * Vector->Opacity > 0.001))) {
 
          // Configure the curve algorithm so that it generates nicer looking curves when the vector is scaled up.  This
          // is not required if the vector scale is <= 1.0 (the angle_tolerance controls this).

@@ -271,17 +271,27 @@ class extFilterEffect : public objFilterEffect {
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
+class painter {
+public:
+   extVectorPattern  *Pattern;
+   objVectorImage    *Image;
+   extVectorGradient *Gradient;
+   GRADIENT_TABLE    *GradientTable;
+   DOUBLE GradientAlpha;
+   FRGB   Colour;
+   RGB8   RGB;
+};
+
 class extVector : public objVector {
    public:
    using create = pf::Create<extVector>;
 
+   painter Fill, Stroke;
    DOUBLE FinalX, FinalY;
    DOUBLE BX1, BY1, BX2, BY2; // Must be calculated by GeneratePath() and called from calc_full_boundary()
-   DOUBLE FillGradientAlpha, StrokeGradientAlpha;
    DOUBLE StrokeWidth;
    agg::path_storage BasePath;
    agg::trans_affine Transform;
-   RGB8 rgbStroke, rgbFill;
    CSTRING FilterString, StrokeString, FillString;
    STRING ID;
    void   (*GeneratePath)(extVector *);
@@ -293,14 +303,9 @@ class extVector : public objVector {
    extVectorFilter     *Filter;
    extVectorViewport   *ParentView;
    extVectorClip       *ClipMask;
-   extVectorGradient   *StrokeGradient, *FillGradient;
-   objVectorImage      *FillImage, *StrokeImage;
-   extVectorPattern    *FillPattern, *StrokePattern;
    objVectorTransition *Transition;
    extVector           *Morph;
    DashedStroke        *DashArray;
-   GRADIENT_TABLE *FillGradientTable, *StrokeGradientTable;
-   FRGB StrokeColour, FillColour;
    JTYPE  InputMask;
    LONG   NumericID;
    LONG   PathLength;

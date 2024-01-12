@@ -286,9 +286,9 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
 
-   if (Self->FillGradientTable)   { delete Self->FillGradientTable; Self->FillGradientTable = NULL; }
-   if (Self->StrokeGradientTable) { delete Self->StrokeGradientTable; Self->StrokeGradientTable = NULL; }
-   if (Self->DashArray)           { delete Self->DashArray; Self->DashArray = NULL; }
+   if (Self->Fill.GradientTable)   { delete Self->Fill.GradientTable; Self->Fill.GradientTable = NULL; }
+   if (Self->Stroke.GradientTable) { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = NULL; }
+   if (Self->DashArray)            { delete Self->DashArray; Self->DashArray = NULL; }
 
    // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -1279,7 +1279,7 @@ static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
-   vecReadPainter(Self->Scene, Value, &Self->FillColour, (objVectorGradient **)&Self->FillGradient, &Self->FillImage, (objVectorPattern **)&Self->FillPattern);
+   vecReadPainter(Self->Scene, Value, &Self->Fill.Colour, (objVectorGradient **)&Self->Fill.Gradient, &Self->Fill.Image, (objVectorPattern **)&Self->Fill.Pattern);
    return ERR_Okay;
 }
 
@@ -1298,7 +1298,7 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 static ERROR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->FillColour;
+   *Value = (FLOAT *)&Self->Fill.Colour;
    *Elements = 4;
    return ERR_Okay;
 }
@@ -1306,13 +1306,13 @@ static ERROR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Element
 static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
-      if (Elements >= 1) Self->FillColour.Red   = Value[0];
-      if (Elements >= 2) Self->FillColour.Green = Value[1];
-      if (Elements >= 3) Self->FillColour.Blue  = Value[2];
-      if (Elements >= 4) Self->FillColour.Alpha = Value[3];
-      else Self->FillColour.Alpha = 1;
+      if (Elements >= 1) Self->Fill.Colour.Red   = Value[0];
+      if (Elements >= 2) Self->Fill.Colour.Green = Value[1];
+      if (Elements >= 3) Self->Fill.Colour.Blue  = Value[2];
+      if (Elements >= 4) Self->Fill.Colour.Alpha = Value[3];
+      else Self->Fill.Colour.Alpha = 1;
    }
-   else Self->FillColour.Alpha = 0;
+   else Self->Fill.Colour.Alpha = 0;
 
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 
@@ -2052,7 +2052,7 @@ static ERROR VECTOR_SET_Stroke(extVector *Self, STRING Value)
 {
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    Self->StrokeString = StrClone(Value);
-   vecReadPainter(Self->Scene, Value, &Self->StrokeColour, (objVectorGradient **)&Self->StrokeGradient, &Self->StrokeImage, (objVectorPattern **)&Self->StrokePattern);
+   vecReadPainter(Self->Scene, Value, &Self->Stroke.Colour, (objVectorGradient **)&Self->Stroke.Gradient, &Self->Stroke.Image, (objVectorPattern **)&Self->Stroke.Pattern);
    return ERR_Okay;
 }
 
@@ -2070,7 +2070,7 @@ This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 static ERROR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->StrokeColour;
+   *Value = (FLOAT *)&Self->Stroke.Colour;
    *Elements = 4;
    return ERR_Okay;
 }
@@ -2078,13 +2078,13 @@ static ERROR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Eleme
 static ERROR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
-      if (Elements >= 1) Self->StrokeColour.Red   = Value[0];
-      if (Elements >= 2) Self->StrokeColour.Green = Value[1];
-      if (Elements >= 3) Self->StrokeColour.Blue  = Value[2];
-      if (Elements >= 4) Self->StrokeColour.Alpha = Value[3];
-      else Self->StrokeColour.Alpha = 1;
+      if (Elements >= 1) Self->Stroke.Colour.Red   = Value[0];
+      if (Elements >= 2) Self->Stroke.Colour.Green = Value[1];
+      if (Elements >= 3) Self->Stroke.Colour.Blue  = Value[2];
+      if (Elements >= 4) Self->Stroke.Colour.Alpha = Value[3];
+      else Self->Stroke.Colour.Alpha = 1;
    }
-   else Self->StrokeColour.Alpha = 0;
+   else Self->Stroke.Colour.Alpha = 0;
    return ERR_Okay;
 }
 

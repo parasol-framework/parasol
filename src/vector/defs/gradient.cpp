@@ -26,36 +26,36 @@ GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
 {
    pf::Log log(__FUNCTION__);
 
-   GradientColours *cols = ((extVectorGradient *)Vector.FillGradient)->Colours;
+   GradientColours *cols = ((extVectorGradient *)Vector.Fill.Gradient)->Colours;
    if (!cols) {
-      if (Vector.FillGradient->Inherit) cols = ((extVectorGradient *)Vector.FillGradient->Inherit)->Colours;
+      if (Vector.Fill.Gradient->Inherit) cols = ((extVectorGradient *)Vector.Fill.Gradient->Inherit)->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.FillGradient, Vector.UID);
+         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.Fill.Gradient, Vector.UID);
          return NULL;
       }
    }
 
    if (Opacity >= 1.0) { // Return the original gradient table if no translucency is applicable.
-      Vector.FillGradientAlpha = 1.0;
+      Vector.Fill.GradientAlpha = 1.0;
       return &cols->table;
    }
    else {
-      if ((Vector.FillGradientTable) and (Opacity IS Vector.FillGradientAlpha)) return Vector.FillGradientTable;
+      if ((Vector.Fill.GradientTable) and (Opacity IS Vector.Fill.GradientAlpha)) return Vector.Fill.GradientTable;
 
-      delete Vector.FillGradientTable;
-      Vector.FillGradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.FillGradientTable) {
+      delete Vector.Fill.GradientTable;
+      Vector.Fill.GradientTable = new (std::nothrow) GRADIENT_TABLE();
+      if (!Vector.Fill.GradientTable) {
          log.warning("Failed to allocate fill gradient table");
          return NULL;
       }
-      Vector.FillGradientAlpha = Opacity;
+      Vector.Fill.GradientAlpha = Opacity;
 
-      for (unsigned i=0; i < Vector.FillGradientTable->size(); i++) {
-         (*Vector.FillGradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b,
+      for (unsigned i=0; i < Vector.Fill.GradientTable->size(); i++) {
+         (*Vector.Fill.GradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b,
             cols->table[i].a * Opacity);
       }
 
-      return Vector.FillGradientTable;
+      return Vector.Fill.GradientTable;
    }
 }
 
@@ -65,36 +65,36 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 {
    pf::Log log(__FUNCTION__);
 
-   GradientColours *cols = ((extVectorGradient *)Vector.StrokeGradient)->Colours;
+   GradientColours *cols = ((extVectorGradient *)Vector.Stroke.Gradient)->Colours;
    if (!cols) {
-      if (Vector.StrokeGradient->Inherit) cols = ((extVectorGradient *)Vector.StrokeGradient->Inherit)->Colours;
+      if (Vector.Stroke.Gradient->Inherit) cols = ((extVectorGradient *)Vector.Stroke.Gradient->Inherit)->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.FillGradient, Vector.UID);
+         log.warning("No colour table referenced in stroke gradient %p for vector #%d.", Vector.Stroke.Gradient, Vector.UID);
          return NULL;
       }
    }
 
    if ((Vector.StrokeOpacity IS 1.0) and (Vector.Opacity IS 1.0)) {
-      Vector.StrokeGradientAlpha = 1.0;
+      Vector.Stroke.GradientAlpha = 1.0;
       return &cols->table;
    }
    else {
       DOUBLE opacity = Vector.StrokeOpacity * Vector.Opacity;
-      if ((Vector.StrokeGradientTable) and (opacity IS Vector.StrokeGradientAlpha)) return Vector.StrokeGradientTable;
+      if ((Vector.Stroke.GradientTable) and (opacity IS Vector.Stroke.GradientAlpha)) return Vector.Stroke.GradientTable;
 
-      delete Vector.StrokeGradientTable;
-      Vector.StrokeGradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.StrokeGradientTable) {
+      delete Vector.Stroke.GradientTable;
+      Vector.Stroke.GradientTable = new (std::nothrow) GRADIENT_TABLE();
+      if (!Vector.Stroke.GradientTable) {
          log.warning("Failed to allocate stroke gradient table");
          return NULL;
       }
-      Vector.StrokeGradientAlpha = opacity;
+      Vector.Stroke.GradientAlpha = opacity;
 
-      for (unsigned i=0; i < Vector.StrokeGradientTable->size(); i++) {
-         (*Vector.StrokeGradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b, cols->table[i].a * opacity);
+      for (unsigned i=0; i < Vector.Stroke.GradientTable->size(); i++) {
+         (*Vector.Stroke.GradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b, cols->table[i].a * opacity);
       }
 
-      return Vector.StrokeGradientTable;
+      return Vector.Stroke.GradientTable;
    }
 }
 

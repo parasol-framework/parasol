@@ -1002,10 +1002,10 @@ private:
       if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
       else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
       
-      // Solid colour.  Bitmap fonts will set DisableFillColour to ensure texture maps are used instead
+      // Solid colour.  Bitmap fonts will set DisableFill.Colour to ensure texture maps are used instead
 
-      if ((Vector.FillColour.Alpha > 0) and (!Vector.DisableFillColour)) {
-         auto colour = agg::rgba(Vector.FillColour, Vector.FillColour.Alpha * Vector.FillOpacity * State.mOpacity);
+      if ((Vector.Fill.Colour.Alpha > 0) and (!Vector.DisableFillColour)) {
+         auto colour = agg::rgba(Vector.Fill.Colour, Vector.Fill.Colour.Alpha * Vector.FillOpacity * State.mOpacity);
 
          if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
@@ -1031,21 +1031,21 @@ private:
          }
       }
 
-      if (Vector.FillImage) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillImage->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *Vector.FillImage, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
+      if (Vector.Fill.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
+         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Fill.Image->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *Vector.Fill.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
       }
 
-      if (Vector.FillGradient) {
+      if (Vector.Fill.Gradient) {
          if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.FillGradient->Units IS VUNIT::USERSPACE, State),
-               view_width(), view_height(), *((extVectorGradient *)Vector.FillGradient), table, mRenderBase, Raster, 0);
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.Fill.Gradient->Units IS VUNIT::USERSPACE, State),
+               view_width(), view_height(), *((extVectorGradient *)Vector.Fill.Gradient), table, mRenderBase, Raster, 0);
          }
       }
 
-      if (Vector.FillPattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.FillPattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *Vector.FillPattern, mRenderBase, Raster);
+      if (Vector.Fill.Pattern) {
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Fill.Pattern->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *Vector.Fill.Pattern, mRenderBase, Raster);
       }
    }
 
@@ -1055,29 +1055,29 @@ private:
       if (Vector.FillRule IS VFR::NON_ZERO) Raster.filling_rule(agg::fill_non_zero);
       else if (Vector.FillRule IS VFR::EVEN_ODD) Raster.filling_rule(agg::fill_even_odd);
 
-      if (Vector.StrokeGradient) {
+      if (Vector.Stroke.Gradient) {
          if (auto table = get_stroke_gradient_table(Vector)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.StrokeGradient)->Units IS VUNIT::USERSPACE, State),
-               view_width(), view_height(), *((extVectorGradient *)Vector.StrokeGradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, ((extVectorGradient *)Vector.Stroke.Gradient)->Units IS VUNIT::USERSPACE, State),
+               view_width(), view_height(), *((extVectorGradient *)Vector.Stroke.Gradient), table, mRenderBase, Raster, Vector.fixed_stroke_width());
          }
       }
-      else if (Vector.StrokePattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.StrokePattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *Vector.StrokePattern, mRenderBase, Raster);
+      else if (Vector.Stroke.Pattern) {
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *Vector.Stroke.Pattern, mRenderBase, Raster);
       }
-      else if (Vector.StrokeImage) {
+      else if (Vector.Stroke.Image) {
          DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
          if (stroke_width < 1) stroke_width = 1;
 
          auto transform = Vector.Transform * State.mTransform;
          agg::conv_transform<agg::path_storage, agg::trans_affine> stroke_path(Vector.BasePath, transform);
 
-         draw_brush(*Vector.StrokeImage, mRenderBase, stroke_path, stroke_width);
+         draw_brush(*Vector.Stroke.Image, mRenderBase, stroke_path, stroke_width);
       }
       else {
          if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
-            renderer.color(agg::rgba(Vector.StrokeColour, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+            renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
@@ -1088,7 +1088,7 @@ private:
          }
          else {
             agg::renderer_scanline_aa_solid renderer(mRenderBase);
-            renderer.color(agg::rgba(Vector.StrokeColour, Vector.StrokeColour.Alpha * Vector.StrokeOpacity * State.mOpacity));
+            renderer.color(agg::rgba(Vector.Stroke.Colour, Vector.Stroke.Colour.Alpha * Vector.StrokeOpacity * State.mOpacity));
 
             if (State.mClipMask) {
                agg::alpha_mask_gray8 alpha_mask(State.mClipMask->ClipRenderer);
@@ -1189,7 +1189,7 @@ private:
          }
 
          if (shape->Class->ClassID IS ID_VECTORVIEWPORT) {
-            if ((shape->Child) or (shape->InputSubscriptions) or (shape->FillPattern)) {
+            if ((shape->Child) or (shape->InputSubscriptions) or (shape->Fill.Pattern)) {
                auto view = (extVectorViewport *)shape;
 
                if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -1250,7 +1250,7 @@ private:
                      agg::render_scanlines(stroke_raster, mScanLine, renderer);
                   }
 
-                  if (view->FillPattern) {
+                  if (view->Fill.Pattern) {
                      // Viewports can use FillPattern objects to render a different scene graph internally.
                      // This is useful for creating common graphics that can be re-used multiple times without
                      // them being pre-rasterised as they normally would be for primitive vectors.
@@ -1264,12 +1264,12 @@ private:
                      state.mTransform      = view->Transform;
                      state.mApplyTransform = true;
 
-                     if (view->FillPattern->Units IS VUNIT::BOUNDING_BOX) {
-                        view->FillPattern->Scene->setPageWidth(view->vpFixedWidth);
-                        view->FillPattern->Scene->setPageHeight(view->vpFixedHeight);
+                     if (view->Fill.Pattern->Units IS VUNIT::BOUNDING_BOX) {
+                        view->Fill.Pattern->Scene->setPageWidth(view->vpFixedWidth);
+                        view->Fill.Pattern->Scene->setPageHeight(view->vpFixedHeight);
                      }
 
-                     draw_vectors(view->FillPattern->Viewport, state);
+                     draw_vectors(view->Fill.Pattern->Viewport, state);
 
                      state.mTransform      = s_transform;
                      state.mApplyTransform = s_apply;
