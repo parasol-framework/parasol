@@ -98,7 +98,7 @@ struct parser {
    inline void tag_template(XMLTag &);
    inline void tag_trigger(XMLTag &);
    inline void tag_use(XMLTag &);
-   inline void tag_vector(XMLTag &);
+   inline void tag_object(XMLTag &);
    inline bool check_para_attrib(const XMLAttrib &, bc_paragraph *, bc_font &);
    inline bool check_font_attrib(const XMLAttrib &, bc_font &);
 
@@ -1590,6 +1590,86 @@ void parser::tag_call(XMLTag &Tag)
 
 //********************************************************************************************************************
 
+void parser::tag_button(XMLTag &Tag)
+{
+   pf::Log log(__FUNCTION__);
+
+   bc_button widget;
+
+   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
+      auto hash = StrHash(Tag.Attribs[i].Name);
+      auto &value = Tag.Attribs[i].Value;
+      if (hash IS HASH_label) {
+         widget.label = value;
+      }
+      else if (hash IS HASH_fill) {
+         widget.fill = value;
+      }
+      else if (hash IS HASH_name) {
+         widget.name = value;
+      }
+      else if (hash IS HASH_width) {
+         read_unit(value.c_str(), widget.width, widget.width_pct);
+      }
+      else if (hash IS HASH_height) {
+         read_unit(value.c_str(), widget.height, widget.height_pct);
+      }
+      else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
+   }
+
+   widget.internal_label = true;
+
+   if (!m_button_patterns) {
+      m_button_patterns = true;
+
+      if (auto pattern_on = objVectorPattern::create::global({
+            fl::Name("button_on"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+
+         auto vp = pattern_on->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
+            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
+            fl::RoundX(SCALE(0.1)),
+            fl::Fill("rgb(0,0,0,32)")
+         });
+
+         scAddDef(Self->Viewport->Scene, "/widget/button/on", pattern_on);
+      }
+
+      if (auto pattern_off = objVectorPattern::create::global({
+            fl::Name("button_off"),
+            fl::SpreadMethod(VSPREAD::CLIP)
+         })) {
+
+         auto vp = pattern_off->Scene->Viewport;
+         objVectorRectangle::create::global({
+            fl::Owner(vp->UID),
+            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
+            fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
+            fl::RoundX(SCALE(0.1)),
+            fl::Fill("rgb(255,255,255,96)")
+         });
+
+         scAddDef(Self->Viewport->Scene, "/widget/button/off", pattern_off);
+      }
+   }
+
+   if (widget.fill.empty()) widget.fill = "url(#/widget/button/off)";
+   if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/button/on)";
+   if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
+   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
+
+   widget.label_pad = m_style.get_font()->Ascent;
+
+   Self->NoWhitespace = false; // Widgets are treated as inline characters
+   m_stream.emplace(m_index, widget);
+}
+
+//********************************************************************************************************************
+
 void parser::tag_checkbox(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
@@ -1692,86 +1772,6 @@ void parser::tag_checkbox(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_button(XMLTag &Tag)
-{
-   pf::Log log(__FUNCTION__);
-
-   bc_button widget;
-
-   for (unsigned i=1; i < Tag.Attribs.size(); i++) {
-      auto hash = StrHash(Tag.Attribs[i].Name);
-      auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label) {
-         widget.label = value;
-      }
-      else if (hash IS HASH_fill) {
-         widget.fill = value;
-      }
-      else if (hash IS HASH_name) {
-         widget.name = value;
-      }
-      else if (hash IS HASH_width) {
-         read_unit(value.c_str(), widget.width, widget.width_pct);
-      }
-      else if (hash IS HASH_height) {
-         read_unit(value.c_str(), widget.height, widget.height_pct);
-      }
-      else log.warning("<button> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
-   }
-
-   widget.internal_label = true;
-
-   if (!m_button_patterns) {
-      m_button_patterns = true;
-
-      if (auto pattern_on = objVectorPattern::create::global({
-            fl::Name("button_on"),
-            fl::SpreadMethod(VSPREAD::CLIP)
-         })) {
-
-         auto vp = pattern_on->Scene->Viewport;
-         objVectorRectangle::create::global({
-            fl::Owner(vp->UID),
-            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
-            fl::RoundX(SCALE(0.1)),
-            fl::Fill("rgb(0,0,0,32)")
-         });
-
-         scAddDef(Self->Viewport->Scene, "/widget/button/on", pattern_on);
-      }
-
-      if (auto pattern_off = objVectorPattern::create::global({
-            fl::Name("button_off"),
-            fl::SpreadMethod(VSPREAD::CLIP)
-         })) {
-
-         auto vp = pattern_off->Scene->Viewport;
-         objVectorRectangle::create::global({
-            fl::Owner(vp->UID),
-            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-            fl::Stroke("rgb(0,0,0,64)"), fl::StrokeWidth(2.0),
-            fl::RoundX(SCALE(0.1)),
-            fl::Fill("rgb(255,255,255,96)")
-         });
-
-         scAddDef(Self->Viewport->Scene, "/widget/button/off", pattern_off);
-      }
-   }
-
-   if (widget.fill.empty()) widget.fill = "url(#/widget/button/off)";
-   if (widget.alt_fill.empty()) widget.alt_fill = "url(#/widget/button/on)";
-   if (widget.font_fill.empty()) widget.font_fill = "rgb(0,0,0)";
-   if (widget.height < m_style.point * 2.2) widget.height = m_style.point * 2.2;
-
-   widget.label_pad = m_style.get_font()->Ascent;
-
-   Self->NoWhitespace = false; // Widgets are treated as inline characters
-   m_stream.emplace(m_index, widget);
-}
-
-//********************************************************************************************************************
-
 void parser::tag_combobox(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
@@ -1807,29 +1807,42 @@ void parser::tag_combobox(XMLTag &Tag)
    }
    
    if (!m_combobox_patterns) {
+      // The combobox uses the default fill pattern with an arrow button overlayed on the right.
       m_combobox_patterns = true;
 
-      if (auto pattern_on = objVectorPattern::create::global({
+      if (auto pattern_cb = objVectorPattern::create::global({
             fl::Name("combobox"),
             fl::SpreadMethod(VSPREAD::CLIP)
          })) {
 
-         auto vp = pattern_on->Scene->Viewport;
-         objVectorRectangle::create::global({
+         const LONG PAD = 8;
+         auto vp = pattern_cb->Scene->Viewport;
+         auto rect = objVectorRectangle::create::global({ // Button background
             fl::Owner(vp->UID),
-            fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
-            fl::Stroke("rgb(64,64,64,128)"), fl::StrokeWidth(2.0),
-            fl::RoundX(SCALE(0.1)),
-            fl::Fill("rgb(0,0,0,32)")
+            fl::X(-(PAD-1)), fl::Y(-(PAD-1)), fl::Width(29+((PAD-1)*2)), fl::Height(29+((PAD-1)*2)),
+            fl::Fill("rgb(0,0,0,128)")
          });
 
-         scAddDef(Self->Viewport->Scene, "/widget/combobox", pattern_on);
+         std::array<DOUBLE, 8> round = { 0, 0, 6, 6, 6, 6, 0, 0 };
+         SetArray(rect, FID_Rounding|TDOUBLE, round);
+
+         objVectorPath::create::global({ // Down arrow
+            fl::Owner(vp->UID),
+            fl::Sequence("M14.5 16.1 26.1 4.5 26.1 12.9 14.5 24.5 2.9 12.9 2.9 4.5 14.5 16.1Z"), // 80% size
+            //fl::Sequence("M14.5 16.5 29 2 29 12.5 14.5 27 0 12.5 0 2 14.5 16.5Z"), // Original size; 29x29
+            fl::Fill("rgb(255,255,255,220)")
+         });
+
+         vp->setFields(fl::AspectRatio(ARF::X_MAX|ARF::Y_MIN|ARF::MEET),
+            fl::ViewX(-PAD), fl::ViewY(-PAD), fl::ViewWidth(29+(PAD*2)), fl::ViewHeight(29+(PAD*2)));
+
+         scAddDef(Self->Viewport->Scene, "/widget/combobox", pattern_cb);
       }
    }
 
    if (widget.fill.empty()) {
       config_default_pattern();
-      widget.fill="url(#/widget/combobox)";
+      widget.fill = "url(#/widget/default);url(#/widget/combobox)";
    }
 
    if (widget.font_fill.empty()) widget.font_fill = "rgb(255,255,255)";
@@ -2842,7 +2855,7 @@ void parser::tag_font(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-void parser::tag_vector(XMLTag &Tag)
+void parser::tag_object(XMLTag &Tag)
 {
    /*
    pf::Log log(__FUNCTION__);
