@@ -340,14 +340,12 @@ Z: Close Path
   <function>
     <name>ReadPainter</name>
     <comment>Parses a painter string into its colour, gradient and image values.</comment>
-    <prototype>ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern)</prototype>
+    <prototype>ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
     <input>
       <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
-      <param type="struct FRGB *" name="RGB">A colour will be returned here if specified in the IRI.</param>
-      <param type="objVectorGradient **" name="Gradient">A VectorGradient will be returned here if specified in the IRI.</param>
-      <param type="objVectorImage **" name="Image">A VectorImage will be returned here if specified in the IRI.</param>
-      <param type="objVectorPattern **" name="Pattern">A VectorPattern will be returned here if specified in the IRI.</param>
+      <param type="struct VectorPainter *" name="Painter">This VectorPainter structure will store the deserialised result.</param>
+      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.</param>
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
@@ -872,6 +870,13 @@ Z: Close Path
       <field name="ScaleY" type="DOUBLE">Matrix value D</field>
       <field name="TranslateX" type="DOUBLE">Matrix value E</field>
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
+    </struct>
+
+    <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">
+      <field name="Pattern" type="objVectorPattern *">A VectorPattern object, suitable for pattern based fills.</field>
+      <field name="Image" type="objVectorImage *">A VectorImage object, suitable for image fills.</field>
+      <field name="Gradient" type="objVectorGradient *">A VectorGradient object, suitable for gradient fills.</field>
+      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.</field>
     </struct>
 
     <struct name="VectorPoint" comment="Structure for the VectorPolygon PointsArray field.">

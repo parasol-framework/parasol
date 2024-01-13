@@ -506,6 +506,13 @@ struct VectorPoint {
    UBYTE  YRelative:1;   // TRUE if the Y value is relative to its viewport (between 0 and 1.0).
 };
 
+struct VectorPainter {
+   objVectorPattern * Pattern;    // A VectorPattern object, suitable for pattern based fills.
+   objVectorImage * Image;        // A VectorImage object, suitable for image fills.
+   objVectorGradient * Gradient;  // A VectorGradient object, suitable for gradient fills.
+   struct FRGB Colour;            // A single RGB colour definition, suitable for block colour fills.
+};
+
 struct PathCommand {
    PE     Type;       // The command type (PE value)
    UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
@@ -1989,7 +1996,7 @@ struct VectorBase {
    ERROR (*_GenerateEllipse)(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
    ERROR (*_GeneratePath)(CSTRING Sequence, APTR Path);
    ERROR (*_GenerateRectangle)(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
-   ERROR (*_ReadPainter)(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern);
+   ERROR (*_ReadPainter)(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
    void (*_TranslatePath)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_MoveTo)(APTR Path, DOUBLE X, DOUBLE Y);
    void (*_LineTo)(APTR Path, DOUBLE X, DOUBLE Y);
@@ -2021,7 +2028,7 @@ inline void vecFreePath(APTR Path) { return VectorBase->_FreePath(Path); }
 inline ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path) { return VectorBase->_GenerateEllipse(CX,CY,RX,RY,Vertices,Path); }
 inline ERROR vecGeneratePath(CSTRING Sequence, APTR Path) { return VectorBase->_GeneratePath(Sequence,Path); }
 inline ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path) { return VectorBase->_GenerateRectangle(X,Y,Width,Height,Path); }
-inline ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern) { return VectorBase->_ReadPainter(Scene,IRI,RGB,Gradient,Image,Pattern); }
+inline ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result) { return VectorBase->_ReadPainter(Scene,IRI,Painter,Result); }
 inline void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_TranslatePath(Path,X,Y); }
 inline void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_MoveTo(Path,X,Y); }
 inline void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y) { return VectorBase->_LineTo(Path,X,Y); }
@@ -2049,7 +2056,7 @@ extern void vecFreePath(APTR Path);
 extern ERROR vecGenerateEllipse(DOUBLE CX, DOUBLE CY, DOUBLE RX, DOUBLE RY, LONG Vertices, APTR Path);
 extern ERROR vecGeneratePath(CSTRING Sequence, APTR Path);
 extern ERROR vecGenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR Path);
-extern ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct FRGB * RGB, objVectorGradient ** Gradient, objVectorImage ** Image, objVectorPattern ** Pattern);
+extern ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result);
 extern void vecTranslatePath(APTR Path, DOUBLE X, DOUBLE Y);
 extern void vecMoveTo(APTR Path, DOUBLE X, DOUBLE Y);
 extern void vecLineTo(APTR Path, DOUBLE X, DOUBLE Y);

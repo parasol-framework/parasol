@@ -571,12 +571,12 @@ static ERROR parse_fe_lighting(extSVG *Self, objVectorFilter *Filter, const XMLT
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_LIGHTING_COLOUR:
          case SVF_LIGHTING_COLOR: {
-            FRGB rgb;
+            VectorPainter painter;
             if (!StrMatch("currentColor", val)) {
-               if (current_colour(Self, Self->Scene->Viewport, rgb)) break;
+               FRGB rgb;
+               if (!current_colour(Self, Self->Scene->Viewport, rgb)) SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
             }
-            else if (vecReadPainter(NULL, val.c_str(), &rgb, NULL, NULL, NULL)) break;
-            SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+            else if (!vecReadPainter(NULL, val.c_str(), &painter, NULL)) SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
          }
 
@@ -946,12 +946,11 @@ static ERROR parse_fe_flood(extSVG *Self, objVectorFilter *Filter, const XMLTag 
       switch(StrHash(Tag.Attribs[a].Name)) {
          case SVF_FLOOD_COLOR:
          case SVF_FLOOD_COLOUR: {
-            FRGB rgb;
+            VectorPainter painter;
             if (!StrMatch("currentColor", val)) {
-               if (current_colour(Self, Self->Scene->Viewport, rgb)) break;
+               if (!current_colour(Self, Self->Scene->Viewport, painter.Colour)) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             }
-            else if (vecReadPainter(NULL, val.c_str(), &rgb, NULL, NULL, NULL)) break;
-            error = SetArray(fx, FID_Colour|TFLOAT, &rgb, 4);
+            else if (!vecReadPainter(NULL, val.c_str(), &painter, NULL)) error = SetArray(fx, FID_Colour|TFLOAT, &painter.Colour, 4);
             break;
          }
 

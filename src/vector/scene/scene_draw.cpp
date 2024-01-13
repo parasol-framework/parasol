@@ -1045,7 +1045,7 @@ private:
 
       if (Vector.Fill.Pattern) {
          draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Fill.Pattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *Vector.Fill.Pattern, mRenderBase, Raster);
+            view_width(), view_height(), *((extVectorPattern *)Vector.Fill.Pattern), mRenderBase, Raster);
       }
    }
 
@@ -1063,7 +1063,7 @@ private:
       }
       else if (Vector.Stroke.Pattern) {
          draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Stroke.Pattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *Vector.Stroke.Pattern, mRenderBase, Raster);
+            view_width(), view_height(), *((extVectorPattern *)Vector.Stroke.Pattern), mRenderBase, Raster);
       }
       else if (Vector.Stroke.Image) {
          DOUBLE stroke_width = Vector.fixed_stroke_width() * Vector.Transform.scale();
@@ -1269,7 +1269,7 @@ private:
                         view->Fill.Pattern->Scene->setPageHeight(view->vpFixedHeight);
                      }
 
-                     draw_vectors(view->Fill.Pattern->Viewport, state);
+                     draw_vectors(((extVectorPattern *)view->Fill.Pattern)->Viewport, state);
 
                      state.mTransform      = s_transform;
                      state.mApplyTransform = s_apply;

@@ -726,10 +726,10 @@ ERROR vecParseTransform(VectorMatrix *Matrix, CSTRING Commands)
 /*********************************************************************************************************************
 
 -FUNCTION-
-ReadPainter: Parses a painter string into its colour, gradient and image values.
+ReadPainter: Parses a painter string to its colour, gradient, pattern or image value.
 
-This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be
-processed for rendering a stroke or fill operation in the chosen style.
+This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for 
+rendering a stroke or fill operation in the chosen style.
 
 Colours can be referenced using one of three methods.  Colour names such as `orange` and `red` are accepted.  Hexadecimal
 RGB values are supported in the format `#RRGGBBAA`.  Floating point RGB is supported as `rgb(r,g,b,a)` whereby the
@@ -739,13 +739,15 @@ A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, wh
 been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference.
 Any failure to lookup a reference will be silently discarded.
 
+A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers
+that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An 
+optional Result string can store a reference to the character up to which the IRI was parsed.
+
 -INPUT-
 obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
 cstr IRI: The IRI string to be translated.
-struct(*FRGB) RGB: A colour will be returned here if specified in the IRI.
-&obj(VectorGradient) Gradient: A VectorGradient will be returned here if specified in the IRI.
-&obj(VectorImage) Image: A VectorImage will be returned here if specified in the IRI.
-&obj(VectorPattern) Pattern: A VectorPattern will be returned here if specified in the IRI.
+struct(*VectorPainter) Painter: This VectorPainter structure will store the deserialised result.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.
 
 -ERRORS-
 Okay:
@@ -754,18 +756,17 @@ Failed:
 
 *********************************************************************************************************************/
 
-ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, FRGB *RGB, objVectorGradient **Gradient,
-   objVectorImage **Image, objVectorPattern **Pattern)
+ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTRING *Result)
 {
    pf::Log log(__FUNCTION__);
    ULONG i;
 
-   if (!IRI) return ERR_NullArgs;
+   if ((!IRI) or (!Painter)) return ERR_NullArgs;
 
-   if (RGB)      RGB->Alpha = 0; // Nullify the colour
-   if (Gradient) *Gradient = NULL;
-   if (Image)    *Image    = NULL;
-   if (Pattern)  *Pattern  = NULL;
+   Painter->Colour.Alpha = 0; // Nullify the colour
+   Painter->Gradient = NULL;
+   Painter->Image    = NULL;
+   Painter->Pattern  = NULL;
 
    log.trace("IRI: %s", IRI);
 
@@ -796,25 +797,25 @@ next:
          if (((extVectorScene *)Scene)->Defs.contains(lookup)) {
             auto def = ((extVectorScene *)Scene)->Defs[lookup];
             if (def->Class->ClassID IS ID_VECTORGRADIENT) {
-               if (Gradient) *Gradient = (objVectorGradient *)def;
+               Painter->Gradient = (objVectorGradient *)def;
             }
             else if (def->Class->ClassID IS ID_VECTORIMAGE) {
-               if (Image) *Image = (objVectorImage *)def;
+               Painter->Image = (objVectorImage *)def;
             }
             else if (def->Class->ClassID IS ID_VECTORPATTERN) {
-               if (Pattern) *Pattern = (objVectorPattern *)def;
+               Painter->Pattern = (objVectorPattern *)def;
             }
             else log.warning("Vector definition '%s' (class $%.8x) not supported.", lookup.c_str(), def->Class->ClassID);
 
-            // Check for combinations
-            if (IRI[i++] IS ')') {
-               while ((IRI[i]) and (IRI[i] <= 0x20)) i++;
-               if (IRI[i++] IS '+') {
-                  IRI += i;
-                  goto next;
-               }
+            // Check for combinations like url(#this)+url(#that)
+
+            IRI += i;
+            if (*IRI IS ')') {
+               while ((*IRI) and (*IRI <= 0x20)) IRI++;
+               if (*IRI++ IS '+') goto next;
             }
 
+            if (Result) *Result = IRI;
             return ERR_Okay;
          }
 
@@ -825,73 +826,83 @@ next:
       return ERR_Failed;
    }
    else if (!StrCompare("rgb(", IRI, 4)) {
+      auto &rgb = Painter->Colour;
       // Note that in some rare cases, RGB values are expressed in percentage terms, e.g. rgb(34.38%,0.23%,52%)
       IRI += 4;
-      RGB->Red = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Red = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Red = RGB->Red * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Red = rgb.Red * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      RGB->Green = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Green = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Green = RGB->Green * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Green = rgb.Green * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) IRI++;
-      RGB->Blue = StrToFloat(IRI) * (1.0 / 255.0);
+      rgb.Blue = StrToFloat(IRI) * (1.0 / 255.0);
       while ((*IRI) and (*IRI != ',')) {
-         if (*IRI IS '%') RGB->Blue = RGB->Blue * (255.0 / 100.0);
+         if (*IRI IS '%') rgb.Blue = rgb.Blue * (255.0 / 100.0);
          IRI++;
       }
       if (*IRI) {
          IRI++;
-         RGB->Alpha = StrToFloat(IRI) * (1.0 / 255.0);
+         rgb.Alpha = StrToFloat(IRI) * (1.0 / 255.0);
          while (*IRI) {
-            if (*IRI IS '%') RGB->Alpha = RGB->Alpha * (255.0 / 100.0);
+            if (*IRI IS '%') rgb.Alpha = rgb.Alpha * (255.0 / 100.0);
             IRI++;
          }
-         if (RGB->Alpha > 1) RGB->Alpha = 1;
-         else if (RGB->Alpha < 0) RGB->Alpha = 0;
+         if (rgb.Alpha > 1) rgb.Alpha = 1;
+         else if (rgb.Alpha < 0) rgb.Alpha = 0;
       }
-      else if (RGB->Alpha <= 0) RGB->Alpha = 1.0; // Only set the alpha if it hasn't been set already (example: stroke-opacity)
+      else if (rgb.Alpha <= 0) rgb.Alpha = 1.0; // Only set the alpha if it hasn't been set already (example: stroke-opacity)
 
-      if (RGB->Red > 1) RGB->Red = 1;
-      else if (RGB->Red < 0) RGB->Red = 0;
+      if (rgb.Red > 1) rgb.Red = 1;
+      else if (rgb.Red < 0) rgb.Red = 0;
 
-      if (RGB->Green > 1) RGB->Green = 1;
-      else if (RGB->Green < 0) RGB->Green = 0;
+      if (rgb.Green > 1) rgb.Green = 1;
+      else if (rgb.Green < 0) rgb.Green = 0;
 
-      if (RGB->Blue > 1) RGB->Blue = 1;
-      else if (RGB->Blue < 0) RGB->Blue = 0;
+      if (rgb.Blue > 1) rgb.Blue = 1;
+      else if (rgb.Blue < 0) rgb.Blue = 0;
 
+      if (Result) {
+         while ((*IRI) and (*IRI != ';')) IRI++;
+         *Result = IRI;
+      }
       return ERR_Okay;
    }
    else if (*IRI IS '#') {
+      auto &rgb = Painter->Colour;
       IRI++;
       char nibbles[8];
       UBYTE n = 0;
       while ((*IRI) and (n < ARRAYSIZE(nibbles))) nibbles[n++] = read_nibble(IRI++);
+      while ((*IRI) and (*IRI != ';')) IRI++;
 
       if (n IS 3) {
-         RGB->Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
-         RGB->Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
-         RGB->Alpha = 1.0;
+         rgb.Red   = DOUBLE(nibbles[0]<<4) * (1.0 / 255.0);
+         rgb.Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
+         rgb.Alpha = 1.0;
+         if (Result) *Result = IRI;
          return ERR_Okay;
       }
       else if (n IS 6) {
-         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         RGB->Alpha = 1.0;
+         rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = 1.0;
+         if (Result) *Result = IRI;
          return ERR_Okay;
       }
       else if (n IS 8) {
-         RGB->Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
-         RGB->Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
-         RGB->Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
-         RGB->Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         rgb.Red   = DOUBLE((nibbles[0]<<4) | nibbles[1]) * (1.0 / 255.0);
+         rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
+         rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
+         rgb.Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
+         if (Result) *Result = IRI;
          return ERR_Okay;
       }
       else return ERR_Syntax;
@@ -904,13 +915,18 @@ next:
       return ERR_Failed;
    }
    else {
+      auto &rgb = Painter->Colour;
       auto hash = StrHash(IRI);
       for (unsigned i=0; i < ARRAYSIZE(glNamedColours); i++) {
          if (glNamedColours[i].Hash IS hash) {
-            RGB->Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
-            RGB->Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
-            RGB->Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
-            RGB->Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
+            rgb.Red   = (FLOAT)glNamedColours[i].Red * (1.0 / 255.0);
+            rgb.Green = (FLOAT)glNamedColours[i].Green * (1.0 / 255.0);
+            rgb.Blue  = (FLOAT)glNamedColours[i].Blue * (1.0 / 255.0);
+            rgb.Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
+            if (Result) {
+               while ((*IRI) and (*IRI != ';')) IRI++;
+               *Result = IRI;
+            }
             return ERR_Okay;
          }
       }

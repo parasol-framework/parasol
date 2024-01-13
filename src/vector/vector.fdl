@@ -305,6 +305,13 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     bit(uchar) YRelative # TRUE if the Y value is relative to its viewport (between 0 and 1.0).
   ]])
 
+  struct("VectorPainter", { comment="Deserialised painter information; compliant with SVG painter definitions." }, [[
+    obj(VectorPattern)  Pattern   # A VectorPattern object, suitable for pattern based fills.
+    obj(VectorImage)    Image     # A VectorImage object, suitable for image fills.
+    obj(VectorGradient) Gradient  # A VectorGradient object, suitable for gradient fills.
+    struct(FRGB) Colour           # A single RGB colour definition, suitable for block colour fills.
+  ]])
+
   struct("PathCommand", { comment="Base structure for path commands." }, [[
     int(PE) Type         # The command type (PE value)
     uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.

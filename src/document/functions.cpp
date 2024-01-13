@@ -36,12 +36,12 @@ static DOUBLE fast_hypot(DOUBLE Width, DOUBLE Height)
 
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
-   FRGB rgb;
-   if (!vecReadPainter(NULL, Value, &rgb, NULL, NULL, NULL)) {
-      RGB->Red   = F2T(rgb.Red   * 255.0);
-      RGB->Green = F2T(rgb.Green * 255.0);
-      RGB->Blue  = F2T(rgb.Blue  * 255.0);
-      RGB->Alpha = F2T(rgb.Alpha * 255.0);
+   VectorPainter painter;
+   if (!vecReadPainter(NULL, Value, &painter, NULL)) {
+      RGB->Red   = F2T(painter.Colour.Red   * 255.0);
+      RGB->Green = F2T(painter.Colour.Green * 255.0);
+      RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
+      RGB->Alpha = F2T(painter.Colour.Alpha * 255.0);
       return true;
    }
    else return false;

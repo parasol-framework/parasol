@@ -53,7 +53,9 @@ static const std::vector<GradientStop> process_gradient_stops(extSVG *Self, cons
                else if (stop.Offset > 1.0) stop.Offset = 1.0;
             }
             else if (!StrMatch("stop-color", name)) {
-               vecReadPainter(Self->Scene, value.c_str(), &stop.RGB, NULL, NULL, NULL);
+               VectorPainter painter;
+               vecReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+               stop.RGB = painter.Colour;
             }
             else if (!StrMatch("stop-opacity", name)) {
                stop_opacity = StrToFloat(value);

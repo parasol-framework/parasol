@@ -686,7 +686,8 @@ static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
    Self->FillString = StrClone(Value);
 
-   vecReadPainter(Self->Scene, Value, &Self->Fill.Colour, (objVectorGradient **)&Self->Fill.Gradient, &Self->Fill.Image, (objVectorPattern **)&Self->Fill.Pattern);
+   CSTRING next;
+   vecReadPainter(Self->Scene, Value, &Self->Fill, &next);
 
    // Bitmap font reset
    if ((Self->txFont) and ((Self->txFont->Flags & FTF::SCALABLE) IS FTF::NIL)) reset_path(Self);

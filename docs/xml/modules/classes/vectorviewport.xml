@@ -277,5 +277,12 @@
       <field name="TranslateY" type="DOUBLE">Matrix value F</field>
     </struct>
 
+    <struct name="VectorPainter" comment="Deserialised painter information; compliant with SVG painter definitions.">
+      <field name="Pattern" type="objVectorPattern *">A VectorPattern object, suitable for pattern based fills.</field>
+      <field name="Image" type="objVectorImage *">A VectorImage object, suitable for image fills.</field>
+      <field name="Gradient" type="objVectorGradient *">A VectorGradient object, suitable for gradient fills.</field>
+      <field name="Colour" type="struct FRGB">A single RGB colour definition, suitable for block colour fills.</field>
+    </struct>
+
   </structs>
 </book>

@@ -271,14 +271,10 @@ class extFilterEffect : public objFilterEffect {
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
-class painter {
+class painter : public VectorPainter {
 public:
-   extVectorPattern  *Pattern;
-   objVectorImage    *Image;
-   extVectorGradient *Gradient;
-   GRADIENT_TABLE    *GradientTable;
+   GRADIENT_TABLE *GradientTable;
    DOUBLE GradientAlpha;
-   FRGB   Colour;
    RGB8   RGB;
 };
 
@@ -924,7 +920,7 @@ extern "C" void  vecMoveTo(class SimpleVector *, DOUBLE, DOUBLE);
 extern "C" ERROR vecMultiply(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
 extern "C" ERROR vecMultiplyMatrix(struct VectorMatrix *, struct VectorMatrix *);
 extern "C" ERROR vecParseTransform(struct VectorMatrix *, CSTRING Commands);
-extern "C" ERROR vecReadPainter(objVectorScene *, CSTRING, struct FRGB *, objVectorGradient **, objVectorImage **, objVectorPattern **);
+extern "C" ERROR vecReadPainter(objVectorScene *, CSTRING, VectorPainter *, CSTRING *);
 extern "C" ERROR vecResetMatrix(struct VectorMatrix *);
 extern "C" void  vecRewindPath(class SimpleVector *);
 extern "C" ERROR vecRotate(struct VectorMatrix *, DOUBLE, DOUBLE, DOUBLE);
