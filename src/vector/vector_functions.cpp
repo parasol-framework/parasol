@@ -771,6 +771,7 @@ ERROR vecReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter,
    log.trace("IRI: %s", IRI);
 
 next:
+   if (*IRI IS ';') IRI++;
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
    if (!StrCompare("url(", IRI, 4)) {

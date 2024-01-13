@@ -286,9 +286,10 @@ static ERROR VECTOR_Free(extVector *Self, APTR Void)
    if (Self->StrokeString) { FreeResource(Self->StrokeString); Self->StrokeString = NULL; }
    if (Self->FilterString) { FreeResource(Self->FilterString); Self->FilterString = NULL; }
 
-   if (Self->Fill.GradientTable)   { delete Self->Fill.GradientTable; Self->Fill.GradientTable = NULL; }
-   if (Self->Stroke.GradientTable) { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = NULL; }
-   if (Self->DashArray)            { delete Self->DashArray; Self->DashArray = NULL; }
+   if (Self->Fill[0].GradientTable) { delete Self->Fill[0].GradientTable; Self->Fill[0].GradientTable = NULL; }
+   if (Self->Fill[1].GradientTable) { delete Self->Fill[1].GradientTable; Self->Fill[1].GradientTable = NULL; }
+   if (Self->Stroke.GradientTable)  { delete Self->Stroke.GradientTable; Self->Stroke.GradientTable = NULL; }
+   if (Self->DashArray)             { delete Self->DashArray; Self->DashArray = NULL; }
 
    // Patch the nearest vectors that are linked to this one.
    if (Self->Next) Self->Next->Prev = Self->Prev;
@@ -1263,8 +1264,14 @@ static ERROR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
 -FIELD-
 Fill: Defines the fill painter using SVG's IRI format.
 
-The painter used for filling a vector path can be defined through this field.  The string is parsed through the
-~ReadPainter() function in the Vector module.  Please refer to it for further details on valid formatting.
+The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The 
+string is parsed through the ~ReadPainter() function in the Vector module.  Please refer to it for further details on 
+valid formatting.
+
+It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by 
+separating them with a semi-colon `;` character.  This feature makes it easy to use a common background fill and 
+follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this 
+feature is intended for programmed use-cases and is not SVG compliant.
 
 *********************************************************************************************************************/
 
@@ -1278,10 +1285,19 @@ static ERROR VECTOR_SET_Fill(extVector *Self, CSTRING Value)
 {
    // Note that if an internal routine sets DisableFillColour then the colour will be stored but effectively does nothing.
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
-   Self->FillString = StrClone(Value);
+
    CSTRING next;
-   vecReadPainter(Self->Scene, Value, &Self->Fill, &next);
-   return ERR_Okay;
+   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); !error) {
+      Self->FillString = StrClone(Value);
+
+      if (next) {
+         vecReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         Self->FGFill = true;
+      }
+      else Self->FGFill = false;
+      return ERR_Okay;
+   }
+   else return error;
 }
 
 /*********************************************************************************************************************
@@ -1299,7 +1315,7 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 static ERROR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->Fill.Colour;
+   *Value = (FLOAT *)&Self->Fill[0].Colour;
    *Elements = 4;
    return ERR_Okay;
 }
@@ -1307,13 +1323,13 @@ static ERROR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Element
 static ERROR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
 {
    if (Value) {
-      if (Elements >= 1) Self->Fill.Colour.Red   = Value[0];
-      if (Elements >= 2) Self->Fill.Colour.Green = Value[1];
-      if (Elements >= 3) Self->Fill.Colour.Blue  = Value[2];
-      if (Elements >= 4) Self->Fill.Colour.Alpha = Value[3];
-      else Self->Fill.Colour.Alpha = 1;
+      if (Elements >= 1) Self->Fill[0].Colour.Red   = Value[0];
+      if (Elements >= 2) Self->Fill[0].Colour.Green = Value[1];
+      if (Elements >= 3) Self->Fill[0].Colour.Blue  = Value[2];
+      if (Elements >= 4) Self->Fill[0].Colour.Alpha = Value[3];
+      else Self->Fill[0].Colour.Alpha = 1;
    }
-   else Self->Fill.Colour.Alpha = 0;
+   else Self->Fill[0].Colour.Alpha = 0;
 
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
 

@@ -995,7 +995,7 @@ private:
       else return mView->Scene->PageHeight;
    }
 
-   void render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster) {
+   void render_fill(VectorState &State, extVector &Vector, agg::rasterizer_scanline_aa<> &Raster, extPainter &Painter) {
       // Think of the vector's path as representing a mask for the fill algorithm.  Any transforms applied to
       // an image/gradient fill are independent of the path.
 
@@ -1004,8 +1004,8 @@ private:
       
       // Solid colour.  Bitmap fonts will set DisableFill.Colour to ensure texture maps are used instead
 
-      if ((Vector.Fill.Colour.Alpha > 0) and (!Vector.DisableFillColour)) {
-         auto colour = agg::rgba(Vector.Fill.Colour, Vector.Fill.Colour.Alpha * Vector.FillOpacity * State.mOpacity);
+      if ((Painter.Colour.Alpha > 0) and (!Vector.DisableFillColour)) {
+         auto colour = agg::rgba(Painter.Colour, Painter.Colour.Alpha * Vector.FillOpacity * State.mOpacity);
 
          if ((Vector.PathQuality IS RQ::CRISP) or (Vector.PathQuality IS RQ::FAST)) {
             agg::renderer_scanline_bin_solid renderer(mRenderBase);
@@ -1031,21 +1031,21 @@ private:
          }
       }
 
-      if (Vector.Fill.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
-         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Fill.Image->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *Vector.Fill.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
+      if (Painter.Image) { // Bitmap image fill.  NB: The SVG class creates a standard VectorRectangle and associates an image with it in order to support <image> tags.
+         draw_image((DOUBLE *)&Vector.BX1, Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Image->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *Painter.Image, mRenderBase, Raster, Vector.FillOpacity * State.mOpacity);
       }
 
-      if (Vector.Fill.Gradient) {
-         if (auto table = get_fill_gradient_table(Vector, State.mOpacity * Vector.FillOpacity)) {
-            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Vector.Fill.Gradient->Units IS VUNIT::USERSPACE, State),
-               view_width(), view_height(), *((extVectorGradient *)Vector.Fill.Gradient), table, mRenderBase, Raster, 0);
+      if (Painter.Gradient) {
+         if (auto table = get_fill_gradient_table(Painter, State.mOpacity * Vector.FillOpacity)) {
+            draw_gradient((DOUBLE *)&Vector.BX1, &Vector.BasePath, build_fill_transform(Vector, Painter.Gradient->Units IS VUNIT::USERSPACE, State),
+               view_width(), view_height(), *((extVectorGradient *)Painter.Gradient), table, mRenderBase, Raster, 0);
          }
       }
 
-      if (Vector.Fill.Pattern) {
-         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Vector.Fill.Pattern->Units IS VUNIT::USERSPACE, State),
-            view_width(), view_height(), *((extVectorPattern *)Vector.Fill.Pattern), mRenderBase, Raster);
+      if (Painter.Pattern) {
+         draw_pattern((DOUBLE *)&Vector.BX1, &Vector.BasePath, Vector.Scene->SampleMethod, build_fill_transform(Vector, Painter.Pattern->Units IS VUNIT::USERSPACE, State),
+            view_width(), view_height(), *((extVectorPattern *)Painter.Pattern), mRenderBase, Raster);
       }
    }
 
@@ -1189,7 +1189,7 @@ private:
          }
 
          if (shape->Class->ClassID IS ID_VECTORVIEWPORT) {
-            if ((shape->Child) or (shape->InputSubscriptions) or (shape->Fill.Pattern)) {
+            if ((shape->Child) or (shape->InputSubscriptions) or (shape->Fill[0].Pattern)) {
                auto view = (extVectorViewport *)shape;
 
                if (view->vpOverflowX != VOF::INHERIT) state.mOverflowX = view->vpOverflowX;
@@ -1250,7 +1250,7 @@ private:
                      agg::render_scanlines(stroke_raster, mScanLine, renderer);
                   }
 
-                  if (view->Fill.Pattern) {
+                  if (view->Fill[0].Pattern) {
                      // Viewports can use FillPattern objects to render a different scene graph internally.
                      // This is useful for creating common graphics that can be re-used multiple times without
                      // them being pre-rasterised as they normally would be for primitive vectors.
@@ -1264,12 +1264,21 @@ private:
                      state.mTransform      = view->Transform;
                      state.mApplyTransform = true;
 
-                     if (view->Fill.Pattern->Units IS VUNIT::BOUNDING_BOX) {
-                        view->Fill.Pattern->Scene->setPageWidth(view->vpFixedWidth);
-                        view->Fill.Pattern->Scene->setPageHeight(view->vpFixedHeight);
+                     if (view->Fill[0].Pattern->Units IS VUNIT::BOUNDING_BOX) {
+                        view->Fill[0].Pattern->Scene->setPageWidth(view->vpFixedWidth);
+                        view->Fill[0].Pattern->Scene->setPageHeight(view->vpFixedHeight);
                      }
 
-                     draw_vectors(((extVectorPattern *)view->Fill.Pattern)->Viewport, state);
+                     draw_vectors(((extVectorPattern *)view->Fill[0].Pattern)->Viewport, state);
+
+                     if ((view->FGFill) and (view->Fill[1].Pattern)) {
+                        if (view->Fill[1].Pattern->Units IS VUNIT::BOUNDING_BOX) {
+                           view->Fill[1].Pattern->Scene->setPageWidth(view->vpFixedWidth);
+                           view->Fill[1].Pattern->Scene->setPageHeight(view->vpFixedHeight);
+                        }
+
+                        draw_vectors(((extVectorPattern *)view->Fill[1].Pattern)->Viewport, state);
+                     }
 
                      state.mTransform      = s_transform;
                      state.mApplyTransform = s_apply;
@@ -1322,9 +1331,13 @@ private:
                      agg::conv_transform<agg::path_storage, agg::trans_affine> final_path(shape->BasePath, transform);
                      agg::rasterizer_scanline_aa raster;
                      raster.add_path(final_path);
-                     render_fill(state, *shape, raster);
+                     render_fill(state, *shape, raster, shape->Fill[0]);
+                     if (shape->FGFill) render_fill(state, *shape, raster, shape->Fill[1]);
                   }
-                  else render_fill(state, *shape, *shape->FillRaster);
+                  else {
+                     render_fill(state, *shape, *shape->FillRaster, shape->Fill[0]);
+                     if (shape->FGFill) render_fill(state, *shape, *shape->FillRaster, shape->Fill[1]);
+                  }
                }
 
                if (shape->StrokeRaster) {

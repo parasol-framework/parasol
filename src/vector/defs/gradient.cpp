@@ -22,40 +22,40 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
 
-GRADIENT_TABLE * get_fill_gradient_table(extVector &Vector, DOUBLE Opacity)
+GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, DOUBLE Opacity)
 {
    pf::Log log(__FUNCTION__);
 
-   GradientColours *cols = ((extVectorGradient *)Vector.Fill.Gradient)->Colours;
+   GradientColours *cols = ((extVectorGradient *)Painter.Gradient)->Colours;
    if (!cols) {
-      if (Vector.Fill.Gradient->Inherit) cols = ((extVectorGradient *)Vector.Fill.Gradient->Inherit)->Colours;
+      if (Painter.Gradient->Inherit) cols = ((extVectorGradient *)Painter.Gradient->Inherit)->Colours;
       if (!cols) {
-         log.warning("No colour table referenced in fill gradient %p for vector #%d.", Vector.Fill.Gradient, Vector.UID);
+         log.warning("No colour table referenced in fill gradient %p.", Painter.Gradient);
          return NULL;
       }
    }
 
    if (Opacity >= 1.0) { // Return the original gradient table if no translucency is applicable.
-      Vector.Fill.GradientAlpha = 1.0;
+      Painter.GradientAlpha = 1.0;
       return &cols->table;
    }
    else {
-      if ((Vector.Fill.GradientTable) and (Opacity IS Vector.Fill.GradientAlpha)) return Vector.Fill.GradientTable;
+      if ((Painter.GradientTable) and (Opacity IS Painter.GradientAlpha)) return Painter.GradientTable;
 
-      delete Vector.Fill.GradientTable;
-      Vector.Fill.GradientTable = new (std::nothrow) GRADIENT_TABLE();
-      if (!Vector.Fill.GradientTable) {
+      delete Painter.GradientTable;
+      Painter.GradientTable = new (std::nothrow) GRADIENT_TABLE();
+      if (!Painter.GradientTable) {
          log.warning("Failed to allocate fill gradient table");
          return NULL;
       }
-      Vector.Fill.GradientAlpha = Opacity;
+      Painter.GradientAlpha = Opacity;
 
-      for (unsigned i=0; i < Vector.Fill.GradientTable->size(); i++) {
-         (*Vector.Fill.GradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b,
+      for (unsigned i=0; i < Painter.GradientTable->size(); i++) {
+         (*Painter.GradientTable)[i] = agg::rgba8(cols->table[i].r, cols->table[i].g, cols->table[i].b,
             cols->table[i].a * Opacity);
       }
 
-      return Vector.Fill.GradientTable;
+      return Painter.GradientTable;
    }
 }
 

@@ -365,7 +365,7 @@ static ERROR VECTORTEXT_NewObject(extVectorText *Self, APTR Void)
    Self->txFontSize   = 10 * (4.0 / 3.0);
    Self->txCharLimit  = 0x7fffffff;
    Self->txFamily     = StrClone("Open Sans");
-   Self->Fill.Colour  = FRGB(1, 1, 1, 1);
+   Self->Fill[0].Colour  = FRGB(1, 1, 1, 1);
    Self->DisableHitTesting = true;
    return ERR_Okay;
 }
@@ -684,16 +684,25 @@ static ERROR TEXT_GET_Fill(extVectorText *Self, CSTRING *Value)
 static ERROR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 {
    if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
-   Self->FillString = StrClone(Value);
 
    CSTRING next;
-   vecReadPainter(Self->Scene, Value, &Self->Fill, &next);
+   if (auto error = vecReadPainter(Self->Scene, Value, &Self->Fill[0], &next); !error) {
+      Self->FillString = StrClone(Value);
 
-   // Bitmap font reset
-   if ((Self->txFont) and ((Self->txFont->Flags & FTF::SCALABLE) IS FTF::NIL)) reset_path(Self);
-   else if ((Self->txFlags & VTXF::RASTER) != VTXF::NIL) reset_path(Self);
+      if (next) {
+         vecReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         Self->FGFill = true;
+      }
+      else Self->FGFill = false;
 
-   return ERR_Okay;
+      // Bitmap font reset
+      if ((Self->txFont) and ((Self->txFont->Flags & FTF::SCALABLE) IS FTF::NIL)) reset_path(Self);
+      else if ((Self->txFlags & VTXF::RASTER) != VTXF::NIL) reset_path(Self);
+
+      return ERR_Okay;
+   }
+   else return error;
+
 }
 
 /*********************************************************************************************************************
@@ -1598,7 +1607,7 @@ static void raster_text_to_bitmap(extVectorText *Vector)
    }
    else acResize(Vector->txAlphaBitmap, longest_line_width, dy, 0);
 
-   Vector->Fill.Image = Vector->txBitmapImage;
+   Vector->Fill[0].Image = Vector->txBitmapImage;
    Vector->DisableFillColour = true;
 
    Vector->txFont->Bitmap = Vector->txAlphaBitmap;
@@ -1616,10 +1625,10 @@ static void raster_text_to_bitmap(extVectorText *Vector)
          Vector->txFont->setString(str);
          Vector->txFont->X = 0;
          Vector->txFont->Y = y;
-         Vector->txFont->Colour.Red   = F2T(Vector->Fill.Colour.Red * 255.0);
-         Vector->txFont->Colour.Green = F2T(Vector->Fill.Colour.Green * 255.0);
-         Vector->txFont->Colour.Blue  = F2T(Vector->Fill.Colour.Blue * 255.0);
-         Vector->txFont->Colour.Alpha = F2T(Vector->Fill.Colour.Alpha * 255.0);
+         Vector->txFont->Colour.Red   = F2T(Vector->Fill[0].Colour.Red * 255.0);
+         Vector->txFont->Colour.Green = F2T(Vector->Fill[0].Colour.Green * 255.0);
+         Vector->txFont->Colour.Blue  = F2T(Vector->Fill[0].Colour.Blue * 255.0);
+         Vector->txFont->Colour.Alpha = F2T(Vector->Fill[0].Colour.Alpha * 255.0);
          acDraw(Vector->txFont);
 
          if (Vector->txInlineSize) y = Vector->txFont->EndY + Vector->txFont->LineSpacing;

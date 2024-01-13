@@ -271,7 +271,7 @@ class extFilterEffect : public objFilterEffect {
    UWORD UsageCount;        // Total number of other effects utilising this effect to build a pipeline
 };
 
-class painter : public VectorPainter {
+class extPainter : public VectorPainter {
 public:
    GRADIENT_TABLE *GradientTable;
    DOUBLE GradientAlpha;
@@ -282,7 +282,7 @@ class extVector : public objVector {
    public:
    using create = pf::Create<extVector>;
 
-   painter Fill, Stroke;
+   extPainter Fill[2], Stroke;
    DOUBLE FinalX, FinalY;
    DOUBLE BX1, BY1, BX2, BY2; // Must be calculated by GeneratePath() and called from calc_full_boundary()
    DOUBLE StrokeWidth;
@@ -316,6 +316,7 @@ class extVector : public objVector {
    UBYTE  RelativeStrokeWidth:1;
    UBYTE  DisableHitTesting:1;
    UBYTE  ResizeSubscription:1;
+   UBYTE  FGFill:1;
    agg::line_join_e  LineJoin;
    agg::line_cap_e   LineCap;
    agg::inner_join_e InnerJoin;
@@ -465,7 +466,7 @@ extern ERROR init_vectorscene(void);
 extern void debug_tree(extVector *, LONG &);
 extern ERROR read_path(std::vector<PathCommand> &, CSTRING);
 extern ERROR scene_input_events(const InputEvent *, LONG);
-extern GRADIENT_TABLE * get_fill_gradient_table(extVector &, DOUBLE);
+extern GRADIENT_TABLE * get_fill_gradient_table(extPainter &, DOUBLE);
 extern GRADIENT_TABLE * get_stroke_gradient_table(extVector &);
 extern void apply_parent_transforms(extVector *, agg::trans_affine &);
 extern void apply_transition(objVectorTransition *, DOUBLE, agg::trans_affine &);
