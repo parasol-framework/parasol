@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <bit>
 #include <atomic>
+#include <array>
 #endif
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
@@ -2433,14 +2434,19 @@ inline ULONG StrHash(const std::string Value) {
    return StrHash(Value.c_str(), FALSE);
 }
 
-template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> Array)
+template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, pf::vector<T> &Array)
 {
    return SetArray(Object, FieldID, Array.data(), Array.size());
 }
 
-template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, std::vector<T> Array)
+template <class T> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, std::vector<T> &Array)
 {
    return SetArray(Object, FieldID, Array.data(), Array.size());
+}
+
+template <class T, std::size_t SIZE> inline ERROR SetArray(OBJECTPTR Object, FIELD FieldID, std::array<T, SIZE> Array)
+{
+   return SetArray(Object, FieldID, Array.data(), SIZE);
 }
 #endif
 

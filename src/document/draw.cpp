@@ -703,7 +703,8 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                }
 
                if (!combo.clip_vp.empty()) {
-                  combo.clip_vp->setFields(fl::X(combo.label_pad), fl::Y(0), fl::XOffset(combo.label_pad), fl::YOffset(0));
+                  combo.clip_vp->setFields(fl::X(combo.label_pad * 0.75), fl::Y(0), 
+                     fl::XOffset(combo.label_pad + (combo.height * 0.75)), fl::YOffset(0));
                }
 
                break;

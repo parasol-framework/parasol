@@ -26,12 +26,42 @@ static void generate_rectangle(extVectorRectangle *Vector)
       if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
    }
 
-   if (Vector->rRoundX > 0) {
+   if (Vector->rFullControl) {
+      // Full control of rounded corners has been requested by the client (four X,Y coordinate pairs).
+      // Coordinates are either ALL scaled or ALL fixed, not a mix of both.
+      // This feature is not SVG compliant.
+      
+      DOUBLE scale_x = 1.0, scale_y = 1.0;
+
+      if (Vector->rDimensions & DMF_RELATIVE_RADIUS_X) {
+         scale_x = sqrt((width * width) + (height * height)) * INV_SQRT2;
+      }
+
+      if (Vector->rDimensions & DMF_RELATIVE_RADIUS_Y) {
+         if (scale_x != 1.0) scale_x = scale_x;
+         else scale_y = sqrt((width * width) + (height * height)) * INV_SQRT2;
+      }
+
+      DOUBLE rx[4], ry[4];
+      for (unsigned i=0; i < 4; i++) {
+         rx[i] = Vector->rRound[i].x * scale_x;
+         ry[i] = Vector->rRound[i].y * scale_y;
+         if (rx[i] > width * 0.5) rx[i] = width * 0.5;
+         if (ry[i] > height * 0.5) ry[i] = height * 0.5;
+      }
+
+      agg::rounded_rect aggrect(x, y, x + width, y + height, 0, 0);
+      aggrect.radius(rx[0], ry[0], rx[1], ry[1], rx[2], ry[2], rx[3], ry[3]);
+      aggrect.normalize_radius(); // Required because???
+
+      Vector->BasePath.concat_path(aggrect);
+   }
+   else if (Vector->rRound[0].x > 0) {
       // SVG rules that RX will also apply to RY unless RY != 0.
       // An RX of zero disables rounding (contrary to SVG).
       // If RX is greater than width/2, set RX to width/2.  Same for RY on the vertical axis.
 
-      DOUBLE rx = Vector->rRoundX, ry = Vector->rRoundY;
+      DOUBLE rx = Vector->rRound[0].x, ry = Vector->rRound[0].y;
 
       if (Vector->rDimensions & DMF_RELATIVE_RADIUS_X) {
          rx *= sqrt((width * width) + (height * height)) * INV_SQRT2;
@@ -206,6 +236,39 @@ static ERROR RECTANGLE_SET_Height(extVectorRectangle *Self, Variable *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Rounding: Precisely controls rounded corner positioning.
+
+Set the Rounding field if all four corners of the rectangle need to be precisely controlled.  Four X,Y sizing
+pairs must be provided in sequence, with the first describing the top-left corner and proceeding in clockwise fashion.
+Each pair of values is equivalent to a #RoundX,#RoundY definition for that corner only.
+
+By default, values will be treated as fixed pixel units.  They can be changed to scaled values by defining the 
+`DMF_RELATIVE_RADIUS_X` and/or `DMF_RELATIVE_RADIUS_Y` flags in the #Dimensions field.  The scale is calculated 
+against the rectangle's diagonal.
+
+*********************************************************************************************************************/
+
+static ERROR RECTANGLE_GET_Rounding(extVectorRectangle *Self, DOUBLE **Value, LONG *Elements)
+{
+   *Value = (DOUBLE *)Self->rRound.data();
+   *Elements = 8;
+   return ERR_Okay;
+}
+
+static ERROR RECTANGLE_SET_Rounding(extVectorRectangle *Self, DOUBLE *Value, LONG Elements)
+{
+   if (Elements >= 8) {
+      CopyMemory(Value, Self->rRound.data(), sizeof(DOUBLE) * 8);
+      Self->rFullControl = true;
+      reset_path(Self);
+      return ERR_Okay;
+   }
+   else return ERR_InvalidValue;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 RoundX: Specifies the size of rounded corners on the horizontal axis.
 
 The corners of a rectangle can be rounded by setting the RoundX and RoundY values.  Each value is interpreted as a
@@ -215,7 +278,7 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 static ERROR RECTANGLE_GET_RoundX(extVectorRectangle *Self, Variable *Value)
 {
-   DOUBLE val = Self->rRoundX;
+   DOUBLE val = Self->rRound[0].x;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -235,7 +298,7 @@ static ERROR RECTANGLE_SET_RoundX(extVectorRectangle *Self, Variable *Value)
    if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_X) & (~DMF_RELATIVE_RADIUS_X);
 
-   Self->rRoundX = val;
+   Self->rRound[0].x = Self->rRound[1].x = Self->rRound[2].x = Self->rRound[3].x = val;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -252,7 +315,7 @@ radius along the relevant axis.  A value of zero (the default) turns off this fe
 
 static ERROR RECTANGLE_GET_RoundY(extVectorRectangle *Self, Variable *Value)
 {
-   DOUBLE val = Self->rRoundY;
+   DOUBLE val = Self->rRound[0].y;
    if (Value->Type & FD_DOUBLE) Value->Double = val;
    else if (Value->Type & FD_LARGE) Value->Large = F2T(val);
    return ERR_Okay;
@@ -272,7 +335,7 @@ static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Variable *Value)
    if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_RELATIVE_RADIUS_Y);
 
-   Self->rRoundY = val;
+   Self->rRound[0].y = Self->rRound[1].y = Self->rRound[2].y = Self->rRound[3].y = val;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -399,6 +462,7 @@ static const FieldDef clRectDimensions[] = {
 };
 
 static const FieldArray clRectangleFields[] = {
+   { "Rounding",   FDF_VIRTUAL|FDF_DOUBLE|FDF_ARRAY|FDF_RW, RECTANGLE_GET_Rounding, RECTANGLE_SET_Rounding },
    { "RoundX",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_RoundX, RECTANGLE_SET_RoundX },
    { "RoundY",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
    { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },

@@ -345,7 +345,7 @@ Z: Close Path
       <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
       <param type="CSTRING" name="IRI">The IRI string to be translated.</param>
       <param type="struct VectorPainter *" name="Painter">This VectorPainter structure will store the deserialised result.</param>
-      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.</param>
+      <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.  NULL is returned if there is no further content to parse.</param>
     </input>
     <description>
 <p>This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>

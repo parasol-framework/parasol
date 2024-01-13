@@ -948,6 +948,7 @@
 #define FID_ResX 0x7c9d4fa7LL
 #define FID_ResY 0x7c9d4fa8LL
 #define FID_RootModule 0xdc9a16cfLL
+#define FID_Rounding 0x2a6f2a0bLL
 #define FID_SourceName 0xb837c737LL
 #define FID_Structs 0xaf10175dLL
 #define FID_TargetX 0xcfb0ab64LL

@@ -406,10 +406,11 @@ class extVectorRectangle : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorRectangle";
    using create = pf::Create<extVectorRectangle>;
 
-   DOUBLE rX, rY;
-   DOUBLE rWidth, rHeight;
-   DOUBLE rRoundX, rRoundY;
+   struct coord { DOUBLE x, y; };
+   DOUBLE rX, rY, rWidth, rHeight;
+   std::array<coord, 4> rRound;
    LONG   rDimensions;
+   bool   rFullControl;
 };
 
 //********************************************************************************************************************
@@ -439,7 +440,7 @@ class extVectorClip : public extVector {
 extern CSTRING get_name(OBJECTPTR);
 extern CSTRING read_numseq(CSTRING, ...);
 extern CSTRING read_numseq_zero(CSTRING, ...);
-extern DOUBLE read_unit(CSTRING, UBYTE *);
+extern DOUBLE read_unit(CSTRING &, UBYTE *);
 extern ERROR init_blurfx(void);
 extern ERROR init_colour(void);
 extern ERROR init_colourfx(void);
