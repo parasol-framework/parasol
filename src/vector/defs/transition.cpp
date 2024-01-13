@@ -3,8 +3,8 @@
 -CLASS-
 VectorTransition: Transitions are used to gradually apply transforms over distance.
 
-The VectorTransition class is used to gradually transform vector shapes over the length of a path.  This is a
-special feature that is not SVG compliant, though it can be utilised from SVG files via the 'parasol:' name space.
+The VectorTransition class is used to gradually transform vector shapes over the length of a path.  This feature is 
+not SVG compliant, though it can be utilised from SVG files via the 'parasol:' name space.
 
 The transition is defined as a series of stops and transform instructions, of which at least 2 are required in order to
 interpolate the transforms over distance.  The transform strings are defined as per the SVG guidelines for the

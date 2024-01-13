@@ -747,7 +747,7 @@ optional Result string can store a reference to the character up to which the IR
 obj(VectorScene) Scene: Optional.  Required if url() references are to be resolved.
 cstr IRI: The IRI string to be translated.
 struct(*VectorPainter) Painter: This VectorPainter structure will store the deserialised result.
-&cstr Result: Optional pointer for storing the end of the parsed IRI string.
+&cstr Result: Optional pointer for storing the end of the parsed IRI string.  NULL is returned if there is no further content to parse.
 
 -ERRORS-
 Okay:
@@ -774,16 +774,10 @@ next:
    while ((*IRI) and (*IRI <= 0x20)) IRI++;
 
    if (!StrCompare("url(", IRI, 4)) {
-      if (!Scene) {
-         log.trace("No Scene specified to enable URL() reference.");
-         return ERR_Failed;
-      }
+      if (!Scene) return log.warning(ERR_NullArgs);
 
       if (Scene->Class->BaseClassID IS ID_VECTOR) Scene = ((objVector *)Scene)->Scene;
-      else if (Scene->Class->ClassID != ID_VECTORSCENE) {
-         log.warning("The Scene is invalid.");
-         return ERR_Failed;
-      }
+      else if (Scene->Class->ClassID != ID_VECTORSCENE) return log.warning(ERR_InvalidObject);
 
       if (Scene->HostScene) Scene = Scene->HostScene;
 
@@ -815,15 +809,17 @@ next:
                if (*IRI++ IS '+') goto next;
             }
 
-            if (Result) *Result = IRI;
+            if (Result) *Result = IRI[0] ? IRI : NULL;
             return ERR_Okay;
          }
 
          log.warning("Failed to lookup IRI '%s' in scene #%d", IRI, Scene->UID);
+         return ERR_NotFound;
       }
-      else log.warning("Invalid IRI: %s", IRI);
-
-      return ERR_Failed;
+      else {
+         log.warning("Invalid IRI: %s", IRI);
+         return ERR_Syntax;
+      }
    }
    else if (!StrCompare("rgb(", IRI, 4)) {
       auto &rgb = Painter->Colour;
@@ -869,7 +865,7 @@ next:
 
       if (Result) {
          while ((*IRI) and (*IRI != ';')) IRI++;
-         *Result = IRI;
+         *Result = IRI[0] ? IRI : NULL;
       }
       return ERR_Okay;
    }
@@ -886,7 +882,7 @@ next:
          rgb.Green = DOUBLE(nibbles[1]<<4) * (1.0 / 255.0);
          rgb.Blue  = DOUBLE(nibbles[2]<<4) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
-         if (Result) *Result = IRI;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR_Okay;
       }
       else if (n IS 6) {
@@ -894,7 +890,7 @@ next:
          rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
-         if (Result) *Result = IRI;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR_Okay;
       }
       else if (n IS 8) {
@@ -902,7 +898,7 @@ next:
          rgb.Green = DOUBLE((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = DOUBLE((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = DOUBLE((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
-         if (Result) *Result = IRI;
+         if (Result) *Result = IRI[0] ? IRI : NULL;
          return ERR_Okay;
       }
       else return ERR_Syntax;
@@ -925,14 +921,14 @@ next:
             rgb.Alpha = (FLOAT)glNamedColours[i].Alpha * (1.0 / 255.0);
             if (Result) {
                while ((*IRI) and (*IRI != ';')) IRI++;
-               *Result = IRI;
+               *Result = IRI[0] ? IRI : NULL;
             }
             return ERR_Okay;
          }
       }
 
       log.warning("Failed to interpret colour \"%s\"", IRI);
-      return ERR_Failed;
+      return ERR_Syntax;
    }
 }
 

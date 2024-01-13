@@ -110,14 +110,18 @@ static void notify_focus(OBJECTPTR Object, ACTIONID ActionID, ERROR Result, APTR
 /*********************************************************************************************************************
 
 -METHOD-
-AddDef: Adds a new definition to a vector tree.
+AddDef: Registers a named definition object within a scene graph.
 
-This method will add a new definition object to the root of a vector tree.  This feature is provided to support SVG
-style referencing for features such as gradients, images and patterns.  By providing a name with the definition object,
-the object can then be referenced in URL strings.
+This method will add a new definition object to the root of a vector tree and gives it a name.  This feature is 
+provided to support SVG style referencing for features such as gradients, images and patterns.  By providing a name 
+with the definition object, the object can then be referenced in URL strings.
 
-For instance, if creating a gradient with a name of "redGradient" it would be possible to reference it with
+For example, if creating a gradient with a name of "redGradient" it would be possible to reference it with
 `url(#redGradient)` in common graphics attributes such as `fill` and `stroke`.
+
+At the time of writing, the provided object must belong to one of the following classes to be valid: @Vector, 
+@VectorScene, @VectorGradient, @VectorImage, @VectorPath, @VectorPattern, @VectorFilter, @VectorTransition, 
+@VectorClip.
 
 -INPUT-
 cstr Name: The unique name to associate with the definition.
@@ -182,7 +186,7 @@ static ERROR VECTORSCENE_AddDef(extVectorScene *Self, struct scAddDef *Args)
 -METHOD-
 Debug: Internal functionality for debugging.
 
-This internal method prints comprehensive debugging information to the log.
+This internal method prints comprehensive information that describes the scene graph to the log.
 
 -ERRORS-
 Okay:

@@ -339,7 +339,7 @@ Z: Close Path
 
   <function>
     <name>ReadPainter</name>
-    <comment>Parses a painter string into its colour, gradient and image values.</comment>
+    <comment>Parses a painter string to its colour, gradient, pattern or image value.</comment>
     <prototype>ERROR vecReadPainter(objVectorScene * Scene, CSTRING IRI, struct VectorPainter * Painter, CSTRING * Result)</prototype>
     <input>
       <param type="objVectorScene *" name="Scene">Optional.  Required if url() references are to be resolved.</param>
@@ -348,9 +348,10 @@ Z: Close Path
       <param type="CSTRING *" name="Result">Optional pointer for storing the end of the parsed IRI string.</param>
     </input>
     <description>
-<p>This function will parse an SVG style IRI into its equivalent internal lookup values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
+<p>This function will parse an SVG style IRI into its equivalent logical values.  The results can then be processed for rendering a stroke or fill operation in the chosen style.</p>
 <p>Colours can be referenced using one of three methods.  Colour names such as <code>orange</code> and <code>red</code> are accepted.  Hexadecimal RGB values are supported in the format <code>#RRGGBBAA</code>.  Floating point RGB is supported as <code>rgb(r,g,b,a)</code> whereby the component values range between 0.0 and 255.0.</p>
 <p>A Gradient, Image or Pattern can be referenced using the 'url(#name)' format, where the 'name' is a definition that has been registered with the provided Scene object.  If Scene is NULL then it will not be possible to find the reference. Any failure to lookup a reference will be silently discarded.</p>
+<p>A VectorPainter structure must be provided by the client and will be used to store the final result.  All pointers that are returned will remain valid as long as the provided Scene exists with its registered painter definitions.  An optional Result string can store a reference to the character up to which the IRI was parsed.</p>
     </description>
     <result type="ERROR">
       <error code="Okay">Operation successful.</error>
