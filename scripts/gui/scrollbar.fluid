@@ -180,7 +180,7 @@ gui.scrollbar = function(Options)
 
             if (Y != lVBar.slider.offset) or (slider_height != lVBar.slider.size) then
                local pct_pos = Y / (host_height - slider_height)
-               lPage.y = -((lPage.height - lView.height) * pct_pos)
+               lPage.y = -math.floor((lPage.height - lView.height) * pct_pos)
                lTarget.acDraw()
             end
          end
@@ -208,7 +208,7 @@ gui.scrollbar = function(Options)
 
             if (X != lHBar.slider.offset) or (slider_width != lHBar.slider.size) then
                local pct_pos = X / (host_width - slider_width)
-               lPage.x = -((lPage.width - lView.width) * pct_pos)
+               lPage.x = -math.floor((lPage.width - lView.width) * pct_pos)
                lTarget.acDraw()
             end
          end
@@ -300,8 +300,8 @@ gui.scrollbar = function(Options)
       end
 
       if (x != current_x) or (y != current_y) then
-         lPage.x = x
-         lPage.y = y
+         lPage.x = math.floor(x)
+         lPage.y = math.floor(y)
          lTarget.acDraw()
       end
    end
@@ -377,13 +377,13 @@ gui.scrollbar = function(Options)
       if (px + pw < lView.width) then
          local x = lView.width - pw
          if (x > 0) then x = 0 end
-         if (px != x) then lPage.x = x end
+         if (px != x) then lPage.x = math.floor(x) end
       end
 
       if (py + lPage.height < lView.height) then
          local y = lView.height - lPage.height
          if (y > 0) then y = 0 end
-         if (py != y) then lPage.y = y end
+         if (py != y) then lPage.y = math.floor(y) end
       end
 
       recalcSlidersFromView()
