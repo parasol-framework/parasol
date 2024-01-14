@@ -1,6 +1,13 @@
 <?xml version="1.0"?>
 <!DOCTYPE rpl PUBLIC "-//ROCKLYTE//DTD RPL 1.0//EN">
 
+<info>
+ <title>Logic Tests</title>
+ <author>Paul Manias</author>
+ <keywords>logic, test</keywords>
+ <description>Runs basic logic tests against the parser.</description>
+</info>
+
 <page name="Index">
 
 <h1>If Statement Tests</h1>
@@ -64,5 +71,20 @@
 <p>Page Name: <print value="[%current-page]"/></p>
 <p>Viewport size: <print value="[%view-width] x [%view-height]"/></p>
 </font>
+
+<h2>Escape Codes</h2>
+
+<p>The line below should print left and right square brackets, substituted from &amp;lsqr; and &amp;rsqr, which are not regular XML escape codes:</p>
+
+<p indent>Left bracket: <print value="&lsqr;"/></p>
+<p indent>Right bracket: <print value="&rsqr;"/></p>
+
+<p>The line below tests use of the '$' character to prevent translation of attribute values.  The string should be printed complete with untranslated object, argument and bracket references.</p>
+
+<p indent><print $value="&lsqr; &rsqr; [%author]"/></p>
+
+<p>Here is the same string, translated:</p>
+
+<p indent><print value="&lsqr; &rsqr; [%author]"/></p>
 
 </page>

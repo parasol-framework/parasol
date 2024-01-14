@@ -72,7 +72,7 @@ function testLayout()      crcTest('Layout', 'layout.rpl', 0x1c4148c7) end
 function testLinks1()      crcTest('Links1', 'links.rpl', 0x2f48dd5e) end
 function testLinks2()      crcTest('Links2', 'links.rpl?font=Open Sans&font-size=16', 0x4ab6a46b) end
 function testLists()       crcTest('Lists', 'lists.rpl', 0xf45768d0) end
-function testLogic()       crcTest('Logic', 'logic.rpl', 0x8a3f998b) end
+function testLogic()       crcTest('Logic', 'logic.rpl', 0x6cbc37e7) end
 function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0x99628dcb) end
 function testTables()      crcTest('Tables', 'tables.rpl', 0x35e502b2) end
 function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xaac03de4) end
