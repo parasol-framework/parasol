@@ -81,13 +81,14 @@ class extVectorClip;
 
 class InputBoundary {
 public:
-   OBJECTID VectorID;
-   PTC Cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
-   DOUBLE BX1, BY1, BX2, BY2; // Collision boundary
-   DOUBLE X, Y; // Absolute X,Y without collision
+   OBJECTID vector_id;
+   PTC cursor; // This value buffers the Vector.Cursor field for optimisation purposes.
+   DOUBLE bx1, by1, bx2, by2; // Collision boundary
+   DOUBLE x, y; // Absolute X,Y without collision
+   bool pass_through; // True if input events should be passed through (the cursor will still apply)
 
-   InputBoundary(OBJECTID pV, PTC pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6) :
-      VectorID(pV), Cursor(pC), BX1(p1), BY1(p2), BX2(p3), BY2(p4), X(p5), Y(p6) {};
+   InputBoundary(OBJECTID pV, PTC pC, DOUBLE p1, DOUBLE p2, DOUBLE p3, DOUBLE p4, DOUBLE p5, DOUBLE p6, bool pPass = false) :
+      vector_id(pV), cursor(pC), bx1(p1), by1(p2), bx2(p3), by2(p4), x(p5), y(p6), pass_through(pPass) {};
 };
 
 class InputSubscription {

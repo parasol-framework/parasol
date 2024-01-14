@@ -1019,8 +1019,8 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
 
    if (Start >= Stop) {
-      DLAYOUT("Cancelling new segment, no content in range %d-%d \"%.20s\" (%s)",
-         Start.index, Stop.index, printable(*m_stream, Start).c_str(), Debug.c_str());
+      DLAYOUT("Cancelling new segment, no content in range %d-%d \"%.20s\"",
+         Start.index, Stop.index, printable(*m_stream, Start).c_str());
       return;
    }
 
@@ -1058,10 +1058,10 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
    }
 
 #ifdef DBG_STREAM
-   log.branch("#%d %d:%d - %d:%d, Area: %gx%g,%g:%gx%g, WordWidth: %d [%.20s]...[%.20s] (%s)",
+   log.branch("#%d %d:%d - %d:%d, Area: %gx%g,%g:%gx%g, WordWidth: %d [%.20s]...[%.20s]",
       LONG(m_segments.size()), Start.index, LONG(Start.offset), Stop.index, LONG(Stop.offset), m_line.x, Y, Width,
       AlignWidth, line_height, m_word_width, printable(*m_stream, Start).c_str(),
-      printable(*m_stream, Stop).c_str(), Debug.c_str());
+      printable(*m_stream, Stop).c_str());
 #endif
 
    if ((!m_segments.empty()) and (Start < m_segments.back().stop)) {
@@ -1123,7 +1123,7 @@ void layout::new_code_segment()
 
 #ifdef DBG_STREAM
    pf::Log log(__FUNCTION__);
-   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, BC_NAME(m_stream[0],idx).c_str());
+   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, strCodes[LONG(m_stream[0][idx].code)]);
 #endif
 
    if ((!m_segments.empty()) and (m_segments.back().stop IS start) and (m_segments.back().allow_merge)) {
@@ -1313,8 +1313,8 @@ ERROR layout::do_layout(objFont **Font, DOUBLE &Width, DOUBLE &Height, bool &Ver
 
    #ifdef DBG_LAYOUT
    log.branch("Dimensions: %gx%g (edge %g), LM %d RM %d TM %d BM %d",
-      m_page_width, page_height, m_page_width - Margins.Right,
-      Margins.Left, Margins.Right, Margins.Top, Margins.Bottom);
+      m_page_width, page_height, m_page_width - m_margins.Right,
+      m_margins.Left, m_margins.Right, m_margins.Top, m_margins.Bottom);
    #endif
 
    layout tablestate(Self, m_stream, m_viewport, m_margins), rowstate(Self, m_stream, m_viewport, m_margins), liststate(Self, m_stream, m_viewport, m_margins);
@@ -1381,7 +1381,7 @@ extend_page:
 
          if (set_segment_now) {
             DLAYOUT("Setting line at code '%s', index %d, line.x: %g, m_word_width: %d",
-               BC_NAME(m_stream[0],idx).c_str(), m_line.index.index, m_line.x, m_word_width);
+               strCodes[LONG(m_stream[0][idx].code)], m_line.index.index, m_line.x, m_word_width);
             finish_segment();
             new_segment(m_line.index, stream_char(idx), m_cursor_y, m_cursor_x - m_line.x, m_align_width - m_line.x);
             reset_broken_segment();

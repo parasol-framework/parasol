@@ -52,7 +52,7 @@ static void print_stream(RSTREAM &Stream)
       else if (code IS SCODE::PARAGRAPH_END) {
          out << "[PE]\n";
       }
-      else out << "[" << byte_code(code) << "]";
+      else out << "[" << strCodes[LONG(code)] << "]";
 
       printpos = true;
    }
@@ -92,7 +92,7 @@ static void print_segments(extDocument *Self)
          else if (code IS SCODE::PARAGRAPH_END) {
             out << "[E:PE]\n";
          }
-         else out << "[E:" <<  byte_code(code) << "]";
+         else out << "[E:" <<  strCodes[LONG(code)] << "]";
          i.next_code();
       }
 

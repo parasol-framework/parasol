@@ -1403,7 +1403,7 @@ private:
                   if (xmax < bx2) bx2 = xmax;
                   if (ymax < by2) by2 = ymax;
 
-                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy);
+                  Scene->InputBoundaries.emplace_back(shape->UID, shape->Cursor, bx1, by1, bx2, by2, absx, absy, shape->InputSubscriptions ? false : true);
                }
 
                state.mClipMask = saved_mask;
