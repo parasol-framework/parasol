@@ -1991,7 +1991,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 
    while (Events) {
       if ((Events->Type IS JET::LMB) and ((Events->Flags & JTYPE::REPEATED) IS JTYPE::NIL) and (Events->Value IS 1)) {
-         // Determine the nearest cursor position to the clicked point.
+         // Determine the nearest caret position to the clicked point.
 
          agg::trans_affine transform;
          if (Self->txLines.size() > 1) {
@@ -2001,13 +2001,33 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
          DOUBLE shortest_dist = 100000000000;
          LONG shortest_row = 0, shortest_col = 0;
          LONG row = 0;
-         for (auto &line : Self->txLines) {
-            bool test_line = true;
+         
+         // This lambda finds the closest caret entry point relative to the click position.
+         // TODO: If the transforms are limited to scaling and translation, we can optimise further
+         // by dropping the dist() check and comparing against the X axis only.
 
-            // The first row is always fully tested (this is important if all rows fail the hit test).
-            // Subsequent rows are only tested when there is a hit in their line boundary.
+         auto find_insertion = [&](TextLine &line) {
+            LONG coli = 0;
+            for (auto &col : line.chars) {
+               DOUBLE mx = Self->FinalX + ((col.x1 + col.x2) * 0.5); // Calculate the caret midpoint
+               DOUBLE my = Self->FinalY + ((col.y1 + col.y2) * 0.5);
+               DOUBLE d = std::abs(dist(Events->X, Events->Y, mx, my)); // Distance to the midpoint.
 
-            if (row > 0) {
+               if (d < shortest_dist) {
+                  shortest_dist = d;
+                  shortest_row = row;
+                  shortest_col = coli;
+               }
+               coli++;
+            }
+         };
+
+         if (Self->txLines.size() <= 1) {
+            // For single rows we can skip the boundary check and calculate the caret position immediately.
+            find_insertion(Self->txLines[0]);
+         }
+         else {
+            for (row=0; row < Self->txLines.size(); row++) {
                agg::path_storage path;
                DOUBLE offset = Self->txFont->LineSpacing * row;
                path.move_to(0, -Self->txFont->LineSpacing + offset);
@@ -2021,24 +2041,14 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
                DOUBLE bx1, bx2, by1, by2;
                bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
 
-               test_line = ((Events->AbsX >= bx1) and (Events->AbsY >= by1) and (Events->AbsX < bx2) and (Events->AbsX < by2));
-            }
-
-            LONG coli = 0;
-            for (auto &col : line.chars) {
-               DOUBLE mx = Self->FinalX + ((col.x1 + col.x2) * 0.5); // Calculate the cursor midpoint
-               DOUBLE my = Self->FinalY + ((col.y1 + col.y2) * 0.5);
-               DOUBLE d = std::abs(dist(Events->X, Events->Y, mx, my)); // Distance to the midpoint.
-
-               if (d < shortest_dist) {
-                  shortest_dist = d;
-                  shortest_row = row;
-                  shortest_col = coli;
+               if ((Events->AbsX >= bx1) and (Events->AbsY >= by1) and (Events->AbsX < bx2) and (Events->AbsX < by2)) {
+                  find_insertion(Self->txLines[0]);
+                  break;
                }
-               coli++;
             }
 
-            row++;
+            // Default to the first row if the click wasn't within a known boundary
+            if (row >= Self->txLines.size()) find_insertion(Self->txLines[0]);
          }
 
          Self->txCursor.move(Self, shortest_row, shortest_col);

@@ -160,7 +160,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
    pf::Log log(__FUNCTION__);
 
    auto Self = (extVectorScene *)CurrentContext();
-   if (!Self->SurfaceID) return ERR_Okay;
+   if (!Self->SurfaceID) return ERR_Okay; // Sanity check
 
    auto cursor = PTC::NIL;
 
@@ -363,7 +363,7 @@ ERROR scene_input_events(const InputEvent *Events, LONG Handle)
       else log.warning("Unrecognised movement type %d", LONG(input->Type));
    }
 
-   if ((Self->SurfaceID) and (!Self->ButtonLock)) {
+   if (!Self->ButtonLock) {
       if (cursor IS PTC::NIL) cursor = PTC::DEFAULT; // Revert the cursor to the default if nothing is defined
 
       if (Self->Cursor != cursor) {

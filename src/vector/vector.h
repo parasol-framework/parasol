@@ -755,21 +755,20 @@ template <class T> inline static void get_parent_size(T *Vector, DOUBLE &Width, 
 
 template <class T> inline static DOUBLE get_parent_diagonal(T *Vector)
 {
-   DOUBLE width = get_parent_width(Vector);
-   DOUBLE height = get_parent_height(Vector);
-
-   if (width > height) std::swap(width, height);
-   if ((height / width) <= 1.5) return 5.0 * (width + height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
-   else return std::sqrt((width * width) + (height * height));
+   DOUBLE a = std::abs(get_parent_width(Vector));
+   DOUBLE b = std::abs(get_parent_height(Vector));
+   if (a > b) std::swap(a, b);
+   return b + 0.428 * a * a / b; // Error level of ~1.04%
+   //return std::sqrt((a * a) + (b * b)); // Full accuracy
 }
 
 inline static DOUBLE dist(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2)
 {
-   DOUBLE width = X2 - X1;
-   DOUBLE height = Y2 - Y1;
-   if (width > height) std::swap(width, height);
-   if ((height / width) <= 1.5) return 5.0 * (width + height) / 7.0; // Fast hypot calculation accurate to within 1% for specific use cases.
-   else return std::sqrt((width * width) + (height * height));
+   DOUBLE a = std::abs(X2 - X1);
+   DOUBLE b = std::abs(Y2 - Y1);
+   if (a > b) std::swap(a, b);
+   return b + 0.428 * a * a / b; // Error level of ~1.04%
+   //return std::sqrt((a * a) + (b * b)); // Full accuracy
 }
 
 //********************************************************************************************************************
