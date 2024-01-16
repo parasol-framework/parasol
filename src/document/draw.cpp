@@ -29,11 +29,11 @@ static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const Inp
    for (; Event; Event = Event->Next) {
       if (Event->Type IS JET::ENTERED_AREA) {
          //Widget.hover = true;
-         Self->Viewport->draw();
+         //Self->Viewport->draw();
       }
       else if (Event->Type IS JET::LEFT_AREA) {
          //Widget.hover = false;
-         Self->Viewport->draw();
+         //Self->Viewport->draw();
       }
    }
 }
@@ -686,8 +686,6 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Overflow(VOF::HIDDEN)
                   });
                   
-                  auto flags = VTXF::EDITABLE;
-
                   DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
                   objVectorText::create::global({
@@ -698,7 +696,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::Font(font),
                      fl::Fill(combo.font_fill),
                      fl::LineLimit(1),
-                     fl::TextFlags(flags)
+                     fl::TextFlags(VTXF::EDITABLE)
                   });
                }
 

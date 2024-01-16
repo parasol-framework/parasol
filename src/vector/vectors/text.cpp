@@ -1999,7 +1999,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
          }
 
          DOUBLE shortest_dist = 100000000000;
-         LONG shortest_row = 0, shortest_col = 0;
+         LONG nearest_row = 0, nearest_col = 0;
          LONG row = 0;
          
          // This lambda finds the closest caret entry point relative to the click position.
@@ -2015,8 +2015,8 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
 
                if (d < shortest_dist) {
                   shortest_dist = d;
-                  shortest_row = row;
-                  shortest_col = coli;
+                  nearest_row = row;
+                  nearest_col = coli;
                }
                coli++;
             }
@@ -2027,7 +2027,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
             find_insertion(Self->txLines[0]);
          }
          else {
-            for (row=0; row < Self->txLines.size(); row++) {
+            for (row=0; row < std::ssize(Self->txLines); row++) {
                agg::path_storage path;
                DOUBLE offset = Self->txFont->LineSpacing * row;
                path.move_to(0, -Self->txFont->LineSpacing + offset);
@@ -2042,16 +2042,16 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
                bounding_rect_single(path, 0, &bx1, &by1, &bx2, &by2);
 
                if ((Events->AbsX >= bx1) and (Events->AbsY >= by1) and (Events->AbsX < bx2) and (Events->AbsX < by2)) {
-                  find_insertion(Self->txLines[0]);
+                  find_insertion(Self->txLines[row]);
                   break;
                }
             }
 
             // Default to the first row if the click wasn't within a known boundary
-            if (row >= Self->txLines.size()) find_insertion(Self->txLines[0]);
+            if (row >= std::ssize(Self->txLines)) find_insertion(Self->txLines[0]);
          }
 
-         Self->txCursor.move(Self, shortest_row, shortest_col);
+         Self->txCursor.move(Self, nearest_row, nearest_col);
          Self->txCursor.resetFlash();
       }
 

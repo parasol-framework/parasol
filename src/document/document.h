@@ -781,6 +781,11 @@ struct bc_checkbox : public base_code, widget_mgr {
    bool processed = false;
 };
 
+struct dropdown_item {
+   std::string id, name, icon;
+   dropdown_item(std::string pName) : name(pName) { }
+};
+
 struct bc_combobox : public base_code, widget_mgr {
    std::string value;
    GuardedObject<objVectorText> label_text;

@@ -101,9 +101,13 @@
       <comment>The left-side of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
-      <description>
-<p>The position of the rectangle on the x-axis is defined here as a fixed or relative coordinate.</p>
-      </description>
+    </field>
+
+    <field>
+      <name>XOffset</name>
+      <comment>The right-side of the rectangle, expressed as a fixed or scaled offset value.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
     </field>
 
     <field>
@@ -111,9 +115,13 @@
       <comment>The top of the rectangle.  Can be expressed as a fixed or relative coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
-      <description>
-<p>The position of the rectangle on the y-axis is defined here as a fixed or relative coordinate.</p>
-      </description>
+    </field>
+
+    <field>
+      <name>YOffset</name>
+      <comment>The bottom of the rectangle, expressed as a fixed or scaled offset value.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>DOUBLE</type>
     </field>
 
   </fields>

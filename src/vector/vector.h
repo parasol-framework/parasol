@@ -408,7 +408,7 @@ class extVectorRectangle : public extVector {
    using create = pf::Create<extVectorRectangle>;
 
    struct coord { DOUBLE x, y; };
-   DOUBLE rX, rY, rWidth, rHeight;
+   DOUBLE rX, rY, rWidth, rHeight, rXOffset, rYOffset;
    std::array<coord, 4> rRound;
    LONG   rDimensions;
    bool   rFullControl;

@@ -115,7 +115,7 @@ UBYTE stream_char::get_char(RSTREAM &Stream, INDEX Seek)
    auto idx = index;
    auto off = offset;
 
-   while (unsigned(idx) < Stream.size()) {
+   while (idx < std::ssize(Stream)) {
       if (Stream[idx].code IS SCODE::TEXT) {
          auto &text = Stream.lookup<bc_text>(idx);
          if (off + Seek < text.text.size()) return text.text[off + Seek];

@@ -13,18 +13,51 @@ VectorRectangle extends the @Vector class with the ability to generate rectangul
 
 static void generate_rectangle(extVectorRectangle *Vector)
 {
-   DOUBLE width = Vector->rWidth, height = Vector->rHeight;
-   DOUBLE x = Vector->rX, y = Vector->rY;
+   DOUBLE x, y, width, height;
+   
+   if (Vector->rDimensions & DMF_FIXED_X) x = Vector->rX;
+   else if (Vector->rDimensions & DMF_RELATIVE_X) x = Vector->rX * get_parent_width(Vector);
+   else if ((Vector->rDimensions & DMF_WIDTH) and (Vector->rDimensions & DMF_X_OFFSET)) {
+      if (Vector->rDimensions & DMF_FIXED_WIDTH) width = Vector->rWidth;
+      else width = get_parent_width(Vector) * Vector->rWidth;
 
-   if (Vector->rDimensions & (DMF_RELATIVE_X|DMF_RELATIVE_Y)) {
-      if (Vector->rDimensions & DMF_RELATIVE_X) x *= get_parent_width(Vector);
-      if (Vector->rDimensions & DMF_RELATIVE_Y) y *= get_parent_height(Vector);
+      if (Vector->rDimensions & DMF_FIXED_X_OFFSET) x = get_parent_width(Vector) - width - Vector->rXOffset;
+      else x = get_parent_width(Vector) - width - (get_parent_width(Vector) * Vector->rXOffset);
    }
+   else x = 0;
+   
+   if (Vector->rDimensions & DMF_FIXED_Y) y = Vector->rY;
+   else if (Vector->rDimensions & DMF_RELATIVE_Y) y = Vector->rY * get_parent_height(Vector);
+   else if ((Vector->rDimensions & DMF_WIDTH) and (Vector->rDimensions & DMF_Y_OFFSET)) {
+      if (Vector->rDimensions & DMF_FIXED_WIDTH) height = Vector->rHeight;
+      else height = get_parent_height(Vector) * Vector->rHeight;
 
-   if (Vector->rDimensions & (DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT)) {
-      if (Vector->rDimensions & DMF_RELATIVE_WIDTH) width *= get_parent_width(Vector);
-      if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height *= get_parent_height(Vector);
+      if (Vector->rDimensions & DMF_FIXED_Y_OFFSET) y = get_parent_height(Vector) - height - Vector->rYOffset;
+      else y = get_parent_height(Vector) - height - (get_parent_height(Vector) * Vector->rYOffset);
    }
+   else y = 0;
+   
+   if (Vector->rDimensions & DMF_FIXED_WIDTH) width = Vector->rWidth;
+   else if (Vector->rDimensions & DMF_RELATIVE_WIDTH) width = Vector->rWidth * get_parent_width(Vector);
+   else if (Vector->rDimensions & (DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET)) {
+      if (Vector->rDimensions & DMF_RELATIVE_X) x = Vector->rX * get_parent_width(Vector);
+      else x = Vector->rX;
+
+      if (Vector->rDimensions & DMF_FIXED_X_OFFSET) width = get_parent_width(Vector) - Vector->rXOffset - x;
+      else width = get_parent_width(Vector) - (Vector->rXOffset * get_parent_width(Vector)) - x;
+   }
+   else width = get_parent_width(Vector);
+   
+   if (Vector->rDimensions & DMF_FIXED_HEIGHT) height = Vector->rHeight;
+   else if (Vector->rDimensions & DMF_RELATIVE_HEIGHT) height = Vector->rHeight * get_parent_height(Vector);
+   else if (Vector->rDimensions & (DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET)) {
+      if (Vector->rDimensions & DMF_RELATIVE_Y) y = Vector->rY * get_parent_height(Vector);
+      else y = Vector->rY;
+
+      if (Vector->rDimensions & DMF_FIXED_Y_OFFSET) height = get_parent_height(Vector) - Vector->rYOffset - y;
+      else height = get_parent_height(Vector) - (Vector->rYOffset * get_parent_height(Vector)) - y;
+   }
+   else height = get_parent_height(Vector);
 
    if (Vector->rFullControl) {
       // Full control of rounded corners has been requested by the client (four X,Y coordinate pairs).
@@ -344,8 +377,7 @@ static ERROR RECTANGLE_SET_RoundY(extVectorRectangle *Self, Variable *Value)
 
 -FIELD-
 X: The left-side of the rectangle.  Can be expressed as a fixed or relative coordinate.
-
-The position of the rectangle on the x-axis is defined here as a fixed or relative coordinate.
+-END-
 
 *********************************************************************************************************************/
 
@@ -359,18 +391,66 @@ static ERROR RECTANGLE_GET_X(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_X(extVectorRectangle *Self, Variable *Value)
 {
-   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
 
    Self->rX = val;
+   reset_path(Self);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+XOffset: The right-side of the rectangle, expressed as a fixed or scaled offset value.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR RECTANGLE_GET_XOffset(extVectorRectangle *Self, Variable *Value)
+{
+   DOUBLE value = 0;
+
+   if (Self->rDimensions & DMF_FIXED_X_OFFSET) value = Self->rXOffset;
+   else if (Self->rDimensions & DMF_RELATIVE_X_OFFSET) {
+      value = Self->rXOffset * get_parent_width(Self);
+   }
+   else if ((Self->rDimensions & DMF_X) and (Self->rDimensions & DMF_WIDTH)) {
+      DOUBLE width;
+      if (Self->rDimensions & DMF_FIXED_WIDTH) width = Self->rHeight;
+      else width = get_parent_width(Self) * Self->rHeight;
+
+      if (Self->rDimensions & DMF_FIXED_X) value = get_parent_width(Self) - (Self->rX + width);
+      else value = get_parent_width(Self) - ((Self->rX * get_parent_width(Self)) + width);
+   }
+   else value = 0;
+
+   if (Value->Type & FD_SCALE) value = value / get_parent_width(Self);
+
+   if (Value->Type & FD_DOUBLE) Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   else return ERR_FieldTypeMismatch;
+
+   return ERR_Okay;
+}
+
+static ERROR RECTANGLE_SET_XOffset(extVectorRectangle *Self, Variable *Value)
+{
+   if (Value->Type & FD_DOUBLE) Self->rXOffset = Value->Double;
+   else if (Value->Type & FD_LARGE) Self->rXOffset = Value->Large;
+   else if (Value->Type & FD_STRING) Self->rXOffset = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
+
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_X_OFFSET) & (~DMF_FIXED_X_OFFSET);
+   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_X_OFFSET) & (~DMF_RELATIVE_X_OFFSET);
+
    reset_path(Self);
    return ERR_Okay;
 }
@@ -395,18 +475,14 @@ static ERROR RECTANGLE_GET_Width(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
 {
-   pf::Log log;
-   DOUBLE val;
-
-   if (Value->Type & FD_DOUBLE) val = Value->Double;
-   else if (Value->Type & FD_LARGE) val = Value->Large;
-   else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   if (Value->Type & FD_DOUBLE) Self->rWidth = Value->Double;
+   else if (Value->Type & FD_LARGE) Self->rWidth = Value->Large;
+   else if (Value->Type & FD_STRING) Self->rWidth = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
 
-   Self->rWidth = val;
    reset_path(Self);
    return ERR_Okay;
 }
@@ -415,8 +491,6 @@ static ERROR RECTANGLE_SET_Width(extVectorRectangle *Self, Variable *Value)
 
 -FIELD-
 Y: The top of the rectangle.  Can be expressed as a fixed or relative coordinate.
-
-The position of the rectangle on the y-axis is defined here as a fixed or relative coordinate.
 -END-
 
 *********************************************************************************************************************/
@@ -431,18 +505,66 @@ static ERROR RECTANGLE_GET_Y(extVectorRectangle *Self, Variable *Value)
 
 static ERROR RECTANGLE_SET_Y(extVectorRectangle *Self, Variable *Value)
 {
-   pf::Log log;
    DOUBLE val;
 
    if (Value->Type & FD_DOUBLE) val = Value->Double;
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
-   else return log.warning(ERR_SetValueNotNumeric);
+   else return ERR_SetValueNotNumeric;
 
    if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
    else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
 
    Self->rY = val;
+   reset_path(Self);
+   return ERR_Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+YOffset: The bottom of the rectangle, expressed as a fixed or scaled offset value.
+-END-
+
+*********************************************************************************************************************/
+
+static ERROR RECTANGLE_GET_YOffset(extVectorRectangle *Self, Variable *Value)
+{
+   DOUBLE value = 0;
+
+   if (Self->rDimensions & DMF_FIXED_Y_OFFSET) value = Self->rYOffset;
+   else if (Self->rDimensions & DMF_RELATIVE_Y_OFFSET) {
+      value = Self->rYOffset * get_parent_height(Self);
+   }
+   else if ((Self->rDimensions & DMF_Y) and (Self->rDimensions & DMF_HEIGHT)) {
+      DOUBLE height;
+      if (Self->rDimensions & DMF_FIXED_HEIGHT) height = Self->rHeight;
+      else height = get_parent_height(Self) * Self->rHeight;
+
+      if (Self->rDimensions & DMF_FIXED_Y) value = get_parent_height(Self) - (Self->rY + height);
+      else value = get_parent_height(Self) - ((Self->rY * get_parent_height(Self)) + height);
+   }
+   else value = 0;
+
+   if (Value->Type & FD_SCALE) value = value / get_parent_height(Self);
+
+   if (Value->Type & FD_DOUBLE) Value->Double = value;
+   else if (Value->Type & FD_LARGE) Value->Large = F2T(value);
+   else return ERR_FieldTypeMismatch;
+
+   return ERR_Okay;
+}
+
+static ERROR RECTANGLE_SET_YOffset(extVectorRectangle *Self, Variable *Value)
+{
+   if (Value->Type & FD_DOUBLE) Self->rYOffset = Value->Double;
+   else if (Value->Type & FD_LARGE) Self->rYOffset = Value->Large;
+   else if (Value->Type & FD_STRING) Self->rYOffset = strtod((CSTRING)Value->Pointer, NULL);
+   else return ERR_SetValueNotNumeric;
+
+   if (Value->Type & FD_SCALE) Self->rDimensions = (Self->rDimensions | DMF_RELATIVE_Y_OFFSET) & (~DMF_FIXED_Y_OFFSET);
+   else Self->rDimensions = (Self->rDimensions | DMF_FIXED_Y_OFFSET) & (~DMF_RELATIVE_Y_OFFSET);
+
    reset_path(Self);
    return ERR_Okay;
 }
@@ -454,10 +576,14 @@ static const FieldDef clRectDimensions[] = {
    { "FixedWidth",      DMF_FIXED_WIDTH },
    { "FixedX",          DMF_FIXED_X },
    { "FixedY",          DMF_FIXED_Y },
+   { "FixedXOffset",    DMF_FIXED_X_OFFSET },
+   { "FixedYOffset",    DMF_FIXED_Y_OFFSET },
    { "RelativeHeight",  DMF_RELATIVE_HEIGHT },
    { "RelativeWidth",   DMF_RELATIVE_WIDTH },
    { "RelativeX",       DMF_RELATIVE_X },
    { "RelativeY",       DMF_RELATIVE_Y },
+   { "RelativeXOffset", DMF_RELATIVE_X_OFFSET },
+   { "RelativeYOffset", DMF_RELATIVE_Y_OFFSET },
    { NULL, 0 }
 };
 
@@ -467,6 +593,8 @@ static const FieldArray clRectangleFields[] = {
    { "RoundY",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_RoundY, RECTANGLE_SET_RoundY },
    { "X",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_X, RECTANGLE_SET_X },
    { "Y",          FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_Y, RECTANGLE_SET_Y },
+   { "XOffset",    FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_XOffset, RECTANGLE_SET_XOffset },
+   { "YOffset",    FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_YOffset, RECTANGLE_SET_YOffset },
    { "Width",      FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_Width, RECTANGLE_SET_Width },
    { "Height",     FDF_VIRTUAL|FD_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, RECTANGLE_GET_Height, RECTANGLE_SET_Height },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, RECTANGLE_GET_Dimensions, RECTANGLE_SET_Dimensions, &clRectDimensions },

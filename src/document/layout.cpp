@@ -341,7 +341,7 @@ CELL layout::lay_cell(bc_table *Table)
    Table->row_width += Table->columns[cell.column].width;
 
    if (!Table->collapsed) Table->row_width += Table->cell_h_spacing;
-   else if ((cell.column + cell.col_span) < signed(Table->columns.size())-1) {
+   else if ((cell.column + cell.col_span) < std::ssize(Table->columns)-1) {
       Table->row_width += Table->cell_h_spacing;
    }
 
@@ -349,12 +349,12 @@ CELL layout::lay_cell(bc_table *Table)
       // A repass will be required if the row height has increased and vectors or tables have been used
       // in earlier cells, because vectors need to know the final dimensions of their table cell (viewport).
 
-      if (cell.column IS signed(Table->columns.size())-1) {
+      if (cell.column IS std::ssize(Table->columns)-1) {
          DLAYOUT("Extending row height from %g to %g (row repass required)", m_row->row_height, cell.height);
       }
 
       m_row->row_height = cell.height;
-      if (cell.column + cell.col_span >= signed(Table->columns.size())) {
+      if (cell.column + cell.col_span >= std::ssize(Table->columns)) {
          return CELL::REPASS_ROW_HEIGHT;
       }
       else m_row->vertical_repass = true; // Make a note to do a vertical repass once all columns on this row have been processed
@@ -363,7 +363,7 @@ CELL layout::lay_cell(bc_table *Table)
    m_cursor_x += Table->columns[cell.column].width;
 
    if (!Table->collapsed) m_cursor_x += Table->cell_h_spacing;
-   else if ((cell.column + cell.col_span) < signed(Table->columns.size())) m_cursor_x += Table->cell_h_spacing;
+   else if ((cell.column + cell.col_span) < std::ssize(Table->columns)) m_cursor_x += Table->cell_h_spacing;
 
    if (cell.column IS 0) m_cursor_x += Table->stroke_width;
 

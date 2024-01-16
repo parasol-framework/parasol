@@ -329,7 +329,7 @@ void parser::translate_args(const std::string &Input, std::string &Output)
       if (i >= Input.size()) return;
    }
 
-   for (auto pos = signed(Output.size())-1; pos >= 0; pos--) {
+   for (auto pos = std::ssize(Output)-1; pos >= 0; pos--) {
       if (Output[pos] IS '&') {
          if (!StrCompare("&lsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "[");
          else if (!StrCompare("&rsqr;", Output.c_str()+pos)) Output.replace(pos, 6, "]");
@@ -482,7 +482,7 @@ void parser::translate_param(std::string &Output, size_t pos)
       bool processed = false;
       for (auto it=Self->TemplateArgs.rbegin(); (!processed) and (it != Self->TemplateArgs.rend()); it++) {
          auto args = *it;
-         for (unsigned arg=1; arg < args->Attribs.size(); arg++) {
+         for (LONG arg=1; arg < std::ssize(args->Attribs); arg++) {
             if (StrCompare(args->Attribs[arg].Name, argname)) continue;
             Output.replace(pos, true_end+1-pos, args->Attribs[arg].Value);
             processed = true;
@@ -3621,7 +3621,7 @@ void parser::tag_row(XMLTag &Tag)
    bc_row_end end;
    m_stream.emplace(m_index, end);
 
-   if (unsigned(table.row_col) > table.table->columns.size()) {
+   if (table.row_col > std::ssize(table.table->columns)) {
       table.table->columns.resize(table.row_col);
    }
 }

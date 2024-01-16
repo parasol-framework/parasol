@@ -1934,3 +1934,11 @@ INLINE ERROR drwRemoveCallback(OBJECTPTR Surface, APTR Callback) {
       return Action(MT_DrwRemoveCallback, Surface, &args);
    }
 }
+
+
+namespace fl {
+   using namespace pf;
+
+constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, LONG(Value)); }
+
+} // namespace

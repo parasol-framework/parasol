@@ -213,7 +213,7 @@ static ERROR key_event(objVectorViewport *Viewport, KQ Flags, KEY Value, LONG Un
 
       case KEY::ENTER: {
          auto tab = Self->FocusIndex;
-         if ((tab >= 0) and (tab < signed(Self->Tabs.size()))) {
+         if ((tab >= 0) and (tab < std::ssize(Self->Tabs))) {
             log.branch("Key: Enter, Tab: %d/%d, Type: %d", tab, LONG(Self->Tabs.size()), LONG(Self->Tabs[tab].type));
 
             if ((Self->Tabs[tab].type IS TT::LINK) and (Self->Tabs[tab].active)) {
@@ -813,12 +813,12 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 
    if (Self->Tabs.empty()) return;
 
-   if ((Index < -1) or (unsigned(Index) >= Self->Tabs.size())) {
+   if ((Index < -1) or (Index >= std::ssize(Self->Tabs))) {
       log.traceWarning("Index %d out of bounds.", Index);
       return;
    }
 
-   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, LONG(Self->Tabs.size()), 
+   log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s", Index, LONG(Self->Tabs.size()),
       Index != -1 ? LONG(Self->Tabs[Index].type) : -1, Index != -1 ? Self->Tabs[Index].ref : -1, Self->HasFocus, Caller);
 
    if (Self->ActiveEditDef) deactivate_edit(Self, true);
@@ -966,7 +966,7 @@ static void advance_tabfocus(extDocument *Self, BYTE Direction)
 
    // Advance the focus index.  Operates as a loop so that disabled surfaces can be skipped.
 
-   auto i = signed(Self->Tabs.size()); // This while loop is designed to stop if no tab indexes are found to be active
+   auto i = std::ssize(Self->Tabs); // This while loop is designed to stop if no tab indexes are found to be active
    while (i > 0) {
       i--;
 

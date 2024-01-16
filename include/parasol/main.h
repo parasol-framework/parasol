@@ -377,6 +377,7 @@ constexpr FieldValue Routine(CPTR Value) { return FieldValue(FID_Routine, Value)
 constexpr FieldValue Size(LONG Value) { return FieldValue(FID_Size, Value); }
 constexpr FieldValue Speed(DOUBLE Value) { return FieldValue(FID_Speed, Value); }
 constexpr FieldValue StrokeWidth(DOUBLE Value) { return FieldValue(FID_StrokeWidth, Value); }
+constexpr FieldValue Surface(OBJECTID Value) { return FieldValue(FID_Surface, Value); }
 constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
