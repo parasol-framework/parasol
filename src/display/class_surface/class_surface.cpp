@@ -785,7 +785,7 @@ static ERROR SURFACE_Focus(extSurface *Self, APTR Void)
       }
    }
 
-   const std::lock_guard<std::mutex> lock(glFocusLock);
+   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
 
    // Return immediately if this surface object already has the -primary- focus
 

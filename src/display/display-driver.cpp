@@ -226,7 +226,7 @@ char glpDPMS[20] = "Standby";
 UBYTE *glDemultiply = NULL;
 
 std::vector<OBJECTID> glFocusList;
-std::mutex glFocusLock;
+std::recursive_mutex glFocusLock;
 std::recursive_mutex glSurfaceLock;
 
 THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;

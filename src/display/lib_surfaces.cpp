@@ -534,7 +534,7 @@ void process_surface_callbacks(extSurface *Self, extBitmap *Bitmap)
             { "Bitmap",  Bitmap, FD_OBJECTPTR }
          };
          auto script = Self->Callback[i].Function.Script.Script;
-         scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);         
+         scCallback(script, Self->Callback[i].Function.Script.ProcedureID, args, ARRAYSIZE(args), NULL);
       }
    }
 
@@ -1023,7 +1023,7 @@ oid: Returns the ID of the surface object that has the user focus, or zero on fa
 
 OBJECTID gfxGetUserFocus(void)
 {
-   const std::lock_guard<std::mutex> lock(glFocusLock);
+   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
    if (!glFocusList.empty()) {
       auto objectid = glFocusList[0];
       return objectid;

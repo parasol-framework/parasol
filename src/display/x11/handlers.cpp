@@ -74,7 +74,7 @@ void X11ManagerLoop(HOSTHANDLE FD, APTR Data)
 
                std::vector<OBJECTID> list;
                { // Make a local copy of the focus list
-                  const std::lock_guard<std::mutex> lock(glFocusLock);
+                  const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
                   list = glFocusList;
                }
 

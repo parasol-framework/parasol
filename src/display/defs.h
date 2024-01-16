@@ -487,7 +487,7 @@ extern std::list<ClipRecord> glClips;
 
 extern std::unordered_map<WindowHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
-extern std::mutex glFocusLock;
+extern std::recursive_mutex glFocusLock;
 extern std::recursive_mutex glSurfaceLock;
 extern std::recursive_mutex glInputLock;
 

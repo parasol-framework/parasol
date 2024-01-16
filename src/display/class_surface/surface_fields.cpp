@@ -363,7 +363,7 @@ Returns the surface object that has the primary user focus.  Returns NULL if no 
 
 static ERROR GET_UserFocus(extSurface *Self, OBJECTID *Value)
 {
-   const std::lock_guard<std::mutex> lock(glFocusLock);
+   const std::lock_guard<std::recursive_mutex> lock(glFocusLock);
    *Value = glFocusList[0];
    return ERR_Okay;
 }
