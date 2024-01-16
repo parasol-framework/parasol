@@ -1033,3 +1033,80 @@ static void reset_cursor(extDocument *Self)
       SubscribeTimer(0.5, &call, &Self->FlashTimer);
    }
 }
+
+//********************************************************************************************************************
+// Generic input handler for all widgets
+
+static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const InputEvent *Event)
+{
+   for (; Event; Event = Event->Next) {
+      if (Event->Type IS JET::ENTERED_AREA) {
+         //Widget.hover = true;
+         //Self->Viewport->draw();
+      }
+      else if (Event->Type IS JET::LEFT_AREA) {
+         //Widget.hover = false;
+         //Self->Viewport->draw();
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Event)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+
+   ui_widget &widget = Self->Widgets[Viewport->UID];
+   auto button = std::get<bc_button *>(widget.widget);
+
+   handle_widget_event(Self, *button, Event);
+
+   for (; Event; Event = Event->Next) {
+      if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         if (Event->Type IS JET::LMB) {
+            if (Event->Value IS 1) button->alt_state = true;
+            else button->alt_state = false;
+         }
+
+         if (button->alt_state) button->viewport->setFill(button->alt_fill);
+         else button->viewport->setFill(button->fill);
+
+         Self->Viewport->draw();
+      }
+   }
+
+   return ERR_Okay;
+}
+
+
+//********************************************************************************************************************
+
+static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Event)
+{
+   auto Self = (extDocument *)CurrentContext();
+
+   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+
+   ui_widget &widget = Self->Widgets[Viewport->UID];
+   auto checkbox = std::get<bc_checkbox *>(widget.widget);
+
+   handle_widget_event(Self, *checkbox, Event);
+
+   for (; Event; Event = Event->Next) {
+      if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         if (Event->Type IS JET::LMB) {
+            if (Event->Value IS 1) checkbox->alt_state ^= 1;
+         }
+
+         if (checkbox->alt_state) checkbox->viewport->setFill(checkbox->alt_fill);
+         else checkbox->viewport->setFill(checkbox->fill);
+
+         Self->Viewport->draw();
+      }
+   }
+
+   return ERR_Okay;
+}
