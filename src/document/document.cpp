@@ -50,18 +50,18 @@ that is distributed with this package.  Please refer to it for further informati
 #include <mutex>
 #include "hashes.h"
 
-static const LONG MAX_PAGE_WIDTH   = 30000;
-static const LONG MAX_PAGE_HEIGHT  = 100000;
-static const LONG MIN_PAGE_WIDTH   = 20;
-static const LONG MAX_DEPTH        = 50;    // Limits the number of tables-within-tables
-static const LONG BULLET_INDENT    = 14;    // Minimum indentation for bullet point lists
-static const LONG WIDTH_LIMIT      = 4000;
-static const LONG DEFAULT_FONTSIZE = 10;
-static const DOUBLE MAX_VSPACING   = 6.0;
-static const DOUBLE MAX_LEADING    = 6.0;
+static const LONG MAX_PAGE_WIDTH    = 30000;
+static const LONG MAX_PAGE_HEIGHT   = 100000;
+static const LONG MIN_PAGE_WIDTH    = 20;
+static const LONG MAX_DEPTH         = 50;    // Limits the number of tables-within-tables
+static const LONG BULLET_INDENT     = 14;    // Minimum indentation for bullet point lists
+static const LONG WIDTH_LIMIT       = 4000;
+static const LONG DEFAULT_FONTSIZE  = 10;
+static const DOUBLE MAX_VSPACING    = 6.0;
+static const DOUBLE MAX_LEADING     = 6.0;
 static const DOUBLE MIN_LINE_HEIGHT = 0.001;
 static const DOUBLE MAX_LINE_HEIGHT = 10.0;
-static const DOUBLE MIN_LEADING    = 1.0;
+static const DOUBLE MIN_LEADING     = 1.0;
 
 static ULONG glByteCodeID = 1;
 static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID

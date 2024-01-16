@@ -932,6 +932,14 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
       case WM_RBUTTONUP:     HandleButtonRelease(window, WIN_RMB); return 0;
       case WM_MBUTTONUP:     HandleButtonRelease(window, WIN_MMB); return 0;
 
+      case WM_NCLBUTTONDOWN: // Click detected on the titlebar
+         MsgButtonPress(WIN_LMB, 1);
+         return DefWindowProc(window, msgcode, wParam, lParam);
+         
+      case WM_NCLBUTTONDBLCLK: // Double-click detected on the titlebar
+         MsgButtonPress(WIN_DBL|WIN_LMB, 1);
+         return DefWindowProc(window, msgcode, wParam, lParam); 
+
       case WM_ICONNOTIFY:
          if (lParam == WM_LBUTTONDOWN) {
             ShowWindow(window, SW_SHOWNORMAL); // Bring window out of minimisation
