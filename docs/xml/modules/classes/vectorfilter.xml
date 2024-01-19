@@ -48,7 +48,7 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="R">Read</access>
       <type>INT</type>
       <description>
@@ -56,12 +56,12 @@
 <types lookup="DMF">
 <type name="FIXED_X">The <field>X</field> value is a fixed coordinate.</type>
 <type name="FIXED_Y">The <field>Y</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_X">The <field>X</field> value is a relative coordinate.</type>
-<type name="RELATIVE_Y">The <field>Y</field> value is a relative coordinate.</type>
+<type name="SCALED_X">The <field>X</field> value is a scaled coordinate.</type>
+<type name="SCALED_Y">The <field>Y</field> value is a scaled coordinate.</type>
 <type name="FIXED_WIDTH">The <field>Width</field> value is a fixed coordinate.</type>
 <type name="FIXED_HEIGHT">The <field>Height</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_WIDTH">The <field>Width</field> value is a relative coordinate.</type>
-<type name="RELATIVE_HEIGHT">The <field>Height</field> value is a relative coordinate.</type>
+<type name="SCALED_WIDTH">The <field>Width</field> value is a scaled coordinate.</type>
+<type name="SCALED_HEIGHT">The <field>Height</field> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
@@ -78,11 +78,11 @@
 
     <field>
       <name>Height</name>
-      <comment>The height of the filter area.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The height of the filter area.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The height of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
 <p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
 <p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
       </description>
@@ -114,7 +114,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a relative coordinate space of (0,0,100%,100%).</p>
+<p>PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is <code>USERSPACE</code>.  When set to <code>BOUNDING_BOX</code>, the effect may calculate its dimensions strictly based on the client vector using a scaled coordinate space of (0,0,100%,100%).</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -152,11 +152,11 @@
 
     <field>
       <name>Width</name>
-      <comment>The width of the filter area.  Can be expressed as a fixed or relative coordinate.</comment>
+      <comment>The width of the filter area.  Can be expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
+<p>The width of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively restrain the working space for the effect processing, making them an important consideration for efficiency.</p>
 <p>The coordinate system for the width and height depends on the value for <field>Units</field>.</p>
 <p>If width or height is not specified, the effect is as if a value of 120% were specified.</p>
       </description>

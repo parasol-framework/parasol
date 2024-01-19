@@ -23,21 +23,21 @@
   <fields>
     <field>
       <name>CenterX</name>
-      <comment>The horizontal center of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The horizontal center of the spiral.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The horizontal center of the spiral is defined here as either a fixed or relative value.</p>
+<p>The horizontal center of the spiral is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
     <field>
       <name>CenterY</name>
-      <comment>The vertical center of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The vertical center of the spiral.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The vertical center of the spiral is defined here as either a fixed or relative value.</p>
+<p>The vertical center of the spiral is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
@@ -73,11 +73,11 @@
 
     <field>
       <name>Radius</name>
-      <comment>The radius of the spiral.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The radius of the spiral.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The radius of the spiral is defined here as either a fixed or relative value.</p>
+<p>The radius of the spiral is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 

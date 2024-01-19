@@ -490,20 +490,6 @@ enum class FM : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(FM)
 
-#define DMF_SCALED_X  DMF_RELATIVE_X 
-#define DMF_SCALED_Y  DMF_RELATIVE_Y 
-#define DMF_SCALED_X_OFFSET  DMF_RELATIVE_X_OFFSET 
-#define DMF_SCALED_Y_OFFSET  DMF_RELATIVE_Y_OFFSET 
-#define DMF_SCALED_HEIGHT  DMF_RELATIVE_HEIGHT 
-#define DMF_SCALED_WIDTH  DMF_RELATIVE_WIDTH 
-#define DMF_SCALED_DEPTH  DMF_RELATIVE_DEPTH 
-#define DMF_SCALED_Z  DMF_RELATIVE_Z 
-#define DMF_SCALED_RADIUS_X  DMF_RELATIVE_RADIUS_X 
-#define DMF_SCALED_CENTER_X  DMF_RELATIVE_CENTER_X 
-#define DMF_SCALED_CENTER_Y  DMF_RELATIVE_CENTER_Y 
-#define DMF_SCALED_RADIUS_Y  DMF_RELATIVE_RADIUS_Y 
-#define DMF_SCALED_RADIUS  DMF_RELATIVE_RADIUS 
-
 struct GradientStop {
    DOUBLE Offset;    // An offset in the range of 0 - 1.0
    struct FRGB RGB;  // A floating point RGB value.
@@ -1410,15 +1396,15 @@ class objVectorFilter : public BaseClass {
 
    DOUBLE X;                     // X coordinate for the filter.
    DOUBLE Y;                     // Y coordinate for the filter.
-   DOUBLE Width;                 // The width of the filter area.  Can be expressed as a fixed or relative coordinate.
-   DOUBLE Height;                // The height of the filter area.  Can be expressed as a fixed or relative coordinate.
+   DOUBLE Width;                 // The width of the filter area.  Can be expressed as a fixed or scaled coordinate.
+   DOUBLE Height;                // The height of the filter area.  Can be expressed as a fixed or scaled coordinate.
    DOUBLE Opacity;               // The opacity of the filter.
    objVectorFilter * Inherit;    // Inherit attributes from a VectorFilter referenced here.
    LONG   ResX;                  // Width of the intermediate images, measured in pixels.
    LONG   ResY;                  // Height of the intermediate images, measured in pixels.
    VUNIT  Units;                 // Defines the coordinate system for fields X, Y, Width and Height.
    VUNIT  PrimitiveUnits;        // Alters the behaviour of some effects that support alternative position calculations.
-   LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or relative values.
+   LONG   Dimensions;            // Dimension flags define whether individual dimension fields contain fixed or scaled values.
    VCS    ColourSpace;           // The colour space of the filter graphics (SRGB or linear RGB).
 
    // Action stubs

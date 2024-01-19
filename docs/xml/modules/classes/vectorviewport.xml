@@ -84,7 +84,7 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="G" write="S">Get/Set</access>
       <type lookup="DMF">INT</type>
       <description>
@@ -113,7 +113,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The height of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The height of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for full coverage.</p>
 <p>The fixed value is always returned when retrieving the height.</p>
       </description>
     </field>
@@ -197,7 +197,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The width of the viewport's target area is defined here as a fixed or relative value.  The default value is 100% for full coverage.</p>
+<p>The width of the viewport's target area is defined here as a fixed or scaled value.  The default value is 100% for full coverage.</p>
       </description>
     </field>
 
@@ -207,7 +207,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
@@ -218,7 +218,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>XOffset</field> field must be defined.  If a X and XOffset value are defined together, the width of the viewport is computed on-the-fly and will change in response to the parent's width.</p>
       </description>
     </field>
@@ -229,7 +229,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>
@@ -240,7 +240,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or relative pixel units.</p>
+<p>The display position targeted by the viewport is declared by the (X,Y) field values.  Coordinates can be expressed as fixed or scaled pixel units.</p>
 <p>If an offset from the edge of the parent is desired, the <field>YOffset</field> must be defined.  If a Y and YOffset value are defined together, the height of the viewport is computed on-the-fly and will change in response to the parent's height.</p>
       </description>
     </field>

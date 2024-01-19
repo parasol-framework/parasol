@@ -44,21 +44,21 @@
 
     <field>
       <name>CenterX</name>
-      <comment>The center of the shape on the x-axis.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The center of the shape on the x-axis.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The horizontal center of the shape is defined here as either a fixed or relative value.</p>
+<p>The horizontal center of the shape is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
     <field>
       <name>CenterY</name>
-      <comment>The center of the shape on the y-axis.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The center of the shape on the y-axis.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The vertical center of the shape is defined here as either a fixed or relative value.</p>
+<p>The vertical center of the shape is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
@@ -74,7 +74,7 @@
 
     <field>
       <name>Dimensions</name>
-      <comment>Dimension flags define whether individual dimension fields contain fixed or relative values.</comment>
+      <comment>Dimension flags define whether individual dimension fields contain fixed or scaled values.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
@@ -83,9 +83,9 @@
 <type name="FIXED_CENTER_X">The <field>CenterX</field> value is a fixed coordinate.</type>
 <type name="FIXED_CENTER_Y">The <field>CenterY</field> value is a fixed coordinate.</type>
 <type name="FIXED_RADIUS">The <field>Radius</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_CENTER_X">The <field>CenterX</field> value is a relative coordinate.</type>
-<type name="RELATIVE_CENTER_Y">The <field>CenterY</field> value is a relative coordinate.</type>
-<type name="RELATIVE_RADIUS">The <field>Radius</field> value is a relative coordinate.</type>
+<type name="SCALED_CENTER_X">The <field>CenterX</field> value is a scaled coordinate.</type>
+<type name="SCALED_CENTER_Y">The <field>CenterY</field> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS">The <field>Radius</field> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
@@ -163,11 +163,11 @@
 
     <field>
       <name>Radius</name>
-      <comment>The radius of the generated shape.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The radius of the generated shape.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The Radius defines the final size of the generated shape.  It can be expressed in fixed or relative terms.</p>
+<p>The Radius defines the final size of the generated shape.  It can be expressed in fixed or scaled terms.</p>
       </description>
     </field>
 

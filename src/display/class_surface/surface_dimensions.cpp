@@ -157,7 +157,7 @@ are in use, and whether the values are fixed or relative.
 
 It is strongly recommended that this field is never set manually, because the flags are automatically managed for the
 client when setting fields such as #X and #Width.  If circumstances require manual configuration, take care to ensure
-that the flags do not conflict.  For instance, `FIXED_X` and `RELATIVE_X` cannot be paired, nor could `FIXED_X`,
+that the flags do not conflict.  For instance, `FIXED_X` and `SCALED_X` cannot be paired, nor could `FIXED_X`,
 `FIXED_XOFFSET` and `FIXED_WIDTH` simultaneously.
 
 *********************************************************************************************************************/

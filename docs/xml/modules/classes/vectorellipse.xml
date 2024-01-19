@@ -23,21 +23,21 @@
   <fields>
     <field>
       <name>CenterX</name>
-      <comment>The horizontal center of the ellipse.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The horizontal center of the ellipse.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The horizontal center of the ellipse is defined here as either a fixed or relative value.</p>
+<p>The horizontal center of the ellipse is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
     <field>
       <name>CenterY</name>
-      <comment>The vertical center of the ellipse.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The vertical center of the ellipse.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The vertical center of the ellipse is defined here as either a fixed or relative value.</p>
+<p>The vertical center of the ellipse is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
@@ -53,10 +53,10 @@
 <type name="FIXED_RADIUS_Y">The <field>RadiusY</field> value is a fixed coordinate.</type>
 <type name="FIXED_CENTER_X">The <field>CenterX</field> value is a fixed coordinate.</type>
 <type name="FIXED_CENTER_Y">The <field>CenterY</field> value is a fixed coordinate.</type>
-<type name="RELATIVE_RADIUS_X">The <field>RadiusX</field> value is a relative coordinate.</type>
-<type name="RELATIVE_RADIUS_Y">The <field>RadiusY</field> value is a relative coordinate.</type>
-<type name="RELATIVE_CENTER_X">The <field>CenterX</field> value is a relative coordinate.</type>
-<type name="RELATIVE_CENTER_Y">The <field>CenterY</field> value is a relative coordinate.</type>
+<type name="SCALED_RADIUS_X">The <field>RadiusX</field> value is a scaled coordinate.</type>
+<type name="SCALED_RADIUS_Y">The <field>RadiusY</field> value is a scaled coordinate.</type>
+<type name="SCALED_CENTER_X">The <field>CenterX</field> value is a scaled coordinate.</type>
+<type name="SCALED_CENTER_Y">The <field>CenterY</field> value is a scaled coordinate.</type>
 </types>
       </description>
     </field>
@@ -73,11 +73,11 @@
 
     <field>
       <name>Radius</name>
-      <comment>The radius of the ellipse.  Expressed as a fixed or relative coordinate.</comment>
+      <comment>The radius of the ellipse.  Expressed as a fixed or scaled coordinate.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The radius of the ellipse is defined here as either a fixed or relative value.  Updating the radius will set both the <field>RadiusX</field> and <field>RadiusY</field> values simultaneously.</p>
+<p>The radius of the ellipse is defined here as either a fixed or scaled value.  Updating the radius will set both the <field>RadiusX</field> and <field>RadiusY</field> values simultaneously.</p>
       </description>
     </field>
 
@@ -87,7 +87,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The horizontal radius of the ellipse is defined here as either a fixed or relative value.</p>
+<p>The horizontal radius of the ellipse is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 
@@ -97,7 +97,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The vertical radius of the ellipse is defined here as either a fixed or relative value.</p>
+<p>The vertical radius of the ellipse is defined here as either a fixed or scaled value.</p>
       </description>
     </field>
 

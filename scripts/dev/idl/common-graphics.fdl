@@ -29,63 +29,47 @@ enum("PTC", { type="int", start=0, comment="Predefined cursor styles" },
     "END") -- Any new cursor images must be added to the CursorLookup array in pointer_class.c
 
 flags("DMF", { weak=true, bits=32 },
-    "RELATIVE_X: The X field is relative to this object's parent.",
-    "RELATIVE_Y: The Y field is relative to this object's parent.",
+    "SCALED_X: The X field is scaled to this object's parent.",
+    "SCALED_Y: The Y field is scaled to this object's parent.",
     "FIXED_X: The X field is a fixed coordinate.",
     "FIXED_Y: The Y field is a fixed coordinate.",
-    "RELATIVE_X_OFFSET: The XOffset field is relative to this object's parent.",
-    "RELATIVE_Y_OFFSET: The YOffset field is relative to this object's parent.",
+    "SCALED_X_OFFSET: The XOffset field is scaled to this object's parent.",
+    "SCALED_Y_OFFSET: The YOffset field is scaled to this object's parent.",
     "FIXED_X_OFFSET: The XOffset field is a fixed coordinate.",
     "FIXED_Y_OFFSET: The YOffset field is a fixed coordinate.",
     "FIXED_HEIGHT: The Height field is a fixed size.",
     "FIXED_WIDTH: The Width field is a fixed suze.",
-    "RELATIVE_HEIGHT: The Height field is relative to this object's parent.",
-    "RELATIVE_WIDTH: The Width field is relative to this object's parent.",
+    "SCALED_HEIGHT: The Height field is scaled to this object's parent.",
+    "SCALED_WIDTH: The Width field is scaled to this object's parent.",
     "FIXED_DEPTH: The Depth field is a fixed size.",
-    "RELATIVE_DEPTH: The Depth field is a relative size to this object's parent.",
+    "SCALED_DEPTH: The Depth field is scaled to this object's parent.",
     "FIXED_Z: The Z field is a fixed coordinate.",
-    "RELATIVE_Z: The Z field is a relative coordinate to this object's parent.",
-    { RELATIVE_RADIUS_X = "0x00010000: The RadiusX field is a relative size to this object's parent.",
+    "SCALED_Z: The Z field is a scaled coordinate to this object's parent.",
+    { SCALED_RADIUS_X = "0x00010000: The RadiusX field is scaled to this object's parent.",
       FIXED_RADIUS_X    = "0x00020000: The RadiusX field is a fixed size.",
-      RELATIVE_CENTER_X = "0x00040000: The CenterX field is a relative size to this object's parent.",
-      RELATIVE_CENTER_Y = "0x00080000: The CenterY field is a relative size to this object's parent.",
+      SCALED_CENTER_X = "0x00040000: The CenterX field is scaled to this object's parent.",
+      SCALED_CENTER_Y = "0x00080000: The CenterY field is scaled to this object's parent.",
       FIXED_CENTER_X    = "0x00100000: The CenterX field is a fixed size.",
       FIXED_CENTER_Y    = "0x00200000: The CenterY field is a fixed size.",
       STATUS_CHANGE_H   = 0x00400000,
       STATUS_CHANGE_V   = 0x00800000,
-      RELATIVE_RADIUS_Y = "0x01000000: The RadiusY field is a relative size to this object's parent.",
+      SCALED_RADIUS_Y = "0x01000000: The RadiusY field is a scaled size to this object's parent.",
       FIXED_RADIUS_Y    = "0x02000000: The RadiusY field is a fixed size." },
-    { X                = "FIXED_X|RELATIVE_X",
-      Y                = "FIXED_Y|RELATIVE_Y",
-      WIDTH            = "FIXED_WIDTH|RELATIVE_WIDTH",
-      HEIGHT           = "FIXED_HEIGHT|RELATIVE_HEIGHT",
-      X_OFFSET         = "FIXED_X_OFFSET|RELATIVE_X_OFFSET",
-      Y_OFFSET         = "FIXED_Y_OFFSET|RELATIVE_Y_OFFSET",
-      RELATIVE_RADIUS  = "RELATIVE_RADIUS_X|RELATIVE_RADIUS_Y",
+    { X                = "FIXED_X|SCALED_X",
+      Y                = "FIXED_Y|SCALED_Y",
+      WIDTH            = "FIXED_WIDTH|SCALED_WIDTH",
+      HEIGHT           = "FIXED_HEIGHT|SCALED_HEIGHT",
+      X_OFFSET         = "FIXED_X_OFFSET|SCALED_X_OFFSET",
+      Y_OFFSET         = "FIXED_Y_OFFSET|SCALED_Y_OFFSET",
+      SCALED_RADIUS  = "SCALED_RADIUS_X|SCALED_RADIUS_Y",
       FIXED_RADIUS     = "FIXED_RADIUS_X|FIXED_RADIUS_Y",
       STATUS_CHANGE    = "STATUS_CHANGE_H|STATUS_CHANGE_V",
-      HORIZONTAL_FLAGS = "FIXED_WIDTH|RELATIVE_WIDTH|FIXED_X_OFFSET|RELATIVE_X_OFFSET|FIXED_X|RELATIVE_X",
-      VERTICAL_FLAGS   = "FIXED_HEIGHT|RELATIVE_HEIGHT|FIXED_Y_OFFSET|RELATIVE_Y_OFFSET|FIXED_Y|RELATIVE_Y",
-      WIDTH_FLAGS      = "FIXED_WIDTH|RELATIVE_WIDTH|FIXED_X_OFFSET|RELATIVE_X_OFFSET",
-      HEIGHT_FLAGS     = "FIXED_HEIGHT|RELATIVE_HEIGHT|FIXED_Y_OFFSET|RELATIVE_Y_OFFSET"
+      HORIZONTAL_FLAGS = "FIXED_WIDTH|SCALED_WIDTH|FIXED_X_OFFSET|SCALED_X_OFFSET|FIXED_X|SCALED_X",
+      VERTICAL_FLAGS   = "FIXED_HEIGHT|SCALED_HEIGHT|FIXED_Y_OFFSET|SCALED_Y_OFFSET|FIXED_Y|SCALED_Y",
+      WIDTH_FLAGS      = "FIXED_WIDTH|SCALED_WIDTH|FIXED_X_OFFSET|SCALED_X_OFFSET",
+      HEIGHT_FLAGS     = "FIXED_HEIGHT|SCALED_HEIGHT|FIXED_Y_OFFSET|SCALED_Y_OFFSET"
     }
 )
-
-c_insert([[
-#define DMF_SCALED_X  DMF_RELATIVE_X 
-#define DMF_SCALED_Y  DMF_RELATIVE_Y 
-#define DMF_SCALED_X_OFFSET  DMF_RELATIVE_X_OFFSET 
-#define DMF_SCALED_Y_OFFSET  DMF_RELATIVE_Y_OFFSET 
-#define DMF_SCALED_HEIGHT  DMF_RELATIVE_HEIGHT 
-#define DMF_SCALED_WIDTH  DMF_RELATIVE_WIDTH 
-#define DMF_SCALED_DEPTH  DMF_RELATIVE_DEPTH 
-#define DMF_SCALED_Z  DMF_RELATIVE_Z 
-#define DMF_SCALED_RADIUS_X  DMF_RELATIVE_RADIUS_X 
-#define DMF_SCALED_CENTER_X  DMF_RELATIVE_CENTER_X 
-#define DMF_SCALED_CENTER_Y  DMF_RELATIVE_CENTER_Y 
-#define DMF_SCALED_RADIUS_Y  DMF_RELATIVE_RADIUS_Y 
-#define DMF_SCALED_RADIUS  DMF_RELATIVE_RADIUS 
-]])
 
 enum("DRL", { type="int", start=0, comment="Compass directions." },
     "NORTH|UP",
