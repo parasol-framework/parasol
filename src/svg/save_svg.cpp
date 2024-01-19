@@ -89,20 +89,20 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
                }
             }
             else if ((gradient->Type IS VGT::RADIAL) or (gradient->Type IS VGT::DIAMOND) or (gradient->Type IS VGT::CONIC)) {
-               if ((!error) and ((gradient->Flags & (VGF::FIXED_CX|VGF::RELATIVE_CX)) != VGF::NIL))
-                  set_dimension(tag, "cx", gradient->CenterX, (gradient->Flags & VGF::RELATIVE_CX) != VGF::NIL);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_CX|VGF::SCALED_CX)) != VGF::NIL))
+                  set_dimension(tag, "cx", gradient->CenterX, (gradient->Flags & VGF::SCALED_CX) != VGF::NIL);
 
-               if ((!error) and ((gradient->Flags & (VGF::FIXED_CY|VGF::RELATIVE_CY)) != VGF::NIL))
-                  set_dimension(tag, "cy", gradient->CenterY, (gradient->Flags & VGF::RELATIVE_CY) != VGF::NIL);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_CY|VGF::SCALED_CY)) != VGF::NIL))
+                  set_dimension(tag, "cy", gradient->CenterY, (gradient->Flags & VGF::SCALED_CY) != VGF::NIL);
 
-               if ((!error) and ((gradient->Flags & (VGF::FIXED_FX|VGF::RELATIVE_FX)) != VGF::NIL))
-                  set_dimension(tag, "fx", gradient->FX, (gradient->Flags & VGF::RELATIVE_FX) != VGF::NIL);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_FX|VGF::SCALED_FX)) != VGF::NIL))
+                  set_dimension(tag, "fx", gradient->FX, (gradient->Flags & VGF::SCALED_FX) != VGF::NIL);
 
-               if ((!error) and ((gradient->Flags & (VGF::FIXED_FY|VGF::RELATIVE_FY)) != VGF::NIL))
-                  set_dimension(tag, "fy", gradient->FY, (gradient->Flags & VGF::RELATIVE_FY) != VGF::NIL);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_FY|VGF::SCALED_FY)) != VGF::NIL))
+                  set_dimension(tag, "fy", gradient->FY, (gradient->Flags & VGF::SCALED_FY) != VGF::NIL);
 
-               if ((!error) and ((gradient->Flags & (VGF::FIXED_RADIUS|VGF::RELATIVE_RADIUS)) != VGF::NIL))
-                  set_dimension(tag, "r", gradient->Radius, (gradient->Flags & VGF::RELATIVE_RADIUS) != VGF::NIL);
+               if ((!error) and ((gradient->Flags & (VGF::FIXED_RADIUS|VGF::SCALED_RADIUS)) != VGF::NIL))
+                  set_dimension(tag, "r", gradient->Radius, (gradient->Flags & VGF::SCALED_RADIUS) != VGF::NIL);
             }
 
             VectorMatrix *transform;
@@ -151,17 +151,17 @@ static ERROR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LON
             LONG dim;
             if (!error) error = filter->get(FID_Dimensions, &dim);
 
-            if ((!error) and (dim & (DMF_RELATIVE_X|DMF_FIXED_X)))
-               set_dimension(tag, "x", filter->X, dim & DMF_RELATIVE_X);
+            if ((!error) and (dim & (DMF_SCALED_X|DMF_FIXED_X)))
+               set_dimension(tag, "x", filter->X, dim & DMF_SCALED_X);
 
-            if ((!error) and (dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)))
-               set_dimension(tag, "y", filter->Y, dim & DMF_RELATIVE_Y);
+            if ((!error) and (dim & (DMF_SCALED_Y|DMF_FIXED_Y)))
+               set_dimension(tag, "y", filter->Y, dim & DMF_SCALED_Y);
 
-            if ((!error) and (dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)))
-               set_dimension(tag, "width", filter->Width, dim & DMF_RELATIVE_WIDTH);
+            if ((!error) and (dim & (DMF_SCALED_WIDTH|DMF_FIXED_WIDTH)))
+               set_dimension(tag, "width", filter->Width, dim & DMF_SCALED_WIDTH);
 
-            if ((!error) and (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)))
-               set_dimension(tag, "height", filter->Height, dim & DMF_RELATIVE_HEIGHT);
+            if ((!error) and (dim & (DMF_SCALED_HEIGHT|DMF_FIXED_HEIGHT)))
+               set_dimension(tag, "height", filter->Height, dim & DMF_SCALED_HEIGHT);
 
             VUNIT units;
             if ((!error) and (!filter->get(FID_Units, (LONG *)&units))) {
@@ -409,10 +409,10 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if (!error) {
          if ((!Vector->get(FID_RoundX, &rx)) and (rx != 0)) set_dimension(tag, "rx", rx, FALSE);
          if ((!Vector->get(FID_RoundY, &ry)) and (ry != 0)) set_dimension(tag, "ry", ry, FALSE);
-         if ((!Vector->get(FID_X, &x))) set_dimension(tag, "x", x, dim & DMF_RELATIVE_X);
-         if ((!Vector->get(FID_Y, &y))) set_dimension(tag, "y", y, dim & DMF_RELATIVE_Y);
-         if ((!Vector->get(FID_Width, &width))) set_dimension(tag, "width", width, dim & DMF_RELATIVE_WIDTH);
-         if ((!Vector->get(FID_Height, &height))) set_dimension(tag, "height", height, dim & DMF_RELATIVE_HEIGHT);
+         if ((!Vector->get(FID_X, &x))) set_dimension(tag, "x", x, dim & DMF_SCALED_X);
+         if ((!Vector->get(FID_Y, &y))) set_dimension(tag, "y", y, dim & DMF_SCALED_Y);
+         if ((!Vector->get(FID_Width, &width))) set_dimension(tag, "width", width, dim & DMF_SCALED_WIDTH);
+         if ((!Vector->get(FID_Height, &height))) set_dimension(tag, "height", height, dim & DMF_SCALED_HEIGHT);
 
          save_svg_scan_std(Self, XML, Vector, new_index);
       }
@@ -430,10 +430,10 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if (!error) error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<ellipse/>", &tag);
 
       if (!error) {
-         set_dimension(tag, "rx", rx, dim & DMF_RELATIVE_RADIUS_X);
-         set_dimension(tag, "ry", ry, dim & DMF_RELATIVE_RADIUS_Y);
-         set_dimension(tag, "cx", cx, dim & DMF_RELATIVE_CENTER_X);
-         set_dimension(tag, "cy", cy, dim & DMF_RELATIVE_CENTER_Y);
+         set_dimension(tag, "rx", rx, dim & DMF_SCALED_RADIUS_X);
+         set_dimension(tag, "ry", ry, dim & DMF_SCALED_RADIUS_Y);
+         set_dimension(tag, "cx", cx, dim & DMF_SCALED_CENTER_X);
+         set_dimension(tag, "cy", cy, dim & DMF_SCALED_CENTER_Y);
       }
 
       if (!error) error = save_svg_scan_std(Self, XML, Vector, new_index);
@@ -451,10 +451,10 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
             if (total_points IS 2) {
                error = xmlInsertStatement(XML, Parent, XMI::CHILD_END, "<line/>", &tag);
                if (!error) {
-                  set_dimension(tag, "x1", points[0].X, points[0].XRelative);
-                  set_dimension(tag, "y1", points[0].Y, points[0].YRelative);
-                  set_dimension(tag, "x2", points[1].X, points[1].XRelative);
-                  set_dimension(tag, "y2", points[1].Y, points[1].YRelative);
+                  set_dimension(tag, "x1", points[0].X, points[0].XScaled);
+                  set_dimension(tag, "y1", points[0].Y, points[0].YScaled);
+                  set_dimension(tag, "x2", points[1].X, points[1].XScaled);
+                  set_dimension(tag, "y2", points[1].Y, points[1].YScaled);
                }
             }
             else {
@@ -585,10 +585,10 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if (!error) error = Vector->get(FID_Dimensions, &dim);
 
       if (!error) {
-         if (!Vector->get(FID_X, &dbl)) set_dimension(tag, "x", dbl, dim & DMF_RELATIVE_X);
-         if (!Vector->get(FID_Y, &dbl)) set_dimension(tag, "y", dbl, dim & DMF_RELATIVE_Y);
-         if (!Vector->get(FID_Width, &dbl)) set_dimension(tag, "width", dbl, dim & DMF_RELATIVE_WIDTH);
-         if (!Vector->get(FID_Height, &dbl)) set_dimension(tag, "height", dbl, dim & DMF_RELATIVE_HEIGHT);
+         if (!Vector->get(FID_X, &dbl)) set_dimension(tag, "x", dbl, dim & DMF_SCALED_X);
+         if (!Vector->get(FID_Y, &dbl)) set_dimension(tag, "y", dbl, dim & DMF_SCALED_Y);
+         if (!Vector->get(FID_Width, &dbl)) set_dimension(tag, "width", dbl, dim & DMF_SCALED_WIDTH);
+         if (!Vector->get(FID_Height, &dbl)) set_dimension(tag, "height", dbl, dim & DMF_SCALED_HEIGHT);
          if (!Vector->get(FID_Amplitude, &dbl)) xmlNewAttrib(tag, "amplitude", std::to_string(dbl));
          if (!Vector->get(FID_Frequency, &dbl)) xmlNewAttrib(tag, "frequency", std::to_string(dbl));
          if (!Vector->get(FID_Decay, &dbl)) xmlNewAttrib(tag, "decay", std::to_string(dbl));
@@ -612,13 +612,13 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if ((error = Vector->get(FID_Dimensions, &dim))) return error;
 
       if (!error) {
-         if (!Vector->get(FID_CenterX, &dbl)) set_dimension(tag, "cx", dbl, dim & DMF_RELATIVE_CENTER_X);
-         if (!Vector->get(FID_CenterY, &dbl)) set_dimension(tag, "cy", dbl, dim & DMF_RELATIVE_CENTER_Y);
-         if (!Vector->get(FID_Width, &dbl)) set_dimension(tag, "width", dbl, dim & DMF_RELATIVE_WIDTH);
-         if (!Vector->get(FID_Height, &dbl)) set_dimension(tag, "height", dbl, dim & DMF_RELATIVE_HEIGHT);
+         if (!Vector->get(FID_CenterX, &dbl)) set_dimension(tag, "cx", dbl, dim & DMF_SCALED_CENTER_X);
+         if (!Vector->get(FID_CenterY, &dbl)) set_dimension(tag, "cy", dbl, dim & DMF_SCALED_CENTER_Y);
+         if (!Vector->get(FID_Width, &dbl)) set_dimension(tag, "width", dbl, dim & DMF_SCALED_WIDTH);
+         if (!Vector->get(FID_Height, &dbl)) set_dimension(tag, "height", dbl, dim & DMF_SCALED_HEIGHT);
          if (!Vector->get(FID_Offset, &dbl)) xmlNewAttrib(tag, "offset", std::to_string(dbl));
          if ((!Vector->get(FID_PathLength, &length)) and (length != 0)) xmlNewAttrib(tag, "pathLength", std::to_string(length));
-         if (!Vector->get(FID_Radius, &dbl)) set_dimension(tag, "r", dbl, dim & DMF_RELATIVE_RADIUS);
+         if (!Vector->get(FID_Radius, &dbl)) set_dimension(tag, "r", dbl, dim & DMF_SCALED_RADIUS);
          if (!Vector->get(FID_Scale, &dbl)) xmlNewAttrib(tag, "scale", std::to_string(dbl));
          if (!Vector->get(FID_Step, &dbl)) xmlNewAttrib(tag, "step", std::to_string(dbl));
 
@@ -635,9 +635,9 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       if ((error = Vector->get(FID_Dimensions, &dim))) return error;
 
       if (!error) {
-         if (!Vector->get(FID_CenterX, &dbl)) set_dimension(tag, "cx", dbl, dim & DMF_RELATIVE_CENTER_X);
-         if (!Vector->get(FID_CenterY, &dbl)) set_dimension(tag, "cy", dbl, dim & DMF_RELATIVE_CENTER_Y);
-         if (!Vector->get(FID_Radius, &dbl)) set_dimension(tag, "r", dbl, dim & DMF_RELATIVE_RADIUS);
+         if (!Vector->get(FID_CenterX, &dbl)) set_dimension(tag, "cx", dbl, dim & DMF_SCALED_CENTER_X);
+         if (!Vector->get(FID_CenterY, &dbl)) set_dimension(tag, "cy", dbl, dim & DMF_SCALED_CENTER_Y);
+         if (!Vector->get(FID_Radius, &dbl)) set_dimension(tag, "r", dbl, dim & DMF_SCALED_RADIUS);
          if (!Vector->get(FID_A, &dbl)) xmlNewAttrib(tag, "a", std::to_string(dbl));
          if (!Vector->get(FID_B, &dbl)) xmlNewAttrib(tag, "b", std::to_string(dbl));
          if (!Vector->get(FID_M, &dbl)) xmlNewAttrib(tag, "m", std::to_string(dbl));
@@ -674,17 +674,17 @@ static ERROR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
       }
 
       if ((!error) and (!(error = Vector->get(FID_Dimensions, &dim)))) {
-         if ((!error) and (dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!Vector->get(FID_X, &x)))
-            set_dimension(tag, "x", x, dim & DMF_RELATIVE_X);
+         if ((!error) and (dim & (DMF_SCALED_X|DMF_FIXED_X)) and (!Vector->get(FID_X, &x)))
+            set_dimension(tag, "x", x, dim & DMF_SCALED_X);
 
-         if ((!error) and (dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!Vector->get(FID_Y, &y)))
-            set_dimension(tag, "y", y, dim & DMF_RELATIVE_Y);
+         if ((!error) and (dim & (DMF_SCALED_Y|DMF_FIXED_Y)) and (!Vector->get(FID_Y, &y)))
+            set_dimension(tag, "y", y, dim & DMF_SCALED_Y);
 
-         if ((!error) and (dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!Vector->get(FID_Width, &width)))
-            set_dimension(tag, "width", width, dim & DMF_RELATIVE_WIDTH);
+         if ((!error) and (dim & (DMF_SCALED_WIDTH|DMF_FIXED_WIDTH)) and (!Vector->get(FID_Width, &width)))
+            set_dimension(tag, "width", width, dim & DMF_SCALED_WIDTH);
 
-         if ((!error) and (dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!Vector->get(FID_Height, &height)))
-            set_dimension(tag, "height", height, dim & DMF_RELATIVE_HEIGHT);
+         if ((!error) and (dim & (DMF_SCALED_HEIGHT|DMF_FIXED_HEIGHT)) and (!Vector->get(FID_Height, &height)))
+            set_dimension(tag, "height", height, dim & DMF_SCALED_HEIGHT);
       }
    }
    else {

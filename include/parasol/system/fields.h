@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/fields.h
-// Copyright: Paul Manias © 1996-2023
+// Copyright: Paul Manias © 1996-2024
 // Generator: idl-c
 
 #define FID_Category 0x19ee1863LL
@@ -940,11 +940,14 @@
 #define FID_Dictionary 0xccb60b7bLL
 #define FID_Divisor 0x12ffda05LL
 #define FID_EdgeMode 0xbb10b09fLL
+#define FID_EventCallback 0xfc356c74LL
+#define FID_EventMask 0x354f38b3LL
 #define FID_Exponent 0xd4513596LL
 #define FID_MatrixRows 0x64419145LL
 #define FID_MatrixColumns 0x54dc215bLL
 #define FID_Matrix 0x0d3e291aLL
 #define FID_PreserveAlpha 0xf9b49d57LL
+#define FID_Pretext 0xc28b4df1LL
 #define FID_ResX 0x7c9d4fa7LL
 #define FID_ResY 0x7c9d4fa8LL
 #define FID_RootModule 0xdc9a16cfLL

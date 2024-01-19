@@ -61,7 +61,7 @@ static const DOUBLE MAX_VSPACING    = 6.0;
 static const DOUBLE MAX_LEADING     = 6.0;
 static const DOUBLE MIN_LINE_HEIGHT = 0.001;
 static const DOUBLE MAX_LINE_HEIGHT = 10.0;
-static const DOUBLE MIN_LEADING     = 1.0;
+static const DOUBLE MIN_LEADING     = 0;
 
 static ULONG glByteCodeID = 1;
 static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
@@ -383,6 +383,7 @@ inline void layout_doc_fast(extDocument *Self)
 #include "functions.cpp"
 #include "ui.cpp"
 #include "layout.cpp"
+#include "menu.cpp"
 #include "draw.cpp"
 
 //********************************************************************************************************************

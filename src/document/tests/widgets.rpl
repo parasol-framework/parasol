@@ -31,17 +31,17 @@
 <h1>Combobox Widgets</h1>
 
 <p>Prefix <combobox width="200" value="pre-defined content">
-  <option value="volvo">Volvo</option>
-  <option value="saab">Saab</option>
-  <option value="mercedes">Mercedes</option>
-  <option value="audi">Audi</option>
+  <option icon="icons:items/add" value="volvo">Volvo</option>
+  <option icon="icons:items/find" value="saab">Saab</option>
+  <option icon="icons:items/cancel" value="mercedes">Mercedes</option>
+  <option icon="icons:items/start" value="audi">Audi</option>
 </combobox> Suffix</p>
 
 <p font-face="Courier" font-size="20"><combobox width="300" value="Courier 20pt" label="Default Label">
-  <option value="volvo">Volvo</option>
+  <option icon="icons:items/add" value="volvo">Volvo</option>
   <option value="saab">Saab</option>
-  <option value="mercedes">Mercedes</option>
-  <option value="audi">Audi</option>
+  <option icon="icons:items/cancel" value="mercedes">Mercedes</option>
+  <option icon="icons:items/start" value="audi">Audi</option>
 </combobox> Not a label</p>
 
 <p><combobox width="200" label-pos="left" label="Left Label: " value="pre-defined content">

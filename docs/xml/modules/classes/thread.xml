@@ -12,7 +12,7 @@
     <idstring>ID_THREAD</idstring>
     <category>System</category>
     <include>modules/thread.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>The Thread class provides the means to execute and manage threads within an application.</p>
 <p>The following code illustrates how to create a temporary thread that is automatically destroyed after the thread_entry() function has completed:</p>

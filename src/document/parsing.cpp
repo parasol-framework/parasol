@@ -40,22 +40,23 @@ struct parser {
    std::stack<bc_list *> m_list_stack;
    std::stack<process_table> m_table_stack;
 
-   inline void  process_page();
+   parser(extDocument *pSelf) : Self(pSelf), m_index(0) { }
+   parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML), m_index(0) { }
+
+   inline ERROR calc(const std::string &, DOUBLE *, std::string &);
    inline TRF   parse_tag(XMLTag &, IPF &);
    inline TRF   parse_tags(objXML::TAGS &, IPF = IPF::NIL);
    inline TRF   parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
    inline TRF   parse_tags_with_embedded_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
+   inline void  process_page(objXML *pXML);
    inline void  tag_xml_content(XMLTag &, PXF);
    inline void  translate_attrib_args(pf::vector<XMLAttrib> &);
    inline void  translate_args(const std::string &, std::string &);
    inline void  translate_calc(std::string &, size_t);
    inline void  translate_param(std::string &, size_t);
    inline void  translate_reserved(std::string &, size_t, bool &);
-   inline ERROR calc(const std::string &, DOUBLE *, std::string &);
    inline ERROR tag_xml_content_eval(std::string &);
    inline void  trim_preformat(extDocument *);
-
-   parser(extDocument *pSelf, objXML *pXML) : Self(pSelf), m_xml(pXML), m_index(0) { }
 
    // Switching out the XML object is sometimes done for things like template injection
 
@@ -120,7 +121,7 @@ struct parser {
             fl::Owner(pattern->Scene->Viewport->UID),
             fl::X(0), fl::Y(0), fl::Width(SCALE(1.0)), fl::Height(SCALE(1.0)),
             fl::Stroke("rgb(255,255,255)"), fl::StrokeWidth(1.0),
-            fl::RoundX(4), fl::RoundY(4),
+            fl::RoundX(SCALE(0.03)), fl::RoundY(SCALE(0.03)),
             fl::Fill("rgb(0,0,0,128)")
          });
 
@@ -136,13 +137,14 @@ struct parser {
 //
 // This function does not clear existing data, so you can use it to append new content to existing document content.
 
-void parser::process_page()
+void parser::process_page(objXML *pXML)
 {
-   if (!m_xml) { Self->Error = ERR_NoData; return; }
-
    pf::Log log(__FUNCTION__);
 
    log.branch("Page: %s", Self->PageName.c_str());
+   
+   if (!pXML) { Self->Error = ERR_NoData; return; }
+   m_xml = pXML;
 
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
@@ -165,6 +167,8 @@ void parser::process_page()
 
       bool no_header = page->attrib("noheader") ? true : false;
       bool no_footer = page->attrib("nofooter") ? true : false;
+
+      // Reset values that are specific to page state
 
       Self->Segments.clear();
       Self->SortSegments.clear();
@@ -218,12 +222,16 @@ void parser::process_page()
       if (!Self->PageName.empty()) {
          auto msg = std::string("Failed to find page '") + Self->PageName + "' in document '" + Self->Path + "'.";
          error_dialog("Load Failed", msg);
+         Self->Error = ERR_Search;
       }
       else {
-         auto msg = std::string("Failed to find a valid page in document '") + Self->Path > "'.";
-         error_dialog("Load Failed", msg);
+         // If no name was specified and there is no page to process, revert to performing a standard insert
+
+         auto orig_size = m_stream.size();
+         Self->Error = insert_xml(Self, Self->Stream, m_xml, m_xml->Tags, m_stream.size(), STYLE::NIL); //STYLE::RESET_STYLE);
+
+         if (Self->Error) m_stream.data.resize(orig_size);
       }
-      Self->Error = ERR_Search;
    }
 
    if ((!Self->Error) and (Self->MouseInPage)) {
@@ -604,6 +612,13 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
          char buffer[28];
          snprintf(buffer, sizeof(buffer), "%g", font->Point);
          Output.replace(pos, sizeof("[%font-size]")-1, buffer);
+      }
+   }
+   else if (!Output.compare(pos, sizeof("[%line-height]")-1, "[%line-height]")) {
+      if (auto font = m_style.get_font()) {
+         char buffer[28];
+         snprintf(buffer, sizeof(buffer), "%d", font->Ascent);
+         Output.replace(pos, sizeof("[%line-height]")-1, buffer);
       }
    }
    else if (!Output.compare(pos, sizeof("[%line-no]")-1, "[%line-no]")) {
@@ -1781,15 +1796,11 @@ void parser::tag_combobox(XMLTag &Tag)
    for (unsigned i=1; i < Tag.Attribs.size(); i++) {
       auto hash = StrHash(Tag.Attribs[i].Name);
       auto &value = Tag.Attribs[i].Value;
-      if (hash IS HASH_label) {
-         widget.label = value;
-      }
-      else if (hash IS HASH_value) {
-         widget.value = value;
-      }
-      else if (hash IS HASH_fill) {
-         widget.fill = value;
-      }
+      if (hash IS HASH_label)          widget.label = value;
+      else if (hash IS HASH_value)     widget.value = value;
+      else if (hash IS HASH_fill)      widget.fill = value;
+      else if (hash IS HASH_font_fill) widget.font_fill = value;
+      else if (hash IS HASH_name)      widget.name = value;
       else if (hash IS HASH_label_pos) {
          if (!StrMatch("left", value)) widget.label_pos = 0;
          else if (!StrMatch("right", value)) widget.label_pos = 1;
@@ -1797,15 +1808,28 @@ void parser::tag_combobox(XMLTag &Tag)
       else if (hash IS HASH_width) {
          read_unit(value.c_str(), widget.width, widget.width_pct);
       }
-      else if (hash IS HASH_font_fill) {
-         widget.font_fill = value;
-      }
-      else if (hash IS HASH_name) {
-         widget.name = value;
-      }
       else log.warning("<combobox> unsupported attribute '%s'", Tag.Attribs[i].Name.c_str());
    }
-   
+
+   // Process <option/> tags for the drop-down menu
+
+   if (!Tag.Children.empty()) {
+      for (auto &scan : Tag.Children) {
+         if (!StrMatch("option", scan.name())) {
+            auto value = scan.attrib("value");
+            if ((value) and (!value->empty())) {
+               auto &option = widget.menu.m_items.emplace_back(*value);
+
+               auto id = scan.attrib("id");
+               if ((id) and (!id->empty())) option.id = *id;
+
+               auto icon = scan.attrib("icon");
+               if (icon) option.icon = *icon;
+            }
+         }
+      }
+   }
+
    if (!m_combobox_patterns) {
       // The combobox uses the default fill pattern with an arrow button overlayed on the right.
       m_combobox_patterns = true;
@@ -3739,7 +3763,7 @@ void parser::tag_cell(XMLTag &Tag)
 
       // Cell content is managed in an internal stream
 
-      parser parse(Self, m_xml);
+      parser parse(Self);
 
       parse.m_paragraph_depth++;
       parse.parse_tags_with_style(Tag.Children, new_style);

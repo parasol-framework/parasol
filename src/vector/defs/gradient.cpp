@@ -191,7 +191,7 @@ static ERROR VECTORGRADIENT_NewObject(extVectorGradient *Self, APTR Void)
    Self->Radius  = 0.5;
    Self->X1      = 0;
    Self->X2      = 100; // For an effective contoured gradient, this needs to default to 100
-   Self->Flags  |= VGF::RELATIVE_CX|VGF::RELATIVE_CY|VGF::RELATIVE_RADIUS;
+   Self->Flags  |= VGF::SCALED_CX|VGF::SCALED_CY|VGF::SCALED_RADIUS;
    return ERR_Okay;
 }
 
@@ -220,8 +220,8 @@ static ERROR VECTORGRADIENT_SET_CenterX(extVectorGradient *Self, Variable *Value
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_CX) & (~VGF::FIXED_CX);
-   else Self->Flags = (Self->Flags | VGF::FIXED_CX) & (~VGF::RELATIVE_CX);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_CX) & (~VGF::FIXED_CX);
+   else Self->Flags = (Self->Flags | VGF::FIXED_CX) & (~VGF::SCALED_CX);
 
    Self->CenterX = val;
    return ERR_Okay;
@@ -252,8 +252,8 @@ static ERROR VECTORGRADIENT_SET_CenterY(extVectorGradient *Self, Variable *Value
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_CY) & (~VGF::FIXED_CY);
-   else Self->Flags = (Self->Flags | VGF::FIXED_CY) & (~VGF::RELATIVE_CY);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_CY) & (~VGF::FIXED_CY);
+   else Self->Flags = (Self->Flags | VGF::FIXED_CY) & (~VGF::SCALED_CY);
 
    Self->CenterY = val;
    return ERR_Okay;
@@ -272,7 +272,7 @@ space to `LINEAR_RGB` will force the renderer to automatically convert sRGB valu
 Flags: Dimension flags are stored here.
 Lookup: VGF
 
-Dimension flags that indicate whether field values are fixed or relative are defined here.
+Dimension flags that indicate whether field values are fixed or scaled are defined here.
 
 -FIELD-
 FX: The horizontal focal point for radial gradients.
@@ -297,8 +297,8 @@ static ERROR VECTORGRADIENT_SET_FX(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_FX) & (~VGF::FIXED_FX);
-   else Self->Flags = (Self->Flags | VGF::FIXED_FX) & (~VGF::RELATIVE_FX);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_FX) & (~VGF::FIXED_FX);
+   else Self->Flags = (Self->Flags | VGF::FIXED_FX) & (~VGF::SCALED_FX);
 
    Self->FX = val;
    return ERR_Okay;
@@ -329,8 +329,8 @@ static ERROR VECTORGRADIENT_SET_FY(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_FY) & (~VGF::FIXED_FY);
-   else Self->Flags = (Self->Flags | VGF::FIXED_FY) & (~VGF::RELATIVE_FY);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_FY) & (~VGF::FIXED_FY);
+   else Self->Flags = (Self->Flags | VGF::FIXED_FY) & (~VGF::SCALED_FY);
 
    Self->FY = val;
    return ERR_Okay;
@@ -467,7 +467,7 @@ static ERROR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
 -FIELD-
 Radius: The radius of the gradient.
 
-The radius of the gradient can be defined in fixed units or relative terms to its container.  A default radius of
+The radius of the gradient can be defined in fixed units or scaled terms to its container.  A default radius of
 50% (0.5) applies if this field is not set.
 
 The Radius value has no effect if the gradient is linear.
@@ -490,8 +490,8 @@ static ERROR VECTORGRADIENT_SET_Radius(extVectorGradient *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val >= 0) {
-      if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_RADIUS) & (~VGF::FIXED_RADIUS);
-      else Self->Flags = (Self->Flags | VGF::FIXED_RADIUS) & (~VGF::RELATIVE_RADIUS);
+      if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_RADIUS) & (~VGF::FIXED_RADIUS);
+      else Self->Flags = (Self->Flags | VGF::FIXED_RADIUS) & (~VGF::SCALED_RADIUS);
 
       Self->Radius = val;
       return ERR_Okay;
@@ -600,7 +600,7 @@ The type of the gradient to be drawn is specified here.
 Units: Defines the coordinate system for fields X1, Y1, X2 and Y2.
 
 The default coordinate system for gradients is `BOUNDING_BOX`, which positions the gradient around the vector that
-references it.  The alternative is `USERSPACE`, which positions the gradient relative to the current viewport.
+references it.  The alternative is `USERSPACE`, which positions the gradient scaled to the current viewport.
 
 -FIELD-
 X1: Initial X coordinate for the gradient.
@@ -608,7 +608,7 @@ X1: Initial X coordinate for the gradient.
 The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore
 these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
 
-Coordinate values can be expressed as percentages that are relative to the target space.
+Coordinate values can be expressed as percentages that are scaled to the target space.
 
 *********************************************************************************************************************/
 
@@ -627,8 +627,8 @@ static ERROR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_X1) & (~VGF::FIXED_X1);
-   else Self->Flags = (Self->Flags | VGF::FIXED_X1) & (~VGF::RELATIVE_X1);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_X1) & (~VGF::FIXED_X1);
+   else Self->Flags = (Self->Flags | VGF::FIXED_X1) & (~VGF::SCALED_X1);
 
    Self->X1 = val;
    return ERR_Okay;
@@ -641,7 +641,7 @@ X2: Final X coordinate for the gradient.
 The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
 these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
 
-Coordinate values can be expressed as percentages that are relative to the target space.
+Coordinate values can be expressed as percentages that are scaled to the target space.
 
 *********************************************************************************************************************/
 
@@ -660,8 +660,8 @@ static ERROR VECTORGRADIENT_SET_X2(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_X2) & (~VGF::FIXED_X2);
-   else Self->Flags = (Self->Flags | VGF::FIXED_X2) & (~VGF::RELATIVE_X2);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_X2) & (~VGF::FIXED_X2);
+   else Self->Flags = (Self->Flags | VGF::FIXED_X2) & (~VGF::SCALED_X2);
 
    Self->X2 = val;
    return ERR_Okay;
@@ -691,8 +691,8 @@ static ERROR VECTORGRADIENT_SET_Y1(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_Y1) & (~VGF::FIXED_Y1);
-   else Self->Flags = (Self->Flags | VGF::FIXED_Y1) & (~VGF::RELATIVE_Y1);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_Y1) & (~VGF::FIXED_Y1);
+   else Self->Flags = (Self->Flags | VGF::FIXED_Y1) & (~VGF::SCALED_Y1);
 
    Self->Y1 = val;
    return ERR_Okay;
@@ -705,7 +705,7 @@ Y2: Final Y coordinate for the gradient.
 The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore
 these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).
 
-Coordinate values can be expressed as percentages that are relative to the target space.
+Coordinate values can be expressed as percentages that are scaled to the target space.
 -END-
 *********************************************************************************************************************/
 
@@ -724,8 +724,8 @@ static ERROR VECTORGRADIENT_SET_Y2(extVectorGradient *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::RELATIVE_Y2) & (~VGF::FIXED_Y2);
-   else Self->Flags = (Self->Flags | VGF::FIXED_Y2) & (~VGF::RELATIVE_Y2);
+   if (Value->Type & FD_SCALE) Self->Flags = (Self->Flags | VGF::SCALED_Y2) & (~VGF::FIXED_Y2);
+   else Self->Flags = (Self->Flags | VGF::FIXED_Y2) & (~VGF::SCALED_Y2);
 
    Self->Y2 = val;
    return ERR_Okay;

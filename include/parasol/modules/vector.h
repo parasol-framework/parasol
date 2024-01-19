@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      vector.h
-// Copyright: Paul Manias © 2010-2023
+// Copyright: Paul Manias © 2010-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -35,6 +35,7 @@ class objVectorFilter;
 class objVector;
 class objVectorPath;
 class objVectorText;
+class objVectorGroup;
 class objVectorWave;
 class objVectorRectangle;
 class objVectorPolygon;
@@ -371,15 +372,15 @@ enum class CM : LONG {
 
 enum class VGF : ULONG {
    NIL = 0,
-   RELATIVE_X1 = 0x00000001,
-   RELATIVE_Y1 = 0x00000002,
-   RELATIVE_X2 = 0x00000004,
-   RELATIVE_Y2 = 0x00000008,
-   RELATIVE_CX = 0x00000010,
-   RELATIVE_CY = 0x00000020,
-   RELATIVE_FX = 0x00000040,
-   RELATIVE_FY = 0x00000080,
-   RELATIVE_RADIUS = 0x00000100,
+   SCALED_X1 = 0x00000001,
+   SCALED_Y1 = 0x00000002,
+   SCALED_X2 = 0x00000004,
+   SCALED_Y2 = 0x00000008,
+   SCALED_CX = 0x00000010,
+   SCALED_CY = 0x00000020,
+   SCALED_FX = 0x00000040,
+   SCALED_FY = 0x00000080,
+   SCALED_RADIUS = 0x00000100,
    FIXED_X1 = 0x00000200,
    FIXED_Y1 = 0x00000400,
    FIXED_X2 = 0x00000800,
@@ -489,6 +490,20 @@ enum class FM : ULONG {
 
 DEFINE_ENUM_FLAG_OPERATORS(FM)
 
+#define DMF_SCALED_X  DMF_RELATIVE_X 
+#define DMF_SCALED_Y  DMF_RELATIVE_Y 
+#define DMF_SCALED_X_OFFSET  DMF_RELATIVE_X_OFFSET 
+#define DMF_SCALED_Y_OFFSET  DMF_RELATIVE_Y_OFFSET 
+#define DMF_SCALED_HEIGHT  DMF_RELATIVE_HEIGHT 
+#define DMF_SCALED_WIDTH  DMF_RELATIVE_WIDTH 
+#define DMF_SCALED_DEPTH  DMF_RELATIVE_DEPTH 
+#define DMF_SCALED_Z  DMF_RELATIVE_Z 
+#define DMF_SCALED_RADIUS_X  DMF_RELATIVE_RADIUS_X 
+#define DMF_SCALED_CENTER_X  DMF_RELATIVE_CENTER_X 
+#define DMF_SCALED_CENTER_Y  DMF_RELATIVE_CENTER_Y 
+#define DMF_SCALED_RADIUS_Y  DMF_RELATIVE_RADIUS_Y 
+#define DMF_SCALED_RADIUS  DMF_RELATIVE_RADIUS 
+
 struct GradientStop {
    DOUBLE Offset;    // An offset in the range of 0 - 1.0
    struct FRGB RGB;  // A floating point RGB value.
@@ -500,10 +515,10 @@ struct Transition {
 };
 
 struct VectorPoint {
-   DOUBLE X;             // The X coordinate of this point.
-   DOUBLE Y;             // The Y coordinate of this point.
-   UBYTE  XRelative:1;   // TRUE if the X value is relative to its viewport (between 0 and 1.0).
-   UBYTE  YRelative:1;   // TRUE if the Y value is relative to its viewport (between 0 and 1.0).
+   DOUBLE X;           // The X coordinate of this point.
+   DOUBLE Y;           // The Y coordinate of this point.
+   UBYTE  XScaled:1;   // TRUE if the X value is scaled to its viewport (between 0 and 1.0).
+   UBYTE  YScaled:1;   // TRUE if the Y value is scaled to its viewport (between 0 and 1.0).
 };
 
 struct VectorPainter {
@@ -518,8 +533,8 @@ struct PathCommand {
    UBYTE  LargeArc;   // Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
    UBYTE  Sweep;      // Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
    UBYTE  Pad1;       // Private
-   DOUBLE X;          // The targeted X coordinate (absolute or relative) for the command
-   DOUBLE Y;          // The targeted Y coordinate (absolute or relative) for the command
+   DOUBLE X;          // The targeted X coordinate (absolute or scaled) for the command
+   DOUBLE Y;          // The targeted Y coordinate (absolute or scaled) for the command
    DOUBLE AbsX;       // Private
    DOUBLE AbsY;       // Private
    DOUBLE X2;         // The X2 coordinate for curve commands, or RX for arcs
@@ -1887,6 +1902,18 @@ class objVectorText : public objVector {
    using create = pf::Create<objVectorText>;
 };
 
+// VectorGroup class definition
+
+#define VER_VECTORGROUP (1.000000)
+
+class objVectorGroup : public objVector {
+   public:
+   static constexpr CLASSID CLASS_ID = ID_VECTORGROUP;
+   static constexpr CSTRING CLASS_NAME = "VectorGroup";
+
+   using create = pf::Create<objVectorGroup>;
+};
+
 // VectorWave class definition
 
 #define VER_VECTORWAVE (1.000000)
@@ -2319,6 +2346,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_X 0x0002b61d
 #define SVF_X1 0x005979ee
 #define SVF_X2 0x005979ef
+#define SVF_XOFFSET 0x23685e64
 #define SVF_XLINK_HREF 0x379480aa
 #define SVF_XML_SPACE 0x2db612fc
 #define SVF_XMLNS 0x10b81bf7
@@ -2326,6 +2354,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
 #define SVF_Y 0x0002b61e
 #define SVF_Y1 0x00597a0f
 #define SVF_Y2 0x00597a10
+#define SVF_YOFFSET 0x70629b25
 #define SVF_Z 0x0002b61f
 
 #define SVF_ACCUMULATE 0x5c660bc9

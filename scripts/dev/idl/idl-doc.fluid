@@ -1,4 +1,4 @@
--- Extended documentation parsing functionality for idl-c
+-- Extended documentation parsing functionality; included by idl-c
 
    require 'common'
 

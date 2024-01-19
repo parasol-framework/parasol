@@ -406,11 +406,11 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
 
    if (Pattern.Units IS VUNIT::USERSPACE) { // Use fixed coordinates specified in the pattern.
       DOUBLE dwidth, dheight;
-      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = c_width * Pattern.Width;
+      if (Pattern.Dimensions & DMF_SCALED_WIDTH) dwidth = c_width * Pattern.Width;
       else if (Pattern.Dimensions & DMF_FIXED_WIDTH) dwidth = Pattern.Width;
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = c_height * Pattern.Height;
+      if (Pattern.Dimensions & DMF_SCALED_HEIGHT) dheight = c_height * Pattern.Height;
       else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) dheight = Pattern.Height;
       else dheight = 1;
 
@@ -426,14 +426,14 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
 
       DOUBLE dwidth, dheight;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_WIDTH) dwidth = Pattern.Width * c_width;
+      if (Pattern.Dimensions & DMF_SCALED_WIDTH) dwidth = Pattern.Width * c_width;
       else if (Pattern.Dimensions & DMF_FIXED_WIDTH) {
          if (Pattern.Viewport->vpViewWidth) dwidth = (Pattern.Width / Pattern.Viewport->vpViewWidth) * c_width;
          else dwidth = Pattern.Width * c_width; // A quirk of SVG is that the fixed value has to be interpreted as a multiplier if the viewbox is unspecified.
       }
       else dwidth = 1;
 
-      if (Pattern.Dimensions & DMF_RELATIVE_HEIGHT) dheight = Pattern.Height * c_height;
+      if (Pattern.Dimensions & DMF_SCALED_HEIGHT) dheight = Pattern.Height * c_height;
       else if (Pattern.Dimensions & DMF_FIXED_HEIGHT) {
          if (Pattern.Viewport->vpViewHeight) dheight = (Pattern.Height / Pattern.Viewport->vpViewHeight) * c_height;
          else dheight = Pattern.Height * c_height;
@@ -455,11 +455,11 @@ static void draw_pattern(DOUBLE *Bounds, agg::path_storage *Path,
    agg::trans_affine transform;
 
    DOUBLE dx, dy;
-   if (Pattern.Dimensions & DMF_RELATIVE_X) dx = x_offset + (c_width * Pattern.X);
+   if (Pattern.Dimensions & DMF_SCALED_X) dx = x_offset + (c_width * Pattern.X);
    else if (Pattern.Dimensions & DMF_FIXED_X) dx = x_offset + Pattern.X;
    else dx = x_offset;
 
-   if (Pattern.Dimensions & DMF_RELATIVE_Y) dy = y_offset + c_height * Pattern.Y;
+   if (Pattern.Dimensions & DMF_SCALED_Y) dy = y_offset + c_height * Pattern.Y;
    else if (Pattern.Dimensions & DMF_FIXED_Y) dy = y_offset + Pattern.Y;
    else dy = y_offset;
 
@@ -628,8 +628,8 @@ static void draw_image(DOUBLE *Bounds, agg::path_storage &Path, VSM SampleMethod
 {
    const DOUBLE c_width  = (Image.Units IS VUNIT::USERSPACE) ? ViewWidth : Bounds[2] - Bounds[0];
    const DOUBLE c_height = (Image.Units IS VUNIT::USERSPACE) ? ViewHeight : Bounds[3] - Bounds[1];
-   const DOUBLE dx = Bounds[0] + ((Image.Dimensions & DMF_RELATIVE_X) ? (c_width * Image.X) : Image.X);
-   const DOUBLE dy = Bounds[1] + ((Image.Dimensions & DMF_RELATIVE_Y) ? (c_height * Image.Y) : Image.Y);
+   const DOUBLE dx = Bounds[0] + ((Image.Dimensions & DMF_SCALED_X) ? (c_width * Image.X) : Image.X);
+   const DOUBLE dy = Bounds[1] + ((Image.Dimensions & DMF_SCALED_Y) ? (c_height * Image.Y) : Image.Y);
 
    agg::trans_affine transform;
    if (Image.SpreadMethod IS VSPREAD::PAD) { // In pad mode, stretch the image to fit the boundary
@@ -672,16 +672,16 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    if (Gradient.Type IS VGT::LINEAR) {
       DOUBLE ax1, ay1, ax2, ay2;
 
-      if ((Gradient.Flags & VGF::RELATIVE_X1) != VGF::NIL) ax1 = x_offset + (c_width * Gradient.X1);
+      if ((Gradient.Flags & VGF::SCALED_X1) != VGF::NIL) ax1 = x_offset + (c_width * Gradient.X1);
       else ax1 = x_offset + Gradient.X1;
 
-      if ((Gradient.Flags & VGF::RELATIVE_X2) != VGF::NIL) ax2 = x_offset + (c_width * Gradient.X2);
+      if ((Gradient.Flags & VGF::SCALED_X2) != VGF::NIL) ax2 = x_offset + (c_width * Gradient.X2);
       else ax2 = x_offset + Gradient.X2;
 
-      if ((Gradient.Flags & VGF::RELATIVE_Y1) != VGF::NIL) ay1 = y_offset + (c_height * Gradient.Y1);
+      if ((Gradient.Flags & VGF::SCALED_Y1) != VGF::NIL) ay1 = y_offset + (c_height * Gradient.Y1);
       else ay1 = y_offset + Gradient.Y1;
 
-      if ((Gradient.Flags & VGF::RELATIVE_Y2) != VGF::NIL) ay2 = y_offset + (c_height * Gradient.Y2);
+      if ((Gradient.Flags & VGF::SCALED_Y2) != VGF::NIL) ay2 = y_offset + (c_height * Gradient.Y2);
       else ay2 = y_offset + Gradient.Y2;
 
       // Calculate the gradient's transition from the point at (x1,y1) to (x2,y2)
@@ -709,17 +709,17 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    else if (Gradient.Type IS VGT::RADIAL) {
       DOUBLE cx, cy, fx, fy;
 
-      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
-      if ((Gradient.Flags & VGF::RELATIVE_FX) != VGF::NIL) fx = x_offset + (c_width * Gradient.FX);
+      if ((Gradient.Flags & VGF::SCALED_FX) != VGF::NIL) fx = x_offset + (c_width * Gradient.FX);
       else if ((Gradient.Flags & VGF::FIXED_FX) != VGF::NIL) fx = x_offset + Gradient.FX;
       else fx = x_offset + cx;
 
-      if ((Gradient.Flags & VGF::RELATIVE_FY) != VGF::NIL) fy = y_offset + (c_height * Gradient.FY);
+      if ((Gradient.Flags & VGF::SCALED_FY) != VGF::NIL) fy = y_offset + (c_height * Gradient.FY);
       else if ((Gradient.Flags & VGF::FIXED_FY) != VGF::NIL) fy = y_offset + Gradient.FY;
       else fy = y_offset + cy;
 
@@ -728,12 +728,12 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
 
          DOUBLE length = Gradient.Radius;
          if (Gradient.Units IS VUNIT::USERSPACE) { // Coordinates are relative to the viewport
-            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
+            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) { // Gradient is a ratio of the viewport's dimensions
                length = (ViewWidth + ViewHeight) * Gradient.Radius * 0.5;
             }
          }
          else { // Coordinates are relative to the bounding box
-            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -774,20 +774,20 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
          // be placed outside of the radius.
 
          DOUBLE fix_radius = Gradient.Radius;
-         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             fix_radius *= (c_width + c_height) * 0.5; // Use the average radius of the ellipse.
          }
          DOUBLE length = fix_radius;
 
          if (Gradient.Units IS VUNIT::USERSPACE) {
-            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
                const DOUBLE scale = length * Gradient.Radius;
                transform *= agg::trans_affine_scaling(sqrt((ViewWidth * ViewWidth) + (ViewHeight * ViewHeight)) / scale);
             }
             else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
          }
          else { // Bounding box
-            if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+            if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
                // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
                // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -820,24 +820,24 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    else if (Gradient.Type IS VGT::DIAMOND) {
       DOUBLE cx, cy;
 
-      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
       // Standard diamond gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
       if (Gradient.Units IS VUNIT::USERSPACE) {
-         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             const DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Align to vector's bounding box
-         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -868,24 +868,24 @@ static void draw_gradient(DOUBLE *Bounds, agg::path_storage *Path, const agg::tr
    else if (Gradient.Type IS VGT::CONIC) {
       DOUBLE cx, cy;
 
-      if ((Gradient.Flags & VGF::RELATIVE_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
+      if ((Gradient.Flags & VGF::SCALED_CX) != VGF::NIL) cx = x_offset + (c_width * Gradient.CenterX);
       else cx = x_offset + Gradient.CenterX;
 
-      if ((Gradient.Flags & VGF::RELATIVE_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
+      if ((Gradient.Flags & VGF::SCALED_CY) != VGF::NIL) cy = y_offset + (c_height * Gradient.CenterY);
       else cy = y_offset + Gradient.CenterY;
 
       // Standard conic gradient, where the focal point is the same as the gradient center
 
       const DOUBLE length = 255;
       if (Gradient.Units IS VUNIT::USERSPACE) {
-         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             const DOUBLE scale = length * Gradient.Radius;
             transform *= agg::trans_affine_scaling(sqrt((c_width * c_width) + (c_height * c_height)) / scale);
          }
          else transform *= agg::trans_affine_scaling(Gradient.Radius * 0.01);
       }
       else { // Bounding box
-         if ((Gradient.Flags & VGF::RELATIVE_RADIUS) != VGF::NIL) {
+         if ((Gradient.Flags & VGF::SCALED_RADIUS) != VGF::NIL) {
             // In AGG, an unscaled gradient will cover the entire bounding box according to the diagonal.
             // In SVG a radius of 50% must result in the edge of the radius meeting the edge of the bounding box.
 
@@ -984,13 +984,13 @@ public:
 private:
 
    constexpr DOUBLE view_width() {
-      if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) return mView->vpFixedWidth;
+      if (mView->vpDimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) return mView->vpFixedWidth;
       else if (mView->vpViewWidth > 0) return mView->vpViewWidth;
       else return mView->Scene->PageWidth;
    }
 
    constexpr DOUBLE view_height() {
-      if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) return mView->vpFixedHeight;
+      if (mView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) return mView->vpFixedHeight;
       else if (mView->vpViewHeight > 0) return mView->vpViewHeight;
       else return mView->Scene->PageHeight;
    }

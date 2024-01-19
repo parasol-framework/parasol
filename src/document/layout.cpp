@@ -196,7 +196,7 @@ private:
    WRAP lay_text();
 
    void apply_style(bc_font &);
-   DOUBLE calc_page_height(DOUBLE);
+   DOUBLE calc_page_height();
    WRAP check_wordwrap(DOUBLE &, stream_char, DOUBLE &, DOUBLE &, DOUBLE, DOUBLE, bool = false);
    void end_line(NL, stream_char);
    void new_code_segment();
@@ -1047,14 +1047,16 @@ void layout::new_segment(const stream_char Start, const stream_char Stop, DOUBLE
 
    auto line_height = m_line.height;
    auto gutter      = m_line.gutter;
-   if (line_height <= 0) {
-      // Use the most recent font to determine the line height
-      line_height = m_font->LineSpacing;
-      gutter      = m_font->Gutter;
-   }
+   if (Width) {
+      if (line_height <= 0) {
+         // Use the most recent font to determine the line height
+         line_height = m_font->LineSpacing;
+         gutter      = m_font->Gutter;
+      }
 
-   if (!gutter) { // If gutter is missing for some reason, define it
-      gutter = m_font->LineSpacing - m_font->Ascent;
+      if (!gutter) { // If gutter is missing for some reason, define it
+         gutter = m_font->LineSpacing - m_font->Ascent;
+      }
    }
 
 #ifdef DBG_STREAM
@@ -1123,7 +1125,7 @@ void layout::new_code_segment()
 
 #ifdef DBG_STREAM
    pf::Log log(__FUNCTION__);
-   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, strCodes[LONG(m_stream[0][idx].code)]);
+   log.branch("#%d %d:0 [%s]", LONG(m_segments.size()), start.index, std::string(strCodes[LONG(m_stream[0][idx].code)]).c_str());
 #endif
 
    if ((!m_segments.empty()) and (m_segments.back().stop IS start) and (m_segments.back().allow_merge)) {
@@ -1164,7 +1166,7 @@ static void layout_doc(extDocument *Self)
    // of the page.
 
    #ifdef DBG_LAYOUT
-      log.branch("Area: %gx%g Visible: %d ----------", Self->VPWidth, Self->VPHeight, Self->VScrollVisible);
+      log.branch("Area: %gx%g --------------------------------", Self->VPWidth, Self->VPHeight);
    #endif
 
    ClipRectangle margins(Self->LeftMargin, Self->TopMargin, Self->RightMargin, Self->BottomMargin);
@@ -1206,30 +1208,7 @@ static void layout_doc(extDocument *Self)
       Self->PageHeight = page_height;
       //if (Self->PageHeight < Self->AreaHeight) Self->PageHeight = Self->AreaHeight;
       Self->CalcWidth = page_width;
-
-      // Recalculation may be required if visibility of the scrollbar needs to change.
-
-      if ((l.m_break_loop > 0) and (!Self->Error)) {
-         if (Self->PageHeight > Self->VPHeight) {
-            // Page height is bigger than the viewport, so the scrollbar needs to be visible.
-
-            if (!Self->VScrollVisible) {
-               DLAYOUT("Vertical scrollbar visibility needs to be enabled, restarting...");
-               Self->VScrollVisible = true;
-               l.m_break_loop = MAXLOOP;
-               repeat = true;
-            }
-         }
-         else { // Page height is smaller than the viewport, so the scrollbar needs to be invisible.
-            if (Self->VScrollVisible) {
-               DLAYOUT("Vertical scrollbar needs to be invisible, restarting...");
-               Self->VScrollVisible = false;
-               l.m_break_loop = MAXLOOP;
-               repeat = true;
-            }
-         }
-      }
-   };
+   }
 
    if (!Self->Error) Self->EditCells = l.m_ecells;
    else Self->EditCells.clear();
@@ -1732,7 +1711,7 @@ repass_row_height:
 
 exit:
 
-   page_height = calc_page_height(m_margins.Bottom);
+   page_height = calc_page_height();
 
    if (page_height > MAX_PAGE_HEIGHT) {
       log.warning("Calculated page_height of %g is invalid.", page_height);
@@ -1982,7 +1961,7 @@ restart:
 // Calculate the page height, which is either going to be the coordinate of the bottom-most line, or one of the
 // clipping regions if one of them extends further than the bottom-most line.
 
-DOUBLE layout::calc_page_height(DOUBLE BottomMargin)
+DOUBLE layout::calc_page_height()
 {
    pf::Log log(__FUNCTION__);
 
@@ -2005,12 +1984,10 @@ DOUBLE layout::calc_page_height(DOUBLE BottomMargin)
       if (clip.bottom > page_height) page_height = clip.bottom;
    }
 
-   // Add the bottom margin and subtract the y offset so that we have the true height of the page/cell.
-
-   page_height = page_height + BottomMargin;
+   page_height += m_margins.Bottom;
 
    log.trace("Page Height: %g + %g -> %g, Bottom: %g",
-      m_segments.back().area.Y, m_segments.back().area.Height, page_height, BottomMargin);
+      m_segments.back().area.Y, m_segments.back().area.Height, page_height, m_margins.Bottom);
 
    return page_height;
 }

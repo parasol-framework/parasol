@@ -331,7 +331,7 @@ gui.dialog.message = function(Options)
       eventCallback = docEvent,
       path          = '#Index',
       flags         = 'Unrestricted|NoScrollbars',
-      defaultScript = obj.find('self')
+      clientScript  = obj.find('self')
    })
 
    lDoc.acDataFeed(0, DATA_XML, buildDocument())

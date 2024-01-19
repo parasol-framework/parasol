@@ -1,5 +1,6 @@
 
 class extDocument;
+struct bc_combobox;
 
 typedef int INDEX;
 using SEGINDEX = int;
@@ -769,6 +770,49 @@ struct widget_mgr {
 
 //********************************************************************************************************************
 
+struct dropdown_item {
+   std::string id, name, icon;
+   dropdown_item(std::string pName) : name(pName) { }
+};
+
+struct doc_menu {
+   GuardedObject<objSurface>  m_surface; // Surface container for the menu UI
+   GuardedObject<extDocument> m_doc;     // Independent document for managing the menu layout
+   std::vector<dropdown_item> m_items;   // List of items to appear in the menu
+   std::function<void(doc_menu &, dropdown_item &)> m_callback; // Callback for item selection
+   std::variant<bc_combobox *> m_ref;    // User customisable reference.
+
+   // Font options for items in the list
+
+   std::string m_font_face;
+   std::string m_font_style;
+   DOUBLE m_font_size;
+
+   LARGE m_show_time = 0; // Time of last acShow()
+   LARGE m_hide_time = 0; // Time of last acHide()
+   
+   void define_font(objFont *);
+   objSurface * create(DOUBLE);
+   bool toggle(objVectorViewport *);
+   objSurface * get();
+   void reposition(objVectorViewport *);
+   void refresh();
+
+   doc_menu(std::function<void(doc_menu &, dropdown_item &)> pCallback) : m_callback(pCallback) { }
+
+   void show() {
+      acShow(*m_surface);
+      m_show_time = PreciseTime();
+   }
+
+   void hide() {
+      acHide(*m_surface);
+      m_hide_time = PreciseTime();
+   }
+};
+
+//********************************************************************************************************************
+
 struct bc_button : public base_code, widget_mgr {
    bc_button() { code = SCODE::BUTTON; }
    GuardedObject<objVectorText> label_text;
@@ -781,17 +825,17 @@ struct bc_checkbox : public base_code, widget_mgr {
    bool processed = false;
 };
 
-struct dropdown_item {
-   std::string id, name, icon;
-   dropdown_item(std::string pName) : name(pName) { }
-};
-
 struct bc_combobox : public base_code, widget_mgr {
-   std::string value;
    GuardedObject<objVectorText> label_text;
    GuardedObject<objVectorViewport> clip_vp;
+   objVectorText *input;
+   doc_menu menu;
+   std::string value;
+   std::string last_good_input;
+  
+   static void callback(struct doc_menu &, struct dropdown_item &);
 
-   bc_combobox() { code = SCODE::COMBOBOX; }
+   bc_combobox() : menu(&callback) { code = SCODE::COMBOBOX; }
 };
 
 struct bc_input : public base_code, widget_mgr {
@@ -889,8 +933,8 @@ public:
 class extDocument : public objDocument {
    public:
    FUNCTION EventCallback;
-   std::unordered_map<std::string, std::string> Vars;
-   std::unordered_map<std::string, std::string> Params;
+   std::unordered_map<std::string, std::string> Vars; // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
+   std::unordered_map<std::string, std::string> Params; // Incoming parameters provided via the URI
    std::string Path;               // Optional file to load on Init()
    std::string PageName;           // Page name to load from the Path
    std::string Bookmark;           // Bookmark name processed from the Path
@@ -915,9 +959,10 @@ class extDocument : public objDocument {
    stream_char CursorIndex;    // Position of the cursor if text is selected, or edit mode is active.  It reflects the position at which entered text will be inserted.
    stream_char SelectIndex;    // The end of the selected text area, if text is selected.
    objXML *Templates;          // All templates for the current document are stored here
+   objXML *PretextXML;         // Execute this XML prior to loading a new page.
    objSVG *SVG;                // Allocated by the <svg> tag
    XMLTag *PageTag;            // Refers to a specific page that is being processed for the layout
-   OBJECTPTR UserDefaultScript;    // Allows the developer to define a custom default script.
+   OBJECTPTR ClientScript;     // Allows the developer to define a custom default script.
    OBJECTPTR DefaultScript;
    doc_edit *ActiveEditDef;  // As for ActiveEditCell, but refers to the active editing definition
    objVectorScene    *Scene; // A document specific scene is required to keep our resources away from the host
@@ -945,7 +990,6 @@ class extDocument : public objDocument {
    bool   RefreshTemplates; // True if the template index requires refreshing.
    bool   RelPageWidth;     // Relative page width
    bool   UpdatingLayout;   // True if the page layout is in the process of being updated
-   bool   VScrollVisible;   // True if the vertical scrollbar is visible to the user
    bool   MouseInPage;      // True if the mouse cursor is in the page area
    bool   PageProcessed;    // True if the parsing of page content has been completed
    bool   NoWhitespace;     // True if the parser should stop injecting whitespace characters

@@ -604,6 +604,21 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                else build_widget(combo, segment, Viewport, stack_style.top(), x_advance, 0, true, wx, wy);
 
                if (combo.clip_vp.empty()) {
+                  // Create the button that will control the drop-down list
+
+                  objVectorViewport::create::global({
+                     fl::Name("vp_combo_button"),
+                     fl::Owner(combo.viewport->UID),
+                     fl::Y(0), fl::XOffset(0), fl::YOffset(0),
+                     fl::Width(combo.full_height()) // Button width matches the widget height
+                  });
+
+                  auto call = make_function_stdc(inputevent_dropdown);
+                  vecSubscribeInput(*combo.viewport, JTYPE::BUTTON|JTYPE::FEEDBACK, &call);
+
+                  call = make_function_stdc(combo_feedback);
+                  vecSubscribeFeedback(*combo.viewport, FM::HAS_FOCUS|FM::CHILD_HAS_FOCUS|FM::LOST_FOCUS, &call);
+
                   combo.clip_vp = objVectorViewport::create::global({
                      fl::Name("vp_clip_combo"),
                      fl::Owner(combo.viewport->UID),
@@ -612,7 +627,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                   
                   DOUBLE y = avail_space - ((avail_space - font->Ascent) * 0.5);
 
-                  objVectorText::create::global({
+                  combo.input = objVectorText::create::global({
                      fl::Owner(combo.clip_vp->UID),
                      fl::X(0), fl::Y(F2T(y)),
                      fl::String(combo.value),
@@ -629,6 +644,10 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
                      fl::XOffset(combo.label_pad + (combo.height * 0.75)), fl::YOffset(0));
                }
 
+               combo.menu.define_font(font);
+               combo.menu.m_ref = &combo;
+
+               Self->Widgets.emplace(combo.viewport->UID, ui_widget { &combo });
                break;
             }
 

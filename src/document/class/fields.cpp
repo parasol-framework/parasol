@@ -47,19 +47,19 @@ static ERROR SET_CursorStroke(extDocument *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-DefaultScript: Allows an external script object to be used by a document file.
+ClientScript: Allows an external script object to be used by a document file.
 
-Setting the DefaultScript field with a reference to a Script object will allow a document file to have access to
-functionality outside of its namespace.  This feature is primarily intended for applications that need to embed
-custom documents.
+Set ClientScript with a Script object to allow document content to 'breach the firewall' and access functionality 
+outside of its namespace.  This feature is primarily intended for applications that need to interact with their own 
+embedded documents.
 
-If a loaded document defines its own custom script, it will have priority over the script referenced here.
+If a document defines a default script in its content, it will have priority over the one referenced here.
 
 *********************************************************************************************************************/
 
-static ERROR SET_DefaultScript(extDocument *Self, OBJECTPTR Value)
+static ERROR SET_ClientScript(extDocument *Self, OBJECTPTR Value)
 {
-   Self->UserDefaultScript = Value;
+   Self->ClientScript = Value;
    return ERR_Okay;
 }
 
@@ -81,7 +81,7 @@ EventCallback: Provides callbacks for global state changes.
 Set this field with a function reference to receive event notifications.  It must be set in conjunction with
 #EventMask so that notifications are limited to those of interest.
 
-The callback function prototype is `ERROR Function(*Document, LARGE EventFlag)`.
+The callback function prototype is `ERROR Function(*Document, DEF EventFlag, KEYVALUE *EventData)`.
 
 The EventFlag value will indicate the event that occurred.  Please see the #EventMask field for a list of
 supported events and additional details.
@@ -349,6 +349,54 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+Pretext: Execute the XML defined here prior to loading new pages.
+
+Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used
+to set configure a document in advance, such as setting default font values and background graphics.  It is 
+functionally equivalent to embedding an `<include/>` statement at the top of a document, but with the benefit
+of guaranteeing continued execution if the user navigates away from the first page.
+
+A Pretext will always survive document unloading and resets.  It can be removed only by setting this field with NULL.
+
+*********************************************************************************************************************/
+
+static ERROR SET_Pretext(extDocument *Self, CSTRING Value)
+{
+   if (!Value) {
+      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+      return ERR_Okay;
+   }
+   else if (Self->PretextXML) {
+      return Self->PretextXML->setStatement(Value);
+   }
+   else {
+      if ((Self->PretextXML = objXML::create::integral({
+            fl::Flags(XMF::ALL_CONTENT|XMF::PARSE_HTML|XMF::STRIP_HEADERS|XMF::WELL_FORMED),
+            fl::Statement(Value),
+            fl::ReadOnly(true)
+         }))) {
+
+         return ERR_Okay;
+      }
+      else return ERR_CreateObject;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+TabFocus: Allows the user to hit the tab key to focus on other GUI objects.
+
+If this field points to a TabFocus object, the user will be able to move between objects that are members of the
+TabFocus by pressing the tab key.  Please refer to the TabFocus class for more details.
+
+-FIELD-
+Title: The title of the document.
+
+If a document declares a title under a head tag, the title string will be readable from this field.   This field is
+always NULL if a document does not declare a title.
+
+-FIELD-
 Viewport: A client-specific viewport that will host the document graphics.
 
 The Viewport field must refer to a @VectorViewport that will host the document graphics.  If undefined by the client,
@@ -370,18 +418,6 @@ static ERROR SET_Viewport(extDocument *Self, objVectorViewport *Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-TabFocus: Allows the user to hit the tab key to focus on other GUI objects.
-
-If this field points to a TabFocus object, the user will be able to move between objects that are members of the
-TabFocus by pressing the tab key.  Please refer to the TabFocus class for more details.
-
--FIELD-
-Title: The title of the document.
-
-If a document declares a title under a head tag, the title string will be readable from this field.   This field is
-always NULL if a document does not declare a title.
 
 -FIELD-
 WorkingPath: Defines the working path (folder or URI).

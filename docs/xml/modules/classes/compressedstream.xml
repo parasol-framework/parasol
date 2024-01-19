@@ -13,7 +13,7 @@
     <idstring>ID_COMPRESSEDSTREAM</idstring>
     <category>Data</category>
     <include>modules/compressedstream.h</include>
-    <copyright>Paul Manias 1996-2023</copyright>
+    <copyright>Paul Manias 1996-2024</copyright>
     <description>
 <p>Use the CompressedStream class to compress and decompress data on the fly without the need for a temporary storage area.  The default compression algorithm is DEFLATE with gzip header data.  It is compatible with common command-line tools such as gzip.</p>
 <p>To decompress data, set the <field>Input</field> field with a source object that supports the Read action, such as a File. Repeatedly reading from the CompressedStream will automatically handle the decompression process for you.  If the decompressed size of the incoming data is defined in the source header, it will be reflected in the <field>Size</field> field.</p>

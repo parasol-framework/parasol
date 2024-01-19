@@ -65,17 +65,17 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testAlignment()   crcTest('Alignment', 'alignment.rpl', 0xc7c3427e) end
-function testDialog()      crcTest('Dialog', 'dialog.rpl', 0x29297090) end
-function testFonts()       crcTest('Fonts', 'fonts.rpl', 0xeb8ac3f9) end
-function testImages()      crcTest('Images', 'images.rpl', 0x9f71a86e) end
-function testLayout()      crcTest('Layout', 'layout.rpl', 0x1c4148c7) end
-function testLinks1()      crcTest('Links1', 'links.rpl', 0x2f48dd5e) end
-function testLinks2()      crcTest('Links2', 'links.rpl?font=Open Sans&font-size=16', 0x4ab6a46b) end
-function testLists()       crcTest('Lists', 'lists.rpl', 0xf45768d0) end
-function testLogic()       crcTest('Logic', 'logic.rpl', 0x6cbc37e7) end
-function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0x99628dcb) end
-function testTables()      crcTest('Tables', 'tables.rpl', 0x35e502b2) end
-function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xaac03de4) end
+function testDialog()      crcTest('Dialog', 'dialog.rpl', 0xcee1bd50) end
+function testFonts()       crcTest('Fonts', 'fonts.rpl', 0x6652edc4) end
+function testImages()      crcTest('Images', 'images.rpl', 0xcaf51eb2) end
+function testLayout()      crcTest('Layout', 'layout.rpl', 0x2eb161db) end
+function testLinks1()      crcTest('Links1', 'links.rpl', 0x13b537f7) end
+function testLinks2()      crcTest('Links2', 'links.rpl?font=Open Sans&font-size=16', 0xceb2b589) end
+function testLists()       crcTest('Lists', 'lists.rpl', 0x24f4d0a1) end
+function testLogic()       crcTest('Logic', 'logic.rpl', 0x564b167d) end
+function testParagraphs()  crcTest('Paragraphs', 'paragraphs.rpl', 0x6b25fda3) end
+function testTables()      crcTest('Tables', 'tables.rpl', 0x1ec5430a) end
+function testWidgets()     crcTest('Widgets', 'widgets.rpl', 0xe97eaebf) end
 
 -----------------------------------------------------------------------------------------------------------------------
 

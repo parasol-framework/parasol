@@ -395,22 +395,18 @@ static ERROR DOCUMENT_DataFeed(extDocument *Self, struct acDataFeed *Args)
       if (xml.ok()) {
          if (Self->Stream.data.empty()) {
             // If the document is empty then we use the same process as load_doc()
-            parser parse(Self, *xml);
-            parse.process_page();
-
+            parser parse(Self);
+            parse.process_page(*xml);
             Self->Stream = parse.m_stream;
-            Self->UpdatingLayout = true;
-            if (Self->initialised()) redraw(Self, true);
+         }
+         else Self->Error = insert_xml(Self, Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
 
-            #ifdef DBG_STREAM
-               print_stream(Self->Stream);
-            #endif
-         }
-         else { // UNTESTED
-            log.trace("Appending data to XML #%d", xml->UID);
-            Self->Error = insert_xml(Self, Self->Stream, *xml, xml->Tags, Self->Stream.size(), STYLE::NIL);
-            //acRefresh(Self);
-         }
+         Self->UpdatingLayout = true;
+         if (Self->initialised()) redraw(Self, true);
+
+         #ifdef DBG_STREAM
+            print_stream(Self->Stream);
+         #endif
          return Self->Error;
       }
       else return log.warning(ERR_CreateObject);
@@ -613,6 +609,8 @@ static ERROR DOCUMENT_Free(extDocument *Self, APTR Void)
    if (Self->CursorStroke) { FreeResource(Self->CursorStroke); Self->CursorStroke   = NULL; }
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, 0);
+
+   if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
 
    if (Self->Viewport) UnsubscribeAction(Self->Viewport, 0);
 
@@ -1399,11 +1397,12 @@ static const FieldArray clFields[] = {
    { "PageHeight",     FDF_LONG|FDF_R },
    { "Error",          FDF_LONG|FDF_R },
    // Virtual fields
-   { "DefaultScript", FDF_OBJECT|FDF_I,        NULL, SET_DefaultScript },
+   { "ClientScript",  FDF_OBJECT|FDF_I,        NULL, SET_ClientScript },
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
    { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
    { "PageWidth",     FDF_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_PageWidth, SET_PageWidth },
+   { "Pretext",       FDF_STRING|FDF_W,        NULL, SET_Pretext },
    { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
    { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },
    END_FIELD

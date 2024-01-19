@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, function()
+module({ name="Vector", copyright="Paul Manias © 2010-2024", version=1.0 }, function()
   c_include("<parasol/modules/display.h>", "<parasol/modules/picture.h>")
 
   restrict(function()
@@ -26,8 +26,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
 
   enum("VUNIT", { type="int", start=0 },
     "UNDEFINED",
-    "BOUNDING_BOX: Coordinates are relative to the object's bounding box.",
-    "USERSPACE: Coordinates are relative to the current viewport.",
+    "BOUNDING_BOX: Coordinates are scaled to the object's bounding box.",
+    "USERSPACE: Coordinates are scaled to the current viewport.",
     "END: Private")
 
   enum("VSPREAD", { type="int", start=0, comment="Spread method options define the method to use for tiling filled graphics." },
@@ -207,15 +207,15 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "COLOURISE: Colourise the input with the first 3 parameters used as RGB multipliers and the fourth parameter controlling intensity from 0 - 1.0.")
 
   flags("VGF", { comment="Gradient flags" },
-    "RELATIVE_X1: X1 is relative",
-    "RELATIVE_Y1: Y1 is relative",
-    "RELATIVE_X2: X2 is relative",
-    "RELATIVE_Y2: Y2 is relative",
-    "RELATIVE_CX: CX is relative",
-    "RELATIVE_CY: CY is relative",
-    "RELATIVE_FX: FX is relative",
-    "RELATIVE_FY: FY is relative",
-    "RELATIVE_RADIUS: Radius is relative",
+    "SCALED_X1: X1 is scaled",
+    "SCALED_Y1: Y1 is scaled",
+    "SCALED_X2: X2 is scaled",
+    "SCALED_Y2: Y2 is scaled",
+    "SCALED_CX: CX is scaled",
+    "SCALED_CY: CY is scaled",
+    "SCALED_FX: FX is scaled",
+    "SCALED_FY: FY is scaled",
+    "SCALED_RADIUS: Radius is scaled",
     "FIXED_X1: X1 is fixed",
     "FIXED_Y1: Y1 is fixed",
     "FIXED_X2: X2 is fixed",
@@ -262,7 +262,7 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     "BEST: Use the best quality renderer available and without concerns for computational time taken.")
 
   flags("RC", { bits=8, comments="Internal flags for signalling the need to recompute paths." },
-    "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or relative coordinates into account.",
+    "FINAL_PATH: The final path will need to be recalculated, so as to take transforms and/or scaled coordinates into account.",
     "BASE_PATH: The base path (shape of the vector) must be recalculated.",
     "TRANSFORM: The transform matrix must be recalculated.  This includes movement, e.g. changing the CX,CY of an ellipse.",
     { ALL = "FINAL_PATH|BASE_PATH|TRANSFORM" })
@@ -301,8 +301,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
   struct("VectorPoint", { comment="Structure for the VectorPolygon PointsArray field." }, [[
     double X   # The X coordinate of this point.
     double Y   # The Y coordinate of this point.
-    bit(uchar) XRelative # TRUE if the X value is relative to its viewport (between 0 and 1.0).
-    bit(uchar) YRelative # TRUE if the Y value is relative to its viewport (between 0 and 1.0).
+    bit(uchar) XScaled # TRUE if the X value is scaled to its viewport (between 0 and 1.0).
+    bit(uchar) YScaled # TRUE if the Y value is scaled to its viewport (between 0 and 1.0).
   ]])
 
   struct("VectorPainter", { comment="Deserialised painter information; compliant with SVG painter definitions." }, [[
@@ -317,8 +317,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
     uchar   LargeArc     # Equivalent to the large-arc-flag in SVG, it ensures that the arc follows the longest drawing path when TRUE.
     uchar   Sweep        # Equivalent to the sweep-flag in SVG, it inverts the default behaviour in generating arc paths.
     uchar   Pad1         # Private
-    double  X            # The targeted X coordinate (absolute or relative) for the command
-    double  Y            # The targeted Y coordinate (absolute or relative) for the command
+    double  X            # The targeted X coordinate (absolute or scaled) for the command
+    double  Y            # The targeted Y coordinate (absolute or scaled) for the command
     double  AbsX         # Private
     double  AbsY         # Private
     double  X2           # The X2 coordinate for curve commands, or RX for arcs
@@ -546,6 +546,8 @@ module({ name="Vector", copyright="Paul Manias © 2010-2023", version=1.0 }, fun
   })
 
   class('VectorText', { base='Vector', src='vectors/text.cpp', output="vectors/text_def.cpp", references={ 'VTXF', 'VTS' }  })
+
+  class('VectorGroup', { base='Vector', src='vectors/group.cpp' })
 
   class('VectorWave', { base='Vector', src='vectors/wave.cpp' })
 
@@ -833,6 +835,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "X",
     "X1",
     "X2",
+    "XOFFSET",
     "XLINK:HREF",
     "XML:SPACE",
     "XMLNS",
@@ -840,6 +843,7 @@ INLINE void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green,
     "Y",
     "Y1",
     "Y2",
+    "YOFFSET",
     "Z")
 
   hash("SVF", "0x%s",

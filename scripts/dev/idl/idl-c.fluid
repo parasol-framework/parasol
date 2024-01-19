@@ -809,7 +809,7 @@ function struct(Name, Options, Def, Append)
          table.insert(out, '} ' .. Options.type .. ';')
          table.insert(out, '')
       end
-      
+
       if nz(Options.module) and (Options.module:lower() != glModule.name:lower()) then
         -- Do nothing, module restriction imposed.
       elseif (glRestrict == nil) then
@@ -1377,12 +1377,12 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Process the formal field definitions in a class blueprint.
 
-function processClassFields(class, Blueprint)
+function processClassFields(class, ClientBlueprint)
    local cdef = ''
 
    -- Process fields defined in the FDL
 
-   class.fields = extractFields(Blueprint, class.name)
+   class.fields = extractFields(ClientBlueprint, class.name)
 
    -- Add compiled fields into the field definitions.  NB: Technically this relies on a circular reference, so such
    -- information can only be taken advantage of for phase 2 processing (class documentation).
@@ -1390,10 +1390,11 @@ function processClassFields(class, Blueprint)
    if (class.meta != nil) then
       local newFields = {}
 
+      -- NB: Some classes don't output any fields (which is permissable)
+
       local metaFields = class.meta.subFields
-      if not metaFields then metaFields = class.meta.fields end
-      if not metaFields then
-         error('No compiled fields declared for class ' .. class.name)
+      if (not metaFields) and (class.meta.classID == class.meta.baseClassID) then
+         metaFields = class.meta.fields
       end
 
       for k, f in ipairs(nz(metaFields, { })) do
@@ -1468,7 +1469,6 @@ end
 -- Output the CPP compatible class definition
 
 function outputClassHeader(class, Private, Custom)
-   if nz(class.fields) then
       local physicalFields = false
       for _, f in ipairs(class.fields) do
          if not f.virtual then physicalFields = true end
@@ -1666,7 +1666,6 @@ function outputClassHeader(class, Private, Custom)
       end
       output('};')
       output()
-   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------

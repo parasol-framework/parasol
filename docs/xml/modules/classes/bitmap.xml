@@ -12,7 +12,7 @@
     <idstring>ID_BITMAP</idstring>
     <category>Graphics</category>
     <include>modules/bitmap.h</include>
-    <copyright>Paul Manias 2003-2023</copyright>
+    <copyright>Paul Manias 2003-2024</copyright>
     <description>
 <p>The Bitmap class provides a way of describing an area of memory that an application can draw to, and/or display if the data is held in video memory.  Bitmaps are used in the handling of <class name="Display">Display</class> and <class name="Picture">Picture</class> objects, and form the backbone of Parasol's graphics functionality.  The Bitmap class supports everything from basic graphics primitives to masking and alpha blending features.</p>
 <p>To create a new bitmap object, you need to specify its <field>Width</field> and <field>Height</field> at a minimum.  Preferably, you should also know how many colours you want to use and whether the bitmap data should be held in standard memory (for CPU based reading and writing) or video memory (for hardware based drawing).  After creating a bitmap you can use a number of available drawing methods for the purpose of image management.  Please note that these methods are designed to be called under exclusive conditions, and it is not recommended that you call methods on a bitmap using the message system.</p>

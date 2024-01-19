@@ -370,8 +370,13 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
          #ifndef RETAIN_LOG_LEVEL
          pf::LogLevel level(3);
          #endif
-         parser parse(Self, *xml);
-         parse.process_page();
+         parser parse(Self);
+
+         if (Self->PretextXML) {
+            parse.process_page(Self->PretextXML);
+         }
+
+         parse.process_page(*xml);
 
          Self->Stream = parse.m_stream;
 
@@ -397,7 +402,7 @@ static ERROR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unlo
 // This function removes all allocations that were made in displaying the current page, and resets a number of
 // variables that they are at the default settings for the next page.
 //
-// Set Terminate to true only if the document object is being destroyed.
+// Set ULD::TERMINATE if the document object is being destroyed.
 //
 // The PageName is not freed because the desired page must not be dropped during refresh of manually loaded XML for
 // example.
@@ -844,7 +849,7 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
 
    if (Script) {
       if (!(*Script = Self->DefaultScript)) {
-         if (!(*Script = Self->UserDefaultScript)) {
+         if (!(*Script = Self->ClientScript)) {
             log.warning("Cannot call function '%s', no default script in document.", Link.c_str());
             return ERR_Search;
          }
@@ -899,7 +904,6 @@ static ERROR extract_script(extDocument *Self, const std::string &Link, OBJECTPT
 void ui_link::exec(extDocument *Self)
 {
    OBJECTPTR script;
-   std::string function_name, fargs;
    CLASSID class_id, subclass_id;
 
    pf::Log log(__FUNCTION__);
@@ -909,7 +913,7 @@ void ui_link::exec(extDocument *Self)
    Self->Processing++;
 
    if ((Self->EventMask & DEF::LINK_ACTIVATED) != DEF::NIL) {
-      KEYVALUE params; // Parameters utilise XMLAttrib for named value pairs.  This aids compatibility with Fluid
+      KEYVALUE params;
 
       if (origin.type IS LINK::FUNCTION) {
          std::string function_name, args;
@@ -921,7 +925,7 @@ void ui_link::exec(extDocument *Self)
          params.emplace("href", origin.ref);
       }
 
-      for (unsigned i=0; i < origin.args.size(); i++) {
+      for (size_t i=0; i < origin.args.size(); i++) {
          if ((origin.args[i].first[0] IS '@') or (origin.args[i].first[0] IS '$')) {
             params.emplace(origin.args[i].first.c_str()+1, origin.args[i].second);
          }
@@ -933,6 +937,7 @@ void ui_link::exec(extDocument *Self)
    }
 
    if (origin.type IS LINK::FUNCTION) { // function is in the format 'function()' or 'script.function()'
+      std::string function_name, fargs;
       if (!extract_script(Self, origin.ref, &script, function_name, fargs)) {
          std::vector<ScriptArg> sa;
 
@@ -1038,16 +1043,16 @@ static ERROR report_event(extDocument *Self, DEF Event, KEYVALUE *EventData)
       log.branch("Reporting event $%.8x", LONG(Event));
 
       if (Self->EventCallback.Type IS CALL_STDC) {
-         auto routine = (ERROR (*)(extDocument *, LARGE, KEYVALUE *))Self->EventCallback.StdC.Routine;
+         auto routine = (ERROR (*)(extDocument *, DEF, KEYVALUE *))Self->EventCallback.StdC.Routine;
          pf::SwitchContext context(Self->EventCallback.StdC.Context);
-         result = routine(Self, LARGE(Event), EventData);
+         result = routine(Self, Event, EventData);
       }
       else if (Self->EventCallback.Type IS CALL_SCRIPT) {
          if (auto script = Self->EventCallback.Script.Script) {
             if (EventData) {
                ScriptArg args[3] = {
                   ScriptArg("Document", Self, FD_OBJECTPTR),
-                  ScriptArg("EventMask", LARGE(Event)),
+                  ScriptArg("EventMask", LONG(Event)),
                   ScriptArg("KeyValue:Parameters", EventData, FD_STRUCT)
                };
                scCallback(script, Self->EventCallback.Script.ProcedureID, args, 3, &result);
@@ -1055,7 +1060,7 @@ static ERROR report_event(extDocument *Self, DEF Event, KEYVALUE *EventData)
             else {
                ScriptArg args[2] = {
                   ScriptArg("Document", Self, FD_OBJECTPTR),
-                  ScriptArg("EventMask", LARGE(Event))
+                  ScriptArg("EventMask", LONG(Event))
                };
                scCallback(script, Self->EventCallback.Script.ProcedureID, args, 2, &result);
             }

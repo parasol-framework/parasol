@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      xml.h
-// Copyright: Paul Manias © 2001-2023
+// Copyright: Paul Manias © 2001-2024
 // Generator: idl-c
 
 #include <parasol/main.h>

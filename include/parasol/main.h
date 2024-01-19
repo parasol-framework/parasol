@@ -337,6 +337,9 @@ inline FieldValue Point(const std::string &Value) { return FieldValue(FID_Point,
 constexpr FieldValue Points(CSTRING Value) { return FieldValue(FID_Points, Value); }
 inline FieldValue Points(const std::string &Value) { return FieldValue(FID_Points, Value.c_str()); }
 
+constexpr FieldValue Pretext(CSTRING Value) { return FieldValue(FID_Pretext, Value); }
+inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pretext, Value.c_str()); }
+
 constexpr FieldValue Acceleration(DOUBLE Value) { return FieldValue(FID_Acceleration, Value); }
 constexpr FieldValue Actions(CPTR Value) { return FieldValue(FID_Actions, Value); }
 constexpr FieldValue AmtColours(LONG Value) { return FieldValue(FID_AmtColours, Value); }
@@ -382,6 +385,8 @@ constexpr FieldValue Target(OBJECTID Value) { return FieldValue(FID_Target, Valu
 constexpr FieldValue Target(OBJECTPTR Value) { return FieldValue(FID_Target, Value); }
 constexpr FieldValue UserData(CPTR Value) { return FieldValue(FID_UserData, Value); }
 constexpr FieldValue Version(DOUBLE Value) { return FieldValue(FID_Version, Value); }
+constexpr FieldValue Viewport(OBJECTID Value) { return FieldValue(FID_Viewport, Value); }
+constexpr FieldValue Viewport(OBJECTPTR Value) { return FieldValue(FID_Viewport, Value); }
 constexpr FieldValue WheelSpeed(DOUBLE Value) { return FieldValue(FID_WheelSpeed, Value); }
 constexpr FieldValue WindowHandle(APTR Value) { return FieldValue(FID_WindowHandle, Value); }
 constexpr FieldValue WindowHandle(LONG Value) { return FieldValue(FID_WindowHandle, Value); }

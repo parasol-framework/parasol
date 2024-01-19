@@ -12,7 +12,7 @@
     <idstring>ID_VECTORGRADIENT</idstring>
     <category>Graphics</category>
     <include>modules/vectorgradient.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorGradient class is used by Vector painting algorithms to fill and stroke vectors with gradients.  This is achieved by initialising a VectorGradient object with the desired settings and then registering it with a <class name="VectorScene">VectorScene</class> via the <class name="VectorScene" index="AddDef()">VectorScene:AddDef()</class> method.</p>
 <p>Any vector within the target scene will be able to utilise the gradient for filling or stroking by referencing its name through the <class name="Vector" index="Fill">Vector:Fill</class> and <class name="Vector" index="Stroke">Vector:Stroke</class> fields.  For instance 'url(#redgradient)'.</p>
@@ -83,7 +83,7 @@
       <access read="R" write="W">Read/Write</access>
       <type lookup="VGF">VGF</type>
       <description>
-<p>Dimension flags that indicate whether field values are fixed or relative are defined here.</p>
+<p>Dimension flags that indicate whether field values are fixed or scaled are defined here.</p>
 <types lookup="VGF"/>
       </description>
     </field>
@@ -136,7 +136,7 @@
       <access read="G" write="S">Get/Set</access>
       <type>DOUBLE</type>
       <description>
-<p>The radius of the gradient can be defined in fixed units or relative terms to its container.  A default radius of 50% (0.5) applies if this field is not set.</p>
+<p>The radius of the gradient can be defined in fixed units or scaled terms to its container.  A default radius of 50% (0.5) applies if this field is not set.</p>
 <p>The Radius value has no effect if the gradient is linear.</p>
       </description>
     </field>
@@ -199,7 +199,7 @@
       <access read="R" write="I">Read/Init</access>
       <type lookup="VUNIT">VUNIT</type>
       <description>
-<p>The default coordinate system for gradients is <code>BOUNDING_BOX</code>, which positions the gradient around the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the gradient relative to the current viewport.</p>
+<p>The default coordinate system for gradients is <code>BOUNDING_BOX</code>, which positions the gradient around the vector that references it.  The alternative is <code>USERSPACE</code>, which positions the gradient scaled to the current viewport.</p>
 <types lookup="VUNIT"/>
       </description>
     </field>
@@ -211,7 +211,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The (X1,Y1) field values define the starting coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
-<p>Coordinate values can be expressed as percentages that are relative to the target space.</p>
+<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -222,7 +222,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
-<p>Coordinate values can be expressed as percentages that are relative to the target space.</p>
+<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -243,7 +243,7 @@
       <type>DOUBLE</type>
       <description>
 <p>The (X2,Y2) field values define the end coordinate for mapping linear gradients.  Other gradient types ignore these values.  The gradient will be drawn from (X1,Y1) to (X2,Y2).</p>
-<p>Coordinate values can be expressed as percentages that are relative to the target space.</p>
+<p>Coordinate values can be expressed as percentages that are scaled to the target space.</p>
       </description>
     </field>
 
@@ -265,15 +265,15 @@
       <const name="FIXED_X2">X2 is fixed</const>
       <const name="FIXED_Y1">Y1 is fixed</const>
       <const name="FIXED_Y2">Y2 is fixed</const>
-      <const name="RELATIVE_CX">CX is relative</const>
-      <const name="RELATIVE_CY">CY is relative</const>
-      <const name="RELATIVE_FX">FX is relative</const>
-      <const name="RELATIVE_FY">FY is relative</const>
-      <const name="RELATIVE_RADIUS">Radius is relative</const>
-      <const name="RELATIVE_X1">X1 is relative</const>
-      <const name="RELATIVE_X2">X2 is relative</const>
-      <const name="RELATIVE_Y1">Y1 is relative</const>
-      <const name="RELATIVE_Y2">Y2 is relative</const>
+      <const name="SCALED_CX">CX is scaled</const>
+      <const name="SCALED_CY">CY is scaled</const>
+      <const name="SCALED_FX">FX is scaled</const>
+      <const name="SCALED_FY">FY is scaled</const>
+      <const name="SCALED_RADIUS">Radius is scaled</const>
+      <const name="SCALED_X1">X1 is scaled</const>
+      <const name="SCALED_X2">X2 is scaled</const>
+      <const name="SCALED_Y1">Y1 is scaled</const>
+      <const name="SCALED_Y2">Y2 is scaled</const>
     </constants>
 
     <constants lookup="VGT" comment="VectorGradient options.">
@@ -295,9 +295,9 @@
     </constants>
 
     <constants lookup="VUNIT">
-      <const name="BOUNDING_BOX">Coordinates are relative to the object's bounding box.</const>
+      <const name="BOUNDING_BOX">Coordinates are scaled to the object's bounding box.</const>
       <const name="UNDEFINED"/>
-      <const name="USERSPACE">Coordinates are relative to the current viewport.</const>
+      <const name="USERSPACE">Coordinates are scaled to the current viewport.</const>
     </constants>
 
   </types>

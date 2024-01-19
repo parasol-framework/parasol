@@ -44,8 +44,10 @@ Valid options to use when creating the window are as follows:
     Returns the size of the window as { x, y, width, height }
   :hide()
     Hide the window and move the user focus to the next active window
-  :reposition(X, Y, Width, Height)
+  :resize(X, Y, Width, Height)
     Alter the window dimensions.  Values can be set to nil to leave them unchanged.
+  :resizeClientArea(Width, Height)
+    Alter the internal size of the window and adjust the border automatically.  Values can be set to nil to leave them unchanged.
   :minimise()
     Manually minimise the window.
   :maximise()
@@ -195,7 +197,9 @@ gui.window = function(Options)
       if not Height then Height = self.surface.height end
 
       if hosted(self) then
-         self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0, Width - self.client.left - self.client.right, Height - self.client.top - self.client.bottom, 0)
+         self.surface.acRedimension(X + self.client.left, Y + self.client.top, 0,
+            Width - self.client.left - self.client.right,
+            Height - self.client.top - self.client.bottom, 0)
       else
          if (X) or (Y) then
             self.surface.acRedimension(X, Y, 0, Width, Height, 0)

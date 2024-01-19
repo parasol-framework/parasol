@@ -12,7 +12,7 @@
     <idstring>ID_VECTORSPIRAL</idstring>
     <category>Graphics</category>
     <include>modules/vectorspiral.h</include>
-    <copyright>Paul Manias © 2010-2023</copyright>
+    <copyright>Paul Manias © 2010-2024</copyright>
     <description>
 <p>The VectorSpiral class provides the necessary functionality for generating spiral paths that extend from a central point.</p></description>
     <source>

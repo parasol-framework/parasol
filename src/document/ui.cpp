@@ -1,5 +1,41 @@
 
 //********************************************************************************************************************
+// Feedback events for the combobox viewport.  Note that the viewport retains focus when the drop-down list is 
+// presented.
+
+static ERROR combo_feedback(objVectorViewport *View, FM Event)
+{
+   auto Self = (extDocument *)CurrentContext();
+   ui_widget &widget = Self->Widgets[View->UID];
+   auto combo = std::get<bc_combobox *>(widget.widget);
+
+   if (Event IS FM::LOST_FOCUS) {
+      // If the client moves away from the combobox' focus then we hide the drop-down
+
+
+      combo->menu.hide();
+   }
+   else if ((Event IS FM::HAS_FOCUS) or (Event IS FM::CHILD_HAS_FOCUS)) {
+      CSTRING str;
+      combo->input->get(FID_String, &str);
+      combo->last_good_input = str;
+   }
+
+   View->draw();
+   return ERR_Okay;
+}
+
+//********************************************************************************************************************
+// Callback for the user selecting an item from the drop-down list.
+
+void bc_combobox::callback(struct doc_menu &Menu, struct dropdown_item &Item)
+{
+   auto combo = std::get<bc_combobox *>(Menu.m_ref);
+   if (combo) combo->input->setFields(fl::String(Item.name));
+   combo->viewport->draw();
+}
+
+//********************************************************************************************************************
 
 static bool delete_selected(extDocument *Self)
 {
@@ -1052,6 +1088,7 @@ static void handle_widget_event(extDocument *Self, widget_mgr &Widget, const Inp
 }
 
 //********************************************************************************************************************
+// Incoming events from the button viewport
 
 static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Event)
 {
@@ -1081,8 +1118,41 @@ static ERROR inputevent_button(objVectorViewport *Viewport, const InputEvent *Ev
    return ERR_Okay;
 }
 
+//********************************************************************************************************************
+
+static ERROR inputevent_dropdown(objVectorViewport *Viewport, const InputEvent *Event)
+{
+   pf::Log log;
+   auto Self = (extDocument *)CurrentContext();
+
+   if (!Self->Widgets.contains(Viewport->UID)) return ERR_Terminate;
+
+   ui_widget &widget = Self->Widgets[Viewport->UID];
+   auto &combo = *std::get<bc_combobox *>(widget.widget);
+
+   handle_widget_event(Self, combo, Event);
+
+   for (; Event; Event = Event->Next) {
+      if ((Event->Flags & JTYPE::BUTTON) != JTYPE::NIL) {
+         combo.menu.create(combo.width);
+
+         if (Event->Type IS JET::LMB) {
+            
+            if (Event->Value IS 1) {
+               combo.menu.toggle(*combo.viewport);
+            }
+         }
+
+
+         Self->Viewport->draw();
+      }
+   }
+
+   return ERR_Okay;
+}
 
 //********************************************************************************************************************
+// Incoming events from the checkbox viewport
 
 static ERROR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Event)
 {

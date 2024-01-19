@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      document.h
-// Copyright: Paul Manias © 2005-2023
+// Copyright: Paul Manias © 2005-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -82,6 +82,20 @@ enum class FSO : ULONG {
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(FSO)
+
+#define DMF_SCALED_X  DMF_RELATIVE_X 
+#define DMF_SCALED_Y  DMF_RELATIVE_Y 
+#define DMF_SCALED_X_OFFSET  DMF_RELATIVE_X_OFFSET 
+#define DMF_SCALED_Y_OFFSET  DMF_RELATIVE_Y_OFFSET 
+#define DMF_SCALED_HEIGHT  DMF_RELATIVE_HEIGHT 
+#define DMF_SCALED_WIDTH  DMF_RELATIVE_WIDTH 
+#define DMF_SCALED_DEPTH  DMF_RELATIVE_DEPTH 
+#define DMF_SCALED_Z  DMF_RELATIVE_Z 
+#define DMF_SCALED_RADIUS_X  DMF_RELATIVE_RADIUS_X 
+#define DMF_SCALED_CENTER_X  DMF_RELATIVE_CENTER_X 
+#define DMF_SCALED_CENTER_Y  DMF_RELATIVE_CENTER_Y 
+#define DMF_SCALED_RADIUS_Y  DMF_RELATIVE_RADIUS_Y 
+#define DMF_SCALED_RADIUS  DMF_RELATIVE_RADIUS 
 
 // Document class definition
 
@@ -257,7 +271,7 @@ class objDocument : public BaseClass {
 
    template <class T> inline ERROR setBackground(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -269,7 +283,7 @@ class objDocument : public BaseClass {
 
    inline ERROR setViewport(objVectorViewport * Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08000301, Value, 1);
    }
 
@@ -295,21 +309,21 @@ class objDocument : public BaseClass {
       return field->WriteValue(target, field, FD_LONG, &Value, 1);
    }
 
-   inline ERROR setDefaultScript(OBJECTPTR Value) {
+   inline ERROR setClientScript(OBJECTPTR Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[20];
       return field->WriteValue(target, field, 0x08000401, Value, 1);
    }
 
    inline ERROR setEventCallback(FUNCTION Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[26];
+      auto field = &this->Class->Dictionary[27];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERROR setPath(T && Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -321,10 +335,25 @@ class objDocument : public BaseClass {
 
    inline ERROR setPageWidth(const LONG Value) {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[11];
       Variable var(Value);
       return field->WriteValue(target, field, FD_VARIABLE, &var, 1);
    }
 
+   template <class T> inline ERROR setPretext(T && Value) {
+      auto target = this;
+      auto field = &this->Class->Dictionary[22];
+      return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
+   }
+
 };
+
+namespace fl {
+   using namespace pf;
+
+constexpr FieldValue EventCallback(ERROR (*Value)(objDocument *, DEF, KEYVALUE *)) { return FieldValue(FID_EventCallback, &Value); }
+constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, LONG(Value)); }
+constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, LONG(Value)); }
+
+}
 

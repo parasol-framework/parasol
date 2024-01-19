@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      fluid.h
-// Copyright: Paul Manias © 2006-2023
+// Copyright: Paul Manias © 2006-2024
 // Generator: idl-c
 
 #include <parasol/main.h>

@@ -2777,6 +2777,9 @@ static ERROR set_property(extSVG *Self, objVector *Vector, ULONG Hash, const XML
             case SVF_RX:     field_id = FID_RoundX; break;
             case SVF_RY:     field_id = FID_RoundY; break;
 
+            case SVF_XOFFSET: field_id = FID_XOffset; break; // Parasol only
+            case SVF_YOFFSET: field_id = FID_YOffset; break; // Parasol only
+
             case SVF_X2: {
                DOUBLE x;
                field_id = FID_Width;

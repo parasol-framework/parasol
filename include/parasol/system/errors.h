@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      system/errors.h
-// Copyright: Paul Manias © 1996-2023
+// Copyright: Paul Manias © 1996-2024
 // Generator: idl-c
 
 // Universal error codes

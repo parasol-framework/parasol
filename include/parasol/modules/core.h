@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      core.h
-// Copyright: Paul Manias 1996-2023
+// Copyright: Paul Manias 1996-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
@@ -1352,6 +1352,20 @@ struct DateTime {
    LONG Second;      // Second 0 to 59
    LONG TimeZone;    // TimeZone -13 to +13
 };
+
+#define DMF_SCALED_X  DMF_RELATIVE_X 
+#define DMF_SCALED_Y  DMF_RELATIVE_Y 
+#define DMF_SCALED_X_OFFSET  DMF_RELATIVE_X_OFFSET 
+#define DMF_SCALED_Y_OFFSET  DMF_RELATIVE_Y_OFFSET 
+#define DMF_SCALED_HEIGHT  DMF_RELATIVE_HEIGHT 
+#define DMF_SCALED_WIDTH  DMF_RELATIVE_WIDTH 
+#define DMF_SCALED_DEPTH  DMF_RELATIVE_DEPTH 
+#define DMF_SCALED_Z  DMF_RELATIVE_Z 
+#define DMF_SCALED_RADIUS_X  DMF_RELATIVE_RADIUS_X 
+#define DMF_SCALED_CENTER_X  DMF_RELATIVE_CENTER_X 
+#define DMF_SCALED_CENTER_Y  DMF_RELATIVE_CENTER_Y 
+#define DMF_SCALED_RADIUS_Y  DMF_RELATIVE_RADIUS_Y 
+#define DMF_SCALED_RADIUS  DMF_RELATIVE_RADIUS 
 
 struct HSV {
    DOUBLE Hue;           // Between 0 and 359.999
@@ -2724,7 +2738,7 @@ struct BaseClass { // Must be 64-bit aligned
       class extMetaClass *ExtClass; // [Private] Internal version of the class pointer
    };
    APTR     ChildPrivate;        // Address for the ChildPrivate structure, if allocated
-   APTR     CreatorMeta;         // The creator (via NewObject) is permitted to store a custom data pointer here.
+   APTR     CreatorMeta;         // The creator of the object is permitted to store a custom data pointer here.
    std::atomic_uint64_t NotifyFlags; // Action subscription flags - space for 64 actions max
    OBJECTID UID;                 // Unique object identifier
    OBJECTID OwnerID;             // The owner of this object

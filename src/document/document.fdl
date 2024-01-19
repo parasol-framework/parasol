@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, function()
+module({ name="Document", copyright="Paul Manias © 2005-2024", version=1.0 }, function()
   restrict(function()
     loadFile(glPath .. 'common-graphics.fdl')
   end)
@@ -84,4 +84,15 @@ module({ name="Document", copyright="Paul Manias © 2005-2023", version=1.0 }, f
     int PageHeight       # Height of the document page
     error Error          # Most recent error code produced by the parser
   ]])
+
+    c_insert([[
+namespace fl {
+   using namespace pf;
+
+constexpr FieldValue EventCallback(ERROR (*Value)(objDocument *, DEF, KEYVALUE *)) { return FieldValue(FID_EventCallback, &Value); }
+constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, LONG(Value)); }
+constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, LONG(Value)); }
+
+}
+]])
 end)

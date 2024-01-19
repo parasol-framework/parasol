@@ -1,7 +1,7 @@
 #pragma once
 
 // Name:      audio.h
-// Copyright: Paul Manias © 2002-2023
+// Copyright: Paul Manias © 2002-2024
 // Generator: idl-c
 
 #include <parasol/main.h>
