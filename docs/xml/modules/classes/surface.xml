@@ -483,7 +483,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The height of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as a relative value if you set the <code>FD_SCALE</code> marker. Relative heights are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will be 160 pixels high.</p>
+<p>The height of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the Width and Height at the same time.  A client can set the Height as a fixed value by default, or as a scaled value in conjunction with the <code>FD_SCALE</code> flag.  Scaled values are multiplied by the height of their parent container.</p>
 <p>Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change. Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>If a value less than zero is passed to an initialised surface, the height will be 'turned off' - this is convenient for pairing the Y and YOffset fields together for dynamic height adjustment.</p>
       </description>
@@ -766,7 +766,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The width of a surface object is manipulated through this field, although you can also use the Resize() action, which is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a relative value if you set the <code>FD_SCALE</code> field.  Relative widths are always calculated in relationship to a surface object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be 160 pixels wide.</p>
+<p>The width of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the Width and Height at the same time.  A client can set the Width as a fixed value by default, or as a scaled value in conjunction with the <code>FD_SCALE</code> flag.  Scaled values are multiplied by the width of their parent container.</p>
 <p>Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any objects that are within the surface area will be re-drawn and resized as necessary.</p>
 <p>Width values of 0 or less are illegal, and will result in an <code>ERR_OutOfRange</code> error-code.</p>
       </description>
@@ -801,7 +801,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the <code>FD_SCALE</code> flag.</p>
+<p>The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a scaled coordinate if you use the <code>FD_SCALE</code> flag.</p>
 <p>If you set the X while the surface object is on display, the position of the surface area will be updated immediately.</p>
       </description>
     </field>
@@ -814,7 +814,7 @@ the surface area first).</li>
       <description>
 <p>The XOffset has a dual purpose depending on whether or not it is set in conjunction with the X or Width fields.</p>
 <p>If set in conjunction with the X field, the width of the surface object will be from that X coordinate up to the width of the container, minus the value given in the XOffset.  This means that the width of the surface object is dynamically calculated in relation to the width of its container.</p>
-<p>If the XOffset field is set in conjunction with a fixed or relative width then the surface object will be positioned at an X coordinate calculated from the formula <code>X = ContainerWidth - SurfaceWidth - XOffset</code>.</p>
+<p>If the XOffset field is set in conjunction with a fixed or scaled width then the surface object will be positioned at an X coordinate calculated from the formula <code>X = ContainerWidth - SurfaceWidth - XOffset</code>.</p>
       </description>
     </field>
 
@@ -824,7 +824,7 @@ the surface area first).</li>
       <access read="G" write="S">Get/Set</access>
       <type>INT</type>
       <description>
-<p>The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a relative coordinate if you use the <code>FD_SCALE</code> flag.</p>
+<p>The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed coordinate (the default) or a scaled coordinate if you use the <code>FD_SCALE</code> flag.</p>
 <p>If the value is changed while the surface is on display, its position will be updated immediately.</p>
       </description>
     </field>
@@ -837,7 +837,7 @@ the surface area first).</li>
       <description>
 <p>The YOffset has a dual purpose depending on whether or not it is set in conjunction with the Y or Height fields.</p>
 <p>If set in conjunction with the Y field, the height of the surface object will be from that Y coordinate up to the height of the container, minus the value given in the YOffset.  This means that the height of the surface object is dynamically calculated in relation to the height of its container.</p>
-<p>If the YOffset field is set in conjunction with a fixed or relative height then the surface object will be positioned at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeight - YOffset".</p>
+<p>If the YOffset field is set in conjunction with a fixed or scaled height then the surface object will be positioned at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeight - YOffset".</p>
       </description>
     </field>
 

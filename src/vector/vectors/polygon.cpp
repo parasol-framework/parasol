@@ -396,7 +396,7 @@ static ERROR POLY_SET_X1(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALE) Self->Points[0].XScaled = TRUE;
+   if (Value->Type & FD_SCALED) Self->Points[0].XScaled = TRUE;
    else Self->Points[0].XScaled = FALSE;
    Self->Points[0].X = val;
    reset_path(Self);
@@ -433,7 +433,7 @@ static ERROR POLY_SET_X2(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALE) Self->Points[1].XScaled = TRUE;
+   if (Value->Type & FD_SCALED) Self->Points[1].XScaled = TRUE;
    else Self->Points[1].XScaled = FALSE;
    Self->Points[1].X = val;
    reset_path(Self);
@@ -470,7 +470,7 @@ static ERROR POLY_SET_Y1(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALE) Self->Points[0].YScaled = TRUE;
+   if (Value->Type & FD_SCALED) Self->Points[0].YScaled = TRUE;
    else Self->Points[0].YScaled = FALSE;
    Self->Points[0].Y = val;
    reset_path(Self);
@@ -507,7 +507,7 @@ static ERROR POLY_SET_Y2(extVectorPoly *Self, Variable *Value)
    else if (Value->Type & FD_STRING) val = strtod((CSTRING)Value->Pointer, NULL);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALE) Self->Points[1].YScaled = TRUE;
+   if (Value->Type & FD_SCALED) Self->Points[1].YScaled = TRUE;
    else Self->Points[1].YScaled = FALSE;
    Self->Points[1].Y = val;
    reset_path(Self);

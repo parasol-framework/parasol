@@ -38,14 +38,14 @@ static void generate_supershape(extVectorShape *Vector)
 {
    DOUBLE cx = Vector->CX, cy = Vector->CY;
 
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_X) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
+   if (Vector->Dimensions & DMF_SCALED_CENTER_X) {
+      if (Vector->ParentView->vpDimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) cx *= Vector->ParentView->vpFixedWidth;
       else if (Vector->ParentView->vpViewWidth > 0) cx *= Vector->ParentView->vpViewWidth;
       else cx *= Vector->Scene->PageWidth;
    }
 
-   if (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) {
-      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
+   if (Vector->Dimensions & DMF_SCALED_CENTER_Y) {
+      if (Vector->ParentView->vpDimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) cy *= Vector->ParentView->vpFixedHeight;
       else if (Vector->ParentView->vpViewHeight > 0) cy *= Vector->ParentView->vpViewHeight;
       else cy *= Vector->Scene->PageHeight;
    }
@@ -204,9 +204,9 @@ static ERROR SUPER_SET_B(extVectorShape *Self, DOUBLE Value)
 
 /*********************************************************************************************************************
 -FIELD-
-CenterX: The center of the shape on the x-axis.  Expressed as a fixed or relative coordinate.
+CenterX: The center of the shape on the x-axis.  Expressed as a fixed or scaled coordinate.
 
-The horizontal center of the shape is defined here as either a fixed or relative value.
+The horizontal center of the shape is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -225,8 +225,8 @@ static ERROR SUPER_SET_CenterX(extVectorShape *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
 
    Self->CX = val;
 
@@ -236,9 +236,9 @@ static ERROR SUPER_SET_CenterX(extVectorShape *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-CenterY: The center of the shape on the y-axis.  Expressed as a fixed or relative coordinate.
+CenterY: The center of the shape on the y-axis.  Expressed as a fixed or scaled coordinate.
 
-The vertical center of the shape is defined here as either a fixed or relative value.
+The vertical center of the shape is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -257,8 +257,8 @@ static ERROR SUPER_SET_CenterY(extVectorShape *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
 
    Self->CY = val;
    reset_path(Self);
@@ -289,7 +289,7 @@ static ERROR SUPER_SET_Close(extVectorShape *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or scaled values.
 
 The following dimension flags are supported:
 
@@ -297,9 +297,9 @@ The following dimension flags are supported:
 <type name="FIXED_CENTER_X">The #CenterX value is a fixed coordinate.</>
 <type name="FIXED_CENTER_Y">The #CenterY value is a fixed coordinate.</>
 <type name="FIXED_RADIUS">The #Radius value is a fixed coordinate.</>
-<type name="RELATIVE_CENTER_X">The #CenterX value is a relative coordinate.</>
-<type name="RELATIVE_CENTER_Y">The #CenterY value is a relative coordinate.</>
-<type name="RELATIVE_RADIUS">The #Radius value is a relative coordinate.</>
+<type name="SCALED_CENTER_X">The #CenterX value is a scaled coordinate.</>
+<type name="SCALED_CENTER_Y">The #CenterY value is a scaled coordinate.</>
+<type name="SCALED_RADIUS">The #Radius value is a scaled coordinate.</>
 </types>
 
 *********************************************************************************************************************/
@@ -465,9 +465,9 @@ static ERROR SUPER_SET_Phi(extVectorShape *Self, DOUBLE Value)
 
 /*********************************************************************************************************************
 -FIELD-
-Radius: The radius of the generated shape.  Expressed as a fixed or relative coordinate.
+Radius: The radius of the generated shape.  Expressed as a fixed or scaled coordinate.
 
-The Radius defines the final size of the generated shape.  It can be expressed in fixed or relative terms.
+The Radius defines the final size of the generated shape.  It can be expressed in fixed or scaled terms.
 
 *********************************************************************************************************************/
 
@@ -486,8 +486,8 @@ static ERROR SUPER_SET_Radius(extVectorShape *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
 
    Self->Radius = val;
    reset_path(Self);
@@ -575,12 +575,12 @@ static ERROR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
 //********************************************************************************************************************
 
 static const FieldDef clSuperDimensions[] = {
-   { "FixedRadius",     DMF_FIXED_RADIUS },
-   { "FixedCenterX",    DMF_FIXED_CENTER_X },
-   { "FixedCenterY",    DMF_FIXED_CENTER_Y },
-   { "RelativeRadius",  DMF_RELATIVE_RADIUS },
-   { "RelativeCenterX", DMF_RELATIVE_CENTER_X },
-   { "RelativeCenterY", DMF_RELATIVE_CENTER_Y },
+   { "FixedRadius",   DMF_FIXED_RADIUS },
+   { "FixedCenterX",  DMF_FIXED_CENTER_X },
+   { "FixedCenterY",  DMF_FIXED_CENTER_Y },
+   { "ScaledRadius",  DMF_SCALED_RADIUS },
+   { "ScaledCenterX", DMF_SCALED_CENTER_X },
+   { "ScaledCenterY", DMF_SCALED_CENTER_Y },
    { NULL, 0 }
 };
 
@@ -590,9 +590,9 @@ static const ActionArray clVectorShapeActions[] = {
 };
 
 static const FieldArray clVectorShapeFields[] = {
-   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
-   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
-   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
+   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
+   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
+   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
    { "Close",      FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Close, SUPER_SET_Close },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, SUPER_GET_Dimensions, SUPER_SET_Dimensions, &clSuperDimensions },
    { "Phi",        FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SUPER_GET_Phi,  SUPER_SET_Phi },
@@ -607,9 +607,9 @@ static const FieldArray clVectorShapeFields[] = {
    { "Spiral",     FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Spiral, SUPER_SET_Spiral },
    { "Repeat",     FDF_VIRTUAL|FDF_LONG|FDF_RW, SUPER_GET_Repeat, SUPER_SET_Repeat },
    // Synonyms
-   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
-   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
-   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
+   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterX, SUPER_SET_CenterX },
+   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_CenterY, SUPER_SET_CenterY },
+   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SUPER_GET_Radius,  SUPER_SET_Radius },
    END_FIELD
 };
 

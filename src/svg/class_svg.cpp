@@ -334,17 +334,17 @@ static ERROR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
 
                LONG dim;
                if ((!error) and (!(error = Self->Viewport->get(FID_Dimensions, &dim)))) {
-                  if ((dim & (DMF_RELATIVE_X|DMF_FIXED_X)) and (!Self->Viewport->get(FID_X, &x)))
-                     set_dimension(tag, "x", x, dim & DMF_RELATIVE_X);
+                  if ((dim & (DMF_SCALED_X|DMF_FIXED_X)) and (!Self->Viewport->get(FID_X, &x)))
+                     set_dimension(tag, "x", x, dim & DMF_SCALED_X);
 
-                  if ((dim & (DMF_RELATIVE_Y|DMF_FIXED_Y)) and (!Self->Viewport->get(FID_Y, &y)))
-                     set_dimension(tag, "y", y, dim & DMF_RELATIVE_Y);
+                  if ((dim & (DMF_SCALED_Y|DMF_FIXED_Y)) and (!Self->Viewport->get(FID_Y, &y)))
+                     set_dimension(tag, "y", y, dim & DMF_SCALED_Y);
 
-                  if ((dim & (DMF_RELATIVE_WIDTH|DMF_FIXED_WIDTH)) and (!Self->Viewport->get(FID_Width, &width)))
-                     set_dimension(tag, "width", width, dim & DMF_RELATIVE_WIDTH);
+                  if ((dim & (DMF_SCALED_WIDTH|DMF_FIXED_WIDTH)) and (!Self->Viewport->get(FID_Width, &width)))
+                     set_dimension(tag, "width", width, dim & DMF_SCALED_WIDTH);
 
-                  if ((dim & (DMF_RELATIVE_HEIGHT|DMF_FIXED_HEIGHT)) and (!Self->Viewport->get(FID_Height, &height)))
-                     set_dimension(tag, "height", height, dim & DMF_RELATIVE_HEIGHT);
+                  if ((dim & (DMF_SCALED_HEIGHT|DMF_FIXED_HEIGHT)) and (!Self->Viewport->get(FID_Height, &height)))
+                     set_dimension(tag, "height", height, dim & DMF_SCALED_HEIGHT);
                }
 
                if (!error) {

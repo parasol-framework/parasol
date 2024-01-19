@@ -1,7 +1,7 @@
 
-static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, bool Relative)
+static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, bool Scaled)
 {
-   if (Relative) xmlNewAttrib(*Tag, Attrib, std::to_string(Value * 100.0) + "%");
+   if (Scaled) xmlNewAttrib(*Tag, Attrib, std::to_string(Value * 100.0) + "%");
    else xmlNewAttrib(*Tag, Attrib, std::to_string(Value));
 }
 

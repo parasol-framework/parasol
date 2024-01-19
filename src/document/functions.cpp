@@ -155,7 +155,7 @@ static ERROR consume_input_events(objVector *Vector, const InputEvent *Events)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative)
+static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Scaled)
 {
    bool isnumber = true;
    auto v = Input;
@@ -164,7 +164,7 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative)
    auto str = v;
    if ((*str IS '-') or (*str IS '+')) str++;
 
-   Relative = false;
+   Scaled = false;
    if (((*str >= '0') and (*str <= '9')) or (*str IS '.')) {
       while ((*str >= '0') and (*str <= '9')) str++;
 
@@ -180,7 +180,7 @@ static CSTRING read_unit(CSTRING Input, DOUBLE &Output, bool &Relative)
       DOUBLE dpi = 96.0;
 
       if (*str IS '%') {
-         Relative = true;
+         Scaled = true;
          multiplier = 0.01;
          str++;
       }

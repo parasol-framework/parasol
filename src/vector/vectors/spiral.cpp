@@ -29,8 +29,8 @@ class extVectorSpiral : public extVector {
 
 static void generate_spiral(extVectorSpiral *Vector)
 {
-   const DOUBLE cx = (Vector->Dimensions & DMF_RELATIVE_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
-   const DOUBLE cy = (Vector->Dimensions & DMF_RELATIVE_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
+   const DOUBLE cx = (Vector->Dimensions & DMF_SCALED_CENTER_X) ? Vector->CX * get_parent_width(Vector) : Vector->CX;
+   const DOUBLE cy = (Vector->Dimensions & DMF_SCALED_CENTER_Y) ? Vector->CY * get_parent_height(Vector) : Vector->CY;
 
    DOUBLE min_x = DBL_MAX, max_x = DBL_MIN, min_y = DBL_MAX, max_y = DBL_MIN;
    DOUBLE angle = 0;
@@ -73,9 +73,9 @@ static ERROR SPIRAL_NewObject(extVectorSpiral *Self, APTR Void)
 
 /*********************************************************************************************************************
 -FIELD-
-CenterX: The horizontal center of the spiral.  Expressed as a fixed or relative coordinate.
+CenterX: The horizontal center of the spiral.  Expressed as a fixed or scaled coordinate.
 
-The horizontal center of the spiral is defined here as either a fixed or relative value.
+The horizontal center of the spiral is defined here as either a fixed or scaled value.
 -END-
 *********************************************************************************************************************/
 
@@ -96,8 +96,8 @@ static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
 
    Self->CX = val;
 
@@ -107,9 +107,9 @@ static ERROR SPIRAL_SET_CenterX(extVectorSpiral *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-CenterY: The vertical center of the spiral.  Expressed as a fixed or relative coordinate.
+CenterY: The vertical center of the spiral.  Expressed as a fixed or scaled coordinate.
 
-The vertical center of the spiral is defined here as either a fixed or relative value.
+The vertical center of the spiral is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -130,8 +130,8 @@ static ERROR SPIRAL_SET_CenterY(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
 
    Self->CY = val;
    reset_path(Self);
@@ -220,9 +220,9 @@ static ERROR SPIRAL_SET_PathLength(extVectorSpiral *Self, LONG Value)
 
 /*********************************************************************************************************************
 -FIELD-
-Radius: The radius of the spiral.  Expressed as a fixed or relative coordinate.
+Radius: The radius of the spiral.  Expressed as a fixed or scaled coordinate.
 
-The radius of the spiral is defined here as either a fixed or relative value.
+The radius of the spiral is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -243,8 +243,8 @@ static ERROR SPIRAL_SET_Radius(extVectorSpiral *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return log.warning(ERR_FieldTypeMismatch);
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
 
    Self->Radius = val;
    reset_path(Self);
@@ -341,18 +341,18 @@ static const ActionArray clVectorSpiralActions[] = {
 
 static const FieldArray clVectorSpiralFields[] = {
    { "PathLength", FDF_VIRTUAL|FDF_LONG|FDF_RW, SPIRAL_GET_PathLength, SPIRAL_SET_PathLength },
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Width,   SPIRAL_SET_Width },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Height,  SPIRAL_SET_Height },
-   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
-   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
-   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Width,   SPIRAL_SET_Width },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Height,  SPIRAL_SET_Height },
+   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
+   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
+   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
    { "Offset",     FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Offset, SPIRAL_SET_Offset },
    { "Scale",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Scale, SPIRAL_SET_Scale },
    { "Step",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, SPIRAL_GET_Step, SPIRAL_SET_Step },
    // Synonyms
-   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
-   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
-   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
+   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterX, SPIRAL_SET_CenterX },
+   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_CenterY, SPIRAL_SET_CenterY },
+   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, SPIRAL_GET_Radius,  SPIRAL_SET_Radius },
    END_FIELD
 };
 

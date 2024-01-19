@@ -1668,7 +1668,7 @@ struct OpenInfo {
 #define FDF_INTEGRAL    (FD_POINTER|FD_INTEGRAL) // Field refers to an integral object
 #define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
 #define FDF_STR         (FDF_STRING)
-#define FDF_SCALE       FD_SCALE
+#define FDF_SCALED      FD_SCALED
 #define FDF_FLAGS       FD_FLAGS                // Field contains flags
 #define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
 #define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
@@ -1698,13 +1698,11 @@ struct OpenInfo {
 #define TLARGE    0x0400000000000000LL
 #define TFUNCTION 0x0200000000000000LL
 #define TSTR      0x0080000000000000LL
-#define TRELATIVE 0x0020000000000000LL
 #define TARRAY    0x0000100000000000LL
-#define TSCALE    TRELATIVE
+#define TSCALE    0x0020000000000000LL
 #define TAGEND    0LL
 #define TAGDIVERT -1LL
 #define TSTRING   TSTR
-#define TREL      TRELATIVE
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -1731,7 +1729,7 @@ struct FieldValue {
    constexpr FieldValue(ULONG pFID, LONG pValue)    : FieldID(pFID), Type(FD_LONG), Long(pValue) { };
    constexpr FieldValue(ULONG pFID, LARGE pValue)   : FieldID(pFID), Type(FD_LARGE), Large(pValue) { };
    constexpr FieldValue(ULONG pFID, DOUBLE pValue)  : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(ULONG pFID, SCALE pValue)   : FieldID(pFID), Type(FD_DOUBLE|FD_SCALE), Percent(pValue) { };
+   constexpr FieldValue(ULONG pFID, SCALE pValue)   : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
    constexpr FieldValue(ULONG pFID, APTR pValue)    : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue)    : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
    constexpr FieldValue(ULONG pFID, CPTR pValue, LONG pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };

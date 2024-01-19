@@ -654,7 +654,7 @@ class objBitmap : public BaseClass {
    inline ULONG packPixelWB(struct RGB8 &RGB) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
    }
-   
+
    inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
    }
@@ -1433,10 +1433,10 @@ class objSurface : public BaseClass {
 #ifdef PRV_SURFACE
    // These coordinate fields are considered private but may be accessed by some internal classes, like Document
    LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
-   DOUBLE   XOffsetPercent;       // Relative horizontal offset
-   DOUBLE   YOffsetPercent;       // Relative vertical offset
-   DOUBLE   WidthPercent, HeightPercent; // Relative width and height
-   DOUBLE   XPercent, YPercent;   // Relative coordinate
+   DOUBLE   XOffsetPercent;       // Scaled horizontal offset
+   DOUBLE   YOffsetPercent;       // Scaled vertical offset
+   DOUBLE   WidthPercent, HeightPercent; // Scaled width and height
+   DOUBLE   XPercent, YPercent;   // Scaled coordinate
 #endif
    public:
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }

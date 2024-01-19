@@ -64,22 +64,22 @@ static ERROR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
    DOUBLE img_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
-      if (Self->Dimensions & (DMF_FIXED_X|DMF_RELATIVE_X)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
-      if (Self->Dimensions & (DMF_FIXED_Y|DMF_RELATIVE_Y)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
-      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH)) img_width = Self->Width * filter->BoundWidth;
-      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT)) img_height = Self->Height * filter->BoundHeight;
+      if (Self->Dimensions & (DMF_FIXED_X|DMF_SCALED_X)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));
+      if (Self->Dimensions & (DMF_FIXED_Y|DMF_SCALED_Y)) img_y = trunc(filter->TargetY + (Self->Y * filter->BoundHeight));
+      if (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH)) img_width = Self->Width * filter->BoundWidth;
+      if (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT)) img_height = Self->Height * filter->BoundHeight;
    }
    else {
-      if (Self->Dimensions & DMF_RELATIVE_X)   img_x = filter->TargetX + (Self->X * filter->TargetWidth);
+      if (Self->Dimensions & DMF_SCALED_X)   img_x = filter->TargetX + (Self->X * filter->TargetWidth);
       else if (Self->Dimensions & DMF_FIXED_X) img_x = Self->X;
 
-      if (Self->Dimensions & DMF_RELATIVE_Y)   img_y = filter->TargetY + (Self->Y * filter->TargetHeight);
+      if (Self->Dimensions & DMF_SCALED_Y)   img_y = filter->TargetY + (Self->Y * filter->TargetHeight);
       else if (Self->Dimensions & DMF_FIXED_Y) img_y = Self->Y;
 
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   img_width = filter->TargetWidth * Self->Width;
+      if (Self->Dimensions & DMF_SCALED_WIDTH)   img_width = filter->TargetWidth * Self->Width;
       else if (Self->Dimensions & DMF_FIXED_WIDTH) img_width = Self->Width;
 
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   img_height = filter->TargetHeight * Self->Height;
+      if (Self->Dimensions & DMF_SCALED_HEIGHT)   img_height = filter->TargetHeight * Self->Height;
       else if (Self->Dimensions & DMF_FIXED_HEIGHT) img_height = Self->Height;
    }
 

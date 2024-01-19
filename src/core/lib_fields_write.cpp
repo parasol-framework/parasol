@@ -560,13 +560,13 @@ static ERROR setval_variable(OBJECTPTR Object, Field *Field, LONG Flags, CPTR Da
       return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
    }
    else if (Flags & (FD_POINTER|FD_STRING)) {
-      if (Field->Flags & FD_SCALE) {
+      if (Field->Flags & FD_SCALED) {
          // Percentages are only applicable to numeric variables, and require conversion in advance.
-         // NB: If a field needs total control over variable conversion, it should not specify FD_SCALE.
+         // NB: If a field needs total control over variable conversion, it should not specify FD_SCALED.
          STRING pct;
          var.Double = strtod((CSTRING)Data, &pct);
          if (pct[0] IS '%') {
-            var.Type = FD_DOUBLE|FD_SCALE;
+            var.Type = FD_DOUBLE|FD_SCALED;
             var.Double *= 0.01;
             return ((ERROR (*)(APTR, Variable *))(Field->SetValue))(Object, &var);
          }

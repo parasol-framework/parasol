@@ -116,10 +116,10 @@ void gen_vector_path(extVector *Vector)
 
          // The user's values for destination (x,y) need to be taken into account. <svg x="" y=""/>
 
-         if (view->vpDimensions & DMF_RELATIVE_X) view->FinalX = (parent_width * view->vpTargetX);
+         if (view->vpDimensions & DMF_SCALED_X) view->FinalX = (parent_width * view->vpTargetX);
          else view->FinalX = view->vpTargetX;
 
-         if (view->vpDimensions & DMF_RELATIVE_Y) view->FinalY = (parent_height * view->vpTargetY);
+         if (view->vpDimensions & DMF_SCALED_Y) view->FinalY = (parent_height * view->vpTargetY);
          else view->FinalY = view->vpTargetY;
       }
       else {
@@ -131,15 +131,15 @@ void gen_vector_path(extVector *Vector)
          view->FinalY = 0;
       }
 
-      if (view->vpDimensions & DMF_RELATIVE_WIDTH) view->vpFixedWidth = parent_width * view->vpTargetWidth;
+      if (view->vpDimensions & DMF_SCALED_WIDTH) view->vpFixedWidth = parent_width * view->vpTargetWidth;
       else if (view->vpDimensions & DMF_FIXED_WIDTH) view->vpFixedWidth = view->vpTargetWidth;
       else view->vpFixedWidth = parent_width;
 
-      if (view->vpDimensions & DMF_RELATIVE_HEIGHT) view->vpFixedHeight = parent_height * view->vpTargetHeight;
+      if (view->vpDimensions & DMF_SCALED_HEIGHT) view->vpFixedHeight = parent_height * view->vpTargetHeight;
       else if (view->vpDimensions & DMF_FIXED_HEIGHT) view->vpFixedHeight = view->vpTargetHeight;
       else view->vpFixedHeight = parent_height;
 
-      if (view->vpDimensions & DMF_RELATIVE_X_OFFSET) {
+      if (view->vpDimensions & DMF_SCALED_X_OFFSET) {
          if (view->vpDimensions & DMF_X) {
             view->vpFixedWidth = parent_width - (parent_width * view->vpTargetXO) - view->FinalX;
          }
@@ -152,7 +152,7 @@ void gen_vector_path(extVector *Vector)
          else view->FinalX = parent_width - view->vpFixedWidth - view->vpTargetXO;
       }
 
-      if (view->vpDimensions & DMF_RELATIVE_Y_OFFSET) {
+      if (view->vpDimensions & DMF_SCALED_Y_OFFSET) {
          if (view->vpDimensions & DMF_Y) {
             view->vpFixedHeight = parent_height - (parent_height * view->vpTargetYO) - view->FinalY;
          }

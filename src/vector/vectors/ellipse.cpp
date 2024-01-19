@@ -28,14 +28,14 @@ static void generate_ellipse(extVectorEllipse *Vector)
    DOUBLE cx = Vector->eCX, cy = Vector->eCY;
    DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
 
-   if (Vector->eDimensions & (DMF_RELATIVE_CENTER_X|DMF_RELATIVE_CENTER_Y|DMF_RELATIVE_RADIUS_X|DMF_RELATIVE_RADIUS_Y)) {
+   if (Vector->eDimensions & (DMF_SCALED_CENTER_X|DMF_SCALED_CENTER_Y|DMF_SCALED_RADIUS_X|DMF_SCALED_RADIUS_Y)) {
       DOUBLE view_width, view_height;
       get_parent_size(Vector, view_width, view_height);
 
-      if (Vector->eDimensions & DMF_RELATIVE_CENTER_X) cx *= view_width;
-      if (Vector->eDimensions & DMF_RELATIVE_CENTER_Y) cy *= view_height;
-      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_X) rx *= view_width;
-      if (Vector->eDimensions & DMF_RELATIVE_RADIUS_Y) ry *= view_height;
+      if (Vector->eDimensions & DMF_SCALED_CENTER_X) cx *= view_width;
+      if (Vector->eDimensions & DMF_SCALED_CENTER_Y) cy *= view_height;
+      if (Vector->eDimensions & DMF_SCALED_RADIUS_X) rx *= view_width;
+      if (Vector->eDimensions & DMF_SCALED_RADIUS_Y) ry *= view_height;
    }
 
    DOUBLE scale = Vector->Transform.scale();
@@ -95,8 +95,8 @@ static ERROR ELLIPSE_MoveToPoint(extVectorEllipse *Self, struct acMoveToPoint *A
 
    if ((Args->Flags & MTF::X) != MTF::NIL) Self->eCX = Args->X;
    if ((Args->Flags & MTF::Y) != MTF::NIL) Self->eCY = Args->Y;
-   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y) & ~(DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y) & ~(DMF_RELATIVE_CENTER_X | DMF_RELATIVE_CENTER_Y);
+   if ((Args->Flags & MTF::RELATIVE) != MTF::NIL) Self->eDimensions = (Self->eDimensions | DMF_SCALED_CENTER_X | DMF_SCALED_CENTER_Y) & ~(DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y);
+   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X | DMF_FIXED_CENTER_Y) & ~(DMF_SCALED_CENTER_X | DMF_SCALED_CENTER_Y);
    reset_path(Self);
    return ERR_Okay;
 }
@@ -121,10 +121,10 @@ The following dimension flags are supported:
 <type name="FIXED_RADIUS_Y">The #RadiusY value is a fixed coordinate.</>
 <type name="FIXED_CENTER_X">The #CenterX value is a fixed coordinate.</>
 <type name="FIXED_CENTER_Y">The #CenterY value is a fixed coordinate.</>
-<type name="RELATIVE_RADIUS_X">The #RadiusX value is a relative coordinate.</>
-<type name="RELATIVE_RADIUS_Y">The #RadiusY value is a relative coordinate.</>
-<type name="RELATIVE_CENTER_X">The #CenterX value is a relative coordinate.</>
-<type name="RELATIVE_CENTER_Y">The #CenterY value is a relative coordinate.</>
+<type name="SCALED_RADIUS_X">The #RadiusX value is a scaled coordinate.</>
+<type name="SCALED_RADIUS_Y">The #RadiusY value is a scaled coordinate.</>
+<type name="SCALED_CENTER_X">The #CenterX value is a scaled coordinate.</>
+<type name="SCALED_CENTER_Y">The #CenterY value is a scaled coordinate.</>
 </types>
 
 *********************************************************************************************************************/
@@ -171,9 +171,9 @@ static ERROR ELLIPSE_SET_Height(extVectorEllipse *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-CenterX: The horizontal center of the ellipse.  Expressed as a fixed or relative coordinate.
+CenterX: The horizontal center of the ellipse.  Expressed as a fixed or scaled coordinate.
 
-The horizontal center of the ellipse is defined here as either a fixed or relative value.
+The horizontal center of the ellipse is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -192,8 +192,8 @@ static ERROR ELLIPSE_SET_CenterX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_X) & (~DMF_FIXED_CENTER_X);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X) & (~DMF_RELATIVE_CENTER_X);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_CENTER_X) & (~DMF_FIXED_CENTER_X);
+   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_X) & (~DMF_SCALED_CENTER_X);
 
    Self->eCX = val;
 
@@ -203,9 +203,9 @@ static ERROR ELLIPSE_SET_CenterX(extVectorEllipse *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-CenterY: The vertical center of the ellipse.  Expressed as a fixed or relative coordinate.
+CenterY: The vertical center of the ellipse.  Expressed as a fixed or scaled coordinate.
 
-The vertical center of the ellipse is defined here as either a fixed or relative value.
+The vertical center of the ellipse is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -224,8 +224,8 @@ static ERROR ELLIPSE_SET_CenterY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_Y) & (~DMF_RELATIVE_CENTER_Y);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_CENTER_Y) & (~DMF_FIXED_CENTER_Y);
+   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_CENTER_Y) & (~DMF_SCALED_CENTER_Y);
 
    Self->eCY = val;
    reset_path(Self);
@@ -234,9 +234,9 @@ static ERROR ELLIPSE_SET_CenterY(extVectorEllipse *Self, Variable *Value)
 
 /*********************************************************************************************************************
 -FIELD-
-Radius: The radius of the ellipse.  Expressed as a fixed or relative coordinate.
+Radius: The radius of the ellipse.  Expressed as a fixed or scaled coordinate.
 
-The radius of the ellipse is defined here as either a fixed or relative value.  Updating the radius will set both the
+The radius of the ellipse is defined here as either a fixed or scaled value.  Updating the radius will set both the
 #RadiusX and #RadiusY values simultaneously.
 
 *********************************************************************************************************************/
@@ -256,8 +256,8 @@ static ERROR ELLIPSE_SET_Radius(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS) & (~DMF_FIXED_RADIUS);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS) & (~DMF_RELATIVE_RADIUS);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_RADIUS) & (~DMF_FIXED_RADIUS);
+   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS) & (~DMF_SCALED_RADIUS);
 
    Self->eRadiusX = Self->eRadiusY = val;
    reset_path(Self);
@@ -268,7 +268,7 @@ static ERROR ELLIPSE_SET_Radius(extVectorEllipse *Self, Variable *Value)
 -FIELD-
 RadiusX: The horizontal radius of the ellipse.
 
-The horizontal radius of the ellipse is defined here as either a fixed or relative value.
+The horizontal radius of the ellipse is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -287,8 +287,8 @@ static ERROR ELLIPSE_SET_RadiusX(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_X) & (~DMF_RELATIVE_RADIUS_X);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_RADIUS_X) & (~DMF_FIXED_RADIUS_X);
+   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_X) & (~DMF_SCALED_RADIUS_X);
 
    Self->eRadiusX = val;
    reset_path(Self);
@@ -299,7 +299,7 @@ static ERROR ELLIPSE_SET_RadiusX(extVectorEllipse *Self, Variable *Value)
 -FIELD-
 RadiusY: The vertical radius of the ellipse.
 
-The vertical radius of the ellipse is defined here as either a fixed or relative value.
+The vertical radius of the ellipse is defined here as either a fixed or scaled value.
 
 *********************************************************************************************************************/
 
@@ -318,8 +318,8 @@ static ERROR ELLIPSE_SET_RadiusY(extVectorEllipse *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->eDimensions = (Self->eDimensions | DMF_RELATIVE_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
-   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_RELATIVE_RADIUS_Y);
+   if (Value->Type & FD_SCALED) Self->eDimensions = (Self->eDimensions | DMF_SCALED_RADIUS_Y) & (~DMF_FIXED_RADIUS_Y);
+   else Self->eDimensions = (Self->eDimensions | DMF_FIXED_RADIUS_Y) & (~DMF_SCALED_RADIUS_Y);
 
    Self->eRadiusY = val;
    reset_path(Self);
@@ -384,33 +384,33 @@ static ERROR ELLIPSE_SET_Width(extVectorEllipse *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clEllipseDimensions[] = {
-   { "FixedRadiusX",    DMF_FIXED_RADIUS_X },
-   { "FixedRadiusY",    DMF_FIXED_RADIUS_Y },
-   { "FixedCenterX",    DMF_FIXED_CENTER_X },
-   { "FixedCenterY",    DMF_FIXED_CENTER_Y },
-   { "RelativeRadiusX", DMF_RELATIVE_RADIUS_X },
-   { "RelativeRadiusY", DMF_RELATIVE_RADIUS_Y },
-   { "RelativeCenterX", DMF_RELATIVE_CENTER_X },
-   { "RelativeCenterY", DMF_RELATIVE_CENTER_Y },
+   { "FixedRadiusX",  DMF_FIXED_RADIUS_X },
+   { "FixedRadiusY",  DMF_FIXED_RADIUS_Y },
+   { "FixedCenterX",  DMF_FIXED_CENTER_X },
+   { "FixedCenterY",  DMF_FIXED_CENTER_Y },
+   { "ScaledRadiusX", DMF_SCALED_RADIUS_X },
+   { "ScaledRadiusY", DMF_SCALED_RADIUS_Y },
+   { "ScaledCenterX", DMF_SCALED_CENTER_X },
+   { "ScaledCenterY", DMF_SCALED_CENTER_Y },
    { NULL, 0 }
 };
 
 static const FieldArray clEllipseFields[] = {
-   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Width,   ELLIPSE_SET_Width },
-   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Height,  ELLIPSE_SET_Height },
-   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
-   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
-   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
-   { "RadiusX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
-   { "RadiusY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
+   { "Width",      FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_Width,   ELLIPSE_SET_Width },
+   { "Height",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_Height,  ELLIPSE_SET_Height },
+   { "CenterX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
+   { "CenterY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
+   { "Radius",     FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
+   { "RadiusX",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
+   { "RadiusY",    FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
    { "Dimensions", FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, ELLIPSE_GET_Dimensions, ELLIPSE_SET_Dimensions, &clEllipseDimensions },
    { "Vertices",   FDF_VIRTUAL|FDF_LONG|FDF_RW, ELLIPSE_GET_Vertices, ELLIPSE_SET_Vertices },
    // Synonyms
-   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
-   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
-   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
-   { "RX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
-   { "RY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
+   { "CX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_CenterX, ELLIPSE_SET_CenterX },
+   { "CY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_CenterY, ELLIPSE_SET_CenterY },
+   { "R",  FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_Radius,  ELLIPSE_SET_Radius },
+   { "RX", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_RadiusX, ELLIPSE_SET_RadiusX },
+   { "RY", FDF_SYNONYM|FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, ELLIPSE_GET_RadiusY, ELLIPSE_SET_RadiusY },
    END_FIELD
 };
 

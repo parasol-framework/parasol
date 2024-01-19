@@ -544,7 +544,7 @@ static ERROR SET_Face(extFont *Self, CSTRING Value)
          Value++;
          while ((Value[i] >= '0') and (Value[i] <= '9')) i++;
       }
-      if (Value[i] IS '%') { var.Type |= FD_SCALE; i++; }
+      if (Value[i] IS '%') { var.Type |= FD_SCALED; i++; }
       SET_Point(Self, &var);
 
       if (Value[i] != ':') return ERR_Okay;
@@ -788,7 +788,7 @@ drop the font to point 8.  This does not impact upon scalable fonts, which can b
 
 static ERROR GET_Point(extFont *Self, Variable *Value)
 {
-   if (Value->Type & FD_SCALE) return ERR_NoSupport;
+   if (Value->Type & FD_SCALED) return ERR_NoSupport;
 
    if (Value->Type & FD_DOUBLE) Value->Double = Self->Point;
    else if (Value->Type & FD_LARGE) Value->Large = Self->Point;
@@ -806,7 +806,7 @@ static ERROR SET_Point(extFont *Self, Variable *Value)
    else if (Value->Type & FD_STRING) value = strtod((CSTRING)Value->Pointer, NULL);
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) {
+   if (Value->Type & FD_SCALED) {
       // Default point size is scaled relative to display DPI, then re-scaled to the % value that was passed in.
       DOUBLE global_point = global_point_size();
       DOUBLE pct = value;
@@ -1394,7 +1394,7 @@ static ERROR draw_vector_font(extFont *Self)
                   for (dy = sy; dy < ey; dy++) {
                      UBYTE *bitdata = line;
                      for (dx = sx; dx < ex; dx++) {
-                        if (data[0] > 2) ((ULONG*)bitdata)[0] = Bitmap->packPixelWB(col, data[0]);                        
+                        if (data[0] > 2) ((ULONG*)bitdata)[0] = Bitmap->packPixelWB(col, data[0]);
                         bitdata += Bitmap->BytesPerPixel;
                         data++;
                      }
@@ -2192,7 +2192,7 @@ static const FieldDef AlignFlags[] = {
 
 static const FieldArray clFontFields[] = {
    { "Angle",           FDF_DOUBLE|FDF_RW },
-   { "Point",           FDF_DOUBLE|FDF_VARIABLE|FDF_SCALE|FDF_RW, GET_Point, SET_Point },
+   { "Point",           FDF_DOUBLE|FDF_VARIABLE|FDF_SCALED|FDF_RW, GET_Point, SET_Point },
    { "StrokeSize",      FDF_DOUBLE|FDF_RW },
    { "Bitmap",          FDF_OBJECT|FDF_RW, NULL, NULL, ID_BITMAP },
    { "String",          FDF_STRING|FDF_RW, NULL, SET_String },

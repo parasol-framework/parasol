@@ -1264,13 +1264,13 @@ static ERROR VECTOR_SET_EnableBkgd(extVector *Self, LONG Value)
 -FIELD-
 Fill: Defines the fill painter using SVG's IRI format.
 
-The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The 
-string is parsed through the ~ReadPainter() function in the Vector module.  Please refer to it for further details on 
+The painter used for filling a vector path can be defined through this field using SVG compatible formatting.  The
+string is parsed through the ~ReadPainter() function in the Vector module.  Please refer to it for further details on
 valid formatting.
 
-It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by 
-separating them with a semi-colon `;` character.  This feature makes it easy to use a common background fill and 
-follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this 
+It is possible to enable dual-fill painting via this field, whereby a second fill operation can follow the first by
+separating them with a semi-colon `;` character.  This feature makes it easy to use a common background fill and
+follow it with an independent foreground, alleviating the need for additional vector objects.  Be aware that this
 feature is intended for programmed use-cases and is not SVG compliant.
 
 *********************************************************************************************************************/
@@ -2148,7 +2148,7 @@ static ERROR VECTOR_GET_StrokeWidth(extVector *Self, Variable *Value)
 {
    DOUBLE val;
 
-   if (Value->Type & FD_SCALE) {
+   if (Value->Type & FD_SCALED) {
       if (Self->RelativeStrokeWidth) val = Self->StrokeWidth * 100.0;
       else val = 0;
    }
@@ -2168,7 +2168,7 @@ static ERROR VECTOR_SET_StrokeWidth(extVector *Self, Variable *Value)
 
    if ((val >= 0.0) and (val <= 100.0)) {
       Self->StrokeWidth = val;
-      Self->RelativeStrokeWidth = (Value->Type & FD_SCALE) ? true : false;
+      Self->RelativeStrokeWidth = (Value->Type & FD_SCALED) ? true : false;
       return ERR_Okay;
    }
    else return ERR_OutOfRange;
@@ -2378,7 +2378,7 @@ static const FieldArray clVectorFields[] = {
    { "Sequence",     FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, VECTOR_GET_Sequence },
    { "Stroke",       FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Stroke, VECTOR_SET_Stroke },
    { "StrokeColour", FDF_VIRTUAL|FD_FLOAT|FDF_ARRAY|FD_RW,   VECTOR_GET_StrokeColour, VECTOR_SET_StrokeColour },
-   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
+   { "StrokeWidth",  FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTOR_GET_StrokeWidth, VECTOR_SET_StrokeWidth },
    { "Transition",   FDF_VIRTUAL|FDF_OBJECT|FDF_RW,          VECTOR_GET_Transition, VECTOR_SET_Transition },
    { "EnableBkgd",   FDF_VIRTUAL|FDF_LONG|FDF_RW,            VECTOR_GET_EnableBkgd, VECTOR_SET_EnableBkgd },
    { "Fill",         FDF_VIRTUAL|FDF_STRING|FDF_RW,          VECTOR_GET_Fill, VECTOR_SET_Fill },

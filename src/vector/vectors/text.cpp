@@ -195,8 +195,8 @@ class extVectorText : public extVector {
    VTXF  txFlags;
    char  txFontStyle[20];
    UBYTE txRelativeFontSize;
-   bool txXRelative:1;
-   bool txYRelative:1;
+   bool txXScaled:1;
+   bool txYScaled:1;
 // bool txSpacingAndGlyphs:1;
 };
 
@@ -886,7 +886,7 @@ static ERROR TEXT_SET_StartOffset(extVectorText *Self, DOUBLE Value)
 -FIELD-
 X: The x coordinate of the text.
 
-The x-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
+The x-axis coordinate of the text is specified here as a fixed value.  Scaled coordinates are not supported.
 
 *********************************************************************************************************************/
 
@@ -911,7 +911,7 @@ static ERROR TEXT_SET_X(extVectorText *Self, Variable *Value)
 -FIELD-
 Y: The base-line y coordinate of the text.
 
-The Y-axis coordinate of the text is specified here as a fixed value.  Relative coordinates are not supported.
+The Y-axis coordinate of the text is specified here as a fixed value.  Scaled coordinates are not supported.
 
 Unlike other vector shapes, the Y coordinate positions the text from its base line rather than the top of the shape.
 
@@ -1810,13 +1810,13 @@ extern void get_text_xy(extVectorText *Vector)
 {
    DOUBLE x = Vector->txX, y = Vector->txY;
 
-   if (Vector->txXRelative) {
+   if (Vector->txXScaled) {
       if (Vector->ParentView->vpDimensions & DMF_WIDTH) x *= Vector->ParentView->vpFixedWidth;
       else if (Vector->ParentView->vpViewWidth > 0) x *= Vector->ParentView->vpViewWidth;
       else x *= Vector->Scene->PageWidth;
    }
 
-   if (Vector->txYRelative) {
+   if (Vector->txYScaled) {
       if (Vector->ParentView->vpDimensions & DMF_HEIGHT) y *= Vector->ParentView->vpFixedHeight;
       else if (Vector->ParentView->vpViewHeight > 0) y *= Vector->ParentView->vpViewHeight;
       else y *= Vector->Scene->PageHeight;
@@ -2001,7 +2001,7 @@ static ERROR text_input_events(extVector *Vector, const InputEvent *Events)
          DOUBLE shortest_dist = 100000000000;
          LONG nearest_row = 0, nearest_col = 0;
          LONG row = 0;
-         
+
          // This lambda finds the closest caret entry point relative to the click position.
          // TODO: If the transforms are limited to scaling and translation, we can optimise further
          // by dropping the dist() check and comparing against the X axis only.
@@ -2456,8 +2456,8 @@ static const FieldDef clTextAlign[] = {
 };
 
 static const FieldArray clTextFields[] = {
-   { "X",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, TEXT_GET_X, TEXT_SET_X },
-   { "Y",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, TEXT_GET_Y, TEXT_SET_Y },
+   { "X",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_X, TEXT_SET_X },
+   { "Y",             FDF_VIRTUAL|FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, TEXT_GET_Y, TEXT_SET_Y },
    { "Weight",        FDF_VIRTUAL|FDF_LONG|FDF_RW, TEXT_GET_Weight, TEXT_SET_Weight },
    { "String",        FDF_VIRTUAL|FDF_STRING|FDF_RW, TEXT_GET_String, TEXT_SET_String },
    { "Align",         FDF_VIRTUAL|FDF_LONGFLAGS|FDF_RW, TEXT_GET_Align, TEXT_SET_Align, &clTextAlign },

@@ -49,8 +49,8 @@ static ERROR SET_CursorStroke(extDocument *Self, CSTRING Value)
 -FIELD-
 ClientScript: Allows an external script object to be used by a document file.
 
-Set ClientScript with a Script object to allow document content to 'breach the firewall' and access functionality 
-outside of its namespace.  This feature is primarily intended for applications that need to interact with their own 
+Set ClientScript with a Script object to allow document content to 'breach the firewall' and access functionality
+outside of its namespace.  This feature is primarily intended for applications that need to interact with their own
 embedded documents.
 
 If a document defines a default script in its content, it will have priority over the one referenced here.
@@ -307,7 +307,7 @@ static ERROR GET_PageWidth(extDocument *Self, Variable *Value)
    if (Self->initialised()) {
       value = Self->CalcWidth;
 
-      if (Value->Type & FD_SCALE) {
+      if (Value->Type & FD_SCALED) {
          if (Self->VPWidth <= 0) return ERR_GetField;
          value = (DOUBLE)(value * Self->VPWidth);
       }
@@ -340,7 +340,7 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
    }
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->RelPageWidth = true;
+   if (Value->Type & FD_SCALED) Self->RelPageWidth = true;
    else Self->RelPageWidth = false;
 
    return ERR_Okay;
@@ -352,7 +352,7 @@ static ERROR SET_PageWidth(extDocument *Self, Variable *Value)
 Pretext: Execute the XML defined here prior to loading new pages.
 
 Use the Pretext field to execute document code prior to the loading of a new document.  This feature is commonly used
-to set configure a document in advance, such as setting default font values and background graphics.  It is 
+to set configure a document in advance, such as setting default font values and background graphics.  It is
 functionally equivalent to embedding an `<include/>` statement at the top of a document, but with the benefit
 of guaranteeing continued execution if the user navigates away from the first page.
 

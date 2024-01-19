@@ -141,10 +141,10 @@ static const FieldDef clImageUnits[] = {
 };
 
 static const FieldDef clImageDimensions[] = {
-   { "FixedX",    DMF_FIXED_X },
-   { "FixedY",    DMF_FIXED_Y },
-   { "RelativeX", DMF_RELATIVE_X },
-   { "RelativeY", DMF_RELATIVE_Y },
+   { "FixedX",  DMF_FIXED_X },
+   { "FixedY",  DMF_FIXED_Y },
+   { "ScaledX", DMF_SCALED_X },
+   { "ScaledY", DMF_SCALED_Y },
    { NULL, 0 }
 };
 

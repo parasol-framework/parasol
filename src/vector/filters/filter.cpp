@@ -77,36 +77,36 @@ static void compute_target_area(extVectorFilter *Self)
 
    if (Self->Units IS VUNIT::BOUNDING_BOX) {
       if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = boundX;
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
+      else if (Self->Dimensions & DMF_SCALED_X) Self->TargetX = trunc(boundX + (Self->X * Self->BoundWidth));
       else Self->TargetX = boundX;
 
       if (Self->Dimensions & DMF_FIXED_Y) Self->TargetY = boundY;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->TargetY = trunc(boundY + (Self->Y * Self->BoundHeight));
+      else if (Self->Dimensions & DMF_SCALED_Y) Self->TargetY = trunc(boundY + (Self->Y * Self->BoundHeight));
       else Self->TargetY = boundY;
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
+      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->TargetWidth = Self->Width * Self->BoundWidth;
       else Self->TargetWidth = Self->BoundWidth;
 
       if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
+      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->TargetHeight = Self->Height * Self->BoundHeight;
       else Self->TargetHeight = Self->BoundHeight;
    }
-   else { // USERSPACE: Relative dimensions are measured against the client's viewport rather than the vector.
+   else { // USERSPACE: Scaled dimensions are measured against the client's viewport rather than the vector.
       if (Self->Dimensions & DMF_FIXED_X) Self->TargetX = trunc(Self->X);
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->TargetX = trunc(Self->X * Self->ClientViewport->vpFixedWidth);
+      else if (Self->Dimensions & DMF_SCALED_X) Self->TargetX = trunc(Self->X * Self->ClientViewport->vpFixedWidth);
       else Self->TargetX = boundX;
 
       if (Self->Dimensions & DMF_FIXED_Y) Self->TargetY = trunc(Self->Y);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->TargetY = trunc(Self->Y * Self->ClientViewport->vpFixedHeight);
+      else if (Self->Dimensions & DMF_SCALED_Y) Self->TargetY = trunc(Self->Y * Self->ClientViewport->vpFixedHeight);
       else Self->TargetY = boundY;
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) Self->TargetWidth = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->TargetWidth = Self->Width * Self->ClientViewport->vpFixedWidth;
+      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->TargetWidth = Self->Width * Self->ClientViewport->vpFixedWidth;
       else Self->TargetWidth = Self->ClientViewport->vpFixedWidth;
 
       if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->TargetHeight = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->TargetHeight = Self->Height * Self->ClientViewport->vpFixedHeight;
+      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->TargetHeight = Self->Height * Self->ClientViewport->vpFixedHeight;
       else Self->TargetHeight = Self->ClientViewport->vpFixedHeight;
    }
 }
@@ -354,37 +354,37 @@ static ERROR set_clip_region(extVectorFilter *Self, extVectorViewport *Viewport,
       auto const bound_height = bounds[3] - bounds[1];
 
       if (Self->Dimensions & DMF_FIXED_X) Self->VectorClip.Left = F2T(bounds[0] + Self->X);
-      else if (Self->Dimensions & DMF_RELATIVE_X) Self->VectorClip.Left = F2T(bounds[0]) + (Self->X * bound_width);
+      else if (Self->Dimensions & DMF_SCALED_X) Self->VectorClip.Left = F2T(bounds[0]) + (Self->X * bound_width);
       else Self->VectorClip.Left = F2T(bounds[0]);
 
       if (Self->Dimensions & DMF_FIXED_Y) Self->VectorClip.Top = F2T(bounds[1] + Self->Y);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) Self->VectorClip.Top = F2T(bounds[1] + (Self->Y * bound_height));
+      else if (Self->Dimensions & DMF_SCALED_Y) Self->VectorClip.Top = F2T(bounds[1] + (Self->Y * bound_height));
       else Self->VectorClip.Top = F2T(bounds[1]);
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
+      else if (Self->Dimensions & DMF_SCALED_WIDTH) Self->VectorClip.Right = Self->VectorClip.Left + F2T(Self->Width * bound_width);
       else Self->VectorClip.Right = Self->VectorClip.Left + F2T(bound_width);
 
       if (Self->Dimensions & DMF_FIXED_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
+      else if (Self->Dimensions & DMF_SCALED_HEIGHT) Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(Self->Height * bound_height);
       else Self->VectorClip.Bottom = Self->VectorClip.Top + F2T(bound_height);
    }
    else { // USERSPACE
       DOUBLE x, y, w, h;
       if (Self->Dimensions & DMF_FIXED_X) x = F2T(Self->X);
-      else if (Self->Dimensions & DMF_RELATIVE_X) x = F2T(Self->X * container_width);
+      else if (Self->Dimensions & DMF_SCALED_X) x = F2T(Self->X * container_width);
       else x = 0;
 
       if (Self->Dimensions & DMF_FIXED_Y) y = F2T(Self->Y);
-      else if (Self->Dimensions & DMF_RELATIVE_Y) y = F2T(Self->Y * container_height);
+      else if (Self->Dimensions & DMF_SCALED_Y) y = F2T(Self->Y * container_height);
       else y = 0;
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) w = F2T(Self->Width);
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) w = F2T(Self->Width * container_width);
+      else if (Self->Dimensions & DMF_SCALED_WIDTH) w = F2T(Self->Width * container_width);
       else w = F2T(container_width);
 
       if (Self->Dimensions & DMF_FIXED_HEIGHT) h = F2T(Self->Height);
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) h = F2T(Self->Height * container_height);
+      else if (Self->Dimensions & DMF_SCALED_HEIGHT) h = F2T(Self->Height * container_height);
       else h = F2T(container_height);
 
       agg::path_storage rect;
@@ -570,7 +570,7 @@ static ERROR VECTORFILTER_NewObject(extVectorFilter *Self, APTR Void)
    Self->Width          = 1.2;  // +120% default as per SVG requirements
    Self->Height         = 1.2;
    Self->ColourSpace    = VCS::SRGB; // Our preferred colour-space is sRGB for speed.  Note that the SVG class will change this to linear by default.
-   Self->Dimensions     = DMF_RELATIVE_X|DMF_RELATIVE_Y|DMF_RELATIVE_WIDTH|DMF_RELATIVE_HEIGHT;
+   Self->Dimensions     = DMF_SCALED_X|DMF_SCALED_Y|DMF_SCALED_WIDTH|DMF_SCALED_HEIGHT;
    return ERR_Okay;
 }
 
@@ -596,19 +596,19 @@ linear RGB is better suited for producing high quality results at a cost of spee
 Note that if SVG compatibility is required, linear RGB must be used as the default.
 
 -FIELD-
-Dimensions: Dimension flags define whether individual dimension fields contain fixed or relative values.
+Dimensions: Dimension flags define whether individual dimension fields contain fixed or scaled values.
 
 The following dimension flags are supported:
 
 <types lookup="DMF">
 <type name="FIXED_X">The #X value is a fixed coordinate.</>
 <type name="FIXED_Y">The #Y value is a fixed coordinate.</>
-<type name="RELATIVE_X">The #X value is a relative coordinate.</>
-<type name="RELATIVE_Y">The #Y value is a relative coordinate.</>
+<type name="SCALED_X">The #X value is a scaled coordinate.</>
+<type name="SCALED_Y">The #Y value is a scaled coordinate.</>
 <type name="FIXED_WIDTH">The #Width value is a fixed coordinate.</>
 <type name="FIXED_HEIGHT">The #Height value is a fixed coordinate.</>
-<type name="RELATIVE_WIDTH">The #Width value is a relative coordinate.</>
-<type name="RELATIVE_HEIGHT">The #Height value is a relative coordinate.</>
+<type name="SCALED_WIDTH">The #Width value is a scaled coordinate.</>
+<type name="SCALED_HEIGHT">The #Height value is a scaled coordinate.</>
 </types>
 
 -FIELD-
@@ -641,9 +641,9 @@ static ERROR VECTORFILTER_GET_EffectXML(extVectorFilter *Self, CSTRING *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Height: The height of the filter area.  Can be expressed as a fixed or relative coordinate.
+Height: The height of the filter area.  Can be expressed as a fixed or scaled coordinate.
 
-The height of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively
+The height of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively
 restrain the working space for the effect processing, making them an important consideration for efficiency.
 
 The coordinate system for the width and height depends on the value for #Units.
@@ -668,8 +668,8 @@ static ERROR VECTORFILTER_SET_Height(extVectorFilter *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-      else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
+      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
+      else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
 
       Self->Height = val;
       return ERR_Okay;
@@ -719,7 +719,7 @@ PrimitiveUnits: Alters the behaviour of some effects that support alternative po
 
 PrimitiveUnits alters the behaviour of some effects when their dimensions are calculated.  The default value is
 `USERSPACE`.  When set to `BOUNDING_BOX`, the effect may calculate its dimensions strictly based on the client vector
-using a relative coordinate space of (0,0,100%,100%).
+using a scaled coordinate space of (0,0,100%,100%).
 
 -FIELD-
 ResX: Width of the intermediate images, measured in pixels.
@@ -742,9 +742,9 @@ The default coordinate system is `BOUNDING_BOX`, which positions the filter with
 The alternative is `USERSPACE`, which positions the filter relative to the client vector's nearest viewport.
 
 -FIELD-
-Width: The width of the filter area.  Can be expressed as a fixed or relative coordinate.
+Width: The width of the filter area.  Can be expressed as a fixed or scaled coordinate.
 
-The width of the filter area is expressed here as a fixed or relative coordinate.  The width and height effectively
+The width of the filter area is expressed here as a fixed or scaled coordinate.  The width and height effectively
 restrain the working space for the effect processing, making them an important consideration for efficiency.
 
 The coordinate system for the width and height depends on the value for #Units.
@@ -769,8 +769,8 @@ static ERROR VECTORFILTER_SET_Width(extVectorFilter *Self, Variable *Value)
    else return ERR_FieldTypeMismatch;
 
    if (val > 0) {
-      if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-      else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
+      if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
+      else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
 
       Self->Width = val;
       return ERR_Okay;
@@ -805,8 +805,8 @@ static ERROR VECTORFILTER_SET_X(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
 
    Self->X = val;
    return ERR_Okay;
@@ -840,8 +840,8 @@ static ERROR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
 
    Self->Y = val;
    return ERR_Okay;
@@ -850,24 +850,24 @@ static ERROR VECTORFILTER_SET_Y(extVectorFilter *Self, Variable *Value)
 //********************************************************************************************************************
 
 static const FieldDef clFilterDimensions[] = {
-   { "FixedX",         DMF_FIXED_X },
-   { "FixedY",         DMF_FIXED_Y },
-   { "RelativeX",      DMF_RELATIVE_X },
-   { "RelativeY",      DMF_RELATIVE_Y },
-   { "FixedWidth",     DMF_FIXED_WIDTH },
-   { "FixedHeight",    DMF_FIXED_HEIGHT },
-   { "RelativeWidth",  DMF_RELATIVE_WIDTH },
-   { "RelativeHeight", DMF_RELATIVE_HEIGHT },
+   { "FixedX",       DMF_FIXED_X },
+   { "FixedY",       DMF_FIXED_Y },
+   { "ScaledX",      DMF_SCALED_X },
+   { "ScaledY",      DMF_SCALED_Y },
+   { "FixedWidth",   DMF_FIXED_WIDTH },
+   { "FixedHeight",  DMF_FIXED_HEIGHT },
+   { "ScaledWidth",  DMF_SCALED_WIDTH },
+   { "ScaledHeight", DMF_SCALED_HEIGHT },
    { NULL, 0 }
 };
 
 #include "filter_def.c"
 
 static const FieldArray clFilterFields[] = {
-   { "X",              FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VECTORFILTER_GET_X, VECTORFILTER_SET_X },
-   { "Y",              FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VECTORFILTER_GET_Y, VECTORFILTER_SET_Y },
-   { "Width",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VECTORFILTER_GET_Width, VECTORFILTER_SET_Width },
-   { "Height",         FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, VECTORFILTER_GET_Height, VECTORFILTER_SET_Height },
+   { "X",              FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_X, VECTORFILTER_SET_X },
+   { "Y",              FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Y, VECTORFILTER_SET_Y },
+   { "Width",          FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Width, VECTORFILTER_SET_Width },
+   { "Height",         FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, VECTORFILTER_GET_Height, VECTORFILTER_SET_Height },
    { "Opacity",        FDF_DOUBLE|FDF_RW, NULL, VECTORFILTER_SET_Opacity },
    { "Inherit",        FDF_OBJECT|FDF_RW, NULL, VECTORFILTER_SET_Inherit },
    { "ResX",           FDF_LONG|FDF_RI },

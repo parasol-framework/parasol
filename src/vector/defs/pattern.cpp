@@ -153,8 +153,8 @@ static ERROR PATTERN_SET_Height(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_HEIGHT) & (~DMF_FIXED_HEIGHT);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_RELATIVE_HEIGHT);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_HEIGHT) & (~DMF_FIXED_HEIGHT);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_HEIGHT) & (~DMF_SCALED_HEIGHT);
 
    Self->Height = val;
    return ERR_Okay;
@@ -352,8 +352,8 @@ static ERROR PATTERN_SET_Width(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_WIDTH) & (~DMF_FIXED_WIDTH);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_RELATIVE_WIDTH);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_WIDTH) & (~DMF_FIXED_WIDTH);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_WIDTH) & (~DMF_SCALED_WIDTH);
 
    Self->Width = val;
    return ERR_Okay;
@@ -383,8 +383,8 @@ static ERROR PATTERN_SET_X(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_X) & (~DMF_FIXED_X);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_RELATIVE_X);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_X) & (~DMF_FIXED_X);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_X) & (~DMF_SCALED_X);
 
    Self->X = val;
    return ERR_Okay;
@@ -415,8 +415,8 @@ static ERROR PATTERN_SET_Y(extVectorPattern *Self, Variable *Value)
    else if (Value->Type & FD_LARGE) val = Value->Large;
    else return ERR_FieldTypeMismatch;
 
-   if (Value->Type & FD_SCALE) Self->Dimensions = (Self->Dimensions | DMF_RELATIVE_Y) & (~DMF_FIXED_Y);
-   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_RELATIVE_Y);
+   if (Value->Type & FD_SCALED) Self->Dimensions = (Self->Dimensions | DMF_SCALED_Y) & (~DMF_FIXED_Y);
+   else Self->Dimensions = (Self->Dimensions | DMF_FIXED_Y) & (~DMF_SCALED_Y);
 
    Self->Y = val;
    return ERR_Okay;
@@ -433,14 +433,14 @@ static const ActionArray clPatternActions[] = {
 };
 
 static const FieldDef clPatternDimensions[] = {
-   { "FixedX",         DMF_FIXED_X },
-   { "FixedY",         DMF_FIXED_Y },
-   { "RelativeX",      DMF_RELATIVE_X },
-   { "RelativeY",      DMF_RELATIVE_Y },
-   { "FixedWidth",     DMF_FIXED_WIDTH },
-   { "FixedHeight",    DMF_FIXED_HEIGHT },
-   { "RelativeWidth",  DMF_RELATIVE_WIDTH },
-   { "RelativeHeight", DMF_RELATIVE_HEIGHT },
+   { "FixedX",       DMF_FIXED_X },
+   { "FixedY",       DMF_FIXED_Y },
+   { "ScaledX",      DMF_SCALED_X },
+   { "ScaledY",      DMF_SCALED_Y },
+   { "FixedWidth",   DMF_FIXED_WIDTH },
+   { "FixedHeight",  DMF_FIXED_HEIGHT },
+   { "ScaledWidth",  DMF_SCALED_WIDTH },
+   { "ScaledHeight", DMF_SCALED_HEIGHT },
    { NULL, 0 }
 };
 
@@ -460,10 +460,10 @@ static const FieldDef clPatternSpread[] = {
 };
 
 static const FieldArray clPatternFields[] = {
-   { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, PATTERN_GET_X, PATTERN_SET_X },
-   { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
-   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
-   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_SCALE|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
+   { "X",            FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_X, PATTERN_SET_X },
+   { "Y",            FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Y, PATTERN_SET_Y },
+   { "Width",        FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Width, PATTERN_SET_Width },
+   { "Height",       FDF_VARIABLE|FDF_DOUBLE|FDF_SCALED|FDF_RW, PATTERN_GET_Height, PATTERN_SET_Height },
    { "Opacity",      FDF_DOUBLE|FDF_RW, NULL, PATTERN_SET_Opacity },
    { "Scene",        FDF_INTEGRAL|FDF_R },
    { "Inherit",      FDF_OBJECT|FDF_RW, NULL, PATTERN_SET_Inherit },

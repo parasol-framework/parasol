@@ -508,31 +508,31 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
 
    // Convert relative offsets to their fixed equivalent
 
-   if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->XOffset = parentwidth * Self->XOffsetPercent;
-   if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->YOffset = parentheight * Self->YOffsetPercent;
+   if (Self->Dimensions & DMF_SCALED_X_OFFSET) Self->XOffset = parentwidth * Self->XOffsetPercent;
+   if (Self->Dimensions & DMF_SCALED_Y_OFFSET) Self->YOffset = parentheight * Self->YOffsetPercent;
 
    // Calculate absolute width and height values
 
-   if (Self->Dimensions & DMF_RELATIVE_WIDTH)   width = parentwidth * Self->WidthPercent;
+   if (Self->Dimensions & DMF_SCALED_WIDTH)   width = parentwidth * Self->WidthPercent;
    else if (Self->Dimensions & DMF_FIXED_WIDTH) width = Self->Width;
    else if (Self->Dimensions & DMF_X_OFFSET) {
       if (Self->Dimensions & DMF_FIXED_X) {
          width = parentwidth - Self->X - Self->XOffset;
       }
-      else if (Self->Dimensions & DMF_RELATIVE_X) {
+      else if (Self->Dimensions & DMF_SCALED_X) {
          width = parentwidth - (parentwidth * Self->XPercent) - Self->XOffset;
       }
       else width = parentwidth - Self->XOffset;
    }
    else width = Self->Width;
 
-   if (Self->Dimensions & DMF_RELATIVE_HEIGHT)   height = parentheight * Self->HeightPercent;
+   if (Self->Dimensions & DMF_SCALED_HEIGHT)   height = parentheight * Self->HeightPercent;
    else if (Self->Dimensions & DMF_FIXED_HEIGHT) height = Self->Height;
    else if (Self->Dimensions & DMF_Y_OFFSET) {
       if (Self->Dimensions & DMF_FIXED_Y) {
          height = parentheight - Self->Y - Self->YOffset;
       }
-      else if (Self->Dimensions & DMF_RELATIVE_Y) {
+      else if (Self->Dimensions & DMF_SCALED_Y) {
          height = parentheight - (parentheight * Self->YPercent) - Self->YOffset;
       }
       else height = parentheight - Self->YOffset;
@@ -541,11 +541,11 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERROR
 
    // Calculate new coordinates
 
-   if (Self->Dimensions & DMF_RELATIVE_X) x = parentwidth * Self->XPercent;
+   if (Self->Dimensions & DMF_SCALED_X) x = parentwidth * Self->XPercent;
    else if (Self->Dimensions & DMF_X_OFFSET) x = parentwidth - Self->XOffset - width;
    else x = Self->X;
 
-   if (Self->Dimensions & DMF_RELATIVE_Y) y = parentheight * Self->YPercent;
+   if (Self->Dimensions & DMF_SCALED_Y) y = parentheight * Self->YPercent;
    else if (Self->Dimensions & DMF_Y_OFFSET) y = parentheight - Self->YOffset - height;
    else y = Self->Y;
 
@@ -1142,17 +1142,17 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // Set FixedX/FixedY accordingly - this is used to assist in the layout process when a surface is used in a document.
 
       if (Self->Dimensions & 0xffff) {
-         if ((Self->Dimensions & DMF_X) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X_OFFSET|DMF_RELATIVE_X_OFFSET))) {
+         if ((Self->Dimensions & DMF_X) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH|DMF_FIXED_X_OFFSET|DMF_SCALED_X_OFFSET))) {
             Self->FixedX = TRUE;
          }
-         else if ((Self->Dimensions & DMF_X_OFFSET) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_RELATIVE_WIDTH|DMF_FIXED_X|DMF_RELATIVE_X))) {
+         else if ((Self->Dimensions & DMF_X_OFFSET) and (Self->Dimensions & (DMF_FIXED_WIDTH|DMF_SCALED_WIDTH|DMF_FIXED_X|DMF_SCALED_X))) {
             Self->FixedX = TRUE;
          }
 
-         if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_RELATIVE_Y_OFFSET))) {
+         if ((Self->Dimensions & DMF_Y) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT|DMF_FIXED_Y_OFFSET|DMF_SCALED_Y_OFFSET))) {
             Self->FixedY = TRUE;
          }
-         else if ((Self->Dimensions & DMF_Y_OFFSET) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_RELATIVE_HEIGHT|DMF_FIXED_Y|DMF_RELATIVE_Y))) {
+         else if ((Self->Dimensions & DMF_Y_OFFSET) and (Self->Dimensions & (DMF_FIXED_HEIGHT|DMF_SCALED_HEIGHT|DMF_FIXED_Y|DMF_SCALED_Y))) {
             Self->FixedY = TRUE;
          }
       }
@@ -1160,18 +1160,18 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       // Recalculate coordinates if offsets are used
 
       if (Self->Dimensions & DMF_FIXED_X_OFFSET)         Self->setXOffset(Self->XOffset);
-      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) Self->setScale(FID_XOffset, Self->XOffsetPercent);
+      else if (Self->Dimensions & DMF_SCALED_X_OFFSET) Self->setScale(FID_XOffset, Self->XOffsetPercent);
 
       if (Self->Dimensions & DMF_FIXED_Y_OFFSET)         Self->setYOffset(Self->YOffset);
-      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) Self->setScale(FID_YOffset, Self->YOffsetPercent);
+      else if (Self->Dimensions & DMF_SCALED_Y_OFFSET) Self->setScale(FID_YOffset, Self->YOffsetPercent);
 
-      if (Self->Dimensions & DMF_RELATIVE_X)       Self->setScale(FID_X, Self->XPercent);
-      if (Self->Dimensions & DMF_RELATIVE_Y)       Self->setScale(FID_Y, Self->YPercent);
-      if (Self->Dimensions & DMF_RELATIVE_WIDTH)   Self->setScale(FID_Width,  Self->WidthPercent);
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT)  Self->setScale(FID_Height, Self->HeightPercent);
+      if (Self->Dimensions & DMF_SCALED_X)       Self->setScale(FID_X, Self->XPercent);
+      if (Self->Dimensions & DMF_SCALED_Y)       Self->setScale(FID_Y, Self->YPercent);
+      if (Self->Dimensions & DMF_SCALED_WIDTH)   Self->setScale(FID_Width,  Self->WidthPercent);
+      if (Self->Dimensions & DMF_SCALED_HEIGHT)  Self->setScale(FID_Height, Self->HeightPercent);
 
       if (!(Self->Dimensions & DMF_WIDTH)) {
-         if (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET)) {
+         if (Self->Dimensions & (DMF_SCALED_X_OFFSET|DMF_FIXED_X_OFFSET)) {
             Self->Width = parent->Width - Self->X - Self->XOffset;
          }
          else {
@@ -1181,7 +1181,7 @@ static ERROR SURFACE_Init(extSurface *Self, APTR Void)
       }
 
       if (!(Self->Dimensions & DMF_HEIGHT)) {
-         if (Self->Dimensions & (DMF_RELATIVE_Y_OFFSET|DMF_FIXED_Y_OFFSET)) {
+         if (Self->Dimensions & (DMF_SCALED_Y_OFFSET|DMF_FIXED_Y_OFFSET)) {
             Self->Height = parent->Height - Self->Y - Self->YOffset;
          }
          else {
@@ -2057,22 +2057,22 @@ static ERROR SURFACE_ResetDimensions(extSurface *Self, struct drwResetDimensions
 
    //gfxForbidDrawing();
 
-   if (dimensions & DMF_RELATIVE_X) SetField(Self, FID_X|TDOUBLE|TREL, Args->X);
+   if (dimensions & DMF_SCALED_X) SetField(Self, FID_X|TDOUBLE|TSCALE, Args->X);
    else if (dimensions & DMF_FIXED_X) SetField(Self, FID_X|TDOUBLE, Args->X);
 
-   if (dimensions & DMF_RELATIVE_Y) SetField(Self, FID_Y|TDOUBLE|TREL, Args->Y);
+   if (dimensions & DMF_SCALED_Y) SetField(Self, FID_Y|TDOUBLE|TSCALE, Args->Y);
    else if (dimensions & DMF_FIXED_Y) SetField(Self, FID_Y|TDOUBLE, Args->Y);
 
-   if (dimensions & DMF_RELATIVE_X_OFFSET) SetField(Self, FID_XOffset|TDOUBLE|TREL, Args->XOffset);
+   if (dimensions & DMF_SCALED_X_OFFSET) SetField(Self, FID_XOffset|TDOUBLE|TSCALE, Args->XOffset);
    else if (dimensions & DMF_FIXED_X_OFFSET) SetField(Self, FID_XOffset|TDOUBLE, Args->XOffset);
 
-   if (dimensions & DMF_RELATIVE_Y_OFFSET) SetField(Self, FID_YOffset|TDOUBLE|TREL, Args->YOffset);
+   if (dimensions & DMF_SCALED_Y_OFFSET) SetField(Self, FID_YOffset|TDOUBLE|TSCALE, Args->YOffset);
    else if (dimensions & DMF_FIXED_Y_OFFSET) SetField(Self, FID_YOffset|TDOUBLE, Args->YOffset);
 
-   if (dimensions & DMF_RELATIVE_HEIGHT) SetField(Self, FID_Height|TDOUBLE|TREL, Args->Height);
+   if (dimensions & DMF_SCALED_HEIGHT) SetField(Self, FID_Height|TDOUBLE|TSCALE, Args->Height);
    else if (dimensions & DMF_FIXED_HEIGHT) SetField(Self, FID_Height|TDOUBLE, Args->Height);
 
-   if (dimensions & DMF_RELATIVE_WIDTH) SetField(Self, FID_Width|TDOUBLE|TREL, Args->Width);
+   if (dimensions & DMF_SCALED_WIDTH) SetField(Self, FID_Width|TDOUBLE|TSCALE, Args->Width);
    else if (dimensions & DMF_FIXED_WIDTH) SetField(Self, FID_Width|TDOUBLE, Args->Width);
 
    //gfxPermitDrawing();
@@ -2625,10 +2625,10 @@ static const FieldArray clSurfaceFields[] = {
    { "BottomLimit",  FDF_LONG|FDF_RW,  NULL, SET_BottomLimit },
    { "Display",      FDF_OBJECTID|FDF_R, NULL, NULL, ID_DISPLAY },
    { "Flags",        FDF_LONGFLAGS|FDF_RW, NULL, SET_Flags, &clSurfaceFlags },
-   { "X",            FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_XCoord, SET_XCoord },
-   { "Y",            FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_YCoord, SET_YCoord },
-   { "Width",        FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_Width,  SET_Width },
-   { "Height",       FD_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_Height, SET_Height },
+   { "X",            FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_XCoord, SET_XCoord },
+   { "Y",            FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_YCoord, SET_YCoord },
+   { "Width",        FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_Width,  SET_Width },
+   { "Height",       FD_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_Height, SET_Height },
    { "RootLayer",    FDF_OBJECTID|FDF_RW, NULL, SET_RootLayer },
    { "Align",        FDF_LONGFLAGS|FDF_RW, NULL, NULL, &clSurfaceAlign },
    { "Dimensions",   FDF_LONG|FDF_RW, NULL, SET_Dimensions, &clSurfaceDimensions },
@@ -2657,8 +2657,8 @@ static const FieldArray clSurfaceFields[] = {
    { "WindowType",    FDF_VIRTUAL|FDF_LONG|FDF_LOOKUP|FDF_RW, GET_WindowType, SET_WindowType, &clWindowType },
    { "WindowHandle",  FDF_VIRTUAL|FDF_POINTER|FDF_RW, GET_WindowHandle, SET_WindowHandle },
    // Variable fields
-   { "XOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_XOffset, SET_XOffset },
-   { "YOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_YOffset, SET_YOffset },
+   { "XOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_XOffset, SET_XOffset },
+   { "YOffset",       FDF_VIRTUAL|FDF_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_YOffset, SET_YOffset },
    END_FIELD
 };
 

@@ -191,34 +191,34 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 
       struct acRedimension resize;
       if (Self->Dimensions & DMF_FIXED_X) resize.X = Self->X;
-      else if (Self->Dimensions & DMF_RELATIVE_X) resize.X = (parent->Width * F2I(Self->XPercent));
+      else if (Self->Dimensions & DMF_SCALED_X) resize.X = (parent->Width * F2I(Self->XPercent));
       else if (Self->Dimensions & DMF_FIXED_X_OFFSET) resize.X = parent->Width - Self->XOffset;
-      else if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
+      else if (Self->Dimensions & DMF_SCALED_X_OFFSET) resize.X = parent->Width - ((parent->Width * F2I(Self->XOffsetPercent)));
       else resize.X = 0;
 
       if (Self->Dimensions & DMF_FIXED_Y) resize.Y = Self->Y;
-      else if (Self->Dimensions & DMF_RELATIVE_Y) resize.Y = (parent->Height * F2I(Self->YPercent));
+      else if (Self->Dimensions & DMF_SCALED_Y) resize.Y = (parent->Height * F2I(Self->YPercent));
       else if (Self->Dimensions & DMF_FIXED_Y_OFFSET) resize.Y = parent->Height - Self->YOffset;
-      else if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
+      else if (Self->Dimensions & DMF_SCALED_Y_OFFSET) resize.Y = parent->Height - ((parent->Height * F2I(Self->YOffsetPercent)));
       else resize.Y = 0;
 
       if (Self->Dimensions & DMF_FIXED_WIDTH) resize.Width = Self->Width;
-      else if (Self->Dimensions & DMF_RELATIVE_WIDTH) resize.Width = (parent->Width * F2I(Self->WidthPercent));
+      else if (Self->Dimensions & DMF_SCALED_WIDTH) resize.Width = (parent->Width * F2I(Self->WidthPercent));
       else {
-         if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
+         if (Self->Dimensions & DMF_SCALED_X_OFFSET) resize.Width = parent->Width - (parent->Width * F2I(Self->XOffsetPercent));
          else resize.Width = parent->Width - Self->XOffset;
 
-         if (Self->Dimensions & DMF_RELATIVE_X) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
+         if (Self->Dimensions & DMF_SCALED_X) resize.Width = resize.Width - ((parent->Width * F2I(Self->XPercent)));
          else resize.Width = resize.Width - Self->X;
       }
 
       if (Self->Dimensions & DMF_FIXED_HEIGHT) resize.Height = Self->Height;
-      else if (Self->Dimensions & DMF_RELATIVE_HEIGHT) resize.Height = (parent->Height * F2I(Self->HeightPercent));
+      else if (Self->Dimensions & DMF_SCALED_HEIGHT) resize.Height = (parent->Height * F2I(Self->HeightPercent));
       else {
-         if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
+         if (Self->Dimensions & DMF_SCALED_Y_OFFSET) resize.Height = parent->Height - (parent->Height * F2I(Self->YOffsetPercent));
          else resize.Height = parent->Height - Self->YOffset;
 
-         if (Self->Dimensions & DMF_RELATIVE_Y) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
+         if (Self->Dimensions & DMF_SCALED_Y) resize.Height = resize.Height - ((parent->Height * F2I(Self->YPercent)));
          else resize.Height = resize.Height - Self->Y;
       }
 
@@ -236,11 +236,9 @@ static ERROR SET_Dimensions(extSurface *Self, LONG Value)
 -FIELD-
 Height: Defines the height of a surface object.
 
-The height of a surface object is manipulated through this field, although you can also use the Resize() action, which
-is faster if you need to set both the Width and the Height.  A client can set the Height as a fixed value by default, or as
-a relative value if you set the `FD_SCALE` marker. Relative heights are always calculated in relationship to a surface
-object's container, e.g. if the container is 200 pixels high and surface Height is 80%, then your surface object will
-be 160 pixels high.
+The height of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the
+Width and Height at the same time.  A client can set the Height as a fixed value by default, or as a scaled value in
+conjunction with the `FD_SCALED` flag.  Scaled values are multiplied by the height of their parent container.
 
 Setting the Height while a surface object is on display causes an immediate graphical update to reflect the change.
 Any objects that are within the surface area will be re-drawn and resized as necessary.
@@ -252,8 +250,8 @@ for pairing the Y and YOffset fields together for dynamic height adjustment.
 
 static ERROR GET_Height(extSurface *Self, Variable *Value)
 {
-   if (Value->Type & FD_SCALE) {
-      if (Self->Dimensions & DMF_RELATIVE_HEIGHT) {
+   if (Value->Type & FD_SCALED) {
+      if (Self->Dimensions & DMF_SCALED_HEIGHT) {
          Value->Double = Self->HeightPercent;
          Value->Large  = F2I(Self->HeightPercent);
          return ERR_Okay;
@@ -286,12 +284,12 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_SCALE) {
+   if (Value->Type & FD_SCALED) {
       if (Self->ParentID) {
          extSurface *parent;
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->HeightPercent = value;
-            Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
+            Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_SCALED_HEIGHT;
             resize_layer(Self, Self->X, Self->Y, 0, parent->Height * value, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
@@ -299,19 +297,19 @@ static ERROR SET_Height(extSurface *Self, Variable *Value)
       }
       else {
          Self->HeightPercent = value;
-         Self->Dimensions    = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_RELATIVE_HEIGHT;
+         Self->Dimensions    = (Self->Dimensions & ~DMF_FIXED_HEIGHT) | DMF_SCALED_HEIGHT;
       }
    }
    else {
       if (value != Self->Height) resize_layer(Self, Self->X, Self->Y, 0, value, 0, 0, 0, 0, 0);
 
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_HEIGHT) | DMF_FIXED_HEIGHT;
+      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_HEIGHT) | DMF_FIXED_HEIGHT;
 
       // If the offset flags are used, adjust the vertical position
 
-      if (Self->Dimensions & DMF_RELATIVE_Y_OFFSET) {
+      if (Self->Dimensions & DMF_SCALED_Y_OFFSET) {
          Variable var;
-         var.Type   = FD_DOUBLE|FD_SCALE;
+         var.Type   = FD_DOUBLE|FD_SCALED;
          var.Double = Self->YOffsetPercent;
          SET_YOffset(Self, &var);
       }
@@ -761,11 +759,9 @@ static ERROR GET_VisibleY(extSurface *Self, LONG *Value)
 -FIELD-
 Width: Defines the width of a surface object.
 
-The width of a surface object is manipulated through this field, although you can also use the Resize() action, which
-is faster if you need to set both the Width and the Height.  A client can set the Width as a fixed value by default, or as a
-relative value if you set the `FD_SCALE` field.  Relative widths are always calculated in relationship to a surface
-object's container, e.g. if the container is 200 pixels wide and surface Width is 80%, then your surface object will be
-160 pixels wide.
+The width of a surface object is manipulated through this field.  Alternatively, use the Resize() action to adjust the
+Width and Height at the same time.  A client can set the Width as a fixed value by default, or as a scaled value in
+conjunction with the `FD_SCALED` flag.  Scaled values are multiplied by the width of their parent container.
 
 Setting the Width while a surface object is on display causes an immediate graphical update to reflect the change.  Any
 objects that are within the surface area will be re-drawn and resized as necessary.
@@ -777,8 +773,8 @@ Width values of 0 or less are illegal, and will result in an `ERR_OutOfRange` er
 static ERROR GET_Width(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_SCALE) {
-         if (Self->Dimensions & DMF_RELATIVE_WIDTH) {
+      if (Value->Type & FD_SCALED) {
+         if (Self->Dimensions & DMF_SCALED_WIDTH) {
             Value->Double = Self->WidthPercent;
          }
          else return ERR_Failed;
@@ -810,11 +806,11 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
    }
    if (value > 0x7fffffff) value = 0x7fffffff;
 
-   if (Value->Type & FD_SCALE) {
+   if (Value->Type & FD_SCALED) {
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
             Self->WidthPercent = value;
-            Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
+            Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_SCALED_WIDTH;
             resize_layer(Self, Self->X, Self->Y, parent->Width * value, 0, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
          }
@@ -822,17 +818,17 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
       }
       else {
          Self->WidthPercent = value;
-         Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_RELATIVE_WIDTH;
+         Self->Dimensions   = (Self->Dimensions & ~DMF_FIXED_WIDTH) | DMF_SCALED_WIDTH;
       }
    }
    else {
       if (value != Self->Width) resize_layer(Self, Self->X, Self->Y, value, 0, 0, 0, 0, 0, 0);
 
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_WIDTH) | DMF_FIXED_WIDTH;
+      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_WIDTH) | DMF_FIXED_WIDTH;
 
       // If the offset flags are used, adjust the horizontal position
-      if (Self->Dimensions & DMF_RELATIVE_X_OFFSET) {
-         var.Type = FD_DOUBLE|FD_SCALE;
+      if (Self->Dimensions & DMF_SCALED_X_OFFSET) {
+         var.Type = FD_DOUBLE|FD_SCALED;
          var.Double = Self->XOffsetPercent;
          SET_XOffset(Self, &var);
       }
@@ -851,7 +847,7 @@ static ERROR SET_Width(extSurface *Self, Variable *Value)
 X: Determines the horizontal position of a surface object.
 
 The horizontal position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the `FD_SCALE` flag.
+coordinate (the default) or a scaled coordinate if you use the `FD_SCALED` flag.
 
 If you set the X while the surface object is on display, the position of the surface area will be updated
 immediately.
@@ -861,11 +857,11 @@ immediately.
 static ERROR GET_XCoord(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_SCALE) Value->Double = Self->XPercent;
+      if (Value->Type & FD_SCALED) Value->Double = Self->XPercent;
       else Value->Double = Self->X;
    }
    else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_SCALE) Value->Large = F2I(Self->XPercent);
+      if (Value->Type & FD_SCALED) Value->Large = F2I(Self->XPercent);
       else Value->Large = Self->X;
    }
    else {
@@ -886,8 +882,8 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
    else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_RELATIVE_X;
+   if (Value->Type & FD_SCALED) {
+      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X) | DMF_SCALED_X;
       Self->XPercent   = value;
       if (Self->ParentID) {
          if (AccessObject(Self->ParentID, 500, &parent) IS ERR_Okay) {
@@ -898,12 +894,12 @@ static ERROR SET_XCoord(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X) | DMF_FIXED_X;
+      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_X) | DMF_FIXED_X;
       move_layer(Self, value, Self->Y);
 
       // If our right-hand side is relative, we need to resize our surface to counteract the movement.
 
-      if ((Self->ParentID) and (Self->Dimensions & (DMF_RELATIVE_X_OFFSET|DMF_FIXED_X_OFFSET))) {
+      if ((Self->ParentID) and (Self->Dimensions & (DMF_SCALED_X_OFFSET|DMF_FIXED_X_OFFSET))) {
          if (!AccessObject(Self->ParentID, 1000, &parent)) {
             resize_layer(Self, Self->X, Self->Y, parent->Width - Self->X - Self->XOffset, 0, 0, 0, 0, 0, 0);
             ReleaseObject(parent);
@@ -926,7 +922,7 @@ If set in conjunction with the X field, the width of the surface object will be 
 of the container, minus the value given in the XOffset.  This means that the width of the surface object is dynamically
 calculated in relation to the width of its container.
 
-If the XOffset field is set in conjunction with a fixed or relative width then the surface object will be positioned at
+If the XOffset field is set in conjunction with a fixed or scaled width then the surface object will be positioned at
 an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth - XOffset`.
 -END-
 
@@ -939,7 +935,7 @@ static ERROR GET_XOffset(extSurface *Self, Variable *Value)
    extSurface *parent;
    DOUBLE value;
 
-   if (Value->Type & FD_SCALE) {
+   if (Value->Type & FD_SCALED) {
       xoffset.Type = FD_DOUBLE;
       xoffset.Double = 0;
       if (GET_XOffset(Self, &xoffset) IS ERR_Okay) {
@@ -983,8 +979,8 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_SCALE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_RELATIVE_X_OFFSET;
+   if (Value->Type & FD_SCALED) {
+      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_X_OFFSET) | DMF_SCALED_X_OFFSET;
       Self->XOffsetPercent = value;
 
       if (Self->ParentID) {
@@ -1000,7 +996,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_X_OFFSET) | DMF_FIXED_X_OFFSET;
+      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_X_OFFSET) | DMF_FIXED_X_OFFSET;
       Self->XOffset = value;
 
       if ((Self->Dimensions & DMF_WIDTH) and (Self->ParentID)) {
@@ -1028,7 +1024,7 @@ static ERROR SET_XOffset(extSurface *Self, Variable *Value)
 Y: Determines the vertical position of a surface object.
 
 The vertical position of a surface object can be set through this field.  You have the choice of setting a fixed
-coordinate (the default) or a relative coordinate if you use the `FD_SCALE` flag.
+coordinate (the default) or a scaled coordinate if you use the `FD_SCALED` flag.
 
 If the value is changed while the surface is on display, its position will be updated immediately.
 
@@ -1037,11 +1033,11 @@ If the value is changed while the surface is on display, its position will be up
 static ERROR GET_YCoord(extSurface *Self, Variable *Value)
 {
    if (Value->Type & FD_DOUBLE) {
-      if (Value->Type & FD_SCALE) Value->Double = Self->YPercent;
+      if (Value->Type & FD_SCALED) Value->Double = Self->YPercent;
       else Value->Double = Self->Y;
    }
    else if (Value->Type & FD_LARGE) {
-      if (Value->Type & FD_SCALE) Value->Large = F2I(Self->YPercent);
+      if (Value->Type & FD_SCALED) Value->Large = F2I(Self->YPercent);
       else Value->Large = Self->Y;
    }
    else {
@@ -1062,8 +1058,8 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
    else if (Value->Type & FD_STRING) value = StrToFloat((CSTRING)Value->Pointer);
    else return log.warning(ERR_SetValueNotNumeric);
 
-   if (Value->Type & FD_SCALE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_RELATIVE_Y;
+   if (Value->Type & FD_SCALED) {
+      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y) | DMF_SCALED_Y;
       Self->YPercent = value;
       if (Self->ParentID) {
          if (!AccessObject(Self->ParentID, 500, &parent)) {
@@ -1074,7 +1070,7 @@ static ERROR SET_YCoord(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y) | DMF_FIXED_Y;
+      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_Y) | DMF_FIXED_Y;
       move_layer(Self, Self->X, value);
    }
 
@@ -1092,7 +1088,7 @@ If set in conjunction with the Y field, the height of the surface object will be
 height of the container, minus the value given in the YOffset.  This means that the height of the surface object is
 dynamically calculated in relation to the height of its container.
 
-If the YOffset field is set in conjunction with a fixed or relative height then the surface object will be positioned
+If the YOffset field is set in conjunction with a fixed or scaled height then the surface object will be positioned
 at a Y coordinate calculated from the formula "Y = ContainerHeight - SurfaceHeight - YOffset".
 -END-
 
@@ -1105,7 +1101,7 @@ static ERROR GET_YOffset(extSurface *Self, Variable *Value)
    extSurface *parent;
    DOUBLE value;
 
-   if (Value->Type & FD_SCALE) {
+   if (Value->Type & FD_SCALED) {
       yoffset.Type = FD_DOUBLE;
       yoffset.Double = 0;
       if (!GET_YOffset(Self, &yoffset)) {
@@ -1147,8 +1143,8 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
 
    if (value < 0) value = -value;
 
-   if (Value->Type & FD_SCALE) {
-      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_RELATIVE_Y_OFFSET;
+   if (Value->Type & FD_SCALED) {
+      Self->Dimensions = (Self->Dimensions & ~DMF_FIXED_Y_OFFSET) | DMF_SCALED_Y_OFFSET;
       Self->YOffsetPercent = value;
 
       if (Self->ParentID) {
@@ -1165,7 +1161,7 @@ static ERROR SET_YOffset(extSurface *Self, Variable *Value)
       }
    }
    else {
-      Self->Dimensions = (Self->Dimensions & ~DMF_RELATIVE_Y_OFFSET) | DMF_FIXED_Y_OFFSET;
+      Self->Dimensions = (Self->Dimensions & ~DMF_SCALED_Y_OFFSET) | DMF_FIXED_Y_OFFSET;
       Self->YOffset = value;
 
       if ((Self->Dimensions & DMF_HEIGHT) and (Self->ParentID)) {

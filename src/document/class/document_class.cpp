@@ -96,7 +96,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERROR
 }
 
 //********************************************************************************************************************
-// Receiver for events from Self->View.  Bear in mind that the XOffset and YOffset of the document's View must 
+// Receiver for events from Self->View.  Bear in mind that the XOffset and YOffset of the document's View must
 // be zero initially, and will be controlled by the scrollbar.  For that reason we don't need to do much here other
 // than respond by updating the layout of the page.
 
@@ -104,7 +104,7 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extDocument *)CurrentContext();
-   
+
    DOUBLE width, height;
    View->get(FID_Width, &width);
    View->get(FID_Height, &height);
@@ -115,7 +115,7 @@ static ERROR feedback_view(objVectorViewport *View, FM Event)
 
    Self->VPWidth = width;
    Self->VPHeight = height;
- 
+
    for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
       if (trigger.Type IS CALL_SCRIPT) {
          // The resize event is triggered just prior to the layout of the document.  This allows the trigger
@@ -729,7 +729,7 @@ static ERROR DOCUMENT_Init(extDocument *Self, APTR Void)
       }
    }
    else return ERR_CreateObject;
-   
+
    call = make_function_stdc(feedback_view);
    vecSubscribeFeedback(Self->View, FM::PATH_CHANGED, &call);
 
@@ -1401,7 +1401,7 @@ static const FieldArray clFields[] = {
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
    { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
-   { "PageWidth",     FDF_VARIABLE|FDF_LONG|FDF_SCALE|FDF_RW, GET_PageWidth, SET_PageWidth },
+   { "PageWidth",     FDF_VARIABLE|FDF_LONG|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },
    { "Pretext",       FDF_STRING|FDF_W,        NULL, SET_Pretext },
    { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
    { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },
