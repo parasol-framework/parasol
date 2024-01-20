@@ -97,7 +97,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2024", version=1.0 }, functi
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
-    { id=2,  name="GetString" },
+    { id=2,  name="Serialise" },
     { id=3,  name="InsertXML" },
     { id=4,  name="GetContent" },
     { id=5,  name="Sort" },

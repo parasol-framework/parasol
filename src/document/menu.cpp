@@ -164,13 +164,16 @@ void doc_menu::refresh()
    for (auto &item : m_items) {
       if (item.icon.empty()) {
          if (total_icons) {
-            buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" @name=\"" << item.name << "\">" << 
-               "<advance x=\"[=" << GAP << "+[%line-height]]\"/>" << item.name << "</a></p>\n";
+            buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" " << 
+               "@name=\"" << item.name << "\">" << "<advance x=\"[=" << GAP << "+[%line-height]]\"/>" << 
+               item.name << "</a></p>\n";
          }
-         else buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" @name=\"" << item.name << "\">" << item.name << "</a></p>\n";
+         else buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" " << 
+            "@name=\"" << item.name << "\">" << item.name << "</a></p>\n";
       }
       else {
-         buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" @name=\"" << item.name << "\"><image src=\"url(#" << item.icon <<
+         buf << "<p no-wrap leading=\"" << LEADING << "\"><a @id=\"" << item.id << "\" " << 
+            "@name=\"" << item.name << "\"><image src=\"url(#" << item.icon <<
             ")\"/><advance x=\"" << GAP << "\"/>" << item.name << "</a></p>\n";
       }
    }

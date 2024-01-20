@@ -134,7 +134,7 @@ typedef struct XMLTag {
 // XML methods
 
 #define MT_XMLSetAttrib -1
-#define MT_XMLGetString -2
+#define MT_XMLSerialise -2
 #define MT_XMLInsertXML -3
 #define MT_XMLGetContent -4
 #define MT_XMLSort -5
@@ -150,7 +150,7 @@ typedef struct XMLTag {
 #define MT_XMLGetTag -18
 
 struct xmlSetAttrib { LONG Index; LONG Attrib; CSTRING Name; CSTRING Value;  };
-struct xmlGetString { LONG Index; XMF Flags; STRING Result;  };
+struct xmlSerialise { LONG Index; XMF Flags; STRING Result;  };
 struct xmlInsertXML { LONG Index; XMI Where; CSTRING XML; LONG Result;  };
 struct xmlGetContent { LONG Index; STRING Buffer; LONG Length;  };
 struct xmlSort { CSTRING XPath; CSTRING Sort; XSF Flags;  };
@@ -170,9 +170,9 @@ INLINE ERROR xmlSetAttrib(APTR Ob, LONG Index, LONG Attrib, CSTRING Name, CSTRIN
    return(Action(MT_XMLSetAttrib, (OBJECTPTR)Ob, &args));
 }
 
-INLINE ERROR xmlGetString(APTR Ob, LONG Index, XMF Flags, STRING * Result) {
-   struct xmlGetString args = { Index, Flags, (STRING)0 };
-   ERROR error = Action(MT_XMLGetString, (OBJECTPTR)Ob, &args);
+INLINE ERROR xmlSerialise(APTR Ob, LONG Index, XMF Flags, STRING * Result) {
+   struct xmlSerialise args = { Index, Flags, (STRING)0 };
+   ERROR error = Action(MT_XMLSerialise, (OBJECTPTR)Ob, &args);
    if (Result) *Result = args.Result;
    return(error);
 }

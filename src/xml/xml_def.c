@@ -20,7 +20,7 @@ static const struct FieldDef clXMLFlags[] = {
 };
 
 FDEF maSetAttrib[] = { { "Index", FD_LONG }, { "Attrib", FD_LONG }, { "Name", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
-FDEF maGetString[] = { { "Index", FD_LONG }, { "Flags", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
+FDEF maSerialise[] = { { "Index", FD_LONG }, { "Flags", FD_LONG }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maInsertXML[] = { { "Index", FD_LONG }, { "Where", FD_LONG }, { "XML", FD_STR }, { "Result", FD_LONG|FD_RESULT }, { 0, 0 } };
 FDEF maGetContent[] = { { "Index", FD_LONG }, { "Buffer", FD_BUFFER|FD_STR }, { "Length", FD_LONG|FD_BUFSIZE }, { 0, 0 } };
 FDEF maSort[] = { { "XPath", FD_STR }, { "Sort", FD_STR }, { "Flags", FD_LONG }, { 0, 0 } };
@@ -37,7 +37,7 @@ FDEF maGetTag[] = { { "Index", FD_LONG }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD
 
 static const struct MethodEntry clXMLMethods[] = {
    { -1, (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xmlSetAttrib) },
-   { -2, (APTR)XML_GetString, "GetString", maGetString, sizeof(struct xmlGetString) },
+   { -2, (APTR)XML_Serialise, "Serialise", maSerialise, sizeof(struct xmlSerialise) },
    { -3, (APTR)XML_InsertXML, "InsertXML", maInsertXML, sizeof(struct xmlInsertXML) },
    { -4, (APTR)XML_GetContent, "GetContent", maGetContent, sizeof(struct xmlGetContent) },
    { -5, (APTR)XML_SortXML, "Sort", maSort, sizeof(struct xmlSort) },

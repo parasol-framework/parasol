@@ -522,7 +522,7 @@ static ERROR XML_GetVar(extXML *Self, struct acGetVar *Args)
          }
          else if (extract IS 2) {
             STRING str;
-            ERROR error = xmlGetString(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
+            ERROR error = xmlSerialise(Self, Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (!error) {
                StrCopy(str, Args->Buffer, Args->Size);
                FreeResource(str);
@@ -556,7 +556,7 @@ GetContent: Extracts the content of an XML tag.
 
 The GetContent method is used to extract the string content from an XML tag.  It will extract content that is
 immediately embedded within the XML tag and will not perform deep analysis of the tag structure (refer to
-#GetString() for deep extraction).  Consider the following structure:
+#Serialise() for deep extraction).  Consider the following structure:
 
 <pre>
 &lt;body&gt;
@@ -597,9 +597,9 @@ static ERROR XML_GetContent(extXML *Self, struct xmlGetContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetString: Serialise part of the XML tree to an XML string.
+Serialise: Serialise part of the XML tree to an XML string.
 
-The GetString method will serialise all or part of the XML data tree to a string.
+The Serialise method will serialise all or part of the XML data tree to a string.
 
 The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data
 is no longer required.
@@ -617,7 +617,7 @@ AllocMemory: Failed to allocate an XML string for the result.
 
 *********************************************************************************************************************/
 
-static ERROR XML_GetString(extXML *Self, struct xmlGetString *Args)
+static ERROR XML_Serialise(extXML *Self, struct xmlSerialise *Args)
 {
    pf::Log log;
 
@@ -1183,7 +1183,7 @@ static ERROR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 
    ERROR error;
    STRING str;
-   if (!(error = xmlGetString(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str))) {
+   if (!(error = xmlSerialise(Self, 0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str))) {
       struct acWrite write = { str, StrLength(str) };
       if (Action(AC_Write, Args->Dest, &write) != ERR_Okay) error = ERR_Write;
       FreeResource(str);

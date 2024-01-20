@@ -1685,7 +1685,7 @@ function cleanXMLString(str, caller)
 
          if (cleanXMLString_xml != nil) then
             cleanXMLString_xml.statement = str
-            local err, clean_str = cleanXMLString_xml.mtGetString(0, XMF_INCLUDE_SIBLINGS)
+            local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
             if (clean_str) then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
          else
             error('Failed to parse XML for ' .. nz(caller, 'undefined') .. '.')

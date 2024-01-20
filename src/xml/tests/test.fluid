@@ -52,9 +52,9 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testGetString()
-   local err, str = glXML.mtGetString(0, XMF_INCLUDE_SIBLINGS)
-   assert(err == ERR_Okay, "GetString() failed.")
+function testSerialise()
+   local err, str = glXML.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
+   assert(err == ERR_Okay, "Serialise() failed.")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib', 'testGetString', 'testSort' },
+      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib', 'testSerialise', 'testSort' },
       init = function(ScriptFolder)
          glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
       end,

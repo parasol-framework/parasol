@@ -630,7 +630,7 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
          std::string content = xmlGetContent(m_inject_tag[0][0]);
          Output.replace(pos, sizeof("[%content]")-1, content);
 
-         //if (!xmlGetString(m_inject_xml, m_inject_tag[0][0].ID, XMF::INCLUDE_SIBLINGS, &content)) {
+         //if (!xmlSerialise(m_inject_xml, m_inject_tag[0][0].ID, XMF::INCLUDE_SIBLINGS, &content)) {
          //   Output.replace(pos, sizeof("[%content]")-1, content);
          //   FreeResource(content);
          //}
@@ -1816,11 +1816,14 @@ void parser::tag_combobox(XMLTag &Tag)
    if (!Tag.Children.empty()) {
       for (auto &scan : Tag.Children) {
          if (!StrMatch("option", scan.name())) {
-            auto value = scan.attrib("value");
-            if ((value) and (!value->empty())) {
-               auto &option = widget.menu.m_items.emplace_back(*value);
+            std::string value;
+            
+            if (scan.hasContent()) value = scan.getContent();
 
-               auto id = scan.attrib("id");
+            if (!value.empty()) {
+               auto &option = widget.menu.m_items.emplace_back(value);
+
+               auto id = scan.attrib("value");
                if ((id) and (!id->empty())) option.id = *id;
 
                auto icon = scan.attrib("icon");
@@ -1963,7 +1966,7 @@ void parser::tag_svg(XMLTag &Tag)
    }
 
    STRING xml_svg;
-   auto err = xmlGetString(m_xml, Tag.ID, XMF::NIL, &xml_svg);
+   auto err = xmlSerialise(m_xml, Tag.ID, XMF::NIL, &xml_svg);
    if (!err) {
       if ((Self->SVG = objSVG::create::integral({ fl::Statement(xml_svg), fl::Target(Self->Page) }))) {
 
@@ -2548,7 +2551,7 @@ void parser::tag_template(XMLTag &Tag)
    // styles by placing updated definitions at the end of the style list.
 
    STRING strxml;
-   if (!xmlGetString(m_xml, Tag.ID, XMF::NIL, &strxml)) {
+   if (!xmlSerialise(m_xml, Tag.ID, XMF::NIL, &strxml)) {
       xmlInsertXML(Self->Templates, 0, XMI::PREV, strxml, 0);
       FreeResource(strxml);
    }
@@ -2955,7 +2958,7 @@ void parser::tag_object(XMLTag &Tag)
                for (auto &tmp : Self->Templates->Tags) {
                   for (unsigned i=1; i < tmp.Attribs.size(); i++) {
                      if ((!StrMatch("name", tmp.Attribs[i].name)) and (!StrMatch(t, tmp.Attribs[i].Value))) {
-                        if (!xmlGetString(Self->Templates, tmp.Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
+                        if (!xmlSerialise(Self->Templates, tmp.Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
                            acDataXML(object, content.c_str());
                         }
 
@@ -2971,7 +2974,7 @@ void parser::tag_object(XMLTag &Tag)
                      objXML *objxml;
                      if (!AccessObject(objectid, 3000, &objxml)) {
                         if (objxml->Class->ClassID IS ID_XML) {
-                           if (!xmlGetString(objxml, 0, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
+                           if (!xmlSerialise(objxml, 0, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
                               acDataXML(object, content.c_str());
                            }
                         }
@@ -2985,7 +2988,7 @@ void parser::tag_object(XMLTag &Tag)
             }
             else {
                if (scan.Children.empty()) continue;
-               if (!xmlGetString(XML, scan.Children.ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
+               if (!xmlSerialise(XML, scan.Children.ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
                   acDataXML(object, content.c_str());
                }
             }
@@ -2998,7 +3001,7 @@ void parser::tag_object(XMLTag &Tag)
 
    if ((!customised) and (Template)) {
       STRING content;
-      if (!xmlGetString(Self->Templates, Template->Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
+      if (!xmlSerialise(Self->Templates, Template->Children[0].ID, XMF::INCLUDE_SIBLINGS|XMF::STRIP_CDATA, &content)) {
          acDataXML(object, content);
          FreeResource(content);
       }
